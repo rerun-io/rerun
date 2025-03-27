@@ -59,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
                     println!("Partitions for dataset: {name}");
                     let _ = ctx.register_table(
                         "partition_list",
-                        df_connector.get_partition_list(tuid, &url),
+                        df_connector.get_partition_list(tuid, &url).await,
                     )?;
 
                     let df = ctx.table("partition_list").await?;

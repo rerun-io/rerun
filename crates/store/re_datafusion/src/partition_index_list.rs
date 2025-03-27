@@ -40,10 +40,8 @@ impl PartitionIndexListProvider {
     }
 
     /// This is a convenience function
-    pub fn into_provider(self) -> Arc<dyn TableProvider> {
-        let provider: GrpcStreamProvider<Self> = self.into();
-
-        Arc::new(provider)
+    pub async fn into_provider(self) -> Arc<dyn TableProvider> {
+        GrpcStreamProvider::prepare(self).await
     }
 }
 
@@ -51,7 +49,7 @@ impl PartitionIndexListProvider {
 impl GrpcStreamToTable for PartitionIndexListProvider {
     type GrpcStreamData = ListPartitionIndexesResponse;
 
-    fn create_schema() -> SchemaRef {
+    async fn create_schema(&mut self) -> SchemaRef {
         Arc::new(Schema::new_with_metadata(
             vec![
                 Field::new(
