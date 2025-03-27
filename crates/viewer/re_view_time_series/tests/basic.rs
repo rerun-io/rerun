@@ -29,14 +29,14 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::SeriesLine::new(),
+            &re_types::archetypes::SeriesLines::new(),
         )
     });
     test_context.log_entity("plots/point".into(), |builder| {
         builder.with_archetype(
             RowId::new(),
             TimePoint::default(),
-            &re_types::archetypes::SeriesPoint::new(),
+            &re_types::archetypes::SeriesPoints::new(),
         )
     });
 
@@ -58,12 +58,12 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             }
             _ => {
                 let data = if two_series_per_entity {
-                    re_types::archetypes::Scalar::default().with_many_scalar([
+                    re_types::archetypes::Scalars::default().with_scalars([
                         (i as f64 / 5.0).sin(),
                         (i as f64 / 5.0 + 1.0).cos(), // Shifted a bit to make the cap more visible
                     ])
                 } else {
-                    re_types::archetypes::Scalar::new((i as f64 / 5.0).sin())
+                    re_types::archetypes::Scalars::one((i as f64 / 5.0).sin())
                 };
 
                 test_context.log_entity("plots/line".into(), |builder| {
@@ -96,20 +96,22 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
 fn scalars_for_properties_test(
     step: i64,
     multiple_scalars: bool,
-) -> (re_types::archetypes::Scalar, re_types::archetypes::Scalar) {
+) -> (re_types::archetypes::Scalars, re_types::archetypes::Scalars) {
     if multiple_scalars {
         (
-            re_types::archetypes::Scalar::default().with_many_scalar([
+            re_types::archetypes::Scalars::new([
                 (step as f64 / 5.0).sin() + 1.0,
                 (step as f64 / 5.0).cos() + 1.0,
             ]),
-            re_types::archetypes::Scalar::default()
-                .with_many_scalar([(step as f64 / 5.0).cos(), (step as f64 / 5.0).sin()]),
+            re_types::archetypes::Scalars::new([
+                (step as f64 / 5.0).cos(),
+                (step as f64 / 5.0).sin(),
+            ]),
         )
     } else {
         (
-            re_types::archetypes::Scalar::new((step as f64 / 5.0).sin()),
-            re_types::archetypes::Scalar::new((step as f64 / 5.0).cos()),
+            re_types::archetypes::Scalars::one((step as f64 / 5.0).sin()),
+            re_types::archetypes::Scalars::one((step as f64 / 5.0).cos()),
         )
     }
 }
@@ -126,18 +128,18 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     let mut test_context = get_test_context();
 
     let properties_static = if multiple_properties {
-        re_types::archetypes::SeriesLine::new()
-            .with_many_width([4.0, 8.0])
-            .with_many_color([
+        re_types::archetypes::SeriesLines::new()
+            .with_widths([4.0, 8.0])
+            .with_colors([
                 re_types::components::Color::from_rgb(255, 0, 255),
                 re_types::components::Color::from_rgb(0, 255, 0),
             ])
-            .with_many_name(["static_0", "static_1"])
+            .with_names(["static_0", "static_1"])
     } else {
-        re_types::archetypes::SeriesLine::new()
-            .with_width(4.0)
-            .with_color(re_types::components::Color::from_rgb(255, 0, 255))
-            .with_name("static")
+        re_types::archetypes::SeriesLines::new()
+            .with_widths([4.0])
+            .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
+            .with_names(["static"])
     };
     test_context.log_entity("entity_static_props".into(), |builder| {
         builder.with_archetype(RowId::new(), TimePoint::default(), &properties_static)
@@ -147,16 +149,16 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
         let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
 
         let properties = if multiple_properties {
-            re_types::archetypes::SeriesLine::new()
-                .with_many_color([color_gradient0(step), color_gradient1(step)])
-                .with_many_width([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
+            re_types::archetypes::SeriesLines::new()
+                .with_colors([color_gradient0(step), color_gradient1(step)])
+                .with_widths([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
                 // Only the first set of name will be shown, but should be handled gracefully.
-                .with_many_name([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")])
+                .with_names([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")])
         } else {
-            re_types::archetypes::SeriesLine::new()
-                .with_color(color_gradient0(step))
-                .with_width((32.0 - step as f32) * 0.5)
-                .with_name(format!("dynamic_{step}"))
+            re_types::archetypes::SeriesLines::new()
+                .with_colors([color_gradient0(step)])
+                .with_widths([(32.0 - step as f32) * 0.5])
+                .with_names([format!("dynamic_{step}")])
         };
 
         let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);
@@ -212,23 +214,23 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
     let mut test_context = get_test_context();
 
     let static_props = if multiple_properties {
-        re_types::archetypes::SeriesPoint::new()
-            .with_many_marker_size([4.0, 8.0])
-            .with_many_marker([
+        re_types::archetypes::SeriesPoints::new()
+            .with_marker_sizes([4.0, 8.0])
+            .with_markers([
                 re_types::components::MarkerShape::Cross,
                 re_types::components::MarkerShape::Plus,
             ])
-            .with_many_color([
+            .with_colors([
                 re_types::components::Color::from_rgb(255, 0, 255),
                 re_types::components::Color::from_rgb(0, 255, 0),
             ])
-            .with_many_name(["static_0", "static_1"])
+            .with_names(["static_0", "static_1"])
     } else {
-        re_types::archetypes::SeriesPoint::new()
-            .with_marker_size(4.0)
-            .with_marker(re_types::components::MarkerShape::Cross)
-            .with_color(re_types::components::Color::from_rgb(255, 0, 255))
-            .with_name("static")
+        re_types::archetypes::SeriesPoints::new()
+            .with_marker_sizes([4.0])
+            .with_markers([re_types::components::MarkerShape::Cross])
+            .with_colors([re_types::components::Color::from_rgb(255, 0, 255)])
+            .with_names(["static"])
     };
 
     test_context.log_entity("entity_static_props".into(), |builder| {
@@ -239,20 +241,20 @@ fn test_point_properties_impl(multiple_properties: bool, multiple_scalars: bool)
         let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
 
         let properties = if multiple_properties {
-            re_types::archetypes::SeriesPoint::new()
-                .with_many_color([color_gradient0(step), color_gradient1(step)])
-                .with_many_marker_size([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
-                .with_many_marker([
+            re_types::archetypes::SeriesPoints::new()
+                .with_colors([color_gradient0(step), color_gradient1(step)])
+                .with_marker_sizes([(32.0 - step as f32) * 0.5, step as f32 * 0.5])
+                .with_markers([
                     MARKER_LIST[step as usize % MARKER_LIST.len()],
                     MARKER_LIST[(step + 1) as usize % MARKER_LIST.len()],
                 ])
-                .with_many_name([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")])
+                .with_names([format!("dynamic_{step}_0"), format!("dynamic_{step}_1")])
         } else {
-            re_types::archetypes::SeriesPoint::new()
-                .with_color(color_gradient0(step))
-                .with_marker_size((32.0 - step as f32) * 0.5)
-                .with_marker(MARKER_LIST[step as usize % MARKER_LIST.len()])
-                .with_name(format!("dynamic_{step}"))
+            re_types::archetypes::SeriesPoints::new()
+                .with_colors([color_gradient0(step)])
+                .with_marker_sizes([(32.0 - step as f32) * 0.5])
+                .with_markers([MARKER_LIST[step as usize % MARKER_LIST.len()]])
+                .with_names([format!("dynamic_{step}")])
         };
 
         let (scalars_static, scalars_dynamic) = scalars_for_properties_test(step, multiple_scalars);

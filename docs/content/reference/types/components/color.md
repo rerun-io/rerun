@@ -41,5 +41,7 @@ uint32
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
 * [`SeriesLine`](../archetypes/series_line.md)
+* [`SeriesLines`](../archetypes/series_lines.md?speculative-link)
 * [`SeriesPoint`](../archetypes/series_point.md)
+* [`SeriesPoints`](../archetypes/series_points.md?speculative-link)
 * [`TextLog`](../archetypes/text_log.md)

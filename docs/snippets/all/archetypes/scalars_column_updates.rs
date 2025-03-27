@@ -13,9 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.send_columns(
         "scalars",
         [times],
-        rerun::Scalar::update_fields()
-            .with_many_scalar(scalars)
-            .columns_of_unit_batches()?,
+        rerun::Scalars::new(scalars).columns_of_unit_batches()?,
     )?;
 
     Ok(())

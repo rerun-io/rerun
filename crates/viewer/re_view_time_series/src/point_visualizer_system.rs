@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_types::{
-    archetypes::{self, SeriesPoint},
+    archetypes,
     components::{Color, MarkerShape, MarkerSize, Name, Scalar, SeriesVisible},
     Archetype as _, Component as _,
 };
@@ -22,7 +22,7 @@ use crate::{
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
-/// The system for rendering [`SeriesPoint`] archetypes.
+/// The system for rendering [`archetypes::SeriesPoints`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesPointSystem {
     pub all_series: Vec<PlotSeries>,
@@ -30,7 +30,7 @@ pub struct SeriesPointSystem {
 
 impl IdentifiedViewSystem for SeriesPointSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesPoint".into()
+        "SeriesPoints".into()
     }
 }
 
@@ -40,15 +40,15 @@ const DEFAULT_MARKER_SIZE: f32 = 3.0;
 
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
+        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
         query_info.queried.extend(
-            SeriesPoint::all_components()
+            archetypes::SeriesPoints::all_components()
                 .iter()
                 .map(|descr| descr.component_name),
         );
 
         query_info.indicators =
-            std::iter::once(SeriesPoint::descriptor_indicator().component_name).collect();
+            [archetypes::SeriesPoints::descriptor_indicator().component_name].into();
 
         query_info
     }

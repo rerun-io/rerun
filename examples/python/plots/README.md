@@ -18,7 +18,7 @@ This example demonstrates how to log simple plots with the Rerun SDK. Charts can
 
 ## Used Rerun types
 
-[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`SeriesPoint`](https://www.rerun.io/docs/reference/types/archetypes/series_point), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link), [`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_points?speculative-link), [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 ## Logging and visualizing with Rerun
 
@@ -26,10 +26,10 @@ This example shows various plot types that you can create using Rerun. Common us
 losses or metrics over time, histograms, or general function plots.
 
 The bar chart is created by logging the [`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart) archetype.
-All other plots are created using the [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype.
+All other plots are created using the [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype.
 Each plot is created by logging scalars at different time steps (i.e., the x-axis).
-Additionally, the plots are styled using the [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line) and
-[`SeriesPoint`](https://www.rerun.io/docs/reference/types/archetypes/series_point) archetypes respectively.
+Additionally, the plots are styled using the [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) and
+[`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_poins?speculative-linkt) archetypes respectively.
 
 The visualizations in this example were created with the following Rerun code:
 
@@ -46,13 +46,13 @@ def log_bar_chart() -> None:
 ### Curves
 The `log_parabola` function logs a parabola curve (sine and cosine functions) as a time series.
 
-It first sets up a time sequence using [`timelines`](https://www.rerun.io/docs/concepts/timelines), then calculates the y-value of the parabola at each time step, and logs it using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype.
-It also adjusts the width and color of the plotted line based on the calculated y value using [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line) archetype.
+It first sets up a time sequence using [`timelines`](https://www.rerun.io/docs/concepts/timelines), then calculates the y-value of the parabola at each time step, and logs it using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype.
+It also adjusts the width and color of the plotted line based on the calculated y value using [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) archetype.
 
 ```python
 def log_parabola() -> None:
     # Name never changes, log it only once.
-    rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), static=True)
+    rr.log("curves/parabola", rr.SeriesLines(name="f(t) = (0.01t - 3)³ + 1"), static=True)
 
     # Log a parabola as a time series
     for t in range(0, 1000, 10):
@@ -62,8 +62,8 @@ def log_parabola() -> None:
 
         rr.log(
             "curves/parabola",
-            rr.Scalar(f_of_t),
-            rr.SeriesLine(width=width, color=color),
+            rr.Scalars(f_of_t),
+            rr.SeriesLines(width=width, color=color),
         )
 ```
 
@@ -71,46 +71,46 @@ def log_parabola() -> None:
 
 The `log_trig` function logs sin and cos functions as time series. Sin and cos are logged with the same parent entity (i.e.,`trig/{cos,sin}`) which will put them in the same view by default.
 
-It first logs the styling properties of the sin and cos plots using [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line) archetype.
-Then, it iterates over a range of time steps, calculates the sin and cos values at each time step, and logs them using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype.
+It first logs the styling properties of the sin and cos plots using [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) archetype.
+Then, it iterates over a range of time steps, calculates the sin and cos values at each time step, and logs them using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype.
 
  ```python
 def log_trig() -> None:
     # Styling doesn't change over time, log it once with static=True.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
+    rr.log("trig/sin", rr.SeriesLines(color=[255, 0, 0], name="sin(0.01t)"), static=True)
+    rr.log("trig/cos", rr.SeriesLines(color=[0, 255, 0], name="cos(0.01t)"), static=True)
 
     for t in range(0, int(tau * 2 * 100.0)):
         rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 100.0)
-        rr.log("trig/sin", rr.Scalar(sin_of_t))
+        rr.log("trig/sin", rr.Scalars(sin_of_t))
 
         cos_of_t = cos(float(t) / 100.0)
-        rr.log("trig/cos", rr.Scalar(cos_of_t))
+        rr.log("trig/cos", rr.Scalars(cos_of_t))
  ```
 
 ### Classification
 
 The `log_classification` function simulates a classification problem by logging a line function and randomly generated samples around that line.
 
-It first logs the styling properties of the line plot using [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line) archetype.
-Then, it iterates over a range of time steps, calculates the y value of the line function at each time step, and logs it as a scalar using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype.
-Additionally, it generates random samples around the line function and logs them using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) and [`SeriesPoint`](https://www.rerun.io/docs/reference/types/archetypes/series_point) archetypes.
+It first logs the styling properties of the line plot using [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) archetype.
+Then, it iterates over a range of time steps, calculates the y value of the line function at each time step, and logs it as a scalars using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype.
+Additionally, it generates random samples around the line function and logs them using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) and [`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_poins?speculative-linkt) archetypes.
 
  ```python
 def log_classification() -> None:
     # Log components that don't change only once:
-    rr.log("classification/line", rr.SeriesLine(color=[255, 255, 0], width=3.0), static=True)
+    rr.log("classification/line", rr.SeriesLines(colors=[255, 255, 0], widths=3.0), static=True)
 
     for t in range(0, 1000, 2):
         rr.set_time("frame_nr", sequence=t)
 
         # … existing code …
-        rr.log("classification/line", rr.Scalar(f_of_t))
+        rr.log("classification/line", rr.Scalars(f_of_t))
 
         # … existing code …
-        rr.log("classification/samples", rr.Scalar(g_of_t), rr.SeriesPoint(color=color, marker_size=marker_size))
+        rr.log("classification/samples", rr.Scalars(g_of_t), rr.SeriesPoints(colors=color, marker_sizes=marker_size))
  ```
 
 
@@ -138,4 +138,4 @@ python -m plots --help
 ## Advanced time series - [`send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
 Logging many scalars individually can be slow.
 The [`send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns) API can be used to log many scalars at once.
-Check the [`Scalar` `send_columns` snippet](https://rerun.io/docs/reference/types/archetypes/scalar#scalar-send-columns) to learn more.
+Check the [`Scalars` `send_columns` snippet](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-links#scalars-send-columns) to learn more.

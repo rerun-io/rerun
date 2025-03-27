@@ -39,7 +39,9 @@ message DeleteEntryResponse {}
 // CreateDatasetEntry
 
 message CreateDatasetEntryRequest {
-  DatasetEntry dataset = 1;
+  // The name is a short human-readable string
+  // TODO(jleibs): Define valid name constraints
+  optional string name = 1;
 }
 
 message CreateDatasetEntryResponse {

@@ -5,7 +5,6 @@ use re_log_types::{EntityPath, TimeInt};
 use re_types::archetypes;
 use re_types::components::{AggregationPolicy, ClearIsRecursive, SeriesVisible};
 use re_types::{
-    archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
     Archetype as _, Component as _,
 };
@@ -25,7 +24,7 @@ use crate::util::{determine_time_per_pixel, determine_time_range, points_to_seri
 use crate::view_class::TimeSeriesViewState;
 use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
-/// The system for rendering [`SeriesLine`] archetypes.
+/// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
 pub struct SeriesLineSystem {
     pub all_series: Vec<PlotSeries>,
@@ -33,7 +32,7 @@ pub struct SeriesLineSystem {
 
 impl IdentifiedViewSystem for SeriesLineSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesLine".into()
+        "SeriesLines".into()
     }
 }
 
@@ -41,15 +40,15 @@ const DEFAULT_STROKE_WIDTH: f32 = 0.75;
 
 impl VisualizerSystem for SeriesLineSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalar>();
+        let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
         query_info.queried.extend(
-            SeriesLine::all_components()
+            archetypes::SeriesLines::all_components()
                 .iter()
                 .map(|descr| descr.component_name),
         );
 
         query_info.indicators =
-            std::iter::once(SeriesLine::descriptor_indicator().component_name).collect();
+            [archetypes::SeriesLines::descriptor_indicator().component_name].into();
 
         query_info
     }
