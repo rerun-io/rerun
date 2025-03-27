@@ -153,8 +153,14 @@ impl EntityDb {
             .store()
             .time_column_type(timeline_name)
             .unwrap_or_else(|| {
-                re_log::warn_once!("Timeline {timeline_name:?} not found");
-                TimeType::Sequence
+                if timeline_name == &TimelineName::log_time() {
+                    Timeline::log_time().typ()
+                } else if timeline_name == &TimelineName::log_tick() {
+                    Timeline::log_tick().typ()
+                } else {
+                    re_log::warn_once!("Timeline {timeline_name:?} not found");
+                    TimeType::Sequence
+                }
             })
     }
 

@@ -8,7 +8,7 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
-use re_protos::catalog::v1alpha1::catalog_service_client::CatalogServiceClient;
+use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::remote_store::v1alpha1::{
     storage_node_service_client::StorageNodeServiceClient, CatalogEntry, GetChunksRangeRequest,
 };
@@ -126,7 +126,7 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub async fn client(
+pub async fn legacy_client(
     origin: Origin,
 ) -> Result<StorageNodeServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
     let channel = channel(origin).await?;
@@ -134,7 +134,7 @@ pub async fn client(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn client(
+pub async fn legacy_client(
     origin: Origin,
 ) -> Result<StorageNodeServiceClient<tonic::transport::Channel>, ConnectionError> {
     let channel = channel(origin).await?;
@@ -142,7 +142,7 @@ pub async fn client(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
+pub async fn legacy_client_with_interceptor<I: tonic::service::Interceptor>(
     origin: Origin,
     interceptor: I,
 ) -> Result<
@@ -158,38 +158,37 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
     )
 }
 
-// Client for the new catalog APIs
-//TODO(ab): should replace the above calls.
-
 #[cfg(target_arch = "wasm32")]
-pub async fn catalog_client(
+pub async fn client(
     origin: Origin,
-) -> Result<CatalogServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
+) -> Result<FrontendServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(CatalogServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(FrontendServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn catalog_client(
+pub async fn client(
     origin: Origin,
-) -> Result<CatalogServiceClient<tonic::transport::Channel>, ConnectionError> {
+) -> Result<FrontendServiceClient<tonic::transport::Channel>, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(CatalogServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(FrontendServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn catalog_client_with_interceptor<I: tonic::service::Interceptor>(
+pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
     origin: Origin,
     interceptor: I,
 ) -> Result<
-    CatalogServiceClient<
+    FrontendServiceClient<
         tonic::service::interceptor::InterceptedService<tonic::transport::Channel, I>,
     >,
     ConnectionError,
 > {
     let channel = channel(origin).await?;
-    Ok(CatalogServiceClient::with_interceptor(channel, interceptor)
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(
+        FrontendServiceClient::with_interceptor(channel, interceptor)
+            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE),
+    )
 }
 
 pub async fn stream_recording_async(
@@ -199,7 +198,7 @@ pub async fn stream_recording_async(
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Connecting to {}…", endpoint.origin);
-    let mut client = client(endpoint.origin).await?;
+    let mut client = legacy_client(endpoint.origin).await?;
 
     re_log::debug!("Fetching catalog data for {}…", endpoint.recording_id);
 

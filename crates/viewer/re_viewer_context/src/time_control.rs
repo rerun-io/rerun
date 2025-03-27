@@ -219,12 +219,16 @@ impl TimeControlResponse {
 
 impl TimeControl {
     /// Move the time forward (if playing), and perhaps pause if we've reached the end.
+    ///
+    /// If `should_diff_state` is true, then the response also contains any changes in state
+    /// between last frame and the current one.
     #[must_use]
     pub fn update(
         &mut self,
         times_per_timeline: &TimesPerTimeline,
         stable_dt: f32,
         more_data_is_coming: bool,
+        should_diff_state: bool,
     ) -> TimeControlResponse {
         self.select_a_valid_timeline(times_per_timeline);
 
@@ -311,7 +315,14 @@ impl TimeControl {
 
         let mut response = TimeControlResponse::new(needs_repaint);
 
-        self.diff_last_frame(&mut response);
+        // Only diff if the caller asked for it, _and_ we have some times on the timeline.
+        let should_diff_state = should_diff_state
+            && times_per_timeline
+                .get(self.timeline.name())
+                .is_some_and(|stats| !stats.per_time.is_empty());
+        if should_diff_state {
+            self.diff_last_frame(&mut response);
+        }
 
         response
     }
