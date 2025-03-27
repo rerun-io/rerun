@@ -52,7 +52,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let video_timestamps_nanos = frame_timestamps_nanos
 ///         .iter()
 ///         .copied()
-///         .map(rerun::components::VideoTimestamp::from_nanoseconds)
+///         .map(rerun::components::VideoTimestamp::from_nanos)
 ///         .collect::<Vec<_>>();
 ///     let time_column = rerun::TimeColumn::new_duration_nanos(
 ///         "video_time",
