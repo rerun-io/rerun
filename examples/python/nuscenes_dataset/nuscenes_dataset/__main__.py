@@ -154,7 +154,7 @@ def log_lidar_and_ego_pose(
                 translation=ego_pose["translation"],
                 rotation=rr.Quaternion(xyzw=rotation_xyzw),
                 axis_length=10.0,  # The length of the visualized axis.
-                from_parent=False,
+                relation=rr.TransformRelation.ParentFromChild,
             ),
             rr.GeoPoints(lat_lon=position_lat_lon, radii=rr.Radius.ui_points(8.0), colors=0xFF0000FF),
         )
@@ -268,7 +268,7 @@ def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes)
         rr.Transform3D(
             translation=calibrated_sensor["translation"],
             rotation=rr.Quaternion(xyzw=rotation_xyzw),
-            from_parent=False,
+            relation=rr.TransformRelation.ParentFromChild,
         ),
         static=True,
     )
