@@ -6492,7 +6492,6 @@ dependencies = [
  "re_log_types",
  "re_protos",
  "re_sorbet",
- "re_tuid",
  "re_types_core",
  "re_ui",
  "re_uri",

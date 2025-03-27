@@ -32,7 +32,6 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 #TODO(ab): for `DisplayRecordBatch`, should be moved elsewhere.
 re_view_dataframe.workspace = true
-re_tuid.workspace = true
 re_uri.workspace = true
 
 ahash.workspace = true

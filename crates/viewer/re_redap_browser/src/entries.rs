@@ -10,7 +10,6 @@ use re_protos::catalog::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, ReadDatasetEntryRequest,
 };
 use re_protos::common::v1alpha1::ext::EntryId;
-use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::ListPartitionsRequest;
 use re_protos::TypeConversionError;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
@@ -177,7 +176,7 @@ async fn find_dataset_entries(
 }
 
 async fn stream_partition_table(
-    client: &mut FrontendServiceClient<tonic::transport::Channel>,
+    client: &mut redap::Client,
     entry_id: EntryId,
 ) -> Result<Vec<SorbetBatch>, EntryError> {
     let mut response = client
