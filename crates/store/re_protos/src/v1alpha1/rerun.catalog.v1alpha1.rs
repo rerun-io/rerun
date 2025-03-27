@@ -58,8 +58,10 @@ impl ::prost::Name for DeleteEntryResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateDatasetEntryRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset: ::core::option::Option<DatasetEntry>,
+    /// The name is a short human-readable string
+    /// TODO(jleibs): Define valid name constraints
+    #[prost(string, optional, tag = "1")]
+    pub name: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for CreateDatasetEntryRequest {
     const NAME: &'static str = "CreateDatasetEntryRequest";
