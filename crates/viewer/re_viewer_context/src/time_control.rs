@@ -315,6 +315,11 @@ impl TimeControl {
 
         let mut response = TimeControlResponse::new(needs_repaint);
 
+        // Only diff if the caller asked for it, _and_ we have some times on the timeline.
+        let should_diff_state = should_diff_state
+            && times_per_timeline
+                .get(self.timeline.name())
+                .is_some_and(|stats| !stats.per_time.is_empty());
         if should_diff_state {
             self.diff_last_frame(&mut response);
         }
