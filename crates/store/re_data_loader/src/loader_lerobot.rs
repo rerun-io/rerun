@@ -486,7 +486,7 @@ fn load_scalar(
             format!("Failed to get field for feature {feature_key} from parquet file")
         })?;
 
-    let entity_path = field.name().to_string();
+    let entity_path = EntityPath::parse_forgiving(field.name());
 
     match field.data_type() {
         DataType::FixedSizeList(_, _) => {
@@ -531,7 +531,7 @@ fn load_scalar(
 }
 
 fn make_scalar_batch_entity_chunks(
-    entity_path: String,
+    entity_path: EntityPath,
     feature: &Feature,
     timelines: &IntMap<TimelineName, TimeColumn>,
     data: &FixedSizeListArray,
@@ -556,7 +556,7 @@ fn make_scalar_batch_entity_chunks(
             .collect();
 
         chunks.push(
-            Chunk::builder(entity_path.into())
+            Chunk::builder(entity_path)
                 .with_row(
                     RowId::new(),
                     TimePoint::default(),
@@ -573,7 +573,7 @@ fn make_scalar_batch_entity_chunks(
 }
 
 fn make_scalar_entity_chunk(
-    entity_path: String,
+    entity_path: EntityPath,
     timelines: &IntMap<TimelineName, TimeColumn>,
     sliced_data: &[ArrayRef],
 ) -> Result<Chunk, DataLoaderError> {
@@ -590,7 +590,7 @@ fn make_scalar_entity_chunk(
 
     Ok(Chunk::from_auto_row_ids(
         ChunkId::new(),
-        entity_path.into(),
+        entity_path,
         timelines.clone(),
         std::iter::once((
             <Scalar as Component>::descriptor().clone(),
