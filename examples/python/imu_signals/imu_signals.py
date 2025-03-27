@@ -42,7 +42,7 @@ def main() -> None:
                 name="Gyroscope",
                 overrides={
                     # TODO(#9022): Pluralize series line type.
-                    "/gyroscope": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                    "/gyroscope": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                 },
             ),
             rrb.TimeSeriesView(
@@ -50,7 +50,7 @@ def main() -> None:
                 name="Accelerometer",
                 overrides={
                     # TODO(#9022): Pluralize series line type.
-                    "/accelerometer": rr.SeriesLine.from_fields(name=XYZ_AXIS_NAMES, color=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
+                    "/accelerometer": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                 },
             ),
         ),
@@ -105,10 +105,10 @@ def _log_imu_data(max_time_sec: float) -> None:
     times = rr.TimeColumn("timestamp", timestamp=timestamps)
 
     gyro = selected[["gyro.x", "gyro.y", "gyro.z"]].to_numpy()
-    rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalar.columns(scalar=gyro))
+    rr.send_columns("/gyroscope", indexes=[times], columns=rr.Scalars.columns(scalars=gyro))
 
     accel = selected[["accel.x", "accel.y", "accel.z"]]
-    rr.send_columns("/accelerometer", indexes=[times], columns=rr.Scalar.columns(scalar=accel))
+    rr.send_columns("/accelerometer", indexes=[times], columns=rr.Scalars.columns(scalars=accel))
 
 
 def _log_image_data(max_time_sec: float) -> None:

@@ -11,6 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![expect(deprecated)]
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
@@ -22,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// This archetype only provides styling information and should be logged as static
 /// when possible. The underlying data needs to be logged to the same entity-path using
-/// [`archetypes::Scalar`][crate::archetypes::Scalar].
+/// [`archetypes::Scalars`][crate::archetypes::Scalars].
 ///
 /// ## Example
 ///
@@ -36,25 +37,25 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Log two lines series under a shared root so that they show in the same plot by default.
 ///     rec.log_static(
 ///         "trig/sin",
-///         &rerun::SeriesLine::new()
-///             .with_color([255, 0, 0])
-///             .with_name("sin(0.01t)")
-///             .with_width(2.0),
+///         &rerun::SeriesLines::new()
+///             .with_colors([[255, 0, 0]])
+///             .with_names(["sin(0.01t)"])
+///             .with_widths([2.0]),
 ///     )?;
 ///     rec.log_static(
 ///         "trig/cos",
-///         &rerun::SeriesLine::new()
-///             .with_color([0, 255, 0])
-///             .with_name("cos(0.01t)")
-///             .with_width(4.0),
+///         &rerun::SeriesLines::new()
+///             .with_colors([[0, 255, 0]])
+///             .with_names(["cos(0.01t)"])
+///             .with_widths([4.0]),
 ///     )?;
 ///
 ///     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
 ///         rec.set_time_sequence("step", t);
 ///
 ///         // Log two time series under a shared root so that they show in the same plot by default.
-///         rec.log("trig/sin", &rerun::Scalar::new((t as f64 / 100.0).sin()))?;
-///         rec.log("trig/cos", &rerun::Scalar::new((t as f64 / 100.0).cos()))?;
+///         rec.log("trig/sin", &rerun::Scalars::one((t as f64 / 100.0).sin()))?;
+///         rec.log("trig/cos", &rerun::Scalars::one((t as f64 / 100.0).cos()))?;
 ///     }
 ///
 ///     Ok(())
@@ -70,6 +71,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, Default)]
+#[deprecated(note = "Use `SeriesLines` instead.")]
 pub struct SeriesLine {
     /// Color for the corresponding series.
     pub color: Option<SerializedComponentBatch>,

@@ -297,7 +297,7 @@ pub struct QueryExpression {
     /// ```text
     /// view_contents = {
     ///   "world/points": [rr.Position3D, rr.Radius],
-    ///   "metrics": [rr.Scalar]
+    ///   "metrics": [rr.Scalars]
     /// }
     /// ```
     pub view_contents: Option<ViewContentsSelector>,

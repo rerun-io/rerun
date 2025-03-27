@@ -33,7 +33,7 @@ rr.connect_grpc()
 rr.send_columns(
     "/jaw_open_state",
     indexes=[rr.TimeColumn("frame_nr", sequence=df["frame_nr"])],
-    columns=rr.Scalar.columns(scalar=df["jawOpenState"]),
+    columns=rr.Scalars.columns(scalars=df["jawOpenState"]),
 )
 
 # log a `Label` component to the face bounding box entity

@@ -25,3 +25,4 @@ float64
 ## Used by
 
 * [`Scalar`](../archetypes/scalar.md)
+* [`Scalars`](../archetypes/scalars.md?speculative-link)

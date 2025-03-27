@@ -18,7 +18,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **View**: A time series view for scalars over time, for use with [`archetypes::Scalar`][crate::archetypes::Scalar].
+/// **View**: A time series view for scalars over time, for use with [`archetypes::Scalars`][crate::archetypes::Scalars].
 #[derive(Clone, Debug)]
 pub struct TimeSeriesView {
     /// Configures the vertical axis of the plot.
