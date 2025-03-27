@@ -32,7 +32,9 @@ if importlib.util.find_spec("rerun_notebook") is not None:
     except ImportError:
         logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
     except FileNotFoundError:
-        logging.error("rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env.")
+        logging.error(
+            "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
+        )
 
 from rerun import bindings
 
