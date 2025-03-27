@@ -5,7 +5,10 @@ mod add_server_modal;
 mod collection_ui;
 mod collections;
 mod context;
+mod local_ui;
 mod requested_object;
 mod servers;
 
 pub use servers::RedapServers;
+
+pub use local_ui::{sort_datasets, SortDatasetsResults};

@@ -104,41 +104,11 @@ fn recording_list_ui(
     ui: &mut egui::Ui,
     welcome_screen_state: &WelcomeScreenState,
 ) {
-    // TODO(lucasmerlin): Replace String with DatasetId or whatever we come up with
-    let mut remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<String, Vec<&EntityDb>>> =
-        BTreeMap::new();
-    let mut local_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
-    let mut example_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
-
-    for entity_db in ctx.store_context.bundle.entity_dbs() {
-        // We want to show all open applications, even if they have no recordings
-        let Some(app_id) = entity_db.app_id().cloned() else {
-            continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
-        };
-        if let Some(SmartChannelSource::RedapGrpcStream(endpoint)) = &entity_db.data_source {
-            let origin_recordings = remote_recordings
-                .entry(endpoint.origin.clone())
-                .or_default();
-
-            let dataset_recordings = origin_recordings
-                // Currently a origin only has a single dataset, this should change soon
-                .entry("default".to_owned())
-                .or_default();
-
-            if entity_db.store_kind() == StoreKind::Recording {
-                dataset_recordings.push(entity_db);
-            }
-        } else if entity_db.store_kind() == StoreKind::Recording {
-            if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
-            {
-                let recordings = example_recordings.entry(app_id).or_default();
-                recordings.push(entity_db);
-            } else {
-                let recordings = local_recordings.entry(app_id).or_default();
-                recordings.push(entity_db);
-            }
-        }
-    }
+    let re_redap_browser::SortDatasetsResults {
+        remote_recordings,
+        example_recordings,
+        local_recordings,
+    } = re_redap_browser::sort_datasets(ctx);
 
     if local_recordings.is_empty() && welcome_screen_state.hide {
         ui.list_item().interactive(false).show_flat(

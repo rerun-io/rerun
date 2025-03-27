@@ -7,6 +7,7 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 use crate::add_server_modal::AddServerModal;
 use crate::collections::{Collection, CollectionId, Collections};
 use crate::context::Context;
+use crate::local_ui::local_ui;
 
 struct Server {
     origin: re_uri::Origin,
@@ -48,7 +49,7 @@ impl Server {
     }
 
     fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
-        let content = list_item::LabelContent::new(self.origin.to_string())
+        let content = list_item::LabelContent::header(self.origin.host.to_string())
             .with_buttons(|ui| {
                 let response = ui
                     .small_icon_button(&re_ui::icons::REMOVE)
@@ -66,6 +67,7 @@ impl Server {
 
         ui.list_item()
             .interactive(false)
+            .header()
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),
@@ -217,7 +219,7 @@ impl RedapServers {
         }
     }
 
-    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>) {
         ui.panel_content(|ui| {
             ui.panel_title_bar_with_buttons(
                 "Servers",
@@ -240,17 +242,19 @@ impl RedapServers {
             .show(ui, |ui| {
                 ui.panel_content(|ui| {
                     re_ui::list_item::list_item_scope(ui, "server panel", |ui| {
-                        self.server_list_ui(ui);
+                        self.server_list_ui(ui, ctx);
                     });
                 });
             });
     }
 
-    fn server_list_ui(&self, ui: &mut egui::Ui) {
+    fn server_list_ui(&self, ui: &mut egui::Ui, viewer_ctx: &ViewerContext<'_>) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
                 server.panel_ui(ctx, ui);
             }
+
+            local_ui(ui, viewer_ctx, ctx);
         });
     }
 

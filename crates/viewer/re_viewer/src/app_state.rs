@@ -527,7 +527,7 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            redap_servers.server_panel_ui(ui);
+                            redap_servers.server_panel_ui(ui, &ctx);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // handled above

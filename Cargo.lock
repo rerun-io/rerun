@@ -6491,6 +6491,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_smart_channel",
  "re_sorbet",
  "re_types_core",
  "re_ui",
