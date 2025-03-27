@@ -155,3 +155,26 @@ impl TryFrom<TableEntry> for crate::catalog::v1alpha1::TableEntry {
         })
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct SystemTable {
+    pub kind: crate::catalog::v1alpha1::SystemTableKind,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::SystemTable> for SystemTable {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::SystemTable) -> Result<Self, Self::Error> {
+        Ok(Self {
+            kind: value.kind.try_into()?,
+        })
+    }
+}
+
+impl From<SystemTable> for crate::catalog::v1alpha1::SystemTable {
+    fn from(value: SystemTable) -> Self {
+        Self {
+            kind: value.kind as _,
+        }
+    }
+}
