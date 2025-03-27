@@ -511,7 +511,7 @@ fn load_scalar(
                 ))
             })?;
 
-            let sliced = slice_scalar_array(feature_data).with_context(|| {
+            let sliced = extract_scalar_slices_as_f64(feature_data).with_context(|| {
                 format!("Failed to cast scalar feature {entity_path} to Float64")
             })?;
 
@@ -540,7 +540,7 @@ fn make_scalar_batch_entity_chunks(
 
     let mut chunks = Vec::with_capacity(num_elements);
 
-    let sliced = slice_scalar_fixed_sized_list_array(data)
+    let sliced = extract_list_elements_as_f64(data)
         .with_context(|| format!("Failed to cast scalar feature {entity_path} to Float64"))?;
 
     chunks.push(make_scalar_entity_chunk(
@@ -600,7 +600,7 @@ fn make_scalar_entity_chunk(
     )?)
 }
 
-fn slice_scalar_array(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>> {
+fn extract_scalar_slices_as_f64(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>> {
     // cast the slice to f64 first, as scalars need an f64
     let scalar_values = cast(&data, &DataType::Float64)
         .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))?;
@@ -610,7 +610,7 @@ fn slice_scalar_array(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>> {
         .collect::<Vec<_>>())
 }
 
-fn slice_scalar_fixed_sized_list_array(data: &FixedSizeListArray) -> anyhow::Result<Vec<ArrayRef>> {
+fn extract_list_elements_as_f64(data: &FixedSizeListArray) -> anyhow::Result<Vec<ArrayRef>> {
     (0..data.len())
         .map(|idx| {
             cast(&data.value(idx), &DataType::Float64)
