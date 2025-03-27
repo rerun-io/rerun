@@ -83,6 +83,7 @@ impl AssetVideo {
         )
     }
 
+    /// DEPRECATED: renamed to `read_frame_timestamps_nanos`
     #[deprecated(since = "0.23.0", note = "Renamed to `read_frame_timestamps_nanos`")]
     #[cfg(feature = "video")]
     pub fn read_frame_timestamps_ns(&self) -> Result<Vec<i64>, re_video::VideoLoadError> {

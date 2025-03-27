@@ -1,5 +1,6 @@
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![allow(deprecated)] // False positive due to macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::{
@@ -972,6 +973,12 @@ impl PyRecordingView {
             recording: self.recording.clone(),
             query_expression,
         })
+    }
+
+    /// DEPRECATED: Renamed to `filter_range_secs`.
+    #[deprecated(since = "0.23.0", note = "Renamed to `filter_range_secs`")]
+    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
+        self.filter_range_secs(start, end)
     }
 
     #[allow(rustdoc::private_doc_tests)]
