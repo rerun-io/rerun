@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .. import components, datatypes
 from .._baseclasses import (
@@ -21,16 +22,17 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["Scalar"]
 
 
+@deprecated("""Use `Scalars` instead.""")
 @define(str=False, repr=False, init=False)
 class Scalar(Archetype):
     """
     **Archetype**: A double-precision scalar, e.g. for use for time-series plots.
 
     The current timeline value will be used for the time/X-axis, hence scalars
-    cannot be static.
+    should not be static.
 
     When used to produce a plot, this archetype is used to provide the data that
-    is referenced by [`archetypes.SeriesLine`][rerun.archetypes.SeriesLine] or [`archetypes.SeriesPoint`][rerun.archetypes.SeriesPoint]. You can do
+    is referenced by [`archetypes.SeriesLines`][rerun.archetypes.SeriesLines] or [`archetypes.SeriesPoints`][rerun.archetypes.SeriesPoints]. You can do
     this by logging both archetypes to the same path, or alternatively configuring
     the plot-specific archetypes through the blueprint.
 
@@ -48,7 +50,7 @@ class Scalar(Archetype):
 
     for step in range(64):
         rr.set_time("step", sequence=step)
-        rr.log("scalars", rr.Scalar(math.sin(step / 10.0)))
+        rr.log("scalars", rr.Scalars(math.sin(step / 10.0)))
     ```
     <center>
     <picture>
@@ -75,7 +77,7 @@ class Scalar(Archetype):
     rr.send_columns(
         "scalars",
         indexes=[rr.TimeColumn("step", sequence=times)],
-        columns=rr.Scalar.columns(scalar=scalars),
+        columns=rr.Scalars.columns(scalars=scalars),
     )
     ```
     <center>
@@ -114,6 +116,7 @@ class Scalar(Archetype):
         )
 
     @classmethod
+    @deprecated("""Use `Scalars` instead.""")
     def _clear(cls) -> Scalar:
         """Produce an empty Scalar, bypassing `__init__`."""
         inst = cls.__new__(cls)
@@ -121,6 +124,7 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
+    @deprecated("""Use `Scalars` instead.""")
     def from_fields(
         cls,
         *,
@@ -160,6 +164,7 @@ class Scalar(Archetype):
         return cls.from_fields(clear_unset=True)
 
     @classmethod
+    @deprecated("""Use `Scalars` instead.""")
     def columns(
         cls,
         *,

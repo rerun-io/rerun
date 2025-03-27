@@ -11,6 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![expect(deprecated)]
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
@@ -21,10 +22,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: A double-precision scalar, e.g. for use for time-series plots.
 ///
 /// The current timeline value will be used for the time/X-axis, hence scalars
-/// cannot be static.
+/// should not be static.
 ///
 /// When used to produce a plot, this archetype is used to provide the data that
-/// is referenced by [`archetypes::SeriesLine`][crate::archetypes::SeriesLine] or [`archetypes::SeriesPoint`][crate::archetypes::SeriesPoint]. You can do
+/// is referenced by [`archetypes::SeriesLines`][crate::archetypes::SeriesLines] or [`archetypes::SeriesPoints`][crate::archetypes::SeriesPoints]. You can do
 /// this by logging both archetypes to the same path, or alternatively configuring
 /// the plot-specific archetypes through the blueprint.
 ///
@@ -37,7 +38,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     for step in 0..64 {
 ///         rec.set_time_sequence("step", step);
-///         rec.log("scalars", &rerun::Scalar::new((step as f64 / 10.0).sin()))?;
+///         rec.log("scalars", &rerun::Scalars::one((step as f64 / 10.0).sin()))?;
 ///     }
 ///
 ///     Ok(())
@@ -66,9 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     rec.send_columns(
 ///         "scalars",
 ///         [times],
-///         rerun::Scalar::update_fields()
-///             .with_many_scalar(scalars)
-///             .columns_of_unit_batches()?,
+///         rerun::Scalars::new(scalars).columns_of_unit_batches()?,
 ///     )?;
 ///
 ///     Ok(())
@@ -84,6 +83,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
+#[deprecated(note = "Use `Scalars` instead.")]
 pub struct Scalar {
     /// The scalar value to log.
     pub scalar: Option<SerializedComponentBatch>,

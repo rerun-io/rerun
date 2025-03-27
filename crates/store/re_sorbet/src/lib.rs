@@ -25,6 +25,7 @@ mod error;
 mod index_column_descriptor;
 mod ipc;
 mod metadata;
+mod migration;
 mod row_id_column_descriptor;
 mod sorbet_batch;
 mod sorbet_columns;
@@ -44,6 +45,7 @@ pub use self::{
         ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata,
         MissingMetadataKey,
     },
+    migration::migrate_record_batch,
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
     sorbet_batch::SorbetBatch,
     sorbet_columns::SorbetColumnDescriptors,
