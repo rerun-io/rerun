@@ -879,6 +879,7 @@ def spawn(
     port: int = 9876,
     memory_limit: str = ...,
     hide_welcome_screen: bool = False,
+    detach_process: bool = True,
     executable_name: str = ...,
     executable_path: Optional[str] = None,
     extra_args: list[str] = ...,

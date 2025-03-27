@@ -220,6 +220,10 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long)]
     hide_welcome_screen: bool,
 
+    /// Detach Rerun Viewer process from the application process.
+    #[clap(long)]
+    detach_process: bool,
+
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
     #[clap(long)]
@@ -655,6 +659,7 @@ fn run_impl(
 
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
+            detach_process: args.detach_process,
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
                 .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?,
             persist_state: args.persist_state,

@@ -31,6 +31,11 @@ namespace rerun {
         /// Defaults to `false` if unset.
         bool hide_welcome_screen = false;
 
+        /// Detach Rerun Viewer process from the application process.
+        ///
+        /// Defaults to `true` if unset.
+        bool detach_process = true;
+
         /// Specifies the name of the Rerun executable.
         ///
         /// You can omit the `.exe` suffix on Windows.
