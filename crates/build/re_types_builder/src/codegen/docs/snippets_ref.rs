@@ -567,11 +567,11 @@ fn test_contains_whole_word() {
     assert!(contains_whole_word("underscore_is_breaking", "is_breaking"));
     assert!(contains_whole_word(
         "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
-        "SeriesPoints"
+        "SeriesPoints" // plural!
     ));
     assert!(!contains_whole_word(
         "rrb.VisualizerOverrides(rrb.visualizers.SeriesPoints)",
-        "SeriesPoint"
+        "SeriesPoint" // singular!
     ));
     assert!(
         !contains_whole_word("jawOpen:Scalar", "Scalar"),
