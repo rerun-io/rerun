@@ -3,7 +3,7 @@ title: Migrating from 0.22 to 0.23
 order: 989
 ---
 
-## Reserved Namespaces
+## Reserved namespaces
 Starting with this release, the SDKs will log Rerun-related information to reserved entity path namespaces that are prefixed with `__`.
 Most notably, there is `__warnings/`, which used to be called `rerun/` and can be used to log exceptions that occurred in the SDKs.
 We also introduced `__properties/`, which stores recording-level information that is logged via the new `set_property` methods in the SDKs.
