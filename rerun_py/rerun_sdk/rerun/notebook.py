@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-import pkg_resources
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -16,11 +16,11 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
-# The notebook package is an optional dependency, so we ignore
-# the import error. If the user is trying to use the notebook
-# part of rerun, they'll be notified when they try to init a
-# `Viewer` instance.
-if pkg_resources.working_set.by_key.get("rerun_notebook") is not None:
+# The notebook package is an optional dependency, so first check
+# if it is installed before importing it. If the user is trying
+# to use the notebook part of rerun, they'll be notified when
+# that it's not installed when they try to init a `Viewer` instance.
+if importlib.util.find_spec("rerun_notebook") is not None:
     from rerun_notebook import (
         ContainerSelection as ContainerSelection,
         EntitySelection as EntitySelection,
