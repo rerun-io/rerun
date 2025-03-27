@@ -11,6 +11,8 @@ use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
+use crate::EntityDataUi;
+
 use super::DataUi as _;
 
 // TODO(andreas): This is where we want to go, but we need to figure out how get the [`re_viewer_context::ViewClass`] from the `ViewId`.
@@ -190,7 +192,13 @@ pub fn instance_path_icon(
             .store()
             .entity_has_data_on_timeline(timeline, &instance_path.entity_path)
         {
-            &icons::ENTITY
+            if instance_path.entity_path.is_reserved() {
+                &icons::ENTITY_RESERVED
+            } else {
+                &icons::ENTITY
+            }
+        } else if instance_path.entity_path.is_reserved() {
+            &icons::ENTITY_RESERVED_EMPTY
         } else {
             &icons::ENTITY_EMPTY
         }
@@ -636,10 +644,6 @@ pub fn instance_hover_card_ui(
         ui.strong(subtype_string);
         ui.label(instance_path.syntax_highlighted(ui.style()));
     });
-
-    if instance_path.entity_path.is_reserved() {
-        ui.label("This entity is part of a reserved namespace.");
-    }
 
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.

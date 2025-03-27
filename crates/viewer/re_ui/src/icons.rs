@@ -113,6 +113,8 @@ pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.png")
 pub const GROUP: Icon = icon_from_path!("../data/icons/group.png");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.png");
 pub const ENTITY_EMPTY: Icon = icon_from_path!("../data/icons/entity_empty.png");
+pub const ENTITY_RESERVED: Icon = icon_from_path!("../data/icons/entity_reserved.png");
+pub const ENTITY_RESERVED_EMPTY: Icon = icon_from_path!("../data/icons/entity_reserved_empty.png");
 
 /// Link within the viewer
 pub const INTERNAL_LINK: Icon = icon_from_path!("../data/icons/link.png");
