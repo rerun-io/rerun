@@ -8,6 +8,8 @@ use crate::{
     dataframe::PyDataFusionTable,
 };
 
+use super::table::PyTable;
+
 /// A connection to a remote storage node.
 #[pyclass(name = "CatalogClient")]
 pub struct PyCatalogClient {
@@ -64,18 +66,6 @@ impl PyCatalogClient {
             .collect()
     }
 
-    fn entries_table(&self) -> PyDataFusionTable {
-        let provider = CatalogFindEntryProvider::new(
-            self.connection.client(),
-            None,
-            None,
-            Some(EntryKind::Dataset),
-        )
-        .into_provider();
-
-        PyDataFusionTable { provider }
-    }
-
     fn get_dataset(self_: Py<Self>, py: Python<'_>, id: Py<PyEntryId>) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow(py).connection.clone();
         let entry_id = id.borrow(py).id;
@@ -119,4 +109,22 @@ impl PyCatalogClient {
     }
 
     //TODO(#9360): `dataset_from_url()`
+
+    fn get_table(self_: Py<Self>, py: Python<'_>, id: Py<PyEntryId>) -> PyResult<Py<PyTable>> {
+        let mut connection = self_.borrow(py).connection.clone();
+        let entry_id = id.borrow(py).id;
+        let client = self_.clone_ref(py);
+
+        let dataset_entry = connection.read_table(py, entry_id)?;
+
+        let entry = PyEntry {
+            client,
+            id,
+            details: dataset_entry.details,
+        };
+
+        let table = PyTable {};
+
+        Py::new(py, (table, entry))
+    }
 }
