@@ -87,7 +87,7 @@ message FetchPartitionRequest {
 // --- Table Apis ---
 
 message GetTableSchemaRequest {
-  rerun.common.v1alpha1.Tuid table_id = 1;
+  rerun.common.v1alpha1.EntryId table_id = 1;
 }
 
 message GetTableSchemaResponse {

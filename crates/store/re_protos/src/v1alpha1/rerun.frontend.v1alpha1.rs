@@ -86,7 +86,7 @@ impl ::prost::Name for FetchPartitionRequest {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetTableSchemaRequest {
     #[prost(message, optional, tag = "1")]
-    pub table_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
+    pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
 impl ::prost::Name for GetTableSchemaRequest {
     const NAME: &'static str = "GetTableSchemaRequest";
