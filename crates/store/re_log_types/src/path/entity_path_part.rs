@@ -346,3 +346,28 @@ fn test_parse_entity_path_part() {
         );
     }
 }
+
+#[test]
+fn test_reserved_namespace_order() {
+    use std::cmp::Ordering;
+
+    let a = EntityPathPart::parse_strict("__reserverd").unwrap();
+    let b = EntityPathPart::parse_strict("abc").unwrap();
+    assert_eq!(a.cmp(&b), Ordering::Greater);
+
+    let a = EntityPathPart::parse_strict("abc").unwrap();
+    let b = EntityPathPart::parse_strict("__reserverd").unwrap();
+    assert_eq!(a.cmp(&b), Ordering::Less);
+
+    let a = EntityPathPart::parse_strict("__reserverd").unwrap();
+    let b = EntityPathPart::parse_strict("__reserverd").unwrap();
+    assert_eq!(a.cmp(&b), Ordering::Equal);
+
+    let a = EntityPathPart::parse_strict("__aA").unwrap();
+    let b = EntityPathPart::parse_strict("__ab").unwrap();
+    assert_eq!(a.cmp(&b), Ordering::Less);
+
+    let a = EntityPathPart::parse_strict("aA").unwrap();
+    let b = EntityPathPart::parse_strict("ab").unwrap();
+    assert_eq!(a.cmp(&b), Ordering::Less);
+}
