@@ -11,8 +11,6 @@ use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
 
-use crate::EntityDataUi;
-
 use super::DataUi as _;
 
 // TODO(andreas): This is where we want to go, but we need to figure out how get the [`re_viewer_context::ViewClass`] from the `ViewId`.

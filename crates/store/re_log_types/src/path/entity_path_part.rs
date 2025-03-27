@@ -268,8 +268,19 @@ impl From<String> for EntityPathPart {
 impl std::cmp::Ord for EntityPathPart {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // Use natural ordering of strings, so that "image2" comes before "image10".
-        super::natural_ordering::compare(self.unescaped_str(), other.unescaped_str())
+        let a = self.unescaped_str();
+        let b = other.unescaped_str();
+
+        // We want reserved paths (`__`) to appear behind everything else.
+        match (
+            a.starts_with(RESERVED_NAMESPACE_PREFIX),
+            b.starts_with(RESERVED_NAMESPACE_PREFIX),
+        ) {
+            (false, true) => std::cmp::Ordering::Less,
+            (true, false) => std::cmp::Ordering::Greater,
+            // Use natural ordering of strings, so that "image2" comes before "image10".
+            _ => super::natural_ordering::compare(a, b),
+        }
     }
 }
 
