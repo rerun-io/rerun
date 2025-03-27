@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
+use re_protos::common::v1alpha1::ext::EntryId;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::add_server_modal::AddServerModal;
-use crate::context::{Context, DatasetHandle};
+use crate::context::Context;
 use crate::entries::{Dataset, Entries};
 
 struct Server {
@@ -29,12 +30,8 @@ impl Server {
         self.entries.on_frame_start();
     }
 
-    fn find_dataset(&self, dataset_handle: &DatasetHandle) -> Option<&Dataset> {
-        if dataset_handle.origin != self.origin {
-            return None;
-        }
-
-        self.entries.find_dataset(dataset_handle.entry_id)
+    fn find_dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
+        self.entries.find_dataset(entry_id)
     }
 
     fn find_dataset_by_name(&self, dataset_name: &str) -> Option<&Dataset> {
@@ -76,7 +73,7 @@ impl Server {
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selected_collection: Option<DatasetHandle>,
+    selected_entry: Option<EntryId>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -122,7 +119,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
-            selected_collection: None,
+            selected_entry: None,
             command_sender,
             command_receiver,
             add_server_modal_ui: Default::default(),
@@ -131,8 +128,8 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
-    SelectCollection(DatasetHandle),
-    DeselectCollection,
+    SelectEntry(EntryId),
+    DeselectEntry,
     AddServer(re_uri::Origin),
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
@@ -166,14 +163,7 @@ impl RedapServers {
             return;
         };
 
-        let dataset_handle = DatasetHandle {
-            origin: origin.clone(),
-            entry_id,
-        };
-
-        let _ = self
-            .command_sender
-            .send(Command::SelectCollection(dataset_handle));
+        let _ = self.command_sender.send(Command::SelectEntry(entry_id));
     }
 
     /// Per-frame housekeeping.
@@ -197,11 +187,11 @@ impl RedapServers {
         command: Command,
     ) {
         match command {
-            Command::SelectCollection(collection_handle) => {
-                self.selected_collection = Some(collection_handle);
+            Command::SelectEntry(collection_handle) => {
+                self.selected_entry = Some(collection_handle);
             }
 
-            Command::DeselectCollection => self.selected_collection = None,
+            Command::DeselectEntry => self.selected_entry = None,
 
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
@@ -271,19 +261,13 @@ impl RedapServers {
 
         //TODO(ab): we should display something even if no catalog is currently selected.
 
-        if let Some(selected_collection) = self.selected_collection.as_ref() {
+        if let Some(selected_entry) = self.selected_entry.as_ref() {
             for server in self.servers.values() {
-                let collection = server.find_dataset(selected_collection);
+                let dataset = server.find_dataset(*selected_entry);
 
-                if let Some(collection) = collection {
+                if let Some(dataset) = dataset {
                     self.with_ctx(|ctx| {
-                        super::dataset_ui::dataset_ui(
-                            viewer_ctx,
-                            ctx,
-                            ui,
-                            &server.origin,
-                            collection,
-                        );
+                        super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
                     });
 
                     return;
@@ -296,7 +280,7 @@ impl RedapServers {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selected_collection,
+            selected_entry: &self.selected_entry,
         };
 
         self.add_server_modal_ui.ui(&ctx, ui);
@@ -306,7 +290,7 @@ impl RedapServers {
     fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selected_collection,
+            selected_entry: &self.selected_entry,
         };
 
         func(&ctx)

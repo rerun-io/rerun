@@ -58,13 +58,6 @@ impl Dataset {
         self.dataset_entry.details.id
     }
 
-    pub fn handle(&self) -> crate::context::DatasetHandle {
-        crate::context::DatasetHandle {
-            origin: self.origin.clone(),
-            entry_id: self.id(),
-        }
-    }
-
     pub fn name(&self) -> &str {
         self.dataset_entry.details.name.as_ref()
     }
@@ -116,15 +109,13 @@ impl Entries {
 
             Some(Ok(datasets)) => {
                 for dataset in datasets.values() {
-                    let is_selected = ctx.selected_collection == &Some(dataset.handle());
+                    let is_selected = ctx.selected_entry == &Some(dataset.id());
 
                     let content = list_item::LabelContent::new(dataset.name());
                     let response = ui.list_item().selected(is_selected).show_flat(ui, content);
 
                     if response.clicked() {
-                        let _ = ctx
-                            .command_sender
-                            .send(Command::SelectCollection(dataset.handle()));
+                        let _ = ctx.command_sender.send(Command::SelectEntry(dataset.id()));
                     }
                 }
             }

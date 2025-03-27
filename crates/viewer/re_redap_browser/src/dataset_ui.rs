@@ -38,7 +38,7 @@ pub fn dataset_ui(
 ) {
     let sorbet_schema = {
         let Some(sorbet_batch) = dataset.partition_table.first() else {
-            ui.label(egui::RichText::new("This collection is empty").italics());
+            ui.label(egui::RichText::new("This dataset is empty").italics());
             return;
         };
 
@@ -88,7 +88,7 @@ pub fn dataset_ui(
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
         ui.horizontal(|ui| {
             if ui.button("Close").clicked() {
-                let _ = ctx.command_sender.send(Command::DeselectCollection);
+                let _ = ctx.command_sender.send(Command::DeselectEntry);
             }
 
             if ui.button("Refresh").clicked() {
