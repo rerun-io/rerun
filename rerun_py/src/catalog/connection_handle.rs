@@ -77,15 +77,8 @@ impl ConnectionHandle {
     pub fn create_dataset(&mut self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
-            self.client.create_dataset_entry(CreateDatasetEntryRequest {
-                dataset: Some(re_protos::catalog::v1alpha1::DatasetEntry {
-                    details: Some(re_protos::catalog::v1alpha1::EntryDetails {
-                        name: Some(name),
-                        ..Default::default()
-                    }),
-                    dataset_handle: None,
-                }),
-            }),
+            self.client
+                .create_dataset_entry(CreateDatasetEntryRequest { name: Some(name) }),
         )
         .map_err(to_py_err)?;
 
