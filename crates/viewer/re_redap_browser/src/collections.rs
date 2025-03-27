@@ -107,7 +107,7 @@ impl Collections {
 }
 
 async fn stream_catalog_async(origin: re_uri::Origin) -> Result<Collection, StreamError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = redap::legacy_client(origin.clone()).await?;
 
     re_log::debug!("Fetching collection…");
 
