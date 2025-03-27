@@ -128,6 +128,8 @@ impl EntityPath {
     }
 
     /// Returns `true` if the [`EntityPath`] belongs to a reserved namespace.
+    ///
+    /// Returns `true` iff the root entity starts with `__`.
     #[inline]
     pub fn is_reserved(&self) -> bool {
         self.iter()
