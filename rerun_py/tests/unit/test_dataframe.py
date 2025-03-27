@@ -152,7 +152,6 @@ class TestDataframe:
         assert schema.component_columns()[col].component_name == "rerun.components.Timestamp"
         assert schema.component_columns()[col].is_static is True
 
-
     def test_schema_view(self) -> None:
         schema = self.recording.view(index="my_index", contents="points").schema()
 
