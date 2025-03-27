@@ -98,6 +98,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- DatasetHandle ---
 
+#[derive(Debug, Clone)]
 pub struct DatasetHandle {
     pub id: Option<EntryId>,
     pub url: String,
