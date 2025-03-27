@@ -51,6 +51,13 @@ namespace rerun::archetypes {
         /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
         Result<std::vector<std::chrono::nanoseconds>> read_frame_timestamps_nanos() const;
 
+        /// DEPRECATED: Use `read_frame_timestamps_nanos` instead.
+        [[deprecated("Renamed to `read_frame_timestamps_nanos`"
+        )]] Result<std::vector<std::chrono::nanoseconds>>
+            read_frame_timestamps_ns() const {
+            return read_frame_timestamps_nanos();
+        }
+
         // </CODEGEN_COPY_TO_HEADER>
 #endif
 
