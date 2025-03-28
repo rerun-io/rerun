@@ -229,6 +229,7 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
+            //TODO(ab): legacy API, to be removed
             Self::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
                 re_log::debug!(
                     "Loading recording `{}` from `{}`…",
@@ -236,6 +237,42 @@ impl DataSource {
                     endpoint.origin
                 );
 
+                let (tx, rx) = re_smart_channel::smart_channel(
+                    re_smart_channel::SmartMessageSource::RedapGrpcStreamLegacy(endpoint.clone()),
+                    re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy(endpoint.clone()),
+                );
+
+                let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
+                    re_grpc_client::redap::Command::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    } => on_cmd(DataSourceCommand::SetLoopSelection {
+                        recording_id,
+                        timeline,
+                        time_range,
+                    }),
+                });
+
+                spawn_future(async move {
+                    if let Err(err) = re_grpc_client::redap::stream_recording_async(
+                        tx,
+                        endpoint.clone(),
+                        on_cmd,
+                        on_msg,
+                    )
+                    .await
+                    {
+                        re_log::warn!(
+                            "Error while streaming {endpoint}: {}",
+                            re_error::format_ref(&err)
+                        );
+                    }
+                });
+                Ok(StreamSource::LogMessages(rx))
+            }
+
+            Self::RerunGrpcStream(re_uri::RedapUri::DatasetData(endpoint)) => {
                 let (tx, rx) = re_smart_channel::smart_channel(
                     re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
                     re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
@@ -254,7 +291,7 @@ impl DataSource {
                 });
 
                 spawn_future(async move {
-                    if let Err(err) = re_grpc_client::redap::stream_recording_async(
+                    if let Err(err) = re_grpc_client::redap::stream_partition_async(
                         tx,
                         endpoint.clone(),
                         on_cmd,
