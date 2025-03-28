@@ -10,7 +10,9 @@ use re_ui::{
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
     SyntaxHighlighting as _,
 };
-use re_viewer_context::{contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext};
+use re_viewer_context::{
+    contents_name_style, ContainerId, Contents, Item, TableId, ViewId, ViewerContext,
+};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
@@ -47,6 +49,7 @@ impl ItemTitle {
             }
 
             Item::StoreId(store_id) => Self::from_store_id(ctx, store_id),
+            Item::TableId(table_id) => Self::from_table_id(ctx, table_id),
 
             Item::InstancePath(instance_path) => {
                 Self::from_instance_path(ctx, style, instance_path)
@@ -71,6 +74,10 @@ impl ItemTitle {
                 }
             }
         }
+    }
+
+    pub fn from_table_id(_ctx: &ViewerContext<'_>, table_id: &TableId) -> Self {
+        Self::new(table_id.as_ref(), &icons::ENTITY_RESERVED).with_tooltip(table_id.as_ref())
     }
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {

@@ -7288,6 +7288,7 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_smart_channel",
+ "re_sorbet",
  "re_string_interner",
  "re_tracing",
  "re_types",

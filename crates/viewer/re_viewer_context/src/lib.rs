@@ -21,6 +21,7 @@ mod selection_state;
 mod store_bundle;
 mod store_context;
 pub mod store_hub;
+mod tables;
 mod tensor;
 mod time_control;
 mod time_drag_value;
@@ -68,6 +69,7 @@ pub use self::{
     store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
     store_hub::StoreHub,
+    tables::{TableContext, TableId, TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
     time_drag_value::TimeDragValue,

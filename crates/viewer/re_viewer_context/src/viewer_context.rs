@@ -13,7 +13,7 @@ use crate::{
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
-use crate::{GlobalContext, StoreHub};
+use crate::{GlobalContext, StoreHub, TableContext, TableId};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -22,6 +22,12 @@ pub struct ViewerContext<'a> {
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
+    pub table_context: &'a TableContext<'a>,
+
+    /// If `active_table` is `Some(...)`, we have a table in the context, otherwise it's a regular store.
+    // TODO(grtlr): ideally we would have two variants for a viewer context (one for stores and one for tables), but
+    // right now everything is still to tangled up for this.
+    pub active_table: Option<TableId>,
 
     /// Mapping from class and system to entities for the store
     ///

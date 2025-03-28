@@ -9,7 +9,7 @@ use re_log_types::{
 };
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
-use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
+use re_viewer_context::{HoverHighlight, Item, TableId, UiLayout, ViewId, ViewerContext};
 
 use super::DataUi as _;
 
@@ -850,5 +850,96 @@ pub fn entity_db_button_ui(
 
         ctx.command_sender()
             .send_system(SystemCommand::SetSelection(item));
+    }
+}
+
+pub fn table_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    table_id: &TableId,
+    // entity_db: &re_entity_db::EntityDb,
+    ui_layout: UiLayout,
+) {
+    
+    
+
+    // let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
+    // let title = format!("{app_id_prefix}{recording_name} - {size}");
+
+    // let store_id = entity_db.store_id().clone();
+    let item = re_viewer_context::Item::TableId(table_id.clone());
+
+    let icon = &icons::VIEW_DATAFRAME;
+
+    let mut item_content =
+        list_item::LabelContent::new(table_id.as_ref()).with_icon_fn(|ui, rect, visuals| {
+            // Color icon based on whether this is the active recording or not:
+            // let color = if ctx.store_context.is_active(&store_id) {
+            let color = if false {
+                visuals.fg_stroke.color
+            } else {
+                ui.visuals().widgets.noninteractive.fg_stroke.color
+            };
+            icon.as_image().tint(color).paint_at(ui, rect);
+        });
+
+    if ui_layout.is_selection_panel() {
+        item_content = item_content.with_buttons(|ui| {
+            // Close-button:
+            let resp = ui
+                .small_icon_button(&icons::REMOVE)
+                .on_hover_text("Close this table (all data will be lost)");
+            if resp.clicked() {
+                // TODO:
+                // ctx.command_sender()
+                //     .send_system(SystemCommand::CloseStore(store_id.clone()));
+            }
+            resp
+        });
+    }
+
+    let mut list_item = ui
+        .list_item()
+        .selected(ctx.selection().contains_item(&item));
+
+    if ctx.hovered().contains_item(&item) {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item::list_item_scope(ui, "entity db button", |ui| {
+        list_item
+            .show_hierarchical(ui, item_content)
+            .on_hover_ui(|ui| {
+                // entity_db.data_ui(
+                //     ctx,
+                //     ui,
+                //     re_viewer_context::UiLayout::Tooltip,
+                //     &ctx.current_query(),
+                //     entity_db,
+                // );
+                ui.label("TODO: add hover");
+            })
+    });
+
+    if response.hovered() {
+        ctx.selection_state().set_hovered(item.clone());
+    }
+
+    if response.clicked() {
+        // TODO
+        // // When we click on a recording, we directly activate it. This is safe to do because
+        // // it's non-destructive and recordings are immutable. Switching back is easy.
+        // // We don't do the same thing for blueprints as swapping them can be much more disruptive.
+        // // It is much less obvious how to undo a blueprint switch and what happened to your original
+        // // blueprint.
+        // // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
+        // // for the blueprint.
+        // if store_id.kind == re_log_types::StoreKind::Recording {
+        //     ctx.command_sender()
+        //         .send_system(SystemCommand::ActivateRecording(store_id.clone()));
+        // }
+
+        // ctx.command_sender()
+        //     .send_system(SystemCommand::SetSelection(item));
     }
 }

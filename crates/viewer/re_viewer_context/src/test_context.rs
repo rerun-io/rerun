@@ -9,7 +9,8 @@ use parking_lot::Mutex;
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
-    StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    StoreContext, SystemCommand, TableContext, ViewClass, ViewClassRegistry, ViewId, ViewStates,
+    ViewerContext,
 };
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
@@ -312,6 +313,10 @@ impl TestContext {
             hub: &Default::default(),
             should_enable_heuristics: false,
         };
+        let table_context = TableContext {
+            table_stores: &Default::default(),
+        };
+
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(&store_context.recording.store_id());
@@ -341,6 +346,8 @@ impl TestContext {
                 render_ctx,
             },
             store_context: &store_context,
+            table_context: &table_context,
+            active_table: None,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,

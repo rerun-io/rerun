@@ -16,7 +16,8 @@ use re_viewer_context::{
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    SystemCommandSender as _, TableContext, ViewClass, ViewClassRegistry,
+    ViewClassRegistryError,
 };
 
 use crate::{
@@ -1253,6 +1254,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
+        table_context: Option<&TableContext<'_>>,
         store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
@@ -1291,7 +1293,7 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    if let Some(store_context) = store_context {
+                    if let (Some(store_context), Some(tables)) = (store_context, table_context) {
                         #[cfg(target_arch = "wasm32")]
                         let is_history_enabled = self.startup_options.enable_history;
                         #[cfg(not(target_arch = "wasm32"))]
@@ -1307,6 +1309,7 @@ impl App {
                             ui,
                             render_ctx,
                             store_context,
+                            tables,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
@@ -2083,12 +2086,12 @@ impl eframe::App for App {
                 BlueprintUndoState::default_query(),
                 |store_context| {
                     self.state
-                        .blueprint_query_for_viewer(store_context.blueprint)
+                        .blueprint_query_for_viewer(store_context.0.blueprint)
                 },
             );
 
             let app_blueprint = AppBlueprint::new(
-                store_context.as_ref(),
+                store_context.as_ref().map(|x| &x.0),
                 &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
@@ -2100,7 +2103,8 @@ impl eframe::App for App {
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
-                store_context.as_ref(),
+                store_context.as_ref().map(|x| &x.0),
+                store_context.as_ref().map(|x| &x.1),
                 store_stats.as_ref(),
             );
 
@@ -2113,10 +2117,18 @@ impl eframe::App for App {
                 self.command_sender.send_ui(cmd);
             }
 
-            Self::handle_dropping_files(egui_ctx, store_context.as_ref(), &self.command_sender);
+            Self::handle_dropping_files(
+                egui_ctx,
+                store_context.as_ref().map(|x| &x.0),
+                &self.command_sender,
+            );
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                store_context.as_ref().map(|x| &x.0),
+            );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

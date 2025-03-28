@@ -63,9 +63,11 @@ impl CallbackSelectionItem {
         blueprint: &ViewportBlueprint,
     ) -> Option<Self> {
         match item {
-            Item::StoreId(_) | Item::AppId(_) | Item::ComponentPath(_) | Item::DataSource(_) => {
-                None
-            }
+            Item::StoreId(_)
+            | Item::AppId(_)
+            | Item::ComponentPath(_)
+            | Item::DataSource(_)
+            | Item::TableId(_) => None,
             Item::View(view_id) => Some(Self::View {
                 view_id: *view_id,
                 view_name: if let Some(name) = get_view_name(blueprint, view_id) {

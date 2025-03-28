@@ -252,6 +252,7 @@ impl ViewportBlueprint {
                 .any(|db| db.app_id() == Some(app_id)),
 
             Item::DataSource(_)
+            | Item::TableId(_)
             | Item::StoreId(_)
             | Item::ComponentPath(_)
             | Item::InstancePath(_) => true,

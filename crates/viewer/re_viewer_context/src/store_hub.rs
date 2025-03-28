@@ -13,7 +13,9 @@ use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind};
 use re_query::CachesStats;
 use re_types::components::Timestamp;
 
-use crate::{BlueprintUndoState, Caches, StoreBundle, StoreContext};
+use crate::{
+    BlueprintUndoState, Caches, StoreBundle, StoreContext, TableContext, TableId, TableStore,
+};
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -58,6 +60,8 @@ pub struct StoreHub {
 
     /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last garbage collected
     blueprint_last_gc: HashMap<StoreId, ChunkStoreGeneration>,
+
+    table_stores: HashMap<TableId, TableStore>,
 }
 
 /// Load a blueprint from persisted storage, e.g. disk.
@@ -153,6 +157,12 @@ impl StoreHub {
             caches_per_recording: Default::default(),
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
+
+            table_stores: std::iter::once((
+                TableId::new("Very interesting dataframe".to_owned()),
+                Default::default(),
+            ))
+            .collect(),
         }
     }
 
@@ -169,7 +179,7 @@ impl StoreHub {
     ///
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
-    pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
+    pub fn read_context(&mut self) -> Option<(StoreContext<'_>, TableContext<'_>)> {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
             once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
         static EMPTY_CACHES: once_cell::sync::Lazy<Caches> =
@@ -233,16 +243,21 @@ impl StoreHub {
         let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(&app_id);
         let caches = self.active_caches();
 
-        Some(StoreContext {
-            app_id,
-            blueprint: active_blueprint,
-            default_blueprint,
-            recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
-            bundle: &self.store_bundle,
-            caches: caches.unwrap_or(&EMPTY_CACHES),
-            hub: self,
-            should_enable_heuristics,
-        })
+        Some((
+            StoreContext {
+                app_id,
+                blueprint: active_blueprint,
+                default_blueprint,
+                recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
+                bundle: &self.store_bundle,
+                caches: caches.unwrap_or(&EMPTY_CACHES),
+                hub: self,
+                should_enable_heuristics,
+            },
+            TableContext {
+                table_stores: &self.table_stores,
+            },
+        ))
     }
 
     /// Mutable access to a [`EntityDb`] by id

@@ -561,9 +561,11 @@ impl SpatialView3D {
         // Track focused entity if any.
         if let Some(focused_item) = ctx.focused_item {
             let focused_entity = match focused_item {
-                Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::Container(_) => {
-                    None
-                }
+                Item::AppId(_)
+                | Item::DataSource(_)
+                | Item::StoreId(_)
+                | Item::Container(_)
+                | Item::TableId(_) => None,
 
                 Item::View(view_id) => {
                     if view_id == &query.view_id {
