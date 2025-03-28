@@ -1108,28 +1108,6 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// List indexes for the Dataset
-        pub async fn list_partition_indexes(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListPartitionIndexesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::ListPartitionIndexesResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ListPartitionIndexes",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "ListPartitionIndexes",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
         /// Do a full text, vector or scalar search. Currently only an Indexed search
         /// is supported, user must first call `CreatePartitionIndexes` for the relevant column.
         /// TODO(zehiko) add support for "brute force" search.
@@ -1263,16 +1241,6 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::FetchChunkManifestRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchChunkManifestStream>, tonic::Status>;
-        /// Server streaming response type for the ListPartitionIndexes method.
-        type ListPartitionIndexesStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::ListPartitionIndexesResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// List indexes for the Dataset
-        async fn list_partition_indexes(
-            &self,
-            request: tonic::Request<super::ListPartitionIndexesRequest>,
-        ) -> std::result::Result<tonic::Response<Self::ListPartitionIndexesStream>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
@@ -1809,59 +1777,6 @@ pub mod manifest_registry_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = FetchChunkManifestSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ListPartitionIndexes" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListPartitionIndexesSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<
-                        super::ListPartitionIndexesRequest,
-                    > for ListPartitionIndexesSvc<T> {
-                        type Response = super::ListPartitionIndexesResponse;
-                        type ResponseStream = T::ListPartitionIndexesStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListPartitionIndexesRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ManifestRegistryService>::list_partition_indexes(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ListPartitionIndexesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

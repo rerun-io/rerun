@@ -18,6 +18,7 @@ mod maybe_mut_ref;
 mod query_context;
 mod query_range;
 mod selection_state;
+mod store_bundle;
 mod store_context;
 pub mod store_hub;
 mod tensor;
@@ -64,6 +65,7 @@ pub use self::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
         ItemContext, SelectionChange, SelectionHighlight,
     },
+    store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
     store_hub::StoreHub,
     tensor::{ImageStats, TensorStats},

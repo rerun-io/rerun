@@ -8,12 +8,12 @@ use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
 };
-use re_entity_db::{EntityDb, StoreBundle};
+use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind};
 use re_query::CachesStats;
 use re_types::components::Timestamp;
 
-use crate::{BlueprintUndoState, Caches, StoreContext};
+use crate::{BlueprintUndoState, Caches, StoreBundle, StoreContext};
 
 /// Interface for accessing all blueprints and recordings
 ///

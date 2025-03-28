@@ -1,4 +1,4 @@
-use re_entity_db::{StoreBundle, StoreLoadError};
+use re_viewer_context::{StoreBundle, StoreLoadError};
 
 #[derive(thiserror::Error, Debug)]
 enum BlueprintLoadError {

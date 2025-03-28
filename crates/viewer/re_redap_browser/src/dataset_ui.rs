@@ -8,7 +8,8 @@ use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimelineName};
-use re_protos::remote_store::v1alpha1::CATALOG_ID_FIELD_NAME;
+use re_protos::common::v1alpha1::ext::EntryId;
+use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;
 use re_ui::UiExt as _;
@@ -16,8 +17,8 @@ use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordB
 use re_viewer_context::ViewerContext;
 
 use super::servers::Command;
-use crate::collections::Collection;
 use crate::context::Context;
+use crate::entries::Dataset;
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
@@ -28,16 +29,16 @@ enum CollectionUiError {
     UnexpectedDataError(String),
 }
 
-pub fn collection_ui(
+pub fn dataset_ui(
     viewer_ctx: &ViewerContext<'_>,
     ctx: &Context<'_>,
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
-    collection: &Collection,
+    dataset: &Dataset,
 ) {
     let sorbet_schema = {
-        let Some(sorbet_batch) = collection.collection.first() else {
-            ui.label(egui::RichText::new("This collection is empty").italics());
+        let Some(sorbet_batch) = dataset.partition_table.first() else {
+            ui.label(egui::RichText::new("This dataset is empty").italics());
             return;
         };
 
@@ -45,10 +46,10 @@ pub fn collection_ui(
     };
 
     // The table id mainly drives column widths, along with the id of each column.
-    let table_id_salt = egui::Id::new(collection.collection_id).with("__collection_table__");
+    let table_id_salt = egui::Id::new(dataset.id()).with("__dataset_table__");
 
-    let num_rows = collection
-        .collection
+    let num_rows = dataset
+        .partition_table
         .iter()
         .map(|record_batch| record_batch.num_rows() as u64)
         .sum();
@@ -61,10 +62,12 @@ pub fn collection_ui(
 
     //TODO(ab): better column order?
 
-    let display_record_batches: Result<Vec<_>, _> = collection
-        .collection
+    let display_record_batches: Result<Vec<_>, _> = dataset
+        .partition_table
         .iter()
-        .map(|sorbet_batch| catalog_sorbet_batch_to_display_record_batch(origin, sorbet_batch))
+        .map(|sorbet_batch| {
+            catalog_sorbet_batch_to_display_record_batch(origin, dataset.id(), sorbet_batch)
+        })
         .collect();
 
     let display_record_batches = match display_record_batches {
@@ -85,7 +88,7 @@ pub fn collection_ui(
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
         ui.horizontal(|ui| {
             if ui.button("Close").clicked() {
-                let _ = ctx.command_sender.send(Command::DeselectCollection);
+                let _ = ctx.command_sender.send(Command::DeselectEntry);
             }
 
             if ui.button("Refresh").clicked() {
@@ -137,16 +140,17 @@ fn component_uri_descriptor() -> ColumnDescriptorRef<'static> {
 /// fly.
 fn catalog_sorbet_batch_to_display_record_batch(
     origin: &re_uri::Origin,
+    dataset_id: EntryId,
     sorbet_batch: &SorbetBatch,
 ) -> Result<DisplayRecordBatch, CollectionUiError> {
     let rec_ids = sorbet_batch
-        .column_by_name(CATALOG_ID_FIELD_NAME)
+        .column_by_name(DATASET_MANIFEST_ID_FIELD_NAME)
         .map(|rec_ids| {
             let list_array = rec_ids
                 .downcast_array_ref::<ArrowListArray>()
                 .ok_or_else(|| {
                     CollectionUiError::UnexpectedDataError(format!(
-                        "{CATALOG_ID_FIELD_NAME} column is not a list array as expected"
+                        "{DATASET_MANIFEST_ID_FIELD_NAME} column is not a list array as expected"
                     ))
                 })?;
 
@@ -158,13 +162,14 @@ fn catalog_sorbet_batch_to_display_record_batch(
                         list.downcast_array_ref::<ArrowStringArray>()
                             .ok_or_else(|| {
                                 CollectionUiError::UnexpectedDataError(format!(
-                                    "{CATALOG_ID_FIELD_NAME} column inner item is not a string \
+                                    "{DATASET_MANIFEST_ID_FIELD_NAME} column inner item is not a string \
                                      array as expected"
                                 ))
                             })?;
-                    let rec_id = string_array.value(0);
+                    let partition_id = string_array.value(0);
+                    let dataset_id = dataset_id.id.to_string();
 
-                    let recording_uri = format!("{origin}/recording/{rec_id}");
+                    let recording_uri = format!("{origin}/dataset/{dataset_id}/data?partition_id={partition_id}");
 
                     Ok(as_array_ref(ArrowStringArray::from(vec![recording_uri])))
                 })

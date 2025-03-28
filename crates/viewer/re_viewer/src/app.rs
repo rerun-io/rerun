@@ -561,7 +561,9 @@ impl App {
                 self.state.redap_servers.select_server(origin);
             }
             SystemCommand::SelectRedapDataset { origin, dataset } => {
-                self.state.redap_servers.select_dataset(origin, dataset);
+                self.state
+                    .redap_servers
+                    .select_dataset_by_name(&origin, dataset.as_ref());
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -1854,7 +1856,7 @@ fn blueprint_loader() -> BlueprintPersistence {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn blueprint_loader() -> BlueprintPersistence {
-    use re_entity_db::StoreBundle;
+    use re_viewer_context::StoreBundle;
 
     fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
