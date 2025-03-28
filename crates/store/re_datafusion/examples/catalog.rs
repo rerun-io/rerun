@@ -53,7 +53,9 @@ async fn main() -> anyhow::Result<()> {
             .column(2)
             .as_any()
             .downcast_ref::<Int32Array>()
-            .ok_or(exec_datafusion_err!("Unable to cast entry type to u64"))?;
+            .ok_or(exec_datafusion_err!(
+                "Unable to cast kind_array type to i32"
+            ))?;
 
         for time_inc_tuple in multizip((time_ns_array, inc_array, name_array, kind_array)) {
             if let (Some(time_ns), Some(inc), Some(name), Some(kind)) = time_inc_tuple {
