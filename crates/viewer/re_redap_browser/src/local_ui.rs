@@ -1,11 +1,11 @@
 use crate::context::Context;
-use crate::servers::Command;
+use crate::servers::{Command, Selection};
 use egui::{Id, Ui};
 use re_log_types::{ApplicationId, StoreKind};
 use re_smart_channel::SmartChannelSource;
 use re_ui::{icons, list_item, UiExt};
 use re_viewer_context::external::re_entity_db::EntityDb;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{DisplayMode, Item, SystemCommand, SystemCommandSender, ViewerContext};
 use std::collections::BTreeMap;
 
 pub fn local_ui(ui: &mut Ui, viewer_ctx: &ViewerContext, ctx: &Context) {
@@ -22,38 +22,64 @@ pub fn local_ui(ui: &mut Ui, viewer_ctx: &ViewerContext, ctx: &Context) {
                 list_item::LabelContent::header("Local storage"),
                 |ui| {
                     for (id, entities) in datasets.local_recordings {
-                        local_dataset_ui(ui, &id, entities);
+                        local_dataset_ui(ui, viewer_ctx, &id, entities);
                     }
                 },
             );
     }
 
     let label = list_item::LabelContent::header("Rerun examples");
-    let response = if datasets.example_recordings.is_empty() {
-        ui.list_item().show_flat(ui, label)
+    let item = ui
+        .list_item()
+        .header()
+        .selected(matches!(ctx.selection, Some(Selection::Server(server)) if server == &re_uri::Origin::examples_origin()));
+    let examples_response = if datasets.example_recordings.is_empty() {
+        item.show_flat(ui, label)
     } else {
-        ui.list_item()
-            .header()
-            .show_hierarchical_with_children(ui, Id::new("example_datasets"), true, label, |ui| {
-                for (id, entities) in datasets.example_recordings {
-                    local_dataset_ui(ui, &id, entities);
-                }
-            })
-            .item_response
+        item.show_hierarchical_with_children(ui, Id::new("example_datasets"), true, label, |ui| {
+            for (id, entities) in datasets.example_recordings {
+                local_dataset_ui(ui, viewer_ctx, &id, entities);
+            }
+        })
+        .item_response
     };
 
-    if response.clicked() {
+    if examples_response.clicked() {
         ctx.command_sender
             .send(Command::SelectServer(re_uri::Origin::examples_origin()))
             .ok();
     }
 }
 
-fn local_dataset_ui(ui: &mut Ui, app_id: &ApplicationId, entities: Vec<&EntityDb>) {
-    ui.list_item().show_flat(
-        ui,
-        list_item::LabelContent::new(app_id.as_str()).with_icon(&icons::DATASET),
-    );
+fn local_dataset_ui(
+    ui: &mut Ui,
+    viewer_ctx: &ViewerContext<'_>,
+    app_id: &ApplicationId,
+    entities: Vec<&EntityDb>,
+) {
+    if ui
+        .list_item()
+        .show_flat(
+            ui,
+            list_item::LabelContent::new(app_id.as_str())
+                .with_icon(&icons::DATASET)
+                .always_show_buttons(true)
+                .with_buttons(|ui| ui.label(format!("{}", entities.len()))),
+        )
+        .clicked()
+    {
+        viewer_ctx
+            .command_sender()
+            .send_system(SystemCommand::ActivateApp(app_id.clone()));
+        viewer_ctx
+            .command_sender()
+            .send_system(SystemCommand::SetSelection(Item::AppId(app_id.clone())));
+        viewer_ctx
+            .command_sender()
+            .send_system(SystemCommand::ChangeDisplayMode(
+                DisplayMode::LocalRecordings,
+            ));
+    };
 }
 
 pub struct SortDatasetsResults<'a> {

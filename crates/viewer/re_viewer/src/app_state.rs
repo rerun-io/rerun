@@ -562,7 +562,17 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            redap_servers.ui(&ctx, ui);
+                            if redap_servers.should_show_example_ui() {
+                                welcome_screen.ui(
+                                    ui,
+                                    command_sender,
+                                    welcome_screen_state,
+                                    is_history_enabled,
+                                );
+                                redap_servers.add_server_modal_ui(ui);
+                            } else {
+                                redap_servers.ui(&ctx, ui);
+                            }
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above

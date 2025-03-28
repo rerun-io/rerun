@@ -120,41 +120,67 @@ fn recording_list_ui(
     }
 
     for (origin, dataset_recordings) in remote_recordings {
-        ui.list_item().header().show_hierarchical_with_children(
-            ui,
-            egui::Id::new(&origin),
-            true,
-            list_item::LabelContent::header(origin.host.to_string()),
-            |ui| {
-                for (dataset, entity_dbs) in dataset_recordings {
-                    dataset_and_its_recordings_ui(
-                        ctx,
-                        ui,
-                        &DatasetKind::Remote(origin.clone(), dataset.clone()),
-                        entity_dbs,
-                    );
-                }
-            },
-        );
+        if ui
+            .list_item()
+            .header()
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new(&origin),
+                true,
+                list_item::LabelContent::header(origin.host.to_string()),
+                |ui| {
+                    for (dataset, entity_dbs) in dataset_recordings {
+                        dataset_and_its_recordings_ui(
+                            ctx,
+                            ui,
+                            &DatasetKind::Remote(origin.clone(), dataset.clone()),
+                            entity_dbs,
+                        );
+                    }
+                },
+            )
+            .item_response
+            .clicked()
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+            ctx.command_sender()
+                .send_system(SystemCommand::SelectRedapServer {
+                    origin: origin.clone(),
+                });
+        }
     }
 
     if !local_recordings.is_empty() {
-        ui.list_item().header().show_hierarchical_with_children(
-            ui,
-            egui::Id::new("local items"),
-            true,
-            list_item::LabelContent::header("Local Recordings"),
-            |ui| {
-                for (app_id, entity_dbs) in local_recordings {
-                    dataset_and_its_recordings_ui(
-                        ctx,
-                        ui,
-                        &DatasetKind::Local(app_id.clone()),
-                        entity_dbs,
-                    );
-                }
-            },
-        );
+        if ui
+            .list_item()
+            .header()
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new("local items"),
+                true,
+                list_item::LabelContent::header("Local Recordings"),
+                |ui| {
+                    for (app_id, entity_dbs) in local_recordings {
+                        dataset_and_its_recordings_ui(
+                            ctx,
+                            ui,
+                            &DatasetKind::Local(app_id.clone()),
+                            entity_dbs,
+                        );
+                    }
+                },
+            )
+            .item_response
+            .clicked()
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+            ctx.command_sender()
+                .send_system(SystemCommand::SelectRedapServer {
+                    origin: re_uri::Origin::local_recordings_origin(),
+                });
+        }
     }
 
     // Always show welcome screen last, if at all:
@@ -189,7 +215,13 @@ fn recording_list_ui(
         };
 
         if response.clicked() {
-            DatasetKind::Local(StoreHub::welcome_screen_app_id()).select(ctx);
+            // DatasetKind::Local(StoreHub::welcome_screen_app_id()).select(ctx);
+            ctx.command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+            ctx.command_sender()
+                .send_system(SystemCommand::SelectRedapServer {
+                    origin: re_uri::Origin::examples_origin(),
+                })
         }
     }
 }

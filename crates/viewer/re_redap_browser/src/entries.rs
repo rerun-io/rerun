@@ -101,6 +101,10 @@ impl Entries {
             .find(|dataset| dataset.name() == dataset_name)
     }
 
+    pub fn first_dataset(&self) -> Option<&Dataset> {
+        self.datasets.try_as_ref()?.as_ref().ok()?.values().next()
+    }
+
     /// [`list_item::ListItem`]-based UI for the datasets.
     pub fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
         match self.datasets.try_as_ref() {
@@ -112,7 +116,7 @@ impl Entries {
 
             Some(Ok(datasets)) => {
                 for dataset in datasets.values() {
-                    let is_selected = ctx.is_selected(dataset.id());
+                    let is_selected = ctx.is_entry_selected(dataset.id());
 
                     let content =
                         list_item::LabelContent::new(dataset.name()).with_icon(&icons::DATASET);

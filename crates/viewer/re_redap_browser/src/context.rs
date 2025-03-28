@@ -10,13 +10,13 @@ pub struct Context<'a> {
     pub command_sender: &'a Sender<Command>,
 
     /// Currently selected collection.
-    pub selected_collection: &'a Option<Selection>,
+    pub selection: &'a Option<Selection>,
 }
 
 impl Context<'_> {
-    pub fn is_selected(&self, entry_id: EntryId) -> bool {
+    pub fn is_entry_selected(&self, entry_id: EntryId) -> bool {
         matches!(
-            self.selected_collection,
+            self.selection,
             Some(Selection::Dataset(selected_entry_id))
             if selected_entry_id == &entry_id
         )

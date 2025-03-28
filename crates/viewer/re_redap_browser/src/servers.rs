@@ -173,6 +173,10 @@ impl RedapServers {
         let _ = self.command_sender.send(Command::SelectEntry(entry_id));
     }
 
+    pub fn should_show_example_ui(&self) -> bool {
+        matches!(&self.selection, Some(Selection::Server(origin)) if origin == &re_uri::Origin::examples_origin())
+    }
+
     /// Per-frame housekeeping.
     ///
     /// - Process commands from the queue.
@@ -268,6 +272,20 @@ impl RedapServers {
     }
 
     pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        if self.selection.is_none() {
+            if self.servers.is_empty() {
+                self.selection = Some(Selection::Server(re_uri::Origin::examples_origin()));
+            } else {
+                if let Some(entry) = self
+                    .servers
+                    .first_key_value()
+                    .and_then(|(_, server)| server.entries.first_dataset())
+                {
+                    self.selection = Some(Selection::Dataset(entry.id()));
+                }
+            }
+        }
+
         self.add_server_modal_ui(ui);
 
         //TODO(ab): we should display something even if no catalog is currently selected.
@@ -299,11 +317,11 @@ impl RedapServers {
         }
     }
 
-    fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+    pub fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selection,
+            selection: &self.selection,
         };
 
         self.add_server_modal_ui.ui(&ctx, ui);
@@ -313,7 +331,7 @@ impl RedapServers {
     fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selection,
+            selection: &self.selection,
         };
 
         func(&ctx)

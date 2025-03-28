@@ -174,10 +174,24 @@ pub struct Origin {
 }
 
 impl Origin {
+    /// Origin used to show the examples ui in the redap browser.
+    ///
+    /// Not actually a valid origin.
     pub fn examples_origin() -> Self {
         Self {
             scheme: Scheme::RerunHttps,
-            host: url::Host::Domain("rerun.io".to_owned()),
+            host: url::Host::Domain("_examples.rerun.io".to_owned()),
+            port: 443,
+        }
+    }
+
+    /// Origin used to show the local ui in the redap browser.
+    ///
+    /// Not actually a valid origin.
+    pub fn local_recordings_origin() -> Self {
+        Self {
+            scheme: Scheme::RerunHttps,
+            host: url::Host::Domain("_local_recordings.rerun.io".to_owned()),
             port: 443,
         }
     }

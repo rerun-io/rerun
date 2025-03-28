@@ -367,6 +367,13 @@ impl App {
 
         let callbacks = startup_options.callbacks.clone();
 
+        if state.app_options().enable_redap_browser {
+            let command_sender_clone = command_sender.clone();
+            command_sender_clone
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+            command_sender_clone.send_ui(UICommand::ExpandBlueprintPanel);
+        }
+
         Self {
             main_thread_token,
             build_info,
@@ -2075,6 +2082,16 @@ impl eframe::App for App {
                 store_hub.set_active_app(app_id.clone());
             } else {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
+                // If nothing was active and the redap browser is active
+                // Show the examples from there
+                if self.app_options().enable_redap_browser {
+                    // self.command_sender
+                    //     .send_system(SystemCommand::SelectRedapServer {
+                    //         origin: re_uri::Origin::examples_origin(),
+                    //     });
+                    self.command_sender
+                        .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+                }
             }
         }
 
