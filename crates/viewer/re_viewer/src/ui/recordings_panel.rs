@@ -215,13 +215,17 @@ fn recording_list_ui(
         };
 
         if response.clicked() {
-            // DatasetKind::Local(StoreHub::welcome_screen_app_id()).select(ctx);
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-            ctx.command_sender()
-                .send_system(SystemCommand::SelectRedapServer {
-                    origin: re_uri::Origin::examples_origin(),
-                })
+            if ctx.app_options().enable_redap_browser {
+                ctx.command_sender()
+                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+                ctx.command_sender()
+                    .send_system(SystemCommand::SelectRedapServer {
+                        origin: re_uri::Origin::examples_origin(),
+                    })
+            } else {
+                ctx.command_sender()
+                    .send_system(SystemCommand::ActivateApp(StoreHub::welcome_screen_app_id()));
+            }
         }
     }
 }
