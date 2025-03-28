@@ -37,9 +37,6 @@ service ManifestRegistryService {
   // Fetch chunk manifest for a specific index
   rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 
-  // List indexes for the Dataset
-  rpc ListPartitionIndexes(ListPartitionIndexesRequest) returns (stream ListPartitionIndexesResponse) {}
-
   // Do a full text, vector or scalar search. Currently only an Indexed search
   // is supported, user must first call `CreatePartitionIndexes` for the relevant column.
   // TODO(zehiko) add support for "brute force" search.
