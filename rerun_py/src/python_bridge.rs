@@ -189,8 +189,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // dataframes
     crate::dataframe::register(m)?;
 
-    // remote
-    crate::remote::register(m)?;
+    // catalog
     crate::catalog::register(py, m)?;
 
     Ok(())

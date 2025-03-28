@@ -1,7 +1,6 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
 use re_protos::common::v1alpha1::RerunChunk;
-use re_protos::remote_store::v1alpha1::DataframePart;
 
 use crate::codec::arrow::read_arrow_from_bytes;
 use crate::codec::CodecError;
@@ -27,12 +26,6 @@ fn decode(
 /// Decode an object from a its wire (protobuf) representation.
 pub trait Decode {
     fn decode(&self) -> Result<ArrowRecordBatch, CodecError>;
-}
-
-impl Decode for DataframePart {
-    fn decode(&self) -> Result<ArrowRecordBatch, CodecError> {
-        decode(self.encoder_version(), &self.payload)
-    }
 }
 
 impl Decode for RerunChunk {
