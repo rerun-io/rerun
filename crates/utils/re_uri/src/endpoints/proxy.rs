@@ -23,9 +23,6 @@ impl std::str::FromStr for ProxyEndpoint {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match RedapUri::from_str(s)? {
             RedapUri::Proxy(endpoint) => Ok(endpoint),
-            RedapUri::Recording(endpoint) => {
-                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
-            }
             RedapUri::Catalog(endpoint) => {
                 Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
             }

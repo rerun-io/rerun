@@ -50,10 +50,6 @@ pub enum SmartChannelSource {
     Stdin,
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
-    // TODO(ab): legacy API, remove
-    RedapGrpcStreamLegacy(re_uri::RecordingEndpoint),
-
-    /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
     RedapGrpcStream(re_uri::DatasetDataEndpoint),
 
     /// The data is streaming in via a message proxy.
@@ -65,7 +61,6 @@ impl std::fmt::Display for SmartChannelSource {
         match self {
             Self::File(path) => path.display().fmt(f),
             Self::RrdHttpStream { url, follow: _ } | Self::MessageProxy { url } => url.fmt(f),
-            Self::RedapGrpcStreamLegacy(endpoint) => endpoint.fmt(f),
             Self::RedapGrpcStream(endpoint) => endpoint.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
@@ -81,7 +76,6 @@ impl SmartChannelSource {
             Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
             Self::RrdHttpStream { .. }
             | Self::JsChannel { .. }
-            | Self::RedapGrpcStreamLegacy { .. }
             | Self::RedapGrpcStream { .. }
             | Self::MessageProxy { .. } => true,
         }
@@ -126,10 +120,6 @@ pub enum SmartMessageSource {
     Stdin,
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    // TODO(ab): legacy API, remove.
-    RedapGrpcStreamLegacy(re_uri::RecordingEndpoint),
-
-    /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
     RedapGrpcStream(re_uri::DatasetDataEndpoint),
 
     /// A stream of messages over message proxy gRPC interface.
@@ -142,7 +132,6 @@ impl std::fmt::Display for SmartMessageSource {
             Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
             Self::RrdHttpStream { url } | Self::MessageProxy { url } => url.clone(),
-            Self::RedapGrpcStreamLegacy(endpoint) => endpoint.to_string(),
             Self::RedapGrpcStream(endpoint) => endpoint.to_string(),
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),

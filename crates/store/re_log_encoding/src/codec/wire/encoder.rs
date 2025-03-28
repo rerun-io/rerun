@@ -1,5 +1,4 @@
 use re_protos::common::v1alpha1::RerunChunk;
-use re_protos::remote_store::v1alpha1::DataframePart;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
@@ -27,16 +26,6 @@ fn encode(
 /// Encode an object into a wire (protobuf) type.
 pub trait Encode<O> {
     fn encode(&self) -> Result<O, CodecError>;
-}
-
-impl Encode<DataframePart> for ArrowRecordBatch {
-    fn encode(&self) -> Result<DataframePart, CodecError> {
-        let payload = encode(re_protos::common::v1alpha1::EncoderVersion::V0, self)?;
-        Ok(DataframePart {
-            encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0 as i32,
-            payload,
-        })
-    }
 }
 
 impl Encode<RerunChunk> for ArrowRecordBatch {

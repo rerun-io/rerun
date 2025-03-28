@@ -2,7 +2,7 @@ use std::str::FromStr as _;
 
 use re_log_types::{TimeCell, TimeInt};
 
-use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, ProxyEndpoint, RecordingEndpoint};
+use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, ProxyEndpoint};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TimeRange {
@@ -190,8 +190,6 @@ impl std::fmt::Display for crate::Origin {
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub enum RedapUri {
-    Recording(RecordingEndpoint),
-
     Catalog(CatalogEndpoint),
 
     DatasetData(DatasetDataEndpoint),
@@ -203,7 +201,6 @@ pub enum RedapUri {
 impl std::fmt::Display for RedapUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Recording(endpoint) => write!(f, "{endpoint}",),
             Self::Catalog(endpoint) => write!(f, "{endpoint}",),
             Self::DatasetData(endpoints) => write!(f, "{endpoints}",),
             Self::Proxy(endpoint) => write!(f, "{endpoint}",),
@@ -240,12 +237,6 @@ impl TryFrom<&str> for RedapUri {
             .map(|(_, value)| TimeRange::try_from(value.as_ref()));
 
         match segments.as_slice() {
-            ["recording", recording_id] => Ok(Self::Recording(RecordingEndpoint::new(
-                origin,
-                (*recording_id).to_owned(),
-                time_range.transpose()?,
-            ))),
-
             ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
 
             ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
