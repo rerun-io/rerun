@@ -320,6 +320,7 @@ class RecordingStream:
         make_default: bool = False,
         make_thread_default: bool = False,
         default_enabled: bool = True,
+        send_properties: bool = True,
     ) -> None:
         """
         Creates a new recording stream with a user-chosen application id (name) that can be used to log data.
@@ -379,6 +380,8 @@ class RecordingStream:
         default_enabled : bool
             Should Rerun logging be on by default?
             Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
+        send_properties
+            Immediately send the recording properties to the viewer (default: True)
 
         Returns
         -------
@@ -406,6 +409,7 @@ class RecordingStream:
             make_default=make_default,
             make_thread_default=make_thread_default,
             default_enabled=default_enabled,
+            send_properties=send_properties,
         )
 
         self._prev: RecordingStream | None = None
@@ -1030,9 +1034,9 @@ class RecordingStream:
         that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike` objects.
 
         When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
-        for identifying the data. Note that the path prefix "rerun/" is considered reserved for use by the Rerun SDK
+        for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
         itself and should not be used for logging user data. This is where Rerun will log additional information
-        such as warnings.
+        such as properties and warnings.
 
         The most common way to log is with one of the rerun archetypes, all of which implement
         the `AsComponents` interface.

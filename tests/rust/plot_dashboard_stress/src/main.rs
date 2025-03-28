@@ -156,12 +156,10 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
                             "sim_time",
                             seconds.copied(),
                         )],
-                        rerun::Scalar::update_fields()
-                            .with_many_scalar(values.copied())
-                            .columns_of_unit_batches()?,
+                        rerun::Scalars::new(values.copied()).columns_of_unit_batches()?,
                     )?;
                 } else {
-                    rec.log(path, &rerun::Scalar::new(series_values[offset]))?;
+                    rec.log(path, &rerun::Scalars::one(series_values[offset]))?;
                 }
             }
         }

@@ -1,4 +1,4 @@
-use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
+use egui::{text::TextWrapping, Align, Align2, NumExt as _, RichText, Ui};
 
 use super::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{DesignTokens, Icon, LabelStyle};
@@ -39,6 +39,18 @@ impl<'a> LabelContent<'a> {
             text_wrap_mode: None,
             min_desired_width: None,
         }
+    }
+
+    /// Render this as a header item.
+    ///
+    /// Text will be strong and smaller.
+    /// For best results, use this with [`super::ListItem::header`].
+    pub fn header(text: impl Into<RichText>) -> Self {
+        Self::new(
+            text.into()
+                .size(DesignTokens::list_header_font_size())
+                .strong(),
+        )
     }
 
     /// Set the subdued state of the item.

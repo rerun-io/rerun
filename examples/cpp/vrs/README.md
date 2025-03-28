@@ -18,7 +18,7 @@ This is an example that shows how to use Rerun's C++ API to log and view [VRS](h
 
 # Used Rerun types
 
-[`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 # Background
 This C++ example demonstrates how to visualize VRS files with Rerun.
@@ -40,25 +40,25 @@ void IMUPlayer::log_accelerometer(const std::array<float, 3>& accelMSec2) {
 ```cpp
 void IMUPlayer::log_accelerometer(const std::array<float, 3>& accelMSec2) {
     // … existing code for Arrows3D …
-    _rec->log(_entity_path + "/accelerometer/x", rerun::Scalar(accelMSec2[0]));
-    _rec->log(_entity_path + "/accelerometer/y", rerun::Scalar(accelMSec2[1]));
-    _rec->log(_entity_path + "/accelerometer/z", rerun::Scalar(accelMSec2[2]));
+    _rec->log(_entity_path + "/accelerometer/x", rerun::Scalars(accelMSec2[0]));
+    _rec->log(_entity_path + "/accelerometer/y", rerun::Scalars(accelMSec2[1]));
+    _rec->log(_entity_path + "/accelerometer/z", rerun::Scalars(accelMSec2[2]));
 }
 ```
 
 ```cpp
 void IMUPlayer::log_gyroscope(const std::array<float, 3>& gyroRadSec) {
-    _rec->log(_entity_path + "/gyroscope/x", rerun::Scalar(gyroRadSec[0]));
-    _rec->log(_entity_path + "/gyroscope/y", rerun::Scalar(gyroRadSec[1]));
-    _rec->log(_entity_path + "/gyroscope/z", rerun::Scalar(gyroRadSec[2]));
+    _rec->log(_entity_path + "/gyroscope/x", rerun::Scalars(gyroRadSec[0]));
+    _rec->log(_entity_path + "/gyroscope/y", rerun::Scalars(gyroRadSec[1]));
+    _rec->log(_entity_path + "/gyroscope/z", rerun::Scalars(gyroRadSec[2]));
 }
 ```
 
 ```cpp
 void IMUPlayer::log_magnetometer(const std::array<float, 3>& magTesla) {
-    _rec->log(_entity_path + "/magnetometer/x", rerun::Scalar(magTesla[0]));
-    _rec->log(_entity_path + "/magnetometer/y", rerun::Scalar(magTesla[1]));
-    _rec->log(_entity_path + "/magnetometer/z", rerun::Scalar(magTesla[2]));
+    _rec->log(_entity_path + "/magnetometer/x", rerun::Scalars(magTesla[0]));
+    _rec->log(_entity_path + "/magnetometer/y", rerun::Scalars(magTesla[1]));
+    _rec->log(_entity_path + "/magnetometer/z", rerun::Scalars(magTesla[2]));
 }
 ```
 

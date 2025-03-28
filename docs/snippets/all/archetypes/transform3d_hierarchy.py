@@ -48,6 +48,6 @@ for i in range(6 * 120):
         "sun/planet/moon",
         rr.Transform3D(
             translation=[np.cos(r_moon) * d_moon, np.sin(r_moon) * d_moon, 0.0],
-            from_parent=True,
+            relation=rr.TransformRelation.ChildFromParent,
         ),
     )

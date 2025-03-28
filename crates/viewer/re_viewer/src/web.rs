@@ -639,6 +639,66 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
     }
 }
 
+/// Callback selection item meant for serialization into JS.
+///
+/// We do this because the selection item we expose from the Rust API
+/// is not as nice to work with from JS when serialized into JSON.
+///
+/// One example of that is `EntityPath` being serialized as an array of
+/// path parts, instead of a single string, and we don't want the joining
+/// logic to live in multiple places.
+#[derive(Debug, serde::Serialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+enum JsCallbackSelectionItem {
+    Entity {
+        entity_path: String,
+        instance_id: Option<u64>,
+        view_name: Option<String>,
+        position: Option<glam::Vec3>,
+    },
+
+    View {
+        view_id: String,
+        view_name: String,
+    },
+
+    Container {
+        container_id: String,
+        container_name: String,
+    },
+}
+
+impl From<crate::callback::CallbackSelectionItem> for JsCallbackSelectionItem {
+    fn from(v: crate::callback::CallbackSelectionItem) -> Self {
+        use crate::callback::CallbackSelectionItem as Item;
+        match v {
+            Item::Entity {
+                entity_path,
+                instance_id,
+                view_name,
+                position,
+            } => Self::Entity {
+                entity_path: entity_path.to_string(),
+                instance_id: instance_id.specific_index().map(|id| id.get()),
+                view_name,
+                position,
+            },
+            Item::View { view_id, view_name } => Self::View {
+                view_id: view_id.uuid().to_string(),
+                view_name,
+            },
+            Item::Container {
+                container_id,
+                container_name,
+            } => Self::Container {
+                container_id: container_id.uuid().to_string(),
+                container_name,
+            },
+        }
+    }
+}
+
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
@@ -692,9 +752,10 @@ fn create_app(
                 // Express the collection as a flat list of items.
                 let array = js_sys::Array::new_with_length(selection.len() as u32);
                 for (i, item) in selection.into_iter().enumerate() {
-                    let Some(value) = serde_wasm_bindgen::to_value(&item)
-                        .map_err(|v| v.into())
-                        .ok_or_log_js_error()
+                    let Some(value) =
+                        serde_wasm_bindgen::to_value(&JsCallbackSelectionItem::from(item))
+                            .map_err(|v| v.into())
+                            .ok_or_log_js_error()
                     else {
                         continue;
                     };

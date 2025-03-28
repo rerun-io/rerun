@@ -167,6 +167,7 @@ impl Snippet {
         cmd.args(&self.extra_args);
 
         cmd.envs([
+            ("PYTHONWARNINGS", "error"), // raise exception on warnings, e.g. when using a @deprecated function
             ("RERUN_FLUSH_NUM_ROWS", "0"),
             ("RERUN_STRICT", "1"),
             ("RERUN_PANIC_ON_WARN", "1"),

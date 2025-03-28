@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package rerun.frontend.v1alpha1;
+
+import "rerun/v1alpha1/catalog.proto";
+import "rerun/v1alpha1/common.proto";
+import "rerun/v1alpha1/manifest_registry.proto";
+
+// TODO(cmc): I've decided to re-use the underlying response types for now, in the name of expediency.
+// This is bad in the long term (breaking changes to the internal APIs should not result in breaking
+// changes to the public API and, in general, the two being coupled doesn't make much sense).
+// It's the very early days though, and we're doing major breaking changes on a daily basis, so wasting
+// time on patching `From` implementations on a regular basis doesn't sound like a great use of time
+// at the moment.
+// We can revisit this as we start getting out of `v1alpha1`.
+
+// Redap's public API.
+service FrontendService {
+  // --- Catalog ---
+  // Mostly a 1:1 proxy at the moment.
+
+  rpc FindEntries(rerun.catalog.v1alpha1.FindEntriesRequest) returns (rerun.catalog.v1alpha1.FindEntriesResponse) {}
+
+  rpc DeleteEntry(rerun.catalog.v1alpha1.DeleteEntryRequest) returns (rerun.catalog.v1alpha1.DeleteEntryResponse) {}
+
+  rpc CreateDatasetEntry(rerun.catalog.v1alpha1.CreateDatasetEntryRequest) returns (rerun.catalog.v1alpha1.CreateDatasetEntryResponse) {}
+
+  rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
+
+  // --- Manifest Registry ---
+  // Automatically handles entry/dataset resolution.
+
+  // Register new partitions with the Dataset
+  rpc RegisterPartitions(RegisterPartitionsRequest) returns (rerun.manifest_registry.v1alpha1.RegisterPartitionsResponse) {}
+
+  // Unregister partitions from the Dataset
+  rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (rerun.manifest_registry.v1alpha1.UnregisterPartitionsResponse) {}
+
+  // List partitions in the Dataset
+  rpc ListPartitions(ListPartitionsRequest) returns (stream rerun.manifest_registry.v1alpha1.ListPartitionsResponse) {}
+
+  // Fetch partition from the Dataset
+  rpc FetchPartition(FetchPartitionRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchPartitionResponse) {}
+}
+
+// --- Manifest Registry ---
+
+message RegisterPartitionsRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // Partitions to add
+  repeated rerun.manifest_registry.v1alpha1.Partition partitions = 2;
+
+  // what to do if partition is already registered
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+}
+
+message UnregisterPartitionsRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // Partitions to remove
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // What to do if partition is not found
+  rerun.common.v1alpha1.IfMissingBehavior on_unknown_partition = 3;
+}
+
+message ListPartitionsRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+message FetchPartitionRequest {
+  rerun.common.v1alpha1.Tuid dataset_id = 1;
+
+  // Partition for which we want to get chunks
+  rerun.common.v1alpha1.PartitionId partition_id = 2;
+}

@@ -10,9 +10,10 @@ import "rerun/v1alpha1/common.proto";
 
 service CatalogService {
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
+  rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
+
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
-  rpc DeleteDatasetEntry(DeleteDatasetEntryRequest) returns (DeleteDatasetEntryResponse) {}
 }
 
 // ---------------- Services ------------------
@@ -27,10 +28,20 @@ message FindEntriesResponse {
   repeated EntryDetails entries = 1;
 }
 
+// DeleteDatasetEntry
+
+message DeleteEntryRequest {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+
+message DeleteEntryResponse {}
+
 // CreateDatasetEntry
 
 message CreateDatasetEntryRequest {
-  DatasetEntry dataset = 1;
+  // The name is a short human-readable string
+  // TODO(jleibs): Define valid name constraints
+  optional string name = 1;
 }
 
 message CreateDatasetEntryResponse {
@@ -40,51 +51,47 @@ message CreateDatasetEntryResponse {
 // ReadDatasetEntry
 
 message ReadDatasetEntryRequest {
-  rerun.common.v1alpha1.Tuid id = 1;
+  rerun.common.v1alpha1.EntryId id = 1;
 }
 
 message ReadDatasetEntryResponse {
   DatasetEntry dataset = 1;
 }
 
-// DeleteDatasetEntry
-
-message DeleteDatasetEntryRequest {
-  rerun.common.v1alpha1.Tuid id = 1;
-}
-
-message DeleteDatasetEntryResponse {}
-
 // ---------------- Common ------------------
 
 message EntryFilter {
-  optional rerun.common.v1alpha1.Tuid id = 1;
+  optional rerun.common.v1alpha1.EntryId id = 1;
   optional string name = 2;
-  optional EntryType entry_type = 3;
+  optional EntryKind entry_kind = 3;
 }
 
 // What type of entry. This has strong implication on which APIs are available for this entry.
-enum EntryType {
+enum EntryKind {
   // Always reserve unspecified as default value
-  ENTRY_TYPE_UNSPECIFIED = 0;
+  ENTRY_KIND_UNSPECIFIED = 0;
+
   // Order as TYPE, TYPE_VIEW so things stay consistent as we introduce new types.
-  ENTRY_TYPE_DATASET = 1;
-  ENTRY_TYPE_DATASET_VIEW = 2;
-  ENTRY_TYPE_TABLE = 3;
-  ENTRY_TYPE_TABLE_VIEW = 4;
+  ENTRY_KIND_DATASET = 1;
+
+  ENTRY_KIND_DATASET_VIEW = 2;
+
+  ENTRY_KIND_TABLE = 3;
+
+  ENTRY_KIND_TABLE_VIEW = 4;
 }
 
 // Minimal info about an Entry for high-level catalog summary
 message EntryDetails {
   // The EntryId is immutable
-  rerun.common.v1alpha1.Tuid id = 1;
+  rerun.common.v1alpha1.EntryId id = 1;
 
   // The name is a short human-readable string
   // TODO(jleibs): Define valid name constraints
   optional string name = 2;
 
-  // The type of entry
-  EntryType entry_type = 3;
+  // The kind of entry
+  EntryKind entry_kind = 3;
 
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;

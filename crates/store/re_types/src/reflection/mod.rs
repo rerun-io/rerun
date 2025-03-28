@@ -31,7 +31,7 @@ pub fn generate_reflection() -> Result<Reflection, SerializationError> {
 /// Generates reflection about all known components.
 ///
 /// Call only once and reuse the results.
-#[allow(deprecated)]
+
 fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
     re_tracing::profile_function!();
     let array = [
@@ -39,6 +39,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ActiveTab as Component>::name(),
             ComponentReflection {
                 docstring_md: "The active tab in a tabbed container.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ActiveTab::default().to_arrow()?),
                 datatype: ActiveTab::arrow_datatype(),
                 verify_arrow_array: ActiveTab::verify_arrow_array,
@@ -48,6 +49,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ApplyLatestAt as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ApplyLatestAt::default().to_arrow()?),
                 datatype: ApplyLatestAt::arrow_datatype(),
                 verify_arrow_array: ApplyLatestAt::verify_arrow_array,
@@ -57,6 +59,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AutoLayout as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
+                deprecation_notice: None,
                 custom_placeholder: Some(AutoLayout::default().to_arrow()?),
                 datatype: AutoLayout::arrow_datatype(),
                 verify_arrow_array: AutoLayout::verify_arrow_array,
@@ -66,6 +69,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AutoViews as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether or not views should be created automatically.",
+                deprecation_notice: None,
                 custom_placeholder: Some(AutoViews::default().to_arrow()?),
                 datatype: AutoViews::arrow_datatype(),
                 verify_arrow_array: AutoViews::verify_arrow_array,
@@ -75,6 +79,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <BackgroundKind as Component>::name(),
             ComponentReflection {
                 docstring_md: "The type of the background in a view.",
+                deprecation_notice: None,
                 custom_placeholder: Some(BackgroundKind::default().to_arrow()?),
                 datatype: BackgroundKind::arrow_datatype(),
                 verify_arrow_array: BackgroundKind::verify_arrow_array,
@@ -84,6 +89,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ColumnShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ColumnShare::default().to_arrow()?),
                 datatype: ColumnShare::arrow_datatype(),
                 verify_arrow_array: ColumnShare::verify_arrow_array,
@@ -93,6 +99,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ComponentColumnSelector as Component>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ComponentColumnSelector::default().to_arrow()?),
                 datatype: ComponentColumnSelector::arrow_datatype(),
                 verify_arrow_array: ComponentColumnSelector::verify_arrow_array,
@@ -102,6 +109,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ContainerKind as Component>::name(),
             ComponentReflection {
                 docstring_md: "The kind of a blueprint container (tabs, grid, …).",
+                deprecation_notice: None,
                 custom_placeholder: Some(ContainerKind::default().to_arrow()?),
                 datatype: ContainerKind::arrow_datatype(),
                 verify_arrow_array: ContainerKind::verify_arrow_array,
@@ -111,6 +119,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Corner2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "One of four 2D corners, typically used to align objects.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Corner2D::default().to_arrow()?),
                 datatype: Corner2D::arrow_datatype(),
                 verify_arrow_array: Corner2D::verify_arrow_array,
@@ -120,6 +129,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Enabled as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether a procedure is enabled.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Enabled::default().to_arrow()?),
                 datatype: Enabled::arrow_datatype(),
                 verify_arrow_array: Enabled::verify_arrow_array,
@@ -129,6 +139,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
+                deprecation_notice: None,
                 custom_placeholder: Some(FilterByRange::default().to_arrow()?),
                 datatype: FilterByRange::arrow_datatype(),
                 verify_arrow_array: FilterByRange::verify_arrow_array,
@@ -138,6 +149,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <FilterIsNotNull as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
+                deprecation_notice: None,
                 custom_placeholder: Some(FilterIsNotNull::default().to_arrow()?),
                 datatype: FilterIsNotNull::arrow_datatype(),
                 verify_arrow_array: FilterIsNotNull::verify_arrow_array,
@@ -147,6 +159,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ForceDistance as Component>::name(),
             ComponentReflection {
                 docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ForceDistance::default().to_arrow()?),
                 datatype: ForceDistance::arrow_datatype(),
                 verify_arrow_array: ForceDistance::verify_arrow_array,
@@ -156,6 +169,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ForceIterations as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ForceIterations::default().to_arrow()?),
                 datatype: ForceIterations::arrow_datatype(),
                 verify_arrow_array: ForceIterations::verify_arrow_array,
@@ -165,6 +179,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ForceStrength as Component>::name(),
             ComponentReflection {
                 docstring_md: "The strength of a given force.\n\nAllows to assign different weights to the individual forces, prioritizing one over the other.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ForceStrength::default().to_arrow()?),
                 datatype: ForceStrength::arrow_datatype(),
                 verify_arrow_array: ForceStrength::verify_arrow_array,
@@ -174,6 +189,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GridColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
+                deprecation_notice: None,
                 custom_placeholder: Some(GridColumns::default().to_arrow()?),
                 datatype: GridColumns::arrow_datatype(),
                 verify_arrow_array: GridColumns::verify_arrow_array,
@@ -183,6 +199,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GridSpacing as Component>::name(),
             ComponentReflection {
                 docstring_md: "Space between grid lines of one line to the next in scene units.",
+                deprecation_notice: None,
                 custom_placeholder: Some(GridSpacing::default().to_arrow()?),
                 datatype: GridSpacing::arrow_datatype(),
                 verify_arrow_array: GridSpacing::verify_arrow_array,
@@ -192,6 +209,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <IncludedContent as Component>::name(),
             ComponentReflection {
                 docstring_md: "All the contents in the container.",
+                deprecation_notice: None,
                 custom_placeholder: Some(IncludedContent::default().to_arrow()?),
                 datatype: IncludedContent::arrow_datatype(),
                 verify_arrow_array: IncludedContent::verify_arrow_array,
@@ -201,6 +219,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
+                deprecation_notice: None,
                 custom_placeholder: Some(LockRangeDuringZoom::default().to_arrow()?),
                 datatype: LockRangeDuringZoom::arrow_datatype(),
                 verify_arrow_array: LockRangeDuringZoom::verify_arrow_array,
@@ -210,6 +229,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <MapProvider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
+                deprecation_notice: None,
                 custom_placeholder: Some(MapProvider::default().to_arrow()?),
                 datatype: MapProvider::arrow_datatype(),
                 verify_arrow_array: MapProvider::verify_arrow_array,
@@ -219,6 +239,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <NearClipPlane as Component>::name(),
             ComponentReflection {
                 docstring_md: "Distance to the near clip plane used for `Spatial2DView`.",
+                deprecation_notice: None,
                 custom_placeholder: Some(NearClipPlane::default().to_arrow()?),
                 datatype: NearClipPlane::arrow_datatype(),
                 verify_arrow_array: NearClipPlane::verify_arrow_array,
@@ -228,6 +249,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <PanelState as Component>::name(),
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
+                deprecation_notice: None,
                 custom_placeholder: Some(PanelState::default().to_arrow()?),
                 datatype: PanelState::arrow_datatype(),
                 verify_arrow_array: PanelState::verify_arrow_array,
@@ -237,6 +259,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <QueryExpression as Component>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
+                deprecation_notice: None,
                 custom_placeholder: Some(QueryExpression::default().to_arrow()?),
                 datatype: QueryExpression::arrow_datatype(),
                 verify_arrow_array: QueryExpression::verify_arrow_array,
@@ -246,6 +269,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <RootContainer as Component>::name(),
             ComponentReflection {
                 docstring_md: "The container that sits at the root of a viewport.",
+                deprecation_notice: None,
                 custom_placeholder: Some(RootContainer::default().to_arrow()?),
                 datatype: RootContainer::arrow_datatype(),
                 verify_arrow_array: RootContainer::verify_arrow_array,
@@ -255,6 +279,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <RowShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
+                deprecation_notice: None,
                 custom_placeholder: Some(RowShare::default().to_arrow()?),
                 datatype: RowShare::arrow_datatype(),
                 verify_arrow_array: RowShare::verify_arrow_array,
@@ -264,6 +289,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <SelectedColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
+                deprecation_notice: None,
                 custom_placeholder: Some(SelectedColumns::default().to_arrow()?),
                 datatype: SelectedColumns::arrow_datatype(),
                 verify_arrow_array: SelectedColumns::verify_arrow_array,
@@ -273,6 +299,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TensorDimensionIndexSlider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
+                deprecation_notice: None,
                 custom_placeholder: Some(
                     TensorDimensionIndexSlider::default().to_arrow()?,
                 ),
@@ -284,6 +311,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.",
+                deprecation_notice: None,
                 custom_placeholder: Some(TimelineName::default().to_arrow()?),
                 datatype: TimelineName::arrow_datatype(),
                 verify_arrow_array: TimelineName::verify_arrow_array,
@@ -293,6 +321,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ViewClass as Component>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
+                deprecation_notice: None,
                 custom_placeholder: Some(ViewClass::default().to_arrow()?),
                 datatype: ViewClass::arrow_datatype(),
                 verify_arrow_array: ViewClass::verify_arrow_array,
@@ -302,6 +331,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ViewFit as Component>::name(),
             ComponentReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ViewFit::default().to_arrow()?),
                 datatype: ViewFit::arrow_datatype(),
                 verify_arrow_array: ViewFit::verify_arrow_array,
@@ -311,6 +341,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ViewMaximized as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether a view is maximized.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ViewMaximized::default().to_arrow()?),
                 datatype: ViewMaximized::arrow_datatype(),
                 verify_arrow_array: ViewMaximized::verify_arrow_array,
@@ -320,6 +351,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ViewOrigin as Component>::name(),
             ComponentReflection {
                 docstring_md: "The origin of a view.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ViewOrigin::default().to_arrow()?),
                 datatype: ViewOrigin::arrow_datatype(),
                 verify_arrow_array: ViewOrigin::verify_arrow_array,
@@ -329,6 +361,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ViewerRecommendationHash as Component>::name(),
             ComponentReflection {
                 docstring_md: "Hash of a viewer recommendation.\n\nThe formation of this hash is considered an internal implementation detail of the viewer.",
+                deprecation_notice: None,
                 custom_placeholder: Some(
                     ViewerRecommendationHash::default().to_arrow()?,
                 ),
@@ -340,6 +373,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <VisibleTimeRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.",
+                deprecation_notice: None,
                 custom_placeholder: Some(VisibleTimeRange::default().to_arrow()?),
                 datatype: VisibleTimeRange::arrow_datatype(),
                 verify_arrow_array: VisibleTimeRange::verify_arrow_array,
@@ -349,6 +383,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <VisualBounds2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Visual bounds in 2D space used for `Spatial2DView`.",
+                deprecation_notice: None,
                 custom_placeholder: Some(VisualBounds2D::default().to_arrow()?),
                 datatype: VisualBounds2D::arrow_datatype(),
                 verify_arrow_array: VisualBounds2D::verify_arrow_array,
@@ -358,6 +393,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <VisualizerOverride as Component>::name(),
             ComponentReflection {
                 docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.VisualizerOverrides.",
+                deprecation_notice: None,
                 custom_placeholder: Some(VisualizerOverride::default().to_arrow()?),
                 datatype: VisualizerOverride::arrow_datatype(),
                 verify_arrow_array: VisualizerOverride::verify_arrow_array,
@@ -367,6 +403,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ZoomLevel as Component>::name(),
             ComponentReflection {
                 docstring_md: "A zoom level determines how much of the world is visible on a map.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ZoomLevel::default().to_arrow()?),
                 datatype: ZoomLevel::arrow_datatype(),
                 verify_arrow_array: ZoomLevel::verify_arrow_array,
@@ -376,6 +413,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AggregationPolicy as Component>::name(),
             ComponentReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
+                deprecation_notice: None,
                 custom_placeholder: Some(AggregationPolicy::default().to_arrow()?),
                 datatype: AggregationPolicy::arrow_datatype(),
                 verify_arrow_array: AggregationPolicy::verify_arrow_array,
@@ -385,6 +423,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AlbedoFactor as Component>::name(),
             ComponentReflection {
                 docstring_md: "A color multiplier, usually applied to a whole entity, e.g. a mesh.",
+                deprecation_notice: None,
                 custom_placeholder: Some(AlbedoFactor::default().to_arrow()?),
                 datatype: AlbedoFactor::arrow_datatype(),
                 verify_arrow_array: AlbedoFactor::verify_arrow_array,
@@ -394,6 +433,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AnnotationContext as Component>::name(),
             ComponentReflection {
                 docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.",
+                deprecation_notice: None,
                 custom_placeholder: Some(AnnotationContext::default().to_arrow()?),
                 datatype: AnnotationContext::arrow_datatype(),
                 verify_arrow_array: AnnotationContext::verify_arrow_array,
@@ -403,6 +443,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <AxisLength as Component>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
+                deprecation_notice: None,
                 custom_placeholder: Some(AxisLength::default().to_arrow()?),
                 datatype: AxisLength::arrow_datatype(),
                 verify_arrow_array: AxisLength::verify_arrow_array,
@@ -412,6 +453,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Blob as Component>::name(),
             ComponentReflection {
                 docstring_md: "A binary blob of data.",
+                deprecation_notice: None,
                 custom_placeholder: None,
                 datatype: Blob::arrow_datatype(),
                 verify_arrow_array: Blob::verify_arrow_array,
@@ -421,6 +463,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ClassId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ClassId::default().to_arrow()?),
                 datatype: ClassId::arrow_datatype(),
                 verify_arrow_array: ClassId::verify_arrow_array,
@@ -430,6 +473,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ClearIsRecursive as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configures how a clear operation should behave - recursive or not.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ClearIsRecursive::default().to_arrow()?),
                 datatype: ClearIsRecursive::arrow_datatype(),
                 verify_arrow_array: ClearIsRecursive::verify_arrow_array,
@@ -439,6 +483,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Color as Component>::name(),
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Color::default().to_arrow()?),
                 datatype: Color::arrow_datatype(),
                 verify_arrow_array: Color::verify_arrow_array,
@@ -448,6 +493,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Colormap as Component>::name(),
             ComponentReflection {
                 docstring_md: "Colormap for mapping scalar values within a given range to a color.\n\nThis provides a number of popular pre-defined colormaps.\nIn the future, the Rerun Viewer will allow users to define their own colormaps,\nbut currently the Viewer is limited to the types defined here.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Colormap::default().to_arrow()?),
                 datatype: Colormap::arrow_datatype(),
                 verify_arrow_array: Colormap::verify_arrow_array,
@@ -457,6 +503,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <DepthMeter as Component>::name(),
             ComponentReflection {
                 docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
+                deprecation_notice: None,
                 custom_placeholder: Some(DepthMeter::default().to_arrow()?),
                 datatype: DepthMeter::arrow_datatype(),
                 verify_arrow_array: DepthMeter::verify_arrow_array,
@@ -466,6 +513,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <DrawOrder as Component>::name(),
             ComponentReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
+                deprecation_notice: None,
                 custom_placeholder: Some(DrawOrder::default().to_arrow()?),
                 datatype: DrawOrder::arrow_datatype(),
                 verify_arrow_array: DrawOrder::verify_arrow_array,
@@ -475,6 +523,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <EntityPath as Component>::name(),
             ComponentReflection {
                 docstring_md: "A path to an entity, usually to reference some data that is part of the target entity.",
+                deprecation_notice: None,
                 custom_placeholder: Some(EntityPath::default().to_arrow()?),
                 datatype: EntityPath::arrow_datatype(),
                 verify_arrow_array: EntityPath::verify_arrow_array,
@@ -484,6 +533,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <FillMode as Component>::name(),
             ComponentReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
+                deprecation_notice: None,
                 custom_placeholder: Some(FillMode::default().to_arrow()?),
                 datatype: FillMode::arrow_datatype(),
                 verify_arrow_array: FillMode::verify_arrow_array,
@@ -493,6 +543,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <FillRatio as Component>::name(),
             ComponentReflection {
                 docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
+                deprecation_notice: None,
                 custom_placeholder: Some(FillRatio::default().to_arrow()?),
                 datatype: FillRatio::arrow_datatype(),
                 verify_arrow_array: FillRatio::verify_arrow_array,
@@ -502,6 +553,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GammaCorrection as Component>::name(),
             ComponentReflection {
                 docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nValid range is from 0 (excluding) to max float.\nDefaults to 1.0 unless otherwise specified.",
+                deprecation_notice: None,
                 custom_placeholder: Some(GammaCorrection::default().to_arrow()?),
                 datatype: GammaCorrection::arrow_datatype(),
                 verify_arrow_array: GammaCorrection::verify_arrow_array,
@@ -511,6 +563,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GeoLineString as Component>::name(),
             ComponentReflection {
                 docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
+                deprecation_notice: None,
                 custom_placeholder: Some(GeoLineString::default().to_arrow()?),
                 datatype: GeoLineString::arrow_datatype(),
                 verify_arrow_array: GeoLineString::verify_arrow_array,
@@ -520,6 +573,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GraphEdge as Component>::name(),
             ComponentReflection {
                 docstring_md: "An edge in a graph connecting two nodes.",
+                deprecation_notice: None,
                 custom_placeholder: Some(GraphEdge::default().to_arrow()?),
                 datatype: GraphEdge::arrow_datatype(),
                 verify_arrow_array: GraphEdge::verify_arrow_array,
@@ -529,6 +583,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GraphNode as Component>::name(),
             ComponentReflection {
                 docstring_md: "A string-based ID representing a node in a graph.",
+                deprecation_notice: None,
                 custom_placeholder: Some(GraphNode::default().to_arrow()?),
                 datatype: GraphNode::arrow_datatype(),
                 verify_arrow_array: GraphNode::verify_arrow_array,
@@ -538,6 +593,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GraphType as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies if a graph has directed or undirected edges.",
+                deprecation_notice: None,
                 custom_placeholder: Some(GraphType::default().to_arrow()?),
                 datatype: GraphType::arrow_datatype(),
                 verify_arrow_array: GraphType::verify_arrow_array,
@@ -547,6 +603,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <HalfSize2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
+                deprecation_notice: None,
                 custom_placeholder: Some(HalfSize2D::default().to_arrow()?),
                 datatype: HalfSize2D::arrow_datatype(),
                 verify_arrow_array: HalfSize2D::verify_arrow_array,
@@ -556,6 +613,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <HalfSize3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
+                deprecation_notice: None,
                 custom_placeholder: Some(HalfSize3D::default().to_arrow()?),
                 datatype: HalfSize3D::arrow_datatype(),
                 verify_arrow_array: HalfSize3D::verify_arrow_array,
@@ -565,6 +623,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ImageBuffer as Component>::name(),
             ComponentReflection {
                 docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
+                deprecation_notice: None,
                 custom_placeholder: None,
                 datatype: ImageBuffer::arrow_datatype(),
                 verify_arrow_array: ImageBuffer::verify_arrow_array,
@@ -574,6 +633,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ImageFormat as Component>::name(),
             ComponentReflection {
                 docstring_md: "The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).",
+                deprecation_notice: None,
                 custom_placeholder: Some(ImageFormat::default().to_arrow()?),
                 datatype: ImageFormat::arrow_datatype(),
                 verify_arrow_array: ImageFormat::verify_arrow_array,
@@ -583,6 +643,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ImagePlaneDistance as Component>::name(),
             ComponentReflection {
                 docstring_md: "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
                 datatype: ImagePlaneDistance::arrow_datatype(),
                 verify_arrow_array: ImagePlaneDistance::verify_arrow_array,
@@ -592,6 +653,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Interactive as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Interactive::default().to_arrow()?),
                 datatype: Interactive::arrow_datatype(),
                 verify_arrow_array: Interactive::verify_arrow_array,
@@ -601,6 +663,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <KeypointId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.",
+                deprecation_notice: None,
                 custom_placeholder: Some(KeypointId::default().to_arrow()?),
                 datatype: KeypointId::arrow_datatype(),
                 verify_arrow_array: KeypointId::verify_arrow_array,
@@ -610,6 +673,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <LatLon as Component>::name(),
             ComponentReflection {
                 docstring_md: "A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
+                deprecation_notice: None,
                 custom_placeholder: Some(LatLon::default().to_arrow()?),
                 datatype: LatLon::arrow_datatype(),
                 verify_arrow_array: LatLon::verify_arrow_array,
@@ -619,6 +683,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Length as Component>::name(),
             ComponentReflection {
                 docstring_md: "Length, or one-dimensional size.\n\nMeasured in its local coordinate system; consult the archetype in use to determine which\naxis or part of the entity this is the length of.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Length::default().to_arrow()?),
                 datatype: Length::arrow_datatype(),
                 verify_arrow_array: Length::verify_arrow_array,
@@ -628,6 +693,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <LineStrip2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
+                deprecation_notice: None,
                 custom_placeholder: Some(LineStrip2D::default().to_arrow()?),
                 datatype: LineStrip2D::arrow_datatype(),
                 verify_arrow_array: LineStrip2D::verify_arrow_array,
@@ -637,6 +703,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <LineStrip3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 3D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
+                deprecation_notice: None,
                 custom_placeholder: Some(LineStrip3D::default().to_arrow()?),
                 datatype: LineStrip3D::arrow_datatype(),
                 verify_arrow_array: LineStrip3D::verify_arrow_array,
@@ -646,6 +713,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <MagnificationFilter as Component>::name(),
             ComponentReflection {
                 docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
+                deprecation_notice: None,
                 custom_placeholder: Some(MagnificationFilter::default().to_arrow()?),
                 datatype: MagnificationFilter::arrow_datatype(),
                 verify_arrow_array: MagnificationFilter::verify_arrow_array,
@@ -655,6 +723,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <MarkerShape as Component>::name(),
             ComponentReflection {
                 docstring_md: "The visual appearance of a point in e.g. a 2D plot.",
+                deprecation_notice: None,
                 custom_placeholder: Some(MarkerShape::default().to_arrow()?),
                 datatype: MarkerShape::arrow_datatype(),
                 verify_arrow_array: MarkerShape::verify_arrow_array,
@@ -664,6 +733,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <MarkerSize as Component>::name(),
             ComponentReflection {
                 docstring_md: "Radius of a marker of a point in e.g. a 2D plot, measured in UI points.",
+                deprecation_notice: None,
                 custom_placeholder: Some(MarkerSize::default().to_arrow()?),
                 datatype: MarkerSize::arrow_datatype(),
                 verify_arrow_array: MarkerSize::verify_arrow_array,
@@ -673,6 +743,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <MediaType as Component>::name(),
             ComponentReflection {
                 docstring_md: "A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.\n\nThe complete reference of officially registered media types is maintained by the IANA and can be\nconsulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.",
+                deprecation_notice: None,
                 custom_placeholder: Some(MediaType::default().to_arrow()?),
                 datatype: MediaType::arrow_datatype(),
                 verify_arrow_array: MediaType::verify_arrow_array,
@@ -682,6 +753,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Name as Component>::name(),
             ComponentReflection {
                 docstring_md: "A display name, typically for an entity or a item like a plot series.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Name::default().to_arrow()?),
                 datatype: Name::arrow_datatype(),
                 verify_arrow_array: Name::verify_arrow_array,
@@ -691,6 +763,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Opacity as Component>::name(),
             ComponentReflection {
                 docstring_md: "Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).\n\nThe final opacity value may be a result of multiplication with alpha values as specified by other color sources.\nUnless otherwise specified, the default value is 1.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Opacity::default().to_arrow()?),
                 datatype: Opacity::arrow_datatype(),
                 verify_arrow_array: Opacity::verify_arrow_array,
@@ -700,6 +773,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <PinholeProjection as Component>::name(),
             ComponentReflection {
                 docstring_md: "Camera projection, from image coordinates to view coordinates.\n\nChild from parent.\nImage coordinates from camera view coordinates.\n\nExample:\n```text\n1496.1     0.0  980.5\n   0.0  1496.1  744.5\n   0.0     0.0    1.0\n```",
+                deprecation_notice: None,
                 custom_placeholder: Some(PinholeProjection::default().to_arrow()?),
                 datatype: PinholeProjection::arrow_datatype(),
                 verify_arrow_array: PinholeProjection::verify_arrow_array,
@@ -709,6 +783,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Plane3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "An infinite 3D plane represented by a unit normal vector and a distance.\n\nAny point P on the plane fulfills the equation `dot(xyz, P) - d = 0`,\nwhere `xyz` is the plane's normal and `d` the distance of the plane from the origin.\nThis representation is also known as the Hesse normal form.\n\nNote: although the normal will be passed through to the\ndatastore as provided, when used in the Viewer, planes will always be normalized.\nI.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5",
+                deprecation_notice: None,
                 custom_placeholder: None,
                 datatype: Plane3D::arrow_datatype(),
                 verify_arrow_array: Plane3D::verify_arrow_array,
@@ -718,6 +793,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <PoseRotationAxisAngle as Component>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the\nangle is zero in which case it is treated as an identity.",
+                deprecation_notice: None,
                 custom_placeholder: Some(PoseRotationAxisAngle::default().to_arrow()?),
                 datatype: PoseRotationAxisAngle::arrow_datatype(),
                 verify_arrow_array: PoseRotationAxisAngle::verify_arrow_array,
@@ -727,6 +803,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <PoseRotationQuat as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.\nIf normalization fails the rotation is treated as an invalid transform.",
+                deprecation_notice: None,
                 custom_placeholder: Some(PoseRotationQuat::default().to_arrow()?),
                 datatype: PoseRotationQuat::arrow_datatype(),
                 verify_arrow_array: PoseRotationQuat::verify_arrow_array,
@@ -736,6 +813,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <PoseScale3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor that doesn't propagate in the transform hierarchy.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
+                deprecation_notice: None,
                 custom_placeholder: Some(PoseScale3D::default().to_arrow()?),
                 datatype: PoseScale3D::arrow_datatype(),
                 verify_arrow_array: PoseScale3D::verify_arrow_array,
@@ -745,6 +823,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <PoseTransformMat3x3 as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix that doesn't propagate in the transform hierarchy.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
+                deprecation_notice: None,
                 custom_placeholder: Some(PoseTransformMat3x3::default().to_arrow()?),
                 datatype: PoseTransformMat3x3::arrow_datatype(),
                 verify_arrow_array: PoseTransformMat3x3::verify_arrow_array,
@@ -754,6 +833,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <PoseTranslation3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space that doesn't propagate in the transform hierarchy.",
+                deprecation_notice: None,
                 custom_placeholder: Some(PoseTranslation3D::default().to_arrow()?),
                 datatype: PoseTranslation3D::arrow_datatype(),
                 verify_arrow_array: PoseTranslation3D::verify_arrow_array,
@@ -763,6 +843,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Position2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Position2D::default().to_arrow()?),
                 datatype: Position2D::arrow_datatype(),
                 verify_arrow_array: Position2D::verify_arrow_array,
@@ -772,6 +853,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Position3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 3D space.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Position3D::default().to_arrow()?),
                 datatype: Position3D::arrow_datatype(),
                 verify_arrow_array: Position3D::verify_arrow_array,
@@ -781,6 +863,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Radius as Component>::name(),
             ComponentReflection {
                 docstring_md: "The radius of something, e.g. a point.\n\nInternally, positive values indicate scene units, whereas negative values\nare interpreted as UI points.\n\nUI points are independent of zooming in Views, but are sensitive to the application UI scaling.\nat 100% UI scaling, UI points are equal to pixels\nThe Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Radius::default().to_arrow()?),
                 datatype: Radius::arrow_datatype(),
                 verify_arrow_array: Radius::verify_arrow_array,
@@ -790,6 +873,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Range1D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Range1D::default().to_arrow()?),
                 datatype: Range1D::arrow_datatype(),
                 verify_arrow_array: Range1D::verify_arrow_array,
@@ -799,6 +883,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Resolution as Component>::name(),
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Resolution::default().to_arrow()?),
                 datatype: Resolution::arrow_datatype(),
                 verify_arrow_array: Resolution::verify_arrow_array,
@@ -808,6 +893,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <RotationAxisAngle as Component>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis.\n\nIf normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the\nangle is zero in which case it is treated as an identity.",
+                deprecation_notice: None,
                 custom_placeholder: Some(RotationAxisAngle::default().to_arrow()?),
                 datatype: RotationAxisAngle::arrow_datatype(),
                 verify_arrow_array: RotationAxisAngle::verify_arrow_array,
@@ -817,6 +903,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <RotationQuat as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.\nIf normalization fails the rotation is treated as an invalid transform.",
+                deprecation_notice: None,
                 custom_placeholder: Some(RotationQuat::default().to_arrow()?),
                 datatype: RotationQuat::arrow_datatype(),
                 verify_arrow_array: RotationQuat::verify_arrow_array,
@@ -826,6 +913,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Scalar as Component>::name(),
             ComponentReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Scalar::default().to_arrow()?),
                 datatype: Scalar::arrow_datatype(),
                 verify_arrow_array: Scalar::verify_arrow_array,
@@ -835,6 +923,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Scale3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Scale3D::default().to_arrow()?),
                 datatype: Scale3D::arrow_datatype(),
                 verify_arrow_array: Scale3D::verify_arrow_array,
@@ -844,6 +933,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <SeriesVisible as Component>::name(),
             ComponentReflection {
                 docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link) since it would conflict with the entity-wide visibility state.",
+                deprecation_notice: None,
                 custom_placeholder: None,
                 datatype: SeriesVisible::arrow_datatype(),
                 verify_arrow_array: SeriesVisible::verify_arrow_array,
@@ -853,6 +943,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ShowLabels as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
+                deprecation_notice: None,
                 custom_placeholder: None,
                 datatype: ShowLabels::arrow_datatype(),
                 verify_arrow_array: ShowLabels::verify_arrow_array,
@@ -862,6 +953,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <StrokeWidth as Component>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
+                deprecation_notice: None,
                 custom_placeholder: Some(StrokeWidth::default().to_arrow()?),
                 datatype: StrokeWidth::arrow_datatype(),
                 verify_arrow_array: StrokeWidth::verify_arrow_array,
@@ -871,6 +963,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TensorData as Component>::name(),
             ComponentReflection {
                 docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.",
+                deprecation_notice: None,
                 custom_placeholder: Some(TensorData::default().to_arrow()?),
                 datatype: TensorData::arrow_datatype(),
                 verify_arrow_array: TensorData::verify_arrow_array,
@@ -880,6 +973,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TensorDimensionIndexSelection as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies a concrete index on a tensor dimension.",
+                deprecation_notice: None,
                 custom_placeholder: Some(
                     TensorDimensionIndexSelection::default().to_arrow()?,
                 ),
@@ -891,6 +985,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TensorHeightDimension as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for height.",
+                deprecation_notice: None,
                 custom_placeholder: Some(TensorHeightDimension::default().to_arrow()?),
                 datatype: TensorHeightDimension::arrow_datatype(),
                 verify_arrow_array: TensorHeightDimension::verify_arrow_array,
@@ -900,6 +995,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TensorWidthDimension as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for width.",
+                deprecation_notice: None,
                 custom_placeholder: Some(TensorWidthDimension::default().to_arrow()?),
                 datatype: TensorWidthDimension::arrow_datatype(),
                 verify_arrow_array: TensorWidthDimension::verify_arrow_array,
@@ -909,6 +1005,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Texcoord2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 2D texture UV coordinate.\n\nTexture coordinates specify a position on a 2D texture.\nA range from 0-1 covers the entire texture in the respective dimension.\nUnless configured otherwise, the texture repeats outside of this range.\nRerun uses top-left as the origin for UV coordinates.\n\n  0     U     1\n0 + --------- →\n  |           .\nV |           .\n  |           .\n1 ↓ . . . . . .\n\nThis is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,\nwhich places the origin at the bottom-left.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Texcoord2D::default().to_arrow()?),
                 datatype: Texcoord2D::arrow_datatype(),
                 verify_arrow_array: Texcoord2D::verify_arrow_array,
@@ -918,6 +1015,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Text as Component>::name(),
             ComponentReflection {
                 docstring_md: "A string of text, e.g. for labels and text documents.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Text::default().to_arrow()?),
                 datatype: Text::arrow_datatype(),
                 verify_arrow_array: Text::verify_arrow_array,
@@ -927,6 +1025,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TextLogLevel as Component>::name(),
             ComponentReflection {
                 docstring_md: "The severity level of a text log message.\n\nRecommended to be one of:\n* `\"CRITICAL\"`\n* `\"ERROR\"`\n* `\"WARN\"`\n* `\"INFO\"`\n* `\"DEBUG\"`\n* `\"TRACE\"`",
+                deprecation_notice: None,
                 custom_placeholder: Some(TextLogLevel::default().to_arrow()?),
                 datatype: TextLogLevel::arrow_datatype(),
                 verify_arrow_array: TextLogLevel::verify_arrow_array,
@@ -936,6 +1035,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Timestamp as Component>::name(),
             ComponentReflection {
                 docstring_md: "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
+                deprecation_notice: None,
                 custom_placeholder: None,
                 datatype: Timestamp::arrow_datatype(),
                 verify_arrow_array: Timestamp::verify_arrow_array,
@@ -945,6 +1045,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TransformMat3x3 as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
+                deprecation_notice: None,
                 custom_placeholder: Some(TransformMat3x3::default().to_arrow()?),
                 datatype: TransformMat3x3::arrow_datatype(),
                 verify_arrow_array: TransformMat3x3::verify_arrow_array,
@@ -954,6 +1055,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TransformRelation as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies relation a spatial transform describes.",
+                deprecation_notice: None,
                 custom_placeholder: Some(TransformRelation::default().to_arrow()?),
                 datatype: TransformRelation::arrow_datatype(),
                 verify_arrow_array: TransformRelation::verify_arrow_array,
@@ -963,6 +1065,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Translation3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Translation3D::default().to_arrow()?),
                 datatype: Translation3D::arrow_datatype(),
                 verify_arrow_array: Translation3D::verify_arrow_array,
@@ -972,6 +1075,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <TriangleIndices as Component>::name(),
             ComponentReflection {
                 docstring_md: "The three indices of a triangle in a triangle mesh.",
+                deprecation_notice: None,
                 custom_placeholder: Some(TriangleIndices::default().to_arrow()?),
                 datatype: TriangleIndices::arrow_datatype(),
                 verify_arrow_array: TriangleIndices::verify_arrow_array,
@@ -981,6 +1085,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ValueRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
+                deprecation_notice: None,
                 custom_placeholder: Some(ValueRange::default().to_arrow()?),
                 datatype: ValueRange::arrow_datatype(),
                 verify_arrow_array: ValueRange::verify_arrow_array,
@@ -990,6 +1095,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Vector2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 2D space.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Vector2D::default().to_arrow()?),
                 datatype: Vector2D::arrow_datatype(),
                 verify_arrow_array: Vector2D::verify_arrow_array,
@@ -999,6 +1105,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Vector3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 3D space.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Vector3D::default().to_arrow()?),
                 datatype: Vector3D::arrow_datatype(),
                 verify_arrow_array: Vector3D::verify_arrow_array,
@@ -1008,6 +1115,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <VideoTimestamp as Component>::name(),
             ComponentReflection {
                 docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
+                deprecation_notice: None,
                 custom_placeholder: Some(VideoTimestamp::default().to_arrow()?),
                 datatype: VideoTimestamp::arrow_datatype(),
                 verify_arrow_array: VideoTimestamp::verify_arrow_array,
@@ -1017,6 +1125,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ViewCoordinates as Component>::name(),
             ComponentReflection {
                 docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
+                deprecation_notice: None,
                 custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
                 datatype: ViewCoordinates::arrow_datatype(),
                 verify_arrow_array: ViewCoordinates::verify_arrow_array,
@@ -1026,6 +1135,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Visible as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the container, view, entity or instance is currently visible.",
+                deprecation_notice: None,
                 custom_placeholder: Some(Visible::default().to_arrow()?),
                 datatype: Visible::arrow_datatype(),
                 verify_arrow_array: Visible::verify_arrow_array,
@@ -1046,6 +1156,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.AnnotationContext"),
             ArchetypeReflection {
                 display_name: "Annotation context",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1061,6 +1172,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Arrows2D"),
             ArchetypeReflection {
                 display_name: "Arrows 2D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1102,6 +1214,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Arrows3D"),
             ArchetypeReflection {
                 display_name: "Arrows 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1139,6 +1252,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Asset3D"),
             ArchetypeReflection {
                 display_name: "Asset 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1160,6 +1274,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.AssetVideo"),
             ArchetypeReflection {
                 display_name: "Asset video",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1177,6 +1292,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.BarChart"),
             ArchetypeReflection {
                 display_name: "Bar chart",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["BarChartView"],
                 fields: vec![
@@ -1194,6 +1310,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Boxes2D"),
             ArchetypeReflection {
                 display_name: "Boxes 2D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1234,6 +1351,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Boxes3D"),
             ArchetypeReflection {
                 display_name: "Boxes 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1284,6 +1402,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Capsules3D"),
             ArchetypeReflection {
                 display_name: "Capsules 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1330,6 +1449,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Clear"),
             ArchetypeReflection {
                 display_name: "Clear",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView", "TimeSeriesView"],
                 fields: vec![
@@ -1343,6 +1463,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.DepthImage"),
             ArchetypeReflection {
                 display_name: "Depth image",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1379,6 +1500,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Ellipsoids3D"),
             ArchetypeReflection {
                 display_name: "Ellipsoids 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1429,6 +1551,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.EncodedImage"),
             ArchetypeReflection {
                 display_name: "Encoded image",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1455,6 +1578,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GeoLineStrings"),
             ArchetypeReflection {
                 display_name: "Geo line strings",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["MapView"],
                 fields: vec![
@@ -1477,6 +1601,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GeoPoints"),
             ArchetypeReflection {
                 display_name: "Geo points",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["MapView"],
                 fields: vec![
@@ -1503,6 +1628,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GraphEdges"),
             ArchetypeReflection {
                 display_name: "Graph edges",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["GraphView"],
                 fields: vec![
@@ -1521,6 +1647,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GraphNodes"),
             ArchetypeReflection {
                 display_name: "Graph nodes",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["GraphView"],
                 fields: vec![
@@ -1551,6 +1678,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Image"),
             ArchetypeReflection {
                 display_name: "Image",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1576,6 +1704,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.InstancePoses3D"),
             ArchetypeReflection {
                 display_name: "Instance poses 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1603,6 +1732,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.LineStrips2D"),
             ArchetypeReflection {
                 display_name: "Line strips 2D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1639,6 +1769,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.LineStrips3D"),
             ArchetypeReflection {
                 display_name: "Line strips 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1671,6 +1802,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Mesh3D"),
             ArchetypeReflection {
                 display_name: "Mesh 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1717,6 +1849,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Pinhole"),
             ArchetypeReflection {
                 display_name: "Pinhole",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial2DView"],
                 fields: vec![
@@ -1745,6 +1878,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Points2D"),
             ArchetypeReflection {
                 display_name: "Points 2D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1787,6 +1921,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Points3D"),
             ArchetypeReflection {
                 display_name: "Points 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -1825,6 +1960,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.RecordingProperties"),
             ArchetypeReflection {
                 display_name: "Recording properties",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &[],
                 fields: vec![
@@ -1843,6 +1979,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Scalar"),
             ArchetypeReflection {
                 display_name: "Scalar",
+                deprecation_notice: Some("Use `Scalars` instead."),
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
@@ -1853,9 +1990,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.Scalars"),
+            ArchetypeReflection {
+                display_name: "Scalars",
+                deprecation_notice: None,
+                scope: None,
+                view_types: &["TimeSeriesView"],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "scalars", display_name :
+                    "Scalars", component_name : "rerun.components.Scalar".into(),
+                    docstring_md : "The scalar values to log.", is_required : true, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.SegmentationImage"),
             ArchetypeReflection {
                 display_name: "Segmentation image",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -1881,6 +2033,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.SeriesLine"),
             ArchetypeReflection {
                 display_name: "Series line",
+                deprecation_notice: Some("Use `SeriesLines` instead."),
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
@@ -1907,9 +2060,42 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.SeriesLines"),
+            ArchetypeReflection {
+                display_name: "Series lines",
+                deprecation_notice: None,
+                scope: None,
+                view_types: &["TimeSeriesView"],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "colors", display_name : "Colors",
+                    component_name : "rerun.components.Color".into(), docstring_md :
+                    "Color for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "widths",
+                    display_name : "Widths", component_name :
+                    "rerun.components.StrokeWidth".into(), docstring_md :
+                    "Stroke width for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "names",
+                    display_name : "Names", component_name : "rerun.components.Name"
+                    .into(), docstring_md :
+                    "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "visible_series", display_name : "Visible series", component_name :
+                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "aggregation_policy", display_name : "Aggregation policy",
+                    component_name : "rerun.components.AggregationPolicy".into(),
+                    docstring_md :
+                    "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.\n\nExpected to be unchanging over time.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.SeriesPoint"),
             ArchetypeReflection {
                 display_name: "Series point",
+                deprecation_notice: Some("Use `SeriesPoints` instead."),
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
@@ -1934,9 +2120,41 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.SeriesPoints"),
+            ArchetypeReflection {
+                display_name: "Series points",
+                deprecation_notice: None,
+                scope: None,
+                view_types: &["TimeSeriesView"],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "colors", display_name : "Colors",
+                    component_name : "rerun.components.Color".into(), docstring_md :
+                    "Color for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "markers",
+                    display_name : "Markers", component_name :
+                    "rerun.components.MarkerShape".into(), docstring_md :
+                    "What shape to use to represent the point\n\nMay change over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "names",
+                    display_name : "Names", component_name : "rerun.components.Name"
+                    .into(), docstring_md :
+                    "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "visible_series", display_name : "Visible series", component_name :
+                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "marker_sizes", display_name : "Marker sizes", component_name :
+                    "rerun.components.MarkerSize".into(), docstring_md :
+                    "Sizes of the markers.\n\nMay change over time.", is_required :
+                    false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.Tensor"),
             ArchetypeReflection {
                 display_name: "Tensor",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["TensorView", "BarChartView"],
                 fields: vec![
@@ -1954,6 +2172,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.TextDocument"),
             ArchetypeReflection {
                 display_name: "Text document",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["TextDocumentView"],
                 fields: vec![
@@ -1972,6 +2191,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.TextLog"),
             ArchetypeReflection {
                 display_name: "Text log",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["TextLogView"],
                 fields: vec![
@@ -1994,6 +2214,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Transform3D"),
             ArchetypeReflection {
                 display_name: "Transform 3D",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
@@ -2029,6 +2250,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.VideoFrameReference"),
             ArchetypeReflection {
                 display_name: "Video frame reference",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
@@ -2048,6 +2270,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.ViewCoordinates"),
             ArchetypeReflection {
                 display_name: "View coordinates",
+                deprecation_notice: None,
                 scope: None,
                 view_types: &["Spatial3DView"],
                 fields: vec![
@@ -2062,6 +2285,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2078,6 +2302,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ContainerBlueprint"),
             ArchetypeReflection {
                 display_name: "Container blueprint",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2120,6 +2345,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
             ArchetypeReflection {
                 display_name: "Dataframe query",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2152,6 +2378,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.EntityBehavior"),
             ArchetypeReflection {
                 display_name: "Entity behavior",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2171,6 +2398,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ForceCenter"),
             ArchetypeReflection {
                 display_name: "Force center",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2189,6 +2417,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ForceCollisionRadius"),
             ArchetypeReflection {
                 display_name: "Force collision radius",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2212,6 +2441,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ForceLink"),
             ArchetypeReflection {
                 display_name: "Force link",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2235,6 +2465,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ForceManyBody"),
             ArchetypeReflection {
                 display_name: "Force many body",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2254,6 +2485,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ForcePosition"),
             ArchetypeReflection {
                 display_name: "Force position",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2277,6 +2509,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.LineGrid3D"),
             ArchetypeReflection {
                 display_name: "Line grid 3D",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2307,6 +2540,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.MapBackground"),
             ArchetypeReflection {
                 display_name: "Map background",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2322,6 +2556,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.MapZoom"),
             ArchetypeReflection {
                 display_name: "Map zoom",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2337,6 +2572,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.NearClipPlane"),
             ArchetypeReflection {
                 display_name: "Near clip plane",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2352,6 +2588,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.PanelBlueprint"),
             ArchetypeReflection {
                 display_name: "Panel blueprint",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2366,6 +2603,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.PlotLegend"),
             ArchetypeReflection {
                 display_name: "Plot legend",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2385,6 +2623,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2404,6 +2643,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2427,6 +2667,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorSliceSelection"),
             ArchetypeReflection {
                 display_name: "Tensor slice selection",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2456,6 +2697,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorViewFit"),
             ArchetypeReflection {
                 display_name: "Tensor view fit",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2470,6 +2712,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ViewBlueprint"),
             ArchetypeReflection {
                 display_name: "View blueprint",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2496,6 +2739,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ViewContents"),
             ArchetypeReflection {
                 display_name: "View contents",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2511,6 +2755,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ViewportBlueprint"),
             ArchetypeReflection {
                 display_name: "Viewport blueprint",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2544,6 +2789,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.VisibleTimeRanges"),
             ArchetypeReflection {
                 display_name: "Visible time ranges",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2559,6 +2805,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.VisualBounds2D"),
             ArchetypeReflection {
                 display_name: "Visual bounds 2D",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
@@ -2574,6 +2821,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.VisualizerOverrides"),
             ArchetypeReflection {
                 display_name: "Visualizer overrides",
+                deprecation_notice: None,
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![

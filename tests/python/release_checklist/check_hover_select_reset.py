@@ -51,16 +51,16 @@ def log_readme() -> None:
 def log_plots() -> None:
     from math import cos, sin, tau
 
-    rr.log("plots/cos", rr.SeriesPoint())
+    rr.log("plots/cos", rr.SeriesPoints())
 
     for t in range(int(tau * 2 * 10.0)):
         rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 10.0)
-        rr.log("plots/sin", rr.Scalar(sin_of_t))
+        rr.log("plots/sin", rr.Scalars(sin_of_t))
 
         cos_of_t = cos(float(t) / 10.0)
-        rr.log("plots/cos", rr.Scalar(cos_of_t))
+        rr.log("plots/cos", rr.Scalars(cos_of_t))
 
 
 def log_points_3d() -> None:

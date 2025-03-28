@@ -189,15 +189,13 @@ int main(int argc, char** argv) {
                     rec.send_columns(
                         path,
                         *time_column,
-                        rerun::Scalar::update_fields()
-                            .with_many_scalar(rerun::borrow(
-                                series_values.data() + time_step,
-                                *temporal_batch_size
-                            ))
+                        rerun::Scalars(
+                            rerun::borrow(series_values.data() + time_step, *temporal_batch_size)
+                        )
                             .columns()
                     );
                 } else {
-                    rec.log(path, rerun::Scalar(series_values[time_step]));
+                    rec.log(path, rerun::Scalars(series_values[time_step]));
                 }
             }
         }

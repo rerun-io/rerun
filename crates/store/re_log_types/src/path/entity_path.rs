@@ -127,6 +127,16 @@ impl EntityPath {
         ])
     }
 
+    /// Returns `true` if the [`EntityPath`] belongs to a reserved namespace.
+    ///
+    /// Returns `true` iff the root entity starts with `__`.
+    #[inline]
+    pub fn is_reserved(&self) -> bool {
+        self.iter()
+            .next()
+            .is_some_and(|part| part.unescaped_str().starts_with(RESERVED_NAMESPACE_PREFIX))
+    }
+
     #[inline]
     pub fn new(parts: Vec<EntityPathPart>) -> Self {
         Self::from(parts)
@@ -434,6 +444,8 @@ where
 
 use re_types_core::Loggable;
 
+use super::entity_path_part::RESERVED_NAMESPACE_PREFIX;
+
 re_types_core::macros::impl_into_cow!(EntityPath);
 
 impl Loggable for EntityPath {
@@ -570,15 +582,16 @@ mod tests {
 
     #[test]
     fn test_properties() {
-        assert_eq!(EntityPath::properties(), EntityPath::from("/__properties"),);
+        let path = EntityPath::properties();
+        assert_eq!(path, EntityPath::from("/__properties"));
+        assert!(path.is_reserved());
     }
 
     #[test]
     fn test_recording_properties() {
-        assert_eq!(
-            EntityPath::recording_properties(),
-            EntityPath::from("/__properties/recording"),
-        );
+        let path = EntityPath::recording_properties();
+        assert_eq!(path, EntityPath::from("/__properties/recording"),);
+        assert!(path.is_reserved());
     }
 
     #[test]

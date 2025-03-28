@@ -431,12 +431,12 @@ impl ::prost::Name for StoreId {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    #[prost(fixed64, tag = "1")]
-    pub time_ns: u64,
-    /// Initialized to something random on each thread,
-    /// then incremented for each new `Tuid` being allocated.
-    #[prost(fixed64, tag = "2")]
-    pub inc: u64,
+    #[prost(fixed64, optional, tag = "1")]
+    pub time_ns: ::core::option::Option<u64>,
+    /// Initialized to something random on each thread, then incremented for each
+    /// new `Tuid` being allocated.
+    #[prost(fixed64, optional, tag = "2")]
+    pub inc: ::core::option::Option<u64>,
 }
 impl ::prost::Name for Tuid {
     const NAME: &'static str = "Tuid";
@@ -448,12 +448,27 @@ impl ::prost::Name for Tuid {
         "/rerun.common.v1alpha1.Tuid".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct EntryId {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<Tuid>,
+}
+impl ::prost::Name for EntryId {
+    const NAME: &'static str = "EntryId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.EntryId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.EntryId".into()
+    }
+}
 /// Entry point for all ManifestRegistryService APIs
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
     #[prost(message, optional, tag = "1")]
-    pub entry_id: ::core::option::Option<Tuid>,
+    pub entry_id: ::core::option::Option<EntryId>,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, optional, tag = "2")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -693,6 +708,43 @@ impl IfMissingBehavior {
             "IF_MISSING_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
             "IF_MISSING_BEHAVIOR_SKIP" => Some(Self::Skip),
             "IF_MISSING_BEHAVIOR_ERROR" => Some(Self::Error),
+            _ => None,
+        }
+    }
+}
+/// Specify how the relevant creation call behaves
+/// in case of previously created (duplicate) items
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum IfDuplicateBehavior {
+    Unspecified = 0,
+    /// Overwrite the existing item
+    Overwrite = 1,
+    /// Skip if the item already exists
+    Skip = 2,
+    /// Return an error if the item already exists
+    Error = 3,
+}
+impl IfDuplicateBehavior {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED",
+            Self::Overwrite => "IF_DUPLICATE_BEHAVIOR_OVERWRITE",
+            Self::Skip => "IF_DUPLICATE_BEHAVIOR_SKIP",
+            Self::Error => "IF_DUPLICATE_BEHAVIOR_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "IF_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
+            "IF_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "IF_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
             _ => None,
         }
     }

@@ -104,7 +104,7 @@ fn global_web_viewer_server(
 
 /// The python module is called "rerun_bindings".
 #[pymodule]
-fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     // The SDK should not be as noisy as the CLI, so we set log filter to warning if not specified otherwise.
@@ -191,6 +191,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // remote
     crate::remote::register(m)?;
+    crate::catalog::register(py, m)?;
 
     Ok(())
 }
@@ -208,6 +209,7 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     make_default=true,
     make_thread_default=true,
     default_enabled=true,
+    send_properties=true,
 ))]
 fn new_recording(
     py: Python<'_>,
@@ -216,6 +218,7 @@ fn new_recording(
     make_default: bool,
     make_thread_default: bool,
     default_enabled: bool,
+    send_properties: bool,
 ) -> PyResult<PyRecordingStream> {
     let recording_id = if let Some(recording_id) = recording_id {
         StoreId::from_string(StoreKind::Recording, recording_id)
@@ -234,6 +237,7 @@ fn new_recording(
         .store_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)
+        .send_properties(send_properties)
         .buffered()
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
@@ -833,21 +837,18 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
 fn binary_stream(
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
-) -> PyResult<Option<PyBinarySinkStorage>> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(None);
-    };
+) -> Option<PyBinarySinkStorage> {
+    let recording = get_data_recording(recording)?;
 
     // The call to memory may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
-    let inner = py
-        .allow_threads(|| {
-            let storage = recording.binary_stream();
-            flush_garbage_queue();
-            storage
-        })
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-    Ok(Some(PyBinarySinkStorage { inner }))
+    let inner = py.allow_threads(|| {
+        let storage = recording.binary_stream();
+        flush_garbage_queue();
+        storage
+    });
+
+    Some(PyBinarySinkStorage { inner })
 }
 
 #[pyclass(frozen)]

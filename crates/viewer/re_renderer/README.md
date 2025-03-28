@@ -32,7 +32,7 @@ Goals & philosophy:
 
 #### Iterating
 
-In debug mode shaders are live-reloaded.
+In debug mode shaders are live-reloaded, if built from the Rerun workspace.
 If a failure occurs during live-reload, an error is logged and the previous shader is kept.
 
 #### Inspecting final source

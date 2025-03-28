@@ -553,6 +553,14 @@ impl App {
                 self.state.display_mode = DisplayMode::RedapBrowser;
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
+            SystemCommand::SelectRedapServer { origin } => {
+                self.state.redap_servers.select_server(origin);
+            }
+            SystemCommand::SelectRedapDataset { origin, dataset } => {
+                self.state
+                    .redap_servers
+                    .select_dataset_by_name(&origin, dataset.as_ref());
+            }
 
             SystemCommand::LoadDataSource(data_source) => {
                 let egui_ctx = egui_ctx.clone();
@@ -1844,7 +1852,7 @@ fn blueprint_loader() -> BlueprintPersistence {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn blueprint_loader() -> BlueprintPersistence {
-    use re_entity_db::StoreBundle;
+    use re_viewer_context::StoreBundle;
 
     fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;

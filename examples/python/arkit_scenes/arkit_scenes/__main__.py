@@ -141,7 +141,7 @@ def read_camera_from_world(traj_string: str) -> tuple[str, rr.Transform3D]:
     camera_from_world = rr.Transform3D(
         translation=translation,
         rotation=rr.Quaternion(xyzw=rotation.as_quat()),
-        from_parent=True,
+        relation=rr.TransformRelation.ChildFromParent,
     )
 
     return (ts, camera_from_world)

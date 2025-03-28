@@ -1,0 +1,20 @@
+name: Cargo Shear
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  cargo-shear:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Shear
+        run: |
+          cargo +stable install cargo-shear@1.1.11 --locked
+          cargo shear

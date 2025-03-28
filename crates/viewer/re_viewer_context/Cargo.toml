@@ -18,17 +18,22 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-shear]
+ignored = ["home"]
+
 [features]
 ## Enable for testing utilities.
 testing = ["dep:pollster", "dep:egui_kittest"]
 
 [dependencies]
+re_build_info.workspace = true
 re_capabilities.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
 re_data_source.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
 re_format.workspace = true
+re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_math.workspace = true

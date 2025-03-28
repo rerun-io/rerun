@@ -100,7 +100,7 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
 
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
     rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
-    rr.log("plot/avg_reproj_err", rr.SeriesLine(color=[240, 45, 58]), static=True)
+    rr.log("plot/avg_reproj_err", rr.SeriesLines(colors=[240, 45, 58]), static=True)
 
     # Iterate through images (video frames) logging data related to each frame.
     for image in sorted(images.values(), key=lambda im: im.name):
@@ -138,14 +138,18 @@ def read_and_log_sparse_reconstruction(dataset_path: Path, filter_output: bool, 
         point_colors = [point.rgb for point in visible_xyzs]
         point_errors = [point.error for point in visible_xyzs]
 
-        rr.log("plot/avg_reproj_err", rr.Scalar(np.mean(point_errors)))
+        rr.log("plot/avg_reproj_err", rr.Scalars(np.mean(point_errors)))
 
         rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
 
         # COLMAP's camera transform is "camera from world"
         rr.log(
             "camera",
-            rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True),
+            rr.Transform3D(
+                translation=image.tvec,
+                rotation=rr.Quaternion(xyzw=quat_xyzw),
+                relation=rr.TransformRelation.ChildFromParent,
+            ),
         )
         rr.log("camera", rr.ViewCoordinates.RDF, static=True)  # X=Right, Y=Down, Z=Forward
 

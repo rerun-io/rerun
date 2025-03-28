@@ -43,7 +43,6 @@ bytemuck.workspace = true
 egui_extras.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
-image.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 rexif.workspace = true

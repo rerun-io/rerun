@@ -144,9 +144,16 @@ fn generate_component_reflection(
             quote! { None }
         };
 
+        let deprecation_notice = if let Some(notice) = obj.deprecation_notice() {
+            quote! { Some(#notice) }
+        } else {
+            quote! { None }
+        };
+
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
+                deprecation_notice: #deprecation_notice,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_datatype(),
                 verify_arrow_array: #type_name::verify_arrow_array,
@@ -159,7 +166,6 @@ fn generate_component_reflection(
         #[doc = "Generates reflection about all known components."]
         #[doc = ""]
         #[doc = "Call only once and reuse the results."]
-        #[allow(deprecated)]
         fn generate_component_reflection() -> Result<ComponentReflectionMap, SerializationError> {
             re_tracing::profile_function!();
             let array = [
@@ -180,7 +186,12 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
     {
         let quoted_field_reflections = obj.fields.iter().map(|field| {
             let Some(component_name) = field.typ.fqname() else {
-                panic!("archetype field must be an object/union or an array/vector of such")
+                reporter.error(
+                    &field.virtpath,
+                    &field.fqname,
+                    "Archetype field must be an object/union or an array/vector of such",
+                );
+                return TokenStream::new();
             };
             let name = &field.name;
             let display_name = re_case::to_human_case(&field.name);
@@ -242,9 +253,17 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             })
             .collect_vec();
 
+        let deprecation_notice = if let Some(notice) = obj.deprecation_notice() {
+            quote! { Some(#notice) }
+        } else {
+            quote! { None }
+        };
+
         let quoted_archetype_reflection = quote! {
             ArchetypeReflection {
                 display_name: #display_name,
+
+                deprecation_notice: #deprecation_notice,
 
                 scope: #scope,
 

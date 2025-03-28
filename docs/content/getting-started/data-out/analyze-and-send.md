@@ -47,7 +47,7 @@ Here is how to send the data as a scalar:
 rr.send_columns(
     "/jaw_open_state",
     indexes=[rr.TimeColumn("frame_nr", sequence=df["frame_nr"])],
-    columns=rr.Scalar.columns(scalar=df["jawOpenState"]),
+    columns=rr.Scalars.columns(scalars=df["jawOpenState"]),
 )
 ```
 
