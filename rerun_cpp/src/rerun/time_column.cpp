@@ -24,12 +24,12 @@ namespace rerun {
     }
 
     TimeColumn TimeColumn::from_seconds(
-        std::string timeline_name, Collection<double> times_in_seconds, SortingStatus sorting_status
+        std::string timeline_name, Collection<double> times_in_secs, SortingStatus sorting_status
     ) {
         std::vector<int64_t> times_in_nanoseconds;
-        times_in_nanoseconds.reserve(times_in_seconds.size());
-        for (auto time_in_seconds : times_in_seconds) {
-            times_in_nanoseconds.push_back(static_cast<int64_t>(time_in_seconds * 1.0e9 + 0.5));
+        times_in_nanoseconds.reserve(times_in_secs.size());
+        for (auto time_in_secs : times_in_secs) {
+            times_in_nanoseconds.push_back(static_cast<int64_t>(time_in_secs * 1.0e9 + 0.5));
         }
         return TimeColumn(
             Timeline(std::move(timeline_name), TimeType::Duration),

@@ -435,7 +435,7 @@ fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreCont
         // leading to an ever-increasing input queue.
         let rx = app.msg_receive_set();
         let queue_len = rx.queue_len();
-        let latency_sec = rx.latency_ns() as f32 / 1e9;
+        let latency_sec = rx.latency_nanos() as f32 / 1e9;
         // empty queue == unreliable latency
         if 0 < queue_len {
             response.on_hover_ui(|ui| {
@@ -493,7 +493,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
     let queue_len = rx.queue_len();
 
     // empty queue == unreliable latency
-    let latency_sec = rx.latency_ns() as f32 / 1e9;
+    let latency_sec = rx.latency_nanos() as f32 / 1e9;
     if queue_len > 0 && (!is_latency_interesting || app.app_options().warn_latency < latency_sec) {
         // we use this to avoid flicker
         app.latest_queue_interest = web_time::Instant::now();

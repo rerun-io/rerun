@@ -388,15 +388,16 @@ fn load_episode_video(
     let video_asset = AssetVideo::new(contents.into_owned());
     let entity_path = observation;
 
-    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
-        Ok(frame_timestamps_ns) => {
-            let frame_timestamps_ns: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_ns.into();
+    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
+        Ok(frame_timestamps_nanos) => {
+            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
+                frame_timestamps_nanos.into();
 
-            let video_timestamps = frame_timestamps_ns
+            let video_timestamps = frame_timestamps_nanos
                 .iter()
                 .take(time_column.num_rows())
                 .copied()
-                .map(VideoTimestamp::from_nanoseconds)
+                .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
 
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;

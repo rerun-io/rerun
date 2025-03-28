@@ -40,7 +40,7 @@ The input video is logged as a static [`AssetVideo`](https://www.rerun.io/docs/r
 
 ```python
 video_asset = rr.AssetVideo(path=video_path)
-frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
 
 rr.log("video", video_asset, static=True)
 ```

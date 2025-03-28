@@ -35,14 +35,14 @@ pub struct MemoryHistory {
 impl Default for MemoryHistory {
     fn default() -> Self {
         let max_elems = 32 * 1024;
-        let max_seconds = f32::INFINITY;
+        let max_secs = f32::INFINITY;
         Self {
-            resident: History::new(0..max_elems, max_seconds),
-            counted: History::new(0..max_elems, max_seconds),
-            counted_gpu: History::new(0..max_elems, max_seconds),
-            counted_store: History::new(0..max_elems, max_seconds),
-            counted_primary_caches: History::new(0..max_elems, max_seconds),
-            counted_blueprint: History::new(0..max_elems, max_seconds),
+            resident: History::new(0..max_elems, max_secs),
+            counted: History::new(0..max_elems, max_secs),
+            counted_gpu: History::new(0..max_elems, max_secs),
+            counted_store: History::new(0..max_elems, max_secs),
+            counted_primary_caches: History::new(0..max_elems, max_secs),
+            counted_blueprint: History::new(0..max_elems, max_secs),
         }
     }
 }

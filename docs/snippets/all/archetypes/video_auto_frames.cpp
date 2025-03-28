@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
 
     // Send automatically determined video frame timestamps.
     std::vector<std::chrono::nanoseconds> frame_timestamps_ns =
-        video_asset.read_frame_timestamps_ns().value_or_throw();
+        video_asset.read_frame_timestamps_nanos().value_or_throw();
     // Note timeline values don't have to be the same as the video timestamps.
     auto time_column =
         rerun::TimeColumn::from_durations("video_time", rerun::borrow(frame_timestamps_ns));

@@ -35,7 +35,7 @@ fn format_chunk_store() -> anyhow::Result<()> {
                 row_id,
                 [
                     build_frame_nr(1),
-                    build_log_time(Timestamp::from_ns_since_epoch(1_736_534_622_123_456_789)),
+                    build_log_time(Timestamp::from_nanos_since_epoch(1_736_534_622_123_456_789)),
                 ],
                 [indices1.try_serialized()?, colors1.try_serialized()?],
             )

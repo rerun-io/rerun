@@ -123,14 +123,14 @@ namespace rerun {
         /// Creates a time column from an array of seconds.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param times_in_seconds Time values in seconds.
+        /// \param times_in_secs Time values in seconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        [[deprecated("Use 'from_duration_seconds' or `from_seconds_since_epoch' instead"
+        [[deprecated("Use 'from_duration_secs' or `from_secs_since_epoch' instead"
         )]] static TimeColumn
             from_seconds(
-                std::string timeline_name, Collection<double> times_in_seconds,
+                std::string timeline_name, Collection<double> times_in_secs,
                 SortingStatus sorting_status = SortingStatus::Unknown
             );
 
@@ -193,18 +193,18 @@ namespace rerun {
         /// Creates a duration column from an array of seconds.
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param duration_in_seconds Duration values in seconds.
+        /// \param duration_in_secs Duration values in seconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        static TimeColumn from_duration_seconds(
-            std::string timeline_name, Collection<double> duration_in_seconds,
+        static TimeColumn from_duration_secs(
+            std::string timeline_name, Collection<double> duration_in_secs,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             std::vector<int64_t> duration_in_nanos;
-            duration_in_nanos.reserve(duration_in_seconds.size());
-            for (auto time_in_seconds : duration_in_seconds) {
-                duration_in_nanos.push_back(static_cast<int64_t>(time_in_seconds * 1.0e9 + 0.5));
+            duration_in_nanos.reserve(duration_in_secs.size());
+            for (auto time_in_secs : duration_in_secs) {
+                duration_in_nanos.push_back(static_cast<int64_t>(time_in_secs * 1.0e9 + 0.5));
             }
             return TimeColumn(
                 Timeline(std::move(timeline_name), TimeType::Duration),
@@ -230,7 +230,7 @@ namespace rerun {
                 );
                 nanos_since_epoch.push_back(nanos.count());
             }
-            return TimeColumn::from_nanoseconds_since_epoch(
+            return TimeColumn::from_nanos_since_epoch(
                 std::move(timeline_name),
                 nanos_since_epoch,
                 sorting_status
@@ -244,7 +244,7 @@ namespace rerun {
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        static TimeColumn from_nanoseconds_since_epoch(
+        static TimeColumn from_nanos_since_epoch(
             std::string timeline_name, Collection<int64_t> timestamp_in_nanos,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
@@ -258,20 +258,20 @@ namespace rerun {
         /// Creates a duration column from an array of seconds since Unix Epoch (1970-01-01 00:00:00 UTC).
         ///
         /// \param timeline_name The name of the timeline this column belongs to.
-        /// \param timestamp_in_seconds Timestamp values in seconds.
+        /// \param timestamp_in_secs Timestamp values in seconds.
         /// Make sure the sorting status is correctly specified.
         /// \param sorting_status The sorting status of the time points.
         /// Already sorted time points may perform better.
-        static TimeColumn from_seconds_since_epoch(
-            std::string timeline_name, Collection<double> timestamp_in_seconds,
+        static TimeColumn from_secs_since_epoch(
+            std::string timeline_name, Collection<double> timestamp_in_secs,
             SortingStatus sorting_status = SortingStatus::Unknown
         ) {
             std::vector<int64_t> timestamp_in_nanos;
-            timestamp_in_nanos.reserve(timestamp_in_seconds.size());
-            for (auto time_in_seconds : timestamp_in_seconds) {
-                timestamp_in_nanos.push_back(static_cast<int64_t>(time_in_seconds * 1.0e9 + 0.5));
+            timestamp_in_nanos.reserve(timestamp_in_secs.size());
+            for (auto time_in_secs : timestamp_in_secs) {
+                timestamp_in_nanos.push_back(static_cast<int64_t>(time_in_secs * 1.0e9 + 0.5));
             }
-            return TimeColumn::from_nanoseconds_since_epoch(
+            return TimeColumn::from_nanos_since_epoch(
                 std::move(timeline_name),
                 std::move(timestamp_in_nanos),
                 sorting_status

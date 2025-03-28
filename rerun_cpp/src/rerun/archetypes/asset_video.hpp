@@ -58,7 +58,7 @@ namespace rerun::archetypes {
     ///
     ///     // Send automatically determined video frame timestamps.
     ///     std::vector<std::chrono::nanoseconds> frame_timestamps_ns =
-    ///         video_asset.read_frame_timestamps_ns().value_or_throw();
+    ///         video_asset.read_frame_timestamps_nanos().value_or_throw();
     ///     // Note timeline values don't have to be the same as the video timestamps.
     ///     auto time_column =
     ///         rerun::TimeColumn::from_durations("video_time", rerun::borrow(frame_timestamps_ns));
@@ -172,7 +172,14 @@ namespace rerun::archetypes {
         /// Determines the presentation timestamps of all frames inside the video.
         ///
         /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-        Result<std::vector<std::chrono::nanoseconds>> read_frame_timestamps_ns() const;
+        Result<std::vector<std::chrono::nanoseconds>> read_frame_timestamps_nanos() const;
+
+        /// DEPRECATED: Use `read_frame_timestamps_nanos` instead.
+        [[deprecated("Renamed to `read_frame_timestamps_nanos`"
+        )]] Result<std::vector<std::chrono::nanoseconds>>
+            read_frame_timestamps_ns() const {
+            return read_frame_timestamps_nanos();
+        }
 
         // END of extensions from asset_video_ext.cpp, start of generated code:
 

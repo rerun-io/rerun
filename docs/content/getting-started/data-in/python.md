@@ -215,7 +215,7 @@ for i in range(400):
     )
 ```
 
-A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_seconds) will create our new `Timeline` and make sure that any logging calls that follow gets assigned that time.
+A call to [`set_time`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time) will create our new `Timeline` and make sure that any logging calls that follow gets assigned that time.
 
 ⚠️ If you run this code as is, the result will be… surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
 

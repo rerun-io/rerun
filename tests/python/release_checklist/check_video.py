@@ -37,12 +37,12 @@ def run(args: Namespace) -> None:
         rr.log(codec, video_asset, static=True)
 
         # Send automatically determined video frame timestamps.
-        frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+        frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
         rr.send_columns(
             codec,
             # Note timeline values don't have to be the same as the video timestamps.
             indexes=[rr.TimeColumn("video_time", duration=1e-9 * frame_timestamps_ns)],
-            columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
+            columns=rr.VideoFrameReference.columns_nanos(frame_timestamps_ns),
         )
 
     # Use the av1 also in a 3D context
