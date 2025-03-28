@@ -160,7 +160,6 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             match source.as_ref() {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                 | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
@@ -199,7 +198,6 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
-            | SmartChannelSource::RedapGrpcStreamLegacy { .. }
             | SmartChannelSource::RedapGrpcStream { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
@@ -226,9 +224,6 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
             | re_smart_channel::SmartChannelSource::MessageProxy { url } => {
                 format!("Waiting for data on {url}…")
-            }
-            re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => {
-                format!("Waiting for data on {}…", endpoint.without_query())
             }
             re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
                 format!("Waiting for data on {}…", endpoint.without_query())

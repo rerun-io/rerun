@@ -1,20 +1,14 @@
-use arrow::array::RecordBatch as ArrowRecordBatch;
-
 use tokio_stream::StreamExt as _;
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{
-    ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
-};
+use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::FetchPartitionRequest;
 
-use re_protos::common::v1alpha1::{IndexColumnSelector, RecordingId};
 use re_uri::{DatasetDataEndpoint, Origin};
 
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
