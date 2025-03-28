@@ -55,6 +55,8 @@ pub struct AppOptions {
     /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     pub mapbox_access_token: String,
 
+    pub enable_redap_browser: bool,
+
     /// Path to the directory suitable for storing cache data.
     ///
     /// By cache data, we mean data that is safe to be garbage collected by the OS. Defaults to
@@ -89,6 +91,8 @@ impl Default for AppOptions {
             video_decoder_ffmpeg_path: String::new(),
 
             mapbox_access_token: String::new(),
+
+            enable_redap_browser: false,
 
             #[cfg(not(target_arch = "wasm32"))]
             cache_directory: Self::default_cache_directory(),

@@ -3,7 +3,7 @@ use ehttp::{fetch, Request};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
-use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{CommandSender, DisplayMode, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -446,6 +446,11 @@ fn open_example_url(
     ));
 
     command_sender.send_system(SystemCommand::LoadDataSource(data_source));
+
+    // The welcome screen might be rendered from the redap browser ui
+    command_sender.send_system(SystemCommand::ChangeDisplayMode(
+        DisplayMode::LocalRecordings,
+    ));
 
     #[cfg(target_arch = "wasm32")]
     if _is_history_enabled {

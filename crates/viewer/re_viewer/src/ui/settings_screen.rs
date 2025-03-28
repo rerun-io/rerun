@@ -134,14 +134,16 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     // Experimental features
     //
 
-    // Currently, the wasm target does not have any experimental features. If/when that changes,
-    // move the conditional compilation flag to the respective checkbox code.
-    #[cfg(not(target_arch = "wasm32"))]
-    // Currently there are no experimental features
-    if false {
-        separator_with_some_space(ui);
-        ui.strong("Experimental features");
-    }
+    separator_with_some_space(ui);
+    ui.strong("Experimental features");
+
+    ui.re_checkbox(
+        &mut app_options.enable_redap_browser,
+        "Enable Redap browser",
+    )
+    .on_hover_ui(|ui| {
+        ui.markdown_ui("Enables the Redap server/dataset browser.");
+    });
 }
 
 fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -20,4 +22,10 @@ pub enum Error {
 
     #[error("URL {url:?} cannot be loaded as a recording")]
     CannotLoadUrlAsRecording { url: String },
+
+    #[error("Dataset data URL required a `?partition_id` query parameter")]
+    MissingPartitionId,
+
+    #[error("invalid TUID: {0}")]
+    InvalidTuid(<re_tuid::Tuid as FromStr>::Err),
 }

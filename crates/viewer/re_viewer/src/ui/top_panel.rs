@@ -4,8 +4,8 @@ use itertools::Itertools as _;
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::StoreContext;
+use re_ui::{icons, ContextExt as _, UICommand, UiExt as _};
+use re_viewer_context::{DisplayMode, StoreContext};
 
 use crate::{app_blueprint::AppBlueprint, App};
 
@@ -86,6 +86,13 @@ fn top_bar_ui(
 ) {
     app.rerun_menu_button_ui(frame.wgpu_render_state(), store_context, ui);
 
+    if app.state.display_mode != DisplayMode::LocalRecordings {
+        ui.add_space(12.0);
+        if ui.small_icon_button(&icons::ARROW_LEFT).clicked() {
+            app.state.display_mode = DisplayMode::LocalRecordings;
+        }
+    }
+
     ui.add_space(12.0);
     website_link_ui(ui);
 
@@ -160,6 +167,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             match source.as_ref() {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                 | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
@@ -198,6 +206,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
+            | SmartChannelSource::RedapGrpcStreamLegacy { .. }
             | SmartChannelSource::RedapGrpcStream { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
@@ -224,6 +233,9 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
             | re_smart_channel::SmartChannelSource::MessageProxy { url } => {
                 format!("Waiting for data on {url}…")
+            }
+            re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => {
+                format!("Waiting for data on {}…", endpoint.without_query())
             }
             re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
                 format!("Waiting for data on {}…", endpoint.without_query())

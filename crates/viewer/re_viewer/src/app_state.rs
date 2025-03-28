@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{text_selection::LabelSelectionState, NumExt as _, Ui};
+use egui::{text_selection::LabelSelectionState, NumExt as _};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -495,8 +495,6 @@ impl AppState {
                     // before drawing the blueprint panel.
                     ui.spacing_mut().item_spacing.y = 0.0;
 
-                    display_mode_toggle_ui(ui, display_mode);
-
                     match display_mode {
                         DisplayMode::LocalRecordings => {
                             let resizable = ctx.store_context.bundle.recordings().count() > 3;
@@ -513,10 +511,22 @@ impl AppState {
                                     .default_height(210.0)
                                     .max_height(ui.available_height() - min_height_each)
                                     .show_inside(ui, |ui| {
-                                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                        recordings_panel_ui(
+                                            &ctx,
+                                            rx,
+                                            ui,
+                                            welcome_screen_state,
+                                            redap_servers,
+                                        );
                                     });
                             } else {
-                                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                recordings_panel_ui(
+                                    &ctx,
+                                    rx,
+                                    ui,
+                                    welcome_screen_state,
+                                    redap_servers,
+                                );
                             }
 
                             ui.add_space(4.0);
@@ -527,7 +537,7 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            redap_servers.server_panel_ui(ui);
+                            redap_servers.server_panel_ui(ui, &ctx);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // handled above
@@ -562,7 +572,17 @@ impl AppState {
                         }
 
                         DisplayMode::RedapBrowser => {
-                            redap_servers.ui(&ctx, ui);
+                            if redap_servers.should_show_example_ui() {
+                                welcome_screen.ui(
+                                    ui,
+                                    command_sender,
+                                    welcome_screen_state,
+                                    is_history_enabled,
+                                );
+                                redap_servers.add_server_modal_ui(ui);
+                            } else {
+                                redap_servers.ui(&ctx, ui);
+                            }
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above
@@ -723,42 +743,6 @@ fn handle_time_ctrl_callbacks(
     }
 }
 
-fn display_mode_toggle_ui(ui: &mut Ui, display_mode: &mut DisplayMode) {
-    ui.allocate_ui_with_layout(
-        egui::vec2(
-            ui.available_width(),
-            re_ui::DesignTokens::title_bar_height(),
-        ),
-        egui::Layout::left_to_right(egui::Align::Center),
-        |ui| {
-            egui::Frame::new()
-                .inner_margin(re_ui::DesignTokens::panel_margin())
-                .show(ui, |ui| {
-                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.expansion = 0.0;
-                    ui.visuals_mut().widgets.inactive.expansion = 0.0;
-
-                    ui.visuals_mut().selection.bg_fill = ui.visuals_mut().widgets.inactive.bg_fill;
-                    ui.visuals_mut().selection.stroke = ui.visuals_mut().widgets.inactive.fg_stroke;
-                    ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-
-                    ui.visuals_mut().widgets.hovered.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.active.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.inactive.fg_stroke.color =
-                        ui.visuals().widgets.noninteractive.fg_stroke.color;
-
-                    ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
-                    ui.spacing_mut().item_spacing.x = 3.0;
-
-                    ui.selectable_value(display_mode, DisplayMode::LocalRecordings, "Local");
-                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Servers");
-                });
-        },
-    );
-}
-
 pub(crate) fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
     id: StoreId,
@@ -771,6 +755,7 @@ pub(crate) fn recording_config_entry<'cfgs>(
                 // We assume the `RrdHttpStream` is a done recording.
                 re_smart_channel::SmartChannelSource::File(_)
                 | re_smart_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
+                | re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy { .. }
                 | re_smart_channel::SmartChannelSource::RedapGrpcStream { .. }
                 | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 

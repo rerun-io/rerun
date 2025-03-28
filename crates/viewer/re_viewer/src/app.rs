@@ -367,6 +367,13 @@ impl App {
 
         let callbacks = startup_options.callbacks.clone();
 
+        if state.app_options().enable_redap_browser {
+            let command_sender_clone = command_sender.clone();
+            command_sender_clone
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+            command_sender_clone.send_ui(UICommand::ExpandBlueprintPanel);
+        }
+
         Self {
             main_thread_token,
             build_info,
@@ -508,6 +515,10 @@ impl App {
             }
 
             SystemCommand::ActivateRecording(store_id) => {
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(
+                        DisplayMode::LocalRecordings,
+                    ));
                 store_hub.set_activate_recording(store_id);
             }
 
@@ -529,6 +540,7 @@ impl App {
                     SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
+                    | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                     | SmartChannelSource::RedapGrpcStream { .. }
                     | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::Stdin => true,
@@ -556,13 +568,15 @@ impl App {
             SystemCommand::SelectRedapServer { origin } => {
                 self.state.redap_servers.select_server(origin);
             }
-            SystemCommand::SelectRedapDataset { origin, dataset } => {
-                self.state
-                    .redap_servers
-                    .select_dataset_by_name(&origin, dataset.as_ref());
+            SystemCommand::SelectRedapEntry { entry_id: dataset } => {
+                self.state.redap_servers.select_entry(dataset);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(
+                        DisplayMode::LocalRecordings,
+                    ));
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need
@@ -1127,7 +1141,8 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut endpoint)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStreamLegacy(mut endpoint)) =
+            entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1691,6 +1706,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                 | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
@@ -2075,6 +2091,16 @@ impl eframe::App for App {
                 store_hub.set_active_app(app_id.clone());
             } else {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
+                // If nothing was active and the redap browser is active
+                // Show the examples from there
+                if self.app_options().enable_redap_browser {
+                    // self.command_sender
+                    //     .send_system(SystemCommand::SelectRedapServer {
+                    //         origin: re_uri::Origin::examples_origin(),
+                    //     });
+                    self.command_sender
+                        .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+                }
             }
         }
 

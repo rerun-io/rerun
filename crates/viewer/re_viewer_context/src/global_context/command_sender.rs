@@ -2,6 +2,7 @@ use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
+use re_types_core::external::re_tuid;
 use re_ui::{UICommand, UICommandSender};
 
 // ----------------------------------------------------------------------------
@@ -34,9 +35,8 @@ pub enum SystemCommand {
         origin: re_uri::Origin,
     },
 
-    SelectRedapDataset {
-        origin: re_uri::Origin,
-        dataset: String,
+    SelectRedapEntry {
+        entry_id: re_tuid::Tuid,
     },
 
     ChangeDisplayMode(crate::DisplayMode),

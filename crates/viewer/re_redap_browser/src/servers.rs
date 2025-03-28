@@ -2,12 +2,14 @@ use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use re_protos::common::v1alpha1::ext::EntryId;
+use re_types_core::external::re_tuid;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
 use crate::entries::{Dataset, Entries};
+use crate::local_ui::local_ui;
 
 struct Server {
     origin: re_uri::Origin,
@@ -39,7 +41,7 @@ impl Server {
     }
 
     fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
-        let content = list_item::LabelContent::new(self.origin.to_string())
+        let content = list_item::LabelContent::header(self.origin.host.to_string())
             .with_buttons(|ui| {
                 let response = ui
                     .small_icon_button(&re_ui::icons::REMOVE)
@@ -57,6 +59,7 @@ impl Server {
 
         ui.list_item()
             .interactive(false)
+            .header()
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),
@@ -69,11 +72,16 @@ impl Server {
     }
 }
 
+pub enum Selection {
+    Dataset(EntryId),
+    Server(re_uri::Origin),
+}
+
 /// All servers known to the viewer, and their catalog data.
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selected_entry: Option<EntryId>,
+    selection: Option<Selection>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -119,7 +127,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
-            selected_entry: None,
+            selection: None,
             command_sender,
             command_receiver,
             add_server_modal_ui: Default::default(),
@@ -128,6 +136,7 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
+    SelectServer(re_uri::Origin),
     SelectEntry(EntryId),
     DeselectEntry,
     AddServer(re_uri::Origin),
@@ -141,11 +150,10 @@ impl RedapServers {
         let _ = self.command_sender.send(Command::AddServer(origin));
     }
 
-    #[expect(clippy::unused_self)]
-    pub fn select_server(&self, _origin: re_uri::Origin) {
-        //TODO(ab): we don't have support for selecting servers yet.
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn select_server(&self, origin: re_uri::Origin) {
+        let _ = self.command_sender.send(Command::SelectServer(origin));
     }
-
     pub fn find_dataset_by_name(
         &self,
         origin: &re_uri::Origin,
@@ -164,6 +172,26 @@ impl RedapServers {
         };
 
         let _ = self.command_sender.send(Command::SelectEntry(entry_id));
+    }
+
+    pub fn find_entry(&self, entry_id: re_tuid::Tuid) -> Option<&Dataset> {
+        for server in self.servers.values() {
+            if let Some(dataset) = server.find_dataset(EntryId { id: entry_id }) {
+                return Some(dataset);
+            }
+        }
+
+        None
+    }
+
+    pub fn select_entry(&self, entry_id: re_tuid::Tuid) {
+        let _ = self
+            .command_sender
+            .send(Command::SelectEntry(EntryId { id: entry_id }));
+    }
+
+    pub fn should_show_example_ui(&self) -> bool {
+        matches!(&self.selection, Some(Selection::Server(origin)) if origin == &re_uri::Origin::examples_origin())
     }
 
     /// Per-frame housekeeping.
@@ -187,11 +215,13 @@ impl RedapServers {
         command: Command,
     ) {
         match command {
-            Command::SelectEntry(collection_handle) => {
-                self.selected_entry = Some(collection_handle);
+            Command::SelectEntry(entry) => {
+                self.selection = Some(Selection::Dataset(entry));
             }
-
-            Command::DeselectEntry => self.selected_entry = None,
+            Command::SelectServer(origin) => {
+                self.selection = Some(Selection::Server(origin));
+            }
+            Command::DeselectEntry => self.selection = None,
 
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
@@ -219,10 +249,10 @@ impl RedapServers {
         }
     }
 
-    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>) {
         ui.panel_content(|ui| {
             ui.panel_title_bar_with_buttons(
-                "Servers",
+                "All data",
                 Some("These are the currently connected Redap servers."),
                 |ui| {
                     if ui
@@ -242,45 +272,71 @@ impl RedapServers {
             .show(ui, |ui| {
                 ui.panel_content(|ui| {
                     re_ui::list_item::list_item_scope(ui, "server panel", |ui| {
-                        self.server_list_ui(ui);
+                        self.server_list_ui(ui, ctx);
                     });
                 });
             });
     }
 
-    fn server_list_ui(&self, ui: &mut egui::Ui) {
+    fn server_list_ui(&self, ui: &mut egui::Ui, viewer_ctx: &ViewerContext<'_>) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
                 server.panel_ui(ctx, ui);
             }
+
+            local_ui(ui, viewer_ctx, ctx);
         });
     }
 
     pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        if self.selection.is_none() {
+            if self.servers.is_empty() {
+                self.selection = Some(Selection::Server(re_uri::Origin::examples_origin()));
+            } else if let Some(entry) = self
+                .servers
+                .first_key_value()
+                .and_then(|(_, server)| server.entries.first_dataset())
+            {
+                self.selection = Some(Selection::Dataset(entry.id()));
+            }
+        }
+
         self.add_server_modal_ui(ui);
 
         //TODO(ab): we should display something even if no catalog is currently selected.
 
-        if let Some(selected_entry) = self.selected_entry.as_ref() {
-            for server in self.servers.values() {
-                let dataset = server.find_dataset(*selected_entry);
+        match self.selection.as_ref() {
+            Some(Selection::Dataset(id)) => {
+                for server in self.servers.values() {
+                    if let Some(dataset) = server.find_dataset(*id) {
+                        self.with_ctx(|ctx| {
+                            super::dataset_ui::dataset_ui(
+                                viewer_ctx,
+                                ctx,
+                                ui,
+                                &server.origin,
+                                dataset,
+                            );
+                        });
 
-                if let Some(dataset) = dataset {
-                    self.with_ctx(|ctx| {
-                        super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
-                    });
-
-                    return;
+                        return;
+                    }
                 }
             }
+            Some(Selection::Server(origin)) => {
+                if origin == &re_uri::Origin::examples_origin() {
+                    ui.label("Examples");
+                }
+            }
+            None => {}
         }
     }
 
-    fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+    pub fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_entry: &self.selected_entry,
+            selection: &self.selection,
         };
 
         self.add_server_modal_ui.ui(&ctx, ui);
@@ -290,7 +346,7 @@ impl RedapServers {
     fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_entry: &self.selected_entry,
+            selection: &self.selection,
         };
 
         func(&ctx)

@@ -140,7 +140,8 @@ pub fn open_recording(
         re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => Some("http"),
         // TODO(grtlr): Differentiate between `recording` and `catalog`
         // re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => "recording | catalog",
-        re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => None,
+        re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy { .. }
+        | re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => None,
         re_smart_channel::SmartChannelSource::MessageProxy { .. } => Some("grpc"),
         // vvv spawn(), connect() vvv
         re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => Some("web_event"),
