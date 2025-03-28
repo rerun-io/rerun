@@ -4,12 +4,14 @@ use egui::{Id, Ui};
 use re_log_types::{ApplicationId, StoreKind};
 use re_smart_channel::SmartChannelSource;
 use re_types_core::external::re_tuid;
-use re_ui::{icons, list_item, UiExt};
+use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::external::re_entity_db::EntityDb;
-use re_viewer_context::{DisplayMode, Item, SystemCommand, SystemCommandSender, ViewerContext};
+use re_viewer_context::{
+    DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
+};
 use std::collections::BTreeMap;
 
-pub fn local_ui(ui: &mut Ui, viewer_ctx: &ViewerContext, ctx: &Context) {
+pub fn local_ui(ui: &mut Ui, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>) {
     let datasets = sort_datasets(viewer_ctx);
 
     if !datasets.local_recordings.is_empty() {
@@ -23,7 +25,7 @@ pub fn local_ui(ui: &mut Ui, viewer_ctx: &ViewerContext, ctx: &Context) {
                 list_item::LabelContent::header("Local storage"),
                 |ui| {
                     for (id, entities) in datasets.local_recordings {
-                        local_dataset_ui(ui, viewer_ctx, &id, entities);
+                        local_dataset_ui(ui, viewer_ctx, &id, &entities);
                     }
                 },
             );
@@ -39,7 +41,7 @@ pub fn local_ui(ui: &mut Ui, viewer_ctx: &ViewerContext, ctx: &Context) {
     } else {
         item.show_hierarchical_with_children(ui, Id::new("example_datasets"), true, label, |ui| {
             for (id, entities) in datasets.example_recordings {
-                local_dataset_ui(ui, viewer_ctx, &id, entities);
+                local_dataset_ui(ui, viewer_ctx, &id, &entities);
             }
         })
         .item_response
@@ -56,7 +58,7 @@ fn local_dataset_ui(
     ui: &mut Ui,
     viewer_ctx: &ViewerContext<'_>,
     app_id: &ApplicationId,
-    entities: Vec<&EntityDb>,
+    entities: &[&EntityDb],
 ) {
     if ui
         .list_item()
@@ -112,19 +114,17 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
 
             let dataset_recordings = origin_recordings
                 // Currently a origin only has a single dataset, this should change soon
-                .entry(endpoint.dataset_id.clone())
+                .entry(endpoint.dataset_id)
                 .or_default();
 
             dataset_recordings.push(entity_db);
+        } else if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
+        {
+            let recordings = example_recordings.entry(app_id).or_default();
+            recordings.push(entity_db);
         } else {
-            if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
-            {
-                let recordings = example_recordings.entry(app_id).or_default();
-                recordings.push(entity_db);
-            } else {
-                let recordings = local_recordings.entry(app_id).or_default();
-                recordings.push(entity_db);
-            }
+            let recordings = local_recordings.entry(app_id).or_default();
+            recordings.push(entity_db);
         }
     }
 

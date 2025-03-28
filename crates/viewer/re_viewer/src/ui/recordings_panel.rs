@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
-
 use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
-use re_log_types::{ApplicationId, LogMsg, StoreKind};
+use re_log_types::{ApplicationId, LogMsg};
 use re_redap_browser::RedapServers;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
@@ -157,8 +155,8 @@ fn recording_list_ui(
         }
     }
 
-    if !local_recordings.is_empty() {
-        if ui
+    if !local_recordings.is_empty()
+        && ui
             .list_item()
             .header()
             .show_hierarchical_with_children(
@@ -180,14 +178,13 @@ fn recording_list_ui(
             )
             .item_response
             .clicked()
-        {
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-            ctx.command_sender()
-                .send_system(SystemCommand::SelectRedapServer {
-                    origin: re_uri::Origin::local_recordings_origin(),
-                });
-        }
+    {
+        ctx.command_sender()
+            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+        ctx.command_sender()
+            .send_system(SystemCommand::SelectRedapServer {
+                origin: re_uri::Origin::local_recordings_origin(),
+            });
     }
 
     // Always show welcome screen last, if at all:
@@ -229,7 +226,7 @@ fn recording_list_ui(
                 ctx.command_sender()
                     .send_system(SystemCommand::SelectRedapServer {
                         origin: re_uri::Origin::examples_origin(),
-                    })
+                    });
             } else {
                 ctx.command_sender()
                     .send_system(SystemCommand::ActivateApp(StoreHub::welcome_screen_app_id()));
@@ -257,11 +254,9 @@ impl EntryKind {
 
     fn select(&self, ctx: &ViewerContext<'_>) {
         match self {
-            Self::Remote(origin, dataset) => {
+            Self::Remote(_origin, dataset) => {
                 ctx.command_sender()
-                    .send_system(SystemCommand::SelectRedapEntry {
-                        entry_id: dataset.clone(),
-                    });
+                    .send_system(SystemCommand::SelectRedapEntry { entry_id: *dataset });
                 ctx.command_sender()
                     .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
             }

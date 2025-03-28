@@ -292,14 +292,12 @@ impl RedapServers {
         if self.selection.is_none() {
             if self.servers.is_empty() {
                 self.selection = Some(Selection::Server(re_uri::Origin::examples_origin()));
-            } else {
-                if let Some(entry) = self
-                    .servers
-                    .first_key_value()
-                    .and_then(|(_, server)| server.entries.first_dataset())
-                {
-                    self.selection = Some(Selection::Dataset(entry.id()));
-                }
+            } else if let Some(entry) = self
+                .servers
+                .first_key_value()
+                .and_then(|(_, server)| server.entries.first_dataset())
+            {
+                self.selection = Some(Selection::Dataset(entry.id()));
             }
         }
 
