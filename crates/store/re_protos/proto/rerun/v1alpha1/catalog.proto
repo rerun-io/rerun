@@ -139,7 +139,3 @@ enum SystemTableKind {
 message SystemTable {
   SystemTableKind kind = 1;
 }
-
-message LanceTable {
-  optional string dataset_url = 1;
-}

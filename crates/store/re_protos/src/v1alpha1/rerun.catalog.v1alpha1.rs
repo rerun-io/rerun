@@ -249,21 +249,6 @@ impl ::prost::Name for SystemTable {
         "/rerun.catalog.v1alpha1.SystemTable".into()
     }
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct LanceTable {
-    #[prost(string, optional, tag = "1")]
-    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
-}
-impl ::prost::Name for LanceTable {
-    const NAME: &'static str = "LanceTable";
-    const PACKAGE: &'static str = "rerun.catalog.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.catalog.v1alpha1.LanceTable".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.catalog.v1alpha1.LanceTable".into()
-    }
-}
 /// What type of entry. This has strong implication on which APIs are available for this entry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
