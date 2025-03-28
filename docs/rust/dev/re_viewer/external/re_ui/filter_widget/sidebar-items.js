@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_matching_text"],"struct":["FilterMatcher","FilterState","PathRanges"]};

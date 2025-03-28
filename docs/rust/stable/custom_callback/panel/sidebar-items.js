@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ObjectKind"],"fn":["box_message_ui","dynamic_control_ui","point_message_ui","position_ui"],"struct":["Control","ControlStates","ControlsView"]};

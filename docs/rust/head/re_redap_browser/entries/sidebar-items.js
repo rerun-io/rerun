@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EntryError"],"fn":["fetch_dataset_entries","fetch_partition_table"],"struct":["Dataset","Entries"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["frontend_service_client","frontend_service_server"],"struct":["FetchPartitionRequest","ListPartitionsRequest","RegisterPartitionsRequest","UnregisterPartitionsRequest"]};

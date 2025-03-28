@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Command","FileSinkError"],"fn":["spawn_and_stream"],"struct":["FileSink"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Boxes2DComponentData","Boxes2DVisualizer"]};
