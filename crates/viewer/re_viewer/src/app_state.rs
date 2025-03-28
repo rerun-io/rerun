@@ -511,10 +511,22 @@ impl AppState {
                                     .default_height(210.0)
                                     .max_height(ui.available_height() - min_height_each)
                                     .show_inside(ui, |ui| {
-                                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                        recordings_panel_ui(
+                                            &ctx,
+                                            rx,
+                                            ui,
+                                            welcome_screen_state,
+                                            redap_servers,
+                                        );
                                     });
                             } else {
-                                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                recordings_panel_ui(
+                                    &ctx,
+                                    rx,
+                                    ui,
+                                    welcome_screen_state,
+                                    redap_servers,
+                                );
                             }
 
                             ui.add_space(4.0);

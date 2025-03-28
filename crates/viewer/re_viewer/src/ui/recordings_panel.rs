@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
+use re_redap_browser::RedapServers;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
 use re_types_core::external::re_tuid;
@@ -20,6 +21,7 @@ pub fn recordings_panel_ui(
     rx: &ReceiveSet<LogMsg>,
     ui: &mut egui::Ui,
     welcome_screen_state: &WelcomeScreenState,
+    servers: &RedapServers,
 ) {
     ui.panel_content(|ui| {
         ui.panel_title_bar_with_buttons(
@@ -39,7 +41,7 @@ pub fn recordings_panel_ui(
         .show(ui, |ui| {
             ui.panel_content(|ui| {
                 re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                    recording_list_ui(ctx, ui, welcome_screen_state);
+                    recording_list_ui(ctx, ui, welcome_screen_state, servers);
 
                     // Show currently loading things after.
                     // They will likely end up here as recordings soon.
@@ -104,6 +106,7 @@ fn recording_list_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     welcome_screen_state: &WelcomeScreenState,
+    servers: &RedapServers,
 ) {
     let re_redap_browser::SortDatasetsResults {
         remote_recordings,
@@ -132,8 +135,9 @@ fn recording_list_ui(
                 |ui| {
                     for (dataset, entity_dbs) in dataset_recordings {
                         dataset_and_its_recordings_ui(
-                            ctx,
                             ui,
+                            ctx,
+                            servers,
                             &EntryKind::Remote(origin.clone(), dataset),
                             entity_dbs,
                         );
@@ -164,8 +168,9 @@ fn recording_list_ui(
                 |ui| {
                     for (app_id, entity_dbs) in local_recordings {
                         dataset_and_its_recordings_ui(
-                            ctx,
                             ui,
+                            ctx,
+                            servers,
                             &EntryKind::Local(app_id.clone()),
                             entity_dbs,
                         );
@@ -204,8 +209,9 @@ fn recording_list_ui(
                 |ui| {
                     for (app_id, entity_dbs) in example_recordings {
                         dataset_and_its_recordings_ui(
-                            ctx,
                             ui,
+                            ctx,
+                            servers,
                             &EntryKind::Local(app_id.clone()),
                             entity_dbs,
                         );
@@ -238,9 +244,12 @@ enum EntryKind {
 }
 
 impl EntryKind {
-    fn name(&self) -> String {
+    fn name(&self, servers: &RedapServers) -> String {
         match self {
-            Self::Remote(_, dataset) => dataset.short_string(),
+            Self::Remote(_, dataset) => servers
+                .find_entry(*dataset)
+                .map(|ds| ds.name().to_owned())
+                .unwrap_or_else(|| dataset.short_string()),
             Self::Local(app_id) => app_id.to_string(),
         }
     }
@@ -305,8 +314,9 @@ impl EntryKind {
 }
 
 fn dataset_and_its_recordings_ui(
-    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    servers: &RedapServers,
     kind: &EntryKind,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
@@ -317,8 +327,8 @@ fn dataset_and_its_recordings_ui(
         .is_some_and(|i| ctx.selection().contains_item(&i));
 
     let dataset_list_item = ui.list_item().selected(selected);
-    let dataset_list_item_content =
-        re_ui::list_item::LabelContent::new(kind.name()).with_icon_fn(|ui, rect, visuals| {
+    let dataset_list_item_content = re_ui::list_item::LabelContent::new(kind.name(servers))
+        .with_icon_fn(|ui, rect, visuals| {
             // Color icon based on whether this is the active dataset or not:
             let color = if kind.is_active(ctx) {
                 visuals.fg_stroke.color
