@@ -54,8 +54,14 @@ impl<T: Send> ReceiveSet<T> {
             // - don't point at the given `uri`
             SmartChannelSource::RrdHttpStream { url, .. }
             | SmartChannelSource::MessageProxy { url } => url != uri,
+            SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => endpoint.to_string() != uri,
             SmartChannelSource::RedapGrpcStream(endpoint) => endpoint.to_string() != uri,
-            _ => true,
+
+            SmartChannelSource::File(_)
+            | SmartChannelSource::Stdin
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::JsChannel { .. } => true,
         });
     }
 
