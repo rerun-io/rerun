@@ -687,6 +687,7 @@ class RecordingStream:
         connect: bool = True,
         memory_limit: str = "75%",
         hide_welcome_screen: bool = False,
+        detach_process: bool = True,
         default_blueprint: BlueprintLike | None = None,
     ) -> None:
         """
@@ -709,6 +710,8 @@ class RecordingStream:
             Example: `16GB` or `50%` (of system total).
         hide_welcome_screen:
             Hide the normal Rerun welcome screen.
+        detach_process:
+            Detach Rerun Viewer process from the application process.
         default_blueprint
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
@@ -724,6 +727,7 @@ class RecordingStream:
             connect=connect,
             memory_limit=memory_limit,
             hide_welcome_screen=hide_welcome_screen,
+            detach_process=detach_process,
             default_blueprint=default_blueprint,
             recording=self,
         )

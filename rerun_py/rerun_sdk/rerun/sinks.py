@@ -340,6 +340,7 @@ def spawn(
     connect: bool = True,
     memory_limit: str = "75%",
     hide_welcome_screen: bool = False,
+    detach_process: bool = True,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -363,6 +364,8 @@ def spawn(
         Example: `16GB` or `50%` (of system total).
     hide_welcome_screen:
         Hide the normal Rerun welcome screen.
+    detach_process:
+        Detach Rerun Viewer process from the application process.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -379,7 +382,9 @@ def spawn(
         logging.warning("Rerun is disabled - spawn() call ignored.")
         return
 
-    _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
+    _spawn_viewer(
+        port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen, detach_process=detach_process
+    )
 
     if connect:
         connect_grpc(

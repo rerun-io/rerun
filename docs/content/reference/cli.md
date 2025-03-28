@@ -141,6 +141,11 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--detach-process <DETACH_PROCESS>`
+> Detach Rerun Viewer process from the application process.
+>
+> [Default: `true`]
+
 * `--window-size <WINDOW_SIZE>`
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
 

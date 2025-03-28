@@ -132,6 +132,9 @@ typedef struct rr_spawn_options {
     /// Hide the normal Rerun welcome screen.
     bool hide_welcome_screen;
 
+    /// Detach Rerun Viewer process from the application process.
+    bool detach_process;
+
     /// Specifies the name of the Rerun executable.
     ///
     /// You can omit the `.exe` suffix on Windows.
