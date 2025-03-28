@@ -721,6 +721,11 @@ class RecordingStream:
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
 
+    def send_recording(self, recording: MemoryRecording, *, make_active: bool = True) -> None:
+        from .sinks import send_recording
+
+        send_recording(embedded_recording=recording, recording=self)
+
     def spawn(
         self,
         *,
