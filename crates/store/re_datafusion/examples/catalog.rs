@@ -24,7 +24,10 @@ async fn main() -> anyhow::Result<()> {
     println!("Datasets listed in the catalog:");
     df.clone().show().await?;
 
-    let datasets = df.select_columns(&["id", "name"])?.collect().await?;
+    let datasets = df
+        .select_columns(&["id", "name", "entry_kind"])?
+        .collect()
+        .await?;
 
     for dataset in datasets {
         let id_array = dataset
@@ -76,7 +79,13 @@ async fn main() -> anyhow::Result<()> {
 
                     let df = ctx.table("partition_list").await?;
 
-                    df.show().await?;
+                    // TODO(jleibs): This is a hack to work around the fact that the schema is not
+                    // Something is wrong with the schema of the empty table
+                    if df.clone().count().await? == 0 {
+                        println!("No partitions found for dataset: {name}");
+                    } else {
+                        df.show().await?;
+                    }
 
                     // Not yet implemented in manifest_registry.rs
                     // println!("Partitions index:");
