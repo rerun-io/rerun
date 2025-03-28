@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use re_protos::common::v1alpha1::ext::EntryId;
+use re_types_core::external::re_tuid;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
@@ -171,6 +172,12 @@ impl RedapServers {
         };
 
         let _ = self.command_sender.send(Command::SelectEntry(entry_id));
+    }
+
+    pub fn select_entry(&self, entry_id: re_tuid::Tuid) {
+        let _ = self
+            .command_sender
+            .send(Command::SelectEntry(EntryId { id: entry_id }));
     }
 
     pub fn should_show_example_ui(&self) -> bool {

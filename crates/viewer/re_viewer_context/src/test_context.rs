@@ -475,7 +475,7 @@ impl TestContext {
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
-                | SystemCommand::SelectRedapDataset { .. }
+                | SystemCommand::SelectRedapEntry { .. }
                 | SystemCommand::SelectRedapServer { .. }
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)

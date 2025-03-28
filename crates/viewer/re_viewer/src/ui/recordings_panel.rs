@@ -5,6 +5,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
+use re_types_core::external::re_tuid;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
     DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
@@ -133,7 +134,7 @@ fn recording_list_ui(
                         dataset_and_its_recordings_ui(
                             ctx,
                             ui,
-                            &DatasetKind::Remote(origin.clone(), dataset.clone()),
+                            &EntryKind::Remote(origin.clone(), dataset),
                             entity_dbs,
                         );
                     }
@@ -165,7 +166,7 @@ fn recording_list_ui(
                         dataset_and_its_recordings_ui(
                             ctx,
                             ui,
-                            &DatasetKind::Local(app_id.clone()),
+                            &EntryKind::Local(app_id.clone()),
                             entity_dbs,
                         );
                     }
@@ -205,7 +206,7 @@ fn recording_list_ui(
                         dataset_and_its_recordings_ui(
                             ctx,
                             ui,
-                            &DatasetKind::Local(app_id.clone()),
+                            &EntryKind::Local(app_id.clone()),
                             entity_dbs,
                         );
                     }
@@ -231,16 +232,16 @@ fn recording_list_ui(
 }
 
 #[derive(Clone, Hash)]
-enum DatasetKind {
-    Remote(re_uri::Origin, String),
+enum EntryKind {
+    Remote(re_uri::Origin, re_tuid::Tuid),
     Local(ApplicationId),
 }
 
-impl DatasetKind {
-    fn name(&self) -> &str {
+impl EntryKind {
+    fn name(&self) -> String {
         match self {
-            Self::Remote(_, dataset) => dataset,
-            Self::Local(app_id) => app_id.as_str(),
+            Self::Remote(_, dataset) => dataset.short_string(),
+            Self::Local(app_id) => app_id.to_string(),
         }
     }
 
@@ -248,9 +249,8 @@ impl DatasetKind {
         match self {
             Self::Remote(origin, dataset) => {
                 ctx.command_sender()
-                    .send_system(SystemCommand::SelectRedapDataset {
-                        origin: origin.clone(),
-                        dataset: dataset.clone(),
+                    .send_system(SystemCommand::SelectRedapEntry {
+                        entry_id: dataset.clone(),
                     });
                 ctx.command_sender()
                     .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
@@ -307,7 +307,7 @@ impl DatasetKind {
 fn dataset_and_its_recordings_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    kind: &DatasetKind,
+    kind: &EntryKind,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
     entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
@@ -362,7 +362,7 @@ fn dataset_and_its_recordings_ui(
         })
         .item_response;
 
-    if let DatasetKind::Local(app) = &kind {
+    if let EntryKind::Local(app) = &kind {
         item_response = item_response.on_hover_ui(|ui| {
             app.data_ui_recording(ctx, ui, UiLayout::Tooltip);
         });

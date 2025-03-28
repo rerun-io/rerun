@@ -3,6 +3,7 @@ use crate::servers::{Command, Selection};
 use egui::{Id, Ui};
 use re_log_types::{ApplicationId, StoreKind};
 use re_smart_channel::SmartChannelSource;
+use re_types_core::external::re_tuid;
 use re_ui::{icons, list_item, UiExt};
 use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{DisplayMode, Item, SystemCommand, SystemCommandSender, ViewerContext};
@@ -84,12 +85,12 @@ fn local_dataset_ui(
 
 pub struct SortDatasetsResults<'a> {
     // TODO(lucasmerlin): Replace String with DatasetId or whatever we come up with
-    pub remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<String, Vec<&'a EntityDb>>>,
+    pub remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<re_tuid::Tuid, Vec<&'a EntityDb>>>,
     pub example_recordings: BTreeMap<ApplicationId, Vec<&'a EntityDb>>,
     pub local_recordings: BTreeMap<ApplicationId, Vec<&'a EntityDb>>,
 }
 pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<'a> {
-    let mut remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<String, Vec<&EntityDb>>> =
+    let mut remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<re_tuid::Tuid, Vec<&EntityDb>>> =
         BTreeMap::new();
     let mut local_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
     let mut example_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
@@ -111,7 +112,7 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
 
             let dataset_recordings = origin_recordings
                 // Currently a origin only has a single dataset, this should change soon
-                .entry(endpoint.dataset_id.short_string())
+                .entry(endpoint.dataset_id.clone())
                 .or_default();
 
             dataset_recordings.push(entity_db);
