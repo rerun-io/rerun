@@ -235,7 +235,7 @@ impl RedapServers {
     pub fn server_panel_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>) {
         ui.panel_content(|ui| {
             ui.panel_title_bar_with_buttons(
-                "Servers",
+                "All data",
                 Some("These are the currently connected Redap servers."),
                 |ui| {
                     if ui

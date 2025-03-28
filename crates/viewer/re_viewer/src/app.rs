@@ -515,6 +515,10 @@ impl App {
             }
 
             SystemCommand::ActivateRecording(store_id) => {
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(
+                        DisplayMode::LocalRecordings,
+                    ));
                 store_hub.set_activate_recording(store_id);
             }
 
@@ -570,6 +574,10 @@ impl App {
             }
 
             SystemCommand::LoadDataSource(data_source) => {
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(
+                        DisplayMode::LocalRecordings,
+                    ));
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need

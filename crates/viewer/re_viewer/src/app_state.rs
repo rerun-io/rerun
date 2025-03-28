@@ -495,8 +495,6 @@ impl AppState {
                     // before drawing the blueprint panel.
                     ui.spacing_mut().item_spacing.y = 0.0;
 
-                    display_mode_toggle_ui(ui, display_mode);
-
                     match display_mode {
                         DisplayMode::LocalRecordings => {
                             let resizable = ctx.store_context.bundle.recordings().count() > 3;
@@ -731,42 +729,6 @@ fn handle_time_ctrl_callbacks(
     if let Some(time) = response.time_change {
         callbacks.on_time_update(time);
     }
-}
-
-fn display_mode_toggle_ui(ui: &mut Ui, display_mode: &mut DisplayMode) {
-    ui.allocate_ui_with_layout(
-        egui::vec2(
-            ui.available_width(),
-            re_ui::DesignTokens::title_bar_height(),
-        ),
-        egui::Layout::left_to_right(egui::Align::Center),
-        |ui| {
-            egui::Frame::new()
-                .inner_margin(re_ui::DesignTokens::panel_margin())
-                .show(ui, |ui| {
-                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.expansion = 0.0;
-                    ui.visuals_mut().widgets.inactive.expansion = 0.0;
-
-                    ui.visuals_mut().selection.bg_fill = ui.visuals_mut().widgets.inactive.bg_fill;
-                    ui.visuals_mut().selection.stroke = ui.visuals_mut().widgets.inactive.fg_stroke;
-                    ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-
-                    ui.visuals_mut().widgets.hovered.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.active.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.inactive.fg_stroke.color =
-                        ui.visuals().widgets.noninteractive.fg_stroke.color;
-
-                    ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
-                    ui.spacing_mut().item_spacing.x = 3.0;
-
-                    ui.selectable_value(display_mode, DisplayMode::LocalRecordings, "Local");
-                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Servers");
-                });
-        },
-    );
 }
 
 pub(crate) fn recording_config_entry<'cfgs>(
