@@ -23,14 +23,38 @@ namespace rerun::archetypes {
         ///
         /// If no `MediaType` can be guessed at the moment, the Rerun Viewer will try to guess one
         /// from the data at render-time. If it can't, rendering will fail with an error.
-        static Result<Asset3D> from_file(const std::filesystem::path& path);
+        /// \deprecated Use `from_file_path` instead.
+        [[deprecated("Use `from_file_path` instead")]] static Result<Asset3D> from_file(
+            const std::filesystem::path& path
+        );
+
+        /// Creates a new `Asset3D` from the file contents at `path`.
+        ///
+        /// The `MediaType` will be guessed from the file extension.
+        ///
+        /// If no `MediaType` can be guessed at the moment, the Rerun Viewer will try to guess one
+        /// from the data at render-time. If it can't, rendering will fail with an error.
+        static Result<Asset3D> from_file_path(const std::filesystem::path& path);
 
         /// Creates a new `Asset3D` from the given `bytes`.
         ///
         /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
-        static Asset3D from_bytes(
-            rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type = {}
+        /// \deprecated Use `from_file_contents` instead.
+        [[deprecated("Use `from_file_contents` instead")]] static Asset3D from_bytes(
+            rerun::Collection<uint8_t> bytes,
+            std::optional<rerun::components::MediaType> media_type = {}
+        ) {
+            return from_file_contents(bytes, media_type);
+        }
+
+        /// Creates a new `Asset3D` from the given `bytes`.
+        ///
+        /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
+        /// at render-time. If it can't, rendering will fail with an error.
+        static Asset3D from_file_contents(
+            rerun::Collection<uint8_t> bytes,
+            std::optional<rerun::components::MediaType> media_type = {}
         ) {
             Asset3D asset = Asset3D(std::move(bytes));
             // TODO(cmc): we could try and guess using magic bytes here, like rust does.
@@ -44,6 +68,10 @@ namespace rerun::archetypes {
 #endif
 
     Result<Asset3D> Asset3D::from_file(const std::filesystem::path& path) {
+        return from_file_path(path);
+    }
+
+    Result<Asset3D> Asset3D::from_file_path(const std::filesystem::path& path) {
         std::ifstream file(path, std::ios::binary);
         if (!file) {
             return Error(ErrorCode::FileOpenFailure, "Failed to open file: " + path.string());
@@ -56,7 +84,7 @@ namespace rerun::archetypes {
         std::vector<uint8_t> data(static_cast<size_t>(length));
         file.read(reinterpret_cast<char*>(data.data()), length);
 
-        return Asset3D::from_bytes(
+        return Asset3D::from_file_contents(
             Collection<uint8_t>::take_ownership(std::move(data)),
             rerun::components::MediaType::guess_from_path(path)
         );

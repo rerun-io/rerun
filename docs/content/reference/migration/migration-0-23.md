@@ -369,3 +369,11 @@ for t in range(int(tau * 2 * 100.0)):
 <!-- This is trivial enough across languages why I left it at a python only example -->
 
 The old types still work for the moment but will be removed in a future release.
+
+## Consistent constructor naming of `Asset3D` across C++ and Rust
+
+We've deprecated inconsistent constructors with following replacements:
+- 🦀 Rust: `from_file` -> `from_file_path`
+- 🌊 C++:
+    - `from_file` -> `from_file_path`
+    - `from_bytes` -> `from_file_contents`
