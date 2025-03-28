@@ -94,7 +94,12 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
     let mut local_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
     let mut example_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
 
-    for entity_db in viewer_ctx.store_context.bundle.entity_dbs() {
+    for entity_db in viewer_ctx
+        .store_context
+        .bundle
+        .entity_dbs()
+        .filter(|r| r.store_kind() == StoreKind::Recording)
+    {
         // We want to show all open applications, even if they have no recordings
         let Some(app_id) = entity_db.app_id().cloned() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
@@ -106,13 +111,11 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
 
             let dataset_recordings = origin_recordings
                 // Currently a origin only has a single dataset, this should change soon
-                .entry("default".to_owned())
+                .entry(endpoint.dataset_id.short_string())
                 .or_default();
 
-            if entity_db.store_kind() == StoreKind::Recording {
-                dataset_recordings.push(entity_db);
-            }
-        } else if entity_db.store_kind() == StoreKind::Recording {
+            dataset_recordings.push(entity_db);
+        } else {
             if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
             {
                 let recordings = example_recordings.entry(app_id).or_default();
