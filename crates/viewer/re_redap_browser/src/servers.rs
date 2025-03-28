@@ -174,6 +174,16 @@ impl RedapServers {
         let _ = self.command_sender.send(Command::SelectEntry(entry_id));
     }
 
+    pub fn find_entry(&self, entry_id: re_tuid::Tuid) -> Option<&Dataset> {
+        for server in self.servers.values() {
+            if let Some(dataset) = server.find_dataset(EntryId { id: entry_id }) {
+                return Some(dataset);
+            }
+        }
+
+        None
+    }
+
     pub fn select_entry(&self, entry_id: re_tuid::Tuid) {
         let _ = self
             .command_sender
