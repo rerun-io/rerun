@@ -234,19 +234,17 @@ impl TryFrom<&str> for RedapUri {
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        match segments.as_slice() {
-            ["recording", recording_id] => {
-                let time_range = http_url
-                    .query_pairs()
-                    .find(|(key, _)| key == TimeRange::QUERY_KEY)
-                    .map(|(_, value)| TimeRange::try_from(value.as_ref()));
+        let time_range = http_url
+            .query_pairs()
+            .find(|(key, _)| key == TimeRange::QUERY_KEY)
+            .map(|(_, value)| TimeRange::try_from(value.as_ref()));
 
-                Ok(Self::Recording(RecordingEndpoint::new(
-                    origin,
-                    (*recording_id).to_owned(),
-                    time_range.transpose()?,
-                )))
-            }
+        match segments.as_slice() {
+            ["recording", recording_id] => Ok(Self::Recording(RecordingEndpoint::new(
+                origin,
+                (*recording_id).to_owned(),
+                time_range.transpose()?,
+            ))),
 
             ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
 
@@ -266,6 +264,7 @@ impl TryFrom<&str> for RedapUri {
                     origin,
                     dataset_id,
                     partition_id,
+                    time_range.transpose()?,
                 )))
             }
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),

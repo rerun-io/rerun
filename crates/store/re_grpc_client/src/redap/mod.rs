@@ -204,7 +204,7 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
 pub async fn stream_partition_async(
     tx: re_smart_channel::Sender<LogMsg>,
     endpoint: re_uri::DatasetDataEndpoint,
-    _on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     re_log::debug!("Connecting to {}…", endpoint.origin);
@@ -246,7 +246,7 @@ pub async fn stream_partition_async(
 
     drop(client);
 
-    let store_id = StoreId::from_string(StoreKind::Recording, endpoint.partition_id.to_owned());
+    let store_id = StoreId::from_string(StoreKind::Recording, endpoint.partition_id.clone());
     let store_info = StoreInfo {
         application_id: dataset_name.into(),
         store_id: store_id.clone(),
@@ -255,16 +255,13 @@ pub async fn stream_partition_async(
         store_version: None,
     };
 
-    let store_id = store_info.store_id.clone();
-
-    //TODO: implement this
-    // if let Some(time_range) = endpoint.time_range {
-    //     on_cmd(Command::SetLoopSelection {
-    //         recording_id: StoreId::from_string(StoreKind::Recording, endpoint.recording_id),
-    //         timeline: time_range.timeline,
-    //         time_range: time_range.range,
-    //     });
-    // }
+    if let Some(time_range) = endpoint.time_range {
+        on_cmd(Command::SetLoopSelection {
+            recording_id: store_id.clone(),
+            timeline: time_range.timeline,
+            time_range: time_range.range,
+        });
+    }
 
     if tx
         .send(LogMsg::SetStoreInfo(SetStoreInfo {

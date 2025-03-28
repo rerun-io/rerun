@@ -1,21 +1,21 @@
-use crate::{Origin, RecordingEndpoint, RedapUri};
+use crate::{Origin, RedapUri, TimeRange};
 
 //TODO(ab): add `DatasetTableEndpoint`, the URI pointing at the "table view" of the dataset (aka. its partition table).
 
 /// URI pointing at the data underlying a dataset.
 ///
 /// Currently, the following format is supported:
-/// `<origin>/dataset/$DATASET_ID/data?partition_id=$PARTITION_ID`
+/// `<origin>/dataset/$DATASET_ID/data?partition_id=$PARTITION_ID&time_range=$TIME_RANGE`
 ///
-/// In the future, it will be extended to richer queries.
+/// `partition_id` is mandatory, and `time_range` is optional. In the future, it will be extended to
+/// richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct DatasetDataEndpoint {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
-    //TODO(ab): in the future, this will be a more general query type
     pub partition_id: String,
-    //TODO: add time range
+    pub time_range: Option<TimeRange>,
 }
 
 impl std::fmt::Display for DatasetDataEndpoint {
@@ -24,26 +24,39 @@ impl std::fmt::Display for DatasetDataEndpoint {
             f,
             "{}/dataset/{}?partition_id={}",
             self.origin, self.dataset_id, self.partition_id
-        )
+        )?;
+
+        if let Some(time_range) = &self.time_range {
+            write!(f, "&time_range={time_range}")?;
+        }
+
+        Ok(())
     }
 }
 
 impl DatasetDataEndpoint {
-    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, partition_id: String) -> Self {
+    pub fn new(
+        origin: Origin,
+        dataset_id: re_tuid::Tuid,
+        partition_id: String,
+        time_range: Option<TimeRange>,
+    ) -> Self {
         Self {
             origin,
             dataset_id,
             partition_id,
+            time_range,
         }
     }
 
     /// Returns a [`DatasetDataEndpoint`] without the optional query part.
     pub fn without_query(&self) -> std::borrow::Cow<'_, Self> {
         let mut cow = std::borrow::Cow::Borrowed(self);
-        //TODO
-        // if self.time_range.is_some() {
-        //     cow.to_mut().time_range = None;
-        // }
+
+        if self.time_range.is_some() {
+            cow.to_mut().time_range = None;
+        }
+
         cow
     }
 }
