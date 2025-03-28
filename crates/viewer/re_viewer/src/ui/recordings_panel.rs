@@ -61,6 +61,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
             SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
+            SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => format!("Loading {endpoint}…"),
             SmartChannelSource::RedapGrpcStream(endpoint) => format!("Loading {endpoint}…"),
 
             SmartChannelSource::RrdWebEventListener
@@ -273,10 +274,20 @@ impl DatasetKind {
                 .data_source
                 .as_ref()
                 .is_some_and(|source| match source {
+                    SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => {
+                        &endpoint.origin == origin // TODO(lucasmerlin): Also check for dataset
+                    }
                     SmartChannelSource::RedapGrpcStream(endpoint) => {
                         &endpoint.origin == origin // TODO(lucasmerlin): Also check for dataset
                     }
-                    _ => false,
+
+                    SmartChannelSource::File(_)
+                    | SmartChannelSource::RrdHttpStream { .. }
+                    | SmartChannelSource::RrdWebEventListener
+                    | SmartChannelSource::JsChannel { .. }
+                    | SmartChannelSource::Sdk
+                    | SmartChannelSource::Stdin
+                    | SmartChannelSource::MessageProxy { .. } => false,
                 }),
             Self::Local(app_id) => &ctx.store_context.app_id == app_id,
         }

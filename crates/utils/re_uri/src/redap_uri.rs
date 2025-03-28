@@ -1,6 +1,8 @@
+use std::str::FromStr as _;
+
 use re_log_types::{TimeCell, TimeInt};
 
-use crate::{CatalogEndpoint, Error, ProxyEndpoint, RecordingEndpoint};
+use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, ProxyEndpoint, RecordingEndpoint};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TimeRange {
@@ -189,7 +191,10 @@ impl std::fmt::Display for crate::Origin {
 #[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
 pub enum RedapUri {
     Recording(RecordingEndpoint),
+
     Catalog(CatalogEndpoint),
+
+    DatasetData(DatasetDataEndpoint),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
     Proxy(ProxyEndpoint),
@@ -200,6 +205,7 @@ impl std::fmt::Display for RedapUri {
         match self {
             Self::Recording(endpoint) => write!(f, "{endpoint}",),
             Self::Catalog(endpoint) => write!(f, "{endpoint}",),
+            Self::DatasetData(endpoints) => write!(f, "{endpoints}",),
             Self::Proxy(endpoint) => write!(f, "{endpoint}",),
         }
     }
@@ -239,8 +245,28 @@ impl TryFrom<&str> for RedapUri {
                 (*recording_id).to_owned(),
                 time_range.transpose()?,
             ))),
+
             ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
+
             ["catalog"] | [] => Ok(Self::Catalog(CatalogEndpoint::new(origin))),
+
+            ["dataset", dataset_id] => {
+                let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
+
+                let partition_id = http_url
+                    .query_pairs()
+                    .find(|(key, _)| key == "partition_id")
+                    .ok_or(Error::MissingPartitionId)?
+                    .1
+                    .into_owned();
+
+                Ok(Self::DatasetData(DatasetDataEndpoint::new(
+                    origin,
+                    dataset_id,
+                    partition_id,
+                    time_range.transpose()?,
+                )))
+            }
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
     }

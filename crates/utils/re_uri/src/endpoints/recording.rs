@@ -1,4 +1,4 @@
-use crate::{Origin, TimeRange};
+use crate::{Origin, RedapUri, TimeRange};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct RecordingEndpoint {
@@ -40,12 +40,15 @@ impl std::str::FromStr for RecordingEndpoint {
     type Err = crate::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match crate::RedapUri::from_str(s)? {
-            crate::RedapUri::Recording(endpoint) => Ok(endpoint),
-            crate::RedapUri::Catalog(endpoint) => {
+        match RedapUri::from_str(s)? {
+            RedapUri::Recording(endpoint) => Ok(endpoint),
+            RedapUri::Catalog(endpoint) => {
                 Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
             }
-            crate::RedapUri::Proxy(endpoint) => {
+            RedapUri::Proxy(endpoint) => {
+                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
+            }
+            RedapUri::DatasetData(endpoint) => {
                 Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
             }
         }
