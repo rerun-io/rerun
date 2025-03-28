@@ -8,7 +8,11 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
+use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
+use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
+use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::frontend::v1alpha1::FetchPartitionRequest;
 use re_protos::remote_store::v1alpha1::{
     storage_node_service_client::StorageNodeServiceClient, CatalogEntry, GetChunksRangeRequest,
 };
@@ -41,8 +45,8 @@ pub fn stream_from_redap(
     re_log::debug!("Loading {endpoint}…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
-        re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
+        re_smart_channel::SmartMessageSource::RedapGrpcStreamLegacy(endpoint.clone()),
+        re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy(endpoint.clone()),
     );
 
     spawn_future(async move {
@@ -197,6 +201,103 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
     )
 }
 
+pub async fn stream_partition_async(
+    tx: re_smart_channel::Sender<LogMsg>,
+    endpoint: re_uri::DatasetDataEndpoint,
+    _on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+) -> Result<(), StreamError> {
+    re_log::debug!("Connecting to {}…", endpoint.origin);
+    let mut client = client(endpoint.origin).await?;
+
+    re_log::debug!(
+        "Fetching catalog data for partition {} of dataset {}…",
+        endpoint.partition_id,
+        endpoint.dataset_id
+    );
+
+    let read_dataset_response: ReadDatasetEntryResponse = client
+        .read_dataset_entry(ReadDatasetEntryRequest {
+            id: Some(endpoint.dataset_id.into()),
+        })
+        .await?
+        .into_inner()
+        .try_into()?;
+
+    let dataset_name = read_dataset_response.dataset_entry.details.name;
+
+    let catalog_chunk_stream = client
+        //TODO(ab): we should have the ability to query for the specific time range of the query
+        .fetch_partition(FetchPartitionRequest {
+            dataset_id: Some(endpoint.dataset_id.into()),
+            partition_id: Some(PartitionId::new(endpoint.partition_id.clone()).into()),
+        })
+        .await?
+        .into_inner();
+
+    let mut chunk_stream = catalog_chunk_stream.map(|resp| {
+        resp.and_then(|r| {
+            r.chunk
+                .ok_or_else(|| tonic::Status::internal("missing chunk in FetchPartitionResponse"))?
+                .decode()
+                .map_err(|err| tonic::Status::internal(err.to_string()))
+        })
+    });
+
+    drop(client);
+
+    let store_id = StoreId::from_string(StoreKind::Recording, endpoint.partition_id.to_owned());
+    let store_info = StoreInfo {
+        application_id: dataset_name.into(),
+        store_id: store_id.clone(),
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    let store_id = store_info.store_id.clone();
+
+    //TODO: implement this
+    // if let Some(time_range) = endpoint.time_range {
+    //     on_cmd(Command::SetLoopSelection {
+    //         recording_id: StoreId::from_string(StoreKind::Recording, endpoint.recording_id),
+    //         timeline: time_range.timeline,
+    //         time_range: time_range.range,
+    //     });
+    // }
+
+    if tx
+        .send(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *re_chunk::RowId::new(),
+            info: store_info,
+        }))
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
+        return Ok(());
+    }
+
+    while let Some(result) = chunk_stream.next().await {
+        let batch = result?;
+        let chunk = Chunk::from_record_batch(&batch)?;
+
+        if tx
+            .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(());
+        }
+
+        if let Some(on_msg) = &on_msg {
+            on_msg();
+        }
+    }
+
+    Ok(())
+}
+
+//TODO(ab): to be removed along with the legacy API
 pub async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     endpoint: re_uri::RecordingEndpoint,

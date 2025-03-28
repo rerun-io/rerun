@@ -771,6 +771,7 @@ pub(crate) fn recording_config_entry<'cfgs>(
                 // We assume the `RrdHttpStream` is a done recording.
                 re_smart_channel::SmartChannelSource::File(_)
                 | re_smart_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
+                | re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy { .. }
                 | re_smart_channel::SmartChannelSource::RedapGrpcStream { .. }
                 | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 

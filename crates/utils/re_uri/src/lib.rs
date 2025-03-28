@@ -38,7 +38,10 @@ mod error;
 mod redap_uri;
 
 pub use self::{
-    endpoints::{catalog::CatalogEndpoint, proxy::ProxyEndpoint, recording::RecordingEndpoint},
+    endpoints::{
+        catalog::CatalogEndpoint, dataset::DatasetDataEndpoint, proxy::ProxyEndpoint,
+        recording::RecordingEndpoint,
+    },
     error::Error,
     redap_uri::{Origin, RedapUri, Scheme, TimeRange},
 };

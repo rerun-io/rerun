@@ -61,6 +61,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
             SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
+            SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => format!("Loading {endpoint}…"),
             SmartChannelSource::RedapGrpcStream(endpoint) => format!("Loading {endpoint}…"),
 
             SmartChannelSource::RrdWebEventListener
@@ -115,7 +116,7 @@ fn recording_list_ui(
         let Some(app_id) = entity_db.app_id().cloned() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
         };
-        if let Some(SmartChannelSource::RedapGrpcStream(endpoint)) = &entity_db.data_source {
+        if let Some(SmartChannelSource::RedapGrpcStreamLegacy(endpoint)) = &entity_db.data_source {
             let origin_recordings = remote_recordings
                 .entry(endpoint.origin.clone())
                 .or_default();
@@ -273,7 +274,7 @@ impl DatasetKind {
                 .data_source
                 .as_ref()
                 .is_some_and(|source| match source {
-                    SmartChannelSource::RedapGrpcStream(endpoint) => {
+                    SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => {
                         &endpoint.origin == origin // TODO(lucasmerlin): Also check for dataset
                     }
                     _ => false,
