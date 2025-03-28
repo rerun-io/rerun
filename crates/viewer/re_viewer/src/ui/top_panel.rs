@@ -4,8 +4,8 @@ use itertools::Itertools as _;
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::StoreContext;
+use re_ui::{icons, ContextExt as _, UICommand, UiExt as _};
+use re_viewer_context::{DisplayMode, StoreContext};
 
 use crate::{app_blueprint::AppBlueprint, App};
 
@@ -85,6 +85,13 @@ fn top_bar_ui(
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     app.rerun_menu_button_ui(frame.wgpu_render_state(), store_context, ui);
+
+    if app.state.display_mode != DisplayMode::LocalRecordings {
+        ui.add_space(12.0);
+        if ui.small_icon_button(&icons::ARROW_LEFT).clicked() {
+            app.state.display_mode = DisplayMode::LocalRecordings;
+        }
+    }
 
     ui.add_space(12.0);
     website_link_ui(ui);
