@@ -1,8 +1,9 @@
-use arrow::array::{StringArray, StructArray, UInt64Array};
+use arrow::array::{Int32Array, StringArray, StructArray, UInt64Array};
 use datafusion::{common::exec_datafusion_err, prelude::SessionContext};
 use itertools::multizip;
 use re_datafusion::DataFusionConnector;
 use re_log_types::external::re_tuid::Tuid;
+use re_protos::catalog::v1alpha1::EntryKind;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -16,9 +17,9 @@ async fn main() -> anyhow::Result<()> {
 
     let ctx = SessionContext::default();
 
-    let _ = ctx.register_table("redap_catalog", df_connector.get_all_datasets())?;
+    let _ = ctx.register_table("entries", df_connector.get_entry_list().await)?;
 
-    let df = ctx.table("redap_catalog").await?;
+    let df = ctx.table("entries").await?;
 
     println!("Datasets listed in the catalog:");
     df.clone().show().await?;
@@ -48,8 +49,17 @@ async fn main() -> anyhow::Result<()> {
             .downcast_ref::<StringArray>()
             .ok_or(exec_datafusion_err!("Unable to cast name to string"))?;
 
-        for time_inc_tuple in multizip((time_ns_array, inc_array, name_array)) {
-            if let (Some(time_ns), Some(inc), Some(name)) = time_inc_tuple {
+        let kind_array = dataset
+            .column(2)
+            .as_any()
+            .downcast_ref::<Int32Array>()
+            .ok_or(exec_datafusion_err!("Unable to cast entry type to u64"))?;
+
+        for time_inc_tuple in multizip((time_ns_array, inc_array, name_array, kind_array)) {
+            if let (Some(time_ns), Some(inc), Some(name), Some(kind)) = time_inc_tuple {
+                if kind != EntryKind::Dataset as i32 {
+                    continue;
+                }
                 let tuid = Tuid::from_nanos_and_inc(time_ns, inc);
 
                 let dataset_entry = df_connector.get_dataset_entry(tuid).await?;

@@ -12,7 +12,7 @@ impl PyTable {
     #[getter]
     fn datafusion_provider(self_: PyRef<'_, Self>, py: Python<'_>) -> PyDataFusionTable {
         let super_ = self_.as_super();
-        let mut connection = super_.client.borrow_mut(py).connection().clone();
+        let connection = super_.client.borrow_mut(py).connection().clone();
 
         let provider = wait_for_future(
             py,

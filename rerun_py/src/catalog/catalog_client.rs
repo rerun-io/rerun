@@ -1,12 +1,8 @@
-use pyo3::{pyclass, pymethods, Py, PyResult, Python};
+use pyo3::{exceptions::PyLookupError, pyclass, pymethods, FromPyObject, Py, PyResult, Python};
 
-use re_datafusion::catalog_find_entries::CatalogFindEntryProvider;
-use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
+use re_protos::catalog::v1alpha1::EntryFilter;
 
-use crate::{
-    catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId},
-    dataframe::PyDataFusionTable,
-};
+use crate::catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId};
 
 use super::table::PyTable;
 
@@ -110,9 +106,13 @@ impl PyCatalogClient {
 
     //TODO(#9360): `dataset_from_url()`
 
-    fn get_table(self_: Py<Self>, py: Python<'_>, id: Py<PyEntryId>) -> PyResult<Py<PyTable>> {
+    fn get_table(self_: Py<Self>, id: EntryIdLike, py: Python<'_>) -> PyResult<Py<PyTable>> {
         let mut connection = self_.borrow(py).connection.clone();
+
+        let id = id.resolve(&mut connection, py)?;
+
         let entry_id = id.borrow(py).id;
+
         let client = self_.clone_ref(py);
 
         let dataset_entry = connection.read_table(py, entry_id)?;
@@ -126,5 +126,41 @@ impl PyCatalogClient {
         let table = PyTable {};
 
         Py::new(py, (table, entry))
+    }
+}
+
+/// A type alias for a vector (vector search input data).
+#[derive(FromPyObject)]
+enum EntryIdLike {
+    Str(String),
+    Id(Py<PyEntryId>),
+}
+
+impl EntryIdLike {
+    fn resolve(self, connection: &mut ConnectionHandle, py: Python<'_>) -> PyResult<Py<PyEntryId>> {
+        match self {
+            EntryIdLike::Str(name) => {
+                let entry_details = connection.find_entries(
+                    py,
+                    EntryFilter {
+                        id: None,
+                        name: Some(name),
+                        entry_kind: None,
+                    },
+                )?;
+
+                if entry_details.is_empty() {
+                    return Err(PyLookupError::new_err("No entry found"));
+                }
+
+                Py::new(
+                    py,
+                    PyEntryId {
+                        id: entry_details[0].id,
+                    },
+                )
+            }
+            EntryIdLike::Id(id) => Ok(id),
+        }
     }
 }
