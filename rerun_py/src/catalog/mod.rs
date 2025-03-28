@@ -5,6 +5,7 @@ mod connection_handle;
 mod dataset;
 mod entry;
 mod errors;
+mod table;
 
 use pyo3::{prelude::*, Bound, PyResult};
 

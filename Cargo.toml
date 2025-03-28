@@ -68,6 +68,7 @@ re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.23.0-alph
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.23.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.23.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.23.0-alpha.1", default-features = false }
+re_datafusion = { path = "crates/store/re_datafusion", version = "=0.23.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.23.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.23.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.23.0-alpha.1", default-features = false }
@@ -196,6 +197,8 @@ convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
+datafusion = "45"
+datafusion-ffi = "45"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
@@ -244,7 +247,7 @@ notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.23"
-object_store = { version = "0.12.0" }
+object_store = { version = "0.11.0" }
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.3.0"
 parking_lot = "0.12"
