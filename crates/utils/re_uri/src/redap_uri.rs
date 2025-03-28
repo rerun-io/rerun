@@ -310,13 +310,15 @@ mod tests {
     }
 
     #[test]
-    fn test_recording_url_to_address() {
-        let url = "rerun://127.0.0.1:1234/recording/12345";
+    fn test_dataset_data_url_to_address() {
+        let url =
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
         let address: RedapUri = url.try_into().unwrap();
 
-        let RedapUri::Recording(RecordingEndpoint {
+        let RedapUri::DatasetData(DatasetDataEndpoint {
             origin,
-            recording_id,
+            dataset_id,
+            partition_id,
             time_range,
         }) = address
         else {
@@ -326,18 +328,23 @@ mod tests {
         assert_eq!(origin.scheme, Scheme::Rerun);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
-        assert_eq!(recording_id, "12345");
+        assert_eq!(
+            dataset_id,
+            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap(),
+        );
+        assert_eq!(partition_id, "pid");
         assert_eq!(time_range, None);
     }
 
     #[test]
-    fn test_recording_url_time_range_sequence_to_address() {
-        let url = "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@100..200";
+    fn test_dataset_data_url_time_range_sequence_to_address() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@100..200";
         let address: RedapUri = url.try_into().unwrap();
 
-        let RedapUri::Recording(RecordingEndpoint {
+        let RedapUri::DatasetData(DatasetDataEndpoint {
             origin,
-            recording_id,
+            dataset_id,
+            partition_id,
             time_range,
         }) = address
         else {
@@ -347,7 +354,11 @@ mod tests {
         assert_eq!(origin.scheme, Scheme::Rerun);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
-        assert_eq!(recording_id, "12345");
+        assert_eq!(
+            dataset_id,
+            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+        );
+        assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
             Some(TimeRange {
@@ -361,13 +372,14 @@ mod tests {
     }
 
     #[test]
-    fn test_recording_url_time_range_timepoint_to_address() {
-        let url = "rerun://127.0.0.1:1234/recording/12345?time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
+    fn test_dataset_data_url_time_range_timepoint_to_address() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
         let address: RedapUri = url.try_into().unwrap();
 
-        let RedapUri::Recording(RecordingEndpoint {
+        let RedapUri::DatasetData(DatasetDataEndpoint {
             origin,
-            recording_id,
+            dataset_id,
+            partition_id,
             time_range,
         }) = address
         else {
@@ -377,7 +389,11 @@ mod tests {
         assert_eq!(origin.scheme, Scheme::Rerun);
         assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
         assert_eq!(origin.port, 1234);
-        assert_eq!(recording_id, "12345");
+        assert_eq!(
+            dataset_id,
+            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+        );
+        assert_eq!(partition_id, "pid");
         assert_eq!(
             time_range,
             Some(TimeRange {
@@ -395,16 +411,17 @@ mod tests {
     }
 
     #[test]
-    fn test_recording_url_time_range_temporal() {
+    fn test_dataset_data_url_time_range_temporal() {
         for url in [
-            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@1.23s..72s",
-            "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@1230ms..1m12s",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1.23s..72s",
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
         ] {
             let address: RedapUri = url.try_into().unwrap();
 
-            let RedapUri::Recording(RecordingEndpoint {
+            let RedapUri::DatasetData(DatasetDataEndpoint {
                 origin,
-                recording_id,
+                dataset_id,
+                partition_id,
                 time_range,
             }) = address
             else {
@@ -414,7 +431,11 @@ mod tests {
             assert_eq!(origin.scheme, Scheme::Rerun);
             assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
             assert_eq!(origin.port, 1234);
-            assert_eq!(recording_id, "12345");
+            assert_eq!(
+                dataset_id,
+                re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+            );
+            assert_eq!(partition_id, "pid");
             assert_eq!(
                 time_range,
                 Some(TimeRange {
@@ -426,6 +447,13 @@ mod tests {
                 })
             );
         }
+    }
+
+    #[test]
+    fn test_dataset_data_url_missing_partition_id() {
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data";
+
+        assert!(RedapUri::try_from(url).is_err());
     }
 
     #[test]
