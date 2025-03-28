@@ -61,17 +61,17 @@ impl<T: GrpcStreamToTable> TableProvider for GrpcStreamProvider<T> {
     async fn scan(
         &self,
         _state: &dyn Session,
-        _projection: Option<&Vec<usize>>,
+        projection: Option<&Vec<usize>>,
         _filters: &[Expr],
         _limit: Option<usize>,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         StreamingTableExec::try_new(
-            Arc::clone(&self.schema),
+            self.schema.clone(),
             vec![Arc::new(GrpcStreamPartitionStream::new(
                 &self.schema,
                 self.client.clone(),
             ))],
-            None,
+            projection,
             Vec::default(),
             false,
             None,
