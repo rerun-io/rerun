@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
@@ -15,20 +16,25 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
-try:
-    from rerun_notebook import (
-        ContainerSelection as ContainerSelection,
-        EntitySelection as EntitySelection,
-        SelectionItem as SelectionItem,
-        ViewerCallbacks as ViewerCallbacks,
-        ViewSelection as ViewSelection,
-    )
-except ImportError:
-    # The notebook package is an optional dependency, so we ignore
-    # the import error. If the user is trying to use the notebook
-    # part of rerun, they'll be notified when they try to init a
-    # `Viewer` instance.
-    pass
+# The notebook package is an optional dependency, so first check
+# if it is installed before importing it. If the user is trying
+# to use the notebook part of rerun, they'll be notified when
+# that it's not installed when they try to init a `Viewer` instance.
+if importlib.util.find_spec("rerun_notebook") is not None:
+    try:
+        from rerun_notebook import (
+            ContainerSelection as ContainerSelection,
+            EntitySelection as EntitySelection,
+            SelectionItem as SelectionItem,
+            ViewerCallbacks as ViewerCallbacks,
+            ViewSelection as ViewSelection,
+        )
+    except ImportError:
+        logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
+    except FileNotFoundError:
+        logging.error(
+            "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
+        )
 
 from rerun import bindings
 

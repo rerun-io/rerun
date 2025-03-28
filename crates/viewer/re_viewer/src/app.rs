@@ -540,6 +540,7 @@ impl App {
                     SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
+                    | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                     | SmartChannelSource::RedapGrpcStream { .. }
                     | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::Stdin => true,
@@ -1142,7 +1143,8 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut endpoint)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStreamLegacy(mut endpoint)) =
+            entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1706,6 +1708,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                 | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener

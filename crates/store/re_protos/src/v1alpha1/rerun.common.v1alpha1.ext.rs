@@ -96,6 +96,38 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
     }
 }
 
+// --- PartitionId ---
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct PartitionId {
+    pub id: String,
+}
+
+impl PartitionId {
+    #[inline]
+    pub fn new(id: String) -> Self {
+        Self { id }
+    }
+}
+
+impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
+    fn from(value: PartitionId) -> Self {
+        Self { id: Some(value.id) }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::PartitionId) -> Result<Self, Self::Error> {
+        let id = value
+            .id
+            .ok_or(missing_field!(crate::common::v1alpha1::PartitionId, "id"))?;
+
+        Ok(Self { id })
+    }
+}
+
 // --- DatasetHandle ---
 
 #[derive(Debug, Clone)]
