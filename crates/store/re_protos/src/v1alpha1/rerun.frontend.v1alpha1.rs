@@ -83,6 +83,69 @@ impl ::prost::Name for FetchPartitionRequest {
         "/rerun.frontend.v1alpha1.FetchPartitionRequest".into()
     }
 }
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct GetTableSchemaRequest {
+    #[prost(message, optional, tag = "1")]
+    pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for GetTableSchemaRequest {
+    const NAME: &'static str = "GetTableSchemaRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.GetTableSchemaRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.GetTableSchemaRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetTableSchemaResponse {
+    #[prost(message, optional, tag = "1")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+}
+impl ::prost::Name for GetTableSchemaResponse {
+    const NAME: &'static str = "GetTableSchemaResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.GetTableSchemaResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.GetTableSchemaResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ScanTableRequest {
+    /// TODO(jleibs): support ScanParameters iff we can plumb them into Datafusion TableProvider
+    /// Otherwise, just wait for Arrow Flight
+    /// rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+    #[prost(message, optional, tag = "1")]
+    pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for ScanTableRequest {
+    const NAME: &'static str = "ScanTableRequest";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.ScanTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.ScanTableRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanTableResponse {
+    #[prost(message, optional, tag = "1")]
+    pub dataframe_part: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for ScanTableResponse {
+    const NAME: &'static str = "ScanTableResponse";
+    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.frontend.v1alpha1.ScanTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.frontend.v1alpha1.ScanTableResponse".into()
+    }
+}
 /// Generated client implementations.
 pub mod frontend_service_client {
     #![allow(
@@ -251,6 +314,29 @@ pub mod frontend_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn read_table_entry(
+            &mut self,
+            request: impl tonic::IntoRequest<
+                super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::ReadTableEntryResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/ReadTableEntry",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "ReadTableEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Register new partitions with the Dataset
         pub async fn register_partitions(
             &mut self,
@@ -351,6 +437,46 @@ pub mod frontend_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        pub async fn get_table_schema(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetTableSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetTableSchemaResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/GetTableSchema",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "GetTableSchema",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn scan_table(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ScanTableRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ScanTableResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.frontend.v1alpha1.FrontendService/ScanTable",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.frontend.v1alpha1.FrontendService",
+                "ScanTable",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -396,6 +522,13 @@ pub mod frontend_service_server {
             >,
         ) -> std::result::Result<
             tonic::Response<super::super::super::catalog::v1alpha1::ReadDatasetEntryResponse>,
+            tonic::Status,
+        >;
+        async fn read_table_entry(
+            &self,
+            request: tonic::Request<super::super::super::catalog::v1alpha1::ReadTableEntryRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::catalog::v1alpha1::ReadTableEntryResponse>,
             tonic::Status,
         >;
         /// Register new partitions with the Dataset
@@ -444,6 +577,19 @@ pub mod frontend_service_server {
             &self,
             request: tonic::Request<super::FetchPartitionRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchPartitionStream>, tonic::Status>;
+        async fn get_table_schema(
+            &self,
+            request: tonic::Request<super::GetTableSchemaRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetTableSchemaResponse>, tonic::Status>;
+        /// Server streaming response type for the ScanTable method.
+        type ScanTableStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::ScanTableResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        async fn scan_table(
+            &self,
+            request: tonic::Request<super::ScanTableRequest>,
+        ) -> std::result::Result<tonic::Response<Self::ScanTableStream>, tonic::Status>;
     }
     /// Redap's public API.
     #[derive(Debug)]
@@ -701,6 +847,52 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/rerun.frontend.v1alpha1.FrontendService/ReadTableEntry" => {
+                    #[allow(non_camel_case_types)]
+                    struct ReadTableEntrySvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::UnaryService<
+                            super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
+                        > for ReadTableEntrySvc<T>
+                    {
+                        type Response =
+                            super::super::super::catalog::v1alpha1::ReadTableEntryResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::super::super::catalog::v1alpha1::ReadTableEntryRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::read_table_entry(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ReadTableEntrySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/rerun.frontend.v1alpha1.FrontendService/RegisterPartitions" => {
                     #[allow(non_camel_case_types)]
                     struct RegisterPartitionsSvc<T: FrontendService>(pub Arc<T>);
@@ -858,6 +1050,92 @@ pub mod frontend_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = FetchPartitionSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.frontend.v1alpha1.FrontendService/GetTableSchema" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetTableSchemaSvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::UnaryService<super::GetTableSchemaRequest>
+                        for GetTableSchemaSvc<T>
+                    {
+                        type Response = super::GetTableSchemaResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetTableSchemaRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::get_table_schema(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetTableSchemaSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.frontend.v1alpha1.FrontendService/ScanTable" => {
+                    #[allow(non_camel_case_types)]
+                    struct ScanTableSvc<T: FrontendService>(pub Arc<T>);
+                    impl<T: FrontendService>
+                        tonic::server::ServerStreamingService<super::ScanTableRequest>
+                        for ScanTableSvc<T>
+                    {
+                        type Response = super::ScanTableResponse;
+                        type ResponseStream = T::ScanTableStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ScanTableRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as FrontendService>::scan_table(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ScanTableSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
