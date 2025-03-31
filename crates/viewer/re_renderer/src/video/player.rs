@@ -123,14 +123,14 @@ impl VideoPlayer {
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
-        time_since_video_start_in_seconds: f64,
+        time_since_video_start_in_secs: f64,
         video_data: &[u8],
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
-        if time_since_video_start_in_seconds < 0.0 {
+        if time_since_video_start_in_secs < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
         let presentation_timestamp =
-            Time::from_secs(time_since_video_start_in_seconds, self.data.timescale);
+            Time::from_secs(time_since_video_start_in_secs, self.data.timescale);
         let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();

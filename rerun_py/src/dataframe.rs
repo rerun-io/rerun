@@ -1,5 +1,6 @@
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![allow(deprecated)] // False positive due to macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::{
@@ -30,8 +31,6 @@ use re_log_encoding::VersionPolicy;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
-
-use crate::remote::PyRemoteRecording;
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -575,7 +574,8 @@ pub struct PyRecording {
 #[derive(Clone)]
 pub enum PyRecordingHandle {
     Local(std::sync::Arc<Py<PyRecording>>),
-    Remote(std::sync::Arc<Py<PyRemoteRecording>>),
+    // TODO(rerun-io/dataplatform#405): interface with remote data needs to be reimplemented
+    //Remote(std::sync::Arc<Py<PyRemoteRecording>>),
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -646,7 +646,7 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
+    fn schema(&self, py: Python<'_>) -> PySchema {
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -657,13 +657,10 @@ impl PyRecordingView {
 
                 let query_handle = engine.query(query_expression);
 
-                Ok(PySchema {
+                PySchema {
                     schema: query_handle.view_contents().clone(),
-                })
+                }
             }
-            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
-                "Schema is not implemented for remote recordings yet.",
-            )),
         }
     }
 
@@ -748,15 +745,6 @@ impl PyRecordingView {
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
                 Ok(PyArrowType(Box::new(reader)))
             }
-            PyRecordingHandle::Remote(recording) => {
-                let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
-                borrowed_client.exec_query(
-                    py,
-                    borrowed_recording.store_info.store_id.clone(),
-                    query_expression,
-                )
-            }
         }
     }
 
@@ -802,7 +790,7 @@ impl PyRecordingView {
             .transpose()
             .unwrap_or_else(|| {
                 Ok(self
-                    .schema(py)?
+                    .schema(py)
                     .schema
                     .components
                     .iter()
@@ -838,15 +826,6 @@ impl PyRecordingView {
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
 
                 Ok(PyArrowType(Box::new(reader)))
-            }
-            PyRecordingHandle::Remote(recording) => {
-                let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
-                borrowed_client.exec_query(
-                    py,
-                    borrowed_recording.store_info.store_id.clone(),
-                    query_expression,
-                )
             }
         }
     }
@@ -942,7 +921,7 @@ impl PyRecordingView {
     ///     A new view containing only the data within the specified range.
     ///
     ///     The original view will not be modified.
-    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
+    fn filter_range_secs(&self, start: f64, end: f64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
             // TODO(#9084): do we need this check? If so, how can we accomplish it?
             // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
@@ -960,8 +939,8 @@ impl PyRecordingView {
             }
         }
 
-        let start = re_log_types::Timestamp::from_seconds_since_epoch(start);
-        let end = re_log_types::Timestamp::from_seconds_since_epoch(end);
+        let start = re_log_types::Timestamp::from_secs_since_epoch(start);
+        let end = re_log_types::Timestamp::from_secs_since_epoch(end);
 
         let resolved = ResolvedTimeRange::new(start, end);
 
@@ -972,6 +951,12 @@ impl PyRecordingView {
             recording: self.recording.clone(),
             query_expression,
         })
+    }
+
+    /// DEPRECATED: Renamed to `filter_range_secs`.
+    #[deprecated(since = "0.23.0", note = "Renamed to `filter_range_secs`")]
+    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
+        self.filter_range_secs(start, end)
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -1012,8 +997,8 @@ impl PyRecordingView {
             }
         }
 
-        let start = re_log_types::Timestamp::from_ns_since_epoch(start);
-        let end = re_log_types::Timestamp::from_ns_since_epoch(end);
+        let start = re_log_types::Timestamp::from_nanos_since_epoch(start);
+        let end = re_log_types::Timestamp::from_nanos_since_epoch(end);
 
         let resolved = ResolvedTimeRange::new(start, end);
 

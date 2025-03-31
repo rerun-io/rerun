@@ -16,6 +16,7 @@ workspace = true
 
 [dependencies]
 re_log_types = { workspace = true, features = ["serde"] }
+re_tuid.workspace = true
 
 # External
 serde.workspace = true

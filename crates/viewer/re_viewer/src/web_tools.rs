@@ -133,7 +133,7 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(endpoint)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::redap::Command::SetLoopSelection {
                     recording_id,
@@ -145,7 +145,7 @@ pub fn url_to_receiver(
                     time_range,
                 }),
             });
-            Some(re_grpc_client::redap::stream_from_redap(
+            Some(re_grpc_client::redap::stream_dataset_from_redap(
                 endpoint,
                 on_cmd,
                 Some(ui_waker),

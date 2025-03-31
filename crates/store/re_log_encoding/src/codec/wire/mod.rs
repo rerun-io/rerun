@@ -9,7 +9,7 @@ mod tests {
     };
     use re_chunk::{Chunk, RowId};
     use re_log_types::{example_components::MyPoint, Timeline};
-    use re_protos::{common::v1alpha1::EncoderVersion, remote_store::v1alpha1::DataframePart};
+    use re_protos::common::v1alpha1::{DataframePart, EncoderVersion};
 
     fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();
@@ -39,7 +39,7 @@ mod tests {
         let data = vec![2, 3, 4];
         let dataframe_part = DataframePart {
             encoder_version: EncoderVersion::V0 as i32,
-            payload: data.clone(),
+            payload: Some(data.clone()),
         };
         let decoded = dataframe_part.decode();
 

@@ -49,7 +49,14 @@ namespace rerun::archetypes {
         /// Determines the presentation timestamps of all frames inside the video.
         ///
         /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-        Result<std::vector<std::chrono::nanoseconds>> read_frame_timestamps_ns() const;
+        Result<std::vector<std::chrono::nanoseconds>> read_frame_timestamps_nanos() const;
+
+        /// DEPRECATED: Use `read_frame_timestamps_nanos` instead.
+        [[deprecated("Renamed to `read_frame_timestamps_nanos`"
+        )]] Result<std::vector<std::chrono::nanoseconds>>
+            read_frame_timestamps_ns() const {
+            return read_frame_timestamps_nanos();
+        }
 
         // </CODEGEN_COPY_TO_HEADER>
 #endif
@@ -80,7 +87,7 @@ namespace rerun::archetypes {
         return reinterpret_cast<int64_t*>(frame_timestamps_ptr->data());
     }
 
-    Result<std::vector<std::chrono::nanoseconds>> AssetVideo::read_frame_timestamps_ns() const {
+    Result<std::vector<std::chrono::nanoseconds>> AssetVideo::read_frame_timestamps_nanos() const {
         static_assert(sizeof(int64_t) == sizeof(std::chrono::nanoseconds::rep));
 
         if (!blob.has_value()) {
@@ -109,7 +116,7 @@ namespace rerun::archetypes {
         std::vector<std::chrono::nanoseconds> frame_timestamps;
 
         rr_error status = {};
-        rr_video_asset_read_frame_timestamps_ns(
+        rr_video_asset_read_frame_timestamps_nanos(
             blob_array_data->data(),
             static_cast<uint64_t>(blob_array_data->size()),
             media_type_c,

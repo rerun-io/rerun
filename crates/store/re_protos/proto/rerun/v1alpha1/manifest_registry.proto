@@ -37,9 +37,6 @@ service ManifestRegistryService {
   // Fetch chunk manifest for a specific index
   rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 
-  // List indexes for the Dataset
-  rpc ListPartitionIndexes(ListPartitionIndexesRequest) returns (stream ListPartitionIndexesResponse) {}
-
   // Do a full text, vector or scalar search. Currently only an Indexed search
   // is supported, user must first call `CreatePartitionIndexes` for the relevant column.
   // TODO(zehiko) add support for "brute force" search.
@@ -418,4 +415,31 @@ message Query {
 
   // If specified, will perform a range query with the given parameters.
   QueryManifestRangeRelevantChunks range = 12;
+}
+
+// ----------------- Error handling -----------------
+
+// Application level error - used as `details` in the `google.rpc.Status` message
+message Error {
+  // error code
+  ErrorCode code = 1;
+  // unique identifier associated with the request (e.g. recording id, recording storage url)
+  string id = 2;
+  // human readable details about the error
+  string message = 3;
+}
+
+// Error codes for application level errors
+enum ErrorCode {
+  // unused
+  ERROR_CODE_UNSPECIFIED = 0;
+
+  // object store access error
+  ERROR_CODE_OBJECT_STORE_ERROR = 1;
+
+  // metadata database access error
+  ERROR_CODE_METADATA_DB_ERROR = 2;
+
+  // Encoding / decoding error
+  ERROR_CODE_CODEC_ERROR = 3;
 }
