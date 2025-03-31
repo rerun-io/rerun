@@ -20,12 +20,14 @@ pub struct DatasetDataEndpoint {
 
 impl std::fmt::Display for DatasetDataEndpoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}/dataset/{}?partition_id={}",
-            self.origin, self.dataset_id, self.partition_id
-        )?;
+        write!(f, "{}/dataset/{}", self.origin, self.dataset_id)?;
 
+        // query (for now, partition_id is the only supported one and is mandatory)
+        {
+            write!(f, "?partition_id={}", self.partition_id)?;
+        }
+
+        // time range
         if let Some(time_range) = &self.time_range {
             write!(f, "&time_range={time_range}")?;
         }
