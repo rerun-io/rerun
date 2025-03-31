@@ -7,7 +7,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for step in 0..64 {
         rec.set_time_sequence("step", step);
-        rec.log("scalars", &rerun::Scalars::single((step as f64 / 10.0).sin()))?;
+        rec.log(
+            "scalars",
+            &rerun::Scalars::single((step as f64 / 10.0).sin()),
+        )?;
     }
 
     Ok(())
