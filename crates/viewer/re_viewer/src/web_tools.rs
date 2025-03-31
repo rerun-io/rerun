@@ -194,6 +194,10 @@ pub fn url_to_receiver(
             }));
             Some(rx)
         }
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(url)) => {
+            re_log::warn_once!("Unsupported dataset data endpoint: {url}");
+            None
+        }
     }
 }
 
