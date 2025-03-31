@@ -1,8 +1,12 @@
 use pyo3::{pyclass, pymethods, Py, PyResult, Python};
 
-use re_protos::catalog::v1alpha1::EntryFilter;
+use re_datafusion::catalog_find_entries::CatalogFindEntryProvider;
+use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind};
 
-use crate::catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId};
+use crate::{
+    catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId},
+    dataframe::PyDataFusionTable,
+};
 
 /// A connection to a remote storage node.
 #[pyclass(name = "CatalogClient")]
@@ -58,6 +62,18 @@ impl PyCatalogClient {
                 )
             })
             .collect()
+    }
+
+    fn entries_table(&self) -> PyDataFusionTable {
+        let provider = CatalogFindEntryProvider::new(
+            self.connection.client(),
+            None,
+            None,
+            Some(EntryKind::Dataset),
+        )
+        .into_provider();
+
+        PyDataFusionTable { provider }
     }
 
     fn get_dataset(self_: Py<Self>, py: Python<'_>, id: Py<PyEntryId>) -> PyResult<Py<PyDataset>> {

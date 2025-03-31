@@ -170,6 +170,7 @@ Update instructions:
 | Crate           | Description                                                     |
 | --------------- | --------------------------------------------------------------- |
 | re_dataframe    | The Rerun public data APIs.                                     |
+| re_datafusion   | DataFusion interfaces to Rerun gRPC queries                     |
 | re_entity_db    | In-memory storage of Rerun entities                             |
 | re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
 | re_protos       | Rerun remote store gRPC API types                               |
