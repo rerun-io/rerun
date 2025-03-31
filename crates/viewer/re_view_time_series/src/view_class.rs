@@ -735,7 +735,7 @@ fn add_series_to_plot(
                 })
                 .collect::<Vec<_>>()
         } else {
-            // Note we still need to produce a series, so it shows up in the legend.
+            // TODO(emilk/egui_plot#92): Note we still need to produce a series, so it shows up in the legend.
             // As of writing, egui_plot gets confused if this is an empty series, so
             // we still add a single point (but don't have it influence the scalar range!)
             series
