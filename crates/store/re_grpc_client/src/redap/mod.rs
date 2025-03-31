@@ -8,7 +8,11 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
+use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
+use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
+use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::frontend::v1alpha1::FetchPartitionRequest;
 use re_protos::remote_store::v1alpha1::{
     storage_node_service_client::StorageNodeServiceClient, CatalogEntry, GetChunksRangeRequest,
 };
@@ -18,7 +22,7 @@ use re_protos::{
         CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
     },
 };
-use re_uri::{Origin, RecordingEndpoint};
+use re_uri::{DatasetDataEndpoint, Origin, RecordingEndpoint};
 
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
 
@@ -33,8 +37,35 @@ pub enum Command {
 /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_from_redap(
+pub fn stream_from_redap_legacy(
     endpoint: RecordingEndpoint,
+    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+) -> re_smart_channel::Receiver<LogMsg> {
+    re_log::debug!("Loading {endpoint}…");
+
+    let (tx, rx) = re_smart_channel::smart_channel(
+        re_smart_channel::SmartMessageSource::RedapGrpcStreamLegacy(endpoint.clone()),
+        re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy(endpoint.clone()),
+    );
+
+    spawn_future(async move {
+        if let Err(err) = stream_recording_async(tx, endpoint.clone(), on_cmd, on_msg).await {
+            re_log::error!(
+                "Error while streaming {endpoint}: {}",
+                re_error::format_ref(&err)
+            );
+        }
+    });
+
+    rx
+}
+
+/// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
+///
+/// `on_msg` can be used to wake up the UI thread on Wasm.
+pub fn stream_dataset_from_redap(
+    endpoint: DatasetDataEndpoint,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
@@ -46,7 +77,7 @@ pub fn stream_from_redap(
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_recording_async(tx, endpoint.clone(), on_cmd, on_msg).await {
+        if let Err(err) = stream_partition_async(tx, endpoint.clone(), on_cmd, on_msg).await {
             re_log::error!(
                 "Error while streaming {endpoint}: {}",
                 re_error::format_ref(&err)
@@ -197,6 +228,100 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
     )
 }
 
+pub async fn stream_partition_async(
+    tx: re_smart_channel::Sender<LogMsg>,
+    endpoint: re_uri::DatasetDataEndpoint,
+    on_cmd: Box<dyn Fn(Command) + Send + Sync>,
+    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+) -> Result<(), StreamError> {
+    re_log::debug!("Connecting to {}…", endpoint.origin);
+    let mut client = client(endpoint.origin).await?;
+
+    re_log::debug!(
+        "Fetching catalog data for partition {} of dataset {}…",
+        endpoint.partition_id,
+        endpoint.dataset_id
+    );
+
+    let read_dataset_response: ReadDatasetEntryResponse = client
+        .read_dataset_entry(ReadDatasetEntryRequest {
+            id: Some(endpoint.dataset_id.into()),
+        })
+        .await?
+        .into_inner()
+        .try_into()?;
+
+    let dataset_name = read_dataset_response.dataset_entry.details.name;
+
+    let catalog_chunk_stream = client
+        //TODO(rerun-io/dataplatform#474): filter chunks by time range
+        .fetch_partition(FetchPartitionRequest {
+            dataset_id: Some(endpoint.dataset_id.into()),
+            partition_id: Some(PartitionId::new(endpoint.partition_id.clone()).into()),
+        })
+        .await?
+        .into_inner();
+
+    let mut chunk_stream = catalog_chunk_stream.map(|resp| {
+        resp.and_then(|r| {
+            r.chunk
+                .ok_or_else(|| tonic::Status::internal("missing chunk in FetchPartitionResponse"))?
+                .decode()
+                .map_err(|err| tonic::Status::internal(err.to_string()))
+        })
+    });
+
+    drop(client);
+
+    let store_id = StoreId::from_string(StoreKind::Recording, endpoint.partition_id.clone());
+    let store_info = StoreInfo {
+        application_id: dataset_name.into(),
+        store_id: store_id.clone(),
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    if let Some(time_range) = endpoint.time_range {
+        on_cmd(Command::SetLoopSelection {
+            recording_id: store_id.clone(),
+            timeline: time_range.timeline,
+            time_range: time_range.range,
+        });
+    }
+
+    if tx
+        .send(LogMsg::SetStoreInfo(SetStoreInfo {
+            row_id: *re_chunk::RowId::new(),
+            info: store_info,
+        }))
+        .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
+        return Ok(());
+    }
+
+    while let Some(result) = chunk_stream.next().await {
+        let batch = result?;
+        let chunk = Chunk::from_record_batch(&batch)?;
+
+        if tx
+            .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(());
+        }
+
+        if let Some(on_msg) = &on_msg {
+            on_msg();
+        }
+    }
+
+    Ok(())
+}
+
+//TODO(ab): to be removed along with the legacy API
 pub async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     endpoint: re_uri::RecordingEndpoint,

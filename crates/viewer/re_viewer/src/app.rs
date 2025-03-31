@@ -536,6 +536,7 @@ impl App {
                     SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
+                    | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                     | SmartChannelSource::RedapGrpcStream { .. }
                     | SmartChannelSource::MessageProxy { .. }
                     | SmartChannelSource::Stdin => true,
@@ -1698,6 +1699,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RedapGrpcStreamLegacy { .. }
                 | SmartChannelSource::RedapGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
