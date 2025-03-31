@@ -206,6 +206,14 @@ impl TryFrom<crate::catalog::v1alpha1::TableEntry> for TableEntry {
     }
 }
 
+pub trait ProviderDetails {
+    fn as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
+
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
+    where
+        Self: Sized;
+}
+
 #[derive(Debug, Clone)]
 pub struct SystemTable {
     pub kind: crate::catalog::v1alpha1::SystemTableKind,
@@ -226,5 +234,17 @@ impl From<SystemTable> for crate::catalog::v1alpha1::SystemTable {
         Self {
             kind: value.kind as _,
         }
+    }
+}
+
+impl ProviderDetails for SystemTable {
+    fn as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
+        let as_proto: crate::catalog::v1alpha1::SystemTable = self.clone().into();
+        Ok(prost_types::Any::from_msg(&as_proto)?)
+    }
+
+    fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError> {
+        let as_proto = any.to_msg::<crate::catalog::v1alpha1::SystemTable>()?;
+        Ok(as_proto.try_into()?)
     }
 }
