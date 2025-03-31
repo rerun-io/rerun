@@ -1,5 +1,6 @@
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![allow(clippy::too_many_arguments)] // We used named arguments, so this is fine
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::io::IsTerminal as _;
@@ -201,7 +202,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// Create a new recording stream.
 #[allow(clippy::fn_params_excessive_bools)]
 #[allow(clippy::struct_excessive_bools)]
-#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
@@ -569,11 +569,12 @@ fn send_mem_sink_as_default_blueprint(
 
 /// Spawn a new viewer.
 #[pyfunction]
-#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![], extra_env = vec![]))]
+#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, detach_process = true, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![], extra_env = vec![]))]
 fn spawn(
     port: u16,
     memory_limit: String,
     hide_welcome_screen: bool,
+    detach_process: bool,
     executable_name: String,
     executable_path: Option<String>,
     extra_args: Vec<String>,
@@ -584,6 +585,7 @@ fn spawn(
         wait_for_bind: true,
         memory_limit,
         hide_welcome_screen,
+        detach_process,
         executable_name,
         executable_path,
         extra_args,
