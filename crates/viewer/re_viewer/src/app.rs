@@ -63,6 +63,7 @@ pub struct StartupOptions {
     pub hide_welcome_screen: bool,
 
     /// Detach Rerun Viewer process from the application process.
+    #[cfg(not(target_arch = "wasm32"))]
     pub detach_process: bool,
 
     /// Set the screen resolution in logical points.
@@ -131,6 +132,8 @@ impl Default for StartupOptions {
             screenshot_to_path_then_quit: None,
 
             hide_welcome_screen: false,
+
+            #[cfg(not(target_arch = "wasm32"))]
             detach_process: true,
 
             #[cfg(not(target_arch = "wasm32"))]
