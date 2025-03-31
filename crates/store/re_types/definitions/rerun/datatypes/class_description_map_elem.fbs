@@ -6,6 +6,7 @@ namespace rerun.datatypes;
 ///
 /// This is internal to [components.AnnotationContext].
 table ClassDescriptionMapElem (
+  "attr.docs.state": "unstable",
   "attr.python.aliases": "datatypes.ClassDescriptionLike",
   "attr.rust.derive": "Default, Eq, PartialEq"
 ) {

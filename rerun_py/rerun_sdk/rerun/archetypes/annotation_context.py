@@ -34,6 +34,8 @@ class AnnotationContext(Archetype):
 
     See also [`datatypes.ClassDescription`][rerun.datatypes.ClassDescription].
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Segmentation:

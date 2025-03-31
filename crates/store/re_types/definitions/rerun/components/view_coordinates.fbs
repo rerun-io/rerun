@@ -32,11 +32,12 @@ enum ViewDir: ubyte {
 ///  * Forward = 5
 ///  * Back = 6
 struct ViewCoordinates (
+  "attr.cpp.no_field_ctors",
+  "attr.docs.state": "unstable",
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
-  "attr.rust.repr": "transparent",
-  "attr.cpp.no_field_ctors"
+  "attr.rust.repr": "transparent"
 ) {
   /// The directions of the [x, y, z] axes.
   coordinates: rerun.datatypes.ViewCoordinates (order: 100);

@@ -31,6 +31,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+///
 /// ## Example
 ///
 /// ### View coordinates for adjusting the eye camera
