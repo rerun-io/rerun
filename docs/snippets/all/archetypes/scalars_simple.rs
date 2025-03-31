@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log the data on a timeline called "step".
     for step in 0..64 {
         rec.set_time_sequence("step", step);
-        rec.log("scalar", &rerun::Scalars::one((step as f64 / 10.0).sin()))?;
+        rec.log("scalar", &rerun::Scalars::single((step as f64 / 10.0).sin()))?;
     }
 
     Ok(())
