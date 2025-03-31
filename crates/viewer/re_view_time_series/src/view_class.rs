@@ -719,20 +719,31 @@ fn add_series_to_plot(
     *scalar_range.end_mut() = f64::NEG_INFINITY;
 
     for series in all_plot_series {
-        let points = series
-            .points
-            .iter()
-            .map(|p| {
-                if p.1 < scalar_range.start() {
-                    *scalar_range.start_mut() = p.1;
-                }
-                if p.1 > scalar_range.end() {
-                    *scalar_range.end_mut() = p.1;
-                }
+        let points = if series.visible {
+            series
+                .points
+                .iter()
+                .map(|p| {
+                    if p.1 < scalar_range.start() {
+                        *scalar_range.start_mut() = p.1;
+                    }
+                    if p.1 > scalar_range.end() {
+                        *scalar_range.end_mut() = p.1;
+                    }
 
-                [(p.0 - time_offset) as _, p.1]
-            })
-            .collect::<Vec<_>>();
+                    [(p.0 - time_offset) as _, p.1]
+                })
+                .collect::<Vec<_>>()
+        } else {
+            // TODO(emilk/egui_plot#92): Note we still need to produce a series, so it shows up in the legend.
+            // As of writing, egui_plot gets confused if this is an empty series, so
+            // we still add a single point (but don't have it influence the scalar range!)
+            series
+                .points
+                .first()
+                .map(|p| vec![[(p.0 - time_offset) as _, p.1]])
+                .unwrap_or_default()
+        };
 
         let color = series.color;
 
