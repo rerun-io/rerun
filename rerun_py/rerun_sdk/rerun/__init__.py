@@ -25,11 +25,9 @@ import rerun_bindings as bindings
 
 from . import (
     blueprint as blueprint,
-    catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
-    remote as remote,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,

@@ -32,8 +32,6 @@ use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
-use crate::remote::PyRemoteRecording;
-
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySchema>()?;
@@ -576,7 +574,8 @@ pub struct PyRecording {
 #[derive(Clone)]
 pub enum PyRecordingHandle {
     Local(std::sync::Arc<Py<PyRecording>>),
-    Remote(std::sync::Arc<Py<PyRemoteRecording>>),
+    // TODO(rerun-io/dataplatform#405): interface with remote data needs to be reimplemented
+    //Remote(std::sync::Arc<Py<PyRemoteRecording>>),
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -647,7 +646,7 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
+    fn schema(&self, py: Python<'_>) -> PySchema {
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -658,13 +657,10 @@ impl PyRecordingView {
 
                 let query_handle = engine.query(query_expression);
 
-                Ok(PySchema {
+                PySchema {
                     schema: query_handle.view_contents().clone(),
-                })
+                }
             }
-            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
-                "Schema is not implemented for remote recordings yet.",
-            )),
         }
     }
 
@@ -749,15 +745,6 @@ impl PyRecordingView {
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
                 Ok(PyArrowType(Box::new(reader)))
             }
-            PyRecordingHandle::Remote(recording) => {
-                let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
-                borrowed_client.exec_query(
-                    py,
-                    borrowed_recording.store_info.store_id.clone(),
-                    query_expression,
-                )
-            }
         }
     }
 
@@ -803,7 +790,7 @@ impl PyRecordingView {
             .transpose()
             .unwrap_or_else(|| {
                 Ok(self
-                    .schema(py)?
+                    .schema(py)
                     .schema
                     .components
                     .iter()
@@ -839,15 +826,6 @@ impl PyRecordingView {
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
 
                 Ok(PyArrowType(Box::new(reader)))
-            }
-            PyRecordingHandle::Remote(recording) => {
-                let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
-                borrowed_client.exec_query(
-                    py,
-                    borrowed_recording.store_info.store_id.clone(),
-                    query_expression,
-                )
             }
         }
     }

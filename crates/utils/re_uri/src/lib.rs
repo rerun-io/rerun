@@ -26,7 +26,7 @@
 //!     "rerun+http://localhost:51234/proxy",
 //!
 //!     // Links to recording on the dataplatform (optionally with timestamp).
-//!     "rerun://127.0.0.1:1234/recording/12345?time_range=timeline@10s..20s"
+//!     "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1.23s..72s",
 //! ] {
 //!     assert!(uri.parse::<re_uri::RedapUri>().is_ok());
 //! }
@@ -38,10 +38,7 @@ mod error;
 mod redap_uri;
 
 pub use self::{
-    endpoints::{
-        catalog::CatalogEndpoint, dataset::DatasetDataEndpoint, proxy::ProxyEndpoint,
-        recording::RecordingEndpoint,
-    },
+    endpoints::{catalog::CatalogEndpoint, dataset::DatasetDataEndpoint, proxy::ProxyEndpoint},
     error::Error,
     redap_uri::{Origin, RedapUri, Scheme, TimeRange},
 };

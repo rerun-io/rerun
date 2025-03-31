@@ -133,25 +133,6 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
-            let on_cmd = Box::new(move |cmd| match cmd {
-                re_grpc_client::redap::Command::SetLoopSelection {
-                    recording_id,
-                    timeline,
-                    time_range,
-                } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                    rec_id: recording_id,
-                    timeline,
-                    time_range,
-                }),
-            });
-            Some(re_grpc_client::redap::stream_from_redap_legacy(
-                endpoint,
-                on_cmd,
-                Some(ui_waker),
-            ))
-        }
-
         EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(endpoint)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::redap::Command::SetLoopSelection {

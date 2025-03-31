@@ -266,9 +266,6 @@ impl ItemCollection {
                     re_smart_channel::SmartChannelSource::JsChannel { .. } => None,
                     re_smart_channel::SmartChannelSource::Sdk => None,
                     re_smart_channel::SmartChannelSource::Stdin => None,
-                    re_smart_channel::SmartChannelSource::RedapGrpcStreamLegacy(endpoint) => {
-                        Some((ClipboardTextDesc::Url, endpoint.to_string()))
-                    }
                     re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
                         Some((ClipboardTextDesc::Url, endpoint.to_string()))
                     }

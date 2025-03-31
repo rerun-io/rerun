@@ -69,9 +69,6 @@ impl std::str::FromStr for DatasetDataEndpoint {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match RedapUri::from_str(s)? {
             RedapUri::DatasetData(endpoint) => Ok(endpoint),
-            RedapUri::Recording(endpoint) => {
-                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
-            }
             RedapUri::Catalog(endpoint) => {
                 Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
             }
