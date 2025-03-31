@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package rerun.common.v1alpha1;
 
+// TODO(cmc): aren't most of the definitions in here dead code?
+
 // supported encoder versions for encoding data
 // See `RerunData` and `RerunChunkData` for its usage
 enum EncoderVersion {
@@ -309,4 +311,15 @@ message ScanParametersOrderClause {
 // with a string, but we will probably revisit this.
 message PartitionId {
   optional string id = 1;
+}
+
+message ComponentDescriptor {
+  // Optional name of the `Archetype` associated with this data.
+  optional string archetype_name = 1;
+
+  // Optional name of the field within `Archetype` associated with this data.
+  optional string archetype_field_name = 2;
+
+  // Semantic name associated with this data.
+  optional string component_name = 3;
 }
