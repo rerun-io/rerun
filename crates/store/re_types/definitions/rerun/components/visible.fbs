@@ -2,7 +2,7 @@ namespace rerun.components;
 
 /// Whether the container, view, entity or instance is currently visible.
 struct Visible (
-    "attr.docs.unreleased", // this component got moved, links changed.
+    "attr.docs.state": "unreleased", // this component got moved, links changed.
     "attr.arrow.transparent",
     "attr.python.aliases": "bool",
     "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",

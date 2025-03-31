@@ -8,7 +8,9 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/series_points_style title="Point series" image="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png"
 table SeriesPoint (
-    "attr.rerun.deprecated": "Use `SeriesPoints` instead.",
+    "attr.docs.state": "deprecated",
+    "attr.docs.deprecated_since": "0.23.0",
+    "attr.docs.deprecated_notice": "Use `SeriesPoints` instead.",
     "attr.docs.category": "Plotting",
     "attr.docs.view_types": "TimeSeriesView"
 ) {

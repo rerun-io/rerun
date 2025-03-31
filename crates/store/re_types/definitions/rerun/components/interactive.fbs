@@ -4,7 +4,7 @@ namespace rerun.components;
 ///
 /// Non interactive components are still visible, but mouse interactions in the view are disabled.
 struct Interactive (
-    "attr.docs.unreleased",
+    "attr.docs.state": "unreleased",
     "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"

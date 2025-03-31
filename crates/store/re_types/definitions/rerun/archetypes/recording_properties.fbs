@@ -7,7 +7,7 @@ namespace rerun.archetypes;
 ///
 /// \example concepts/recording_properties !api title="Setting recording properties"
 table RecordingProperties (
-  "attr.docs.unreleased"
+  "attr.docs.state": "unreleased"
 ) {
   /// When the recording started.
   ///
