@@ -276,12 +276,26 @@ impl ViewClass for SpatialView2D {
 }
 
 #[derive(Default, Debug)]
-struct ImageCounts {
+struct NonNestedImageCounts {
     image: usize,
     encoded_image: usize,
     depth: usize,
     video: usize,
-    // Don't need segmentation image since we allow them to be stacked.
+    segmentation: usize,
+}
+
+impl NonNestedImageCounts {
+    fn has_any_images(&self) -> bool {
+        let Self {
+            image,
+            encoded_image,
+            depth,
+            video,
+            segmentation,
+        } = self;
+
+        *image > 0 || *encoded_image > 0 || *depth > 0 || *video > 0 || *segmentation > 0
+    }
 }
 
 // Find the shared image dimensions of every image-entity that is not
@@ -289,7 +303,7 @@ struct ImageCounts {
 fn has_single_shared_image_dimensionn(
     image_dimensions: &IntMap<EntityPath, MaxDimensions>,
     subtree: &EntityTree,
-    image_counts: &mut ImageCounts,
+    non_nested_image_counts: &mut NonNestedImageCounts,
 ) -> bool {
     let mut image_dimension = None;
 
@@ -306,11 +320,18 @@ fn has_single_shared_image_dimensionn(
                 image_dimension = Some(new_dimension);
             }
 
-            image_counts.image += dimensions.image_types.contains(ImageTypes::IMAGE) as usize;
-            image_counts.encoded_image +=
+            non_nested_image_counts.image +=
+                dimensions.image_types.contains(ImageTypes::IMAGE) as usize;
+            non_nested_image_counts.encoded_image +=
                 dimensions.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize;
-            image_counts.depth += dimensions.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
-            image_counts.video += dimensions.image_types.contains(ImageTypes::VIDEO) as usize;
+            non_nested_image_counts.depth +=
+                dimensions.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
+            non_nested_image_counts.video +=
+                dimensions.image_types.contains(ImageTypes::VIDEO) as usize;
+            non_nested_image_counts.segmentation += dimensions
+                .image_types
+                .contains(ImageTypes::SEGMENTATION_IMAGE)
+                as usize;
 
             // Ignore any nested images.
         } else {
@@ -318,7 +339,7 @@ fn has_single_shared_image_dimensionn(
         }
     }
 
-    true
+    image_dimension.is_some()
 }
 
 fn recommended_views_with_image_splits(
@@ -339,18 +360,23 @@ fn recommended_views_with_image_splits(
         return;
     };
 
-    let mut image_counts = ImageCounts::default();
+    let mut image_counts = NonNestedImageCounts::default();
 
     // Note that since this only finds entities with image dimensions, it naturally filters for `visualizable_entities`.
     let all_have_same_size =
         has_single_shared_image_dimensionn(image_dimensions, subtree, &mut image_counts);
+    if !image_counts.has_any_images() {
+        // This utility is all about finding views with *image* splits.
+        // If there's no images in this subtree, we're done.
+        return;
+    }
 
     // NOTE: we allow stacking segmentation images, since that can be quite useful sometimes.
-    let overlap = all_have_same_size
+    let has_desired_image_overlap = all_have_same_size
         && image_counts.encoded_image + image_counts.image + image_counts.video <= 1
         && image_counts.depth <= 1;
 
-    if overlap {
+    if has_desired_image_overlap {
         // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
         // This can be useful for comparing a segmentation image on top of an RGB image, for instance.
         recommended.push(RecommendedView::new_subtree(recommended_root.clone()));
