@@ -29,6 +29,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// this by logging both archetypes to the same path, or alternatively configuring
 /// the plot-specific archetypes through the blueprint.
 ///
+/// ⚠️ **Deprecated since 0.23.0**: Use `Scalars` instead.
+///
 /// ## Examples
 ///
 /// ### Update a scalar over time
@@ -83,7 +85,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default)]
-#[deprecated(note = "Use `Scalars` instead.")]
+#[deprecated(note = "since 0.23.0: Use `Scalars` instead.")]
 pub struct Scalar {
     /// The scalar value to log.
     pub scalar: Option<SerializedComponentBatch>,
