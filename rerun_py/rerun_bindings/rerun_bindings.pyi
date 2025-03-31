@@ -1,6 +1,6 @@
 import os
 from collections.abc import Iterator, Sequence
-
+from enum import Enum
 from typing import Any, Callable, Optional
 
 import pyarrow as pa
@@ -10,9 +10,6 @@ from .types import (
     AnyComponentColumn,
     ComponentLike,
     IndexValuesLike,
-    TableLike,
-    VectorDistanceMetricLike,
-    VectorLike,
     ViewContentsLike,
 )
 
@@ -558,8 +555,6 @@ def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
         The loaded archive.
 
     """
-
-
 
 # AI generated stubs for `PyRecordingStream` related class and functions
 # TODO(#9187): this will be entirely replaced with `RecordingStream` is itself written in Rust

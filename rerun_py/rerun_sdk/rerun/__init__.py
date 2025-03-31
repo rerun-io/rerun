@@ -28,7 +28,6 @@ from . import (
     dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
-    remote as remote,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
