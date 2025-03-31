@@ -62,9 +62,13 @@ impl PyCatalogClient {
             .collect()
     }
 
-    fn get_dataset(self_: Py<Self>, py: Python<'_>, id: Py<PyEntryId>) -> PyResult<Py<PyDataset>> {
+    fn get_dataset(self_: Py<Self>, id: EntryIdLike, py: Python<'_>) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow(py).connection.clone();
+
+        let id = id.resolve(&mut connection, py)?;
+
         let entry_id = id.borrow(py).id;
+
         let client = self_.clone_ref(py);
 
         let dataset_entry = connection.read_dataset(py, entry_id)?;
