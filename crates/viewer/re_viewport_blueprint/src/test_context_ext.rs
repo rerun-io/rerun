@@ -76,7 +76,7 @@ impl TestContextExt for TestContext {
                                 .class(class_identifier)
                                 .unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"))
                                 .determine_visualizable_entities(
-                                    &ctx.maybe_visualizable_entities_per_visualizer,
+                                    ctx.maybe_visualizable_entities_per_visualizer,
                                     ctx.recording(),
                                     &ctx.view_class_registry()
                                         .new_visualizer_collection(class_identifier),
@@ -97,7 +97,7 @@ impl TestContextExt for TestContext {
                             let resolver = DataQueryPropertyResolver::new(
                                 view_blueprint,
                                 ctx.view_class_registry(),
-                                &ctx.maybe_visualizable_entities_per_visualizer,
+                                ctx.maybe_visualizable_entities_per_visualizer,
                                 &visualizable_entities,
                                 &indicated_entities_per_visualizer,
                             );
