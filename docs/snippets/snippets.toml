@@ -99,7 +99,7 @@ features = [
   "cpp",
   "rust",
 ]
-"concepts/send_recording" = [ # No output
+"concepts/send_recording" = [ # Not implemented for C++
   "cpp",
 ]
 "concepts/static/log_static" = [ # pseudo-code

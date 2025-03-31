@@ -1345,24 +1345,15 @@ fn send_blueprint(
     }
 }
 
-/// Send a recording to the given recording stream.
-///
-/// If the `embedded_recording` contains store info, it will be copied to the
-/// destination before sending the recording chunks.
+/// Send all chunks from a `Recording`` to the given recording stream.
 #[pyfunction]
-#[pyo3(signature = (embedded_recording, recording = None))]
-fn send_recording(embedded_recording: &PyRecording, recording: Option<&PyRecordingStream>) {
+#[pyo3(signature = (rrd, recording = None))]
+fn send_recording(rrd: &PyRecording, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
 
-    let store = embedded_recording.store.read();
-    if let Some(info) = store.info().cloned() {
-        recording.record_msg(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: Tuid::new(),
-            info,
-        }));
-    }
+    let store = rrd.store.read();
 
     for chunk in store.iter_chunks() {
         recording.send_chunk((**chunk).clone());
