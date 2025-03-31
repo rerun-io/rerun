@@ -207,7 +207,7 @@ impl TryFrom<crate::catalog::v1alpha1::TableEntry> for TableEntry {
 }
 
 pub trait ProviderDetails {
-    fn as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError>;
 
     fn try_from_any(any: &prost_types::Any) -> Result<Self, TypeConversionError>
     where
@@ -238,7 +238,7 @@ impl From<SystemTable> for crate::catalog::v1alpha1::SystemTable {
 }
 
 impl ProviderDetails for SystemTable {
-    fn as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
+    fn try_as_any(&self) -> Result<prost_types::Any, TypeConversionError> {
         let as_proto: crate::catalog::v1alpha1::SystemTable = self.clone().into();
         Ok(prost_types::Any::from_msg(&as_proto)?)
     }
