@@ -228,8 +228,8 @@ pub struct ComponentReflection {
     /// Markdown docstring for the component.
     pub docstring_md: &'static str,
 
-    /// If deprecated, this is the deprecation message.
-    pub deprecated_notice: Option<&'static str>,
+    /// If deprecated, this explains since when, and what to use instead.
+    pub deprecation_summary: Option<&'static str>,
 
     /// Custom placeholder value, used when not fallback was provided.
     ///
