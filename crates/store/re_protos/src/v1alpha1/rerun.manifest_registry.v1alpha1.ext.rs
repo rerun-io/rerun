@@ -76,4 +76,4 @@ impl TryFrom<RecordBatch> for CreatePartitionManifestsResponse {
     }
 }
 
-// TODO(cmc): the other way around would be nice too, but same problem.
+// TODO(#9430): the other way around would be nice too, but same problem.
