@@ -97,7 +97,9 @@ Update the change log. It should include:
   - Editorialize the changelog if necessary
   - Make sure the changelog includes instructions for handling any breaking changes
 
-Remove the speculative link markers and the `attr.docs.unreleased` attributes in the .fbs files.
+Remove the speculative link markers (`?speculative-link`).
+
+Find all `"attr.docs.state": "unreleased"` in `.fbs` files and change it to either "experimental", "unstable", or "stable". Run codegen.
 
 Once you're done, commit and push onto the release branch.
 

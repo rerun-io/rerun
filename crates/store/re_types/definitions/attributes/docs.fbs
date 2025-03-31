@@ -4,6 +4,7 @@ namespace docs.attributes;
 ///
 /// Must have one of the following values:
 /// - `unreleased`
+/// - `experimental`
 /// - `unstable`
 /// - `stable`
 /// - `deprecated`
