@@ -19,7 +19,7 @@ ViewSpawnHeuristics {
             query_filter: EntityPathFilter {
                 rules: {
                     EntityPathRule(
-                        "$origin",
+                        "$origin/**",
                     ): Include,
                 },
             },
