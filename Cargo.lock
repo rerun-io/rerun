@@ -6202,10 +6202,7 @@ dependencies = [
 name = "re_grpc_client"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
- "arrow",
  "async-stream",
- "futures",
- "re_arrow_util",
  "re_chunk",
  "re_error",
  "re_log",

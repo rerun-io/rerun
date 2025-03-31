@@ -1,3 +1,6 @@
+// TODO(rerun-io/dataplatform#405), TODO(rerun-io/dataplatform#400): remove this (now disabled) file
+// when the API migration is completed.
+
 #![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
@@ -46,8 +49,6 @@ use crate::{
     },
     utils::{get_tokio_runtime, wait_for_future},
 };
-
-//TODO: should i remove this file?
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

@@ -574,7 +574,7 @@ pub struct PyRecording {
 #[derive(Clone)]
 pub enum PyRecordingHandle {
     Local(std::sync::Arc<Py<PyRecording>>),
-    //TODO(ab): add remote support back
+    // TODO(rerun-io/dataplatform#405): interface with remote data needs to be reimplemented
     //Remote(std::sync::Arc<Py<PyRemoteRecording>>),
 }
 
@@ -660,10 +660,7 @@ impl PyRecordingView {
                 Ok(PySchema {
                     schema: query_handle.view_contents().clone(),
                 })
-            } //TODO
-              // PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
-              //     "Schema is not implemented for remote recordings yet.",
-              // )),
+            }
         }
     }
 
@@ -747,16 +744,7 @@ impl PyRecordingView {
                 let reader =
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
                 Ok(PyArrowType(Box::new(reader)))
-            } //TODO
-              // PyRecordingHandle::Remote(recording) => {
-              //     let borrowed_recording = recording.borrow(py);
-              //     let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
-              //     borrowed_client.exec_query(
-              //         py,
-              //         borrowed_recording.store_info.store_id.clone(),
-              //         query_expression,
-              //     )
-              // }
+            }
         }
     }
 
@@ -838,16 +826,7 @@ impl PyRecordingView {
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
 
                 Ok(PyArrowType(Box::new(reader)))
-            } //TODO
-              // PyRecordingHandle::Remote(recording) => {
-              //     let borrowed_recording = recording.borrow(py);
-              //     let mut borrowed_client = borrowed_recording.client.try_borrow_mut(py)?;
-              //     borrowed_client.exec_query(
-              //         py,
-              //         borrowed_recording.store_info.store_id.clone(),
-              //         query_expression,
-              //     )
-              // }
+            }
         }
     }
 
