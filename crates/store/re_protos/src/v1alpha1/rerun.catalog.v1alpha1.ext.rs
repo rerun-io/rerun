@@ -113,6 +113,31 @@ impl From<DatasetEntry> for crate::catalog::v1alpha1::DatasetEntry {
 // --- ReadDatasetEntryResponse ---
 
 #[derive(Debug, Clone)]
+pub struct CreateDatasetEntryResponse {
+    pub dataset: DatasetEntry,
+}
+
+impl TryFrom<crate::catalog::v1alpha1::CreateDatasetEntryResponse> for CreateDatasetEntryResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::CreateDatasetEntryResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            dataset: value
+                .dataset
+                .ok_or(missing_field!(
+                    crate::catalog::v1alpha1::CreateDatasetEntryResponse,
+                    "dataset"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+// --- ReadDatasetEntryResponse ---
+
+#[derive(Debug, Clone)]
 pub struct ReadDatasetEntryResponse {
     pub dataset_entry: DatasetEntry,
 }
