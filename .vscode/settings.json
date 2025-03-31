@@ -46,7 +46,7 @@
     "prettier.requireConfig": true,
     "prettier.configPath": ".prettierrc.toml",
     "[proto3]": {
-        "editor.defaultFormatter": "zxh404.vscode-proto3"
+        "editor.defaultFormatter": "bufbuild.vscode-buf"
     },
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"
@@ -62,5 +62,5 @@
     },
     "[yaml]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
-    }
+    },
 }

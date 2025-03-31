@@ -28,7 +28,7 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
 
 // --- EntryId ---
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct EntryId {
     pub id: re_tuid::Tuid,
 }

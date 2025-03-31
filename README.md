@@ -87,11 +87,12 @@ There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
 Some shortcomings:
-* [Multi-million point clouds are slow](https://github.com/rerun-io/rerun/issues/1136)
 * [The viewer slows down when there are too many entities](https://github.com/rerun-io/rerun/issues/7115)
+* [We don't support transparency yet](https://github.com/rerun-io/rerun/issues/1611)
 * The data you want to visualize must fit in RAM
   - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
   - We plan on having a disk-based data store some time in the future.
+* [Multi-million point clouds can be slow](https://github.com/rerun-io/rerun/issues/1136)
 
 
 ## What is Rerun for?

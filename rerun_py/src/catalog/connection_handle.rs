@@ -1,16 +1,16 @@
 //! Client connection handle which ch
 
-use pyo3::exceptions::PyConnectionError;
-use pyo3::Python;
-use pyo3::{create_exception, exceptions::PyRuntimeError, PyResult};
+use pyo3::{
+    create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyResult, Python,
+};
 
-use re_grpc_client::redap::catalog_client;
+use re_grpc_client::redap::client;
 use re_protos::catalog::v1alpha1::{
-    catalog_service_client::CatalogServiceClient,
     ext::{DatasetEntry, EntryDetails},
     CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
 };
 use re_protos::common::v1alpha1::ext::EntryId;
+use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -24,12 +24,12 @@ pub struct ConnectionHandle {
     origin: re_uri::Origin,
 
     /// The actual tonic connection.
-    client: CatalogServiceClient<tonic::transport::Channel>,
+    client: FrontendServiceClient<tonic::transport::Channel>,
 }
 
 impl ConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, catalog_client(origin.clone())).map_err(to_py_err)?;
+        let client = wait_for_future(py, client(origin.clone())).map_err(to_py_err)?;
 
         Ok(Self { origin, client })
     }

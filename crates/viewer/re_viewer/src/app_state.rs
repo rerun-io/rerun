@@ -661,10 +661,14 @@ fn move_time(
         false
     };
 
+    let should_diff_time_ctrl = ctx.has_active_recording();
     let recording_time_ctrl_response = ctx.rec_cfg.time_ctrl.write().update(
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
+        // The state diffs are used to trigger callbacks if they are configured.
+        // Unless we have a real recording open, we should not actually trigger any callbacks.
+        should_diff_time_ctrl,
     );
 
     handle_time_ctrl_callbacks(callbacks, &recording_time_ctrl_response);
@@ -672,6 +676,7 @@ fn move_time(
     let recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
 
     let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {
+        let should_diff_time_ctrl = false; /* we don't need state diffing here */
         ctx.blueprint_cfg
             .time_ctrl
             .write()
@@ -679,6 +684,7 @@ fn move_time(
                 ctx.store_context.blueprint.times_per_timeline(),
                 dt,
                 more_data_is_coming,
+                should_diff_time_ctrl,
             )
             .needs_repaint
     } else {
