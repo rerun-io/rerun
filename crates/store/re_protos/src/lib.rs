@@ -135,6 +135,9 @@ pub enum TypeConversionError {
     #[error("failed to encode: {0}")]
     EncodeError(#[from] prost::EncodeError),
 
+    #[error("failed to convert arrow data: {0}")]
+    ArrowError(#[from] arrow::error::ArrowError),
+
     #[error("{0}")]
     UnknownEnumValue(#[from] prost::UnknownEnumValue),
 }
