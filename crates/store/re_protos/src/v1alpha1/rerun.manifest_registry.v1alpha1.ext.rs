@@ -53,7 +53,7 @@ impl CreatePartitionManifestsResponse {
     }
 }
 
-// TODO(cmc): I'd love if I could do this, but this creates a nasty circular dep with `re_log_encoding`.
+// TODO(#9430): I'd love if I could do this, but this creates a nasty circular dep with `re_log_encoding`.
 #[cfg(all(unix, windows))] // always statically false
 impl TryFrom<RecordBatch> for CreatePartitionManifestsResponse {
     type Error = tonic::Status;
