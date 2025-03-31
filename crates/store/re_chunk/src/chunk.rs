@@ -1040,7 +1040,7 @@ impl TimeColumn {
 
     /// Creates a new [`TimeColumn`] of duration type, in seconds.
     #[deprecated = "Use `TimeColumn::new_duration_secs` or `new_timestamp_secs_since_epoch` instead"]
-    pub fn new_secs(
+    pub fn new_seconds(
         name: impl Into<re_log_types::TimelineName>,
         seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
