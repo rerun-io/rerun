@@ -400,14 +400,14 @@ def send_blueprint(
     )
 
 
-def send_recording(embedded_recording: Recording, recording: RecordingStream | None = None) -> None:
+def send_recording(rrd: Recording, recording: RecordingStream | None = None) -> None:
     """
-    Send a recording from a `Recording` and send it to the `RecordingStream`.
+    Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
 
     Parameters
     ----------
-    embedded_recording:
-        A recording loaded from an rrd file.
+    rrd:
+        A recording loaded from a `.rrd` file.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -420,7 +420,7 @@ def send_recording(embedded_recording: Recording, recording: RecordingStream | N
         raise ValueError("No application id found. You must call rerun.init before sending a recording.")
 
     bindings.send_recording(
-        embedded_recording,
+        rrd,
         recording=recording.to_native() if recording is not None else None,
     )
 

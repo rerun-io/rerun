@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar, overload
 import numpy as np
 from typing_extensions import deprecated
 
+import rerun as rr
 from rerun import bindings
 from rerun.memory import MemoryRecording
 from rerun.time import reset_time
@@ -721,10 +722,20 @@ class RecordingStream:
 
         send_blueprint(blueprint=blueprint, make_active=make_active, make_default=make_default, recording=self)
 
-    def send_recording(self, recording: MemoryRecording, *, make_active: bool = True) -> None:
+    def send_recording(self, recording: rr.dataframe.Recording) -> None:
+        """
+        Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
+
+        Parameters
+        ----------
+        recording:
+            A `Recording` loaded from a `.rrd`.
+
+        """
+
         from .sinks import send_recording
 
-        send_recording(embedded_recording=recording, recording=self)
+        send_recording(rrd=recording, recording=self)
 
     def spawn(
         self,
