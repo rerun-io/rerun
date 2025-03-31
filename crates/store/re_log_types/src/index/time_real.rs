@@ -57,7 +57,7 @@ impl TimeReal {
     }
 
     #[inline]
-    pub fn from_seconds(v: f64) -> Self {
+    pub fn from_secs(v: f64) -> Self {
         Self::from(v * 1_000_000_000f64)
     }
 

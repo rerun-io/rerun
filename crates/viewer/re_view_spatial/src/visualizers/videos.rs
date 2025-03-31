@@ -191,7 +191,7 @@ impl VideoFrameReferenceVisualizer {
                     match video.frame_at(
                         ctx.viewer_ctx.render_ctx(),
                         player_stream_id,
-                        video_timestamp.as_seconds(),
+                        video_timestamp.as_secs(),
                         video_data.as_slice(),
                     ) {
                         Ok(VideoFrameTexture {

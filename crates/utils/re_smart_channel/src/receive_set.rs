@@ -87,14 +87,14 @@ impl<T: Send> ReceiveSet<T> {
     }
 
     /// Maximum latency among all receivers (or 0, if none).
-    pub fn latency_ns(&self) -> u64 {
+    pub fn latency_nanos(&self) -> u64 {
         re_tracing::profile_function!();
-        let mut latency_ns = 0;
+        let mut latency_nanos = 0;
         let rx = self.receivers.lock();
         for r in rx.iter() {
-            latency_ns = r.latency_ns().max(latency_ns);
+            latency_nanos = r.latency_nanos().max(latency_nanos);
         }
-        latency_ns
+        latency_nanos
     }
 
     /// Sum queue length of all receivers.

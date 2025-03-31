@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF];
 
     for (time, origins, vectors, color) in itertools::izip!(10..15, origins, vectors, colors) {
-        rec.set_duration_seconds("time", time);
+        rec.set_duration_secs("time", time);
 
         let arrows = rerun::Arrows3D::from_vectors(vectors)
             .with_origins(origins)

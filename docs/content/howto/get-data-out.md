@@ -92,7 +92,7 @@ view = view.filter_range_sequence(0, 10)
 This API exists for both temporal and sequence timeline, and for various units:
 
 - `view.filter_range_sequence(start_frame, end_frame)` (takes `int` arguments)
-- `view.filter_range_seconds(stat_second, end_second)` (takes `float` arguments)
+- `view.filter_range_secs(stat_second, end_second)` (takes `float` arguments)
 - `view.filter_range_nanos(start_nano, end_nano)` (takes `int` arguments)
 
 (all ranges are including both start and end values)

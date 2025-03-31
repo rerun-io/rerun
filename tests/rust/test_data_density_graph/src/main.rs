@@ -86,7 +86,7 @@ fn log(
                 [
                     (
                         rerun::Timeline::log_time(),
-                        rerun::time::TimeInt::from_milliseconds(NonMinI64::ZERO),
+                        rerun::time::TimeInt::from_millis(NonMinI64::ZERO),
                     ),
                     (rerun::Timeline::log_tick(), TimeInt::ZERO),
                 ],
@@ -128,7 +128,7 @@ fn log(
                 rerun::log::RowId::new(),
                 [(
                     rerun::Timeline::log_time(),
-                    rerun::time::TimeInt::from_milliseconds((*time).try_into().unwrap_or_default()),
+                    rerun::time::TimeInt::from_millis((*time).try_into().unwrap_or_default()),
                 )],
                 &component,
             );

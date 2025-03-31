@@ -231,7 +231,7 @@ class RecordingView:
 
         """
 
-    def filter_range_seconds(self, start: float, end: float) -> RecordingView:
+    def filter_range_secs(self, start: float, end: float) -> RecordingView:
         """
         Filter the view to only include data between the given index values expressed as seconds.
 
@@ -1146,7 +1146,9 @@ def new_entity_path(parts: list[str]) -> str:
 def new_property_entity_path(parts: list[str]) -> str:
     """Create a property entity path."""
 
-def asset_video_read_frame_timestamps_ns(video_bytes_arrow_array: Any, media_type: Optional[str] = None) -> list[int]:
+def asset_video_read_frame_timestamps_nanos(
+    video_bytes_arrow_array: Any, media_type: Optional[str] = None
+) -> list[int]:
     """
     Reads the timestamps of all frames in a video asset.
 

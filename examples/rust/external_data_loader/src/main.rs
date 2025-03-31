@@ -125,8 +125,8 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
         );
     }
 
-    for duration_ns_str in &args.time_duration_nanos {
-        let Some((seqline_name, duration_nd)) = duration_ns_str.split_once('=') else {
+    for duration_nanos_str in &args.time_duration_nanos {
+        let Some((seqline_name, duration_nd)) = duration_nanos_str.split_once('=') else {
             continue;
         };
         timepoint.insert_cell(
@@ -135,8 +135,8 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
         );
     }
 
-    for timestamp_ns_str in &args.time_timestamp_nanos {
-        let Some((seqline_name, timestamp_nd)) = timestamp_ns_str.split_once('=') else {
+    for timestamp_nanos_str in &args.time_timestamp_nanos {
+        let Some((seqline_name, timestamp_nd)) = timestamp_nanos_str.split_once('=') else {
             continue;
         };
         timepoint.insert_cell(

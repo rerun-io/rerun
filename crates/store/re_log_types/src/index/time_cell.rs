@@ -47,8 +47,8 @@ impl TimeCell {
 
     /// Create a timestamp from number of seconds since the unix epoch, 1970-01-01 00:00:00 UTC.
     #[inline]
-    pub fn from_timestamp_seconds_since_epoch(seconds_since_epoch: f64) -> Self {
-        Self::from_timestamp_nanos_since_epoch((1e9 * seconds_since_epoch).round() as i64)
+    pub fn from_timestamp_secs_since_epoch(secs_since_epoch: f64) -> Self {
+        Self::from_timestamp_nanos_since_epoch((1e9 * secs_since_epoch).round() as i64)
     }
 
     /// A timestamp of the current clock time.
@@ -168,7 +168,7 @@ impl TimeCell {
                 crate::Duration::from_nanos(value.into()).format_subsecond_as_relative()
             }
 
-            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(value.into())
+            TimeType::TimestampNs => crate::Timestamp::from_nanos_since_epoch(value.into())
                 .format_time_compact(timestamp_format),
 
             TimeType::Sequence => typ.format(value, timestamp_format),
@@ -182,7 +182,7 @@ impl std::fmt::Display for TimeCell {
             // NOTE: we avoid special characters here so we can put these formats in an URI
             TimeType::Sequence => write!(f, "{}", self.value),
             TimeType::DurationNs => crate::Duration::from_nanos(self.value.get()).fmt(f),
-            TimeType::TimestampNs => crate::Timestamp::from_ns_since_epoch(self.value.get())
+            TimeType::TimestampNs => crate::Timestamp::from_nanos_since_epoch(self.value.get())
                 .format_iso()
                 .fmt(f),
         }

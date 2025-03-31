@@ -12,7 +12,7 @@ mod framework;
 
 struct Outlines {
     is_paused: bool,
-    seconds_since_startup: f32,
+    secs_since_startup: f32,
     model_mesh_instances: Vec<GpuMeshInstance>,
 }
 
@@ -30,7 +30,7 @@ impl framework::Example for Outlines {
     fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         Self {
             is_paused: false,
-            seconds_since_startup: 0.0,
+            secs_since_startup: 0.0,
             model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx)
                 .expect("Failed to load rerun mesh"),
         }
@@ -44,9 +44,9 @@ impl framework::Example for Outlines {
         pixels_per_point: f32,
     ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         if !self.is_paused {
-            self.seconds_since_startup += time.last_frame_duration.as_secs_f32();
+            self.secs_since_startup += time.last_frame_duration.as_secs_f32();
         }
-        let seconds_since_startup = self.seconds_since_startup;
+        let secs_since_startup = self.secs_since_startup;
         // TODO(#1426): unify camera logic between examples.
         let camera_position = glam::vec3(1.0, 3.5, 7.0);
 
@@ -68,7 +68,7 @@ impl framework::Example for Outlines {
                 },
                 pixels_per_point,
                 outline_config: Some(OutlineConfig {
-                    outline_radius_pixel: (seconds_since_startup * 2.0).sin().abs() * 10.0 + 2.0,
+                    outline_radius_pixel: (secs_since_startup * 2.0).sin().abs() * 10.0 + 2.0,
                     color_layer_a: re_renderer::Rgba::from_rgb(1.0, 0.6, 0.0),
                     color_layer_b: re_renderer::Rgba::from_rgba_unmultiplied(0.25, 0.3, 1.0, 0.5),
                 }),
@@ -76,7 +76,7 @@ impl framework::Example for Outlines {
             },
         );
 
-        let outline_mask_large_mesh = match ((seconds_since_startup * 0.5) as u64) % 5 {
+        let outline_mask_large_mesh = match ((secs_since_startup * 0.5) as u64) % 5 {
             0 => OutlineMaskPreference::NONE,
             1 => OutlineMaskPreference::some(1, 0), // Same as the y spinning mesh.
             2 => OutlineMaskPreference::some(2, 0), // Different than both meshes, outline A.
@@ -94,12 +94,12 @@ impl framework::Example for Outlines {
             MeshProperties {
                 outline_mask_ids: OutlineMaskPreference::some(1, 0),
                 position: glam::vec3(2.0, 0.0, -3.0),
-                rotation: glam::Quat::from_rotation_y(seconds_since_startup),
+                rotation: glam::Quat::from_rotation_y(secs_since_startup),
             },
             MeshProperties {
                 outline_mask_ids: OutlineMaskPreference::some(0, 1),
                 position: glam::vec3(-2.0, 1.0, 3.0),
-                rotation: glam::Quat::from_rotation_x(seconds_since_startup),
+                rotation: glam::Quat::from_rotation_x(secs_since_startup),
             },
         ];
 

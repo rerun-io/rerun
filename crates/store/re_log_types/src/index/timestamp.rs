@@ -18,7 +18,7 @@ impl Timestamp {
     }
 
     #[inline]
-    pub fn from_ns_since_epoch(nanos_since_epoch: i64) -> Self {
+    pub fn from_nanos_since_epoch(nanos_since_epoch: i64) -> Self {
         Self(nanos_since_epoch)
     }
 
@@ -28,8 +28,8 @@ impl Timestamp {
     }
 
     #[inline]
-    pub fn from_seconds_since_epoch(secs: f64) -> Self {
-        Self::from_ns_since_epoch((secs * 1e9).round() as _)
+    pub fn from_secs_since_epoch(secs: f64) -> Self {
+        Self::from_nanos_since_epoch((secs * 1e9).round() as _)
     }
 
     #[inline]
@@ -53,7 +53,7 @@ impl From<re_types_core::datatypes::TimeInt> for Timestamp {
 impl From<super::TimeInt> for Timestamp {
     #[inline]
     fn from(int: super::TimeInt) -> Self {
-        Self::from_ns_since_epoch(int.as_i64())
+        Self::from_nanos_since_epoch(int.as_i64())
     }
 }
 
@@ -143,7 +143,7 @@ impl Timestamp {
     ///
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
-        let format_fractional_ns = |ns: i32| {
+        let format_fractional_nanos = |ns: i32| {
             let is_whole_sec = ns % 1_000_000_000 == 0;
             let is_whole_ms = ns % 1_000_000 == 0;
 
@@ -164,7 +164,7 @@ impl Timestamp {
                 format!(
                     "{}{}",
                     timestamp.as_second(),
-                    format_fractional_ns(timestamp.subsec_nanosecond())
+                    format_fractional_nanos(timestamp.subsec_nanosecond())
                 )
             }
 
@@ -187,7 +187,7 @@ impl Timestamp {
 
                 format!(
                     "{formatted}{}{suffix}",
-                    format_fractional_ns(zoned.subsec_nanosecond())
+                    format_fractional_nanos(zoned.subsec_nanosecond())
                 )
             }
         }
@@ -201,13 +201,13 @@ impl Timestamp {
         match timestamp_format {
             TimestampFormat::UnixEpoch => {
                 let ns = self.nanos_since_epoch();
-                let fractional_ns = ns % 1_000_000_000;
-                let is_whole_second = fractional_ns == 0;
+                let fractional_nanos = ns % 1_000_000_000;
+                let is_whole_second = fractional_nanos == 0;
                 if is_whole_second {
                     re_format::format_int(ns / 1_000_000_000)
                 } else {
                     // Show offset since last whole second:
-                    crate::Duration::from_nanos(fractional_ns).format_subsecond_as_relative()
+                    crate::Duration::from_nanos(fractional_nanos).format_subsecond_as_relative()
                 }
             }
 
@@ -246,7 +246,7 @@ impl Timestamp {
                 .map(|zoned| zoned.into())
         } else if timestamp_format == TimestampFormat::UnixEpoch {
             let ns = re_format::parse_i64(s)?;
-            Some(Self::from_ns_since_epoch(ns))
+            Some(Self::from_nanos_since_epoch(ns))
         } else {
             None
         }

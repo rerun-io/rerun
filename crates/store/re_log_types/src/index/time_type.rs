@@ -108,7 +108,7 @@ impl TimeType {
             TimeInt::MAX => "+∞".into(),
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
-                Self::DurationNs => super::Duration::from(time_int).format_seconds(),
+                Self::DurationNs => super::Duration::from(time_int).format_secs(),
                 Self::TimestampNs => super::Timestamp::from(time_int).format(timestamp_format),
             },
         }
