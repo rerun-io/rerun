@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use datafusion::catalog::TableProvider;
-use partition_index_list::PartitionIndexListProvider;
 use partition_list::PartitionListProvider;
 use re_log_types::external::re_tuid::Tuid;
 use re_protos::{
@@ -13,9 +12,7 @@ use re_protos::{
 use table_entry_provider::TableEntryProvider;
 use tonic::transport::Channel;
 
-pub mod grpc_response_provider;
 pub mod grpc_streaming_provider;
-pub mod partition_index_list;
 pub mod partition_list;
 pub mod table_entry_provider;
 
@@ -78,12 +75,6 @@ impl DataFusionConnector {
 
     pub async fn get_partition_list(&self, tuid: Tuid, url: &str) -> Arc<dyn TableProvider> {
         PartitionListProvider::new(self.channel.clone(), tuid, url)
-            .into_provider()
-            .await
-    }
-
-    pub async fn get_partition_index_list(&self, tuid: Tuid, url: &str) -> Arc<dyn TableProvider> {
-        PartitionIndexListProvider::new(self.channel.clone(), tuid, url)
             .into_provider()
             .await
     }

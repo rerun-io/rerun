@@ -4,14 +4,14 @@ use async_trait::async_trait;
 
 use arrow::{
     array::RecordBatch,
-    datatypes::{DataType, Field, Fields, Schema, SchemaRef},
+    datatypes::{DataType, Field, Schema, SchemaRef},
 };
 use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::external::re_tuid::Tuid;
+use re_log_types::external::{re_tuid::Tuid, re_types_core::Loggable};
 use re_protos::{
     common::v1alpha1::DatasetHandle,
     manifest_registry::v1alpha1::{
@@ -52,14 +52,7 @@ impl GrpcStreamToTable for PartitionListProvider {
     async fn create_schema(&mut self) -> SchemaRef {
         Arc::new(Schema::new_with_metadata(
             vec![
-                Field::new(
-                    "id",
-                    DataType::Struct(Fields::from([
-                        Arc::new(Field::new("time_ns", DataType::UInt64, true)),
-                        Arc::new(Field::new("inc", DataType::UInt64, true)),
-                    ])),
-                    true,
-                ),
+                Field::new("id", Tuid::arrow_datatype(), true),
                 Field::new("name", DataType::Utf8, true),
                 Field::new("entry_type", DataType::Int32, true),
                 Field::new("created_at", DataType::Int64, true),

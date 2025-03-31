@@ -7117,14 +7117,17 @@ version = "0.23.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "async-stream",
  "async-trait",
  "datafusion",
- "futures",
+ "futures-util",
  "itertools 0.14.0",
  "re_log_encoding",
  "re_log_types",
  "re_protos",
+ "re_tuid",
  "tokio",
+ "tokio-stream",
  "tonic",
 ]
 

@@ -1,4 +1,4 @@
-use std::{any::Any, future::Future, pin::Pin, sync::Arc, task::Poll};
+use std::{any::Any, pin::Pin, sync::Arc};
 
 use async_trait::async_trait;
 
@@ -13,7 +13,8 @@ use datafusion::{
     },
     prelude::Expr,
 };
-use futures::{ready, Stream, StreamExt as _};
+use futures_util::StreamExt as _;
+use tokio_stream::Stream;
 
 #[async_trait]
 pub trait GrpcStreamToTable:
@@ -45,7 +46,11 @@ impl<T: GrpcStreamToTable> GrpcStreamProvider<T> {
 }
 
 #[async_trait]
-impl<T: GrpcStreamToTable> TableProvider for GrpcStreamProvider<T> {
+impl<T: GrpcStreamToTable> TableProvider for GrpcStreamProvider<T>
+where
+    T: GrpcStreamToTable + Send + 'static,
+    T::GrpcStreamData: Send + 'static,
+{
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -95,103 +100,67 @@ impl<T: GrpcStreamToTable> GrpcStreamPartitionStream<T> {
     }
 }
 
-impl<T: GrpcStreamToTable> PartitionStream for GrpcStreamPartitionStream<T> {
+impl<T> PartitionStream for GrpcStreamPartitionStream<T>
+where
+    T: GrpcStreamToTable + Send + 'static,
+    T::GrpcStreamData: Send + 'static,
+{
     fn schema(&self) -> &SchemaRef {
         &self.schema
     }
 
     fn execute(&self, _ctx: Arc<TaskContext>) -> SendableRecordBatchStream {
-        Box::pin(GrpcStream::new(&self.schema, self.client.clone()))
+        Box::pin(GrpcStream::execute(&self.schema, self.client.clone()))
     }
 }
 
-type FutureGrpcStream<T> = Pin<
-    Box<dyn Future<Output = Result<tonic::Response<tonic::Streaming<T>>, tonic::Status>> + Send>,
->;
-
-pub struct GrpcStream<T: GrpcStreamToTable> {
+pub struct GrpcStream {
     schema: SchemaRef,
-    client: T,
-    is_complete: bool,
-    response_future: Option<FutureGrpcStream<T::GrpcStreamData>>,
-    stream: Option<tonic::Streaming<T::GrpcStreamData>>,
+    adapted_stream: Pin<Box<dyn Stream<Item = datafusion::common::Result<RecordBatch>> + Send>>,
 }
 
-impl<T: GrpcStreamToTable> GrpcStream<T> {
-    fn new(schema: &SchemaRef, client: T) -> Self {
+impl GrpcStream {
+    fn execute<T: GrpcStreamToTable>(schema: &SchemaRef, mut client: T) -> Self
+    where
+        T::GrpcStreamData: Send + 'static,
+        T: Send + 'static,
+    {
+        let adapted_stream = Box::pin(async_stream::try_stream! {
+            let mut stream = client.send_streaming_request().await.map_err(|err| DataFusionError::External(Box::new(
+                tonic::Status::internal(err.to_string())
+            )))?.into_inner();
+
+            while let Some(msg) = stream.next().await {
+                let msg = msg.map_err(|err| DataFusionError::External(Box::new(err)))?;
+                let processed = client
+                    .process_response(msg)
+                    .map_err(|err| DataFusionError::External(Box::new(
+                        tonic::Status::internal(err.to_string())
+                    )))?;
+                yield processed;
+            }
+        });
+
         Self {
-            is_complete: false,
             schema: Arc::clone(schema),
-            client,
-            response_future: None,
-            stream: None,
+            adapted_stream,
         }
     }
 }
 
-impl<T: GrpcStreamToTable> RecordBatchStream for GrpcStream<T> {
+impl RecordBatchStream for GrpcStream {
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
 }
 
-impl<T: GrpcStreamToTable> Stream for GrpcStream<T> {
+impl Stream for GrpcStream {
     type Item = DataFusionResult<RecordBatch>;
 
     fn poll_next(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if self.is_complete {
-            return Poll::Ready(None);
-        }
-        let this = self.get_mut();
-
-        if this.response_future.is_none() {
-            let mut client = this.client.clone();
-
-            let future = Box::pin(async move { client.send_streaming_request().await });
-
-            this.response_future = Some(future);
-        }
-
-        if this.stream.is_none() {
-            let response = match &mut this.response_future {
-                Some(s) => s.as_mut(),
-                None => {
-                    return std::task::Poll::Ready(Some(Err(DataFusionError::Execution(
-                        "No grpc response received".to_owned(),
-                    ))))
-                }
-            };
-
-            let stream = match ready!(response.poll(cx)) {
-                Ok(r) => r.into_inner(),
-                Err(err) => {
-                    return std::task::Poll::Ready(Some(Err(DataFusionError::External(Box::new(
-                        err,
-                    )))))
-                }
-            };
-
-            this.stream = Some(stream);
-        }
-
-        match this.stream.as_mut() {
-            Some(stream) => {
-                let mut stream = stream.map(|streaming_result| {
-                    streaming_result
-                        .and_then(|result| {
-                            this.client
-                                .process_response(result)
-                                .map_err(|err| tonic::Status::internal(err.to_string()))
-                        })
-                        .map_err(|err| DataFusionError::External(Box::new(err)))
-                });
-
-                stream.poll_next_unpin(cx)
-            }
-            None => std::task::Poll::Ready(None),
-        }
+        self.adapted_stream.poll_next_unpin(cx)
     }
 }

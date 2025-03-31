@@ -35,7 +35,7 @@ use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
-use crate::{remote::PyRemoteRecording, utils::get_tokio_runtime};
+use crate::utils::get_tokio_runtime;
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

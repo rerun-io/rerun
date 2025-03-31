@@ -1,9 +1,10 @@
-use arrow::array::{Int32Array, StringArray, StructArray, UInt64Array};
+use arrow::array::{Int32Array, StringArray};
 use datafusion::{common::exec_datafusion_err, prelude::SessionContext};
 use itertools::multizip;
 use re_datafusion::DataFusionConnector;
-use re_log_types::external::re_tuid::Tuid;
+use re_log_types::external::re_types_core::Loggable as _;
 use re_protos::catalog::v1alpha1::EntryKind;
+use re_tuid::Tuid;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -30,21 +31,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     for dataset in datasets {
-        let id_array = dataset
-            .column(0)
-            .as_any()
-            .downcast_ref::<StructArray>()
-            .ok_or(exec_datafusion_err!("Unable to cast id to struct"))?;
-        let time_ns_array = id_array
-            .column(0)
-            .as_any()
-            .downcast_ref::<UInt64Array>()
-            .ok_or(exec_datafusion_err!("Unable to cast time of id to u64"))?;
-        let inc_array = id_array
-            .column(1)
-            .as_any()
-            .downcast_ref::<UInt64Array>()
-            .ok_or(exec_datafusion_err!("Unable to cast inc of id to u64"))?;
+        let id_array: Vec<Option<Tuid>> = Tuid::from_arrow_opt(dataset.column(0))?;
 
         let name_array = dataset
             .column(1)
@@ -60,13 +47,11 @@ async fn main() -> anyhow::Result<()> {
                 "Unable to cast kind_array type to i32"
             ))?;
 
-        for time_inc_tuple in multizip((time_ns_array, inc_array, name_array, kind_array)) {
-            if let (Some(time_ns), Some(inc), Some(name), Some(kind)) = time_inc_tuple {
+        for time_inc_tuple in multizip((id_array, name_array, kind_array)) {
+            if let (Some(tuid), Some(name), Some(kind)) = time_inc_tuple {
                 if kind != EntryKind::Dataset as i32 {
                     continue;
                 }
-                let tuid = Tuid::from_nanos_and_inc(time_ns, inc);
-
                 let dataset_entry = df_connector.get_dataset_entry(tuid).await?;
 
                 if let Some(entry) = dataset_entry {
