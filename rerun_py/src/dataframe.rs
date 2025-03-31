@@ -646,7 +646,7 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
+    fn schema(&self, py: Python<'_>) -> PySchema {
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -657,9 +657,9 @@ impl PyRecordingView {
 
                 let query_handle = engine.query(query_expression);
 
-                Ok(PySchema {
+                PySchema {
                     schema: query_handle.view_contents().clone(),
-                })
+                }
             }
         }
     }
@@ -790,7 +790,7 @@ impl PyRecordingView {
             .transpose()
             .unwrap_or_else(|| {
                 Ok(self
-                    .schema(py)?
+                    .schema(py)
                     .schema
                     .components
                     .iter()
