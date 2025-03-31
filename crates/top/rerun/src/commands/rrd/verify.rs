@@ -150,9 +150,9 @@ impl Verifier {
                     .get(archetype_name)
                     .ok_or_else(|| anyhow::anyhow!("Unknown archetype: {archetype_name:?}"))?;
 
-                if let Some(deprecated_summary) = archetype_reflection.deprecated_summary {
+                if let Some(deprecation_summary) = archetype_reflection.deprecation_summary {
                     anyhow::bail!(
-                        "Archetype {archetype_name:?} is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation summary: {deprecated_summary:?}"
+                        "Archetype {archetype_name:?} is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation summary: {deprecation_summary:?}"
                     );
                 }
 

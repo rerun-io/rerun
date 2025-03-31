@@ -258,7 +258,7 @@ pub struct ArchetypeReflection {
     pub display_name: &'static str,
 
     /// If deprecated, this explains since when, and what to use instead.
-    pub deprecated_summary: Option<&'static str>,
+    pub deprecation_summary: Option<&'static str>,
 
     /// The views that this archetype can be added to.
     ///
