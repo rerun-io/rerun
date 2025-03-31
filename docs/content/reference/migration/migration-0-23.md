@@ -46,7 +46,7 @@ Use one of these instead:
 ### 🌊 C++
 We've deprecated the following functions, with the following replacements:
 * `set_time` -> `set_time_duration` or `set_time_timestamp`
-* `set_time_secs` -> `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`
+* `set_time_seconds` -> `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`
 * `set_time_nanos` -> `set_time_duration_nanos` or `set_time_timestamp_nanos_since_epoch`
 
 `TimeColumn` also has deprecated functions.
