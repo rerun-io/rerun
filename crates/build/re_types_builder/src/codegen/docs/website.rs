@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 
 use crate::{
     codegen::{autogen_warning, common::ExampleInfo, Target},
-    objects::{FieldKind, ViewReference},
+    objects::{FieldKind, State, ViewReference},
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
 };
 
@@ -188,7 +188,7 @@ fn index_page(
         putln!(page);
 
         for object in objects.sorted_by_key(|object| &object.name) {
-            let deprecation_note = if object.deprecation_notice().is_some() {
+            let deprecation_note = if object.is_deprecated() {
                 "⚠️ _deprecated_ "
             } else {
                 ""
@@ -219,9 +219,6 @@ fn object_page(
     arrow_registry: &crate::ArrowRegistry,
     views_per_archetype: &ViewsPerArchetype,
 ) -> String {
-    let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
-    let is_experimental = object.is_experimental();
-
     let top_level_docs = object
         .docs
         .lines_for(reporter, objects, Target::WebDocsMarkdown);
@@ -238,7 +235,7 @@ fn object_page(
 
     let mut page = String::new();
 
-    let title = if object.deprecation_notice().is_some() {
+    let title = if object.is_deprecated() {
         format!("{} (deprecated)", object.name)
     } else {
         object.name.clone()
@@ -247,21 +244,8 @@ fn object_page(
     write_frontmatter(&mut page, &title, None);
     putln!(page);
 
-    if is_experimental {
-        putln!(page);
-        putln!(
-            page,
-            "⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**"
-        );
-        putln!(page);
-    }
-
-    if let Some(deprecation_notice) = object.deprecation_notice() {
-        putln!(
-            page,
-            "**⚠️ This type is deprecated and may be removed in future versions**"
-        );
-        putln!(page, "{deprecation_notice}");
+    if let Some(docline_summary) = object.state.docline_summary() {
+        page.push_str(&docline_summary);
         putln!(page);
     }
 
@@ -294,7 +278,7 @@ fn object_page(
 
     putln!(page);
     putln!(page, "## API reference links");
-    list_links(is_unreleased, &mut page, object);
+    list_links(&mut page, object);
 
     putln!(page);
     write_example_list(&mut page, &examples);
@@ -326,8 +310,8 @@ fn object_page(
     page
 }
 
-fn list_links(is_unreleased: bool, page: &mut String, object: &Object) {
-    let speculative_marker = if is_unreleased {
+fn list_links(page: &mut String, object: &Object) {
+    let speculative_marker = if object.state == State::Unreleased {
         "?speculative-link"
     } else {
         ""
@@ -524,7 +508,7 @@ fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object:
         }
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
-                let is_unreleased = ty.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+                let is_unreleased = ty.state == State::Unreleased;
                 let speculative_marker = if is_unreleased {
                     "?speculative-link"
                 } else {

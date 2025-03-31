@@ -11,7 +11,8 @@ use itertools::Itertools as _;
 
 use crate::{
     root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    FbsSchema, FbsType, Reporter, ATTR_DOCS_DEPRECATED_NOTICE, ATTR_DOCS_DEPRECATED_SINCE,
+    ATTR_DOCS_STATE, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
@@ -254,6 +255,80 @@ pub enum ObjectKind {
     View,
 }
 
+/// Must be set on all archetypes and components
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum State {
+    /// Any external links referencing this datatype will be given a speculative link marker.
+    /// Speculative links contain a `?speculative-link` query param. Any such links are ignored by linkinator,
+    /// and we check for their absence as the first step in our release process.
+    Unreleased,
+
+    /// New API that is not yet fully supported, and may change significantly in future versions.
+    /// Implies everything that `unstable` implies.
+    Experimental,
+
+    /// Used for types that are likely to be removed or changed significantly,
+    /// and in a way that the data won't be backwards compatible.
+    Unstable,
+
+    /// Used for types that are unlikely to be removed or changed significantly.
+    /// If they are changed, we will make sure that the old data can still be read.
+    Stable,
+
+    /// Marks something as deprecated followed by a (mandatory!) migration note.
+    ///
+    /// If specified on an object (struct/enum/union), it becomes deprecated such
+    /// that using the object should emit a warning in all target languages.
+    /// Furthermore, documentation will mention that the object is deprecated and display
+    /// the specified migration note.
+    Deprecated { since: String, notice: String },
+}
+
+impl State {
+    pub fn from_attrs(attrs: &Attributes) -> Result<Self, String> {
+        if let Some(state) = attrs.get_string(ATTR_DOCS_STATE) {
+            match state.as_str() {
+                "unreleased" => Ok(Self::Unreleased),
+                "experimental" => Ok(Self::Experimental),
+                "unstable" => Ok(Self::Unstable),
+                "stable" => Ok(Self::Stable),
+                "deprecated" => {
+                    if let (Some(since), Some(notice)) = (
+                        attrs.get_string(ATTR_DOCS_DEPRECATED_SINCE),
+                        attrs.get_string(ATTR_DOCS_DEPRECATED_NOTICE),
+                    ) {
+                        Ok(Self::Deprecated {
+                            since: since.clone(),
+                            notice: notice.clone(),
+                        })
+                    } else {
+                        Err(format!("Deprecated object must have {ATTR_DOCS_DEPRECATED_SINCE:?} and {ATTR_DOCS_DEPRECATED_NOTICE:?} set"))
+                    }
+                }
+                unknown => Err(format!("Unknown value for {ATTR_DOCS_STATE:?}: {unknown}")),
+            }
+        } else {
+            Err(format!("Missing attribute {ATTR_DOCS_STATE:?}"))
+        }
+    }
+
+    /// Add noteworthy information on a single line, if any.
+    pub fn docline_summary(&self) -> Option<String> {
+        match self {
+            Self::Unreleased | Self::Stable => { None }
+            Self::Experimental => {
+                Some("⚠️ **This type is _experimental_! It is not fully supported, and is likely to change significantly in future versions.**".to_owned())
+            }
+            Self::Unstable => {
+                Some("⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**".to_owned())
+            }
+            Self::Deprecated { since, notice } => {
+                Some(format!("⚠️ **Deprecated since {since}**: {notice}"))
+            }
+        }
+    }
+}
+
 impl ObjectKind {
     pub const ALL: [Self; 4] = [Self::Datatype, Self::Component, Self::Archetype, Self::View];
 
@@ -344,6 +419,9 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
+    /// Experimental, stable, deprecated, …?
+    pub state: State,
+
     /// The object's inner fields, which can be either struct members or union/emum variants.
     ///
     /// These are ordered using their `order` attribute (structs),
@@ -415,6 +493,38 @@ impl Object {
         let attrs = Attributes::from_raw_attrs(obj.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
+        let scope = attrs
+            .get_string(crate::ATTR_RERUN_SCOPE)
+            .or_else(|| (kind == ObjectKind::View).then(|| "blueprint".to_owned()));
+
+        let state = if attrs.has(ATTR_DOCS_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(&virtpath, &fqname, &err);
+                State::Unreleased
+            })
+        } else if kind == ObjectKind::Datatype {
+            State::Stable
+        } else if is_testing_fqname(&fqname) {
+            State::Unreleased
+        } else if scope == Some("blueprint".to_owned()) {
+            if false {
+                // TODO(#9427)
+                State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
+            } else {
+                State::Stable
+            }
+        } else {
+            if false {
+                // TODO(#9427): make ATTR_DOCS_STATE attribute mandatory
+                reporter.error(
+                    &virtpath,
+                    &fqname,
+                    format!("Missing attribute '{ATTR_DOCS_STATE}'"),
+                );
+            }
+            State::Stable
+        };
+
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
                 .fields()
@@ -467,6 +577,7 @@ impl Object {
             name,
             docs,
             kind,
+            state,
             attrs,
             fields,
             class: ObjectClass::Struct,
@@ -501,6 +612,18 @@ impl Object {
         let docs = Docs::from_raw_docs(reporter, &virtpath, enm.name(), enm.documentation());
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
+        let state = if attrs.has(ATTR_DOCS_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(
+                    &virtpath,
+                    &fqname,
+                    format!("Failed to parse `{ATTR_DOCS_STATE}`: {err}"),
+                );
+                State::Stable
+            })
+        } else {
+            State::Stable
+        };
 
         let is_enum = enm.underlying_type().base_type() != FbsBaseType::UType;
 
@@ -556,6 +679,7 @@ impl Object {
             name,
             docs,
             kind,
+            state,
             attrs,
             fields,
             class: if is_enum {
@@ -653,17 +777,23 @@ impl Object {
         is_testing_fqname(&self.fqname)
     }
 
+    /// e.g. `blueprint`
     pub fn scope(&self) -> Option<String> {
         self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
             .or_else(|| (self.kind == ObjectKind::View).then(|| "blueprint".to_owned()))
     }
 
-    pub fn deprecation_notice(&self) -> Option<String> {
-        self.try_get_attr::<String>(crate::ATTR_RERUN_DEPRECATED)
+    pub fn is_deprecated(&self) -> bool {
+        matches!(self.state, State::Deprecated { .. })
     }
 
-    pub fn is_experimental(&self) -> bool {
-        self.is_attr_set(crate::ATTR_RERUN_EXPERIMENTAL)
+    /// If deprecated, returns a string describing since when, and what to do instead.
+    pub fn deprecation_summary(&self) -> Option<String> {
+        if let State::Deprecated { since, notice } = &self.state {
+            Some(format!("since {since}: {notice}"))
+        } else {
+            None
+        }
     }
 
     pub fn doc_category(&self) -> Option<String> {
@@ -753,6 +883,9 @@ pub struct ObjectField {
     /// The field's multiple layers of documentation.
     pub docs: Docs,
 
+    /// Experimental, stable, deprecated, …?
+    pub state: State,
+
     /// The field's type.
     pub typ: Type,
 
@@ -799,6 +932,18 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
+        let state = if attrs.has(ATTR_DOCS_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(
+                    &virtpath,
+                    &fqname,
+                    format!("Failed to parse `{ATTR_DOCS_STATE}`: {err}"),
+                );
+                State::Stable
+            })
+        } else {
+            State::Stable
+        };
 
         let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs, &fqname);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
@@ -811,7 +956,7 @@ impl ObjectField {
                 &fqname,
                 format!(
                     "Use {} attribute for deprecation instead",
-                    crate::ATTR_RERUN_DEPRECATED
+                    crate::ATTR_DOCS_STATE
                 ),
             );
         }
@@ -826,6 +971,7 @@ impl ObjectField {
             name,
             enum_value,
             docs,
+            state,
             typ,
             attrs,
             order,
@@ -859,6 +1005,18 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(reporter, &virtpath, val.name(), val.documentation());
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
+        let state = if attrs.has(ATTR_DOCS_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(
+                    &virtpath,
+                    &fqname,
+                    format!("Failed to parse `{ATTR_DOCS_STATE}`: {err}"),
+                );
+                State::Stable
+            })
+        } else {
+            State::Stable
+        };
 
         // NOTE: Unwrapping is safe, we never resolve enums without union types.
         let field_type = val.union_type().unwrap();
@@ -888,6 +1046,7 @@ impl ObjectField {
             pkg_name,
             name,
             enum_value,
+            state,
             docs,
             typ,
             attrs,
@@ -1473,6 +1632,10 @@ impl Attributes {
                 )
             })
             .unwrap()
+    }
+
+    pub fn get_string(&self, name: &str) -> Option<String> {
+        self.0.get(name).cloned().flatten()
     }
 
     pub fn try_get<T>(&self, owner_fqname: impl AsRef<str>, name: impl AsRef<str>) -> Option<T>

@@ -243,8 +243,8 @@ impl SnippetsRefCodeGenerator {
                         return false;
                     }
 
-                    if let Some(deprecation_notice) = obj.deprecation_notice() {
-                        panic!("Snippet {} contained reference to deprecated object '{}'. Please migrate the snippet. Migration notice: {deprecation_notice}", snippet.name_qualified, obj.fqname);
+                    if let Some(deprecation_summary) = obj.deprecation_summary() {
+                        panic!("Snippet {} contained reference to deprecated object '{}'. Please migrate the snippet. Migration notice: {deprecation_summary}", snippet.name_qualified, obj.fqname);
                     }
 
                     if obj.kind == ObjectKind::Archetype {

@@ -229,7 +229,7 @@ pub struct ComponentReflection {
     pub docstring_md: &'static str,
 
     /// If deprecated, this is the deprecation message.
-    pub deprecation_notice: Option<&'static str>,
+    pub deprecated_notice: Option<&'static str>,
 
     /// Custom placeholder value, used when not fallback was provided.
     ///
@@ -257,8 +257,8 @@ pub struct ArchetypeReflection {
     /// The name of the field in human case.
     pub display_name: &'static str,
 
-    /// If deprecated, this is the deprecation message.
-    pub deprecation_notice: Option<&'static str>,
+    /// If deprecated, this explains since when, and what to use instead.
+    pub deprecated_summary: Option<&'static str>,
 
     /// The views that this archetype can be added to.
     ///

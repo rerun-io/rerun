@@ -216,7 +216,7 @@ use doclink_translation::translate_doc_line;
 ///
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
-    use crate::{ObjectKind, Objects, Reporter};
+    use crate::{objects::State, ObjectKind, Objects, Reporter};
 
     use super::Target;
 
@@ -375,11 +375,11 @@ mod doclink_translation {
             }
 
             scope = object.scope().unwrap_or_default();
-            is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+            is_unreleased = object.state == State::Unreleased;
 
-            if let Some(deprecation_notice) = object.deprecation_notice() {
+            if let Some(deprecation_summary) = object.deprecation_summary() {
                 return Err(format!(
-                    "Found doclink to deprecated object '{}': {deprecation_notice}",
+                    "Found doclink to deprecated object '{}': {deprecation_summary}",
                     object.fqname,
                 ));
             }
@@ -479,6 +479,7 @@ mod tests {
     use crate::{
         codegen::Target,
         docs::doclink_translation::{tokenize, translate_doc_line},
+        objects::State,
         Attributes, Docs, Object, ObjectKind, Objects,
     };
 
@@ -495,6 +496,7 @@ mod tests {
                     docs: Docs::default(),
                     kind: ObjectKind::View,
                     attrs: Attributes::default(),
+                    state: State::Stable,
                     fields: Vec::new(),
                     class: crate::ObjectClass::Struct,
                     datatype: None,
