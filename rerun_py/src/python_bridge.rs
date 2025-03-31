@@ -1,5 +1,6 @@
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![allow(clippy::too_many_arguments)] // We used named arguments, so this is fine
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::io::IsTerminal as _;
@@ -201,7 +202,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// Create a new recording stream.
 #[allow(clippy::fn_params_excessive_bools)]
 #[allow(clippy::struct_excessive_bools)]
-#[allow(clippy::too_many_arguments)]
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
