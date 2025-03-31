@@ -10,6 +10,7 @@
 //! See [`LeRobotDataset`] for more information on the dataset format.
 
 use std::borrow::Cow;
+use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -17,8 +18,8 @@ use std::path::{Path, PathBuf};
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::de::{DeserializeOwned, MapAccess, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// Check whether the provided path contains a `LeRobot` dataset.
 pub fn is_lerobot_dataset(path: impl AsRef<Path>) -> bool {
@@ -388,6 +389,34 @@ pub struct Feature {
     pub names: Option<Names>,
 }
 
+impl Feature {
+    /// Get the channel dimension for this [`Feature`].
+    ///
+    /// Returns the number of channels in the feature's data representation.
+    ///
+    /// # Note
+    ///
+    /// This is primarily intended for [`DType::Image`] and [`DType::Video`] features,
+    /// where it represents color channels (e.g., 3 for RGB, 4 for RGBA).
+    /// For other feature types, this function returns the size of the last dimension
+    /// from the feature's shape.
+    pub fn channel_dim(&self) -> usize {
+        // first check if there's a "channels" name, if there is we can use that index.
+        if let Some(names) = &self.names {
+            if let Some(channel_idx) = names.0.iter().position(|name| name == "channels") {
+                // If channel_idx is within bounds of shape, return that dimension
+                if channel_idx < self.shape.len() {
+                    return self.shape[channel_idx];
+                }
+            }
+        }
+
+        // Default to the last dimension if no channels name is found
+        // or if the found index is out of bounds
+        self.shape.last().copied().unwrap_or(0)
+    }
+}
+
 /// Data types supported for features in a `LeRobot` dataset.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -397,6 +426,7 @@ pub enum DType {
     Bool,
     Float32,
     Float64,
+    Int16,
     Int64,
     String,
 }
@@ -406,56 +436,129 @@ pub enum DType {
 /// The name metadata can consist of
 /// - A flat list of names for each dimension of a feature (e.g., `["height", "width", "channel"]`).
 /// - A nested list of names for each dimension of a feature (e.g., `[[""kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
-/// - A list specific to motors (e.g., `{ "motors": ["motor_0", "motor_1", ...] }`).
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum Names {
-    Motors { motors: Vec<String> },
-    List(NamesList),
-}
+/// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", ...] }` or `{ "axes": ["x", "y", "z"] }`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Names(Vec<String>);
 
 impl Names {
-    /// Retrieves the name corresponding to a specific index within the `names` field of a feature.
+    /// Retrieves the name corresponding to a specific index.
+    ///
+    /// Returns `None` if the index is out of bounds.
     pub fn name_for_index(&self, index: usize) -> Option<&String> {
-        match self {
-            Self::Motors { motors } => motors.get(index),
-            Self::List(NamesList(items)) => items.get(index),
-        }
+        self.0.get(index)
     }
 }
 
-/// A wrapper struct that deserializes flat or nested lists of strings
-/// into a single flattened [`Vec`] of names for easy indexing.
-#[derive(Debug, Serialize, Clone)]
-pub struct NamesList(Vec<String>);
+/// Visitor implementation for deserializing the [`Names`] type.
+///
+/// Handles multiple representation formats:
+/// - Flat string arrays: `["x", "y", "z"]`
+/// - Nested string arrays: `[["motor_1", "motor_2"]]`
+/// - Single-entry objects: `{"motors": ["motor_1", "motor_2"]}` or `{"axes": null}`
+///
+/// See the `Names` type documentation for more details on the supported formats.
+struct NamesVisitor;
 
-impl<'de> Deserialize<'de> for NamesList {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+impl<'de> Visitor<'de> for NamesVisitor {
+    type Value = Names;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(
+            "a flat string array, a nested string array, or a single-entry object with a string array or null value",
+        )
+    }
+
+    /// Handle sequences:
+    /// - Flat string arrays: `["x", "y", "z"]`
+    /// - Nested string arrays: `[["motor_1", "motor_2"]]`
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
-        D: serde::Deserializer<'de>,
+        A: SeqAccess<'de>,
     {
-        let value = serde_json::Value::deserialize(deserializer)?;
-        if let serde_json::Value::Array(arr) = value {
-            if arr.is_empty() {
-                return Ok(Self(vec![]));
-            }
-            if let Some(first) = arr.first() {
-                if first.is_string() {
-                    let flat: Vec<String> = serde_json::from_value(serde_json::Value::Array(arr))
-                        .map_err(serde::de::Error::custom)?;
-                    return Ok(Self(flat));
-                } else if first.is_array() {
-                    let nested: Vec<Vec<String>> =
-                        serde_json::from_value(serde_json::Value::Array(arr))
-                            .map_err(serde::de::Error::custom)?;
-                    let flat = nested.into_iter().flatten().collect();
-                    return Ok(Self(flat));
+        // Helper enum to deserialize sequence elements
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum ListItem {
+            Str(String),
+            List(Vec<String>),
+        }
+
+        /// Enum to track the list type
+        #[derive(PartialEq)]
+        enum ListType {
+            Undetermined,
+            Flat,
+            Nested,
+        }
+
+        let mut names = Vec::new();
+        let mut determined_type = ListType::Undetermined;
+
+        while let Some(item) = seq.next_element::<ListItem>()? {
+            match item {
+                ListItem::Str(s) => {
+                    if determined_type == ListType::Nested {
+                        return Err(serde::de::Error::custom(
+                            "Cannot mix nested lists with flat strings within names array",
+                        ));
+                    }
+                    determined_type = ListType::Flat;
+                    names.push(s);
+                }
+                ListItem::List(list) => {
+                    if determined_type == ListType::Flat {
+                        return Err(serde::de::Error::custom(
+                            "Cannot mix flat strings and nested lists within names array",
+                        ));
+                    }
+                    determined_type = ListType::Nested;
+
+                    // Flatten the nested list
+                    names.extend(list);
                 }
             }
         }
-        Err(serde::de::Error::custom(
-            "Unsupported name format in LeRobot dataset!",
-        ))
+
+        Ok(Names(names))
+    }
+
+    /// Handle single-entry objects: `{"motors": ["motor_1", "motor_2"]}` or `{"axes": null}`
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut names_vec: Option<Vec<String>> = None;
+        let mut entry_count = 0;
+
+        // We expect exactly one entry.
+        while let Some((_key, value)) = map.next_entry::<String, Option<Vec<String>>>()? {
+            entry_count += 1;
+            if entry_count > 1 {
+                // Consume remaining entries to be a good citizen before erroring
+                while map
+                    .next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?
+                    .is_some()
+                {}
+
+                return Err(serde::de::Error::invalid_length(
+                    entry_count,
+                    &"a Names object with exactly one entry.",
+                ));
+            }
+
+            names_vec = Some(value.unwrap_or_default());
+        }
+
+        Ok(Names(names_vec.unwrap_or_default()))
+    }
+}
+
+impl<'de> Deserialize<'de> for Names {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(NamesVisitor)
     }
 }
 
@@ -503,4 +606,97 @@ pub struct LeRobotDatasetTask {
     #[serde(rename = "task_index")]
     pub index: TaskIndex,
     pub task: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json;
+
+    #[test]
+    fn test_deserialize_flat_list() {
+        let json = r#"["a", "b", "c"]"#;
+        let expected = Names(vec!["a".to_owned(), "b".to_owned(), "c".to_owned()]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_nested_list() {
+        let json = r#"[["a", "b"], ["c"]]"#;
+        let expected = Names(vec!["a".to_owned(), "b".to_owned(), "c".to_owned()]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_empty_nested_list() {
+        let json = r#"[[], []]"#;
+        let expected = Names(vec![]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_empty_list() {
+        let json = r#"[]"#;
+        let expected = Names(vec![]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_object_with_list() {
+        let json = r#"{ "axes": ["x", "y", "z"] }"#;
+        let expected = Names(vec!["x".to_owned(), "y".to_owned(), "z".to_owned()]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_object_with_empty_list() {
+        let json = r#"{ "motors": [] }"#;
+        let expected = Names(vec![]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_object_with_null() {
+        let json = r#"{ "axes": null }"#;
+        let expected = Names(vec![]); // Null results in an empty list
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_empty_object() {
+        // Empty object results in empty list.
+        let json = r#"{}"#;
+        let expected = Names(vec![]);
+        let names: Names = serde_json::from_str(json).unwrap();
+        assert_eq!(names, expected);
+    }
+
+    #[test]
+    fn test_deserialize_error_mixed_list() {
+        let json = r#"["a", ["b"]]"#; // Mixed flat and nested
+        let result: Result<Names, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot mix flat strings and nested lists"));
+    }
+
+    #[test]
+    fn test_deserialize_error_object_multiple_entries() {
+        let json = r#"{ "axes": ["x"], "motors": ["m"] }"#;
+        let result: Result<Names, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("a Names object with exactly one entry"));
+    }
 }

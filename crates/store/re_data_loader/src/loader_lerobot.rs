@@ -247,16 +247,12 @@ pub fn load_episode(
             }
 
             DType::Image => {
-                let num_channels = feature.shape.last().with_context(|| {
-                    format!(
-                    "Image feature '{feature_key}' in LeRobot dataset is missing channel dimension",
-                )
-                })?;
+                let num_channels = feature.channel_dim();
 
-                match *num_channels {
+                match num_channels {
                     1 => chunks.extend(load_episode_depth_images(feature_key, &timeline, &data)?),
                     3 => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
-                    _ => re_log::warn_once!("Unsupported channel count {num_channels} for LeRobot dataset; Only 1- and 3-channel images are supported")
+                    _ => re_log::warn_once!("Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported", feature.shape)
                 };
             }
             DType::Int64 if feature_key == "task_index" => {
@@ -264,7 +260,7 @@ pub fn load_episode(
                 // this always refers to the task description in the dataset metadata.
                 chunks.extend(log_episode_task(dataset, &timeline, &data)?);
             }
-            DType::Int64 | DType::Bool | DType::String => {
+            DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
                 re_log::warn_once!(
                     "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
                     feature.dtype
