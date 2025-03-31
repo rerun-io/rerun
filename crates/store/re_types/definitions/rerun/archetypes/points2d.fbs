@@ -10,6 +10,7 @@ namespace rerun.archetypes;
 /// \example archetypes/points2d_random title="Randomly distributed 2D points with varying color and radius" image="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png"
 /// \example archetypes/points2d_ui_radius title="Log points with radii given in UI points" image="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1200w.png"
 table Points2D (
+  "attr.docs.state": "stable",
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Spatial 2D",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"

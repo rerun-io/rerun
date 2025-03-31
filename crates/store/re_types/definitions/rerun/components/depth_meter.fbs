@@ -11,6 +11,7 @@ namespace rerun.components;
 /// Note that the only effect on 2D views is the physical depth values shown when hovering the image.
 /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
 struct DepthMeter (
+  "attr.docs.state": "unstable",
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",

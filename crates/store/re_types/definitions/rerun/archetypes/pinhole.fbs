@@ -6,9 +6,10 @@ namespace rerun.archetypes;
 /// \example archetypes/pinhole_simple title="Simple pinhole camera" image="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png"
 /// \example archetypes/pinhole_perspective title="Perspective pinhole camera" image="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png"
 table Pinhole (
-  "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial2DView, Spatial2DView"
+  "attr.docs.state": "unstable",
+  "attr.docs.view_types": "Spatial2DView, Spatial2DView",
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

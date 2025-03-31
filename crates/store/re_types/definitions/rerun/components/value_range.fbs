@@ -4,6 +4,7 @@ namespace rerun.components;
 
 /// Range of expected or valid values, specifying a lower and upper bound.
 struct ValueRange (
+  "attr.docs.state": "unstable",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

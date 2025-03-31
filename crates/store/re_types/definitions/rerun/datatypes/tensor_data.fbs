@@ -15,6 +15,7 @@ namespace rerun.datatypes;
 /// \py of `rerun.components.TensorDataBatch` does not support more than a single element.
 /// \py This will be addressed as part of <https://github.com/rerun-io/rerun/issues/6832>.
 table TensorData (
+  "attr.docs.state": "stable",
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
   "attr.rust.derive": "PartialEq,"

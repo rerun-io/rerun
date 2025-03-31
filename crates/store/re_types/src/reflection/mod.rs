@@ -502,7 +502,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <DepthMeter as Component>::name(),
             ComponentReflection {
-                docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
+                docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(DepthMeter::default().to_arrow()?),
                 datatype: DepthMeter::arrow_datatype(),
@@ -1084,7 +1084,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ValueRange as Component>::name(),
             ComponentReflection {
-                docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
+                docstring_md: "Range of expected or valid values, specifying a lower and upper bound.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ValueRange::default().to_arrow()?),
                 datatype: ValueRange::arrow_datatype(),

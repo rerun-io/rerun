@@ -51,6 +51,7 @@ table F64Buffer(order: 100, transparent) {
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
 union TensorBuffer (
+  "attr.docs.state": "stable", // TODO(#9119): We're gonna refactor TensorBuffer but make sure old data still loads
   "attr.rust.derive_only": "Clone, PartialEq"
 ) {
   /// 8bit unsigned integer.

@@ -13,6 +13,7 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/tensor_simple title="Simple tensor" image="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png"
 table Tensor (
+  "attr.docs.state": "stable",
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Image & tensor",
   "attr.docs.view_types": "TensorView, BarChartView: for 1D tensors"

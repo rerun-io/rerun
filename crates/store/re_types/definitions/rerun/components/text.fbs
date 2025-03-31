@@ -6,6 +6,7 @@ namespace rerun.components;
 /// A string of text, e.g. for labels and text documents.
 table Text (
   "attr.arrow.transparent",
+  "attr.docs.state": "stable",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
