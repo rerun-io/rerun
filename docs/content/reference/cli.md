@@ -99,6 +99,12 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--serve-grpc <SERVE_GRPC>`
+> Serve the recordings over gRPC to one or more Rerun Viewers.
+>
+> `rerun --serve-grpc` will act like a proxy, listening for incoming gRPC connection from logging SDKs, and forwarding it to Rerun viewers.
+> [Default: `false`]
+
 * `--expect-data-soon <EXPECT_DATA_SOON>`
 > This is a hint that we expect a recording to stream in very soon.
 >
