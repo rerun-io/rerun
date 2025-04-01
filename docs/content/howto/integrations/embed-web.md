@@ -33,7 +33,7 @@ Various packages are available:
 - [@rerun-io/web-viewer](https://www.npmjs.com/package/@rerun-io/web-viewer): Suitable for JS apps without a framework or frameworks without dedicated packages.
 - [@rerun-io/web-viewer-react](https://www.npmjs.com/package/@rerun-io/web-viewer-react): Designed specifically for React apps.
 
-> ℹ️ Note: The stability of the `rrd` format is still evolving, so the package version corresponds to the supported Rerun SDK version. Therefore, `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, WebSocket connection, etc.) originating from a Rerun SDK with version `0.10.0`!
+> ℹ️ Note: The stability of the `rrd` format is still evolving, so the package version corresponds to the supported Rerun SDK version. Therefore, `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) originating from a Rerun SDK with version `0.10.0`!
 
 ### Basic example
 

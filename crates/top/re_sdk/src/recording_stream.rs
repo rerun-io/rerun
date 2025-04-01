@@ -530,7 +530,7 @@ impl RecordingStreamBuilder {
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// web-based Rerun viewer via WebSockets.
+    /// web-based Rerun viewer via gRPC.
     ///
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
     /// connected web-viewer.
@@ -539,12 +539,11 @@ impl RecordingStreamBuilder {
     ///
     /// ## Details
     /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
-    /// and then one WebSocket server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
+    /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
     ///
-    /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
-    /// Once reached, the earliest logged data will be dropped.
-    /// Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// ## Example
     ///
@@ -579,7 +578,7 @@ impl RecordingStreamBuilder {
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// web-based Rerun viewer via WebSockets.
+    /// web-based Rerun viewer via gRPC.
     ///
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
     /// connected web-viewer.
@@ -588,12 +587,11 @@ impl RecordingStreamBuilder {
     ///
     /// ## Details
     /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
-    /// and then one WebSocket server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
+    /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
     ///
-    /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
-    /// Once reached, the earliest logged data will be dropped.
-    /// Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// ## Example
     ///

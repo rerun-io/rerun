@@ -588,9 +588,9 @@ class RecordingStream:
 
     def disconnect(self) -> None:
         """
-        Closes all TCP connections, servers, and files.
+        Closes all gRPC connections, servers, and files.
 
-        Closes all TCP connections, servers, and files that have been opened with
+        Closes all gRPC connections, servers, and files that have been opened with
         [`rerun.connect_grpc`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
         """
 
@@ -608,14 +608,13 @@ class RecordingStream:
         server_memory_limit: str = "25%",
     ) -> None:
         """
-        Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+        Serve log-data over gRPC and serve a Rerun web viewer over HTTP.
 
         You can also connect to this server with the native viewer using `rerun localhost:9090`.
 
-        The WebSocket server will buffer all log data in memorsy so that late connecting viewers will get all the data.
-        You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
-        Once reached, the earliest logged data will be dropped.
-        Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+        The gRPC server will buffer all log data in memorsy so that late connecting viewers will get all the data.
+        You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+        Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
         This function returns immediately.
 

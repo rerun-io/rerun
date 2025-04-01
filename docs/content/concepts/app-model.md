@@ -6,10 +6,9 @@ order: 0
 The Rerun distribution comes with numerous moving pieces:
 * The **SDKs** (Python, Rust & C++), for logging data and querying it back. These are libraries running directly in the end user's process.
 * The **Native Viewer**: the Rerun GUI application for native platforms (Linux, macOS, Windows).
-* The **TCP server**, which receives data from the **SDKs** and forwards it to the **Native Viewer** and/or **WebSocket Server**. The communication is unidirectional: clients push data into the TCP connection, never the other way around.
 * The **Web Viewer**, which packs the **Native Viewer** into a WASM application that can run on the Web and its derivatives (notebooks, etc).
+* The **gRPC server**, which receives data from the **SDKs** and forwards it to the **Native Viewer** and/or **Web Viewer**. The communication is unidirectional: clients push data into the connection, never the other way around.
 * The **Web/HTTP Server**, for serving the web page that hosts the **Web Viewer**.
-* The **WebSocket server**, for serving data to the **Web Viewer**. The communication is unidirectional: the server pushes data to the **Web Viewer**, never the other way around.
 * The **CLI**, which allows you to control all the pieces above as well as manipulate RRD files.
 
 The **Native Viewer** always includes:
@@ -23,7 +22,7 @@ This is a lot to take in at first, but as we'll see these different pieces are g
 
 The first thing to understand is what process do each of these things run in.
 
-The **CLI**, **Native Viewer**, **TCP server**, **Web/HTTP Server** and **WebSocket Server** are all part of the same binary: `rerun`.
+The **CLI**, **Native Viewer**, **gRPC server**, and **Web/HTTP Server** are all part of the same binary: `rerun`.
 Some of them can be enabled or disabled on demand using the appropriate flags but, no matter what, all these pieces are part of the same binary and execute in the same process.
 Keep in mind that even the **Native Viewer** can be disabled (headless mode).
 
@@ -45,8 +44,8 @@ There are two common sub-scenarios when working natively:
 
 ### Synchronous workflow
 
-This is the most common kind of Rerun deployment, and also the simplest: one or more **SDKs**, embedded into the user's process, are logging data directly to a **TCP Server**, which in turns feeds the **Native Viewer**.
-Both the **Native Viewer** and the **TCP Server** are running in the same `rerun` process.
+This is the most common kind of Rerun deployment, and also the simplest: one or more **SDKs**, embedded into the user's process, are logging data directly to a **gRPC server**, which in turns feeds the **Native Viewer**.
+Both the **Native Viewer** and the **gRPC server** are running in the same `rerun` process.
 
 Logging script:
 
@@ -57,7 +56,7 @@ Deployment:
 ```sh
 # Start the Rerun Native Viewer in the background.
 #
-# This will also start the TCP server on its default port (9876, use `--port`
+# This will also start the gRPC server on its default port (9876, use `--port`
 # to pick another one).
 #
 # We could also have just used `spawn()` instead of `connect()` in the logging
@@ -66,7 +65,7 @@ Deployment:
 # using the first `rerun` # binary available # on your $PATH.
 $ rerun &
 
-# Start logging data. It will be pushed to the Native Viewer through the TCP link.
+# Start logging data. It will be pushed to the Native Viewer through the gRPC link.
 $ ./logging_script
 ```
 
@@ -92,7 +91,7 @@ Reference:
 The asynchronous native workflow is similarly simple: one or more **SDKs**, embedded into the user's process, are logging data directly to one or more files.
 The user will then manually start the **Native Viewer** at some later point, in order to visualize these files.
 
-Note: the `rerun` process still embeds both a **Native Viewer** and a **TCP Server**. For each **Native Viewer**, there is **always** an accompanying **TCP Server**, no exception.
+Note: the `rerun` process still embeds both a **Native Viewer** and a **gRPC server**. For each **Native Viewer**, there is **always** an accompanying **gRPC server**, no exception.
 
 Logging script:
 
@@ -105,7 +104,7 @@ $ ./logging_script
 
 # Start the Rerun Native Viewer and feed it the RRD file directly.
 #
-# This will also start the TCP server on its default port (9876, use `--port`
+# This will also start the gRPC server on its default port (9876, use `--port`
 # to pick another one). Although it is not used yet, some client might want
 # to connect in the future.
 $ rerun /tmp/my_recording.rrd
@@ -139,13 +138,13 @@ TODO(#8046): incoming.
 
 ### How can I use multiple **Native Viewers** at the same (i.e. multiple windows)?
 
-Every **Native Viewer** comes with a corresponding **TCP Server** -- always. You cannot start a **Native Viewer** without starting a **TCP server**.
+Every **Native Viewer** comes with a corresponding **gRPC server** -- always. You cannot start a **Native Viewer** without starting a **gRPC server**.
 
-The only way to have more than one Rerun window is to have more than one **TCP server**, by means of the `--port` flag.
+The only way to have more than one Rerun window is to have more than one **gRPC server**, by means of the `--port` flag.
 
 E.g.:
 ```sh
-# starts a new viewer, listening for TCP connections on :9876
+# starts a new viewer, listening for gRPC connections on :9876
 rerun &
 
 # does nothing, there's already a viewer session running at that address
@@ -160,7 +159,7 @@ rerun image.jpg
 # logs the image file to the existing viewer running on :9876
 rerun --port 9876 image.jpg
 
-# starts a new viewer, listening for TCP connections on :6789, and logs the image data to it
+# starts a new viewer, listening for gRPC connections on :6789, and logs the image data to it
 rerun --port 6789 image.jpg
 
 # does nothing, there's already a viewer session running at that address
@@ -185,11 +184,6 @@ TODO(#8046): incoming.
 
 
 What happens when I use `rerun --serve`?
-
-TODO(#8046): incoming.
-
-
-Can the **Native Viewer** pull data from a **WebSocket Server**, like the **Web Viewer** does?
 
 TODO(#8046): incoming.
 
