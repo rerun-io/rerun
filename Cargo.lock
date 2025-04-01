@@ -195,7 +195,7 @@ checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
 dependencies = [
  "cfg-if",
  "const-random",
- "getrandom",
+ "getrandom 0.2.15",
  "once_cell",
  "serde",
  "version_check",
@@ -1277,9 +1277,9 @@ checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
 
 [[package]]
 name = "bytes"
-version = "1.9.0"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
+checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
 name = "bzip2"
@@ -1717,7 +1717,7 @@ version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9d839f2a20b0aee515dc581a6172f2321f96cab76c1a38a4c584a194955390e"
 dependencies = [
- "getrandom",
+ "getrandom 0.2.15",
  "once_cell",
  "tiny-keccak",
 ]
@@ -2125,29 +2125,30 @@ dependencies = [
 
 [[package]]
 name = "datafusion"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eae420e7a5b0b7f1c39364cc76cbcd0f5fdc416b2514ae3847c2676bbd60702a"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
- "arrow-array",
  "arrow-ipc",
  "arrow-schema",
- "async-compression",
  "async-trait",
  "bytes",
  "bzip2",
  "chrono",
  "datafusion-catalog",
+ "datafusion-catalog-listing",
  "datafusion-common",
  "datafusion-common-runtime",
+ "datafusion-datasource",
  "datafusion-execution",
  "datafusion-expr",
+ "datafusion-expr-common",
  "datafusion-functions",
  "datafusion-functions-aggregate",
  "datafusion-functions-nested",
  "datafusion-functions-table",
  "datafusion-functions-window",
+ "datafusion-macros",
  "datafusion-optimizer",
  "datafusion-physical-expr",
  "datafusion-physical-expr-common",
@@ -2156,7 +2157,6 @@ dependencies = [
  "datafusion-sql",
  "flate2",
  "futures",
- "glob",
  "itertools 0.14.0",
  "log",
  "object_store",
@@ -2167,7 +2167,6 @@ dependencies = [
  "sqlparser",
  "tempfile",
  "tokio",
- "tokio-util",
  "url",
  "uuid",
  "xz2",
@@ -2176,9 +2175,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-catalog"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f27987bc22b810939e8dfecc55571e9d50355d6ea8ec1c47af8383a76a6d0e1"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2192,21 +2190,37 @@ dependencies = [
  "itertools 0.14.0",
  "log",
  "parking_lot",
- "sqlparser",
+]
+
+[[package]]
+name = "datafusion-catalog-listing"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+dependencies = [
+ "arrow",
+ "async-trait",
+ "datafusion-catalog",
+ "datafusion-common",
+ "datafusion-datasource",
+ "datafusion-execution",
+ "datafusion-expr",
+ "datafusion-physical-expr",
+ "datafusion-physical-expr-common",
+ "datafusion-physical-plan",
+ "futures",
+ "log",
+ "object_store",
+ "tokio",
 ]
 
 [[package]]
 name = "datafusion-common"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3f6d5b8c9408cc692f7c194b8aa0c0f9b253e065a8d960ad9cdc2a13e697602"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "ahash",
  "arrow",
- "arrow-array",
- "arrow-buffer",
  "arrow-ipc",
- "arrow-schema",
  "base64 0.22.1",
  "half",
  "hashbrown 0.14.5",
@@ -2224,25 +2238,55 @@ dependencies = [
 
 [[package]]
 name = "datafusion-common-runtime"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d4603c8e8a4baf77660ab7074cc66fc15cc8a18f2ce9dfadb755fc6ee294e48"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "log",
  "tokio",
 ]
 
 [[package]]
+name = "datafusion-datasource"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+dependencies = [
+ "arrow",
+ "async-compression",
+ "async-trait",
+ "bytes",
+ "bzip2",
+ "chrono",
+ "datafusion-catalog",
+ "datafusion-common",
+ "datafusion-common-runtime",
+ "datafusion-execution",
+ "datafusion-expr",
+ "datafusion-physical-expr",
+ "datafusion-physical-expr-common",
+ "datafusion-physical-plan",
+ "flate2",
+ "futures",
+ "glob",
+ "itertools 0.14.0",
+ "log",
+ "object_store",
+ "rand",
+ "tokio",
+ "tokio-util",
+ "url",
+ "xz2",
+ "zstd",
+]
+
+[[package]]
 name = "datafusion-doc"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5bf4bc68623a5cf231eed601ed6eb41f46a37c4d15d11a0bff24cbc8396cd66"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 
 [[package]]
 name = "datafusion-execution"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88b491c012cdf8e051053426013429a76f74ee3c2db68496c79c323ca1084d27"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "dashmap",
@@ -2259,9 +2303,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-expr"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5a181408d4fc5dc22f9252781a8f39f2d0e5d1b33ec9bde242844980a2689c1"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "chrono",
@@ -2280,26 +2323,23 @@ dependencies = [
 
 [[package]]
 name = "datafusion-expr-common"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1129b48e8534d8c03c6543bcdccef0b55c8ac0c1272a15a56c67068b6eb1885"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "datafusion-common",
+ "indexmap 2.8.0",
  "itertools 0.14.0",
  "paste",
 ]
 
 [[package]]
 name = "datafusion-ffi"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff47a79d442207c168c6e3e1d970c248589c148e4800e5b285ac1b2cb1a230f8"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "abi_stable",
  "arrow",
- "arrow-array",
- "arrow-schema",
  "async-ffi",
  "async-trait",
  "datafusion",
@@ -2313,9 +2353,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6125874e4856dfb09b59886784fcb74cde5cfc5930b3a80a1a728ef7a010df6b"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "arrow-buffer",
@@ -2329,7 +2368,6 @@ dependencies = [
  "datafusion-expr",
  "datafusion-expr-common",
  "datafusion-macros",
- "hashbrown 0.14.5",
  "hex",
  "itertools 0.14.0",
  "log",
@@ -2343,14 +2381,11 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-aggregate"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3add7b1d3888e05e7c95f2b281af900ca69ebdcb21069ba679b33bde8b3b9d6"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "ahash",
  "arrow",
- "arrow-buffer",
- "arrow-schema",
  "datafusion-common",
  "datafusion-doc",
  "datafusion-execution",
@@ -2366,9 +2401,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-aggregate-common"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e18baa4cfc3d2f144f74148ed68a1f92337f5072b6dde204a0dbbdf3324989c"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "ahash",
  "arrow",
@@ -2379,15 +2413,11 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-nested"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ec5ee8cecb0dc370291279673097ddabec03a011f73f30d7f1096457127e03e"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
- "arrow-array",
- "arrow-buffer",
  "arrow-ord",
- "arrow-schema",
  "datafusion-common",
  "datafusion-doc",
  "datafusion-execution",
@@ -2403,9 +2433,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-table"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c403ddd473bbb0952ba880008428b3c7febf0ed3ce1eec35a205db20efb2a36"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "async-trait",
@@ -2419,9 +2448,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-window"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ab18c2fb835614d06a75f24a9e09136d3a8c12a92d97c95a6af316a1787a9c5"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "datafusion-common",
  "datafusion-doc",
@@ -2436,9 +2464,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-functions-window-common"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a77b73bc15e7d1967121fdc7a55d819bfb9d6c03766a6c322247dce9094a53a4"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "datafusion-common",
  "datafusion-physical-expr-common",
@@ -2446,9 +2473,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-macros"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09369b8d962291e808977cf94d495fd8b5b38647232d7ef562c27ac0f495b0af"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "datafusion-expr",
  "quote",
@@ -2457,9 +2483,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-optimizer"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2403a7e4a84637f3de7d8d4d7a9ccc0cc4be92d89b0161ba3ee5be82f0531c54"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "chrono",
@@ -2476,15 +2501,11 @@ dependencies = [
 
 [[package]]
 name = "datafusion-physical-expr"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86ff72ac702b62dbf2650c4e1d715ebd3e4aab14e3885e72e8549e250307347c"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "ahash",
  "arrow",
- "arrow-array",
- "arrow-buffer",
- "arrow-schema",
  "datafusion-common",
  "datafusion-expr",
  "datafusion-expr-common",
@@ -2501,13 +2522,11 @@ dependencies = [
 
 [[package]]
 name = "datafusion-physical-expr-common"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60982b7d684e25579ee29754b4333057ed62e2cc925383c5f0bd8cab7962f435"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "ahash",
  "arrow",
- "arrow-buffer",
  "datafusion-common",
  "datafusion-expr-common",
  "hashbrown 0.14.5",
@@ -2516,12 +2535,10 @@ dependencies = [
 
 [[package]]
 name = "datafusion-physical-optimizer"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac5e85c189d5238a5cf181a624e450c4cd4c66ac77ca551d6f3ff9080bac90bb"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
- "arrow-schema",
  "datafusion-common",
  "datafusion-execution",
  "datafusion-expr",
@@ -2529,23 +2546,18 @@ dependencies = [
  "datafusion-physical-expr",
  "datafusion-physical-expr-common",
  "datafusion-physical-plan",
- "futures",
  "itertools 0.14.0",
  "log",
  "recursive",
- "url",
 ]
 
 [[package]]
 name = "datafusion-physical-plan"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c36bf163956d7e2542657c78b3383fdc78f791317ef358a359feffcdb968106f"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "ahash",
  "arrow",
- "arrow-array",
- "arrow-buffer",
  "arrow-ord",
  "arrow-schema",
  "async-trait",
@@ -2570,9 +2582,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-proto"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2db5d79f0c974041787b899d24dc91bdab2ff112d1942dd71356a4ce3b407e6c"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "chrono",
@@ -2586,9 +2597,8 @@ dependencies = [
 
 [[package]]
 name = "datafusion-proto-common"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de21bde1603aac0ff32cf478e47081be6e3583c6861fe8f57034da911efe7578"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
  "datafusion-common",
@@ -2597,13 +2607,10 @@ dependencies = [
 
 [[package]]
 name = "datafusion-sql"
-version = "45.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e13caa4daede211ecec53c78b13c503b592794d125f9a3cc3afe992edf9e7f43"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
 dependencies = [
  "arrow",
- "arrow-array",
- "arrow-schema",
  "bigdecimal",
  "datafusion-common",
  "datafusion-expr",
@@ -3293,9 +3300,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.34"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1b589b4dc103969ad3cf85c950899926ec64300a1a46d76c03a6072957036f0"
+checksum = "11faaf5a5236997af9848be0bef4db95824b1d534ebc64d0f0c6cf3e67bd38dc"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -3530,8 +3537,20 @@ dependencies = [
  "cfg-if",
  "js-sys",
  "libc",
- "wasi",
+ "wasi 0.11.0+wasi-snapshot-preview1",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "getrandom"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73fea8450eea4bac3940448fb7ae50d91f034f941199fcd9d909a5a07aa455f0"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "r-efi",
+ "wasi 0.14.2+wasi-0.2.4",
 ]
 
 [[package]]
@@ -4750,9 +4769,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.161"
+version = "0.2.171"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e9489c2807c139ffd9c1794f4af0ebe86a828db53ecdc7fea2111d0fed085d1"
+checksum = "c19937216e9d3aa9956d9bb8dfc0b0c8beb6058fc4f7a4dc4d850edf86a237d6"
 
 [[package]]
 name = "libloading"
@@ -5077,9 +5096,9 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.8.0"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2d80299ef12ff69b16a84bb182e3b9df68b5a91574d3d4fa6e41b65deec4df1"
+checksum = "8e3e04debbb59698c15bacbb6d93584a8c0ca9cc3213cb423d31f760d8843ce5"
 dependencies = [
  "adler2",
  "simd-adler32",
@@ -5099,7 +5118,7 @@ checksum = "a4a650543ca06a924e8b371db273b2756685faae30f8487da1b56505a8f78b0c"
 dependencies = [
  "libc",
  "log",
- "wasi",
+ "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.48.0",
 ]
 
@@ -5111,7 +5130,7 @@ checksum = "80e04d1dcff3aae0704555fe5fee3bcfaf3d1fdf8a7e521d5b9d2b42acb52cec"
 dependencies = [
  "hermit-abi 0.3.9",
  "libc",
- "wasi",
+ "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
 ]
 
@@ -5788,9 +5807,9 @@ dependencies = [
 
 [[package]]
 name = "parquet"
-version = "54.2.0"
+version = "54.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "761c44d824fe83106e0600d2510c07bf4159a4985bf0569b513ea4288dc1b4fb"
+checksum = "bfb15796ac6f56b429fd99e33ba133783ad75b27c36b4b5ce06f1f82cc97754e"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -5820,7 +5839,6 @@ dependencies = [
  "tokio",
  "twox-hash",
  "zstd",
- "zstd-sys",
 ]
 
 [[package]]
@@ -6499,6 +6517,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "r-efi"
+version = "5.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74765f6d916ee2faa39bc8e68e4f3ed8949b48cccdac59983d287a7cb71ce9c5"
+
+[[package]]
 name = "rand"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6525,7 +6549,7 @@ version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
- "getrandom",
+ "getrandom 0.2.15",
 ]
 
 [[package]]
@@ -6639,7 +6663,7 @@ dependencies = [
  "either",
  "ethnum",
  "foreign_vec",
- "getrandom",
+ "getrandom 0.2.15",
  "half",
  "hash_hasher",
  "hashbrown 0.14.5",
@@ -7407,7 +7431,7 @@ dependencies = [
  "document-features",
  "ecolor",
  "enumset",
- "getrandom",
+ "getrandom 0.2.15",
  "glam",
  "gltf",
  "half",
@@ -7621,7 +7645,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "document-features",
- "getrandom",
+ "getrandom 0.2.15",
  "once_cell",
  "rand",
  "re_byte_size",
@@ -7743,7 +7767,7 @@ dependencies = [
  "egui_extras",
  "egui_kittest",
  "egui_tiles",
- "getrandom",
+ "getrandom 0.2.15",
  "itertools 0.14.0",
  "once_cell",
  "parking_lot",
@@ -8302,7 +8326,7 @@ version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
- "getrandom",
+ "getrandom 0.2.15",
  "libredox",
  "thiserror 1.0.65",
 ]
@@ -8656,7 +8680,7 @@ checksum = "70ac5d832aa16abd7d1def883a8545280c20a60f523a370aa3a9617c2b8550ee"
 dependencies = [
  "cc",
  "cfg-if",
- "getrandom",
+ "getrandom 0.2.15",
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
@@ -9491,11 +9515,12 @@ dependencies = [
 
 [[package]]
 name = "sqlparser"
-version = "0.53.0"
+version = "0.54.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05a528114c392209b3264855ad491fcce534b94a38771b0a0b97a79379275ce8"
+checksum = "c66e3b7374ad4a6af849b08b3e7a6eda0edbd82f0fd59b57e22671bf16979899"
 dependencies = [
  "log",
+ "recursive",
  "sqlparser_derive",
 ]
 
@@ -10028,9 +10053,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.41.0"
+version = "1.44.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "145f3413504347a2be84393cc8a7d2fb4d863b375909ea59f2158261aa258bbb"
+checksum = "f382da615b842244d4b8738c82ed1275e6c5dd90c459a30941cd07080b06c91a"
 dependencies = [
  "backtrace",
  "bytes",
@@ -10045,9 +10070,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "693d596312e88961bc67d7f1f97af8a70227d9f90c31bba5806eec004978d752"
+checksum = "6e06d43f1345a3bcd39f6a56dbb7dcab2ba47e68e8ac134855e7e2bdbaf8cab8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -10544,11 +10569,12 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.11.0"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8c5f0a0af699448548ad1a2fbf920fb4bee257eae39953ba95cb84891a0446a"
+checksum = "458f7a779bf54acc9f347480ac654f68407d3aab21269a6e3c9f922acd9e2da9"
 dependencies = [
- "getrandom",
+ "getrandom 0.3.2",
+ "js-sys",
  "serde",
  "wasm-bindgen",
 ]
@@ -10653,6 +10679,15 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+
+[[package]]
+name = "wasi"
+version = "0.14.2+wasi-0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9683f9a5a998d873c0d21fcbe3c083009670149a8fab228644b8bd36b2c48cb3"
+dependencies = [
+ "wit-bindgen-rt",
+]
 
 [[package]]
 name = "wasm-bindgen"
@@ -11534,6 +11569,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wit-bindgen-rt"
+version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
+dependencies = [
+ "bitflags 2.8.0",
+]
+
+[[package]]
 name = "write16"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11939,123 +11983,3 @@ dependencies = [
  "quote",
  "syn 2.0.99",
 ]
-
-[[patch.unused]]
-name = "datafusion"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-catalog"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-catalog-listing"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-common"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-common-runtime"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-datasource"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-doc"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-execution"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-expr"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-expr-common"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-functions"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-functions-aggregate"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-functions-aggregate-common"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-functions-nested"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-functions-table"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-functions-window"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-functions-window-common"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-macros"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-optimizer"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-physical-expr"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-physical-expr-common"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-physical-optimizer"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-physical-plan"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
-
-[[patch.unused]]
-name = "datafusion-sql"
-version = "46.0.1"
-source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"

@@ -198,8 +198,8 @@ convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
-datafusion = "45"
-datafusion-ffi = "45"
+datafusion = "46"
+datafusion-ffi = "46"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
@@ -621,6 +621,7 @@ datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git
 datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
