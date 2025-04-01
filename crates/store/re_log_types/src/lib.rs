@@ -209,7 +209,6 @@ impl std::fmt::Display for ApplicationId {
 ///   by specifying whether the blueprint should be immediately activated, or only
 ///   become the default for future activations.
 #[derive(Clone, Debug, PartialEq, Eq)] // `PartialEq` used for tests in another crate
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct BlueprintActivationCommand {
     /// The blueprint this command refers to.
     pub blueprint_id: StoreId,
@@ -254,7 +253,6 @@ impl BlueprintActivationCommand {
 /// The most general log message sent from the SDK to the server.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[allow(clippy::large_enum_variant)]
 // TODO(#8631): Remove `LogMsg`
 pub enum LogMsg {
@@ -323,7 +321,6 @@ impl_into_enum!(
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct SetStoreInfo {
     /// A time-based UID that is only used to help keep track of when these `StoreInfo` originated
     /// and how they fit in the global ordering of events.
@@ -338,7 +335,6 @@ pub struct SetStoreInfo {
 
 /// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: ApplicationId,
@@ -362,7 +358,6 @@ pub struct StoreInfo {
     ///
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
-    #[cfg_attr(feature = "serde", serde(skip))]
     pub store_version: Option<CrateVersion>,
 }
 
@@ -375,7 +370,6 @@ impl StoreInfo {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct PythonVersion {
     /// e.g. 3
     pub major: u8,
@@ -470,7 +464,6 @@ pub enum PythonVersionParseError {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum FileSource {
     Cli,
 
@@ -480,38 +473,32 @@ pub enum FileSource {
     DragAndDrop {
         /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_application_id: Option<ApplicationId>,
 
         /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_recording_id: Option<StoreId>,
 
         /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
         ///
         /// Only useful when creating a recording just-in-time directly in the viewer (which is what
         /// happens when importing things into the welcome screen).
-        #[cfg_attr(feature = "serde", serde(skip))]
         force_store_info: bool,
     },
 
     FileDialog {
         /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_application_id: Option<ApplicationId>,
 
         /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_recording_id: Option<StoreId>,
 
         /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
         ///
         /// Only useful when creating a recording just-in-time directly in the viewer (which is what
         /// happens when importing things into the welcome screen).
-        #[cfg_attr(feature = "serde", serde(skip))]
         force_store_info: bool,
     },
 
@@ -565,7 +552,6 @@ impl FileSource {
 
 /// The source of a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum StoreSource {
     Unknown,
 
