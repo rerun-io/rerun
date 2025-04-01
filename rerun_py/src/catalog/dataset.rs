@@ -1,10 +1,8 @@
-use pyo3::exceptions::PyRuntimeError;
 use pyo3::{pyclass, pymethods, PyRef, PyResult};
 use tokio_stream::StreamExt as _;
 
-use re_chunk::Chunk;
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_grpc_client::redap::fetch_partition_response_to_chunk;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::frontend::v1alpha1::FetchPartitionRequest;
@@ -47,17 +45,6 @@ impl PyDataset {
                 .map_err(to_py_err)?
                 .into_inner();
 
-            let mut chunk_stream = catalog_chunk_stream.map(|resp| {
-                resp.and_then(|r| {
-                    r.chunk
-                        .ok_or_else(|| {
-                            tonic::Status::internal("missing chunk in FetchPartitionResponse")
-                        })?
-                        .decode()
-                        .map_err(|err| tonic::Status::internal(err.to_string()))
-                })
-            });
-
             let store_id = StoreId::from_string(StoreKind::Recording, partition_id);
             let store_info = StoreInfo {
                 application_id: dataset_name.into(),
@@ -70,13 +57,13 @@ impl PyDataset {
             let mut store = ChunkStore::new(store_id, Default::default());
             store.set_info(store_info);
 
-            while let Some(result) = chunk_stream.next().await {
-                let batch = result.map_err(to_py_err)?;
-                let chunk = Chunk::from_record_batch(&batch).map_err(to_py_err)?;
+            let mut chunk_stream = fetch_partition_response_to_chunk(catalog_chunk_stream);
 
+            while let Some(chunk) = chunk_stream.next().await {
+                let chunk = chunk.map_err(to_py_err)?;
                 store
                     .insert_chunk(&std::sync::Arc::new(chunk))
-                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                    .map_err(to_py_err)?;
             }
 
             Ok(store)
