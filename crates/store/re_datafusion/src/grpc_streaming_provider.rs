@@ -46,7 +46,7 @@ impl<T: GrpcStreamToTable> GrpcStreamProvider<T> {
 }
 
 #[async_trait]
-impl<T: GrpcStreamToTable> TableProvider for GrpcStreamProvider<T>
+impl<T> TableProvider for GrpcStreamProvider<T>
 where
     T: GrpcStreamToTable + Send + 'static,
     T::GrpcStreamData: Send + 'static,
@@ -120,10 +120,10 @@ pub struct GrpcStream {
 }
 
 impl GrpcStream {
-    fn execute<T: GrpcStreamToTable>(schema: &SchemaRef, mut client: T) -> Self
+    fn execute<T>(schema: &SchemaRef, mut client: T) -> Self
     where
         T::GrpcStreamData: Send + 'static,
-        T: Send + 'static,
+        T: GrpcStreamToTable + Send + 'static,
     {
         let adapted_stream = Box::pin(async_stream::try_stream! {
             let mut stream = client.send_streaming_request().await.map_err(|err| DataFusionError::External(Box::new(

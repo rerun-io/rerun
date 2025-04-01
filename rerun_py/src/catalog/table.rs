@@ -16,10 +16,9 @@ impl PyTable {
 
         let provider = wait_for_future(
             py,
-            TableEntryProvider::new(connection.client(), super_.id.borrow(py).id.clone().into())
-                .into_provider(),
+            TableEntryProvider::new(connection.client(), super_.id.borrow(py).id).into_provider(),
         )
-        .map_err(|err| PyRuntimeError::new_err(format!("Error creating TableProvider: {}", err)))?;
+        .map_err(|err| PyRuntimeError::new_err(format!("Error creating TableProvider: {err}")))?;
 
         Ok(PyDataFusionTable { provider })
     }

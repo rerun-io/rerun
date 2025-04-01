@@ -11,7 +11,7 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::external::{re_tuid::Tuid, re_types_core::Loggable};
+use re_log_types::external::{re_tuid::Tuid, re_types_core::Loggable as _};
 use re_protos::{
     frontend::v1alpha1::{
         frontend_service_client::FrontendServiceClient, ScanPartitionTableRequest,

@@ -143,7 +143,7 @@ enum EntryIdLike {
 impl EntryIdLike {
     fn resolve(self, connection: &mut ConnectionHandle, py: Python<'_>) -> PyResult<Py<PyEntryId>> {
         match self {
-            EntryIdLike::Str(name) => {
+            Self::Str(name) => {
                 let entry_details = connection.find_entries(
                     py,
                     EntryFilter {
@@ -164,7 +164,7 @@ impl EntryIdLike {
                     },
                 )
             }
-            EntryIdLike::Id(id) => Ok(id),
+            Self::Id(id) => Ok(id),
         }
     }
 }
