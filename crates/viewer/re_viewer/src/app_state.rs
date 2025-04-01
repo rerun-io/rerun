@@ -385,7 +385,7 @@ impl AppState {
 
         if *show_settings_ui {
             // nothing: this is already handled above
-        } else if dbg!(storage_context.hub.active_table_id()).is_some() {
+        } else if storage_context.hub.active_table_id().is_some() {
             let left_panel = egui::SidePanel::left("left_panel_table")
                 .resizable(true)
                 .frame(egui::Frame {
@@ -432,14 +432,33 @@ impl AppState {
                             ui.add_space(4.0);
                         }
 
-                        DisplayMode::RedapBrowser => {
-                            redap_servers.server_panel_ui(ui);
+                        _ => {
+                            // TODO: need to be handled
                         }
-
-                        DisplayMode::ChunkStoreBrowser => {} // handled above
                     };
                 },
             );
+
+            let viewport_frame = egui::Frame {
+                fill: ui.style().visuals.panel_fill,
+                ..Default::default()
+            };
+
+            egui::CentralPanel::default()
+                .frame(viewport_frame)
+                .show_inside(ui, |ui| {
+                    // TODO: move up top.
+                    let table_id = ctx
+                        .active_table
+                        .as_ref()
+                        .expect("if we're here, we need to have a table id");
+                    if let Some(batch_store) = ctx.storage_context.tables.get(table_id) {
+                        crate::ui::table_ui(&ctx, ui, batch_store);
+                        return;
+                    } else {
+                        re_log::error_once!("Could not find batch store for table id {}", table_id);
+                    }
+                });
         } else if *display_mode == DisplayMode::ChunkStoreBrowser {
             let should_datastore_ui_remain_active =
                 datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
