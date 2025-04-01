@@ -45,7 +45,7 @@ struct rerun::CollectionAdapter<rerun::Position3D, MyContainer<MyVec3>> {
 };
 
 int main() {
-    // Create a new `RecordingStream` which sends data over TCP to the viewer process.
+    // Create a new `RecordingStream` which sends data over gRPC to the viewer process.
     const auto rec = rerun::RecordingStream("rerun_example_custom_component_adapter");
     rec.spawn().exit_on_failure();
 

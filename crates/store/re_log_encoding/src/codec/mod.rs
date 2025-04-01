@@ -7,9 +7,6 @@ pub enum CodecError {
     #[error("Arrow IPC serialization error: {0}")]
     ArrowSerialization(::arrow::error::ArrowError),
 
-    #[error("Arrow2 IPC serialization error: {0}")]
-    Arrow2Serialization(::arrow2::error::Error),
-
     #[error("Invalid Chunk: {0}")]
     InvalidChunk(::arrow::error::ArrowError),
 

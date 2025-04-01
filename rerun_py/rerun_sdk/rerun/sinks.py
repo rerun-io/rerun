@@ -192,9 +192,9 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
 
 def disconnect(recording: RecordingStream | None = None) -> None:
     """
-    Closes all TCP connections, servers, and files.
+    Closes all gRPC connections, servers, and files.
 
-    Closes all TCP connections, servers, and files that have been opened with
+    Closes all gRPC connections, servers, and files that have been opened with
     [`rerun.connect_grpc`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
 
     Parameters
@@ -221,14 +221,13 @@ def serve_web(
     server_memory_limit: str = "25%",
 ) -> None:
     """
-    Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+    Serve log-data over gRPC and serve a Rerun web viewer over HTTP.
 
-    You can also connect to this server with the native viewer using `rerun localhost:9090`.
+    You can also connect to this server with the native viewer using `rerun rerun+http://127.0.0.1:9876/proxy`.
 
-    The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
-    Once reached, the earliest logged data will be dropped.
-    Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+    The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
     This function returns immediately.
 

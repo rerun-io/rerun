@@ -21,18 +21,18 @@ All four of them are optional: when none of these modes are active, the client w
 This is the default behavior you get when running all of our C++/Python/Rust examples, and is generally the most convenient when you're experimenting.
 
 #### C++
-`RecordingStream::spawn` spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via TCP. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
+`RecordingStream::spawn` spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 #### Python
-Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) once at the start of your program to start a Rerun Viewer in an external process and stream all the data to it via TCP. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
+Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) once at the start of your program to start a Rerun Viewer in an external process and stream all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 #### Rust
-[`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via TCP. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
+[`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 
 ### Connect
 
-Connects to a remote Rerun Viewer and streams all the data via TCP.
+Connects to a remote Rerun Viewer and streams all the data via gRPC.
 
 You will need to start a stand-alone Viewer first by typing `rerun` in your terminal.
 
@@ -48,7 +48,7 @@ You will need to start a stand-alone Viewer first by typing `rerun` in your term
 
 ### Serve
 
-This starts the web version of the Rerun Viewer in your browser, and streams data to it in real-time using WebSockets.
+This starts the web version of the Rerun Viewer in your browser, and streams data to it in real-time using gRPC.
 
 #### C++
 Not available yet.

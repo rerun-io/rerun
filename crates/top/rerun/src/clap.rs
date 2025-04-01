@@ -65,7 +65,7 @@ pub struct RerunArgs {
     #[clap(long)]
     serve: bool,
 
-    /// An upper limit on how much memory the WebSocket server should use.
+    /// An upper limit on how much memory the gRPC server should use.
     ///
     /// The server buffers log messages for the benefit of late-arriving viewers.
     ///

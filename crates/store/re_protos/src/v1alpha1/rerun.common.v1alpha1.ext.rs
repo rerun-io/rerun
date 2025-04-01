@@ -10,18 +10,14 @@ impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
     type Error = ArrowError;
 
     fn try_from(value: &crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
+        let schema_bytes = value
+            .arrow_schema
+            .as_ref()
+            .ok_or(ArrowError::InvalidArgumentError(
+                "missing schema bytes".to_owned(),
+            ))?;
         Ok(Self::clone(
-            re_sorbet::schema_from_ipc(&value.arrow_schema)?.as_ref(),
-        ))
-    }
-}
-
-impl TryFrom<crate::common::v1alpha1::Schema> for ArrowSchema {
-    type Error = ArrowError;
-
-    fn try_from(value: crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
-        Ok(Self::clone(
-            re_sorbet::schema_from_ipc(&value.arrow_schema)?.as_ref(),
+            re_sorbet::schema_from_ipc(schema_bytes)?.as_ref(),
         ))
     }
 }
@@ -31,8 +27,16 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
 
     fn try_from(value: &ArrowSchema) -> Result<Self, Self::Error> {
         Ok(Self {
-            arrow_schema: re_sorbet::ipc_from_schema(value)?,
+            arrow_schema: Some(re_sorbet::ipc_from_schema(value)?),
         })
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::Schema> for ArrowSchema {
+    type Error = ArrowError;
+
+    fn try_from(value: crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
+        (&value).try_into()
     }
 }
 

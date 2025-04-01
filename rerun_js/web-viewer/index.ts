@@ -172,16 +172,16 @@ interface WebViewerEvents {
 // https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-    ? never
-    : K]: WebViewerEvents[K] extends any[]
-    ? WebViewerEvents[K]
-    : [WebViewerEvents[K]];
+  ? never
+  : K]: WebViewerEvents[K] extends any[]
+  ? WebViewerEvents[K]
+  : [WebViewerEvents[K]];
 };
 
 type EventsWithoutValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-    ? K
-    : never]: WebViewerEvents[K];
+  ? K
+  : never]: WebViewerEvents[K];
 };
 
 type Cancel = () => void;
@@ -208,7 +208,7 @@ export class WebViewer {
   /**
    * Start the viewer.
    *
-   * @param rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param parent The element to attach the canvas onto.
    * @param options Whether to hide the welcome screen.
    */
@@ -240,9 +240,9 @@ export class WebViewer {
 
     const fullscreen = this.#allow_fullscreen
       ? {
-          get_state: () => this.#fullscreen,
-          on_toggle: () => this.toggle_fullscreen(),
-        }
+        get_state: () => this.#fullscreen,
+        on_toggle: () => this.toggle_fullscreen(),
+      }
       : undefined;
 
     const callbacks = {
@@ -387,7 +387,7 @@ export class WebViewer {
    *
    * The viewer must have been started via `WebViewer.start`.
    *
-   * @param rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param options
    *        - follow_if_http: Whether Rerun should open the resource in "Following" mode when streaming
    *        from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
@@ -413,7 +413,7 @@ export class WebViewer {
    *
    * The viewer must have been started via `WebViewer.start`.
    *
-   * @param rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    */
   close(rrd: string | string[]) {
     if (!this.#handle) {
@@ -606,8 +606,7 @@ export class WebViewer {
   set_playing(recording_id: string, value: boolean) {
     if (!this.#handle) {
       throw new Error(
-        `attempted to set play state to ${
-          value ? "playing" : "paused"
+        `attempted to set play state to ${value ? "playing" : "paused"
         } in a stopped web viewer`,
       );
     }
@@ -737,7 +736,7 @@ export class WebViewer {
     }
   }
 
-  #minimize = () => {};
+  #minimize = () => { };
 
   #maximize = () => {
     _minimize_current_fullscreen_viewer?.();

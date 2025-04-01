@@ -171,7 +171,7 @@ ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
-arrow = { version = "54.1", default-features = false }
+arrow = { version = "54.3.1", default-features = false }
 arrow2 = { package = "re_arrow2", version = "0.19.0", features = ["arrow"] }
 async-stream = "0.3"
 backtrace = "0.3"
@@ -186,6 +186,7 @@ cargo_metadata = "0.18"
 cargo-run-wasm = "0.3.2"
 cfg_aliases = "0.2"
 cfg-if = "1.0"
+chrono = { version = "0.4.39", default-features = false } #TODO(#9317): migrate to jiff when upgrading to pyo3 0.24
 clang-format = "0.3"
 clap = "4.0"
 clean-path = "0.2"
@@ -215,7 +216,7 @@ getrandom = "0.2"
 glam = { version = "0.28", features = ["debug-glam-assert"] }
 glob = "0.3"
 gltf = "1.1"
-half = "2.3.1"
+half = { version = "2.3.1", features = ["bytemuck"] }
 hexasphere = "14.1.0"
 home = "=0.5.9"
 image = { version = "0.25", default-features = false }
