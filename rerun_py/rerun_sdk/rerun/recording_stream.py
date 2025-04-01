@@ -625,10 +625,6 @@ class RecordingStream:
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
-        recording:
-            Specifies the [`rerun.RecordingStream`][] to use.
-            If left unspecified, defaults to the current active data recording, if there is one.
-            See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
         server_memory_limit:
             Maximum amount of memory to use for buffering log data for clients that connect late.
             This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
