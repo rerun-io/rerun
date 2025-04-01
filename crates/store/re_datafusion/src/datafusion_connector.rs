@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
-use crate::partition_list::PartitionListProvider;
-use crate::table_entry_provider::TableEntryProvider;
 use datafusion::{catalog::TableProvider, error::DataFusionError};
+use tonic::transport::Channel;
+
 use re_log_types::external::re_tuid::Tuid;
 use re_protos::{
     catalog::v1alpha1::{ext::EntryDetails, DatasetEntry, EntryFilter, ReadDatasetEntryRequest},
     frontend::v1alpha1::frontend_service_client::FrontendServiceClient,
 };
-use tonic::transport::Channel;
+
+use crate::partition_list::PartitionListProvider;
+use crate::table_entry_provider::TableEntryProvider;
 
 pub struct DataFusionConnector {
     catalog: FrontendServiceClient<Channel>,
