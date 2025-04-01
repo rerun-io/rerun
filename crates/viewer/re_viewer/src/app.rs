@@ -574,8 +574,8 @@ impl App {
             SystemCommand::SelectRedapServer { origin } => {
                 self.state.redap_servers.select_server(origin);
             }
-            SystemCommand::SelectRedapEntry { entry_id: dataset } => {
-                self.state.redap_servers.select_entry(dataset);
+            SystemCommand::SelectRedapEntry(entry) => {
+                self.state.redap_servers.select_entry(entry);
             }
 
             SystemCommand::LoadDataSource(data_source) => {

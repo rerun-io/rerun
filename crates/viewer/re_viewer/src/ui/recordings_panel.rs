@@ -1,10 +1,10 @@
 use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg};
+use re_protos::common::v1alpha1::ext::EntryId;
 use re_redap_browser::RedapServers;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
-use re_types_core::external::re_tuid;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
     DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
@@ -236,7 +236,7 @@ fn recording_list_ui(
 
 #[derive(Clone, Hash)]
 enum EntryKind {
-    Remote(re_uri::Origin, re_tuid::Tuid),
+    Remote(re_uri::Origin, EntryId),
     Local(ApplicationId),
 }
 
@@ -246,7 +246,7 @@ impl EntryKind {
             Self::Remote(_, dataset) => servers
                 .find_entry(*dataset)
                 .map(|ds| ds.name().to_owned())
-                .unwrap_or_else(|| dataset.short_string()),
+                .unwrap_or_else(|| dataset.id.short_string()),
             Self::Local(app_id) => app_id.to_string(),
         }
     }
@@ -255,7 +255,7 @@ impl EntryKind {
         match self {
             Self::Remote(_origin, dataset) => {
                 ctx.command_sender()
-                    .send_system(SystemCommand::SelectRedapEntry { entry_id: *dataset });
+                    .send_system(SystemCommand::SelectRedapEntry(*dataset));
                 ctx.command_sender()
                     .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
             }
