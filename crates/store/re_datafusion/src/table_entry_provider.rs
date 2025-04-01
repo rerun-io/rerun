@@ -20,12 +20,12 @@ use tonic::transport::Channel;
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
 #[derive(Debug, Clone)]
-pub struct TableEntryProvider {
+pub struct TableEntryTableProvider {
     client: FrontendServiceClient<Channel>,
     table_id: EntryId,
 }
 
-impl TableEntryProvider {
+impl TableEntryTableProvider {
     pub fn new(client: FrontendServiceClient<Channel>, table_id: EntryId) -> Self {
         Self { client, table_id }
     }
@@ -37,10 +37,10 @@ impl TableEntryProvider {
 }
 
 #[async_trait]
-impl GrpcStreamToTable for TableEntryProvider {
+impl GrpcStreamToTable for TableEntryTableProvider {
     type GrpcStreamData = ScanTableResponse;
 
-    async fn create_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
+    async fn fetch_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
         let request = GetTableSchemaRequest {
             table_id: Some(self.table_id.into()),
         };

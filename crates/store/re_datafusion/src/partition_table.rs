@@ -23,12 +23,12 @@ use tonic::transport::Channel;
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
 #[derive(Debug, Clone)]
-pub struct PartitionListProvider {
+pub struct PartitionTableProvider {
     client: FrontendServiceClient<Channel>,
     tuid: Tuid,
 }
 
-impl PartitionListProvider {
+impl PartitionTableProvider {
     pub fn new(client: FrontendServiceClient<Channel>, tuid: Tuid) -> Self {
         Self { client, tuid }
     }
@@ -40,10 +40,11 @@ impl PartitionListProvider {
 }
 
 #[async_trait]
-impl GrpcStreamToTable for PartitionListProvider {
+impl GrpcStreamToTable for PartitionTableProvider {
     type GrpcStreamData = ScanPartitionTableResponse;
 
-    async fn create_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
+    async fn fetch_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
+        // TODO(jleibs): actually fetch from front-end
         Ok(Arc::new(Schema::new_with_metadata(
             vec![
                 Field::new("id", Tuid::arrow_datatype(), true),

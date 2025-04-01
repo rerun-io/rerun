@@ -9,8 +9,8 @@ use re_protos::{
     frontend::v1alpha1::frontend_service_client::FrontendServiceClient,
 };
 
-use crate::partition_list::PartitionListProvider;
-use crate::table_entry_provider::TableEntryProvider;
+use crate::partition_table::PartitionTableProvider;
+use crate::table_entry_provider::TableEntryTableProvider;
 
 pub struct DataFusionConnector {
     catalog: FrontendServiceClient<Channel>,
@@ -44,7 +44,7 @@ impl DataFusionConnector {
             .try_into()
             .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
-        TableEntryProvider::new(self.catalog.clone(), entry.id)
+        TableEntryTableProvider::new(self.catalog.clone(), entry.id)
             .into_provider()
             .await
     }
@@ -65,11 +65,11 @@ impl DataFusionConnector {
         Ok(entry)
     }
 
-    pub async fn get_partition_list(
+    pub async fn get_partition_table(
         &self,
         tuid: Tuid,
     ) -> Result<Arc<dyn TableProvider>, DataFusionError> {
-        PartitionListProvider::new(self.catalog.clone(), tuid)
+        PartitionTableProvider::new(self.catalog.clone(), tuid)
             .into_provider()
             .await
     }

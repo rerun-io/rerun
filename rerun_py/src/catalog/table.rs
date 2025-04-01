@@ -1,6 +1,6 @@
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, PyRef, PyResult, Python};
 
-use re_datafusion::TableEntryProvider;
+use re_datafusion::TableEntryTableProvider;
 
 use crate::{catalog::PyEntry, dataframe::PyDataFusionTable, utils::wait_for_future};
 
@@ -16,7 +16,8 @@ impl PyTable {
 
         let provider = wait_for_future(
             py,
-            TableEntryProvider::new(connection.client(), super_.id.borrow(py).id).into_provider(),
+            TableEntryTableProvider::new(connection.client(), super_.id.borrow(py).id)
+                .into_provider(),
         )
         .map_err(|err| PyRuntimeError::new_err(format!("Error creating TableProvider: {err}")))?;
 
