@@ -11,9 +11,9 @@ use itertools::Itertools as _;
 
 use crate::{
     root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, ATTR_DOCS_DEPRECATED_NOTICE, ATTR_DOCS_DEPRECATED_SINCE,
-    ATTR_DOCS_STATE, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE,
+    FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE,
+    ATTR_RERUN_OVERRIDE_TYPE, ATTR_RERUN_STATE,
 };
 
 // ---
@@ -277,27 +277,27 @@ pub enum State {
 
 impl State {
     pub fn from_attrs(attrs: &Attributes) -> Result<Self, String> {
-        if let Some(state) = attrs.get_string(ATTR_DOCS_STATE) {
+        if let Some(state) = attrs.get_string(ATTR_RERUN_STATE) {
             match state.as_str() {
                 "unstable" => Ok(Self::Unstable),
                 "stable" => Ok(Self::Stable),
                 "deprecated" => {
                     if let (Some(since), Some(notice)) = (
-                        attrs.get_string(ATTR_DOCS_DEPRECATED_SINCE),
-                        attrs.get_string(ATTR_DOCS_DEPRECATED_NOTICE),
+                        attrs.get_string(ATTR_RERUN_DEPRECATED_SINCE),
+                        attrs.get_string(ATTR_RERUN_DEPRECATED_NOTICE),
                     ) {
                         Ok(Self::Deprecated {
                             since: since.clone(),
                             notice: notice.clone(),
                         })
                     } else {
-                        Err(format!("Deprecated object must have {ATTR_DOCS_DEPRECATED_SINCE:?} and {ATTR_DOCS_DEPRECATED_NOTICE:?} set"))
+                        Err(format!("Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"))
                     }
                 }
-                unknown => Err(format!("Unknown value for {ATTR_DOCS_STATE:?}: {unknown}")),
+                unknown => Err(format!("Unknown value for {ATTR_RERUN_STATE:?}: {unknown}")),
             }
         } else {
-            Err(format!("Missing attribute {ATTR_DOCS_STATE:?}"))
+            Err(format!("Missing attribute {ATTR_RERUN_STATE:?}"))
         }
     }
 
@@ -483,7 +483,7 @@ impl Object {
             .get_string(crate::ATTR_RERUN_SCOPE)
             .or_else(|| (kind == ObjectKind::View).then(|| "blueprint".to_owned()));
 
-        let state = if attrs.has(ATTR_DOCS_STATE) {
+        let state = if attrs.has(ATTR_RERUN_STATE) {
             State::from_attrs(&attrs).unwrap_or_else(|err| {
                 reporter.error(&virtpath, &fqname, &err);
                 State::Stable
@@ -503,7 +503,7 @@ impl Object {
                 reporter.error(
                     &virtpath,
                     &fqname,
-                    format!("Missing attribute '{ATTR_DOCS_STATE}'"),
+                    format!("Missing attribute '{ATTR_RERUN_STATE}'"),
                 );
             }
             State::Stable
@@ -596,12 +596,12 @@ impl Object {
         let docs = Docs::from_raw_docs(reporter, &virtpath, enm.name(), enm.documentation());
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
-        let state = if attrs.has(ATTR_DOCS_STATE) {
+        let state = if attrs.has(ATTR_RERUN_STATE) {
             State::from_attrs(&attrs).unwrap_or_else(|err| {
                 reporter.error(
                     &virtpath,
                     &fqname,
-                    format!("Failed to parse `{ATTR_DOCS_STATE}`: {err}"),
+                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
                 );
                 State::Stable
             })
@@ -916,12 +916,12 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
-        let state = if attrs.has(ATTR_DOCS_STATE) {
+        let state = if attrs.has(ATTR_RERUN_STATE) {
             State::from_attrs(&attrs).unwrap_or_else(|err| {
                 reporter.error(
                     &virtpath,
                     &fqname,
-                    format!("Failed to parse `{ATTR_DOCS_STATE}`: {err}"),
+                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
                 );
                 State::Stable
             })
@@ -940,7 +940,7 @@ impl ObjectField {
                 &fqname,
                 format!(
                     "Use {} attribute for deprecation instead",
-                    crate::ATTR_DOCS_STATE
+                    crate::ATTR_RERUN_STATE
                 ),
             );
         }
@@ -989,12 +989,12 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(reporter, &virtpath, val.name(), val.documentation());
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
-        let state = if attrs.has(ATTR_DOCS_STATE) {
+        let state = if attrs.has(ATTR_RERUN_STATE) {
             State::from_attrs(&attrs).unwrap_or_else(|err| {
                 reporter.error(
                     &virtpath,
                     &fqname,
-                    format!("Failed to parse `{ATTR_DOCS_STATE}`: {err}"),
+                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
                 );
                 State::Stable
             })

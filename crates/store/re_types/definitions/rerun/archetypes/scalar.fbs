@@ -15,12 +15,12 @@ namespace rerun.archetypes;
 /// \example archetypes/scalars_row_updates title="Update a scalar over time" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png"
 /// \example archetypes/scalars_column_updates title="Update a scalar over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png"
 table Scalar (
-  "attr.docs.state": "deprecated",
-  "attr.docs.deprecated_since": "0.23.0",
-  "attr.docs.deprecated_notice": "Use `Scalars` instead.",
-  "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Plotting",
-  "attr.docs.view_types": "TimeSeriesView"
+  "attr.docs.view_types": "TimeSeriesView",
+  "attr.rerun.deprecated_notice": "Use `Scalars` instead.",
+  "attr.rerun.deprecated_since": "0.23.0",
+  "attr.rerun.state": "deprecated",
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

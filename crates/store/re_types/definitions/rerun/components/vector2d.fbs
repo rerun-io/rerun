@@ -5,7 +5,7 @@ namespace rerun.components;
 
 /// A vector in 2D space.
 struct Vector2D (
-  "attr.docs.state": "stable",
+  "attr.rerun.state": "stable",
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

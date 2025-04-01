@@ -188,6 +188,9 @@ pub const ATTR_RERUN_LOG_MISSING_AS_EMPTY: &str = "attr.rerun.log_missing_as_emp
 pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
 pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
 pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
+pub const ATTR_RERUN_STATE: &str = "attr.rerun.state";
+pub const ATTR_RERUN_DEPRECATED_SINCE: &str = "attr.rerun.deprecated_since";
+pub const ATTR_RERUN_DEPRECATED_NOTICE: &str = "attr.rerun.deprecated_notice";
 
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
 pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
@@ -208,9 +211,6 @@ pub const ATTR_DOCS_UNRELEASED: &str = "attr.docs.unreleased";
 
 pub const ATTR_DOCS_CATEGORY: &str = "attr.docs.category";
 pub const ATTR_DOCS_VIEW_TYPES: &str = "attr.docs.view_types";
-pub const ATTR_DOCS_STATE: &str = "attr.docs.state";
-pub const ATTR_DOCS_DEPRECATED_SINCE: &str = "attr.docs.deprecated_since";
-pub const ATTR_DOCS_DEPRECATED_NOTICE: &str = "attr.docs.deprecated_notice";
 
 // --- Entrypoints ---
 

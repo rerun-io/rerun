@@ -7,8 +7,8 @@ namespace rerun.archetypes;
 /// \example archetypes/pinhole_perspective title="Perspective pinhole camera" image="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png"
 table Pinhole (
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.state": "unstable",
   "attr.docs.view_types": "Spatial2DView, Spatial2DView",
+  "attr.rerun.state": "unstable",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

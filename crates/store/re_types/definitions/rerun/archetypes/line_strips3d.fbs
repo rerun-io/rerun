@@ -10,8 +10,8 @@ namespace rerun.archetypes;
 /// \example archetypes/line_strips3d_ui_radius title="Lines with scene & UI radius each" image="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1200w.png"
 table LineStrips3D (
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.state": "stable",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
