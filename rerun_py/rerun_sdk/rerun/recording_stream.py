@@ -608,7 +608,7 @@ class RecordingStream:
         """
         Serve log-data over gRPC.
 
-        You can to this server with the native viewer using `rerun rerun+http://localhost:GRPC_PORT/proxy`.
+        You can to this server with the native viewer using `rerun rerun+http://localhost:{grpc_port}/proxy`.
 
         The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.

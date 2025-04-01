@@ -287,7 +287,7 @@ def serve_web(
     """
     Serve log-data over gRPC and serve a Rerun web viewer over HTTP.
 
-    You can also connect to this server with the native viewer using `rerun rerun+http://127.0.0.1:{grpc_port}/proxy`.
+    You can also connect to this server with the native viewer using `rerun rerun+http://localhost:{grpc_port}/proxy`.
 
     The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
