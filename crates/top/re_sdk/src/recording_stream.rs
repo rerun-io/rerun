@@ -98,6 +98,7 @@ pub enum RecordingStreamError {
     #[error("not a `/proxy` endpoint")]
     NotAProxyEndpoint,
 
+    /// Invalid bind IP.
     #[error(transparent)]
     InvalidAddress(#[from] std::net::AddrParseError),
 }
