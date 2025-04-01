@@ -16,7 +16,7 @@ use crate::{
         StringExt as _,
     },
     format_path,
-    objects::ObjectClass,
+    objects::{ObjectClass, State},
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
@@ -45,8 +45,8 @@ const FIELD_CONVERTER_SUFFIX: &str = "__field_converter_override";
 
 fn classmethod_decorators(obj: &Object) -> String {
     // We need to decorate all class methods as deprecated
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
-        format!(r#"@deprecated("""{deprecation_notice}""")"#)
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        format!(r#"@deprecated("""{deprecation_summary}""")"#)
     } else {
         Default::default()
     }
@@ -645,8 +645,8 @@ fn code_for_struct(
         superclasses.push("ComponentMixin".to_owned());
     }
 
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
 
     if !obj.is_delegating_component() {
@@ -779,7 +779,7 @@ fn code_for_struct(
 
             // Generating docs for all the fields creates A LOT of visual noise in the API docs.
             let show_fields_in_docs = false;
-            let doc_lines = lines_from_docs(reporter, objects, &field.docs, false);
+            let doc_lines = lines_from_docs(reporter, objects, &field.docs, &field.state);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
                     code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -865,8 +865,8 @@ fn code_for_enum(
 
     code.push_unindented("from enum import Enum", 2);
 
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
 
     let superclasses = {
@@ -895,7 +895,7 @@ fn code_for_enum(
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
-        let doc_lines = lines_from_docs(reporter, objects, &variant.docs, false);
+        let doc_lines = lines_from_docs(reporter, objects, &variant.docs, &variant.state);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
                 code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -1044,8 +1044,8 @@ fn code_for_union(
         }
     };
 
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
 
     code.push_unindented(
@@ -1225,7 +1225,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
 
 /// Ends with double newlines, unless empty.
 fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
-    let mut lines = lines_from_docs(reporter, objects, &obj.docs, obj.is_experimental());
+    let mut lines = lines_from_docs(reporter, objects, &obj.docs, &obj.state);
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -1239,15 +1239,13 @@ fn lines_from_docs(
     reporter: &Reporter,
     objects: &Objects,
     docs: &Docs,
-    is_experimental: bool,
+    state: &State,
 ) -> Vec<String> {
     let mut lines = docs.lines_for(reporter, objects, Target::Python);
 
-    if is_experimental {
+    if let Some(docline_summary) = state.docline_summary() {
         lines.push(String::new());
-        lines.push(
-            "⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**".to_owned(),
-        );
+        lines.push(docline_summary);
     }
 
     let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap_or_else(|err| {

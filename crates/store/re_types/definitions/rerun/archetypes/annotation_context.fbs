@@ -15,8 +15,9 @@ namespace rerun.archetypes;
 /// \example archetypes/annotation_context_segmentation title="Segmentation" image="https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/1200w.png""
 /// \example archetypes/annotation_context_connections !api title="Connections" image="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1200w.png"
 table AnnotationContext (
-  "attr.rust.derive": "PartialEq",
-  "attr.docs.view_types": "Spatial2DView, Spatial3DView"
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView",
+  "attr.rerun.state": "unstable",
+  "attr.rust.derive": "PartialEq"
 ) {
   /// List of class descriptions, mapping class indices to class names, colors etc.
   context: rerun.components.AnnotationContext ("attr.rerun.component_required", order: 1000);

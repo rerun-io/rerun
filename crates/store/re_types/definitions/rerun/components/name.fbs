@@ -8,6 +8,7 @@ table Name (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent"
 ) {

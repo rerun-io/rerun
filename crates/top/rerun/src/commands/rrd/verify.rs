@@ -124,8 +124,8 @@ impl Verifier {
                 .get(component_name)
                 .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
-            if let Some(deprecation_notice) = component_reflection.deprecation_notice {
-                anyhow::bail!("Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_notice:?}");
+            if let Some(deprecation_summary) = component_reflection.deprecation_summary {
+                anyhow::bail!("Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_summary:?}");
             }
 
             let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
@@ -150,9 +150,9 @@ impl Verifier {
                     .get(archetype_name)
                     .ok_or_else(|| anyhow::anyhow!("Unknown archetype: {archetype_name:?}"))?;
 
-                if let Some(deprecation_notice) = archetype_reflection.deprecation_notice {
+                if let Some(deprecation_summary) = archetype_reflection.deprecation_summary {
                     anyhow::bail!(
-                        "Archetype {archetype_name:?} is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_notice:?}"
+                        "Archetype {archetype_name:?} is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation summary: {deprecation_summary:?}"
                     );
                 }
 

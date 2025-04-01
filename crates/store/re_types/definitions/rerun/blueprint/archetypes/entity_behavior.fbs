@@ -6,9 +6,10 @@ namespace rerun.blueprint.archetypes;
 ///
 /// \example archetypes/entity_behavior missing="cpp,rs" image="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/1200w.png"
 table EntityBehavior (
+  "attr.docs.category": "General",
   "attr.docs.unreleased",
   "attr.rerun.scope": "blueprint",
-  "attr.docs.category": "General"
+  "attr.rerun.state": "stable"
 ) {
     /// Whether the entity can be interacted with.
     ///

@@ -64,6 +64,9 @@ namespace rerun::archetypes {
     ///     rec.log("segmentation/image", rerun::SegmentationImage(data.data(), {WIDTH, HEIGHT}));
     /// }
     /// ```
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct AnnotationContext {
         /// List of class descriptions, mapping class indices to class names, colors etc.
         std::optional<ComponentBatch> context;
