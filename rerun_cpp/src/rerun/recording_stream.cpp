@@ -7,6 +7,7 @@
 #include "string_utils.hpp"
 
 #include <arrow/buffer.h>
+#include <sys/types.h>
 
 #include <cassert>
 #include <string> // to_string
@@ -111,6 +112,20 @@ namespace rerun {
             _id,
             detail::to_rr_string(url),
             flush_timeout_sec,
+            &status
+        );
+        return status;
+    }
+
+    Error RecordingStream::serve_grpc(
+        std::string_view bind_ip, uint16_t port, std::string_view server_memory_limit
+    ) const {
+        rr_error status = {};
+        rr_recording_stream_serve_grpc(
+            _id,
+            detail::to_rr_string(bind_ip),
+            port,
+            detail::to_rr_string(server_memory_limit),
             &status
         );
         return status;

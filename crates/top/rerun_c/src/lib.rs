@@ -290,6 +290,7 @@ pub enum CErrorCode {
     InvalidSocketAddress,
     InvalidComponentTypeHandle,
     InvalidServerUrl = 0x0000_0001a,
+    InvalidMemoryLimit,
 
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamRuntimeFailure,
@@ -298,6 +299,7 @@ pub enum CErrorCode {
     RecordingStreamStdoutFailure,
     RecordingStreamSpawnFailure,
     RecordingStreamChunkValidationFailure,
+    RecordingStreamServeGrpcFailure,
 
     _CategoryArrow = 0x0000_1000,
     ArrowFfiSchemaImportError,
@@ -594,6 +596,46 @@ pub extern "C" fn rr_recording_stream_connect_grpc(
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url, flush_timeout_sec) {
+        err.write_error(error);
+    }
+}
+
+fn rr_recording_stream_serve_grpc_impl(
+    stream: CRecordingStream,
+    bind_ip: CStringView,
+    port: u16,
+    server_memory_limit: CStringView,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let bind_ip = bind_ip.as_str("bind_ip")?;
+    let server_memory_limit = server_memory_limit
+        .as_str("server_memory_limit")?
+        .parse::<re_sdk::MemoryLimit>()
+        .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err.to_string()))?;
+
+    stream
+        .serve_grpc_opts(bind_ip, port, server_memory_limit)
+        .map_err(|err| {
+            CError::new(
+                CErrorCode::RecordingStreamServeGrpcFailure,
+                &err.to_string(),
+            )
+        })?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_serve_grpc(
+    id: CRecordingStream,
+    bind_ip: CStringView,
+    port: u16,
+    server_memory_limit: CStringView,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_serve_grpc_impl(id, bind_ip, port, server_memory_limit) {
         err.write_error(error);
     }
 }
