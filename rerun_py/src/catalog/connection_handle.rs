@@ -33,6 +33,10 @@ impl ConnectionHandle {
 
         Ok(Self { origin, client })
     }
+
+    pub fn client(&self) -> &FrontendServiceClient<tonic::transport::Channel> {
+        &self.client
+    }
 }
 
 // TODO(ab): all these request wrapper should be implemented in a more general client wrapper also
