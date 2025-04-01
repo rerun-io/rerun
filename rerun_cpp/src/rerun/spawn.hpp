@@ -10,9 +10,9 @@
 
 namespace rerun {
     /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
-    /// listen for incoming TCP connections.
+    /// listen for incoming gRPC connections.
     ///
-    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// If a Rerun Viewer is already listening on this gRPC port, the stream will be redirected to
     /// that viewer instead of starting a new one.
     ///
     /// options:

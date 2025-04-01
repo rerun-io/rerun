@@ -28,6 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See also [`datatypes::ClassDescription`][crate::datatypes::ClassDescription].
 ///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+///
 /// ## Example
 ///
 /// ### Segmentation

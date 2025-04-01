@@ -7,7 +7,7 @@ This is an end-to-end test for testing:
 * Our Python API
 * LogMsg encoding/decoding
 * Arrow encoding/decoding
-* TCP connection
+* gRPC connection
 * Data store ingestion
 """
 

@@ -11,7 +11,7 @@ use super::protocol::Message;
 
 /// A client for handling connections to an external application from within the Rerun viewer.
 ///
-/// This client manages a TCP connection to the external application and provides bidirectional
+/// This client manages a gRPC connection to the external application and provides bidirectional
 /// message communication through separate read and write tasks.
 ///
 /// # Message Handling

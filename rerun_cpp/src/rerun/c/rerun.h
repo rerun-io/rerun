@@ -371,11 +371,11 @@ typedef struct rr_error {
 extern const char* rr_version_string(void);
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
-/// listen for incoming TCP connections.
+/// listen for incoming gRPC connections.
 ///
 /// `spawn_opts` can be set to NULL to use the recommended defaults.
 ///
-/// If a Rerun Viewer is already listening on this TCP port, this does nothing.
+/// If a Rerun Viewer is already listening on this gRPC port, this does nothing.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
 /// Registers a new component type to be used in `rr_component_batch`.
@@ -447,7 +447,7 @@ extern void rr_recording_stream_serve_grpc(
 );
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
-/// over TCP.
+/// over gRPC.
 ///
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
