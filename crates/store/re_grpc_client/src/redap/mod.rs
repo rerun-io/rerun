@@ -5,7 +5,6 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
-use re_protos::common::v1alpha1::ext::PartitionId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::FetchPartitionRequest;
 
@@ -184,7 +183,7 @@ pub async fn stream_partition_async(
         //TODO(rerun-io/dataplatform#474): filter chunks by time range
         .fetch_partition(FetchPartitionRequest {
             dataset_id: Some(endpoint.dataset_id.into()),
-            partition_id: Some(PartitionId::new(endpoint.partition_id.clone()).into()),
+            partition_id: Some(endpoint.partition_id.clone().into()),
         })
         .await?
         .into_inner();
