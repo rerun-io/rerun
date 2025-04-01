@@ -216,7 +216,7 @@ use doclink_translation::translate_doc_line;
 ///
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
-    use crate::{objects::State, ObjectKind, Objects, Reporter};
+    use crate::{ObjectKind, Objects, Reporter};
 
     use super::Target;
 
@@ -375,7 +375,7 @@ mod doclink_translation {
             }
 
             scope = object.scope().unwrap_or_default();
-            is_unreleased = object.state == State::Unreleased;
+            is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
             if let Some(deprecation_summary) = object.deprecation_summary() {
                 return Err(format!(

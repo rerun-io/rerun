@@ -99,7 +99,7 @@ Update the change log. It should include:
 
 Remove the speculative link markers (`?speculative-link`).
 
-Find all `"attr.docs.state": "unreleased"` in `.fbs` files and change it to either "experimental", "unstable", or "stable". Run codegen.
+Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
 
 Once you're done, commit and push onto the release branch.
 

@@ -204,6 +204,8 @@ pub const ATTR_RUST_OVERRIDE_CRATE: &str = "attr.rust.override_crate";
 pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
 pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 
+pub const ATTR_DOCS_UNRELEASED: &str = "attr.docs.unreleased";
+
 pub const ATTR_DOCS_CATEGORY: &str = "attr.docs.category";
 pub const ATTR_DOCS_VIEW_TYPES: &str = "attr.docs.view_types";
 pub const ATTR_DOCS_STATE: &str = "attr.docs.state";

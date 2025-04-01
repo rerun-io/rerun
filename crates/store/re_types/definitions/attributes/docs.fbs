@@ -1,18 +1,19 @@
 namespace docs.attributes;
 
+/// Apply to a struct or table object to mark it as unreleased.
+///
+/// Any external links referencing this datatype will be given a speculative link marker.
+/// Speculative links contain a `?speculative-link` query param. Any such links are ignored by linkinator,
+/// and we check for their absence as the first step in our release process.
+attribute "attr.docs.unreleased";
+
 /// Must be set on all archetypes and components.
 ///
 /// Must have one of the following values:
-/// - `unreleased`
 /// - `experimental`
 /// - `unstable`
 /// - `stable`
 /// - `deprecated`
-///
-/// ### `unreleased`
-/// Any external links referencing this datatype will be given a speculative link marker.
-/// Speculative links contain a `?speculative-link` query param. Any such links are ignored by linkinator,
-/// and we check for their absence as the first step in our release process.
 ///
 /// ### `experimental`
 /// New API that is not yet fully supported, and may change significantly in future versions.

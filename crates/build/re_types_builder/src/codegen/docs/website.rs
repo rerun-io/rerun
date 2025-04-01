@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 
 use crate::{
     codegen::{autogen_warning, common::ExampleInfo, Target},
-    objects::{FieldKind, State, ViewReference},
+    objects::{FieldKind, ViewReference},
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
 };
 
@@ -311,7 +311,7 @@ fn object_page(
 }
 
 fn list_links(page: &mut String, object: &Object) {
-    let speculative_marker = if object.state == State::Unreleased {
+    let speculative_marker = if object.is_attr_set(crate::ATTR_DOCS_UNRELEASED) {
         "?speculative-link"
     } else {
         ""
@@ -508,7 +508,7 @@ fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object:
         }
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
-                let is_unreleased = ty.state == State::Unreleased;
+                let is_unreleased = ty.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
                 let speculative_marker = if is_unreleased {
                     "?speculative-link"
                 } else {

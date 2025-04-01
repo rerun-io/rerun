@@ -258,11 +258,6 @@ pub enum ObjectKind {
 /// Must be set on all archetypes and components
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum State {
-    /// Any external links referencing this datatype will be given a speculative link marker.
-    /// Speculative links contain a `?speculative-link` query param. Any such links are ignored by linkinator,
-    /// and we check for their absence as the first step in our release process.
-    Unreleased,
-
     /// New API that is not yet fully supported, and may change significantly in future versions.
     /// Implies everything that `unstable` implies.
     Experimental,
@@ -288,7 +283,6 @@ impl State {
     pub fn from_attrs(attrs: &Attributes) -> Result<Self, String> {
         if let Some(state) = attrs.get_string(ATTR_DOCS_STATE) {
             match state.as_str() {
-                "unreleased" => Ok(Self::Unreleased),
                 "experimental" => Ok(Self::Experimental),
                 "unstable" => Ok(Self::Unstable),
                 "stable" => Ok(Self::Stable),
@@ -315,7 +309,7 @@ impl State {
     /// Add noteworthy information on a single line, if any.
     pub fn docline_summary(&self) -> Option<String> {
         match self {
-            Self::Unreleased | Self::Stable => { None }
+            Self::Stable => { None }
             Self::Experimental => {
                 Some("⚠️ **This type is _experimental_! It is not fully supported, and is likely to change significantly in future versions.**".to_owned())
             }
@@ -500,12 +494,10 @@ impl Object {
         let state = if attrs.has(ATTR_DOCS_STATE) {
             State::from_attrs(&attrs).unwrap_or_else(|err| {
                 reporter.error(&virtpath, &fqname, &err);
-                State::Unreleased
+                State::Stable
             })
-        } else if kind == ObjectKind::Datatype {
+        } else if kind == ObjectKind::Datatype || is_testing_fqname(&fqname) {
             State::Stable
-        } else if is_testing_fqname(&fqname) {
-            State::Unreleased
         } else if scope == Some("blueprint".to_owned()) {
             if false {
                 // TODO(#9427)
