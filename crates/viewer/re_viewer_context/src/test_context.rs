@@ -350,7 +350,6 @@ impl TestContext {
                 bundle: &Default::default(),
                 tables: &Default::default(),
             },
-            // table_context: &table_context,
             active_table: None,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -477,6 +476,7 @@ impl TestContext {
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
+                | SystemCommand::ActivateTable(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)

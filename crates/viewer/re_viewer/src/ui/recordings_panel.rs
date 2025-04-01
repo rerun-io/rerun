@@ -191,9 +191,15 @@ fn recording_list_ui(
         );
     }
 
-    for (table_id, table) in ctx.storage_context.tables {
-        table_id_button_ui(ctx, ui, table_id, UiLayout::Tooltip);
-    }
+    let item = ui.list_item().header();
+    let title = list_item::LabelContent::header("Tables");
+    if !ctx.storage_context.tables.is_empty() {
+        item.show_hierarchical_with_children(ui, egui::Id::new("tables"), true, title, |ui| {
+            for (table_id) in ctx.storage_context.tables.keys() {
+                table_id_button_ui(ctx, ui, table_id, UiLayout::Tooltip);
+            }
+        });
+    };
 
     // Always show welcome screen last, if at all:
     if (ctx
@@ -265,7 +271,9 @@ impl DatasetKind {
                 ctx.command_sender()
                     .send_system(SystemCommand::SetSelection(Item::AppId(app.clone())));
             }
-            Self::Table(table_id) => todo!("Select dataset"),
+            Self::Table(table_id) => ctx
+                .command_sender()
+                .send_system(SystemCommand::ActivateTable(table_id.clone())),
         }
     }
 

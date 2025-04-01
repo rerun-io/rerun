@@ -35,6 +35,13 @@ impl Entry {
             Self::Table { .. } => None,
         }
     }
+
+    pub fn table_ref(&self) -> Option<&TableId> {
+        match self {
+            Self::Table { table_id } => Some(table_id),
+            Self::Recording { .. } => None,
+        }
+    }
 }
 
 pub struct StorageContext<'a> {
@@ -492,7 +499,7 @@ impl StoreHub {
     // ---------------------
     // Active recording
 
-    /// Directly access the [`EntityDb`] for the active recording.
+    /// The recording id for the active recording.
     #[inline]
     pub fn active_recording_id(&self) -> Option<&StoreId> {
         self.active_entry.as_ref().and_then(|e| e.recording_ref())
@@ -505,6 +512,12 @@ impl StoreHub {
             Some(Entry::Recording { store_id }) => self.store_bundle.get(store_id),
             _ => None,
         }
+    }
+
+    /// The table id for the active table.
+    #[inline]
+    pub fn active_table_id(&self) -> Option<&TableId> {
+        self.active_entry.as_ref().and_then(|e| e.table_ref())
     }
 
     /// Directly access the [`Caches`] for the active recording.
@@ -558,6 +571,11 @@ impl StoreHub {
                 re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");
             }
         }
+    }
+
+    /// Activate a recording by its [`TableId`].
+    pub fn set_activate_table(&mut self, table_id: TableId) {
+        self.active_entry = Some(Entry::Table { table_id });
     }
 
     // ---------------------

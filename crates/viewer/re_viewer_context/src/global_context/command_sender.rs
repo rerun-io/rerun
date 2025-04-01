@@ -4,6 +4,8 @@ use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
+use crate::TableId;
+
 // ----------------------------------------------------------------------------
 
 /// Commands used by internal system components
@@ -64,6 +66,9 @@ pub enum SystemCommand {
 
     /// If this is a recording, switch to it.
     ActivateRecording(StoreId),
+
+    /// If this is a atble, switch to it.
+    ActivateTable(TableId),
 
     /// Close a recording or blueprint (free its memory).
     CloseStore(StoreId),

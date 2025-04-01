@@ -292,7 +292,7 @@ impl AppState {
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
-            active_table: None, // TODO:
+            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -374,7 +374,7 @@ impl AppState {
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
-            active_table: None, // TODO:
+            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -385,6 +385,61 @@ impl AppState {
 
         if *show_settings_ui {
             // nothing: this is already handled above
+        } else if dbg!(storage_context.hub.active_table_id()).is_some() {
+            let left_panel = egui::SidePanel::left("left_panel_table")
+                .resizable(true)
+                .frame(egui::Frame {
+                    fill: ui.visuals().panel_fill,
+                    ..Default::default()
+                })
+                .min_width(120.0)
+                .default_width(default_blueprint_panel_width(
+                    ui.ctx().screen_rect().width(),
+                ));
+
+            left_panel.show_animated_inside(
+                ui,
+                app_blueprint.blueprint_panel_state().is_expanded(),
+                |ui: &mut egui::Ui| {
+                    // ListItem don't need vertical spacing so we disable it, but restore it
+                    // before drawing the blueprint panel.
+                    ui.spacing_mut().item_spacing.y = 0.0;
+
+                    display_mode_toggle_ui(ui, display_mode);
+
+                    match display_mode {
+                        DisplayMode::LocalRecordings => {
+                            let resizable = ctx.storage_context.bundle.recordings().count() > 3;
+
+                            if resizable {
+                                // Don't shrink either recordings panel or blueprint panel below this height
+                                let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
+
+                                egui::TopBottomPanel::top("recording_panel")
+                                    .frame(egui::Frame::new())
+                                    .resizable(resizable)
+                                    .show_separator_line(false)
+                                    .min_height(min_height_each)
+                                    .default_height(210.0)
+                                    .max_height(ui.available_height() - min_height_each)
+                                    .show_inside(ui, |ui| {
+                                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                    });
+                            } else {
+                                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                            }
+
+                            ui.add_space(4.0);
+                        }
+
+                        DisplayMode::RedapBrowser => {
+                            redap_servers.server_panel_ui(ui);
+                        }
+
+                        DisplayMode::ChunkStoreBrowser => {} // handled above
+                    };
+                },
+            );
         } else if *display_mode == DisplayMode::ChunkStoreBrowser {
             let should_datastore_ui_remain_active =
                 datastore_ui.ui(&ctx, ui, app_options.timestamp_format);

@@ -25,8 +25,6 @@ pub struct ViewerContext<'a> {
     pub storage_context: &'a StorageContext<'a>,
 
     /// If `active_table` is `Some(...)`, we have a table in the context, otherwise it's a regular store.
-    // TODO(grtlr): ideally we would have two variants for a viewer context (one for stores and one for tables), but
-    // right now everything is still to tangled up for this.
     pub active_table: Option<TableId>,
 
     /// Mapping from class and system to entities for the store

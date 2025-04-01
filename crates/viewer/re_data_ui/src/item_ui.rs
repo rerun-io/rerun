@@ -9,7 +9,10 @@ use re_log_types::{
 };
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
-use re_viewer_context::{HoverHighlight, Item, TableId, UiLayout, ViewId, ViewerContext};
+use re_viewer_context::{
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TableId, UiLayout, ViewId,
+    ViewerContext,
+};
 
 use super::DataUi as _;
 
@@ -907,14 +910,7 @@ pub fn table_id_button_ui(
         list_item
             .show_hierarchical(ui, item_content)
             .on_hover_ui(|ui| {
-                // entity_db.data_ui(
-                //     ctx,
-                //     ui,
-                //     re_viewer_context::UiLayout::Tooltip,
-                //     &ctx.current_query(),
-                //     entity_db,
-                // );
-                ui.label("TODO: add hover");
+                ui.label(format!("Table: {table_id}"));
             })
     });
 
@@ -923,20 +919,7 @@ pub fn table_id_button_ui(
     }
 
     if response.clicked() {
-        // TODO
-        // // When we click on a recording, we directly activate it. This is safe to do because
-        // // it's non-destructive and recordings are immutable. Switching back is easy.
-        // // We don't do the same thing for blueprints as swapping them can be much more disruptive.
-        // // It is much less obvious how to undo a blueprint switch and what happened to your original
-        // // blueprint.
-        // // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
-        // // for the blueprint.
-        // if store_id.kind == re_log_types::StoreKind::Recording {
-        //     ctx.command_sender()
-        //         .send_system(SystemCommand::ActivateRecording(store_id.clone()));
-        // }
-
-        // ctx.command_sender()
-        //     .send_system(SystemCommand::SetSelection(item));
+        ctx.command_sender()
+            .send_system(SystemCommand::ActivateTable(table_id.clone()));
     }
 }
