@@ -45,8 +45,8 @@ DETECTION_SCORE_THRESHOLD = 0.8
 
 os.environ["HF_HOME"] = str(CACHE_DIR.absolute())
 from transformers import (  # noqa: E402 module level import not at top of file
-    DetrFeatureExtractor,
     DetrForSegmentation,
+    DetrImageProcessor,
 )
 
 
@@ -84,7 +84,7 @@ class Detector:
 
     def __init__(self, coco_categories: list[dict[str, Any]]) -> None:
         logging.info("Initializing neural net for detection and segmentation.")
-        self.feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
+        self.feature_extractor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50-panoptic")
         self.model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
         self.is_thing_from_id: dict[int, bool] = {cat["id"]: bool(cat["isthing"]) for cat in coco_categories}
