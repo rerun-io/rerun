@@ -75,7 +75,10 @@ namespace rerun::archetypes {
     ///     }
     /// }
     /// ```
-    struct [[deprecated("Use `SeriesPoints` instead.")]] SeriesPoint {
+    ///
+    /// ⚠ **Deprecated since 0.23.0**: Use `SeriesPoints` instead.
+    ///
+    struct [[deprecated("since 0.23.0: Use `SeriesPoints` instead.")]] SeriesPoint {
         /// Color for the corresponding series.
         std::optional<ComponentBatch> color;
 

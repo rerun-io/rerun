@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["SeriesLine"]
 
 
-@deprecated("""Use `SeriesLines` instead.""")
+@deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
 @define(str=False, repr=False, init=False)
 class SeriesLine(Archetype):
     """
@@ -31,6 +31,8 @@ class SeriesLine(Archetype):
     This archetype only provides styling information and should be logged as static
     when possible. The underlying data needs to be logged to the same entity-path using
     [`archetypes.Scalars`][rerun.archetypes.Scalars].
+
+    ⚠️ **Deprecated since 0.23.0**: Use `SeriesLines` instead.
 
     Example
     -------
@@ -127,7 +129,7 @@ class SeriesLine(Archetype):
         )
 
     @classmethod
-    @deprecated("""Use `SeriesLines` instead.""")
+    @deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
     def _clear(cls) -> SeriesLine:
         """Produce an empty SeriesLine, bypassing `__init__`."""
         inst = cls.__new__(cls)
@@ -135,7 +137,7 @@ class SeriesLine(Archetype):
         return inst
 
     @classmethod
-    @deprecated("""Use `SeriesLines` instead.""")
+    @deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
     def from_fields(
         cls,
         *,
@@ -201,7 +203,7 @@ class SeriesLine(Archetype):
         return cls.from_fields(clear_unset=True)
 
     @classmethod
-    @deprecated("""Use `SeriesLines` instead.""")
+    @deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
     def columns(
         cls,
         *,

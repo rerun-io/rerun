@@ -596,6 +596,28 @@ impl ::prost::Name for PartitionId {
         "/rerun.common.v1alpha1.PartitionId".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ComponentDescriptor {
+    /// Optional name of the `Archetype` associated with this data.
+    #[prost(string, optional, tag = "1")]
+    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional name of the field within `Archetype` associated with this data.
+    #[prost(string, optional, tag = "2")]
+    pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Semantic name associated with this data.
+    #[prost(string, optional, tag = "3")]
+    pub component_name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ComponentDescriptor {
+    const NAME: &'static str = "ComponentDescriptor";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ComponentDescriptor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ComponentDescriptor".into()
+    }
+}
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

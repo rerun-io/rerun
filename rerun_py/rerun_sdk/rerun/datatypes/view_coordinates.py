@@ -45,6 +45,8 @@ class ViewCoordinates(ViewCoordinatesExt):
      * Left = 4
      * Forward = 5
      * Back = 6
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     def __init__(self: Any, coordinates: ViewCoordinatesLike) -> None:

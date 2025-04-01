@@ -36,6 +36,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///  * Left = 4
 ///  * Forward = 5
 ///  * Back = 6
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct ViewCoordinates(

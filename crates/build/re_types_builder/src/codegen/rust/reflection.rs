@@ -119,9 +119,9 @@ fn generate_component_reflection(
             objects,
             &obj.virtpath,
             &obj.fqname,
+            &obj.state,
             &obj.docs,
             Target::WebDocsMarkdown,
-            obj.is_experimental(),
         )
         .join("\n");
 
@@ -144,7 +144,7 @@ fn generate_component_reflection(
             quote! { None }
         };
 
-        let deprecation_notice = if let Some(notice) = obj.deprecation_notice() {
+        let deprecation_summary = if let Some(notice) = obj.deprecation_summary() {
             quote! { Some(#notice) }
         } else {
             quote! { None }
@@ -153,7 +153,7 @@ fn generate_component_reflection(
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
-                deprecation_notice: #deprecation_notice,
+                deprecation_summary: #deprecation_summary,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_datatype(),
                 verify_arrow_array: #type_name::verify_arrow_array,
@@ -200,9 +200,9 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 objects,
                 &field.virtpath,
                 &field.fqname,
+                &field.state,
                 &field.docs,
                 Target::WebDocsMarkdown,
-                obj.is_experimental(),
             )
             .join("\n");
             let required = field.attrs.has(ATTR_RERUN_COMPONENT_REQUIRED);
@@ -230,9 +230,9 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 objects,
                 &obj.virtpath,
                 &obj.fqname,
+                &obj.state,
                 &obj.docs,
                 Target::WebDocsMarkdown,
-                obj.is_experimental(),
             )
             .join("\n");
         }
@@ -253,7 +253,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             })
             .collect_vec();
 
-        let deprecation_notice = if let Some(notice) = obj.deprecation_notice() {
+        let deprecation_summary = if let Some(notice) = obj.deprecation_summary() {
             quote! { Some(#notice) }
         } else {
             quote! { None }
@@ -263,7 +263,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             ArchetypeReflection {
                 display_name: #display_name,
 
-                deprecation_notice: #deprecation_notice,
+                deprecation_summary: #deprecation_summary,
 
                 scope: #scope,
 

@@ -120,6 +120,7 @@ exclude = [
   'http://foo.zip',
   'https://foo.zip',
   'https://redap.rerun.io',
+  'http://wrong-scheme',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.

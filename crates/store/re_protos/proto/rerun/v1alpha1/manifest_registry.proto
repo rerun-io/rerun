@@ -5,256 +5,193 @@ package rerun.manifest_registry.v1alpha1;
 import "rerun/v1alpha1/common.proto";
 
 service ManifestRegistryService {
+  // --- Write data ---
+
   // Register new partitions with the Dataset
-  rpc RegisterPartitions(RegisterPartitionsRequest) returns (RegisterPartitionsResponse) {}
+  rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  // Unregister partitions from the Dataset
-  rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (UnregisterPartitionsResponse) {}
+  // Unimplemented.
+  rpc WriteChunks(stream WriteChunksRequest) returns (stream WriteChunksResponse) {}
 
-  // List partitions in the Dataset
-  rpc ListPartitions(ListPartitionsRequest) returns (stream ListPartitionsResponse) {}
+  // --- Query schemas ---
+
+  // Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+  //
+  // * To inspect the data of the partition table, use `ScanPartitionTable`.
+  // * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+  rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (GetPartitionTableSchemaResponse) {}
+
+  // Inspect the contents of the partition table (i.e. the dataset manifest).
+  //
+  // The returned data will follow the schema specified by `GetPartitionTableSchema`.
+  rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream ScanPartitionTableResponse) {}
+
+  // Returns the schema of the dataset.
+  //
+  // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+  // entities and components present in the dataset.
+  rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
+
+  // --- Indexing ---
+
+  // Creates a custom index for a specific column (vector search, full-text search, etc).
+  //
+  // Index can be created for all or specific partitions. Creating an index will create a new
+  // index-specific chunk manifest for the Dataset.
+  // Chunk manifest contains information about individual chunk rows for all chunks containing
+  // relevant index data.
+  rpc CreateIndex(CreateIndexRequest) returns (CreateIndexResponse) {}
+
+  // Recreate an index with the same configuration but (potentially) new data.
+  rpc ReIndex(ReIndexRequest) returns (ReIndexResponse) {}
+
+  // --- Queries ---
+
+  // Search a previously created index.
+  //
+  // Do a full text, vector or scalar search. Currently only an Indexed search is supported, user must first
+  // call `CreateIndex` for the relevant column.
+  //
+  // The response is a RecordBatch with 4 columns:
+  // - 'partition_id': which partition the data is from
+  // - 'timepoint':  represents the points in time where index query matches.
+  //     What time points are matched depends on the type of index that is queried.
+  //     For example: for vector search it might be timepoints where top-K matches are found within *each* partition in
+  //     the indexed entry.
+  //     For inverted index it might be timepoints where the query string is found in the indexed column
+  // - instance column: if index column contains a batch of values (for example a list of embeddings), then each
+  //     instance of the batch is a separate row in the resulting RecordBatch
+  // - instance_id: this is a simple element index in the batch array. For example if indexed column is a list of
+  //     embeddings \[a,b,c\] (where each embedding is of same length) then 'instance_id' of embedding 'a' is 0,
+  //     'instance_id' of 'b' is 1, etc.
+  //
+  // TODO(zehiko) add support for "brute force" search.
+  rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
+
+  // Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
+  //
+  // These Rerun-native queries include:
+  // * Filtering by specific partition and chunk IDs.
+  // * Latest-at, range and dataframe queries.
+  // * Arbitrary Lance filters.
+  //
+  // To fetch the actual chunks themselves, see `GetChunks`.
+  //
+  // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
+  rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
+
+  // Perform Rerun-native queries on a dataset, returning the underlying chunks.
+  //
+  // These Rerun-native queries include:
+  // * Filtering by specific partition and chunk IDs.
+  // * Latest-at, range and dataframe queries.
+  // * Arbitrary Lance filters.
+  //
+  // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
+  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
+
+  // --- Developer/Debug APIs ---
+  // Unstable APIs that are not exposed by the Frontend.
+
+  // Fetch an entire partition from the server, without any pre- or post-processing.
+  //
+  // This is a temporary hack while we get everything up and running.
+  rpc FetchPartition(FetchPartitionRequest) returns (stream FetchPartitionResponse) {}
+
+  // Retrieves the chunk manifest for a specific index.
+  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 
   // Create manifests for all partitions in the Dataset. Partition manifest contains information about
   // the chunks in the partitions.
+  //
+  // This is normally automatically done as part of the registration process.
   rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
-
-  // Query Dataset and return a dataframe containing relevant chunk IDs
-  rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {}
-
-  // Get all chunks for a single partition
-  rpc FetchPartition(FetchPartitionRequest) returns (stream FetchPartitionResponse) {}
-
-  // Get chunks based on a specific query. This call is similar to `QueryDataset` but
-  // instead of returning a dataframe with relevant chunk IDs, it returns the actual chunks.
-  rpc GetChunks(GetChunksRequest) returns (stream GetChunksResponse) {}
-
-  // Create index for partitions in the Dataset. Index can be created for all or specific
-  // partitions. Creating an index will create a new index-specific chunk manifest for the Dataset.
-  // Chunk manifest contains information about individual chunk rows for all chunks containing relevant
-  // index data.
-  rpc CreatePartitionIndexes(CreatePartitionIndexesRequest) returns (CreatePartitionIndexesResponse) {}
-
-  // Fetch chunk manifest for a specific index
-  rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
-
-  // Do a full text, vector or scalar search. Currently only an Indexed search
-  // is supported, user must first call `CreatePartitionIndexes` for the relevant column.
-  // TODO(zehiko) add support for "brute force" search.
-  // The response is a RecordBatch with 4 columns:
-  // - 'partition_id' - which partition the data is from
-  // - 'timepoint' -  represents the points in time where index query matches.
-  // What time points are matched depends on the type of index that is queried.
-  // For example: for vector search it might be timepoints where top-K matches
-  // are found within *each* partition in the indexed entry. For inverted index
-  // it might be timepoints where the query string is found in the indexed column
-  // - instance column - if index column contains a batch of values (for example a
-  // list of embeddings), then each instance of the batch is a separate row in the
-  // resulting RecordBatch
-  // - 'instance_id' - this is a simple element index in the batch array. For example
-  // if indexed column is a list of embeddings \[a,b,c\] (where each embedding is of same length)
-  // then 'instance_id' of embedding 'a' is 0, 'instance_id' of 'b' is 1, etc.
-  rpc SearchDataset(SearchDatasetRequest) returns (stream SearchDatasetResponse) {}
 }
 
-message Partition {
-  // human readable description of the partition. Can be an empty string.
-  optional string description = 1;
+// --- Write data ---
 
-  // partition storage url (e.g. s3://bucket/file or file:///path/to/file)
-  optional string storage_url = 2;
+message DataSource {
+  // Where is the data for this data source stored (e.g. s3://bucket/file or file:///path/to/file)?
+  optional string storage_url = 1;
 
-  // type of partition (rrd, mcap, Lance, etc)
-  PartitionType typ = 3;
+  // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
+  DataSourceKind typ = 2;
 }
 
-enum PartitionType {
-  PARTITION_TYPE_UNSPECIFIED = 0;
-  PARTITION_TYPE_RRD = 1;
+enum DataSourceKind {
+  DATA_SOURCE_KIND_UNSPECIFIED = 0;
+  DATA_SOURCE_KIND_RRD = 1;
 }
 
-message RegisterPartitionsRequest {
-  // Dataset entry
+message RegisterWithDatasetRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Partitions to add
-  repeated Partition partitions = 2;
-
-  // what to do if partition is already registered
+  repeated DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
-message RegisterPartitionsResponse {
+message RegisterWithDatasetResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message UnregisterPartitionsRequest {
-  // Dataset from which we want to remove partitions
+message WriteChunksRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Partitions to remove
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // What to do if partition is not found
-  rerun.common.v1alpha1.IfMissingBehavior on_unknown_partition = 3;
 }
 
-message UnregisterPartitionsResponse {
-  // returns a list of partitions that were actually removed
+message WriteChunksResponse {}
+
+// --- Query schemas ---
+
+message GetPartitionTableSchemaRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+}
+
+message GetPartitionTableSchemaResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message ListPartitionsRequest {
-  // Dataset for which we want to list partitions
+message ScanPartitionTableRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Scan parameters
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
-message ListPartitionsResponse {
+message ScanPartitionTableResponse {
   // Partitions metadata as arrow RecordBatch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message CreatePartitionManifestsRequest {
-  // Dataset for which we want to create manifests
+message GetDatasetSchemaRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Create manifest for specific partitions. All will be
-  // created if left unspecified (empty list)
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // Define what happens if create is called multiple times for the same
-  // Dataset / partitions
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
-message CreatePartitionManifestsResponse {
+message GetDatasetSchemaResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message QueryDatasetRequest {
-  // Dataset client wants to query
+// --- Indexing ---
+
+message CreateIndexRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
 
-  // Client can specify what partitions are queried. If left unspecified (empty list),
-  // all partitions will be queried.
+  // List of specific partitions that will be indexed (all if left empty).
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
-  // Client can specify specific chunk ids to include. If left unspecified (empty list),
-  // all chunks that match other query parameters will be included.
-  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
+  IndexConfig config = 3;
 
-  // Generic parameters that will influence the behavior of the Lance scanner.
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
-
-  Query query = 5;
+  // Specify behavior when index for a partition was already created.
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
 }
 
-message QueryDatasetResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
+message IndexConfig {
+  // what kind of index do we want to create and what are its index specific properties.
+  IndexProperties properties = 1;
 
-message QueryManifestLatestAtRelevantChunks {
-  // Which entity paths are we interested in? Empty list means all entity paths
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
+  // Component / column we want to index.
+  IndexColumn column = 2;
 
-  // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 2;
-
-  // What index value are we looking for?
-  optional int64 at = 3;
-
-  // Which components are we interested in?
+  // What is the filter index i.e. timeline for which we will query the timepoints.
   //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLine`, etc.
-  repeated ComponentDescriptor fuzzy_descriptors = 4;
-}
-
-message QueryManifestRangeRelevantChunks {
-  // Which entity paths are we interested in?
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
-
-  // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 2;
-
-  // What index range are we looking for?
-  rerun.common.v1alpha1.TimeRange index_range = 3;
-
-  // Which components are we interested in?
-  //
-  // If left unspecified, all existing components are considered of interest.
-  //
-  // This will perform a basic fuzzy match on the available columns' descriptors.
-  // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLine`, etc.
-  repeated ComponentDescriptor fuzzy_descriptors = 4;
-}
-
-message FetchPartitionRequest {
-  // Partition's Dataset
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Partition for which we want to get chunks
-  rerun.common.v1alpha1.PartitionId partition_id = 2;
-}
-
-message FetchPartitionResponse {
-  // Chunks as arrow RecordBatch
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
-}
-
-message GetChunksRequest {
-  // Dataset for which we want to get chunks
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Client can specify from which partitions to get chunks. If left unspecified (empty list),
-  // data from all partition (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // Client can specify chunk ids to include. If left unspecified (empty list),
-  // all chunks (that match other query parameters) will be included.
-  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
-
-  // Query details
-  Query query = 4;
-}
-
-message GetChunksResponse {
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
-}
-
-message CreatePartitionIndexesRequest {
-  // Dataset for which we want to create index
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // List of specific partitions that will be indexes.
-  // All partitions will be indexed if left unspecified (empty list)
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // what kind of index do we want to create and what are
-  // its index specific properties
-  IndexProperties properties = 3;
-
-  // Component / column we want to index
-  IndexColumn column = 4;
-
-  // What is the filter index i.e. timeline for which we
-  // will query the timepoints
-  // TODO(zehiko) this might go away and we might just index
-  // across all the timelines
-  rerun.common.v1alpha1.IndexColumnSelector time_index = 5;
-
-  // Specify behavior when index for a partition was already created
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 6;
+  // TODO(zehiko) this might go away and we might just index across all the timelines
+  rerun.common.v1alpha1.IndexColumnSelector time_index = 3;
 }
 
 // used to define which column we want to index
@@ -263,7 +200,7 @@ message IndexColumn {
   rerun.common.v1alpha1.EntityPath entity_path = 1;
 
   // Component details
-  ComponentDescriptor component = 2;
+  rerun.common.v1alpha1.ComponentDescriptor component = 2;
 }
 
 message IndexProperties {
@@ -298,38 +235,19 @@ message BTreeIndex {
   // TODO(zehiko) add properties as needed
 }
 
-message CreatePartitionIndexesResponse {
+message CreateIndexResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message FetchChunkManifestRequest {
-  // Dataset for which we want to fetch chunk manifest
+message ReIndexRequest {
   rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Chunk manifest is index specific
-  IndexColumn column = 2;
-
-  // Scan parameters
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
 }
 
-message FetchChunkManifestResponse {
-  // Chunk manifest as arrow RecordBatches
+message ReIndexResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-message ListPartitionIndexesRequest {
-  // Dataset for which we want to list indexes
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-
-  // Scan parameters
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
-}
-
-message ListPartitionIndexesResponse {
-  // Indexes metadata as arrow RecordBatch
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
+// --- Queries ---
 
 message SearchDatasetRequest {
   // Dataset for which we want to search index
@@ -377,15 +295,26 @@ message BTreeIndexQuery {
   // TODO(zehiko) add properties as needed
 }
 
-message ComponentDescriptor {
-  // Optional name of the `Archetype` associated with this data.
-  optional string archetype_name = 1;
+message QueryDatasetRequest {
+  // Dataset client wants to query
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
 
-  // Optional name of the field within `Archetype` associated with this data.
-  optional string archetype_field_name = 2;
+  // Client can specify what partitions are queried. If left unspecified (empty list),
+  // all partitions will be queried.
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
-  // Semantic name associated with this data.
-  optional string component_name = 3;
+  // Client can specify specific chunk ids to include. If left unspecified (empty list),
+  // all chunks that match other query parameters will be included.
+  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
+
+  // Generic parameters that will influence the behavior of the Lance scanner.
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
+
+  Query query = 5;
+}
+
+message QueryDatasetResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message Query {
@@ -411,10 +340,120 @@ message Query {
   bool columns_always_include_component_indexes = 10;
 
   // If specified, will perform a latest-at query with the given parameters.
-  QueryManifestLatestAtRelevantChunks latest_at = 11;
+  QueryDatasetLatestAtRelevantChunks latest_at = 11;
 
   // If specified, will perform a range query with the given parameters.
-  QueryManifestRangeRelevantChunks range = 12;
+  QueryDatasetRangeRelevantChunks range = 12;
+}
+
+message QueryDatasetLatestAtRelevantChunks {
+  // Which entity paths are we interested in? Empty list means all entity paths
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
+
+  // Which index column should we perform the query on? E.g. `log_time`.
+  rerun.common.v1alpha1.IndexColumnSelector index = 2;
+
+  // What index value are we looking for?
+  optional int64 at = 3;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
+  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+  // `SeriesLine`, etc.
+  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 4;
+}
+
+message QueryDatasetRangeRelevantChunks {
+  // Which entity paths are we interested in?
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
+
+  // Which index column should we perform the query on? E.g. `log_time`.
+  rerun.common.v1alpha1.IndexColumnSelector index = 2;
+
+  // What index range are we looking for?
+  rerun.common.v1alpha1.TimeRange index_range = 3;
+
+  // Which components are we interested in?
+  //
+  // If left unspecified, all existing components are considered of interest.
+  //
+  // This will perform a basic fuzzy match on the available columns' descriptors.
+  // The fuzzy logic is a simple case-sensitive `contains()` query.
+  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
+  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+  // `SeriesLine`, etc.
+  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 4;
+}
+
+message GetChunksRequest {
+  // Dataset for which we want to get chunks
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+
+  // Client can specify from which partitions to get chunks. If left unspecified (empty list),
+  // data from all partition (that match other query parameters) will be included.
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // Client can specify chunk ids to include. If left unspecified (empty list),
+  // all chunks (that match other query parameters) will be included.
+  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
+
+  // Query details
+  Query query = 4;
+}
+
+message GetChunksResponse {
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
+}
+
+// --- Developer/Debug APIs ---
+// Unstable APIs that are not exposed by the Frontend.
+
+message CreatePartitionManifestsRequest {
+  // Dataset for which we want to create manifests
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+
+  // Create manifest for specific partitions. All will be
+  // created if left unspecified (empty list)
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // Define what happens if create is called multiple times for the same
+  // Dataset / partitions
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+}
+
+message CreatePartitionManifestsResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message FetchPartitionRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.PartitionId partition_id = 2;
+}
+
+message FetchPartitionResponse {
+  // Chunks as arrow RecordBatch
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
+}
+
+message FetchChunkManifestRequest {
+  // Dataset for which we want to fetch chunk manifest
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+
+  // Chunk manifest is index specific
+  IndexColumn column = 2;
+
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+}
+
+message FetchChunkManifestResponse {
+  // Chunk manifest as arrow RecordBatches
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 // ----------------- Error handling -----------------

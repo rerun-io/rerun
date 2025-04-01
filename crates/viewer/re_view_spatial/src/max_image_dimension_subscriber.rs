@@ -143,8 +143,11 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                         max_dim.height = max_dim.height.max(height);
 
                         // TODO(andreas): this should be part of the Blob component's tag instead.
-                        max_dim.image_types.insert(ImageTypes::ENCODED_IMAGE);
-                        max_dim.image_types.insert(ImageTypes::VIDEO);
+                        if media_type.is_image() {
+                            max_dim.image_types.insert(ImageTypes::ENCODED_IMAGE);
+                        } else if media_type.is_video() {
+                            max_dim.image_types.insert(ImageTypes::VIDEO);
+                        }
                     }
                 }
             }

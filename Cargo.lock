@@ -8064,6 +8064,7 @@ dependencies = [
  "glam",
  "hexasphere",
  "image",
+ "insta",
  "itertools 0.14.0",
  "ndarray",
  "nohash-hasher",
