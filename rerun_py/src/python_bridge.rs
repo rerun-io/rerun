@@ -972,32 +972,44 @@ fn serve_grpc(
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    let Some(recording) = get_data_recording(recording) else {
-        return Ok(());
-    };
+    #[cfg(feature = "server")]
+    {
+        let Some(recording) = get_data_recording(recording) else {
+            return Ok(());
+        };
 
-    if re_sdk::forced_sink_path().is_some() {
-        re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
-        return Ok(());
+        if re_sdk::forced_sink_path().is_some() {
+            re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
+            return Ok(());
+        }
+
+        let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
+            .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
+
+        let sink = re_sdk::grpc_server::GrpcServerSink::new(
+            "0.0.0.0",
+            grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
+            server_memory_limit,
+        )
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        }
+
+        recording.set_sink(Box::new(sink));
+
+        Ok(())
     }
 
-    let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
-        .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
+    #[cfg(not(feature = "server"))]
+    {
+        let _ = (grpc_port, server_memory_limit, default_blueprint, recording);
 
-    let sink = re_sdk::grpc::GrpcServerSink::new(
-        "0.0.0.0",
-        grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
-        server_memory_limit,
-    )
-    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-    if let Some(default_blueprint) = default_blueprint {
-        send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'server' feature",
+        ))
     }
-
-    recording.set_sink(Box::new(sink));
-
-    Ok(())
 }
 
 /// Serve a web-viewer.

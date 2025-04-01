@@ -405,6 +405,7 @@ impl RecordingStreamBuilder {
         }
     }
 
+    #[cfg(feature = "server")]
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// locally hosted gRPC server.
     ///
@@ -423,6 +424,7 @@ impl RecordingStreamBuilder {
         self.serve_grpc_opts("0.0.0.0", 9876, server_memory_limit)
     }
 
+    #[cfg(feature = "server")]
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// locally hosted gRPC server.
     ///
@@ -446,7 +448,7 @@ impl RecordingStreamBuilder {
                 store_info,
                 properties,
                 batcher_config,
-                Box::new(crate::grpc::GrpcServerSink::new(
+                Box::new(crate::grpc_server::GrpcServerSink::new(
                     bind_ip.as_ref(),
                     port,
                     server_memory_limit,
@@ -1868,6 +1870,7 @@ impl RecordingStream {
         Ok(())
     }
 
+    #[cfg(feature = "server")]
     /// Swaps the underlying sink for a [`crate::grpc::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://127.0.0.1:9876/proxy`.
     ///
@@ -1883,6 +1886,7 @@ impl RecordingStream {
         self.serve_grpc_opts("0.0.0.0", 9876, server_memory_limit)
     }
 
+    #[cfg(feature = "server")]
     /// Swaps the underlying sink for a [`crate::grpc::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://{bind_ip}:{port}/proxy`.
     ///
@@ -1902,7 +1906,8 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let sink = crate::grpc::GrpcServerSink::new(bind_ip.as_ref(), port, server_memory_limit)?;
+        let sink =
+            crate::grpc_server::GrpcServerSink::new(bind_ip.as_ref(), port, server_memory_limit)?;
 
         self.set_sink(Box::new(sink));
         Ok(())
