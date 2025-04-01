@@ -159,14 +159,10 @@ pub fn fetch_partition_response_to_chunk(
     response: tonic::Streaming<FetchPartitionResponse>,
 ) -> impl Stream<Item = Result<Chunk, StreamError>> {
     response.map(|resp| {
-        resp.map_err(StreamError::from).and_then(|r| {
-            let batch = r
-                .chunk
-                .ok_or(StreamError::MissingChunkData)?
-                .decode()
-                .map_err(StreamError::from)?;
+        resp.map_err(Into::into).and_then(|r| {
+            let batch = r.chunk.ok_or(StreamError::MissingChunkData)?.decode()?;
 
-            Chunk::from_record_batch(&batch).map_err(StreamError::from)
+            Chunk::from_record_batch(&batch).map_err(Into::into)
         })
     })
 }
