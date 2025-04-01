@@ -11939,3 +11939,123 @@ dependencies = [
  "quote",
  "syn 2.0.99",
 ]
+
+[[patch.unused]]
+name = "datafusion"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-catalog"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-catalog-listing"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-common"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-common-runtime"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-datasource"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-doc"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-execution"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-expr"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-expr-common"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-functions"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-functions-aggregate"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-functions-aggregate-common"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-functions-nested"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-functions-table"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-functions-window"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-functions-window-common"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-macros"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-optimizer"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-physical-expr"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-physical-expr-common"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-physical-optimizer"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-physical-plan"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
+
+[[patch.unused]]
+name = "datafusion-sql"
+version = "46.0.1"
+source = "git+https://github.com/rerun-io/arrow-datafusion.git?branch=emilk%2Fpatch-duration#bc592db3d6ad916a928f0e4958bb194896298df9"
