@@ -123,6 +123,8 @@ pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, Loaded
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;
 
+pub mod grpc;
+
 /// Re-exports of other crates.
 pub mod external {
     pub use re_grpc_client;
