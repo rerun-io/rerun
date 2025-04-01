@@ -5,7 +5,7 @@ use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{icons, ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::{DisplayMode, StoreContext};
+use re_viewer_context::{DisplayMode, StoreContext, StoreHub};
 
 use crate::{app_blueprint::AppBlueprint, App};
 
@@ -86,7 +86,11 @@ fn top_bar_ui(
 ) {
     app.rerun_menu_button_ui(frame.wgpu_render_state(), store_context, ui);
 
-    if app.state.display_mode != DisplayMode::LocalRecordings {
+    if app.state.display_mode != DisplayMode::LocalRecordings
+        && store_context
+            .as_ref()
+            .is_some_and(|h| h.app_id != StoreHub::welcome_screen_app_id())
+    {
         ui.add_space(12.0);
         if ui.small_icon_button(&icons::ARROW_LEFT).clicked() {
             app.state.display_mode = DisplayMode::LocalRecordings;
