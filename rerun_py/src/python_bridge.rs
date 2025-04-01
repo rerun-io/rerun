@@ -154,6 +154,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
+    m.add_function(wrap_pyfunction!(serve_grpc, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -960,6 +961,43 @@ impl PyBinarySinkStorage {
             flush_garbage_queue();
         });
     }
+}
+
+/// Spawn a gRPC server which an SDK or Viewer can connect to.
+#[pyfunction]
+#[pyo3(signature = (grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
+fn serve_grpc(
+    grpc_port: Option<u16>,
+    server_memory_limit: String,
+    default_blueprint: Option<&PyMemorySinkStorage>,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    if re_sdk::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
+
+    let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
+        .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
+
+    let sink = re_sdk::grpc::GrpcServerSink::new(
+        "0.0.0.0",
+        grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
+        server_memory_limit,
+    )
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+    if let Some(default_blueprint) = default_blueprint {
+        send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+    }
+
+    recording.set_sink(Box::new(sink));
+
+    Ok(())
 }
 
 /// Serve a web-viewer.
