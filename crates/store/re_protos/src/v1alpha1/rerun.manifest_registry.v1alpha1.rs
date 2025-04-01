@@ -100,7 +100,7 @@ impl ::prost::Name for GetPartitionTableSchemaRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetPartitionTableSchemaResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
 }
 impl ::prost::Name for GetPartitionTableSchemaResponse {
     const NAME: &'static str = "GetPartitionTableSchemaResponse";
@@ -163,7 +163,7 @@ impl ::prost::Name for GetDatasetSchemaRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDatasetSchemaResponse {
     #[prost(message, optional, tag = "1")]
-    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
 }
 impl ::prost::Name for GetDatasetSchemaResponse {
     const NAME: &'static str = "GetDatasetSchemaResponse";
