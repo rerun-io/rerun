@@ -81,7 +81,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     // TODO(#5521): log two views as in the python example
 ///
-///     rec.set_duration_seconds("sim_time", 0.0);
+///     rec.set_duration_secs("sim_time", 0.0);
 ///
 ///     // Planetary motion is typically in the XY plane.
 ///     rec.log_static("/", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?;
@@ -129,7 +129,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Movement via transforms.
 ///     for i in 0..(6 * 120) {
 ///         let time = i as f32 / 120.0;
-///         rec.set_duration_seconds("sim_time", time);
+///         rec.set_duration_secs("sim_time", time);
 ///         let r_moon = time * 5.0;
 ///         let r_planet = time * 2.0;
 ///

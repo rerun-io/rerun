@@ -229,13 +229,7 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
-                re_log::debug!(
-                    "Loading recording `{}` from `{}`…",
-                    endpoint.recording_id,
-                    endpoint.origin
-                );
-
+            Self::RerunGrpcStream(re_uri::RedapUri::DatasetData(endpoint)) => {
                 let (tx, rx) = re_smart_channel::smart_channel(
                     re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
                     re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
@@ -254,7 +248,7 @@ impl DataSource {
                 });
 
                 spawn_future(async move {
-                    if let Err(err) = re_grpc_client::redap::stream_recording_async(
+                    if let Err(err) = re_grpc_client::redap::stream_partition_async(
                         tx,
                         endpoint.clone(),
                         on_cmd,

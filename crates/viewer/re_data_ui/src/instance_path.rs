@@ -125,10 +125,6 @@ impl DataUi for InstancePath {
             preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
             preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
         }
-
-        if entity_path.is_reserved() {
-            ui.label("This instance is part of a reserved entity namespace.");
-        }
     }
 }
 

@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package rerun.catalog.v1alpha1;
 
+import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 import "rerun/v1alpha1/common.proto";
 
@@ -14,6 +15,8 @@ service CatalogService {
 
   rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
   rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
+
+  rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
 }
 
 // ---------------- Services ------------------
@@ -56,6 +59,16 @@ message ReadDatasetEntryRequest {
 
 message ReadDatasetEntryResponse {
   DatasetEntry dataset = 1;
+}
+
+// ReadTableEntry
+
+message ReadTableEntryRequest {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+
+message ReadTableEntryResponse {
+  TableEntry table = 1;
 }
 
 // ---------------- Common ------------------
@@ -102,4 +115,27 @@ message DatasetEntry {
 
   // Read-only
   rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
+}
+
+message TableEntry {
+  EntryDetails details = 1;
+
+  // The known schema of this table
+  rerun.common.v1alpha1.Schema schema = 2;
+
+  // Details specific to the table-provider
+  google.protobuf.Any provider_details = 3;
+}
+
+enum SystemTableKind {
+  // Always reserve unspecified as default value
+  SYSTEM_TABLE_KIND_UNSPECIFIED = 0;
+  // Not used yet
+  SYSTEM_TABLE_KIND_NAMESPACES = 1;
+  // All of the entries in the associated namespace
+  SYSTEM_TABLE_KIND_ENTRIES = 2;
+}
+
+message SystemTable {
+  SystemTableKind kind = 1;
 }

@@ -23,9 +23,8 @@ The `start` and `end` parameters are set using a `TimeRangeBoundary`:
 In order to account for the different types of timeline (temporal or sequence-based), both the
 `TimeRangeBoundary.absolute()` and `TimeRangeBoundary.cursor_relative()` methods can be specified using one of
 the keyword args:
-- `seconds`: Use this if you called `rr.set_time_seconds()` to update the timeline.
-- `nanos`: Use this if you called `rr.set_time_nanos()` to update the timeline.
-- `seq`: Use this if you called `rr.set_time_seq()` to update the timeline.
+- `seconds`/`nanos`: Use these if you called `rr.set_time()` to update the timeline.
+- `seq`: Use this if you called `rr.set_time_sequence()` to update the timeline.
 
 ## Example syntax
 To create a trailing 5 second window plot, you can specify your `TimeSeriesView` like this:

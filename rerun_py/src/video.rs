@@ -15,7 +15,7 @@ use crate::arrow::array_to_rust;
 /// So instead, we pass the arrow array directly.
 #[pyfunction]
 #[pyo3(signature = (video_bytes_arrow_array, media_type=None))]
-pub fn asset_video_read_frame_timestamps_ns(
+pub fn asset_video_read_frame_timestamps_nanos(
     video_bytes_arrow_array: &Bound<'_, PyAny>,
     media_type: Option<&str>,
 ) -> PyResult<Vec<i64>> {
@@ -44,7 +44,7 @@ pub fn asset_video_read_frame_timestamps_ns(
     Ok(
         re_video::VideoData::load_from_bytes(video_bytes, media_type)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .frame_timestamps_ns()
+            .frame_timestamps_nanos()
             .collect(),
     )
 }

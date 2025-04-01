@@ -63,7 +63,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
                         (i as f64 / 5.0 + 1.0).cos(), // Shifted a bit to make the cap more visible
                     ])
                 } else {
-                    re_types::archetypes::Scalars::one((i as f64 / 5.0).sin())
+                    re_types::archetypes::Scalars::single((i as f64 / 5.0).sin())
                 };
 
                 test_context.log_entity("plots/line".into(), |builder| {
@@ -110,8 +110,8 @@ fn scalars_for_properties_test(
         )
     } else {
         (
-            re_types::archetypes::Scalars::one((step as f64 / 5.0).sin()),
-            re_types::archetypes::Scalars::one((step as f64 / 5.0).cos()),
+            re_types::archetypes::Scalars::single((step as f64 / 5.0).sin()),
+            re_types::archetypes::Scalars::single((step as f64 / 5.0).cos()),
         )
     }
 }

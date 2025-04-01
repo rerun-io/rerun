@@ -96,6 +96,7 @@ pub struct CSpawnOptions {
     pub port: u16,
     pub memory_limit: CStringView,
     pub hide_welcome_screen: bool,
+    pub detach_process: bool,
     pub executable_name: CStringView,
     pub executable_path: CStringView,
 }
@@ -116,6 +117,7 @@ impl CSpawnOptions {
         }
 
         spawn_opts.hide_welcome_screen = self.hide_welcome_screen;
+        spawn_opts.detach_process = self.detach_process;
 
         if !self.executable_name.is_empty() {
             spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();

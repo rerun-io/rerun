@@ -27,6 +27,8 @@ service FrontendService {
 
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
 
+  rpc ReadTableEntry(rerun.catalog.v1alpha1.ReadTableEntryRequest) returns (rerun.catalog.v1alpha1.ReadTableEntryResponse) {}
+
   // --- Manifest Registry ---
   // Automatically handles entry/dataset resolution.
 
@@ -41,6 +43,11 @@ service FrontendService {
 
   // Fetch partition from the Dataset
   rpc FetchPartition(FetchPartitionRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchPartitionResponse) {}
+  // --- Table Apis ---
+  // TODO(jleibs): This will be replaced / extended by Arrow Flight
+
+  rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
+  rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 }
 
 // --- Manifest Registry ---
@@ -77,4 +84,25 @@ message FetchPartitionRequest {
 
   // Partition for which we want to get chunks
   rerun.common.v1alpha1.PartitionId partition_id = 2;
+}
+
+// --- Table Apis ---
+
+message GetTableSchemaRequest {
+  rerun.common.v1alpha1.EntryId table_id = 1;
+}
+
+message GetTableSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
+}
+
+message ScanTableRequest {
+  rerun.common.v1alpha1.EntryId table_id = 1;
+  // TODO(jleibs): support ScanParameters iff we can plumb them into Datafusion TableProvider
+  // Otherwise, just wait for Arrow Flight
+  //rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+message ScanTableResponse {
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }

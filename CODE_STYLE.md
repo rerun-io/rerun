@@ -229,6 +229,19 @@ Avoid negations in names. A lot of people struggle with double negations, so thi
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
 
+### Units
+* When in doubt, be explicit (`duration_secs: f32` is better than `duration: f32`)
+* All things being equal, prefer SI base units (seconds over milliseconds, Hz over RPM, etc)
+* When precision matters, prefer `nanos: i64` over `secs: f64`
+* Store angles in radians (but you may print/display them as degrees)
+
+Follow the conventions set by Rust stdlib:
+* `secs` instead of `seconds`
+* `millis` instead of `ms` or `milliseconds`
+* `micros` instead of `us` or `microseconds`
+* `nanos` instead of `ns` or `nanoseconds`
+
+
 ### Spaces
 Points, vectors, rays etc all live in different _spaces_. Whenever there is room for ambiguity, we explicitly state which space something is in, e.g. with `ray_in_world`.
 

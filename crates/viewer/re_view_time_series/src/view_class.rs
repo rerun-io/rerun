@@ -3,7 +3,7 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
-use re_format::next_grid_tick_magnitude_ns;
+use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
 use re_types::{
     archetypes::{SeriesLines, SeriesPoints},
@@ -394,7 +394,7 @@ impl ViewClass for TimeSeriesView {
             TimeType::TimestampNs | TimeType::DurationNs => {
                 // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
                 // we need to round to a whole day:
-                round_ns_to_start_of_day(min_time)
+                round_nanos_to_start_of_day(min_time)
             }
         };
         state.time_offset = time_offset;
@@ -457,7 +457,7 @@ impl ViewClass for TimeSeriesView {
             TimeType::Sequence => {}
             TimeType::DurationNs | TimeType::TimestampNs => {
                 let canvas_size = ui.available_size();
-                plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
+                plot = plot.x_grid_spacer(move |spacer| nanos_grid_spacer(canvas_size, &spacer));
             }
         }
 
@@ -719,20 +719,31 @@ fn add_series_to_plot(
     *scalar_range.end_mut() = f64::NEG_INFINITY;
 
     for series in all_plot_series {
-        let points = series
-            .points
-            .iter()
-            .map(|p| {
-                if p.1 < scalar_range.start() {
-                    *scalar_range.start_mut() = p.1;
-                }
-                if p.1 > scalar_range.end() {
-                    *scalar_range.end_mut() = p.1;
-                }
+        let points = if series.visible {
+            series
+                .points
+                .iter()
+                .map(|p| {
+                    if p.1 < scalar_range.start() {
+                        *scalar_range.start_mut() = p.1;
+                    }
+                    if p.1 > scalar_range.end() {
+                        *scalar_range.end_mut() = p.1;
+                    }
 
-                [(p.0 - time_offset) as _, p.1]
-            })
-            .collect::<Vec<_>>();
+                    [(p.0 - time_offset) as _, p.1]
+                })
+                .collect::<Vec<_>>()
+        } else {
+            // TODO(emilk/egui_plot#92): Note we still need to produce a series, so it shows up in the legend.
+            // As of writing, egui_plot gets confused if this is an empty series, so
+            // we still add a single point (but don't have it influence the scalar range!)
+            series
+                .points
+                .first()
+                .map(|p| vec![[(p.0 - time_offset) as _, p.1]])
+                .unwrap_or_default()
+        };
 
         let color = series.color;
 
@@ -772,50 +783,52 @@ fn format_y_axis(mark: egui_plot::GridMark) -> String {
         .format(mark.value)
 }
 
-fn ns_grid_spacer(
+fn nanos_grid_spacer(
     canvas_size: egui::Vec2,
     input: &egui_plot::GridInput,
 ) -> Vec<egui_plot::GridMark> {
     let minimum_medium_line_spacing = 150.0; // ≈min size of a label
     let max_medium_lines = canvas_size.x as f64 / minimum_medium_line_spacing;
 
-    let (min_ns, max_ns) = input.bounds;
-    let width_ns = max_ns - min_ns;
+    let (min_nanos, max_nanos) = input.bounds;
+    let width_nanos = max_nanos - min_nanos;
 
-    let mut small_spacing_ns = 1;
-    while width_ns / (next_grid_tick_magnitude_ns(small_spacing_ns) as f64) > max_medium_lines {
-        let next_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
-        if small_spacing_ns < next_ns {
-            small_spacing_ns = next_ns;
+    let mut small_spacing_nanos = 1;
+    while width_nanos / (next_grid_tick_magnitude_nanos(small_spacing_nanos) as f64)
+        > max_medium_lines
+    {
+        let next_nanos = next_grid_tick_magnitude_nanos(small_spacing_nanos);
+        if small_spacing_nanos < next_nanos {
+            small_spacing_nanos = next_nanos;
         } else {
             break; // we've reached the max
         }
     }
-    let medium_spacing_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
-    let big_spacing_ns = next_grid_tick_magnitude_ns(medium_spacing_ns);
+    let medium_spacing_nanos = next_grid_tick_magnitude_nanos(small_spacing_nanos);
+    let big_spacing_nanos = next_grid_tick_magnitude_nanos(medium_spacing_nanos);
 
-    let mut current_ns = (min_ns.floor() as i64) / small_spacing_ns * small_spacing_ns;
+    let mut current_nanos = (min_nanos.floor() as i64) / small_spacing_nanos * small_spacing_nanos;
     let mut marks = vec![];
 
-    while current_ns <= max_ns.ceil() as i64 {
-        let is_big_line = current_ns % big_spacing_ns == 0;
-        let is_medium_line = current_ns % medium_spacing_ns == 0;
+    while current_nanos <= max_nanos.ceil() as i64 {
+        let is_big_line = current_nanos % big_spacing_nanos == 0;
+        let is_medium_line = current_nanos % medium_spacing_nanos == 0;
 
         let step_size = if is_big_line {
-            big_spacing_ns
+            big_spacing_nanos
         } else if is_medium_line {
-            medium_spacing_ns
+            medium_spacing_nanos
         } else {
-            small_spacing_ns
+            small_spacing_nanos
         };
 
         marks.push(egui_plot::GridMark {
-            value: current_ns as f64,
+            value: current_nanos as f64,
             step_size: step_size as f64,
         });
 
-        if let Some(new_ns) = current_ns.checked_add(small_spacing_ns) {
-            current_ns = new_ns;
+        if let Some(new_nanos) = current_nanos.checked_add(small_spacing_nanos) {
+            current_nanos = new_nanos;
         } else {
             break;
         };
@@ -824,9 +837,9 @@ fn ns_grid_spacer(
     marks
 }
 
-fn round_ns_to_start_of_day(ns: i64) -> i64 {
-    let ns_per_day = 24 * 60 * 60 * 1_000_000_000;
-    (ns + ns_per_day / 2) / ns_per_day * ns_per_day
+fn round_nanos_to_start_of_day(ns: i64) -> i64 {
+    let nanos_per_day = 24 * 60 * 60 * 1_000_000_000;
+    (ns + nanos_per_day / 2) / nanos_per_day * nanos_per_day
 }
 
 impl TypedComponentFallbackProvider<Corner2D> for TimeSeriesView {

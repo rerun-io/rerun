@@ -987,7 +987,7 @@ impl TimeColumn {
     }
 
     /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    pub fn new_duration_seconds(
+    pub fn new_duration_secs(
         name: impl Into<re_log_types::TimelineName>,
         seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
@@ -999,7 +999,7 @@ impl TimeColumn {
                 re_log::warn!(
                     illegal_value = nanos,
                     new_value = clamped.get(),
-                    "TimeColumn::new_duration_seconds() called with out-of-range value. Clamped to valid range."
+                    "TimeColumn::new_duration_secs() called with out-of-range value. Clamped to valid range."
                 );
             }
             clamped.get()
@@ -1013,7 +1013,7 @@ impl TimeColumn {
     }
 
     /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    pub fn new_timestamp_seconds_since_epoch(
+    pub fn new_timestamp_secs_since_epoch(
         name: impl Into<re_log_types::TimelineName>,
         seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
@@ -1025,7 +1025,7 @@ impl TimeColumn {
                 re_log::warn!(
                     illegal_value = nanos,
                     new_value = clamped.get(),
-                    "TimeColumn::new_timestamp_seconds_since_epoch() called with out-of-range value. Clamped to valid range."
+                    "TimeColumn::new_timestamp_secs_since_epoch() called with out-of-range value. Clamped to valid range."
                 );
             }
             clamped.get()
@@ -1039,12 +1039,12 @@ impl TimeColumn {
     }
 
     /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    #[deprecated = "Use `TimeColumn::new_duration_seconds` or `new_timestamp_seconds_since_epoch` instead"]
+    #[deprecated = "Use `TimeColumn::new_duration_secs` or `new_timestamp_secs_since_epoch` instead"]
     pub fn new_seconds(
         name: impl Into<re_log_types::TimelineName>,
         seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
-        Self::new_duration_seconds(name, seconds)
+        Self::new_duration_secs(name, seconds)
     }
 
     /// Creates a new [`TimeColumn`] measuring duration in nanoseconds.

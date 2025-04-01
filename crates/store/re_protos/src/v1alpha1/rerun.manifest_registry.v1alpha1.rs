@@ -769,6 +769,29 @@ impl ::prost::Name for Query {
         "/rerun.manifest_registry.v1alpha1.Query".into()
     }
 }
+/// Application level error - used as `details` in the `google.rpc.Status` message
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Error {
+    /// error code
+    #[prost(enumeration = "ErrorCode", tag = "1")]
+    pub code: i32,
+    /// unique identifier associated with the request (e.g. recording id, recording storage url)
+    #[prost(string, tag = "2")]
+    pub id: ::prost::alloc::string::String,
+    /// human readable details about the error
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
+}
+impl ::prost::Name for Error {
+    const NAME: &'static str = "Error";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.Error".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.Error".into()
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum PartitionType {
@@ -826,6 +849,43 @@ impl VectorDistanceMetric {
             "VECTOR_DISTANCE_METRIC_COSINE" => Some(Self::Cosine),
             "VECTOR_DISTANCE_METRIC_DOT" => Some(Self::Dot),
             "VECTOR_DISTANCE_METRIC_HAMMING" => Some(Self::Hamming),
+            _ => None,
+        }
+    }
+}
+/// Error codes for application level errors
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ErrorCode {
+    /// unused
+    Unspecified = 0,
+    /// object store access error
+    ObjectStoreError = 1,
+    /// metadata database access error
+    MetadataDbError = 2,
+    /// Encoding / decoding error
+    CodecError = 3,
+}
+impl ErrorCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "ERROR_CODE_UNSPECIFIED",
+            Self::ObjectStoreError => "ERROR_CODE_OBJECT_STORE_ERROR",
+            Self::MetadataDbError => "ERROR_CODE_METADATA_DB_ERROR",
+            Self::CodecError => "ERROR_CODE_CODEC_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "ERROR_CODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "ERROR_CODE_OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
+            "ERROR_CODE_METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            "ERROR_CODE_CODEC_ERROR" => Some(Self::CodecError),
             _ => None,
         }
     }
@@ -1108,28 +1168,6 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// List indexes for the Dataset
-        pub async fn list_partition_indexes(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListPartitionIndexesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::ListPartitionIndexesResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ListPartitionIndexes",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "ListPartitionIndexes",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
         /// Do a full text, vector or scalar search. Currently only an Indexed search
         /// is supported, user must first call `CreatePartitionIndexes` for the relevant column.
         /// TODO(zehiko) add support for "brute force" search.
@@ -1263,16 +1301,6 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::FetchChunkManifestRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchChunkManifestStream>, tonic::Status>;
-        /// Server streaming response type for the ListPartitionIndexes method.
-        type ListPartitionIndexesStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::ListPartitionIndexesResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// List indexes for the Dataset
-        async fn list_partition_indexes(
-            &self,
-            request: tonic::Request<super::ListPartitionIndexesRequest>,
-        ) -> std::result::Result<tonic::Response<Self::ListPartitionIndexesStream>, tonic::Status>;
         /// Server streaming response type for the SearchDataset method.
         type SearchDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::SearchDatasetResponse, tonic::Status>,
@@ -1809,59 +1837,6 @@ pub mod manifest_registry_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = FetchChunkManifestSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ListPartitionIndexes" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListPartitionIndexesSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<
-                        super::ListPartitionIndexesRequest,
-                    > for ListPartitionIndexesSvc<T> {
-                        type Response = super::ListPartitionIndexesResponse;
-                        type ResponseStream = T::ListPartitionIndexesStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ListPartitionIndexesRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ManifestRegistryService>::list_partition_indexes(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = ListPartitionIndexesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

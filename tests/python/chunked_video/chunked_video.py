@@ -47,12 +47,12 @@ def main() -> None:
         video_asset = rr.AssetVideo(path=file)
         rr.log("video", video_asset)
 
-        frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+        frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
         rr.send_columns(
             "video",
             # Note timeline values don't have to be the same as the video timestamps.
             indexes=[rr.TimeColumn("video_time", duration=1e-9 * (frame_timestamps_ns + last_time_ns))],
-            columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
+            columns=rr.VideoFrameReference.columns_nanos(frame_timestamps_ns),
         )
         last_time_ns += frame_timestamps_ns[-1]
 

@@ -5,12 +5,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rerun::RecordingStreamBuilder::new("rerun_example_different_data_per_timeline").spawn()?;
 
     rec.set_time_sequence("blue timeline", 0);
-    rec.set_duration_seconds("red timeline", 0.0);
+    rec.set_duration_secs("red timeline", 0.0);
     rec.log("points", &rerun::Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?;
 
     // Log a red color on one timeline.
     rec.reset_time(); // Clears all set timeline info.
-    rec.set_duration_seconds("red timeline", 1.0);
+    rec.set_duration_secs("red timeline", 1.0);
     rec.log(
         "points",
         &rerun::Points2D::update_fields().with_colors([0xFF0000FF]),
