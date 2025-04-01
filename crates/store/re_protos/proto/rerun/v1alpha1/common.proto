@@ -42,8 +42,7 @@ message TimeRange {
 
 // arrow IPC serialized schema
 message Schema {
-  // TODO(zehiko) make this optional (#9285)
-  bytes arrow_schema = 1;
+  optional bytes arrow_schema = 1;
 }
 
 message Query {

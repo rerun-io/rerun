@@ -76,9 +76,8 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
-    /// TODO(zehiko) make this optional (#9285)
-    #[prost(bytes = "vec", tag = "1")]
-    pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "1")]
+    pub arrow_schema: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 impl ::prost::Name for Schema {
     const NAME: &'static str = "Schema";
