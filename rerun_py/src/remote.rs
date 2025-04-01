@@ -70,7 +70,7 @@ async fn connect_async(
         .await
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-    Ok(StorageNodeServiceClient::new(tonic_client))
+    Ok(StorageNodeServiceClient::new(tonic_client).max_decoding_message_size(u32::MAX as usize))
 }
 
 /// Load a rerun archive from an RRD file.
