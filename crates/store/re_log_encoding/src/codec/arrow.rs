@@ -2,48 +2,16 @@ use super::CodecError;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
-// TODO(#3741): switch to arrow1 once <https://github.com/apache/arrow-rs/issues/6803> is released
-//
-// TODO(#8733): <https://github.com/apache/arrow-rs/issues/6803> shipped in a patch release and was supposed
-// to fix the encoding issue with list-arrays, but apparently didn't.
-// We have to wait for a major Arrow update (which requires Lance/Datafusion/etc to follow first)
-// before we can try to enable this again.
-// This is becoming problematic, as the arrow2 serializer loses some arbitrary amount of schema
-// metadata during transit.
-const SERIALIZE_WITH_ARROW_1: bool = false;
-const DESERIALIZE_WITH_ARROW_1: bool = true; // Both arrow1 and arrow2 should be working fine
-
 /// Helper function that serializes given arrow schema and record batch into bytes
 /// using Arrow IPC format.
 pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
     batch: &ArrowRecordBatch,
 ) -> Result<(), CodecError> {
-    if SERIALIZE_WITH_ARROW_1 {
-        #[allow(clippy::disallowed_types)] // it's behind a disabled feature flag
-        let mut sw = arrow::ipc::writer::StreamWriter::try_new(writer, batch.schema_ref())
-            .map_err(CodecError::ArrowSerialization)?;
-        sw.write(batch).map_err(CodecError::ArrowSerialization)?;
-        sw.finish().map_err(CodecError::ArrowSerialization)?;
-    } else {
-        let schema = arrow2::datatypes::Schema::from(batch.schema());
-        let chunk = arrow2::chunk::Chunk::new(
-            batch
-                .columns()
-                .iter()
-                .map(|c| -> Box<dyn arrow2::array::Array> { c.clone().into() })
-                .collect(),
-        );
-
-        let mut writer = arrow2::io::ipc::write::StreamWriter::new(writer, Default::default());
-        writer
-            .start(&schema, None)
-            .map_err(CodecError::Arrow2Serialization)?;
-        writer
-            .write(&chunk, None)
-            .map_err(CodecError::Arrow2Serialization)?;
-        writer.finish().map_err(CodecError::Arrow2Serialization)?;
-    }
+    let mut sw = arrow::ipc::writer::StreamWriter::try_new(writer, batch.schema_ref())
+        .map_err(CodecError::ArrowSerialization)?;
+    sw.write(batch).map_err(CodecError::ArrowSerialization)?;
+    sw.finish().map_err(CodecError::ArrowSerialization)?;
 
     Ok(())
 }
@@ -55,40 +23,13 @@ pub(crate) fn write_arrow_to_bytes<W: std::io::Write>(
 pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
 ) -> Result<ArrowRecordBatch, CodecError> {
-    if DESERIALIZE_WITH_ARROW_1 {
-        let mut stream = arrow::ipc::reader::StreamReader::try_new(reader, None)
-            .map_err(CodecError::ArrowDeserialization)?;
+    let mut stream = arrow::ipc::reader::StreamReader::try_new(reader, None)
+        .map_err(CodecError::ArrowDeserialization)?;
 
-        stream
-            .next()
-            .ok_or(CodecError::MissingRecordBatch)?
-            .map_err(CodecError::ArrowDeserialization)
-    } else {
-        use arrow2::io::ipc;
-
-        let metadata =
-            ipc::read::read_stream_metadata(reader).map_err(CodecError::Arrow2Serialization)?;
-        let mut stream = ipc::read::StreamReader::new(reader, metadata, None);
-
-        let schema = stream.schema().clone();
-        // there should be at least one record batch in the stream
-        let stream_state = stream
-            .next()
-            .ok_or(CodecError::MissingRecordBatch)?
-            .map_err(CodecError::Arrow2Serialization)?;
-
-        match stream_state {
-            ipc::read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
-            ipc::read::StreamState::Some(chunk) => {
-                let batch = ArrowRecordBatch::try_new(
-                    schema.into(),
-                    chunk.columns().iter().map(|c| c.clone().into()).collect(),
-                )
-                .map_err(CodecError::ArrowDeserialization)?;
-                Ok(batch)
-            }
-        }
-    }
+    stream
+        .next()
+        .ok_or(CodecError::MissingRecordBatch)?
+        .map_err(CodecError::ArrowDeserialization)
 }
 
 #[cfg(feature = "encoder")]
