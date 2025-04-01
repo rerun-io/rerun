@@ -72,7 +72,6 @@ pub mod manifest_registry {
         pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
         pub const DATASET_MANIFEST_APP_ID_FIELD_NAME: &str = "rerun_application_id";
         pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
-        pub const DATASET_MANIFEST_DESCRIPTION_FIELD_NAME: &str = "rerun_description";
         pub const DATASET_MANIFEST_RECORDING_TYPE_FIELD_NAME: &str = "rerun_partition_type";
         pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
         pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";

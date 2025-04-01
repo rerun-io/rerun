@@ -360,11 +360,8 @@ impl EntityPathFilter {
     /// Creates a filter that accepts everything.
     pub fn all() -> Self {
         Self {
-            rules: std::iter::once((
-                EntityPathRule::exact_entity(&EntityPath::root()),
-                RuleEffect::Include,
-            ))
-            .collect(),
+            rules: std::iter::once((EntityPathRule::including_subtree(""), RuleEffect::Include))
+                .collect(),
         }
     }
 

@@ -10,7 +10,7 @@ use re_protos::catalog::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, ReadDatasetEntryRequest,
 };
 use re_protos::common::v1alpha1::ext::EntryId;
-use re_protos::frontend::v1alpha1::ListPartitionsRequest;
+use re_protos::frontend::v1alpha1::ScanPartitionTableRequest;
 use re_protos::TypeConversionError;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
 use re_ui::{icons, list_item, UiExt as _};
@@ -189,7 +189,7 @@ async fn fetch_partition_table(
     entry_id: EntryId,
 ) -> Result<Vec<SorbetBatch>, EntryError> {
     let mut response = client
-        .list_partitions(ListPartitionsRequest {
+        .scan_partition_table(ScanPartitionTableRequest {
             dataset_id: Some(entry_id.into()),
             scan_parameters: None,
         })
