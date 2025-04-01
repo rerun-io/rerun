@@ -10,18 +10,15 @@ attribute "attr.docs.unreleased";
 /// Must be set on all archetypes and components.
 ///
 /// Must have one of the following values:
-/// - `experimental`
 /// - `unstable`
 /// - `stable`
 /// - `deprecated`
 ///
-/// ### `experimental`
-/// New API that is not yet fully supported, and may change significantly in future versions.
-/// Implies everything that `unstable` implies.
-///
 /// ### `unstable`
 /// Used for types that are likely to be removed or changed significantly,
 /// and in a way that the data won't be backwards compatible.
+///
+/// Sometimes use for new, experimental APIs, or old APIs that we're not ready to stabilize yet.
 ///
 /// ### `stable`
 /// Used for types that are unlikely to be removed or changed significantly.

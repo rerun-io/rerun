@@ -258,10 +258,6 @@ pub enum ObjectKind {
 /// Must be set on all archetypes and components
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum State {
-    /// New API that is not yet fully supported, and may change significantly in future versions.
-    /// Implies everything that `unstable` implies.
-    Experimental,
-
     /// Used for types that are likely to be removed or changed significantly,
     /// and in a way that the data won't be backwards compatible.
     Unstable,
@@ -283,7 +279,6 @@ impl State {
     pub fn from_attrs(attrs: &Attributes) -> Result<Self, String> {
         if let Some(state) = attrs.get_string(ATTR_DOCS_STATE) {
             match state.as_str() {
-                "experimental" => Ok(Self::Experimental),
                 "unstable" => Ok(Self::Unstable),
                 "stable" => Ok(Self::Stable),
                 "deprecated" => {
@@ -309,13 +304,10 @@ impl State {
     /// Add noteworthy information on a single line, if any.
     pub fn docline_summary(&self) -> Option<String> {
         match self {
-            Self::Stable => { None }
-            Self::Experimental => {
-                Some("⚠️ **This type is _experimental_! It is not fully supported, and is likely to change significantly in future versions.**".to_owned())
-            }
             Self::Unstable => {
                 Some("⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**".to_owned())
             }
+            Self::Stable => { None }
             Self::Deprecated { since, notice } => {
                 Some(format!("⚠️ **Deprecated since {since}**: {notice}"))
             }
