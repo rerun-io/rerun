@@ -20,6 +20,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 ///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+///
 /// ## Examples
 ///
 /// ### Simple pinhole camera

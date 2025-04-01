@@ -5,6 +5,7 @@ namespace rerun.components;
 
 /// A vector in 3D space.
 struct Vector3D (
+  "attr.rerun.state": "stable",
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

@@ -13,6 +13,7 @@ namespace rerun.components;
 struct DepthMeter (
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float, npt.NDArray[np.float32]",
+  "attr.rerun.state": "unstable",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

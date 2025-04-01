@@ -25,6 +25,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// when possible. The underlying data needs to be logged to the same entity-path using
 /// [`archetypes::Scalars`][crate::archetypes::Scalars].
 ///
+/// ⚠️ **Deprecated since 0.23.0**: Use `SeriesPoints` instead.
+///
 /// ## Example
 ///
 /// ### Point series
@@ -73,7 +75,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, Default)]
-#[deprecated(note = "Use `SeriesPoints` instead.")]
+#[deprecated(note = "since 0.23.0: Use `SeriesPoints` instead.")]
 pub struct SeriesPoint {
     /// Color for the corresponding series.
     pub color: Option<SerializedComponentBatch>,
