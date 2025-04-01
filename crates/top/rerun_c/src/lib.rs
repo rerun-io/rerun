@@ -600,6 +600,7 @@ pub extern "C" fn rr_recording_stream_connect_grpc(
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn rr_recording_stream_serve_grpc_impl(
     stream: CRecordingStream,
     bind_ip: CStringView,
@@ -612,7 +613,7 @@ fn rr_recording_stream_serve_grpc_impl(
     let server_memory_limit = server_memory_limit
         .as_str("server_memory_limit")?
         .parse::<re_sdk::MemoryLimit>()
-        .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err.to_string()))?;
+        .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?;
 
     stream
         .serve_grpc_opts(bind_ip, port, server_memory_limit)
