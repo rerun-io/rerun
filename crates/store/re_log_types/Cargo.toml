@@ -56,7 +56,6 @@ re_types_core.workspace = true
 # External
 ahash.workspace = true
 arrow = { workspace = true, features = ["ipc"] }
-arrow2 = { workspace = true, features = ["arrow", "io_ipc"] }
 backtrace.workspace = true
 bytemuck.workspace = true
 clean-path.workspace = true

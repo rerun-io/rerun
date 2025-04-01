@@ -146,7 +146,7 @@ message GetPartitionTableSchemaRequest {
 }
 
 message GetPartitionTableSchemaResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  rerun.common.v1alpha1.Schema schema = 1;
 }
 
 message ScanPartitionTableRequest {
@@ -164,7 +164,7 @@ message GetDatasetSchemaRequest {
 }
 
 message GetDatasetSchemaResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  rerun.common.v1alpha1.Schema schema = 1;
 }
 
 // --- Indexing ---
