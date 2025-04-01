@@ -1,8 +1,9 @@
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::{Caches, StoreBundle, StoreHub};
+use crate::{store_hub::StorageContext, Caches};
 
+// TODO: Rename to something like recording context
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct StoreContext<'a> {
     /// The `app_id` of the current recording.
@@ -19,19 +20,14 @@ pub struct StoreContext<'a> {
     /// If none is active, this will point to a dummy empty recording.
     pub recording: &'a EntityDb,
 
-    /// All the loaded recordings and blueprints.
-    ///
-    /// This is the same bundle as is in [`Self::hub`], but extracted for ease-of-access.
-    pub bundle: &'a StoreBundle,
-
     /// Things that need caching.
     pub caches: &'a Caches,
 
-    /// The store hub, which keeps track of all the default and active blueprints, among other things.
-    pub hub: &'a StoreHub,
-
     /// Should we enable the heuristics during this frame?
     pub should_enable_heuristics: bool,
+
+    // TODO: move this out
+    pub storage: StorageContext<'a>,
 }
 
 impl StoreContext<'_> {

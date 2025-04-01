@@ -7,10 +7,10 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::{
-    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
-    StoreContext, SystemCommand, TableContext, ViewClass, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext,
+    blueprint_timeline, command_channel, store_hub::StorageContext, ApplicationSelectionState,
+    CommandReceiver, CommandSender, ComponentUiRegistry, DataQueryResult, GlobalContext,
+    ItemCollection, RecordingConfig, StoreContext, SystemCommand, TableContext, ViewClass,
+    ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
@@ -308,13 +308,19 @@ impl TestContext {
             blueprint: &self.blueprint_store,
             default_blueprint: None,
             recording: &self.recording_store,
-            bundle: &Default::default(),
             caches: &Default::default(),
-            hub: &Default::default(),
             should_enable_heuristics: false,
+            storage: StorageContext {
+                bundle: &Default::default(),
+                hub: &Default::default(),
+            },
         };
         let table_context = TableContext {
             table_stores: &Default::default(),
+            storage: StorageContext {
+                hub: &Default::default(),
+                bundle: &Default::default(),
+            },
         };
 
         let indicated_entities_per_visualizer = self

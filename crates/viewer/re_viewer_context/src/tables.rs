@@ -7,6 +7,8 @@ use re_types::external::arrow::{
     datatypes::Schema,
 };
 
+use crate::{store_hub::StorageContext, StoreBundle, StoreHub};
+
 #[derive(
     Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
 )]
@@ -105,4 +107,7 @@ pub type TableStores = ahash::HashMap<TableId, TableStore>;
 pub struct TableContext<'a> {
     /// A list of all the table stores.
     pub table_stores: &'a TableStores,
+
+    // TODO: move this out
+    pub storage: StorageContext<'a>,
 }
