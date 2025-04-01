@@ -1,26 +1,60 @@
-use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, PyRef, PyResult, Python};
+use std::sync::Arc;
+
+use datafusion::catalog::TableProvider;
+use datafusion_ffi::table_provider::FFI_TableProvider;
+use pyo3::{
+    exceptions::PyRuntimeError, pyclass, pymethods, types::PyCapsule, Bound, PyRefMut, PyResult,
+    Python,
+};
 
 use re_datafusion::TableEntryTableProvider;
 
-use crate::{catalog::PyEntry, dataframe::PyDataFusionTable, utils::wait_for_future};
+use crate::{
+    catalog::PyEntry,
+    utils::{get_tokio_runtime, wait_for_future},
+};
 
 #[pyclass(name = "Table", extends=PyEntry)]
-pub struct PyTable {}
+#[derive(Default)]
+pub struct PyTable {
+    lazy_provider: Option<Arc<dyn TableProvider + Send>>,
+}
 
 #[pymethods]
 impl PyTable {
-    #[getter]
-    fn datafusion_provider(self_: PyRef<'_, Self>, py: Python<'_>) -> PyResult<PyDataFusionTable> {
-        let super_ = self_.as_super();
-        let connection = super_.client.borrow_mut(py).connection().clone();
+    fn __datafusion_table_provider__<'py>(
+        mut self_: PyRefMut<'py, Self>,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyCapsule>> {
+        if self_.lazy_provider.is_none() {
+            let super_ = self_.as_mut();
 
-        let provider = wait_for_future(
-            py,
-            TableEntryTableProvider::new(connection.client(), super_.id.borrow(py).id)
-                .into_provider(),
-        )
-        .map_err(|err| PyRuntimeError::new_err(format!("Error creating TableProvider: {err}")))?;
+            let id = super_.id.borrow(py).id;
 
-        Ok(PyDataFusionTable { provider })
+            let connection = super_.client.borrow_mut(py).connection().clone();
+
+            self_.lazy_provider = Some(
+                wait_for_future(
+                    py,
+                    TableEntryTableProvider::new(connection.client(), id).into_provider(),
+                )
+                .map_err(|err| {
+                    PyRuntimeError::new_err(format!("Error creating TableProvider: {err}"))
+                })?,
+            );
+        }
+
+        let provider = self_
+            .lazy_provider
+            .as_ref()
+            .ok_or_else(|| PyRuntimeError::new_err(format!("Missing TableProvider")))?
+            .clone();
+
+        let capsule_name = cr"datafusion_table_provider".into();
+
+        let runtime = get_tokio_runtime().handle().clone();
+        let provider = FFI_TableProvider::new(provider, false, Some(runtime));
+
+        PyCapsule::new(py, provider, Some(capsule_name))
     }
 }

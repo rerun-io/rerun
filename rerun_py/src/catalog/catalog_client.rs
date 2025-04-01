@@ -127,7 +127,7 @@ impl PyCatalogClient {
             details: dataset_entry.details,
         };
 
-        let table = PyTable {};
+        let table = PyTable::default();
 
         Py::new(py, (table, entry))
     }
