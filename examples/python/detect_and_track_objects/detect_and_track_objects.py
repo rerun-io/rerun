@@ -45,8 +45,8 @@ DETECTION_SCORE_THRESHOLD = 0.8
 
 os.environ["HF_HOME"] = str(CACHE_DIR.absolute())
 from transformers import (  # noqa: E402 module level import not at top of file
-    DetrImageProcessor,
     DetrForSegmentation,
+    DetrImageProcessor,
 )
 
 
