@@ -2098,10 +2098,6 @@ impl eframe::App for App {
                 // If nothing was active and the redap browser is active
                 // Show the examples from there
                 if self.app_options().enable_redap_browser {
-                    // self.command_sender
-                    //     .send_system(SystemCommand::SelectRedapServer {
-                    //         origin: re_uri::Origin::examples_origin(),
-                    //     });
                     self.command_sender
                         .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
                 }

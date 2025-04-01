@@ -86,11 +86,11 @@ fn local_dataset_ui(
 }
 
 pub struct SortDatasetsResults<'a> {
-    // TODO(lucasmerlin): Replace String with DatasetId or whatever we come up with
     pub remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<re_tuid::Tuid, Vec<&'a EntityDb>>>,
     pub example_recordings: BTreeMap<ApplicationId, Vec<&'a EntityDb>>,
     pub local_recordings: BTreeMap<ApplicationId, Vec<&'a EntityDb>>,
 }
+
 pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<'a> {
     let mut remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<re_tuid::Tuid, Vec<&EntityDb>>> =
         BTreeMap::new();

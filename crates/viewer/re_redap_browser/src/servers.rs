@@ -154,6 +154,7 @@ impl RedapServers {
     pub fn select_server(&self, origin: re_uri::Origin) {
         let _ = self.command_sender.send(Command::SelectServer(origin));
     }
+
     pub fn find_dataset_by_name(
         &self,
         origin: &re_uri::Origin,
