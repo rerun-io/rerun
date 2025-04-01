@@ -13,11 +13,10 @@ use datafusion::{
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::external::{re_tuid::Tuid, re_types_core::Loggable};
 use re_protos::{
-    common::v1alpha1::DatasetHandle,
-    manifest_registry::v1alpha1::{
-        manifest_registry_service_client::ManifestRegistryServiceClient, ListPartitionsRequest,
-        ListPartitionsResponse,
+    frontend::v1alpha1::{
+        frontend_service_client::FrontendServiceClient, ScanPartitionTableRequest,
     },
+    manifest_registry::v1alpha1::ScanPartitionTableResponse,
 };
 use tonic::transport::Channel;
 
@@ -25,18 +24,13 @@ use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
 #[derive(Debug, Clone)]
 pub struct PartitionListProvider {
-    client: ManifestRegistryServiceClient<Channel>,
+    client: FrontendServiceClient<Channel>,
     tuid: Tuid,
-    url: String,
 }
 
 impl PartitionListProvider {
-    pub fn new(conn: Channel, tuid: Tuid, url: impl Into<String>) -> Self {
-        Self {
-            client: ManifestRegistryServiceClient::new(conn),
-            tuid,
-            url: url.into(),
-        }
+    pub fn new(client: FrontendServiceClient<Channel>, tuid: Tuid) -> Self {
+        Self { client, tuid }
     }
 
     /// This is a convenience function
@@ -47,7 +41,7 @@ impl PartitionListProvider {
 
 #[async_trait]
 impl GrpcStreamToTable for PartitionListProvider {
-    type GrpcStreamData = ListPartitionsResponse;
+    type GrpcStreamData = ScanPartitionTableResponse;
 
     async fn create_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
         Ok(Arc::new(Schema::new_with_metadata(
@@ -65,15 +59,12 @@ impl GrpcStreamToTable for PartitionListProvider {
     async fn send_streaming_request(
         &mut self,
     ) -> Result<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>, tonic::Status> {
-        let request = ListPartitionsRequest {
-            entry: Some(DatasetHandle {
-                entry_id: Some(self.tuid.into()),
-                dataset_url: Some(self.url.clone()),
-            }),
+        let request = ScanPartitionTableRequest {
+            dataset_id: Some(self.tuid.into()),
             scan_parameters: None,
         };
 
-        self.client.list_partitions(request).await
+        self.client.scan_partition_table(request).await
     }
 
     fn process_response(

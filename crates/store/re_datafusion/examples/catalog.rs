@@ -52,37 +52,33 @@ async fn main() -> anyhow::Result<()> {
                 if kind != EntryKind::Dataset as i32 {
                     continue;
                 }
-                let dataset_entry = df_connector.get_dataset_entry(tuid).await?;
 
-                if let Some(entry) = dataset_entry {
-                    let registration_name = format!("{name}_partition_list");
+                let registration_name = format!("{name}_partition_list");
 
-                    let url = entry.dataset_handle.unwrap().dataset_url().to_owned();
-                    println!("Partitions for dataset: {name}");
-                    let _ = ctx.register_table(
-                        &registration_name,
-                        df_connector.get_partition_list(tuid, &url).await?,
-                    )?;
+                println!("Partitions for dataset: {name}");
+                let _ = ctx.register_table(
+                    &registration_name,
+                    df_connector.get_partition_list(tuid).await?,
+                )?;
 
-                    let df = ctx.table(registration_name).await?;
+                let df = ctx.table(registration_name).await?;
 
-                    // TODO(jleibs): This is a hack to work around the fact that the schema is not
-                    // Something is wrong with the schema of the empty table
-                    if df.clone().count().await? == 0 {
-                        println!("No partitions found for dataset: {name}");
-                    } else {
-                        df.show().await?;
-                    }
-
-                    // Not yet implemented in manifest_registry.rs
-                    // println!("Partitions index:");
-                    // let _ = ctx.register_table(
-                    //     "partition_index",
-                    //     df_connector.get_partition_index_list(tuid, &url),
-                    // )?;
-
-                    // ctx.table("partition_index").await?.show().await?;
+                // TODO(jleibs): This is a hack to work around the fact that the schema is not
+                // Something is wrong with the schema of the empty table
+                if df.clone().count().await? == 0 {
+                    println!("No partitions found for dataset: {name}");
+                } else {
+                    df.show().await?;
                 }
+
+                // Not yet implemented in manifest_registry.rs
+                // println!("Partitions index:");
+                // let _ = ctx.register_table(
+                //     "partition_index",
+                //     df_connector.get_partition_index_list(tuid, &url),
+                // )?;
+
+                // ctx.table("partition_index").await?.show().await?;
             }
         }
     }

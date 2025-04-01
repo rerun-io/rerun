@@ -12,16 +12,12 @@ use tonic::transport::Channel;
 
 pub struct DataFusionConnector {
     catalog: FrontendServiceClient<Channel>,
-    channel: Channel,
 }
 
 impl DataFusionConnector {
     pub fn new(channel: &Channel) -> Self {
         let catalog = FrontendServiceClient::new(channel.clone());
-        Self {
-            catalog,
-            channel: channel.clone(),
-        }
+        Self { catalog }
     }
 }
 
@@ -70,9 +66,8 @@ impl DataFusionConnector {
     pub async fn get_partition_list(
         &self,
         tuid: Tuid,
-        url: &str,
     ) -> Result<Arc<dyn TableProvider>, DataFusionError> {
-        PartitionListProvider::new(self.channel.clone(), tuid, url)
+        PartitionListProvider::new(self.catalog.clone(), tuid)
             .into_provider()
             .await
     }
