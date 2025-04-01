@@ -1869,7 +1869,7 @@ impl RecordingStream {
     }
 
     #[cfg(feature = "server")]
-    /// Swaps the underlying sink for a [`crate::grpc::GrpcServerSink`] pre-configured to listen on
+    /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://127.0.0.1:9876/proxy`.
     ///
     /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
@@ -1885,7 +1885,7 @@ impl RecordingStream {
     }
 
     #[cfg(feature = "server")]
-    /// Swaps the underlying sink for a [`crate::grpc::GrpcServerSink`] pre-configured to listen on
+    /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
     /// `rerun+http://{bind_ip}:{port}/proxy`.
     ///
     /// `0.0.0.0` is a good default for `bind_ip`.
