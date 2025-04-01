@@ -68,6 +68,7 @@ exclude_path = [
   "scripts/screenshot_compare/assets/templates/",
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "crates/utils/re_uri/src/lib.rs",                # Contains some malformed URLs, but they are not actual links.
+  "crates/utils/re_uri/src/redap_uri.rs",          # Same as above.
   "docs/snippets/INDEX.md",                        # The snippet index is guaranteed should be correct by design.
 ]
 # Exclude URLs and mail addresses from checking (supports regex).

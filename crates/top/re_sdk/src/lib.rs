@@ -42,13 +42,13 @@ pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_CONNECT_URL: &str =
     const_format::concatcp!("rerun+http://127.0.0.1:", DEFAULT_SERVER_PORT, "/proxy");
 
-/// The default address of a Rerun TCP server which an SDK connects to.
+/// The default address of a Rerun gRPC server which an SDK connects to.
 #[deprecated(since = "0.22.0", note = "migrate to connect_grpc")]
 pub fn default_server_addr() -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
 }
 
-/// The default amount of time to wait for the TCP connection to resume during a flush
+/// The default amount of time to wait for the gRPC connection to resume during a flush
 #[allow(clippy::unnecessary_wraps)]
 pub fn default_flush_timeout() -> Option<std::time::Duration> {
     // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
