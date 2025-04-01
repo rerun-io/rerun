@@ -155,6 +155,7 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
 }
 
 /// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
+//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
 pub fn fetch_partition_response_to_chunk(
     response: tonic::Streaming<FetchPartitionResponse>,
 ) -> impl Stream<Item = Result<Chunk, StreamError>> {
