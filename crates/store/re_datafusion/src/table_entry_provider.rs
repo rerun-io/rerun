@@ -31,8 +31,8 @@ impl TableEntryProvider {
     }
 
     /// This is a convenience function
-    pub async fn into_provider(self) -> Arc<dyn TableProvider> {
-        GrpcStreamProvider::prepare(self).await
+    pub async fn into_provider(self) -> Result<Arc<dyn TableProvider>, DataFusionError> {
+        Ok(GrpcStreamProvider::prepare(self).await?)
     }
 }
 
@@ -40,22 +40,23 @@ impl TableEntryProvider {
 impl GrpcStreamToTable for TableEntryProvider {
     type GrpcStreamData = ScanTableResponse;
 
-    async fn create_schema(&mut self) -> SchemaRef {
+    async fn create_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
         let request = GetTableSchemaRequest {
             table_id: Some(self.table_id.into()),
         };
 
-        Arc::new(
+        Ok(Arc::new(
             self.client
                 .get_table_schema(request)
                 .await
-                .unwrap()
+                .map_err(|err| DataFusionError::External(Box::new(err)))?
                 .into_inner()
                 .schema
-                .unwrap()
-                .try_into()
-                .unwrap(),
-        )
+                .ok_or(DataFusionError::External(
+                    "Schema missing from GetTableSchema response".into(),
+                ))?
+                .try_into()?,
+        ))
     }
 
     async fn send_streaming_request(

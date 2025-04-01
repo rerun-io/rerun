@@ -22,7 +22,7 @@ pub trait GrpcStreamToTable:
 {
     type GrpcStreamData;
 
-    async fn create_schema(&mut self) -> SchemaRef;
+    async fn create_schema(&mut self) -> Result<SchemaRef, DataFusionError>;
 
     fn process_response(&mut self, response: Self::GrpcStreamData)
         -> DataFusionResult<RecordBatch>;
@@ -39,9 +39,9 @@ pub struct GrpcStreamProvider<T: GrpcStreamToTable> {
 }
 
 impl<T: GrpcStreamToTable> GrpcStreamProvider<T> {
-    pub async fn prepare(mut client: T) -> Arc<Self> {
-        let schema = client.create_schema().await;
-        Arc::new(Self { schema, client })
+    pub async fn prepare(mut client: T) -> Result<Arc<Self>, DataFusionError> {
+        let schema = client.create_schema().await?;
+        Ok(Arc::new(Self { schema, client }))
     }
 }
 

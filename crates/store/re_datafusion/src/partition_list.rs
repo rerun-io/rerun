@@ -40,8 +40,8 @@ impl PartitionListProvider {
     }
 
     /// This is a convenience function
-    pub async fn into_provider(self) -> Arc<dyn TableProvider> {
-        GrpcStreamProvider::prepare(self).await
+    pub async fn into_provider(self) -> Result<Arc<dyn TableProvider>, DataFusionError> {
+        Ok(GrpcStreamProvider::prepare(self).await?)
     }
 }
 
@@ -49,8 +49,8 @@ impl PartitionListProvider {
 impl GrpcStreamToTable for PartitionListProvider {
     type GrpcStreamData = ListPartitionsResponse;
 
-    async fn create_schema(&mut self) -> SchemaRef {
-        Arc::new(Schema::new_with_metadata(
+    async fn create_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
+        Ok(Arc::new(Schema::new_with_metadata(
             vec![
                 Field::new("id", Tuid::arrow_datatype(), true),
                 Field::new("name", DataType::Utf8, true),
@@ -59,7 +59,7 @@ impl GrpcStreamToTable for PartitionListProvider {
                 Field::new("updated_at", DataType::Int64, true),
             ],
             HashMap::default(),
-        ))
+        )))
     }
 
     async fn send_streaming_request(

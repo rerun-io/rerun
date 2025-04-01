@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
 
     let ctx = SessionContext::default();
 
-    let _ = ctx.register_table("entries", df_connector.get_entry_list().await)?;
+    let _ = ctx.register_table("entries", df_connector.get_entry_list().await?)?;
 
     let df = ctx.table("entries").await?;
 
@@ -55,13 +55,13 @@ async fn main() -> anyhow::Result<()> {
                 let dataset_entry = df_connector.get_dataset_entry(tuid).await?;
 
                 if let Some(entry) = dataset_entry {
-                    let registration_name = format!("{name}_partion_list");
+                    let registration_name = format!("{name}_partition_list");
 
                     let url = entry.dataset_handle.unwrap().dataset_url().to_owned();
                     println!("Partitions for dataset: {name}");
                     let _ = ctx.register_table(
                         &registration_name,
-                        df_connector.get_partition_list(tuid, &url).await,
+                        df_connector.get_partition_list(tuid, &url).await?,
                     )?;
 
                     let df = ctx.table(registration_name).await?;

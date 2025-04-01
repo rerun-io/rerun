@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use datafusion::catalog::TableProvider;
+use datafusion::{catalog::TableProvider, error::DataFusionError};
 use partition_list::PartitionListProvider;
 use re_log_types::external::re_tuid::Tuid;
 use re_protos::{
@@ -32,7 +32,7 @@ impl DataFusionConnector {
 }
 
 impl DataFusionConnector {
-    pub async fn get_entry_list(&mut self) -> Arc<dyn TableProvider> {
+    pub async fn get_entry_list(&mut self) -> Result<Arc<dyn TableProvider>, DataFusionError> {
         // TODO(jleibs): Clean this up with better helpers
         let entry: EntryDetails = self
             .catalog
@@ -43,14 +43,14 @@ impl DataFusionConnector {
                 }),
             })
             .await
-            .unwrap()
+            .map_err(|err| DataFusionError::External(Box::new(err)))?
             .into_inner()
             .entries
             .into_iter()
             .next()
-            .unwrap()
+            .ok_or(DataFusionError::External("No __entries table found".into()))?
             .try_into()
-            .unwrap();
+            .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
         TableEntryProvider::new(self.catalog.clone(), entry.id)
             .into_provider()
@@ -73,7 +73,11 @@ impl DataFusionConnector {
         Ok(entry)
     }
 
-    pub async fn get_partition_list(&self, tuid: Tuid, url: &str) -> Arc<dyn TableProvider> {
+    pub async fn get_partition_list(
+        &self,
+        tuid: Tuid,
+        url: &str,
+    ) -> Result<Arc<dyn TableProvider>, DataFusionError> {
         PartitionListProvider::new(self.channel.clone(), tuid, url)
             .into_provider()
             .await
