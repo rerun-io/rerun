@@ -27,6 +27,7 @@ pub struct StoreContext<'a> {
     pub should_enable_heuristics: bool,
 
     // TODO: move this out
+    #[deprecated]
     pub storage: StorageContext<'a>,
 }
 

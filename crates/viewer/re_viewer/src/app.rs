@@ -13,11 +13,12 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
-    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    store_hub::{BlueprintPersistence, EntryContext, StorageContext, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
     SystemCommandSender as _, TableContext, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
+use wgpu::core::storage;
 
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
@@ -484,10 +485,11 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, store_context, cmd);
+            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
         }
     }
 
@@ -698,36 +700,33 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        storage_ctx: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
-        let active_application_id = store_context
-            .and_then(|ctx| {
-                ctx.hub
-                    .active_app()
-                    // Don't redirect data to the welcome screen.
-                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-                    .cloned()
-            })
+        let active_application_id = storage_ctx
+            .hub
+            .active_app()
+            // Don't redirect data to the welcome screen.
+            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
             .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
-        let active_recording_id = store_context
-            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
-            .or_else(|| {
-                // When we're on the welcome screen, there is no recording ID to recommend.
-                // But we want one, otherwise multiple things being dropped simultaneously on the
-                // welcome screen would end up in different recordings!
+        let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
+            // When we're on the welcome screen, there is no recording ID to recommend.
+            // But we want one, otherwise multiple things being dropped simultaneously on the
+            // welcome screen would end up in different recordings!
 
-                // We're creating a recording just-in-time, directly from the viewer.
-                // We need those store infos or the data will just be silently ignored.
-                force_store_info = true;
+            // We're creating a recording just-in-time, directly from the viewer.
+            // We need those store infos or the data will just be silently ignored.
+            force_store_info = true;
 
-                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-                // this can only be a recording.
-                Some(re_log_types::StoreId::random(StoreKind::Recording))
-            });
+            // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+            // this can only be a recording.
+            Some(re_log_types::StoreId::random(StoreKind::Recording))
+        });
 
         match cmd {
             UICommand::SaveRecording => {
@@ -1253,7 +1252,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         entry_context: Option<&EntryContext<'_>>,
-        storage_context: Option<&StorageContext<'_>>,
+        storage_context: &StorageContext<'_>,
         store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
@@ -1273,7 +1272,8 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    store_context,
+                    // TODO:
+                    None,
                     gpu_resource_stats,
                     ui,
                 );
@@ -1292,7 +1292,7 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    if let (Some(store_context), Some(tables)) = (store_context, table_context) {
+                    if let Some(EntryContext::Recording(store_context)) = entry_context {
                         #[cfg(target_arch = "wasm32")]
                         let is_history_enabled = self.startup_options.enable_history;
                         #[cfg(not(target_arch = "wasm32"))]
@@ -1308,7 +1308,7 @@ impl App {
                             ui,
                             render_ctx,
                             store_context,
-                            tables,
+                            storage_context,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
@@ -1605,6 +1605,7 @@ impl App {
     // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
         egui_ctx: &egui::Context,
+        storage_ctx: &StorageContext<'_>,
         store_ctx: Option<&StoreContext<'_>>,
         command_sender: &CommandSender,
     ) {
@@ -1617,32 +1618,28 @@ impl App {
         }
 
         let mut force_store_info = false;
-        let active_application_id = store_ctx
-            .and_then(|ctx| {
-                ctx.hub
-                    .active_app()
-                    // Don't redirect data to the welcome screen.
-                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-                    .cloned()
-            })
+        let active_application_id = storage_ctx
+            .hub
+            .active_app()
+            // Don't redirect data to the welcome screen.
+            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
             .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
-        let active_recording_id = store_ctx
-            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
-            .or_else(|| {
-                // When we're on the welcome screen, there is no recording ID to recommend.
-                // But we want one, otherwise multiple things being dropped simultaneously on the
-                // welcome screen would end up in different recordings!
+        let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
+            // When we're on the welcome screen, there is no recording ID to recommend.
+            // But we want one, otherwise multiple things being dropped simultaneously on the
+            // welcome screen would end up in different recordings!
 
-                // We're creating a recording just-in-time, directly from the viewer.
-                // We need those store infos or the data will just be silently ignored.
-                force_store_info = true;
+            // We're creating a recording just-in-time, directly from the viewer.
+            // We need those store infos or the data will just be silently ignored.
+            force_store_info = true;
 
-                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-                // this can only be a recording.
-                Some(re_log_types::StoreId::random(StoreKind::Recording))
-            });
+            // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+            // this can only be a recording.
+            Some(re_log_types::StoreId::random(StoreKind::Recording))
+        });
 
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
@@ -2079,8 +2076,8 @@ impl eframe::App for App {
         }
 
         {
-            let entry_context = store_hub.read_context();
-            let store_context = entry_context.and_then(|e| e.recording());
+            let (storage_context, entry_context) = store_hub.read_context();
+            let store_context = entry_context.as_ref().and_then(|e| e.recording());
 
             let blueprint_query =
                 store_context.map_or(BlueprintUndoState::default_query(), |store_context| {
@@ -2101,7 +2098,8 @@ impl eframe::App for App {
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
-                entry_context,
+                entry_context.as_ref(),
+                &storage_context,
                 store_stats.as_ref(),
             );
 
@@ -2114,10 +2112,15 @@ impl eframe::App for App {
                 self.command_sender.send_ui(cmd);
             }
 
-            Self::handle_dropping_files(egui_ctx, store_context, &self.command_sender);
+            Self::handle_dropping_files(
+                egui_ctx,
+                &storage_context,
+                store_context,
+                &self.command_sender,
+            );
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context);
+            self.run_pending_ui_commands(egui_ctx, &app_blueprint, &storage_context, store_context);
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

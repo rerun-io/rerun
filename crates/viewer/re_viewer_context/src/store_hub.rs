@@ -35,7 +35,7 @@ impl Entry {
 
 pub enum EntryContext<'a> {
     Recording(StoreContext<'a>),
-    Table(TableContext<'a>),
+    Table(TableContext),
     // TODO(grtlr): `WelcomeScreen`?
 }
 
@@ -46,18 +46,18 @@ impl<'a> EntryContext<'a> {
             Self::Table(_) => None,
         }
     }
-
+    #[deprecated]
     pub fn store_bundle(&self) -> &StoreBundle {
         match self {
             Self::Recording(ctx) => ctx.storage.bundle,
-            Self::Table(ctx) => ctx.storage.bundle,
+            Self::Table(ctx) => unimplemented!(),
         }
     }
-
+    #[deprecated]
     pub fn hub(&self) -> &StoreHub {
         match self {
             Self::Recording(ctx) => ctx.storage.hub,
-            Self::Table(ctx) => ctx.storage.hub,
+            Self::Table(ctx) => unimplemented!(),
         }
     }
 }
@@ -65,6 +65,7 @@ impl<'a> EntryContext<'a> {
 pub struct StorageContext<'a> {
     pub hub: &'a StoreHub,
     pub bundle: &'a StoreBundle,
+    pub tables: &'a HashMap<TableId, TableStore>,
 }
 
 /// Interface for accessing all blueprints and recordings
@@ -230,16 +231,18 @@ impl StoreHub {
     ///
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
-    pub fn read_context(&mut self) -> Option<EntryContext<'_>> {
+    pub fn read_context(&mut self) -> (StorageContext<'_>, Option<EntryContext<'_>>) {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
             once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
         static EMPTY_CACHES: once_cell::sync::Lazy<Caches> =
             once_cell::sync::Lazy::new(Default::default);
 
         // We have to use `clone()` here because of the mutuable borrow in `set_cloned_blueprint_for_active_app` below.
-        match self.active_entry.clone()? {
-            Entry::Recording { store_id } => {
-                let app_id = self.active_application_id.clone()?;
+        let entry_context = match self.active_entry.clone() {
+            Some(Entry::Recording { store_id }) => 'ms: {
+                let Some(app_id) = self.active_application_id.clone() else {
+                    break 'ms None;
+                };
 
                 // Defensive coding: Check that default and active blueprints exists,
                 // in case some of our book-keeping is broken.
@@ -280,7 +283,11 @@ impl StoreHub {
 
                     // Get or create the blueprint:
                     self.store_bundle.blueprint_entry(active_blueprint_id);
-                    self.store_bundle.get(active_blueprint_id)?
+                    self.store_bundle.get(active_blueprint_id)
+                };
+
+                let Some(active_blueprint) = active_blueprint else {
+                    break 'ms None;
                 };
 
                 let default_blueprint = self
@@ -304,17 +311,22 @@ impl StoreHub {
                     storage: StorageContext {
                         hub: self,
                         bundle: &self.store_bundle,
+                        tables: &self.table_stores,
                     },
                 }))
             }
-            Entry::Table { table_id } => Some(EntryContext::Table(TableContext {
-                table_stores: &self.table_stores,
-                storage: StorageContext {
-                    hub: self,
-                    bundle: &self.store_bundle,
-                },
-            })),
-        }
+            Some(Entry::Table { table_id }) => Some(EntryContext::Table(TableContext { table_id })),
+            None => None,
+        };
+
+        (
+            StorageContext {
+                hub: self,
+                bundle: &self.store_bundle,
+                tables: &self.table_stores,
+            },
+            entry_context,
+        )
     }
 
     /// Mutable access to a [`EntityDb`] by id

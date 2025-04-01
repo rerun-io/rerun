@@ -83,7 +83,7 @@ impl ItemTitle {
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
         let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
-        let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+        let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
             match (
                 entity_db.app_id(),
                 entity_db.recording_property::<Timestamp>(),

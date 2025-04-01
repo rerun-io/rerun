@@ -156,7 +156,7 @@ impl crate::DataUi for EntityDb {
             }
         });
 
-        let hub = ctx.store_context.hub;
+        let hub = ctx.storage_context.hub;
         let store_id = Some(self.store_id());
 
         match self.store_kind() {

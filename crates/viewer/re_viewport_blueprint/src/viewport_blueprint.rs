@@ -246,6 +246,7 @@ impl ViewportBlueprint {
     ) -> bool {
         match item {
             Item::AppId(app_id) => store_context
+                .storage
                 .hub
                 .store_bundle()
                 .entity_dbs()

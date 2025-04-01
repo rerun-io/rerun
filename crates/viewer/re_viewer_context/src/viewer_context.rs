@@ -7,22 +7,22 @@ use re_entity_db::entity_db::EntityDb;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
+use crate::store_hub::StorageContext;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
-use crate::{GlobalContext, StoreHub, TableContext, TableId};
+use crate::{GlobalContext, StoreHub, TableId};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
 
-    /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
-    pub table_context: &'a TableContext<'a>,
+    pub storage_context: &'a StorageContext<'a>,
 
     /// If `active_table` is `Some(...)`, we have a table in the context, otherwise it's a regular store.
     // TODO(grtlr): ideally we would have two variants for a viewer context (one for stores and one for tables), but

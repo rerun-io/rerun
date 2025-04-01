@@ -1158,11 +1158,11 @@ fn add_new_view_or_container_menu_button(
 
 fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let default_blueprint_id = ctx
-        .store_context
+        .storage_context
         .hub
         .default_blueprint_id_for_app(&ctx.store_context.app_id);
 
-    let default_blueprint = default_blueprint_id.and_then(|id| ctx.store_context.bundle.get(id));
+    let default_blueprint = default_blueprint_id.and_then(|id| ctx.storage_context.bundle.get(id));
 
     let disabled_reason = match default_blueprint {
         None => Some("No default blueprint is set for this app"),

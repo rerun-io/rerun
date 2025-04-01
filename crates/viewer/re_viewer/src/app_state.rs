@@ -10,10 +10,11 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
-    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableContext,
-    ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
+    store_hub::StorageContext, AppOptions, ApplicationSelectionState, BlueprintUndoState,
+    CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, PlayState,
+    RecordingConfig, SelectionChange, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableContext, ViewClassExt as _, ViewClassRegistry, ViewStates,
+    ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -150,7 +151,7 @@ impl AppState {
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
         store_context: &StoreContext<'_>,
-        table_context: &TableContext<'_>,
+        storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
@@ -288,11 +289,11 @@ impl AppState {
                 command_sender,
             },
             store_context,
+            storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             active_table: None, // TODO:
-            table_context,
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -370,7 +371,7 @@ impl AppState {
                 command_sender,
             },
             store_context,
-            table_context,
+            storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
@@ -504,7 +505,7 @@ impl AppState {
 
                     match display_mode {
                         DisplayMode::LocalRecordings => {
-                            let resizable = ctx.store_context.bundle.recordings().count() > 3;
+                            let resizable = ctx.storage_context.bundle.recordings().count() > 3;
 
                             if resizable {
                                 // Don't shrink either recordings panel or blueprint panel below this height

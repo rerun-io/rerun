@@ -10,8 +10,8 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
-    DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, TableId,
-    UiLayout, ViewerContext,
+    DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, TableId, UiLayout,
+    ViewerContext,
 };
 
 use crate::app_state::WelcomeScreenState;
@@ -54,7 +54,7 @@ pub fn recordings_panel_ui(
 
 fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
     let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
-        .store_context
+        .storage_context
         .bundle
         .recordings()
         .filter_map(|store| store.data_source.clone())
@@ -114,7 +114,7 @@ fn recording_list_ui(
     let mut local_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
     let mut example_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
 
-    for entity_db in ctx.store_context.bundle.entity_dbs() {
+    for entity_db in ctx.storage_context.bundle.entity_dbs() {
         // We want to show all open applications, even if they have no recordings
         let Some(app_id) = entity_db.app_id().cloned() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
@@ -191,7 +191,7 @@ fn recording_list_ui(
         );
     }
 
-    for (table_id, table) in ctx.table_context.table_stores {
+    for (table_id, table) in ctx.storage_context.tables {
         table_id_button_ui(ctx, ui, table_id, UiLayout::Tooltip);
     }
 

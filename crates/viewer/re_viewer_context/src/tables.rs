@@ -104,10 +104,7 @@ impl Default for TableStore {
 
 pub type TableStores = ahash::HashMap<TableId, TableStore>;
 
-pub struct TableContext<'a> {
-    /// A list of all the table stores.
-    pub table_stores: &'a TableStores,
-
-    // TODO: move this out
-    pub storage: StorageContext<'a>,
+pub struct TableContext {
+    /// The current active table.
+    pub table_id: TableId,
 }

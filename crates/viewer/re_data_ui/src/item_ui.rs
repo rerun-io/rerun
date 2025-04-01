@@ -724,7 +724,7 @@ pub fn store_id_button_ui(
     store_id: &re_log_types::StoreId,
     ui_layout: UiLayout,
 ) {
-    if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+    if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
         entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
     } else {
         ui_layout.label(ui, store_id.to_string());
@@ -860,9 +860,6 @@ pub fn table_id_button_ui(
     // entity_db: &re_entity_db::EntityDb,
     ui_layout: UiLayout,
 ) {
-    
-    
-
     // let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
     // let title = format!("{app_id_prefix}{recording_name} - {size}");
 

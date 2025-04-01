@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 use crate::{
     blueprint_timeline, command_channel, store_hub::StorageContext, ApplicationSelectionState,
     CommandReceiver, CommandSender, ComponentUiRegistry, DataQueryResult, GlobalContext,
-    ItemCollection, RecordingConfig, StoreContext, SystemCommand, TableContext, ViewClass,
+    ItemCollection, RecordingConfig, StoreContext, SystemCommand, TableContext, TableId, ViewClass,
     ViewClassRegistry, ViewId, ViewStates, ViewerContext,
 };
 use re_chunk::{Chunk, ChunkBuilder};
@@ -313,15 +313,13 @@ impl TestContext {
             storage: StorageContext {
                 bundle: &Default::default(),
                 hub: &Default::default(),
+                tables: &Default::default(),
             },
         };
-        let table_context = TableContext {
-            table_stores: &Default::default(),
-            storage: StorageContext {
-                hub: &Default::default(),
-                bundle: &Default::default(),
-            },
-        };
+        // let table_context = TableContext {
+        //     table_id: TableId::new("test_table".to_string()),
+        //     table_stores: &Default::default(),
+        // };
 
         let indicated_entities_per_visualizer = self
             .view_class_registry
@@ -352,7 +350,12 @@ impl TestContext {
                 render_ctx,
             },
             store_context: &store_context,
-            table_context: &table_context,
+            storage_context: &StorageContext {
+                hub: &Default::default(),
+                bundle: &Default::default(),
+                tables: &Default::default(),
+            },
+            // table_context: &table_context,
             active_table: None,
             maybe_visualizable_entities_per_visualizer: &Default::default(),
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
