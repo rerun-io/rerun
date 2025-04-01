@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{ArrayRef, RecordBatch, StringArray, TimestampMillisecondArray},
+    array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
 };
 
@@ -44,7 +44,7 @@ impl CreatePartitionManifestsResponse {
         let schema = Arc::new(Self::schema());
         let columns: Vec<ArrayRef> = vec![
             Arc::new(StringArray::from(partition_ids)),
-            Arc::new(TimestampMillisecondArray::from(updated_ats)),
+            Arc::new(TimestampNanosecondArray::from(updated_ats)),
             Arc::new(StringArray::from(partition_manifest_urls)),
             Arc::new(StringArray::from(errors)),
         ];

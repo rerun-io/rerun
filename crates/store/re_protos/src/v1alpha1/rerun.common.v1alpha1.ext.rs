@@ -109,6 +109,13 @@ pub struct PartitionId {
     pub id: String,
 }
 
+impl PartitionId {
+    #[inline]
+    pub fn new(id: String) -> Self {
+        Self { id }
+    }
+}
+
 impl From<String> for PartitionId {
     fn from(id: String) -> Self {
         Self { id }

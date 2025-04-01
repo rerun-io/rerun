@@ -85,7 +85,6 @@ pub mod manifest_registry {
         pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
         pub const DATASET_MANIFEST_ROW_ID_FIELD_NAME: &str = "rerun_row_id";
         pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
-        pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
         pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
     }
 }
