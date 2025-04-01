@@ -58,6 +58,18 @@ fn build_2d_scene(test_context: &mut TestContext) {
                 &archetypes::VideoFrameReference::new(0),
             )
     });
+    for i in 0..3 {
+        test_context.log_entity(format!("video/tracked/{i}").into(), |builder| {
+            builder.with_archetype(
+                re_types::RowId::new(),
+                time,
+                &archetypes::Boxes2D::from_centers_and_half_sizes(
+                    [(i as f32, i as f32)],
+                    [(1.0, 1.0)],
+                ),
+            )
+        });
+    }
 
     // Since we haven't registered the text view, it won't show up in automatically generated views at all.
     // This is just here to mimic an entity the 2D spatial view can't handle at all.
