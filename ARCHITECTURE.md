@@ -19,7 +19,7 @@ It all starts with logging. You can log rich data (point clouds, images, etc) wi
 
 The logging SDK:s encodes the data using Apache Arrow (see more below).
 
-The logging data can be written to disk as `.rrd` files, or transmitted over TCP to either a Rerun Viewer or a Rerun Server.
+The logging data can be written to disk as `.rrd` files, or transmitted over gRPC to either a Rerun Viewer or a Rerun Server.
 
 ### Rerun Viewer
 
@@ -35,7 +35,7 @@ You can try running the Viewer in a browser using `rr.serve()` in Python, or usi
 
 The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/viewer/re_web_viewer_server) crate.
 
-The web viewer can load `.rrd` files (just drag-drop them into the browser), or read logging data streamed over WebSockets.
+The web viewer can load `.rrd` files (just drag-drop them into the browser), or read logging data streamed over gRPC.
 
 ### `.rrd` files
 

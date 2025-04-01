@@ -28,7 +28,7 @@ struct WebViewerSink {
     /// The gRPC server thread.
     _server_handle: std::thread::JoinHandle<()>,
 
-    /// Rerun websocket server.
+    /// Signal used to gracefully shutdown the gRPC server.
     server_shutdown_signal: re_grpc_server::shutdown::Signal,
 
     /// The http server serving wasm & html.
@@ -182,7 +182,7 @@ impl WebViewerConfig {
     /// The server will immediately start listening for incoming connections
     /// and stop doing so when the returned [`WebViewerServer`] is dropped.
     ///
-    /// Note: this does not include the websocket server.
+    /// Note: this does not include the gRPC server.
     pub fn host_web_viewer(self) -> Result<WebViewerServer, WebViewerServerError> {
         let Self {
             bind_ip,
@@ -236,7 +236,7 @@ impl WebViewerConfig {
 
 // ----------------------------------------------------------------------------
 
-/// Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+/// Serve log-data over gRPC and serve a Rerun web viewer over HTTP.
 ///
 /// If the `open_browser` argument is `true`, your default browser
 /// will be opened with a connected web-viewer.

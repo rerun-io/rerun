@@ -24,7 +24,7 @@ This example is divided into two parts:
 - **Viewer** ([`src/viewer.rs`](src/viewer.rs)): Wraps the Rerun viewer inside an [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe) app.
 - **App** ([`src/app.rs`](src/app.rs)): The application that uses the Rerun SDK.
 
-In the `app`, an additional TCP listener is opened to allow the `viewer` to send messages to the `app`.
+In the `app`, an additional gRPC server is opened to allow the `viewer` to send messages to the `app`.
 Similar to the [`extend_viewer_ui`](../extend_viewer_ui/) example, the `viewer` is wrapped in an `eframe` app, which allows us to handle the extra communication logic and define our own control UI using [`egui`](https://github.com/emilk/egui).
 
 The communication between the `viewer` and the `app` is implemented in the [`comms`](src/comms/) module. It defines a simple protocol to send messages between the `viewer` and the `app` using [`bincode`](https://github.com/bincode-org/bincode).
