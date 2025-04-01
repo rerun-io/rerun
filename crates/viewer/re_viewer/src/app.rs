@@ -1322,10 +1322,12 @@ impl App {
                             self.callbacks.as_ref(),
                         );
                         render_ctx.before_submit();
+                    } else {
+                        ui.label("draw table stuff here.");
                     }
-                }
 
-                self.show_text_logs_as_notifications();
+                    self.show_text_logs_as_notifications();
+                }
             });
     }
 

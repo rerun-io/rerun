@@ -13,8 +13,7 @@ use re_viewer_context::{
     store_hub::StorageContext, AppOptions, ApplicationSelectionState, BlueprintUndoState,
     CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, PlayState,
     RecordingConfig, SelectionChange, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableContext, ViewClassExt as _, ViewClassRegistry, ViewStates,
-    ViewerContext,
+    SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
