@@ -111,6 +111,26 @@ service ManifestRegistryService {
   rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
 }
 
+
+// When using the Flight protocol, serialize this message to be sent as a command in the flight info.
+message ManifestRegistryFlightRequest {
+  oneof request_type {
+    RegisterWithDatasetRequest register_with_dataset = 1;
+    WriteChunksRequest write_chunks = 2;
+    GetPartitionTableSchemaRequest get_partition_table_schema = 3;
+    ScanPartitionTableRequest scan_partition_table = 4;
+    GetDatasetSchemaRequest get_dataset_schema = 5;
+    CreateIndexRequest create_index = 6;
+    ReIndexRequest re_index = 7;
+    SearchDatasetRequest search_dataset = 8;
+    QueryDatasetRequest query_dataset = 9;
+    GetChunksRequest get_chunks = 10;
+    FetchPartitionRequest fetch_partition = 11;
+    FetchChunkManifestRequest fetch_chunk_manifest = 12;
+    CreatePartitionManifestsRequest create_partition_manifest = 13;
+  }
+}
+
 // --- Write data ---
 
 message DataSource {

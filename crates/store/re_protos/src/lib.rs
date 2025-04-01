@@ -49,6 +49,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.redap_tasks.v1alpha1.rs"]
     pub mod rerun_redap_tasks_v1alpha1;
+
+    #[path = "./rerun.flights.v1alpha1.rs"]
+    pub mod rerun_flights_v1alpha1;
 }
 
 pub mod common {
@@ -57,6 +60,12 @@ pub mod common {
         pub mod ext {
             pub use crate::v1alpha1::rerun_common_v1alpha1_ext::*;
         }
+    }
+}
+
+pub mod flights {
+    pub mod v1alpha1 {
+        pub use crate::v1alpha1::rerun_flights_v1alpha1::*;
     }
 }
 

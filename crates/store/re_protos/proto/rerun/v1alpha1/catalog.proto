@@ -19,6 +19,14 @@ service CatalogService {
   rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
 }
 
+
+// When using the Flight protocol, serialize this message to be sent as a command in the flight info.
+message CatalogFlightRequest {
+  oneof request_type {
+    FindEntriesRequest find_entries = 1;
+  }
+}
+
 // ---------------- Services ------------------
 
 // FindEntries

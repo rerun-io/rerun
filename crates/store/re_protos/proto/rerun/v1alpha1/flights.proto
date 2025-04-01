@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package rerun.flights.v1alpha1;
+
+import "rerun/v1alpha1/catalog.proto";
+import "rerun/v1alpha1/manifest_registry.proto";
+
+// Flight requests all come in a single command path. For each underlying service
+// add any requests that return arrow record batch streams in a common command.
+message FlightRequest {
+  oneof request_type {
+    rerun.catalog.v1alpha1.CatalogFlightRequest catalog_request = 1;
+    rerun.manifest_registry.v1alpha1.ManifestRegistryFlightRequest manifest_registry_request = 2;
+  }
+}
