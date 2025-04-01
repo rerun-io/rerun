@@ -310,11 +310,6 @@ impl TestContext {
             recording: &self.recording_store,
             caches: &Default::default(),
             should_enable_heuristics: false,
-            storage: StorageContext {
-                bundle: &Default::default(),
-                hub: &Default::default(),
-                tables: &Default::default(),
-            },
         };
         // let table_context = TableContext {
         //     table_id: TableId::new("test_table".to_string()),

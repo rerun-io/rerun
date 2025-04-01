@@ -672,9 +672,7 @@ mod tests {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
-            bundle: &Default::default(),
             caches: &Default::default(),
-            hub: &StoreHub::test_hub(),
             should_enable_heuristics: false,
         };
 

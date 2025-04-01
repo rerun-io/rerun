@@ -13,12 +13,11 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
-    store_hub::{BlueprintPersistence, EntryContext, StorageContext, StoreHub, StoreHubStats},
+    store_hub::{BlueprintPersistence, StorageContext, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
-    SystemCommandSender as _, TableContext, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
-use wgpu::core::storage;
 
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
@@ -1251,7 +1250,7 @@ impl App {
         frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        entry_context: Option<&EntryContext<'_>>,
+        store_context: Option<&StoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         store_stats: Option<&StoreHubStats>,
     ) {
@@ -1272,8 +1271,7 @@ impl App {
                     frame,
                     self,
                     app_blueprint,
-                    // TODO:
-                    None,
+                    store_context,
                     gpu_resource_stats,
                     ui,
                 );
@@ -1292,7 +1290,7 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    if let Some(EntryContext::Recording(store_context)) = entry_context {
+                    if let Some(store_context) = store_context {
                         #[cfg(target_arch = "wasm32")]
                         let is_history_enabled = self.startup_options.enable_history;
                         #[cfg(not(target_arch = "wasm32"))]
@@ -1322,8 +1320,6 @@ impl App {
                             self.callbacks.as_ref(),
                         );
                         render_ctx.before_submit();
-                    } else {
-                        ui.label("draw table stuff here.");
                     }
 
                     self.show_text_logs_as_notifications();
@@ -2078,17 +2074,18 @@ impl eframe::App for App {
         }
 
         {
-            let (storage_context, entry_context) = store_hub.read_context();
-            let store_context = entry_context.as_ref().and_then(|e| e.recording());
+            let (storage_context, store_context) = store_hub.read_context();
 
-            let blueprint_query =
-                store_context.map_or(BlueprintUndoState::default_query(), |store_context| {
+            let blueprint_query = store_context.as_ref().map_or(
+                BlueprintUndoState::default_query(),
+                |store_context| {
                     self.state
                         .blueprint_query_for_viewer(store_context.blueprint)
-                });
+                },
+            );
 
             let app_blueprint = AppBlueprint::new(
-                store_context,
+                store_context.as_ref(),
                 &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
@@ -2100,7 +2097,7 @@ impl eframe::App for App {
                 frame,
                 &app_blueprint,
                 &gpu_resource_stats,
-                entry_context.as_ref(),
+                store_context.as_ref(),
                 &storage_context,
                 store_stats.as_ref(),
             );
@@ -2117,12 +2114,17 @@ impl eframe::App for App {
             Self::handle_dropping_files(
                 egui_ctx,
                 &storage_context,
-                store_context,
+                store_context.as_ref(),
                 &self.command_sender,
             );
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            self.run_pending_ui_commands(egui_ctx, &app_blueprint, &storage_context, store_context);
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
+            );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

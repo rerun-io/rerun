@@ -216,7 +216,7 @@ impl AppState {
                     }
                 }
 
-                viewport_ui.blueprint.is_item_valid(store_context, item)
+                viewport_ui.blueprint.is_item_valid(storage_context, item)
             },
             Some(re_viewer_context::Item::StoreId(
                 store_context.recording.store_id().clone(),

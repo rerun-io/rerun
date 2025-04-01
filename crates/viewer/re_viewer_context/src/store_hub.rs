@@ -14,14 +14,18 @@ use re_query::CachesStats;
 use re_types::components::Timestamp;
 
 use crate::{
-    store_bundle, BlueprintUndoState, Caches, StoreBundle, StoreContext, TableContext, TableId,
-    TableStore,
+    BlueprintUndoState, Caches, StoreBundle, StoreContext, TableContext, TableId, TableStore,
 };
 
 #[derive(Clone)]
 pub enum Entry {
-    Recording { store_id: StoreId },
-    Table { table_id: TableId },
+    Recording {
+        store_id: StoreId,
+        // TODO(grtlr): Add `applicationId` here.
+    },
+    Table {
+        table_id: TableId,
+    },
 }
 
 impl Entry {
@@ -29,35 +33,6 @@ impl Entry {
         match self {
             Self::Recording { store_id } => Some(store_id),
             Self::Table { .. } => None,
-        }
-    }
-}
-
-pub enum EntryContext<'a> {
-    Recording(StoreContext<'a>),
-    Table(TableContext),
-    // TODO(grtlr): `WelcomeScreen`?
-}
-
-impl<'a> EntryContext<'a> {
-    pub fn recording(&'a self) -> Option<&'a StoreContext<'a>> {
-        match self {
-            Self::Recording(ctx) => Some(ctx),
-            Self::Table(_) => None,
-        }
-    }
-    #[deprecated]
-    pub fn store_bundle(&self) -> &StoreBundle {
-        match self {
-            Self::Recording(ctx) => ctx.storage.bundle,
-            Self::Table(ctx) => unimplemented!(),
-        }
-    }
-    #[deprecated]
-    pub fn hub(&self) -> &StoreHub {
-        match self {
-            Self::Recording(ctx) => ctx.storage.hub,
-            Self::Table(ctx) => unimplemented!(),
         }
     }
 }
@@ -195,9 +170,13 @@ impl StoreHub {
             store_bundle.blueprint_entry(&Self::welcome_screen_blueprint_id());
         (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
 
+        let table_id = TableId::new("test123".to_owned());
+
         Self {
             persistence,
-            active_entry: None,
+            active_entry: Some(Entry::Table {
+                table_id: table_id.clone(),
+            }),
             active_application_id: None,
 
             default_blueprint_by_app_id,
@@ -210,11 +189,7 @@ impl StoreHub {
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
 
-            table_stores: std::iter::once((
-                TableId::new("Very interesting dataframe".to_owned()),
-                Default::default(),
-            ))
-            .collect(),
+            table_stores: std::iter::once((table_id, Default::default())).collect(),
         }
     }
 
@@ -231,92 +206,87 @@ impl StoreHub {
     ///
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
-    pub fn read_context(&mut self) -> (StorageContext<'_>, Option<EntryContext<'_>>) {
+    pub fn read_context(&mut self) -> (StorageContext<'_>, Option<StoreContext<'_>>) {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
             once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
         static EMPTY_CACHES: once_cell::sync::Lazy<Caches> =
             once_cell::sync::Lazy::new(Default::default);
 
-        // We have to use `clone()` here because of the mutuable borrow in `set_cloned_blueprint_for_active_app` below.
-        let entry_context = match self.active_entry.clone() {
-            Some(Entry::Recording { store_id }) => 'ms: {
-                let Some(app_id) = self.active_application_id.clone() else {
-                    break 'ms None;
-                };
+        let store_context = 'ctx: {
+            // If we have an app-id, then use it to look up the blueprint.
+            let Some(app_id) = self.active_application_id.clone() else {
+                break 'ctx None;
+            };
 
-                // Defensive coding: Check that default and active blueprints exists,
-                // in case some of our book-keeping is broken.
-                if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id) {
-                    if !self.store_bundle.contains(blueprint_id) {
-                        self.default_blueprint_by_app_id.remove(&app_id);
-                    }
+            // Defensive coding: Check that default and active blueprints exists,
+            // in case some of our book-keeping is broken.
+            if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id) {
+                if !self.store_bundle.contains(blueprint_id) {
+                    self.default_blueprint_by_app_id.remove(&app_id);
                 }
-                if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(&app_id) {
-                    if !self.store_bundle.contains(blueprint_id) {
-                        self.active_blueprint_by_app_id.remove(&app_id);
-                    }
-                }
-
-                // If there's no active blueprint for this app, we must use the default blueprint, UNLESS
-                // we're about to enable heuristics for this app.
-                if !self.active_blueprint_by_app_id.contains_key(&app_id)
-                    && !self.should_enable_heuristics_by_app_id.contains(&app_id)
-                {
-                    if let Some(blueprint_id) =
-                        self.default_blueprint_by_app_id.get(&app_id).cloned()
-                    {
-                        self.set_cloned_blueprint_active_for_app(&app_id.clone(), &blueprint_id)
-                            .unwrap_or_else(|err| {
-                                re_log::warn!("Failed to make blueprint active: {err}");
-                            });
-                    }
-                }
-
-                let active_blueprint = {
-                    // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
-                    let active_blueprint_id = self
-                        .active_blueprint_by_app_id
-                        .entry(app_id.clone())
-                        .or_insert_with(|| {
-                            StoreId::from_string(StoreKind::Blueprint, app_id.clone().0)
-                        });
-
-                    // Get or create the blueprint:
-                    self.store_bundle.blueprint_entry(active_blueprint_id);
-                    self.store_bundle.get(active_blueprint_id)
-                };
-
-                let Some(active_blueprint) = active_blueprint else {
-                    break 'ms None;
-                };
-
-                let default_blueprint = self
-                    .default_blueprint_by_app_id
-                    .get(&app_id)
-                    .and_then(|id| self.store_bundle.get(id));
-
-                let recording = self.store_bundle.get(&store_id);
-
-                let should_enable_heuristics =
-                    self.should_enable_heuristics_by_app_id.remove(&app_id);
-                let caches = self.active_caches();
-
-                Some(EntryContext::Recording(StoreContext {
-                    app_id: app_id.clone(),
-                    blueprint: active_blueprint,
-                    default_blueprint,
-                    recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
-                    caches: caches.unwrap_or(&EMPTY_CACHES),
-                    should_enable_heuristics,
-                    storage: StorageContext {
-                        hub: self,
-                        bundle: &self.store_bundle,
-                        tables: &self.table_stores,
-                    },
-                }))
             }
-            Some(Entry::Table { table_id }) => Some(EntryContext::Table(TableContext { table_id })),
-            None => None,
+            if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(&app_id) {
+                if !self.store_bundle.contains(blueprint_id) {
+                    self.active_blueprint_by_app_id.remove(&app_id);
+                }
+            }
+
+            // If there's no active blueprint for this app, we must use the default blueprint, UNLESS
+            // we're about to enable heuristics for this app.
+            if !self.active_blueprint_by_app_id.contains_key(&app_id)
+                && !self.should_enable_heuristics_by_app_id.contains(&app_id)
+            {
+                if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
+                    self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
+                        .unwrap_or_else(|err| {
+                            re_log::warn!("Failed to make blueprint active: {err}");
+                        });
+                }
+            }
+
+            let active_blueprint = {
+                // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
+                let active_blueprint_id = self
+                    .active_blueprint_by_app_id
+                    .entry(app_id.clone())
+                    .or_insert_with(|| {
+                        StoreId::from_string(StoreKind::Blueprint, app_id.clone().0)
+                    });
+
+                // Get or create the blueprint:
+                self.store_bundle.blueprint_entry(active_blueprint_id);
+                let Some(active_blueprint) = self.store_bundle.get(active_blueprint_id) else {
+                    break 'ctx None;
+                };
+                active_blueprint
+            };
+
+            let default_blueprint = self
+                .default_blueprint_by_app_id
+                .get(&app_id)
+                .and_then(|id| self.store_bundle.get(id));
+
+            // Calls `store_bundle.get()` internally and can therefore vary from the active entry.
+            let recording = self.active_entry.as_ref().and_then(|id| match id {
+                Entry::Recording { store_id } => self.store_bundle.get(store_id),
+                Entry::Table { .. } => None,
+            });
+
+            if recording.is_none() && self.active_entry.is_none() {
+                self.active_entry = None;
+            }
+
+            let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(&app_id);
+            let caches = self.active_caches();
+
+            Some(StoreContext {
+                app_id,
+                blueprint: active_blueprint,
+                default_blueprint,
+                recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
+                caches: caches.unwrap_or(&EMPTY_CACHES),
+                should_enable_heuristics,
+            })
         };
 
         (
@@ -325,7 +295,7 @@ impl StoreHub {
                 bundle: &self.store_bundle,
                 tables: &self.table_stores,
             },
-            entry_context,
+            store_context,
         )
     }
 

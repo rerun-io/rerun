@@ -1,7 +1,7 @@
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::{store_hub::StorageContext, Caches};
+use crate::Caches;
 
 // TODO: Rename to something like recording context
 /// The current Blueprint and Recording being displayed by the viewer
@@ -25,10 +25,6 @@ pub struct StoreContext<'a> {
 
     /// Should we enable the heuristics during this frame?
     pub should_enable_heuristics: bool,
-
-    // TODO: move this out
-    #[deprecated]
-    pub storage: StorageContext<'a>,
 }
 
 impl StoreContext<'_> {

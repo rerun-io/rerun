@@ -752,9 +752,7 @@ mod tests {
             blueprint: &test_ctx.blueprint_store,
             default_blueprint: None,
             recording: &test_ctx.recording_store,
-            bundle: &Default::default(),
             caches: &Default::default(),
-            hub: &re_viewer_context::StoreHub::test_hub(),
             should_enable_heuristics: false,
         };
 

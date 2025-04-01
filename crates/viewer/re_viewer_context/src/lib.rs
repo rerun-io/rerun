@@ -68,7 +68,7 @@ pub use self::{
     },
     store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
-    store_hub::StoreHub,
+    store_hub::{StorageContext, StoreHub},
     tables::{TableContext, TableId, TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
