@@ -14,7 +14,7 @@ impl TryFrom<&ArrowField> for ColumnKind {
     type Error = SorbetError;
 
     fn try_from(fields: &ArrowField) -> Result<Self, Self::Error> {
-        let kind = fields.get_or_err("rerun.kind")?;
+        let kind = fields.get_opt("rerun.kind").unwrap_or("data");
         match kind {
             "control" | "row_id" => Ok(Self::RowId),
             "index" | "time" => Ok(Self::Index),

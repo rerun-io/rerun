@@ -48,11 +48,12 @@ pub enum ComponentData {
         dict: ArrowInt32DictionaryArray,
         values: ArrowListArray,
     },
+    SomethingElse(ArrowArrayRef),
 }
 
 impl ComponentData {
     fn try_new(
-        descriptor: &ComponentColumnDescriptor,
+        _descriptor: &ComponentColumnDescriptor,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_data.data_type() {
@@ -75,10 +76,11 @@ impl ComponentData {
                     .clone();
                 Ok(Self::DictionaryArray { dict, values })
             }
-            _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
-                descriptor.component_name.to_string(),
-                column_data.data_type().to_owned(),
-            )),
+            // _ => Err(DisplayRecordBatchError::UnexpectedComponentColumnDataType(
+            //     descriptor.component_name.to_string(),
+            //     column_data.data_type().to_owned(),
+            // )),
+            _ => Ok(Self::SomethingElse(column_data.clone())),
         }
     }
 
@@ -102,6 +104,7 @@ impl ComponentData {
                     0
                 }
             }
+            Self::SomethingElse(array) => 1,
         }
     }
 
@@ -139,6 +142,10 @@ impl ComponentData {
                 .then(|| list_array.value(row_index)),
             Self::DictionaryArray { dict, values } => {
                 dict.key(row_index).map(|key| values.value(key))
+            }
+            Self::SomethingElse(array_ref) => {
+                re_ui::arrow_ui(ui, UiLayout::List, array_ref);
+                return;
             }
         };
 

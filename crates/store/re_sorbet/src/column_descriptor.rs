@@ -114,7 +114,7 @@ impl ColumnDescriptor {
         chunk_entity_path: Option<&EntityPath>,
         field: &ArrowField,
     ) -> Result<Self, ColumnError> {
-        let kind = field.get_or_err("rerun.kind")?;
+        let kind = field.get_opt("rerun.kind").unwrap_or("data");
         match kind {
             "index" | "time" => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
 
