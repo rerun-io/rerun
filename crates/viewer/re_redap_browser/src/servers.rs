@@ -221,6 +221,10 @@ impl RedapServers {
         });
     }
 
+    pub fn open_add_server_modal(&self) {
+        let _ = self.command_sender.send(Command::OpenAddServerModal);
+    }
+
     pub fn entry_ui(
         &mut self,
         viewer_ctx: &ViewerContext<'_>,

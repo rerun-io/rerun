@@ -1042,6 +1042,10 @@ impl App {
                     re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
                 }
             }
+
+            UICommand::AddRedapServer => {
+                self.state.redap_servers.open_add_server_modal();
+            }
         }
     }
 

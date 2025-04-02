@@ -2,7 +2,6 @@ use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
-use re_protos::common::v1alpha1::ext::EntryId;
 use re_ui::{UICommand, UICommandSender};
 
 // ----------------------------------------------------------------------------

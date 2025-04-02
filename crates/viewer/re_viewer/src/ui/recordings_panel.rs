@@ -7,6 +7,7 @@ use re_redap_browser::{
 };
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
+use re_ui::list_item::{ItemButton, ItemMenuButton};
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
     DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
@@ -202,13 +203,21 @@ fn recording_list_ui(
 }
 
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    use re_ui::UICommandSender as _;
-
-    if ui
-        .small_icon_button(&re_ui::icons::ADD)
-        .on_hover_text(re_ui::UICommand::Open.tooltip_with_shortcut(ui.ctx()))
-        .clicked()
-    {
-        ctx.command_sender().send_ui(re_ui::UICommand::Open);
-    }
+    use re_ui::list_item::ItemButton;
+    Box::new(ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+        if re_ui::UICommand::Open
+            .menu_button_ui(ui, ctx.command_sender())
+            .clicked()
+        {
+            ui.close_menu();
+        };
+        if re_ui::UICommand::AddRedapServer
+            .menu_button_ui(ui, ctx.command_sender())
+            .clicked()
+        {
+            ui.close_menu();
+        };
+    }))
+    .ui(ui)
+    .on_hover_text("Open a file or connect to a server");
 }
