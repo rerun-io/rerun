@@ -64,11 +64,32 @@ rec.log(
 ## Images
 Images are logged using the [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) archetype. Two methods are demonstrated: logging images with a tensor buffer and logging images by passing a pointer to the image data.
 ```cpp
-// Log image to rerun using the tensor buffer adapter defined in `collection_adapters.hpp`.
-rec.log("image0", rerun::Image(tensor_shape(img), rerun::TensorBuffer::u8(img)));
+// Log image to rerun by borrowing binary data into a `Collection` from a pointer.
+rec.log(
+    "image0",
+    rerun::Image(
+        rerun::borrow(img.data, img.total() * img.elemSize()),
+        rerun::WidthHeight(
+            static_cast<uint32_t>(img.cols),
+            static_cast<uint32_t>(img.rows)
+        ),
+        rerun::ColorModel::BGR
+    )
+);
 
 // Or by passing a pointer to the image data.
 rec.log("image1", rerun::Image(tensor_shape(img), reinterpret_cast<const uint8_t*>(img.data)));
+rec.log(
+    "image1",
+    rerun::Image(
+        reinterpret_cast<const uint8_t*>(img.data),
+        rerun::WidthHeight(
+            static_cast<uint32_t>(img.cols),
+            static_cast<uint32_t>(img.rows)
+        ),
+        rerun::ColorModel::BGR
+    )
+);
 ```
 
 # Run the code
