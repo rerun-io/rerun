@@ -21,6 +21,7 @@ service MessageProxyService {
   rpc ReadMessages(ReadMessagesRequest) returns (stream ReadMessagesResponse) {}
 
   rpc WriteTable(WriteTableRequest) returns (WriteTableResponse) {}
+  rpc ReadTables(ReadTablesRequest) returns (stream ReadTablesResponse) {}
 }
 
 // WriteMessages
@@ -39,11 +40,11 @@ message ReadMessagesResponse {
   rerun.log_msg.v1alpha1.LogMsg log_msg = 1;
 }
 
-// WriteTable
-
 message TableId {
   string id = 1;
 }
+
+// WriteTable
 
 message WriteTableRequest {
   TableId id = 1;
@@ -51,3 +52,13 @@ message WriteTableRequest {
 }
 
 message WriteTableResponse {}
+
+// ReadTable
+
+message ReadTablesRequest {}
+
+message ReadTablesResponse {
+  TableId id = 1;
+  rerun.common.v1alpha1.DataframePart data = 2;
+}
+
