@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, StringArray};
+use arrow::array::{Float32Array, RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyRuntimeError;
-use pyo3::{pyclass, pymethods, PyRef, PyResult};
+use pyo3::{pyclass, pymethods, FromPyObject, PyRef, PyResult};
 use re_dataframe::ComponentColumnSelector;
 use re_datafusion::SearchResultsTableProvider;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_protos::manifest_registry::v1alpha1::{
-    IndexColumn, IndexQueryProperties, InvertedIndexQuery,
+    index_query_properties, IndexColumn, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
 };
 use re_sdk::ComponentDescriptor;
 use tokio_stream::StreamExt as _;
@@ -161,5 +161,94 @@ impl PyDataset {
         })?;
 
         Ok(PyDataFusionTable { provider })
+    }
+
+    fn search_vector(
+        self_: PyRef<'_, Self>,
+        query: VectorLike<'_>,
+        column: PyComponentColumnSelector,
+        top_k: u32,
+    ) -> PyResult<PyDataFusionTable> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let column_selector: ComponentColumnSelector = column.into();
+        let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
+
+        let query = query.to_record_batch()?;
+
+        let request = SearchDatasetRequest {
+            dataset_id: Some(dataset_id.into()),
+            column: Some(IndexColumn {
+                entity_path: Some(column_selector.entity_path.into()),
+                component: Some(component_descriptor.into()),
+            }),
+            properties: Some(IndexQueryProperties {
+                props: Some(index_query_properties::Props::Vector(VectorIndexQuery {
+                    top_k: Some(top_k),
+                })),
+            }),
+            query: Some(
+                query
+                    .encode()
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            ),
+            scan_parameters: None,
+        };
+
+        let provider = wait_for_future(self_.py(), async move {
+            SearchResultsTableProvider::new(connection.client(), request)
+                .map_err(to_py_err)?
+                .into_provider()
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        Ok(PyDataFusionTable { provider })
+    }
+}
+
+/// A type alias for a vector (vector search input data).
+#[derive(FromPyObject)]
+enum VectorLike<'py> {
+    NumPy(numpy::PyArrayLike1<'py, f32>),
+    Vector(Vec<f32>),
+}
+
+impl VectorLike<'_> {
+    fn to_record_batch(&self) -> PyResult<RecordBatch> {
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![Field::new(
+                "items",
+                arrow::datatypes::DataType::Float32,
+                false,
+            )],
+            Default::default(),
+        );
+
+        match self {
+            VectorLike::NumPy(array) => {
+                let floats: Vec<f32> = array
+                    .as_array()
+                    .as_slice()
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Failed to convert numpy array to slice".to_owned())
+                    })?
+                    .to_vec();
+
+                RecordBatch::try_new(Arc::new(schema), vec![Arc::new(Float32Array::from(floats))])
+                    .map_err(|err| {
+                        PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
+                    })
+            }
+            VectorLike::Vector(floats) => RecordBatch::try_new(
+                Arc::new(schema),
+                vec![Arc::new(Float32Array::from(floats.clone()))],
+            )
+            .map_err(|err| {
+                PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
+            }),
+        }
     }
 }
