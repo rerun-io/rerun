@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package rerun.sdk_comms.v1alpha1;
 
+import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/log_msg.proto";
 
 // Simple buffer for messages between SDKs and viewers.
@@ -18,6 +19,8 @@ service MessageProxyService {
   //            It may allow us to amortize the overhead of the gRPC protocol.
   rpc WriteMessages(stream WriteMessagesRequest) returns (WriteMessagesResponse) {}
   rpc ReadMessages(ReadMessagesRequest) returns (stream ReadMessagesResponse) {}
+
+  rpc WriteTable(WriteTableRequest) returns (WriteTableResponse) {}
 }
 
 // WriteMessages
@@ -35,3 +38,16 @@ message ReadMessagesRequest {}
 message ReadMessagesResponse {
   rerun.log_msg.v1alpha1.LogMsg log_msg = 1;
 }
+
+// WriteTable
+
+message TableId {
+  string id = 1;
+}
+
+message WriteTableRequest {
+  TableId id = 1;
+  rerun.common.v1alpha1.DataframePart data = 2;
+}
+
+message WriteTableResponse {}
