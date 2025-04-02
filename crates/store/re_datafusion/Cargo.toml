@@ -29,15 +29,19 @@ default = []
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
+re_tuid.workspace = true
 
 # External dependencies:
 anyhow.workspace = true
 arrow.workspace = true
+arrow-flight.workspace = true
 async-trait = "0.1.83"
 async-stream.workspace = true
 datafusion.workspace = true
+futures.workspace = true
 futures-util.workspace = true
 itertools.workspace = true
+prost.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true
 tonic.workspace = true

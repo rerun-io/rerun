@@ -1,8 +1,21 @@
-use pyo3::{exceptions::PyLookupError, pyclass, pymethods, FromPyObject, Py, PyResult, Python};
 
+use datafusion::catalog::TableFunctionImpl as _;
+use datafusion::prelude::lit;
+use datafusion_ffi::table_provider::FFI_TableProvider;
+use pyo3::{
+    exceptions::PyLookupError, pyclass, pymethods, types::PyCapsule, Bound, FromPyObject, Py,
+    PyResult, Python,
+};
+
+use re_datafusion::DatasetTableProvider;
+use re_grpc_client::redap::channel;
 use re_protos::catalog::v1alpha1::EntryFilter;
+use tonic::transport::Channel;
 
-use crate::catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId};
+use crate::{
+    catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId},
+    utils::get_tokio_runtime,
+};
 
 use super::table::PyTable;
 
@@ -13,6 +26,8 @@ pub struct PyCatalogClient {
     origin: re_uri::Origin,
 
     connection: ConnectionHandle,
+
+    channel: Channel,
 }
 
 impl PyCatalogClient {
@@ -28,9 +43,18 @@ impl PyCatalogClient {
     fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
         let origin = re_uri::Origin::try_from(addr.as_str()).map_err(to_py_err)?;
 
+        let runtime = get_tokio_runtime();
+        let channel = runtime
+            .block_on(channel(origin.clone()))
+            .map_err(to_py_err)?;
+
         let connection = ConnectionHandle::new(py, origin.clone())?;
 
-        Ok(Self { origin, connection })
+        Ok(Self {
+            origin,
+            connection,
+            channel,
+        })
     }
 
     fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
@@ -130,6 +154,47 @@ impl PyCatalogClient {
         let table = PyTable::default();
 
         Py::new(py, (table, entry))
+    }
+
+    fn dataset_udf(&self, dataset_name: &str, timeline: &str) -> PyDatasetTableProvider {
+        let udf_provider =
+            DatasetTableProvider::new(self.channel.clone(), get_tokio_runtime().handle().clone());
+
+        PyDatasetTableProvider {
+            inner: udf_provider,
+            dataset_name: dataset_name.to_owned(),
+            timeline: timeline.to_owned(),
+        }
+    }
+}
+
+/// This is an intermediate way to create these table providers on the
+/// fly. Ideally we would register them as UDTF, but that needs to be
+/// added to `datafusion-python`.
+#[pyclass(name = "DatasetTableProvider")]
+struct PyDatasetTableProvider {
+    inner: DatasetTableProvider,
+    dataset_name: String,
+    timeline: String,
+}
+
+#[pymethods]
+impl PyDatasetTableProvider {
+    fn __datafusion_table_provider__<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyCapsule>> {
+        let name = c"datafusion_table_provider".into();
+
+        let provider = self
+            .inner
+            .call(&vec![lit(&self.dataset_name), lit(&self.timeline)])
+            .map_err(to_py_err)?;
+
+        let provider =
+            FFI_TableProvider::new(provider, false, Some(get_tokio_runtime().handle().clone()));
+
+        PyCapsule::new(py, provider, Some(name))
     }
 }
 

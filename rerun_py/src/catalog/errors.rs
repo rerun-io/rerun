@@ -15,7 +15,8 @@
 
 use std::error::Error as _;
 
-use pyo3::exceptions::{PyConnectionError, PyValueError};
+use datafusion::error::DataFusionError;
+use pyo3::exceptions::{PyConnectionError, PyRuntimeError, PyValueError};
 use pyo3::PyErr;
 
 use re_grpc_client::redap::ConnectionError;
@@ -32,6 +33,7 @@ enum ExternalError {
     ChunkError(re_chunk::ChunkError),
     ChunkStoreError(re_chunk_store::ChunkStoreError),
     StreamError(re_grpc_client::StreamError),
+    DataFusionError(DataFusionError),
 }
 
 impl From<ConnectionError> for ExternalError {
@@ -70,6 +72,12 @@ impl From<re_grpc_client::StreamError> for ExternalError {
     }
 }
 
+impl From<DataFusionError> for ExternalError {
+    fn from(value: DataFusionError) -> Self {
+        Self::DataFusionError(value)
+    }
+}
+
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
@@ -100,6 +108,8 @@ impl From<ExternalError> for PyErr {
             ExternalError::StreamError(err) => {
                 PyValueError::new_err(format!("Data streaming error: {err}"))
             }
+
+            ExternalError::DataFusionError(err) => PyRuntimeError::new_err(format!("{err}")),
         }
     }
 }

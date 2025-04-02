@@ -172,6 +172,7 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "54.3.1", default-features = false }
+arrow-flight = "54.3.1"
 arrow2 = { package = "re_arrow2", version = "0.19.0", features = ["arrow"] }
 async-stream = "0.3"
 backtrace = "0.3"
@@ -211,6 +212,7 @@ ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
 flatbuffers = "24.12.23"
+futures = "0.3"
 futures-util = "0.3"
 getrandom = "0.2"
 glam = { version = "0.28", features = ["debug-glam-assert"] }
