@@ -222,7 +222,7 @@ impl StoreHub {
         &self.store_bundle
     }
 
-    /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
+    /// Get a read-only [`StorageContext`] and optionally a [`StoreContext`] (if available) from the [`StoreHub`].
     ///
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
@@ -417,7 +417,7 @@ impl StoreHub {
         }
     }
 
-    pub fn retain(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
+    pub fn retain_recordings(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
         let stores_to_remove: Vec<StoreId> = self
             .store_bundle
             .entity_dbs()
@@ -743,7 +743,7 @@ impl StoreHub {
     /// Cloned blueprints are the ones the user has edited,
     /// i.e. NOT sent from the SDK.
     pub fn clear_all_cloned_blueprints(&mut self) {
-        self.retain(|db| match db.store_kind() {
+        self.retain_recordings(|db| match db.store_kind() {
             StoreKind::Recording => true,
             StoreKind::Blueprint => db.cloned_from().is_none(),
         });
@@ -751,7 +751,7 @@ impl StoreHub {
 
     /// Remove any empty [`EntityDb`]s from the hub
     pub fn purge_empty(&mut self) {
-        self.retain(|entity_db| !entity_db.is_empty());
+        self.retain_recordings(|entity_db| !entity_db.is_empty());
     }
 
     /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
@@ -826,7 +826,7 @@ impl StoreHub {
 
     /// Remove any recordings with a network source pointing at this `uri`.
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
-        self.retain(|db| {
+        self.retain_recordings(|db| {
             let Some(data_source) = &db.data_source else {
                 // no data source, keep
                 return true;

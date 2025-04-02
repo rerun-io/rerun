@@ -311,10 +311,6 @@ impl TestContext {
             caches: &Default::default(),
             should_enable_heuristics: false,
         };
-        // let table_context = TableContext {
-        //     table_id: TableId::new("test_table".to_string()),
-        //     table_stores: &Default::default(),
-        // };
 
         let indicated_entities_per_visualizer = self
             .view_class_registry

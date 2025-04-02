@@ -867,9 +867,8 @@ pub fn table_id_button_ui(
 
     let mut item_content =
         list_item::LabelContent::new(table_id.as_str()).with_icon_fn(|ui, rect, visuals| {
-            // Color icon based on whether this is the active recording or not:
-            // let color = if ctx.store_context.is_active(&store_id) {
-            let color = if false {
+            // Color icon based on whether this is the active table or not:
+            let color = if ctx.active_table.as_ref() == Some(table_id) {
                 visuals.fg_stroke.color
             } else {
                 ui.visuals().widgets.noninteractive.fg_stroke.color

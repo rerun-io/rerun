@@ -442,7 +442,6 @@ impl AppState {
             egui::CentralPanel::default()
                 .frame(viewport_frame)
                 .show_inside(ui, |ui| {
-                    // TODO: move up top.
                     let table_id = ctx
                         .active_table
                         .as_ref()
