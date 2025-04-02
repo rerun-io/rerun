@@ -221,13 +221,14 @@ def serve_grpc(
     """
     Serve log-data over gRPC.
 
-    You can to this server with the native viewer using `rerun rerun+http://localhost:{grpc_port}/proxy`.
+    You can connect to this server with the native viewer using `rerun rerun+http://localhost:{grpc_port}/proxy`.
 
     The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
-    This function returns immediately.
+    This function returns immediately. In order to keep the server running, you must keep the process running
+    as well.
 
     Parameters
     ----------
