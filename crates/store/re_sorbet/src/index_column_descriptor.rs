@@ -105,7 +105,10 @@ impl IndexColumnDescriptor {
         let nullable = true; // Time column must be nullable since static data doesn't have a time.
 
         let mut metadata = std::collections::HashMap::from([
-            ("rerun.kind".to_owned(), "index".to_owned()),
+            (
+                "rerun.kind".to_owned(),
+                crate::ColumnKind::Index.to_string(),
+            ),
             ("rerun.index_name".to_owned(), timeline.name().to_string()),
         ]);
         if *is_sorted {

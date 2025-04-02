@@ -23,6 +23,16 @@ pub enum ColumnKind {
     Component,
 }
 
+impl std::fmt::Display for ColumnKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RowId => write!(f, "control"),
+            Self::Index => write!(f, "index"),
+            Self::Component => write!(f, "data"),
+        }
+    }
+}
+
 impl TryFrom<&ArrowField> for ColumnKind {
     type Error = UnknownColumnKind;
 
