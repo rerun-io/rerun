@@ -70,7 +70,7 @@ pub mod manifest_registry {
     #[rustfmt::skip] // keep these constants single line for easy sorting
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
-        #[expect(unused_imports)]
+
         pub mod ext {
             pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::*;
         }

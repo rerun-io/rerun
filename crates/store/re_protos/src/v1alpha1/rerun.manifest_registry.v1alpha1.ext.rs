@@ -3,10 +3,13 @@ use std::sync::Arc;
 use arrow::{
     array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
+    error::ArrowError,
 };
 
-use crate::manifest_registry::v1alpha1::CreatePartitionManifestsResponse;
-
+use crate::manifest_registry::v1alpha1::{
+    CreatePartitionManifestsResponse, GetDatasetSchemaResponse,
+};
+use crate::TypeConversionError;
 // --- CreatePartitionManifestsResponse ---
 
 impl CreatePartitionManifestsResponse {
@@ -77,3 +80,25 @@ impl TryFrom<RecordBatch> for CreatePartitionManifestsResponse {
 }
 
 // TODO(#9430): the other way around would be nice too, but same problem.
+
+// --- GetDatasetSchemaResponse ---
+
+#[derive(Debug, thiserror::Error)]
+pub enum GetDatasetSchemaResponseError {
+    #[error(transparent)]
+    ArrowError(#[from] ArrowError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] TypeConversionError),
+}
+
+impl GetDatasetSchemaResponse {
+    pub fn schema(self) -> Result<Schema, GetDatasetSchemaResponseError> {
+        Ok(self
+            .schema
+            .ok_or_else(|| {
+                TypeConversionError::missing_field::<GetDatasetSchemaResponse>("schema")
+            })?
+            .try_into()?)
+    }
+}

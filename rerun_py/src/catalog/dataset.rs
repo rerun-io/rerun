@@ -1,3 +1,5 @@
+use arrow::datatypes::Schema as ArrowSchema;
+use arrow::pyarrow::PyArrowType;
 use pyo3::{pyclass, pymethods, PyRef, PyResult};
 use tokio_stream::StreamExt as _;
 
@@ -21,6 +23,17 @@ impl PyDataset {
     #[getter]
     fn manifest_url(&self) -> String {
         self.dataset_handle.url.to_string()
+    }
+
+    /// Return the Arrow schema of the data contained in the dataset.
+    //TODO(#9457): there should be another `schema` method which returns a `PySchema`
+    fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
+        let super_ = self_.as_super();
+        let mut connection = super_.client.borrow_mut(self_.py()).connection().clone();
+
+        let schema = connection.get_dataset_schema(self_.py(), super_.details.id)?;
+
+        Ok(schema.into())
     }
 
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {

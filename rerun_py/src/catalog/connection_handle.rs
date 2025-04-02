@@ -1,5 +1,4 @@
-//! Client connection handle which ch
-
+use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyResult, Python,
 };
@@ -12,6 +11,7 @@ use re_protos::catalog::v1alpha1::{
 };
 use re_protos::common::v1alpha1::ext::EntryId;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::frontend::v1alpha1::GetDatasetSchemaRequest;
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -124,5 +124,23 @@ impl ConnectionHandle {
             .table
             .ok_or(PyRuntimeError::new_err("No table in response"))?
             .try_into()?)
+    }
+
+    pub fn get_dataset_schema(
+        &mut self,
+        py: Python<'_>,
+        entry_id: EntryId,
+    ) -> PyResult<ArrowSchema> {
+        wait_for_future(py, async {
+            self.client
+                .get_dataset_schema(GetDatasetSchemaRequest {
+                    dataset_id: Some(entry_id.into()),
+                })
+                .await
+                .map_err(to_py_err)?
+                .into_inner()
+                .schema()
+                .map_err(to_py_err)
+        })
     }
 }
