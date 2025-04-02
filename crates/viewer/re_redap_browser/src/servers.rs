@@ -6,7 +6,6 @@ use crate::context::Context;
 use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
 use re_protos::common::v1alpha1::ext::EntryId;
 use re_ui::{list_item, UiExt as _};
-use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 struct Server {
@@ -34,16 +33,12 @@ impl Server {
         self.entries.find_dataset(entry_id)
     }
 
-    fn find_dataset_by_name(&self, dataset_name: &str) -> Option<&Dataset> {
-        self.entries.find_dataset_by_name(dataset_name)
-    }
-
     fn panel_ui(
         &self,
         viewer_context: &ViewerContext<'_>,
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
-        recordings: Option<DatasetRecordings>,
+        recordings: Option<DatasetRecordings<'_>>,
     ) {
         let content = list_item::LabelContent::header(self.origin.host.to_string())
             .with_buttons(|ui| {
@@ -115,7 +110,7 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
         // We cannot create `Server` right away, because we need an async handle and an
         // `egui::Context` for that, so we just queue commands to be processed early next frame.
         for origin in origins {
-            let _ = servers.pending_servers.push(origin);
+            servers.pending_servers.push(origin);
         }
 
         Ok(servers)
@@ -211,7 +206,7 @@ impl RedapServers {
         &self,
         ui: &mut egui::Ui,
         viewer_ctx: &ViewerContext<'_>,
-        mut remote_recordings: RemoteRecordings,
+        mut remote_recordings: RemoteRecordings<'_>,
     ) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
@@ -226,7 +221,7 @@ impl RedapServers {
     }
 
     pub fn entry_ui(
-        &mut self,
+        &self,
         viewer_ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         active_entry: EntryId,

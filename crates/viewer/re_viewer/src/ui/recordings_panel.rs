@@ -1,16 +1,12 @@
-use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
-use re_entity_db::EntityDb;
-use re_log_types::{ApplicationId, LogMsg};
-use re_protos::common::v1alpha1::ext::EntryId;
+use re_log_types::LogMsg;
 use re_redap_browser::{
     dataset_and_its_recordings_ui, EntryKind, RedapServers, EXAMPLES_ORIGIN, LOCAL_ORIGIN,
 };
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_types::components::Timestamp;
-use re_ui::list_item::{ItemButton, ItemMenuButton};
-use re_ui::{icons, list_item, UiExt as _};
+use re_ui::list_item::ItemMenuButton;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
-    DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
+    DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
 use crate::app_state::WelcomeScreenState;
@@ -203,7 +199,7 @@ fn recording_list_ui(
 }
 
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    use re_ui::list_item::ItemButton;
+    use re_ui::list_item::ItemButton as _;
     Box::new(ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
         if re_ui::UICommand::Open
             .menu_button_ui(ui, ctx.command_sender())

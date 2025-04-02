@@ -1,11 +1,8 @@
 use crate::context::Context;
 use crate::requested_object::RequestedObject;
-use crate::servers::Command;
-use crate::RedapServers;
 use ahash::HashMap;
-use egui::Id;
 use re_data_ui::item_ui::entity_db_button_ui;
-use re_data_ui::DataUi;
+use re_data_ui::DataUi as _;
 use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{redap, StreamError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -19,10 +16,10 @@ use re_protos::TypeConversionError;
 use re_smart_channel::SmartChannelSource;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
 use re_types::components::Timestamp;
-use re_ui::{icons, list_item, UICommandSender, UiExt as _, UiLayout};
+use re_ui::{icons, list_item, UiExt as _, UiLayout};
 use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender, ViewerContext,
+    AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
@@ -99,26 +96,13 @@ impl Entries {
         self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
-    pub fn find_dataset_by_name(&self, dataset_name: &str) -> Option<&Dataset> {
-        self.datasets
-            .try_as_ref()?
-            .as_ref()
-            .ok()?
-            .values()
-            .find(|dataset| dataset.name() == dataset_name)
-    }
-
-    pub fn first_dataset(&self) -> Option<&Dataset> {
-        self.datasets.try_as_ref()?.as_ref().ok()?.values().next()
-    }
-
     /// [`list_item::ListItem`]-based UI for the datasets.
     pub fn panel_ui(
         &self,
         viewer_context: &ViewerContext<'_>,
-        ctx: &Context<'_>,
+        _ctx: &Context<'_>,
         ui: &mut egui::Ui,
-        mut recordings: Option<DatasetRecordings>,
+        mut recordings: Option<DatasetRecordings<'_>>,
     ) {
         match self.datasets.try_as_ref() {
             None => {
@@ -140,7 +124,7 @@ impl Entries {
                         &EntryKind::Remote {
                             origin: dataset.origin.clone(),
                             entry_id: dataset.id(),
-                            name: dataset.name().to_string(),
+                            name: dataset.name().to_owned(),
                         },
                         recordings,
                     );
@@ -169,9 +153,9 @@ pub struct SortDatasetsResults<'a> {
 }
 
 pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<'a> {
-    let mut remote_recordings: RemoteRecordings = BTreeMap::new();
-    let mut local_recordings: LocalRecordings = BTreeMap::new();
-    let mut example_recordings: LocalRecordings = BTreeMap::new();
+    let mut remote_recordings: RemoteRecordings<'_> = BTreeMap::new();
+    let mut local_recordings: LocalRecordings<'_> = BTreeMap::new();
+    let mut example_recordings: LocalRecordings<'_> = BTreeMap::new();
 
     for entity_db in viewer_ctx
         .store_context
@@ -226,7 +210,7 @@ impl EntryKind {
         match self {
             Self::Remote {
                 origin: _,
-                entry_id: dataset,
+                entry_id: _,
                 name,
             } => name.to_string(),
             Self::Local(app_id) => app_id.to_string(),
@@ -264,7 +248,7 @@ impl EntryKind {
     fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
         match self {
             Self::Remote {
-                origin: origin,
+                origin,
                 entry_id: dataset,
                 ..
             } => ctx

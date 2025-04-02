@@ -4,8 +4,8 @@ use itertools::Itertools as _;
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{icons, ContextExt as _, UICommand, UiExt as _};
-use re_viewer_context::{DisplayMode, StoreContext, StoreHub};
+use re_ui::{ContextExt as _, UICommand, UiExt as _};
+use re_viewer_context::StoreContext;
 
 use crate::{app_blueprint::AppBlueprint, App};
 
