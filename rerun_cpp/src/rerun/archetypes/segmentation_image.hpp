@@ -22,12 +22,12 @@
 namespace rerun::archetypes {
     /// **Archetype**: An image made up of integer `components::ClassId`s.
     ///
-    /// Each pixel corresponds to a `components::ClassId` that will be mapped to a color based on annotation context.
+    /// Each pixel corresponds to a `components::ClassId` that will be mapped to a color based on `archetypes::AnnotationContext`.
     ///
     /// In the case of floating point images, the label will be looked up based on rounding to the nearest
     /// integer value.
     ///
-    /// See also `archetypes::AnnotationContext` to associate each class with a color and a label.
+    /// Use `archetypes::AnnotationContext` to associate each class with a color and a label.
     ///
     /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.

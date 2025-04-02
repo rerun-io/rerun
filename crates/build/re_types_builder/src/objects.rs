@@ -488,7 +488,7 @@ impl Object {
                 reporter.error(&virtpath, &fqname, &err);
                 State::Stable
             })
-        } else if kind == ObjectKind::Datatype || is_testing_fqname(&fqname) {
+        } else if is_testing_fqname(&fqname) {
             State::Stable
         } else if scope == Some("blueprint".to_owned()) {
             if false {
@@ -498,15 +498,28 @@ impl Object {
                 State::Stable
             }
         } else {
-            if false {
-                // TODO(#9427): make ATTR_DOCS_STATE attribute mandatory
-                reporter.error(
-                    &virtpath,
-                    &fqname,
-                    format!("Missing attribute '{ATTR_RERUN_STATE}'"),
-                );
+            match kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    if false {
+                        // TODO(#9427): make ATTR_RERUN_STATE attribute mandatory
+                        reporter.warn(
+                            &virtpath,
+                            &fqname,
+                            format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                        );
+                    }
+                    State::Stable
+                }
+                ObjectKind::Archetype => {
+                    reporter.error(
+                        &virtpath,
+                        &fqname,
+                        format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                    );
+                    State::Stable
+                }
+                ObjectKind::View => State::Unstable,
             }
-            State::Stable
         };
 
         let fields: Vec<_> = {
