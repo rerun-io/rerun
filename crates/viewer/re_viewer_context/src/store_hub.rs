@@ -335,37 +335,6 @@ impl StoreHub {
         self.store_bundle.insert(entity_db);
     }
 
-    /// Returns the closest "neighbor" recording to the given id.
-    ///
-    /// The closest neighbor is the next recording when sorted by (app ID, time), if any, or the
-    /// previous one otherwise. This is used to update the selected recording when the current one
-    /// is deleted.
-    // TODO: This has no business in `StoreHub` because it is an UI implementation detail
-    fn _find_closest_recording(&self, id: &StoreId) -> Option<StoreId> {
-        let mut recs = self.store_bundle.recordings().collect_vec();
-
-        recs.sort_by_key(|entity_db| {
-            let maybe_app_id = entity_db.app_id().map(|id| id.0.as_str());
-            let maybe_name = entity_db.recording_property::<re_types::components::Name>();
-            let maybe_started = entity_db.recording_property::<re_types::components::Timestamp>();
-            (maybe_app_id, maybe_started, maybe_name)
-        });
-
-        let cur_pos = recs.iter().position(|rec| rec.store_id() == *id);
-
-        if let Some(cur_pos) = cur_pos {
-            if recs.len() > cur_pos + 1 {
-                Some(recs[cur_pos + 1].store_id())
-            } else if cur_pos > 0 {
-                Some(recs[cur_pos - 1].store_id())
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
     fn remove_store(&mut self, store_id: &StoreId) {
         _ = self.caches_per_recording.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
@@ -395,15 +364,6 @@ impl StoreHub {
                     .retain(|_, id| id != store_id);
             }
         }
-
-        // TODO:
-        // if self.active_entry.as_ref() == Some(store_id) {
-        //     if let Some(new_selection) = self.find_closest_recording(store_id) {
-        //         self.set_active_recording_id(new_selection.clone());
-        //     } else {
-        //         self.active_entry = None;
-        //     }
-        // }
     }
 
     pub fn remove(&mut self, entry: &StoreHubEntry) {
