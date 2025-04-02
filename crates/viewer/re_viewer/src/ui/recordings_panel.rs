@@ -125,38 +125,6 @@ fn recording_list_ui(
         );
     }
 
-    // for (origin, dataset_recordings) in remote_recordings {
-    //     if ui
-    //         .list_item()
-    //         .header()
-    //         .show_hierarchical_with_children(
-    //             ui,
-    //             egui::Id::new(&origin),
-    //             true,
-    //             list_item::LabelContent::header(origin.host.to_string()),
-    //             |ui| {
-    //                 for (dataset, entity_dbs) in dataset_recordings {
-    //                     dataset_and_its_recordings_ui(
-    //                         ui,
-    //                         ctx,
-    //                         &EntryKind::Remote(origin.clone(), dataset),
-    //                         entity_dbs,
-    //                     );
-    //                 }
-    //             },
-    //         )
-    //         .item_response
-    //         .clicked()
-    //     {
-    //         ctx.command_sender()
-    //             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-    //         ctx.command_sender()
-    //             .send_system(SystemCommand::SelectRedapServer {
-    //                 origin: origin.clone(),
-    //             });
-    //     }
-    // }
-
     if !local_recordings.is_empty()
         && ui
             .list_item()

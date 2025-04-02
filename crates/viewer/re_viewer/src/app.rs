@@ -375,7 +375,6 @@ impl App {
         let callbacks = startup_options.callbacks.clone();
 
         if !state.redap_servers.is_empty() {
-            // TODO: Select some entry?
             command_sender.send_ui(UICommand::ExpandBlueprintPanel);
         }
 
@@ -913,11 +912,13 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
+                DisplayMode::LocalRecordings
+                | DisplayMode::RedapEntry(_)
+                | DisplayMode::RedapServer(_) => {
+                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
+                }
                 DisplayMode::ChunkStoreBrowser => {
                     self.state.display_mode = DisplayMode::LocalRecordings;
-                }
-                _ => {
-                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
                 }
             },
 

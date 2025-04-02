@@ -80,6 +80,10 @@ impl Server {
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
+    /// When deserializing we can't construct the [`Server`]s right away
+    /// so they get queued here.
+    pending_servers: Vec<re_uri::Origin>,
+
     // message queue for commands
     command_sender: Sender<Command>,
     command_receiver: Receiver<Command>,
@@ -106,12 +110,12 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
     {
         let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
 
-        let servers = Self::default();
+        let mut servers = Self::default();
 
         // We cannot create `Server` right away, because we need an async handle and an
         // `egui::Context` for that, so we just queue commands to be processed early next frame.
         for origin in origins {
-            let _ = servers.command_sender.send(Command::AddServer(origin));
+            let _ = servers.pending_servers.push(origin);
         }
 
         Ok(servers)
@@ -124,6 +128,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
+            pending_servers: Default::default(),
             command_sender,
             command_receiver,
             add_server_modal_ui: Default::default(),
@@ -140,7 +145,7 @@ pub enum Command {
 
 impl RedapServers {
     pub fn is_empty(&self) -> bool {
-        self.servers.is_empty()
+        self.servers.is_empty() && self.pending_servers.is_empty()
     }
 
     /// Add a server to the hub.
@@ -153,6 +158,9 @@ impl RedapServers {
     /// - Process commands from the queue.
     /// - Update all servers.
     pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+        self.pending_servers.drain(..).for_each(|origin| {
+            let _ = self.command_sender.send(Command::AddServer(origin));
+        });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(runtime, egui_ctx, command);
         }
@@ -219,19 +227,6 @@ impl RedapServers {
         ui: &mut egui::Ui,
         active_entry: EntryId,
     ) {
-        // TODO: Make this a Command and call on start
-        // if self.selection.is_none() {
-        //     if self.servers.is_empty() {
-        //         self.selection = Some(Selection::Server(re_uri::Origin::examples_origin()));
-        //     } else if let Some(entry) = self
-        //         .servers
-        //         .first_key_value()
-        //         .and_then(|(_, server)| server.entries.first_dataset())
-        //     {
-        //         self.selection = Some(Selection::Dataset(entry.id()));
-        //     }
-        // }
-
         for server in self.servers.values() {
             if let Some(dataset) = server.find_dataset(active_entry) {
                 self.with_ctx(|ctx| {

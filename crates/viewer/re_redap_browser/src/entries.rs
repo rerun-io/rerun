@@ -133,32 +133,7 @@ impl Entries {
                         .as_mut()
                         .and_then(|r| r.remove(&dataset.id()))
                         .unwrap_or_default();
-                    // let is_selected = ctx.is_entry_selected(dataset.id());
-                    //
-                    // let content =
-                    //     list_item::LabelContent::new(dataset.name()).with_icon(&icons::DATASET);
-                    // let item = ui.list_item().selected(is_selected);
-                    //
-                    // let response = if let Some(recordings) = recordings {
-                    //     item.show_hierarchical_with_children(
-                    //         ui,
-                    //         Id::new(Id::new(dataset.id()).with("recordings")),
-                    //         true,
-                    //         content,
-                    //         |ui| {
-                    //             for recording in recordings {
-                    //                 recording.show_flat(ui);
-                    //             }
-                    //         },
-                    //     )
-                    //     .item_response
-                    // } else {
-                    //     item.show_flat(ui, content)
-                    // };
-                    //
-                    // if response.clicked() {
-                    //     let _ = ctx.command_sender.send(Command::SelectEntry(dataset.id()));
-                    // }
+
                     dataset_and_its_recordings_ui(
                         ui,
                         viewer_context,

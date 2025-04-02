@@ -28,10 +28,10 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
 
 // --- EntryId ---
 
-// TODO: Best serde representation?
 #[derive(
     Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, serde::Deserialize, serde::Serialize,
 )]
+#[serde(transparent)]
 pub struct EntryId {
     pub id: re_tuid::Tuid,
 }
