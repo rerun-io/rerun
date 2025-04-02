@@ -895,7 +895,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let is_rerun_url = re_uri::RedapUri::try_from(open_url.url.as_ref()).is_ok();
+                let is_rerun_url = open_url.url.parse::<re_uri::RedapUri>().is_ok();
 
                 if is_rerun_url {
                     let data_source = re_data_source::DataSource::from_uri(

@@ -1,4 +1,4 @@
-use std::str::FromStr as _;
+use std::str::FromStr;
 
 use re_log_types::{TimeCell, TimeInt};
 
@@ -27,10 +27,10 @@ impl std::fmt::Display for TimeRange {
     }
 }
 
-impl TryFrom<&str> for TimeRange {
-    type Error = Error;
+impl FromStr for TimeRange {
+    type Err = Error;
 
-    fn try_from(value: &str) -> Result<Self, crate::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         let (timeline, range) = value
             .split_once('@')
             .ok_or_else(|| Error::InvalidTimeRange("Missing @".to_owned()))?;
@@ -111,10 +111,10 @@ impl Scheme {
     }
 }
 
-impl TryFrom<&str> for Scheme {
-    type Error = Error;
+impl FromStr for Scheme {
+    type Err = Error;
 
-    fn try_from(url: &str) -> Result<Self, crate::Error> {
+    fn from_str(url: &str) -> Result<Self, Self::Err> {
         if url.starts_with("rerun://") {
             Ok(Self::Rerun)
         } else if url.starts_with("rerun+http://") {
@@ -158,7 +158,7 @@ impl crate::Origin {
 /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
 ///  starts with `http://` or `https://`).
 fn replace_and_parse(value: &str) -> Result<(crate::Origin, url::Url), Error> {
-    let scheme = Scheme::try_from(value)?;
+    let scheme = Scheme::from_str(value)?;
     let rewritten = scheme.canonical_url(value);
 
     // We have to first rewrite the endpoint, because `Url` does not allow
@@ -175,10 +175,10 @@ fn replace_and_parse(value: &str) -> Result<(crate::Origin, url::Url), Error> {
     Ok((origin, http_url))
 }
 
-impl TryFrom<&str> for crate::Origin {
-    type Error = Error;
+impl FromStr for crate::Origin {
+    type Err = Error;
 
-    fn try_from(value: &str) -> Result<Self, crate::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         replace_and_parse(value).map(|(origin, _)| origin)
     }
 }
@@ -213,15 +213,7 @@ impl std::fmt::Display for RedapUri {
 impl std::str::FromStr for RedapUri {
     type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::try_from(s)
-    }
-}
-
-impl TryFrom<&str> for RedapUri {
-    type Error = Error;
-
-    fn try_from(value: &str) -> Result<Self, crate::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         let (origin, http_url) = replace_and_parse(value)?;
 
         // :warning: We limit the amount of segments, which might need to be
@@ -236,7 +228,7 @@ impl TryFrom<&str> for RedapUri {
         let time_range = http_url
             .query_pairs()
             .find(|(key, _)| key == TimeRange::QUERY_KEY)
-            .map(|(_, value)| TimeRange::try_from(value.as_ref()));
+            .map(|(_, value)| TimeRange::from_str(value.as_ref()));
 
         match segments.as_slice() {
             ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
@@ -306,7 +298,7 @@ mod tests {
     fn test_dataset_data_url_to_address() {
         let url =
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetDataEndpoint {
             origin,
@@ -332,7 +324,7 @@ mod tests {
     #[test]
     fn test_dataset_data_url_time_range_sequence_to_address() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@100..200";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetDataEndpoint {
             origin,
@@ -367,7 +359,7 @@ mod tests {
     #[test]
     fn test_dataset_data_url_time_range_timepoint_to_address() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=log_time@2022-01-01T00:00:03.123456789Z..2022-01-01T00:00:13.123456789Z";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetDataEndpoint {
             origin,
@@ -409,7 +401,7 @@ mod tests {
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1.23s..72s",
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid&time_range=timeline@1230ms..1m12s",
         ] {
-            let address: RedapUri = url.try_into().unwrap();
+            let address: RedapUri = url.parse().unwrap();
 
             let RedapUri::DatasetData(DatasetDataEndpoint {
                 origin,
@@ -446,13 +438,13 @@ mod tests {
     fn test_dataset_data_url_missing_partition_id() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data";
 
-        assert!(RedapUri::try_from(url).is_err());
+        assert!(RedapUri::from_str(url).is_err());
     }
 
     #[test]
     fn test_http_catalog_url_to_address() {
         let url = "rerun+http://127.0.0.1:50051/catalog";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
         assert!(matches!(
             address,
             RedapUri::Catalog(CatalogEndpoint {
@@ -468,7 +460,7 @@ mod tests {
     #[test]
     fn test_https_catalog_url_to_address() {
         let url = "rerun+https://127.0.0.1:50051/catalog";
-        let address: RedapUri = url.try_into().unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
         assert!(matches!(
             address,
@@ -485,7 +477,7 @@ mod tests {
     #[test]
     fn test_localhost_url() {
         let url = "rerun+http://localhost:51234/catalog";
-        let address = RedapUri::try_from(url).unwrap();
+        let address = RedapUri::from_str(url).unwrap();
 
         assert_eq!(
             address,
@@ -502,7 +494,7 @@ mod tests {
     #[test]
     fn test_invalid_url() {
         let url = "http://wrong-scheme:1234/recording/12345";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert!(matches!(
             address.unwrap_err(),
@@ -513,7 +505,7 @@ mod tests {
     #[test]
     fn test_invalid_path() {
         let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert!(matches!(
             address.unwrap_err(),
@@ -524,7 +516,7 @@ mod tests {
     #[test]
     fn test_proxy_endpoint() {
         let url = "rerun://localhost:51234/proxy";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         let expected = RedapUri::Proxy(ProxyEndpoint {
             origin: Origin {
@@ -537,7 +529,7 @@ mod tests {
         assert_eq!(address.unwrap(), expected);
 
         let url = "rerun://localhost:51234/proxy/";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
     }
@@ -545,7 +537,7 @@ mod tests {
     #[test]
     fn test_catalog_default() {
         let url = "rerun://localhost:51234";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         let expected = RedapUri::Catalog(CatalogEndpoint {
             origin: Origin {
@@ -558,7 +550,7 @@ mod tests {
         assert_eq!(address.unwrap(), expected);
 
         let url = "rerun://localhost:51234/";
-        let address: Result<RedapUri, _> = url.try_into();
+        let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
     }
