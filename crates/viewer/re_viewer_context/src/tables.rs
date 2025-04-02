@@ -70,11 +70,3 @@ impl TableStore {
 }
 
 pub type TableStores = ahash::HashMap<TableId, TableStore>;
-
-pub struct TableContext<'a> {
-    /// The current active table.
-    pub table_id: TableId,
-
-    /// The corresponding [`TableStore`]
-    pub store: &'a TableStore,
-}

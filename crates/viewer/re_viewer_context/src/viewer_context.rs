@@ -8,14 +8,13 @@ use re_log_types::TableId;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
-use crate::store_hub::StorageContext;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
-use crate::{GlobalContext, StoreHub};
+use crate::{GlobalContext, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {

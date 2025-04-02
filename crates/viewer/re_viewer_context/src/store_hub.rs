@@ -13,7 +13,9 @@ use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId
 use re_query::CachesStats;
 use re_types::components::Timestamp;
 
-use crate::{BlueprintUndoState, Caches, StoreBundle, StoreContext, TableStore, TableStores};
+use crate::{
+    BlueprintUndoState, Caches, StorageContext, StoreBundle, StoreContext, TableStore, TableStores,
+};
 
 #[derive(Clone)]
 pub enum StoreHubEntry {
@@ -52,12 +54,6 @@ impl StoreHubEntry {
             Self::Recording { .. } => None,
         }
     }
-}
-
-pub struct StorageContext<'a> {
-    pub hub: &'a StoreHub,
-    pub bundle: &'a StoreBundle,
-    pub tables: &'a HashMap<TableId, TableStore>,
 }
 
 /// Interface for accessing all blueprints and recordings

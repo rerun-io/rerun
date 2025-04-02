@@ -13,9 +13,9 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
     command_channel,
-    store_hub::{BlueprintPersistence, StorageContext, StoreHub, StoreHubStats},
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
+    ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
