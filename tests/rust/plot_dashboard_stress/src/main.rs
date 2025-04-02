@@ -195,11 +195,11 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         let total_elapsed = total_start_time.elapsed();
         if total_elapsed.as_secs_f64() >= 1.0 {
             println!(
-                        "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
-                        total_elapsed,
-                        total_num_scalars as f64 / total_elapsed.as_secs_f64(),
-                        max_load * 100.0,
-                    );
+                "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
+                total_elapsed,
+                total_num_scalars as f64 / total_elapsed.as_secs_f64(),
+                max_load * 100.0,
+            );
 
             let elapsed_debt =
                 std::time::Duration::from_secs_f64(total_elapsed.as_secs_f64().fract());
@@ -212,11 +212,11 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     if total_num_scalars > 0 {
         let total_elapsed = total_start_time.elapsed();
         println!(
-        "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
-        total_elapsed,
-        total_num_scalars as f64 / total_elapsed.as_secs_f64(),
-        max_load * 100.0,
-    );
+            "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
+            total_elapsed,
+            total_num_scalars as f64 / total_elapsed.as_secs_f64(),
+            max_load * 100.0,
+        );
     }
 
     Ok(())

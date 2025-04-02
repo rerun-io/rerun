@@ -211,7 +211,9 @@ impl SnippetsRefCodeGenerator {
             #[allow(clippy::invisible_characters)]
             let snippet_name_qualified = &snippet.name_qualified.replace('/', "⁠/⁠");
 
-            let row = format!("| **{obj_name_rendered}** | `{snippet_name_qualified}` | {snippet_descr} | {link_py} | {link_rs} | {link_cpp} |");
+            let row = format!(
+                "| **{obj_name_rendered}** | `{snippet_name_qualified}` | {snippet_descr} | {link_py} | {link_rs} | {link_cpp} |"
+            );
 
             Ok(row)
         }

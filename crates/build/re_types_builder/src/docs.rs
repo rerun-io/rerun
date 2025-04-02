@@ -404,8 +404,8 @@ mod doclink_translation {
 
                 if let Some(field_or_enum_name) = field_or_enum_name {
                     format!(
-                            "[`{kind_and_type}::{field_or_enum_name}`][crate::{object_path}::{field_or_enum_name}]"
-                        )
+                        "[`{kind_and_type}::{field_or_enum_name}`][crate::{object_path}::{field_or_enum_name}]"
+                    )
                 } else {
                     format!("[`{kind_and_type}`][crate::{object_path}]")
                 }
@@ -418,7 +418,9 @@ mod doclink_translation {
                     format!("rerun.{scope}.{kind_and_type}")
                 };
                 if let Some(field_or_enum_name) = field_or_enum_name {
-                    format!("[`{kind_and_type}.{field_or_enum_name}`][{object_path}.{field_or_enum_name}]")
+                    format!(
+                        "[`{kind_and_type}.{field_or_enum_name}`][{object_path}.{field_or_enum_name}]"
+                    )
                 } else {
                     format!("[`{kind_and_type}`][{object_path}]")
                 }
@@ -543,32 +545,17 @@ mod tests {
         );
 
         assert_eq!(
-            translate_doc_line(
-                &reporter,
-                &objects,
-                input,
-                Target::Python
-            ),
+            translate_doc_line(&reporter, &objects, input, Target::Python),
             "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`][rerun.blueprint.views.Spatial2DView] and a [url](www.rerun.io)."
         );
 
         assert_eq!(
-            translate_doc_line(
-                &reporter,
-                &objects,
-                input,
-                Target::Rust
-            ),
+            translate_doc_line(&reporter, &objects, input, Target::Rust),
             "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView`][crate::blueprint::views::Spatial2DView] and a [url](www.rerun.io)."
         );
 
         assert_eq!(
-            translate_doc_line(
-                &reporter,
-                &objects,
-                input,
-                Target::WebDocsMarkdown
-            ),
+            translate_doc_line(&reporter, &objects, input, Target::WebDocsMarkdown),
             "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
         );
     }
@@ -578,46 +565,25 @@ mod tests {
         let objects = test_objects();
         let (_report, reporter) = crate::report::init();
 
-        let input =
-            "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView.position] and a [url](www.rerun.io).";
+        let input = "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView.position] and a [url](www.rerun.io).";
 
         assert_eq!(
-            translate_doc_line(
-                &reporter,
-                &objects,
-                input,
-                Target::Cpp
-            ),
+            translate_doc_line(&reporter, &objects, input, Target::Cpp),
             "A vector `[1, 2, 3]` and a doclink `views::Spatial2DView::position` and a [url](www.rerun.io)."
         );
 
         assert_eq!(
-            translate_doc_line(
-                &reporter,
-                &objects,
-                input,
-                Target::Python
-            ),
+            translate_doc_line(&reporter, &objects, input, Target::Python),
             "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView.position`][rerun.blueprint.views.Spatial2DView.position] and a [url](www.rerun.io)."
         );
 
         assert_eq!(
-            translate_doc_line(
-                &reporter,
-                &objects,
-                input,
-                Target::Rust
-            ),
+            translate_doc_line(&reporter, &objects, input, Target::Rust),
             "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView::position`][crate::blueprint::views::Spatial2DView::position] and a [url](www.rerun.io)."
         );
 
         assert_eq!(
-            translate_doc_line(
-                &reporter,
-                &objects,
-                input,
-                Target::WebDocsMarkdown
-            ),
+            translate_doc_line(&reporter, &objects, input, Target::WebDocsMarkdown),
             "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView#position`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
         );
     }

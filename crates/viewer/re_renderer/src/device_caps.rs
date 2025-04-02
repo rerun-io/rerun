@@ -150,13 +150,17 @@ pub enum WgpuBackendType {
 
 #[derive(thiserror::Error, Debug)]
 pub enum InsufficientDeviceCapabilities {
-    #[error("Adapter does not support the minimum shader model required. Supported is {actual:?} but required is {required:?}.")]
+    #[error(
+        "Adapter does not support the minimum shader model required. Supported is {actual:?} but required is {required:?}."
+    )]
     TooLowShaderModel {
         required: wgpu::ShaderModel,
         actual: wgpu::ShaderModel,
     },
 
-    #[error("Adapter does not have all the required capability flags required. Supported are {actual:?} but required are {required:?}.")]
+    #[error(
+        "Adapter does not have all the required capability flags required. Supported are {actual:?} but required are {required:?}."
+    )]
     MissingCapabilitiesFlags {
         required: wgpu::DownlevelFlags,
         actual: wgpu::DownlevelFlags,
@@ -299,7 +303,9 @@ impl DeviceCaps {
             //
             // That's a lot of murky information, so let's keep the actual message crisp for now.
             #[cfg(not(web))]
-            re_log::warn!("Running on a GPU/graphics driver with very limited abilitites. Consider updating your driver.");
+            re_log::warn!(
+                "Running on a GPU/graphics driver with very limited abilitites. Consider updating your driver."
+            );
         };
 
         Ok(caps)
@@ -332,14 +338,18 @@ pub fn instance_descriptor(force_backend: Option<&str>) -> wgpu::InstanceDescrip
     let backends = if let Some(force_backend) = force_backend {
         if let Some(backend) = parse_graphics_backend(force_backend) {
             if let Err(err) = validate_graphics_backend_applicability(backend) {
-                re_log::error!("Failed to force rendering backend parsed from {force_backend:?}: {err}\nUsing default backend instead.");
+                re_log::error!(
+                    "Failed to force rendering backend parsed from {force_backend:?}: {err}\nUsing default backend instead."
+                );
                 supported_backends()
             } else {
                 re_log::info!("Forcing graphics backend to {backend:?}.");
                 backend.into()
             }
         } else {
-            re_log::error!("Failed to parse rendering backend string {force_backend:?}. Using default backend instead.");
+            re_log::error!(
+                "Failed to parse rendering backend string {force_backend:?}. Using default backend instead."
+            );
             supported_backends()
         }
     } else {

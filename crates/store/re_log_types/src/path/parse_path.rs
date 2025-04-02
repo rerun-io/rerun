@@ -191,7 +191,9 @@ impl EntityPath {
             // We want to warn on some things, like
             // passing a windows file path (`C:\Users\image.jpg`) as an entity path,
             // which would result in a lot of unknown escapes.
-            re_log::warn_once!("When parsing the entity path {input:?}: {warning}. The path will be interpreted as {path}");
+            re_log::warn_once!(
+                "When parsing the entity path {input:?}: {warning}. The path will be interpreted as {path}"
+            );
         }
 
         path

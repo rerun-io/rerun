@@ -137,7 +137,8 @@ impl<'ctx> LineBatchBuilder<'_, 'ctx> {
         let num_new_vertices = if reserve_count > num_available_points {
             re_log::error_once!(
                 "Reached maximum number of vertices for lines strips of {}. Ignoring all excess vertices.",
-                self.0.vertices_buffer.len() + num_available_points - LineVertex::NUM_SENTINEL_VERTICES
+                self.0.vertices_buffer.len() + num_available_points
+                    - LineVertex::NUM_SENTINEL_VERTICES
             );
             num_available_points - num_sentinels_to_add
         } else {

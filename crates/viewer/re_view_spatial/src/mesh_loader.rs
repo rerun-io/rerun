@@ -241,7 +241,9 @@ fn try_get_or_create_albedo_texture(
     )
     .is_some()
     {
-        re_log::warn_once!("Mesh can't yet handle encoded image formats like NV12 & YUY2 or BGR(A) formats without a channel type other than U8. Ignoring the texture at {name:?}.");
+        re_log::warn_once!(
+            "Mesh can't yet handle encoded image formats like NV12 & YUY2 or BGR(A) formats without a channel type other than U8. Ignoring the texture at {name:?}."
+        );
         return None;
     }
 

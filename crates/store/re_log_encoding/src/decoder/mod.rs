@@ -63,7 +63,9 @@ pub enum DecodeError {
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
 
-    #[error("Data from Rerun version {file}, which is incompatible with the local Rerun version {local}")]
+    #[error(
+        "Data from Rerun version {file}, which is incompatible with the local Rerun version {local}"
+    )]
     IncompatibleRerunVersion {
         file: CrateVersion,
         local: CrateVersion,

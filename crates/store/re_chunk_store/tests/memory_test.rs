@@ -80,7 +80,9 @@ use re_types::{components::Scalar, Component as _, Loggable as _};
 fn scalar_memory_overhead() {
     re_log::setup_logging();
 
-    re_log::warn!("THIS TEST HAS TO ACCOUNT FOR THE MEMORY OF ALL RUNNING THREADS -- IT MUST BE RUN ON ITS OWN, WITH NO OTHER TESTS RUNNING IN PARALLEL: `cargo t --all-features -p re_chunk_store memory_tests -- scalar_memory_overhead`");
+    re_log::warn!(
+        "THIS TEST HAS TO ACCOUNT FOR THE MEMORY OF ALL RUNNING THREADS -- IT MUST BE RUN ON ITS OWN, WITH NO OTHER TESTS RUNNING IN PARALLEL: `cargo t --all-features -p re_chunk_store memory_tests -- scalar_memory_overhead`"
+    );
 
     const NUM_SCALARS: usize = 1024 * 1024;
 

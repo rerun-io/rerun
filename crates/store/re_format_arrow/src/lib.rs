@@ -162,7 +162,7 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Union(fields, _) => return write!(f, "Union[{}]", fields.len()),
             DataType::Map(field, _) => return write!(f, "Map[{}]", Self(field.data_type())),
             DataType::Dictionary(key, value) => {
-                return write!(f, "Dictionary{{{}: {}}}", Self(key), Self(value))
+                return write!(f, "Dictionary{{{}: {}}}", Self(key), Self(value));
             }
             DataType::Decimal128(_, _) => "Decimal128",
             DataType::Decimal256(_, _) => "Decimal256",
@@ -170,10 +170,10 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::Utf8View => "Utf8View",
             DataType::ListView(field) => return write!(f, "ListView[{}]", Self(field.data_type())),
             DataType::LargeListView(field) => {
-                return write!(f, "LargeListView[{}]", Self(field.data_type()))
+                return write!(f, "LargeListView[{}]", Self(field.data_type()));
             }
             DataType::RunEndEncoded(_run_ends, values) => {
-                return write!(f, "RunEndEncoded[{}]", Self(values.data_type()))
+                return write!(f, "RunEndEncoded[{}]", Self(values.data_type()));
             }
         };
         f.write_str(s)

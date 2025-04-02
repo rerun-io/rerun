@@ -77,14 +77,18 @@ pub enum ImageDataToTextureError {
     #[error("Gpu-based conversion for texture {label:?} did not succeed: {err}")]
     GpuBasedConversionError { label: DebugLabel, err: DrawError },
 
-    #[error("Texture {label:?} has invalid texture usage flags: {actual_usage:?}, expected at least {required_usage:?}")]
+    #[error(
+        "Texture {label:?} has invalid texture usage flags: {actual_usage:?}, expected at least {required_usage:?}"
+    )]
     InvalidTargetTextureUsageFlags {
         label: DebugLabel,
         actual_usage: wgpu::TextureUsages,
         required_usage: wgpu::TextureUsages,
     },
 
-    #[error("Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}")]
+    #[error(
+        "Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}"
+    )]
     InvalidTargetTextureFormat {
         label: DebugLabel,
         actual_format: wgpu::TextureFormat,
