@@ -386,6 +386,8 @@ impl AppState {
         if *show_settings_ui {
             // nothing: this is already handled above
         } else if storage_context.hub.active_table_id().is_some() {
+            // TODO(grtlr): This is almost a verbatim copy of the code below. Once the dust has settled around the
+            // catalog, we should strive to unify both draw calls.
             let left_panel = egui::SidePanel::left("left_panel_table")
                 .resizable(true)
                 .frame(egui::Frame {
@@ -547,6 +549,8 @@ impl AppState {
             // Left panel (recordings and blueprint)
             //
 
+            // TODO(grtlr): This is almost a verbatim copy of the code above for tables. Once the dust has settled
+            // around the catalog, we should strive to unify both draw calls.
             let left_panel = egui::SidePanel::left("blueprint_panel")
                 .resizable(true)
                 .frame(egui::Frame {
