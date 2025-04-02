@@ -45,7 +45,6 @@ impl TableStore {
             is_indicator: true,
         });
 
-        #[expect(clippy::disallowed_methods)]
         let schema = Arc::new(Schema::new(vec![
             descriptor.to_arrow_field(re_sorbet::BatchType::Dataframe)
         ]));

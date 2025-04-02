@@ -3,7 +3,6 @@ use re_log_types::{ApplicationId, StoreId};
 
 use crate::Caches;
 
-// TODO: Rename to something like recording context
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct StoreContext<'a> {
     /// The `app_id` of the current recording.
