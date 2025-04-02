@@ -41,7 +41,6 @@ def main() -> None:
                 origin="gyroscope",
                 name="Gyroscope",
                 overrides={
-                    # TODO(#9022): Pluralize series line type.
                     "/gyroscope": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                 },
             ),
@@ -49,7 +48,6 @@ def main() -> None:
                 origin="accelerometer",
                 name="Accelerometer",
                 overrides={
-                    # TODO(#9022): Pluralize series line type.
                     "/accelerometer": rr.SeriesLines.from_fields(names=XYZ_AXIS_NAMES, colors=XYZ_AXIS_COLORS),  # type: ignore[arg-type]
                 },
             ),
