@@ -36,6 +36,15 @@ impl PyDataset {
         Ok(schema.into())
     }
 
+    /// Register a RRD URI to the dataset.
+    fn register(self_: PyRef<'_, Self>, recording_uri: String) -> PyResult<()> {
+        let super_ = self_.as_super();
+        let mut connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        connection.register_with_dataset(self_.py(), dataset_id, recording_uri)
+    }
+
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
         let mut client = super_.client.borrow(self_.py()).connection().client();
