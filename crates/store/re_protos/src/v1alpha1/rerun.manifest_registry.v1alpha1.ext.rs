@@ -13,6 +13,8 @@ use crate::manifest_registry::v1alpha1::{
 };
 use crate::{invalid_field, missing_field, TypeConversionError};
 
+use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
+
 // --- QueryDataset ---
 
 #[derive(Debug, Clone)]
@@ -342,5 +344,87 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
         }
 
         Ok(Self { storage_url, kind })
+    }
+}
+
+/// Depending on the type of index that is being created, different properties
+/// can be specified. These are defined by `IndexProperties`.
+#[derive(Debug, Clone)]
+pub enum IndexProperties {
+    Inverted {
+        store_position: bool,
+        base_tokenizer: String,
+    },
+    VectorIvfPq {
+        num_partitions: usize,
+        num_sub_vectors: usize,
+        metric: VectorDistanceMetric,
+    },
+    Btree,
+}
+
+impl std::fmt::Display for IndexProperties {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Inverted {
+                store_position,
+                base_tokenizer,
+            } => write!(
+                f,
+                "Inverted {{ store_position: {store_position}, base_tokenizer: {base_tokenizer} }}"
+            ),
+            Self::VectorIvfPq {
+                num_partitions,
+                num_sub_vectors,
+                metric,
+            } => write!(
+                f,
+                "VectorIvfPq {{ num_partitions: {num_partitions}, num_sub_vectors: {num_sub_vectors}, metric: {metric:?} }}"
+            ),
+            Self::Btree => write!(f, "Btree"),
+        }
+    }
+}
+
+/// Convert `IndexProperties` into its equivalent storage model
+impl From<IndexProperties> for crate::manifest_registry::v1alpha1::IndexProperties {
+    fn from(other: IndexProperties) -> Self {
+        match other {
+            IndexProperties::Btree => Self {
+                props: Some(
+                    crate::manifest_registry::v1alpha1::index_properties::Props::Btree(
+                        super::rerun_manifest_registry_v1alpha1::BTreeIndex {},
+                    ),
+                ),
+            },
+            IndexProperties::Inverted {
+                store_position,
+                base_tokenizer,
+            } => Self {
+                props: Some(
+                    crate::manifest_registry::v1alpha1::index_properties::Props::Inverted(
+                        crate::manifest_registry::v1alpha1::InvertedIndex {
+                            store_position: Some(store_position),
+                            base_tokenizer: Some(base_tokenizer),
+                        },
+                    ),
+                ),
+            },
+            IndexProperties::VectorIvfPq {
+                num_partitions,
+                num_sub_vectors,
+                metric,
+            } => Self {
+                props: Some(
+                    crate::manifest_registry::v1alpha1::index_properties::Props::Vector(
+                        crate::manifest_registry::v1alpha1::VectorIvfPqIndex {
+                            num_partitions: Some(num_partitions as u32),
+                            num_sub_vectors: Some(num_sub_vectors as u32),
+                            distance_metrics: metric.into(),
+                        },
+                    ),
+                ),
+            },
+        }
     }
 }

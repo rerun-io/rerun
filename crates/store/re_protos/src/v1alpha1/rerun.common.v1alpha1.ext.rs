@@ -345,6 +345,14 @@ impl TryFrom<crate::common::v1alpha1::IndexColumnSelector> for re_log_types::Tim
     }
 }
 
+impl From<re_log_types::TimelineName> for crate::common::v1alpha1::IndexColumnSelector {
+    fn from(value: re_log_types::TimelineName) -> Self {
+        Self {
+            timeline: Some(value.into()),
+        }
+    }
+}
+
 impl From<crate::common::v1alpha1::ApplicationId> for re_log_types::ApplicationId {
     #[inline]
     fn from(value: crate::common::v1alpha1::ApplicationId) -> Self {
@@ -792,37 +800,6 @@ impl From<ScanParameters> for crate::common::v1alpha1::ScanParameters {
     }
 }
 
-impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
-    fn from(value: ComponentDescriptor) -> Self {
-        Self {
-            archetype_name: value.archetype_name.map(|n| n.full_name().to_string()),
-            archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
-            component_name: Some(value.component_name.full_name().to_string()),
-        }
-    }
-}
-
-impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescriptor {
-    type Error = TypeConversionError;
-
-    fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
-        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
-            crate::common::v1alpha1::ComponentDescriptor,
-            "component_name"
-        ))?);
-
-        if let Some(archetype_name) = value.archetype_name {
-            descriptor = descriptor.with_archetype_name(archetype_name.into());
-        }
-
-        if let Some(archetype_field_name) = value.archetype_field_name {
-            descriptor = descriptor.with_archetype_field_name(archetype_field_name.into());
-        }
-
-        Ok(descriptor)
-    }
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct ScanParametersOrderClause {
     pub descending: bool,
@@ -924,6 +901,39 @@ impl From<IfDuplicateBehavior> for crate::common::v1alpha1::IfDuplicateBehavior 
 }
 
 // ---
+
+impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
+    fn from(value: ComponentDescriptor) -> Self {
+        Self {
+            archetype_name: value.archetype_name.map(|n| n.full_name().to_string()),
+            archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
+            component_name: Some(value.component_name.full_name().to_string()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescriptor {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
+        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
+            crate::common::v1alpha1::ComponentDescriptor,
+            "component_name"
+        ))?);
+
+        if let Some(archetype_name) = value.archetype_name {
+            descriptor = descriptor.with_archetype_name(archetype_name.into());
+        }
+
+        if let Some(archetype_field_name) = value.archetype_field_name {
+            descriptor = descriptor.with_archetype_field_name(archetype_field_name.into());
+        }
+
+        Ok(descriptor)
+    }
+}
+
+// --
 
 #[cfg(test)]
 mod tests {
