@@ -341,18 +341,18 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     store.insert_chunk(&Arc::new(chunk))?;
 
     assert!(store
-        .entity_min_time(&timeline_wrong_name, &entity_path)
+        .entity_min_time(timeline_wrong_name.name(), &entity_path)
         .is_none());
     assert_eq!(
-        store.entity_min_time(&timeline_frame_nr, &entity_path),
+        store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(42))
     );
     assert_eq!(
-        store.entity_min_time(&timeline_log_time, &entity_path),
+        store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now))
     );
     assert!(store
-        .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
+        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
         .is_none());
 
     // insert row in the future, these shouldn't be visible
@@ -368,18 +368,18 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     store.insert_chunk(&Arc::new(chunk))?;
 
     assert!(store
-        .entity_min_time(&timeline_wrong_name, &entity_path)
+        .entity_min_time(timeline_wrong_name.name(), &entity_path)
         .is_none());
     assert_eq!(
-        store.entity_min_time(&timeline_frame_nr, &entity_path),
+        store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(42))
     );
     assert_eq!(
-        store.entity_min_time(&timeline_log_time, &entity_path),
+        store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now))
     );
     assert!(store
-        .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
+        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
         .is_none());
 
     // insert row in the past, these should be visible
@@ -395,18 +395,18 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     store.insert_chunk(&Arc::new(chunk))?;
 
     assert!(store
-        .entity_min_time(&timeline_wrong_name, &entity_path)
+        .entity_min_time(timeline_wrong_name.name(), &entity_path)
         .is_none());
     assert_eq!(
-        store.entity_min_time(&timeline_frame_nr, &entity_path),
+        store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(32))
     );
     assert_eq!(
-        store.entity_min_time(&timeline_log_time, &entity_path),
+        store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now_minus_one))
     );
     assert!(store
-        .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
+        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
         .is_none());
 
     Ok(())

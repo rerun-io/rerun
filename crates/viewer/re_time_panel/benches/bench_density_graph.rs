@@ -47,7 +47,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
             };
 
             let time_range = db
-                .time_range_for(&timeline)
+                .time_range_for(timeline.name())
                 .unwrap_or(ResolvedTimeRange::EMPTY);
             let time_ranges_ui =
                 TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);

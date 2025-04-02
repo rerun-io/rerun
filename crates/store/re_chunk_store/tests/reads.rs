@@ -56,7 +56,7 @@ fn all_components() -> anyhow::Result<()> {
 
     let assert_latest_components_at =
         |store: &ChunkStore, entity_path: &EntityPath, expected: Option<&[ComponentDescriptor]>| {
-            let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+            let timeline = TimelineName::new("frame_nr");
 
             let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
@@ -162,22 +162,22 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
 
     // entity1 is on both timelines
     assert!(!store
-        .all_components_on_timeline(&timeline1, &entity_path1)
+        .all_components_on_timeline(timeline1.name(), &entity_path1)
         .unwrap()
         .is_empty());
     assert!(!store
-        .all_components_on_timeline(&timeline2, &entity_path1)
+        .all_components_on_timeline(timeline2.name(), &entity_path1)
         .unwrap()
         .is_empty());
 
     // entity2 is only on timeline1
     assert!(!store
-        .all_components_on_timeline(&timeline1, &entity_path2)
+        .all_components_on_timeline(timeline1.name(), &entity_path2)
         .unwrap()
         .is_empty());
 
     assert!(store
-        .all_components_on_timeline(&timeline2, &entity_path2)
+        .all_components_on_timeline(timeline2.name(), &entity_path2)
         .is_none());
 
     Ok(())
