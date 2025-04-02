@@ -64,10 +64,10 @@ pub enum SystemCommand {
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
 
-    /// Switch to this [`Entry`].
+    /// Switch to this [`StoreHubEntry`].
     ActivateEntry(StoreHubEntry),
 
-    /// Close an [`Entry`] and free its memory.
+    /// Close an [`StoreHubEntry`] and free its memory.
     CloseEntry(StoreHubEntry),
 
     /// Close all stores and show the welcome screen again.

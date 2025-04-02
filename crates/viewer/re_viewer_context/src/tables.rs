@@ -44,9 +44,10 @@ impl TableStore {
             is_indicator: true,
         });
 
-        let schema = Arc::new(Schema::new(vec![
-            descriptor.to_arrow_field(re_sorbet::BatchType::Dataframe)
-        ]));
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![descriptor.to_arrow_field(re_sorbet::BatchType::Dataframe)],
+            Default::default(),
+        ));
 
         let column = vec![Arc::new(Int64Array::from(vec![42])) as ArrayRef];
 

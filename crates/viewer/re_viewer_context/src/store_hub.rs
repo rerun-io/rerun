@@ -544,7 +544,7 @@ impl StoreHub {
         _ = self.caches_per_recording.entry(recording_id).or_default();
     }
 
-    /// Activate an [`Entry`]
+    /// Activate an [`StoreHubEntry`]
     pub fn set_active_entry(&mut self, entry: StoreHubEntry) {
         match entry {
             StoreHubEntry::Recording { store_id } => self.set_activate_recording(store_id),
