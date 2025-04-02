@@ -384,8 +384,7 @@ impl RecordingStreamBuilder {
         let (enabled, store_info, properties, batcher_config) = self.into_args();
         if enabled {
             let url: String = url.into();
-            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
-            else {
+            let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
                 return Err(RecordingStreamError::NotAProxyEndpoint);
             };
 
@@ -1809,7 +1808,7 @@ impl RecordingStream {
         }
 
         let url: String = url.into();
-        let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())? else {
+        let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
             return Err(RecordingStreamError::NotAProxyEndpoint);
         };
 

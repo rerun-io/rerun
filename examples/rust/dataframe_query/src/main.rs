@@ -3,7 +3,7 @@
 use itertools::Itertools;
 
 use rerun::{
-    dataframe::{EntityPathFilter, QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
+    dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
     external::{arrow, re_format_arrow::format_record_batch},
     ChunkStoreConfig, StoreKind, VersionPolicy,
 };
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let path_to_rrd = get_arg(1);
-    let entity_path_filter = EntityPathFilter::try_from(args.get(2).map_or("/**", |s| s.as_str()))?;
+    let entity_path_filter = args.get(2).map_or("/**", |s| s.as_str()).parse()?;
     let timeline = TimelineName::log_time();
 
     let engines = QueryEngine::from_rrd_filepath(

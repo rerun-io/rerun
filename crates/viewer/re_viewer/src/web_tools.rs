@@ -99,7 +99,7 @@ enum EndpointCategory {
 
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
-        if let Ok(uri) = re_uri::RedapUri::try_from(uri.as_ref()) {
+        if let Ok(uri) = uri.parse() {
             return Self::RerunGrpcStream(uri);
         }
 

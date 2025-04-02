@@ -26,7 +26,7 @@ impl PyCatalogClient {
     /// Create a new catalog client object.
     #[new]
     fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
-        let origin = re_uri::Origin::try_from(addr.as_str()).map_err(to_py_err)?;
+        let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
         let connection = ConnectionHandle::new(py, origin.clone())?;
 

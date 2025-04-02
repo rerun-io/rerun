@@ -762,8 +762,7 @@ fn run_impl(
         #[cfg(feature = "server")]
         if let Some(url) = args.connect {
             let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
-            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
-            else {
+            let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
                 anyhow::bail!("expected `/proxy` endpoint");
             };
             let rx = re_sdk::external::re_grpc_client::message_proxy::stream(endpoint, None);
@@ -857,8 +856,7 @@ fn run_impl(
                 format!("rerun+http://{server_addr}/proxy")
             };
 
-            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
-            else {
+            let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
                 anyhow::bail!("expected `/proxy` endpoint");
             };
 
