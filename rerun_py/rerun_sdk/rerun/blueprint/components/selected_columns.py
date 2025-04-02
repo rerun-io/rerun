@@ -16,7 +16,11 @@ __all__ = ["SelectedColumns", "SelectedColumnsBatch"]
 
 
 class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
-    """**Component**: Describe a component column to be selected in the dataframe view."""
+    """
+    **Component**: Describe a component column to be selected in the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of SelectedColumnsExt in selected_columns_ext.py

@@ -19,6 +19,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configures how tensor scalars are mapped to color.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct TensorScalarMapping {
         /// Filter used when zooming in on the tensor.
         ///

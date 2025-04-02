@@ -19,6 +19,8 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A graph view to display time-variying, directed or undirected graph visualization.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug)]
 pub struct GraphView {
     /// Everything within these bounds is guaranteed to be visible.

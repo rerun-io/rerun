@@ -13,6 +13,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: The container that sits at the root of a viewport.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct RootContainer {
         /// `ContainerId` for the root.
         rerun::datatypes::Uuid id;

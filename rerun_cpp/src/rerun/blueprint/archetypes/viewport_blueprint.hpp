@@ -21,6 +21,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: The top-level description of the viewport.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ViewportBlueprint {
         /// The layout of the views
         std::optional<ComponentBatch> root_container;

@@ -16,7 +16,11 @@ __all__ = ["IncludedContent", "IncludedContentBatch"]
 
 
 class IncludedContent(datatypes.EntityPath, ComponentMixin):
-    """**Component**: All the contents in the container."""
+    """
+    **Component**: All the contents in the container.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of IncludedContentExt in included_content_ext.py

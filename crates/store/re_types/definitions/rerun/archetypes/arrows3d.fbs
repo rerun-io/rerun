@@ -6,11 +6,12 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/arrows3d_simple title="Simple batch of 3D arrows" image="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1200w.png"
 table Arrows3D (
-  "attr.rust.derive": "PartialEq",
-  "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate"
 ) {
   // --- Required ---
 

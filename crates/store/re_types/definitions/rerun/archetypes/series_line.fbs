@@ -8,40 +8,40 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/series_lines_style title="Line series" image="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png"
 table SeriesLine (
-    "attr.docs.category": "Plotting",
-    "attr.docs.view_types": "TimeSeriesView",
-    "attr.rerun.deprecated_notice": "Use `SeriesLines` instead.",
-    "attr.rerun.deprecated_since": "0.23.0",
-    "attr.rerun.state": "deprecated"
+  "attr.docs.category": "Plotting",
+  "attr.docs.view_types": "TimeSeriesView",
+  "attr.rerun.deprecated_notice": "Use `SeriesLines` instead.",
+  "attr.rerun.deprecated_since": "0.23.0",
+  "attr.rerun.state": "deprecated"
 ) {
-    // --- Required ---
+  // --- Required ---
 
-    // --- Optional ---
+  // --- Optional ---
 
-    /// Color for the corresponding series.
-    // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
-    color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
+  /// Color for the corresponding series.
+  // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1000);
 
-    /// Stroke width for the corresponding series.
-    // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
-    width: rerun.components.StrokeWidth ("attr.rerun.component_optional", nullable, order: 2000);
+  /// Stroke width for the corresponding series.
+  // TODO(jleibs): This should be batch if we make a batch Scalars loggable.
+  width: rerun.components.StrokeWidth ("attr.rerun.component_optional", nullable, order: 2000);
 
-    /// Display name of the series.
-    ///
-    /// Used in the legend.
-    name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
+  /// Display name of the series.
+  ///
+  /// Used in the legend.
+  name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 3000);
 
-    /// Which lines are visible.
-    ///
-    /// If not set, all line series on this entity are visible.
-    /// Unlike with the regular visibility property of the entire entity, any series that is hidden
-    /// via this property will still be visible in the legend.
-    visible_series: [rerun.components.SeriesVisible] ("attr.rerun.component_optional", nullable, order: 3100);
+  /// Which lines are visible.
+  ///
+  /// If not set, all line series on this entity are visible.
+  /// Unlike with the regular visibility property of the entire entity, any series that is hidden
+  /// via this property will still be visible in the legend.
+  visible_series: [rerun.components.SeriesVisible] ("attr.rerun.component_optional", nullable, order: 3100);
 
-    /// Configures the zoom-dependent scalar aggregation.
-    ///
-    /// This is done only if steps on the X axis go below a single pixel,
-    /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
-    /// (and readability) in such situations as it prevents overdraw.
-    aggregation_policy: rerun.components.AggregationPolicy ("attr.rerun.component_optional", nullable, order: 4000);
+  /// Configures the zoom-dependent scalar aggregation.
+  ///
+  /// This is done only if steps on the X axis go below a single pixel,
+  /// i.e. a single pixel covers more than one tick worth of data. It can greatly improve performance
+  /// (and readability) in such situations as it prevents overdraw.
+  aggregation_policy: rerun.components.AggregationPolicy ("attr.rerun.component_optional", nullable, order: 4000);
 }

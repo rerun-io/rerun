@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether the viewport layout is determined automatically.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct AutoLayout {
         rerun::datatypes::Bool auto_layout;
 

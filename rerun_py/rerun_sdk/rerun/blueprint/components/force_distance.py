@@ -20,6 +20,8 @@ class ForceDistance(datatypes.Float64, ComponentMixin):
     **Component**: The target distance between two nodes.
 
     This is helpful to scale the layout, for example if long labels are involved.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None

@@ -21,6 +21,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A view to display any data in a tabular form.
 ///
 /// Any data from the store can be shown, using a flexibly, user-configurable query.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug)]
 pub struct DataframeView {
     /// Query of the dataframe.

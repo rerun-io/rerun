@@ -4,24 +4,24 @@ namespace rerun.datatypes;
 ///
 /// Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
 struct TensorDimensionIndexSelection (
-    "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
+  "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
 ) {
-    /// The dimension number to select.
-    dimension: uint (order: 100);
+  /// The dimension number to select.
+  dimension: uint (order: 100);
 
-    /// The index along the dimension to use.
-    index: ulong (order: 200);
+  /// The index along the dimension to use.
+  index: ulong (order: 200);
 }
 
 /// Selection of a single tensor dimension.
 struct TensorDimensionSelection (
-    "attr.python.aliases": "int",
-    "attr.python.array_aliases": "npt.ArrayLike",
-    "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
 ) {
-    /// The dimension number to select.
-    dimension: uint (order: 100);
+  /// The dimension number to select.
+  dimension: uint (order: 100);
 
-    /// Invert the direction of the dimension.
-    invert: bool (order: 200);
+  /// Invert the direction of the dimension.
+  invert: bool (order: 200);
 }

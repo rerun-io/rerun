@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether a procedure is enabled.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct Enabled {
         rerun::datatypes::Bool visible;
 

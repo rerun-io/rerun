@@ -25,6 +25,9 @@ namespace rerun::blueprint::archetypes {
     /// The default visual time range depends on the type of view this property applies to:
     /// - For time series views, the default is to show the entire timeline.
     /// - For any other view, the default is to apply latest-at semantics.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct VisibleTimeRanges {
         /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
         ///

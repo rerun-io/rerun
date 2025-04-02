@@ -38,7 +38,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ActiveTab as Component>::name(),
             ComponentReflection {
-                docstring_md: "The active tab in a tabbed container.",
+                docstring_md: "The active tab in a tabbed container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ActiveTab::default().to_arrow()?),
                 datatype: ActiveTab::arrow_datatype(),
@@ -48,7 +48,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ApplyLatestAt as Component>::name(),
             ComponentReflection {
-                docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
+                docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ApplyLatestAt::default().to_arrow()?),
                 datatype: ApplyLatestAt::arrow_datatype(),
@@ -58,7 +58,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <AutoLayout as Component>::name(),
             ComponentReflection {
-                docstring_md: "Whether the viewport layout is determined automatically.",
+                docstring_md: "Whether the viewport layout is determined automatically.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AutoLayout::default().to_arrow()?),
                 datatype: AutoLayout::arrow_datatype(),
@@ -68,7 +68,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <AutoViews as Component>::name(),
             ComponentReflection {
-                docstring_md: "Whether or not views should be created automatically.",
+                docstring_md: "Whether or not views should be created automatically.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(AutoViews::default().to_arrow()?),
                 datatype: AutoViews::arrow_datatype(),
@@ -88,7 +88,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ColumnShare as Component>::name(),
             ComponentReflection {
-                docstring_md: "The layout share of a column in the container.",
+                docstring_md: "The layout share of a column in the container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ColumnShare::default().to_arrow()?),
                 datatype: ColumnShare::arrow_datatype(),
@@ -98,7 +98,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ComponentColumnSelector as Component>::name(),
             ComponentReflection {
-                docstring_md: "Describe a component column to be selected in the dataframe view.",
+                docstring_md: "Describe a component column to be selected in the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ComponentColumnSelector::default().to_arrow()?),
                 datatype: ComponentColumnSelector::arrow_datatype(),
@@ -128,7 +128,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Enabled as Component>::name(),
             ComponentReflection {
-                docstring_md: "Whether a procedure is enabled.",
+                docstring_md: "Whether a procedure is enabled.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(Enabled::default().to_arrow()?),
                 datatype: Enabled::arrow_datatype(),
@@ -138,7 +138,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <FilterByRange as Component>::name(),
             ComponentReflection {
-                docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
+                docstring_md: "Configuration for a filter-by-range feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(FilterByRange::default().to_arrow()?),
                 datatype: FilterByRange::arrow_datatype(),
@@ -148,7 +148,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <FilterIsNotNull as Component>::name(),
             ComponentReflection {
-                docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
+                docstring_md: "Configuration for the filter is not null feature of the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(FilterIsNotNull::default().to_arrow()?),
                 datatype: FilterIsNotNull::arrow_datatype(),
@@ -158,7 +158,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ForceDistance as Component>::name(),
             ComponentReflection {
-                docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.",
+                docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ForceDistance::default().to_arrow()?),
                 datatype: ForceDistance::arrow_datatype(),
@@ -168,7 +168,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ForceIterations as Component>::name(),
             ComponentReflection {
-                docstring_md: "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
+                docstring_md: "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ForceIterations::default().to_arrow()?),
                 datatype: ForceIterations::arrow_datatype(),
@@ -178,7 +178,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ForceStrength as Component>::name(),
             ComponentReflection {
-                docstring_md: "The strength of a given force.\n\nAllows to assign different weights to the individual forces, prioritizing one over the other.",
+                docstring_md: "The strength of a given force.\n\nAllows to assign different weights to the individual forces, prioritizing one over the other.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ForceStrength::default().to_arrow()?),
                 datatype: ForceStrength::arrow_datatype(),
@@ -188,7 +188,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <GridColumns as Component>::name(),
             ComponentReflection {
-                docstring_md: "How many columns a grid container should have.",
+                docstring_md: "How many columns a grid container should have.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(GridColumns::default().to_arrow()?),
                 datatype: GridColumns::arrow_datatype(),
@@ -198,7 +198,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <GridSpacing as Component>::name(),
             ComponentReflection {
-                docstring_md: "Space between grid lines of one line to the next in scene units.",
+                docstring_md: "Space between grid lines of one line to the next in scene units.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(GridSpacing::default().to_arrow()?),
                 datatype: GridSpacing::arrow_datatype(),
@@ -208,7 +208,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <IncludedContent as Component>::name(),
             ComponentReflection {
-                docstring_md: "All the contents in the container.",
+                docstring_md: "All the contents in the container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(IncludedContent::default().to_arrow()?),
                 datatype: IncludedContent::arrow_datatype(),
@@ -218,7 +218,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
-                docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
+                docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(LockRangeDuringZoom::default().to_arrow()?),
                 datatype: LockRangeDuringZoom::arrow_datatype(),
@@ -238,7 +238,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <NearClipPlane as Component>::name(),
             ComponentReflection {
-                docstring_md: "Distance to the near clip plane used for `Spatial2DView`.",
+                docstring_md: "Distance to the near clip plane used for `Spatial2DView`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(NearClipPlane::default().to_arrow()?),
                 datatype: NearClipPlane::arrow_datatype(),
@@ -258,7 +258,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <QueryExpression as Component>::name(),
             ComponentReflection {
-                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
+                docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of archetypes.ViewContents.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(QueryExpression::default().to_arrow()?),
                 datatype: QueryExpression::arrow_datatype(),
@@ -268,7 +268,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <RootContainer as Component>::name(),
             ComponentReflection {
-                docstring_md: "The container that sits at the root of a viewport.",
+                docstring_md: "The container that sits at the root of a viewport.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(RootContainer::default().to_arrow()?),
                 datatype: RootContainer::arrow_datatype(),
@@ -278,7 +278,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <RowShare as Component>::name(),
             ComponentReflection {
-                docstring_md: "The layout share of a row in the container.",
+                docstring_md: "The layout share of a row in the container.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(RowShare::default().to_arrow()?),
                 datatype: RowShare::arrow_datatype(),
@@ -288,7 +288,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SelectedColumns as Component>::name(),
             ComponentReflection {
-                docstring_md: "Describe a component column to be selected in the dataframe view.",
+                docstring_md: "Describe a component column to be selected in the dataframe view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(SelectedColumns::default().to_arrow()?),
                 datatype: SelectedColumns::arrow_datatype(),
@@ -298,7 +298,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TensorDimensionIndexSlider as Component>::name(),
             ComponentReflection {
-                docstring_md: "Show a slider for the index of some dimension of a slider.",
+                docstring_md: "Show a slider for the index of some dimension of a slider.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(
                     TensorDimensionIndexSlider::default().to_arrow()?,
@@ -310,7 +310,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TimelineName as Component>::name(),
             ComponentReflection {
-                docstring_md: "A timeline identified by its name.",
+                docstring_md: "A timeline identified by its name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(TimelineName::default().to_arrow()?),
                 datatype: TimelineName::arrow_datatype(),
@@ -320,7 +320,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ViewClass as Component>::name(),
             ComponentReflection {
-                docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
+                docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewClass::default().to_arrow()?),
                 datatype: ViewClass::arrow_datatype(),
@@ -340,7 +340,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ViewMaximized as Component>::name(),
             ComponentReflection {
-                docstring_md: "Whether a view is maximized.",
+                docstring_md: "Whether a view is maximized.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewMaximized::default().to_arrow()?),
                 datatype: ViewMaximized::arrow_datatype(),
@@ -350,7 +350,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ViewOrigin as Component>::name(),
             ComponentReflection {
-                docstring_md: "The origin of a view.",
+                docstring_md: "The origin of a view.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewOrigin::default().to_arrow()?),
                 datatype: ViewOrigin::arrow_datatype(),
@@ -360,7 +360,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ViewerRecommendationHash as Component>::name(),
             ComponentReflection {
-                docstring_md: "Hash of a viewer recommendation.\n\nThe formation of this hash is considered an internal implementation detail of the viewer.",
+                docstring_md: "Hash of a viewer recommendation.\n\nThe formation of this hash is considered an internal implementation detail of the viewer.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(
                     ViewerRecommendationHash::default().to_arrow()?,
@@ -372,7 +372,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VisibleTimeRange as Component>::name(),
             ComponentReflection {
-                docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.",
+                docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisibleTimeRange::default().to_arrow()?),
                 datatype: VisibleTimeRange::arrow_datatype(),
@@ -382,7 +382,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VisualBounds2D as Component>::name(),
             ComponentReflection {
-                docstring_md: "Visual bounds in 2D space used for `Spatial2DView`.",
+                docstring_md: "Visual bounds in 2D space used for `Spatial2DView`.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisualBounds2D::default().to_arrow()?),
                 datatype: VisualBounds2D::arrow_datatype(),
@@ -392,7 +392,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VisualizerOverride as Component>::name(),
             ComponentReflection {
-                docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.VisualizerOverrides.",
+                docstring_md: "Single visualizer override the visualizers for an entity.\n\nFor details see archetypes.VisualizerOverrides.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(VisualizerOverride::default().to_arrow()?),
                 datatype: VisualizerOverride::arrow_datatype(),
@@ -402,7 +402,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ZoomLevel as Component>::name(),
             ComponentReflection {
-                docstring_md: "A zoom level determines how much of the world is visible on a map.",
+                docstring_md: "A zoom level determines how much of the world is visible on a map.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ZoomLevel::default().to_arrow()?),
                 datatype: ZoomLevel::arrow_datatype(),

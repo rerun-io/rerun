@@ -19,6 +19,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Resolves collisions between the bounding circles, according to the radius of the nodes.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ForceCollisionRadius {
         /// Whether the collision force is enabled.
         ///

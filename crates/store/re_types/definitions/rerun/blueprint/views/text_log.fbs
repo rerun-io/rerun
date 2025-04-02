@@ -4,6 +4,6 @@ namespace rerun.blueprint.views;
 ///
 /// \example views/text_log title="Use a blueprint to show a TextLogView." image="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1200w.png"
 table TextLogView (
-    "attr.rerun.view_identifier": "TextLog"
+  "attr.rerun.view_identifier": "TextLog"
 ) {
 }

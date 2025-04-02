@@ -20,6 +20,8 @@ class LockRangeDuringZoom(datatypes.Bool, ComponentMixin):
     **Component**: Indicate whether the range should be locked when zooming in on the data.
 
     Default is `false`, i.e. zoom will change the visualized range.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None

@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Distance to the near clip plane used for `Spatial2DView`.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct NearClipPlane {
         /// Distance to the near clip plane in 3D scene units.
         rerun::datatypes::Float32 near_clip_plane;

@@ -4,11 +4,11 @@ namespace rerun.components;
 ///
 /// Non interactive components are still visible, but mouse interactions in the view are disabled.
 struct Interactive (
-    "attr.docs.unreleased",
-    "attr.rerun.state": "stable",
-    "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent",
-    "attr.rust.tuple_struct"
+  "attr.docs.unreleased",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
 ) {
-    interactive: rerun.datatypes.Bool (order: 100);
+  interactive: rerun.datatypes.Bool (order: 100);
 }

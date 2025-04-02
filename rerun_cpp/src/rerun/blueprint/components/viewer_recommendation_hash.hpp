@@ -14,6 +14,9 @@ namespace rerun::blueprint::components {
     /// **Component**: Hash of a viewer recommendation.
     ///
     /// The formation of this hash is considered an internal implementation detail of the viewer.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ViewerRecommendationHash {
         rerun::datatypes::UInt64 value;
 

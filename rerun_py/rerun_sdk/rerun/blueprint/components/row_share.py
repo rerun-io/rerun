@@ -16,7 +16,11 @@ __all__ = ["RowShare", "RowShareBatch"]
 
 
 class RowShare(datatypes.Float32, ComponentMixin):
-    """**Component**: The layout share of a row in the container."""
+    """
+    **Component**: The layout share of a row in the container.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RowShareExt in row_share_ext.py

@@ -16,7 +16,11 @@ __all__ = ["ViewClass", "ViewClassBatch"]
 
 
 class ViewClass(datatypes.Utf8, ComponentMixin):
-    """**Component**: The class identifier of view, e.g. `"2D"`, `"TextLog"`, …."""
+    """
+    **Component**: The class identifier of view, e.g. `"2D"`, `"TextLog"`, ….
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewClassExt in view_class_ext.py

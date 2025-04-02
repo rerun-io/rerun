@@ -20,6 +20,9 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: A force between each pair of nodes that ressembles an electrical charge.
     ///
     /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ForceManyBody {
         /// Whether the many body force is enabled.
         ///
