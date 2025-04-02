@@ -1,26 +1,44 @@
 use arrow::datatypes::Field as ArrowField;
 
-use crate::{MetadataExt as _, SorbetError};
+use crate::MetadataExt as _;
+
+#[derive(thiserror::Error, Debug)]
+#[error("Unknown `rerun.kind` {kind:?} in column {column_name:?}. Expect one of `row_id`, `index`, or `component`.")]
+pub struct UnknownColumnKind {
+    pub kind: String,
+    pub column_name: String,
+}
 
 /// The type of column in a sorbet batch.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ColumnKind {
+    /// Row ID
     RowId,
+
+    /// Timeline
     Index,
+
+    /// Data (also the default when unknown)
+    #[default]
     Component,
 }
 
 impl TryFrom<&ArrowField> for ColumnKind {
-    type Error = SorbetError;
+    type Error = UnknownColumnKind;
 
-    fn try_from(fields: &ArrowField) -> Result<Self, Self::Error> {
-        let kind = fields.get_opt("rerun.kind").unwrap_or("data");
+    fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
+        let Some(kind) = field.get_opt("rerun.kind") else {
+            return Ok(Self::default());
+        };
         match kind {
             "control" | "row_id" => Ok(Self::RowId),
             "index" | "time" => Ok(Self::Index),
             "component" | "data" => Ok(Self::Component),
 
-            _ => Err(SorbetError::custom(format!("Unknown column kind: {kind}"))),
+            _ => Err(UnknownColumnKind {
+                kind: kind.to_owned(),
+                column_name: field.name().to_owned(),
+            }),
         }
     }
 }
