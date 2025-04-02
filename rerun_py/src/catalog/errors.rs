@@ -29,6 +29,9 @@ enum ExternalError {
     ConnectionError(ConnectionError),
     TonicStatusError(tonic::Status),
     UriError(re_uri::Error),
+    ChunkError(re_chunk::ChunkError),
+    ChunkStoreError(re_chunk_store::ChunkStoreError),
+    StreamError(re_grpc_client::StreamError),
 }
 
 impl From<ConnectionError> for ExternalError {
@@ -46,6 +49,24 @@ impl From<tonic::Status> for ExternalError {
 impl From<re_uri::Error> for ExternalError {
     fn from(value: re_uri::Error) -> Self {
         Self::UriError(value)
+    }
+}
+
+impl From<re_chunk::ChunkError> for ExternalError {
+    fn from(value: re_chunk::ChunkError) -> Self {
+        Self::ChunkError(value)
+    }
+}
+
+impl From<re_chunk_store::ChunkStoreError> for ExternalError {
+    fn from(value: re_chunk_store::ChunkStoreError) -> Self {
+        Self::ChunkStoreError(value)
+    }
+}
+
+impl From<re_grpc_client::StreamError> for ExternalError {
+    fn from(value: re_grpc_client::StreamError) -> Self {
+        Self::StreamError(value)
     }
 }
 
@@ -69,6 +90,16 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::UriError(err) => PyValueError::new_err(format!("Invalid URI: {err}")),
+
+            ExternalError::ChunkError(err) => PyValueError::new_err(format!("Chunk error: {err}")),
+
+            ExternalError::ChunkStoreError(err) => {
+                PyValueError::new_err(format!("Chunk store error: {err}"))
+            }
+
+            ExternalError::StreamError(err) => {
+                PyValueError::new_err(format!("Data streaming error: {err}"))
+            }
         }
     }
 }
