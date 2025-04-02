@@ -73,6 +73,7 @@ impl crate::sink::LogSink for GrpcServerSink {
 
 impl Drop for GrpcServerSink {
     fn drop(&mut self) {
+        self.sender.flush_blocking().ok();
         self.server_shutdown_signal.stop();
     }
 }
