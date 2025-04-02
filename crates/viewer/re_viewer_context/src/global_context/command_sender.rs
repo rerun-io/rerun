@@ -4,7 +4,7 @@ use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
-use crate::Entry;
+use crate::StoreHubEntry;
 
 // ----------------------------------------------------------------------------
 
@@ -65,10 +65,10 @@ pub enum SystemCommand {
     ClearActiveBlueprintAndEnableHeuristics,
 
     /// Switch to this [`Entry`].
-    ActivateEntry(Entry),
+    ActivateEntry(StoreHubEntry),
 
     /// Close an [`Entry`] and free its memory.
-    CloseEntry(Entry),
+    CloseEntry(StoreHubEntry),
 
     /// Close all stores and show the welcome screen again.
     CloseAllRecordings,

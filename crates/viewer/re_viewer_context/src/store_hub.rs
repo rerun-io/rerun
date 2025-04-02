@@ -16,7 +16,7 @@ use re_types::components::Timestamp;
 use crate::{BlueprintUndoState, Caches, StoreBundle, StoreContext, TableStore, TableStores};
 
 #[derive(Clone)]
-pub enum Entry {
+pub enum StoreHubEntry {
     Recording {
         store_id: StoreId,
         // TODO(grtlr): Add `applicationId` here.
@@ -26,19 +26,19 @@ pub enum Entry {
     },
 }
 
-impl From<StoreId> for Entry {
+impl From<StoreId> for StoreHubEntry {
     fn from(store_id: StoreId) -> Self {
         Self::Recording { store_id }
     }
 }
 
-impl From<TableId> for Entry {
+impl From<TableId> for StoreHubEntry {
     fn from(table_id: TableId) -> Self {
         Self::Table { table_id }
     }
 }
 
-impl Entry {
+impl StoreHubEntry {
     pub fn recording_ref(&self) -> Option<&StoreId> {
         match self {
             Self::Recording { store_id } => Some(store_id),
@@ -86,7 +86,7 @@ pub struct StoreHub {
     /// How we load and save blueprints.
     persistence: BlueprintPersistence,
 
-    active_entry: Option<Entry>,
+    active_entry: Option<StoreHubEntry>,
     active_application_id: Option<ApplicationId>,
 
     default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
@@ -288,8 +288,8 @@ impl StoreHub {
 
             // Calls `store_bundle.get()` internally and can therefore vary from the active entry.
             let recording = self.active_entry.as_ref().and_then(|id| match id {
-                Entry::Recording { store_id } => self.store_bundle.get(store_id),
-                Entry::Table { .. } => None,
+                StoreHubEntry::Recording { store_id } => self.store_bundle.get(store_id),
+                StoreHubEntry::Table { .. } => None,
             });
 
             if recording.is_none() && self.active_entry.is_none() {
@@ -406,12 +406,12 @@ impl StoreHub {
         // }
     }
 
-    pub fn remove(&mut self, entry: &Entry) {
+    pub fn remove(&mut self, entry: &StoreHubEntry) {
         match entry {
-            Entry::Recording { store_id } => {
+            StoreHubEntry::Recording { store_id } => {
                 self.remove_store(store_id);
             }
-            Entry::Table { table_id } => {
+            StoreHubEntry::Table { table_id } => {
                 self.table_stores.remove(table_id);
             }
         }
@@ -430,7 +430,7 @@ impl StoreHub {
             })
             .collect();
         for store in stores_to_remove {
-            self.remove(&Entry::Recording { store_id: store });
+            self.remove(&StoreHubEntry::Recording { store_id: store });
         }
     }
 
@@ -481,7 +481,7 @@ impl StoreHub {
             .sorted_by_key(|entity_db| entity_db.recording_property::<Timestamp>())
         {
             if rec.app_id() == Some(&app_id) {
-                self.active_entry = Some(Entry::Recording {
+                self.active_entry = Some(StoreHubEntry::Recording {
                     store_id: rec.store_id().clone(),
                 });
                 return;
@@ -534,7 +534,7 @@ impl StoreHub {
     #[inline]
     pub fn active_recording(&self) -> Option<&EntityDb> {
         match self.active_entry.as_ref() {
-            Some(Entry::Recording { store_id }) => self.store_bundle.get(store_id),
+            Some(StoreHubEntry::Recording { store_id }) => self.store_bundle.get(store_id),
             _ => None,
         }
     }
@@ -580,7 +580,7 @@ impl StoreHub {
             self.set_active_app(app_id);
         }
 
-        self.active_entry = Some(Entry::Recording {
+        self.active_entry = Some(StoreHubEntry::Recording {
             store_id: recording_id.clone(),
         });
 
@@ -589,10 +589,10 @@ impl StoreHub {
     }
 
     /// Activate an [`Entry`]
-    pub fn set_active_entry(&mut self, entry: Entry) {
+    pub fn set_active_entry(&mut self, entry: StoreHubEntry) {
         match entry {
-            Entry::Recording { store_id } => self.set_activate_recording(store_id),
-            Entry::Table { table_id } => self.set_activate_table(table_id),
+            StoreHubEntry::Recording { store_id } => self.set_activate_recording(store_id),
+            StoreHubEntry::Table { table_id } => self.set_activate_table(table_id),
         }
     }
 
@@ -608,7 +608,7 @@ impl StoreHub {
 
     /// Activate a recording by its [`TableId`].
     fn set_activate_table(&mut self, table_id: TableId) {
-        self.active_entry = Some(Entry::Table { table_id });
+        self.active_entry = Some(StoreHubEntry::Table { table_id });
     }
 
     // ---------------------
