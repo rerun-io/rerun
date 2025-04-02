@@ -1,5 +1,4 @@
 // Log a video asset using automatically determined frame references.
-// TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
 
 #include <rerun.hpp>
 
