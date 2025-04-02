@@ -254,7 +254,7 @@ impl ItemCollection {
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
                 Item::View(_) => None,
-                // TODO: Should these be URLs?
+                // TODO(lucasmerlin): Should these be copyable as URLs?
                 Item::RedapServer(_) => None,
                 Item::RedapEntry(_) => None,
 

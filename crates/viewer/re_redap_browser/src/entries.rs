@@ -143,7 +143,9 @@ impl Entries {
 }
 
 pub type DatasetRecordings<'a> = BTreeMap<EntryId, Vec<&'a EntityDb>>;
+
 pub type RemoteRecordings<'a> = BTreeMap<re_uri::Origin, DatasetRecordings<'a>>;
+
 pub type LocalRecordings<'a> = BTreeMap<ApplicationId, Vec<&'a EntityDb>>;
 
 pub struct SortDatasetsResults<'a> {

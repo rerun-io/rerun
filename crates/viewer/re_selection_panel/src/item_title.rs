@@ -71,10 +71,10 @@ impl ItemTitle {
                 }
             }
 
-            // TODO: Icon? Should RedapServers be part of ViewerContext?
+            // TODO(lucasmerlin): Icon? How do get the actual title? Should RedapServers be part of ViewerContext?
             Item::RedapEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
 
-            // TODO: Icon?
+            // TODO(lucasmerlin): Icon?
             Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),
         }
     }
