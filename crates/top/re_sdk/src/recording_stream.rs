@@ -414,14 +414,16 @@ impl RecordingStreamBuilder {
     ///
     /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
     ///
-    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
-    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
-    pub fn serve_grpc(
-        self,
-        server_memory_limit: re_memory::MemoryLimit,
-    ) -> RecordingStreamResult<RecordingStream> {
-        self.serve_grpc_opts("0.0.0.0", 9876, server_memory_limit)
+    /// The gRPC server will buffer in memory so that late connecting viewers will still get all the data.
+    /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`],
+    /// with the `server_memory_limit` argument. Once the memory limit is reached, the earliest logged data
+    /// will be dropped. Static data is never dropped.
+    pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
+        self.serve_grpc_opts(
+            "0.0.0.0",
+            9876,
+            re_memory::MemoryLimit::from_fraction_of_total(0.75),
+        )
     }
 
     #[cfg(feature = "server")]
