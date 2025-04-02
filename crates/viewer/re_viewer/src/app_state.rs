@@ -574,7 +574,7 @@ impl AppState {
                         }
 
                         DisplayMode::RedapServer(origin) => {
-                            if origin == &re_uri::Origin::examples_origin() {
+                            if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
                                 welcome_screen.ui(
                                     ui,
                                     command_sender,

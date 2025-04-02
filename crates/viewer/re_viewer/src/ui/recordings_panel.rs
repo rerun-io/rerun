@@ -2,7 +2,9 @@ use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg};
 use re_protos::common::v1alpha1::ext::EntryId;
-use re_redap_browser::{dataset_and_its_recordings_ui, EntryKind, RedapServers};
+use re_redap_browser::{
+    dataset_and_its_recordings_ui, EntryKind, RedapServers, EXAMPLES_ORIGIN, LOCAL_ORIGIN,
+};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
 use re_ui::{icons, list_item, UiExt as _};
@@ -180,7 +182,7 @@ fn recording_list_ui(
     {
         ctx.command_sender()
             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                re_uri::Origin::local_recordings_origin(),
+                LOCAL_ORIGIN.clone(),
             )));
     }
 
@@ -191,7 +193,7 @@ fn recording_list_ui(
         && !welcome_screen_state.hide)
         || !example_recordings.is_empty()
     {
-        let item = Item::RedapServer(re_uri::Origin::examples_origin());
+        let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
         let selected = ctx.selection().contains_item(&item);
         let list_item = ui.list_item().header().selected(selected);
         let title = list_item::LabelContent::header("Rerun examples");
@@ -221,11 +223,11 @@ fn recording_list_ui(
         if response.clicked() {
             ctx.command_sender()
                 .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    re_uri::Origin::examples_origin(),
+                    EXAMPLES_ORIGIN.clone(),
                 )));
             ctx.command_sender()
                 .send_system(SystemCommand::SetSelection(Item::RedapServer(
-                    re_uri::Origin::examples_origin(),
+                    EXAMPLES_ORIGIN.clone(),
                 )));
         }
     }

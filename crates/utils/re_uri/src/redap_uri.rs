@@ -151,28 +151,6 @@ impl crate::Origin {
     pub fn coerce_http_url(&self) -> String {
         format!("http://{}:{}", self.host, self.port)
     }
-
-    /// Origin used to show the examples ui in the redap browser.
-    ///
-    /// Not actually a valid origin.
-    pub fn examples_origin() -> Self {
-        Self {
-            scheme: Scheme::RerunHttps,
-            host: url::Host::Domain("_examples.rerun.io".to_owned()),
-            port: 443,
-        }
-    }
-
-    /// Origin used to show the local ui in the redap browser.
-    ///
-    /// Not actually a valid origin.
-    pub fn local_recordings_origin() -> Self {
-        Self {
-            scheme: Scheme::RerunHttps,
-            host: url::Host::Domain("_local_recordings.rerun.io".to_owned()),
-            port: 443,
-        }
-    }
 }
 
 /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
