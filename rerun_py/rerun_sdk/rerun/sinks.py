@@ -227,7 +227,7 @@ def serve_grpc(
     You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
-    This function returns immediately. In order to keep the server running, you must keep the process running
+    This function returns immediately. In order to keep the server running, you must keep the Python process running
     as well.
 
     Parameters
@@ -249,7 +249,7 @@ def serve_grpc(
 
     """
     if not is_recording_enabled(recording):
-        logging.warning("Rerun is disabled - serve() call ignored")
+        logging.warning("Rerun is disabled - serve_grpc() call ignored")
         return
 
     from rerun.recording_stream import get_application_id

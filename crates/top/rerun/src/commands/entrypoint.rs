@@ -57,7 +57,7 @@ Examples:
     Open an .rrd file and stream it to a Web Viewer:
         rerun recording.rrd --web-viewer
 
-    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffers the log messages, and serves the results:
+    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results:
         rerun --serve-web
 
     Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers:

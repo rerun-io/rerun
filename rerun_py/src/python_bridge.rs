@@ -979,7 +979,7 @@ fn serve_grpc(
         };
 
         if re_sdk::forced_sink_path().is_some() {
-            re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
+            re_log::debug!("Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
             return Ok(());
         }
 
