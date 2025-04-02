@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_asset3d").spawn()?;
 
     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?; // Set an up-axis
-    rec.log("world/asset", &rerun::Asset3D::from_file(path)?)?;
+    rec.log("world/asset", &rerun::Asset3D::from_file_path(path)?)?;
 
     Ok(())
 }

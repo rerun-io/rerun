@@ -191,19 +191,23 @@ fn load_video(
 
     let video_asset = AssetVideo::new(contents);
 
-    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
-        Ok(frame_timestamps_ns) => {
+    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
+        Ok(frame_timestamps_nanos) => {
             // Time column.
             let is_sorted = Some(true);
-            let frame_timestamps_ns: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_ns.into();
-            let time_column =
-                re_chunk::TimeColumn::new(is_sorted, video_timeline, frame_timestamps_ns.clone());
+            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
+                frame_timestamps_nanos.into();
+            let time_column = re_chunk::TimeColumn::new(
+                is_sorted,
+                video_timeline,
+                frame_timestamps_nanos.clone(),
+            );
 
             // VideoTimestamp component column.
-            let video_timestamps = frame_timestamps_ns
+            let video_timestamps = frame_timestamps_nanos
                 .iter()
                 .copied()
-                .map(VideoTimestamp::from_nanoseconds)
+                .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
             let video_timestamp_list_array = video_timestamp_batch

@@ -1,24 +1,25 @@
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
 use std::thread;
 
 use anyhow::{anyhow, Context as _};
 use arrow::array::{
-    ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StructArray,
+    ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray, StructArray,
 };
 use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
-use re_arrow_util::{extract_fixed_size_array_element, ArrowArrayDowncastRef as _};
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
-    ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
 
 use re_log_types::{ApplicationId, StoreId};
 use re_types::archetypes::{
     AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
 };
-use re_types::components::{Scalar, VideoTimestamp};
+use re_types::components::{Name, Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
 use crate::lerobot::{
@@ -246,16 +247,12 @@ pub fn load_episode(
             }
 
             DType::Image => {
-                let num_channels = feature.shape.last().with_context(|| {
-                    format!(
-                    "Image feature '{feature_key}' in LeRobot dataset is missing channel dimension",
-                )
-                })?;
+                let num_channels = feature.channel_dim();
 
-                match *num_channels {
+                match num_channels {
                     1 => chunks.extend(load_episode_depth_images(feature_key, &timeline, &data)?),
                     3 => chunks.extend(load_episode_images(feature_key, &timeline, &data)?),
-                    _ => re_log::warn_once!("Unsupported channel count {num_channels} for LeRobot dataset; Only 1- and 3-channel images are supported")
+                    _ => re_log::warn_once!("Unsupported channel count {num_channels} (shape: {:?}) for LeRobot dataset; Only 1- and 3-channel images are supported", feature.shape)
                 };
             }
             DType::Int64 if feature_key == "task_index" => {
@@ -263,7 +260,7 @@ pub fn load_episode(
                 // this always refers to the task description in the dataset metadata.
                 chunks.extend(log_episode_task(dataset, &timeline, &data)?);
             }
-            DType::Int64 | DType::Bool | DType::String => {
+            DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
                 re_log::warn_once!(
                     "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
                     feature.dtype
@@ -387,15 +384,16 @@ fn load_episode_video(
     let video_asset = AssetVideo::new(contents.into_owned());
     let entity_path = observation;
 
-    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
-        Ok(frame_timestamps_ns) => {
-            let frame_timestamps_ns: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_ns.into();
+    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
+        Ok(frame_timestamps_nanos) => {
+            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
+                frame_timestamps_nanos.into();
 
-            let video_timestamps = frame_timestamps_ns
+            let video_timestamps = frame_timestamps_nanos
                 .iter()
                 .take(time_column.num_rows())
                 .copied()
-                .map(VideoTimestamp::from_nanoseconds)
+                .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
 
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
@@ -485,6 +483,8 @@ fn load_scalar(
             format!("Failed to get field for feature {feature_key} from parquet file")
         })?;
 
+    let entity_path = EntityPath::parse_forgiving(field.name());
+
     match field.data_type() {
         DataType::FixedSizeList(_, _) => {
             let fixed_size_array = data
@@ -497,7 +497,7 @@ fn load_scalar(
                 })?;
 
             let batch_chunks =
-                make_scalar_batch_entity_chunks(field, feature, timelines, fixed_size_array)?;
+                make_scalar_batch_entity_chunks(entity_path, feature, timelines, fixed_size_array)?;
             Ok(ScalarChunkIterator::Batch(Box::new(batch_chunks)))
         }
         DataType::Float32 => {
@@ -508,12 +508,12 @@ fn load_scalar(
                 ))
             })?;
 
+            let sliced = extract_scalar_slices_as_f64(feature_data).with_context(|| {
+                format!("Failed to cast scalar feature {entity_path} to Float64")
+            })?;
+
             Ok(ScalarChunkIterator::Single(std::iter::once(
-                make_scalar_entity_chunk(
-                    field.name().clone().into(),
-                    timelines,
-                    &feature_data.clone(),
-                )?,
+                make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
             )))
         }
         _ => {
@@ -528,7 +528,7 @@ fn load_scalar(
 }
 
 fn make_scalar_batch_entity_chunks(
-    field: &Field,
+    entity_path: EntityPath,
     feature: &Feature,
     timelines: &IntMap<TimelineName, TimeColumn>,
     data: &FixedSizeListArray,
@@ -537,31 +537,33 @@ fn make_scalar_batch_entity_chunks(
 
     let mut chunks = Vec::with_capacity(num_elements);
 
-    for idx in 0..num_elements {
-        let name = feature
-            .names
-            .as_ref()
-            .and_then(|names| names.name_for_index(idx).cloned())
-            .unwrap_or(format!("{idx}"));
+    let sliced = extract_list_elements_as_f64(data)
+        .with_context(|| format!("Failed to cast scalar feature {entity_path} to Float64"))?;
 
-        // The data that comes out of lerobot is structured as a fixed size array, but Rerun
-        // needs us to submit these as individual chunks of scalar values, so for each element
-        // in the source array we create a new chunk.
-        // TODO(#9005): Once we have Rerun support for native fixed size list arrays we can stop
-        // doing this.
-        let scalar_values = extract_fixed_size_array_element(data, idx as u32).map_err(|err| {
-            anyhow!(
-                "Failed to extract values for scalar feature {:?}: {err}",
-                field.name()
-            )
-        })?;
+    chunks.push(make_scalar_entity_chunk(
+        entity_path.clone(),
+        timelines,
+        &sliced,
+    )?);
 
-        let entity_path = format!("{}/{name}", field.name());
-        chunks.push(make_scalar_entity_chunk(
-            entity_path.into(),
-            timelines,
-            &scalar_values,
-        )?);
+    // If we have names for this feature, we insert a single static chunk containing the names.
+    if let Some(names) = feature.names.clone() {
+        let names: Vec<_> = (0..data.value_length() as usize)
+            .map(|idx| names.name_for_index(idx))
+            .collect();
+
+        chunks.push(
+            Chunk::builder(entity_path)
+                .with_row(
+                    RowId::new(),
+                    TimePoint::default(),
+                    std::iter::once((
+                        <Name as Component>::descriptor().clone(),
+                        Arc::new(StringArray::from_iter(names)) as Arc<dyn ArrowArray>,
+                    )),
+                )
+                .build()?,
+        );
     }
 
     Ok(chunks.into_iter())
@@ -570,21 +572,12 @@ fn make_scalar_batch_entity_chunks(
 fn make_scalar_entity_chunk(
     entity_path: EntityPath,
     timelines: &IntMap<TimelineName, TimeColumn>,
-    data: &ArrayRef,
+    sliced_data: &[ArrayRef],
 ) -> Result<Chunk, DataLoaderError> {
-    // cast the slice to f64 first, as scalars need an f64
-    let scalar_values = cast(&data, &DataType::Float64).with_context(|| {
-        format!(
-            "Failed to cast scalar feature {:?} to Float64",
-            entity_path.clone()
-        )
-    })?;
-
-    let sliced = (0..data.len())
-        .map(|idx| scalar_values.slice(idx, 1))
+    let data_arrays = sliced_data
+        .iter()
+        .map(|e| Some(e.as_ref()))
         .collect::<Vec<_>>();
-
-    let data_arrays = sliced.iter().map(|e| Some(e.as_ref())).collect::<Vec<_>>();
 
     let data_field_inner = Field::new("item", DataType::Float64, true /* nullable */);
     #[allow(clippy::unwrap_used)] // we know we've given the right field type
@@ -602,4 +595,23 @@ fn make_scalar_entity_chunk(
         ))
         .collect(),
     )?)
+}
+
+fn extract_scalar_slices_as_f64(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>> {
+    // cast the slice to f64 first, as scalars need an f64
+    let scalar_values = cast(&data, &DataType::Float64)
+        .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))?;
+
+    Ok((0..data.len())
+        .map(|idx| scalar_values.slice(idx, 1))
+        .collect::<Vec<_>>())
+}
+
+fn extract_list_elements_as_f64(data: &FixedSizeListArray) -> anyhow::Result<Vec<ArrayRef>> {
+    (0..data.len())
+        .map(|idx| {
+            cast(&data.value(idx), &DataType::Float64)
+                .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))
+        })
+        .collect::<Result<Vec<_>, _>>()
 }

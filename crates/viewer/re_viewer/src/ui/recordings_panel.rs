@@ -289,7 +289,14 @@ impl DatasetKind {
                     SmartChannelSource::RedapGrpcStream(endpoint) => {
                         &endpoint.origin == origin // TODO(lucasmerlin): Also check for dataset
                     }
-                    _ => false,
+
+                    SmartChannelSource::File(_)
+                    | SmartChannelSource::RrdHttpStream { .. }
+                    | SmartChannelSource::RrdWebEventListener
+                    | SmartChannelSource::JsChannel { .. }
+                    | SmartChannelSource::Sdk
+                    | SmartChannelSource::Stdin
+                    | SmartChannelSource::MessageProxy { .. } => false,
                 }),
             Self::Local(app_id) => &ctx.store_context.app_id == app_id,
         }

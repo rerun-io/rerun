@@ -50,6 +50,9 @@ namespace rerun::archetypes {
     ///     );
     /// }
     /// ```
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ViewCoordinates {
         /// The directions of the [x, y, z] axes.
         std::optional<ComponentBatch> xyz;

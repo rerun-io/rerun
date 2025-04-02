@@ -843,8 +843,7 @@ impl IngestionStatistics {
             let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
 
             // This only makes sense if the clocks are very good, i.e. if the recording was on the same machine!
-            if let Some(nanos_since_log) =
-                nanos_since_epoch.checked_sub(row_id.nanoseconds_since_epoch())
+            if let Some(nanos_since_log) = nanos_since_epoch.checked_sub(row_id.nanos_since_epoch())
             {
                 let now = nanos_since_epoch as f64 / 1e9;
                 let sec_since_log = nanos_since_log as f32 / 1e9;

@@ -25,11 +25,9 @@ import rerun_bindings as bindings
 
 from . import (
     blueprint as blueprint,
-    catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
-    remote as remote,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
@@ -406,7 +404,7 @@ def start_web_viewer_server(port: int = 0) -> None:
     Start an HTTP server that hosts the rerun web viewer.
 
     This only provides the web-server that makes the viewer available and
-    does not otherwise provide a rerun websocket server or facilitate any routing of
+    does not otherwise provide a rerun gRPC server or facilitate any routing of
     data.
 
     This is generally only necessary for application such as running a jupyter notebook

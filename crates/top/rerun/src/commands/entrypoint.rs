@@ -60,13 +60,13 @@ Examples:
     Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serves the results:
         rerun --serve-web
 
-    Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
+    Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers:
         rerun --serve-web recording.rrd
 
     Connect to a Rerun Server:
         rerun rerun+http://localhost:9877/proxy
 
-    Listen for incoming TCP connections from the logging SDK and stream the results to disk:
+    Listen for incoming gRPC connections from the logging SDK and stream the results to disk:
         rerun --save new_recording.rrd
 "#;
 
@@ -110,7 +110,7 @@ Example: `16GB` or `50%` (of system total)."
     #[clap(
         long,
         default_value = "25%",
-        long_help = r"An upper limit on how much memory the WebSocket server (`--serve-web`) should use.
+        long_help = r"An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
 Example: `16GB` or `50%` (of system total)."
@@ -189,7 +189,7 @@ When persisted, the state will be stored at the following locations:
     threads: i32,
 
     #[clap(long_help = r"Any combination of:
-- A WebSocket url to a Rerun server
+- A gRPC url to a Rerun server
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
@@ -219,6 +219,10 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Hide the normal Rerun welcome screen.
     #[clap(long)]
     hide_welcome_screen: bool,
+
+    /// Detach Rerun Viewer process from the application process.
+    #[clap(long)]
+    detach_process: bool,
 
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
@@ -430,7 +434,7 @@ impl Args {
             //
             // `[URL_OR_PATHS]…`
             // > Any combination of:
-            // > - A WebSocket url to a Rerun server
+            // > - A gRPC url to a Rerun server
             // > - A path to a Rerun .rrd recording
             // > - A path to a Rerun .rbl blueprint
             // > - An HTTP(S) URL to an .rrd or .rbl file to load
@@ -655,6 +659,7 @@ fn run_impl(
 
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
+            detach_process: args.detach_process,
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
                 .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?,
             persist_state: args.persist_state,
@@ -825,7 +830,7 @@ fn run_impl(
         #[cfg(all(feature = "server", feature = "web_viewer"))]
         if args.url_or_paths.is_empty() && (args.port == args.web_viewer_port.0) {
             anyhow::bail!(
-                "Trying to spawn a websocket server on {}, but this port is \
+                "Trying to spawn a Web Viewer server on {}, but this port is \
                 already used by the server we're connecting to. Please specify a different port.",
                 args.port
             );

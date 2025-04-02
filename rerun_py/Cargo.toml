@@ -52,6 +52,7 @@ re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
+re_datafusion.workspace = true
 re_grpc_client.workspace = true
 re_grpc_server = { workspace = true, optional = true }
 re_log = { workspace = true, features = ["setup"] }
@@ -66,19 +67,21 @@ re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 
 arrow = { workspace = true, features = ["pyarrow"] }
-chrono = { version = "=0.4.39" } #TODO(ab): migrate to jiff when upgrading to pyo3 0.24
+chrono.workspace = true #TODO(#9317): migrate to jiff when upgrading to pyo3 0.24
 crossbeam.workspace = true
+datafusion.workspace = true
+datafusion-ffi.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 infer.workspace = true
-mimalloc = { version = "0.1.43", features = ["local_dynamic_tls"] }
+mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = [
   "abi3-py38",
   "chrono",
-] } #TODO(ab): migrate to jiff when upgrading to pyo3 0.24
+] } #TODO(#9317): migrate to jiff when upgrading to pyo3 0.24
 rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
 

@@ -138,8 +138,6 @@ pub fn open_recording(
     let data_source = entity_db.data_source.as_ref().map(|v| match v {
         re_smart_channel::SmartChannelSource::File(_) => Some("file"), // .rrd, .png, .glb, …
         re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => Some("http"),
-        // TODO(grtlr): Differentiate between `recording` and `catalog`
-        // re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => "recording | catalog",
         re_smart_channel::SmartChannelSource::RedapGrpcStream { .. } => None,
         re_smart_channel::SmartChannelSource::MessageProxy { .. } => Some("grpc"),
         // vvv spawn(), connect() vvv

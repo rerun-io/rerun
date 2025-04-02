@@ -21,6 +21,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: A helper type for mapping [`datatypes::ClassId`][crate::datatypes::ClassId]s to class descriptions.
 ///
 /// This is internal to [`components::AnnotationContext`][crate::components::AnnotationContext].
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ClassDescriptionMapElem {
     /// The key: the [`components::ClassId`][crate::components::ClassId].

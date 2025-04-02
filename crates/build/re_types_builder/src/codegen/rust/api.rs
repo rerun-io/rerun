@@ -170,7 +170,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::redundant_closure)]\n");
     code.push_str("#![allow(clippy::too_many_arguments)]\n"); // e.g. `AffixFuzzer1::new`
     code.push_str("#![allow(clippy::too_many_lines)]\n");
-    if obj.deprecation_notice().is_some() {
+    if obj.is_deprecated() {
         code.push_str("#![expect(deprecated)]\n");
     }
 
@@ -227,27 +227,21 @@ fn generate_mod_file(
     code.push_str("\n\n");
 
     // Non-deprecated first.
-    for obj in objects
-        .iter()
-        .filter(|obj| obj.deprecation_notice().is_none())
-    {
+    for obj in objects.iter().filter(|obj| !obj.is_deprecated()) {
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
 
         code.push_str(&format!("pub use self::{module_name}::{type_name};\n"));
     }
     // And then deprecated.
-    if objects.iter().any(|obj| obj.deprecation_notice().is_some()) {
+    if objects.iter().any(|obj| obj.is_deprecated()) {
         code.push_str("\n\n");
     }
-    for obj in objects
-        .iter()
-        .filter(|obj| obj.deprecation_notice().is_some())
-    {
+    for obj in objects.iter().filter(|obj| obj.is_deprecated()) {
         let module_name = obj.snake_case_name();
         let type_name = &obj.name;
 
-        if obj.deprecation_notice().is_some() {
+        if obj.is_deprecated() {
             code.push_str("#[expect(deprecated)]\n");
         }
 
@@ -299,8 +293,8 @@ fn quote_struct(
         .iter()
         .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field).quoted(objects));
 
-    let quoted_deprecation_notice = if let Some(deprecation_notice) = obj.deprecation_notice() {
-        quote!(#[deprecated(note = #deprecation_notice)])
+    let quoted_deprecation_summary = if let Some(deprecation_summary) = obj.deprecation_summary() {
+        quote!(#[deprecated(note = #deprecation_summary)])
     } else {
         quote!()
     };
@@ -367,7 +361,7 @@ fn quote_struct(
         #quoted_derive_default_clause
         #quoted_repr_clause
         #quoted_custom_clause
-        #quoted_deprecation_notice
+        #quoted_deprecation_summary
         #quoted_struct
 
         #quoted_trait_impls
@@ -595,9 +589,9 @@ fn quote_enum(
             objects,
             &field.virtpath,
             &field.fqname,
+            &field.state,
             &field.docs,
             Target::WebDocsMarkdown,
-            false,
         )
         .join("\n");
         if docstring_md.is_empty() {
@@ -693,9 +687,9 @@ fn quote_field_docs(reporter: &Reporter, objects: &Objects, field: &ObjectField)
         objects,
         &field.virtpath,
         &field.fqname,
+        &field.state,
         &field.docs,
         Target::Rust,
-        false,
     );
 
     let require_field_docs = false;
@@ -712,9 +706,9 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Token
         objects,
         &obj.virtpath,
         &obj.fqname,
+        &obj.state,
         &obj.docs,
         Target::Rust,
-        obj.is_experimental(),
     );
 
     // Prefix first line with `**Datatype**: ` etc:

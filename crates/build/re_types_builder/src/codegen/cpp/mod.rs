@@ -747,7 +747,7 @@ impl QuotedObject {
         let indicator_component_fqname =
             format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
-        let deprecation_notice = quote_deprecation_notice(obj);
+        let deprecated_notice = quote_deprecated_notice(obj);
         let name_doc_string =
             quote_doc_comment("The name of the archetype as used in `ComponentDescriptor`s.");
 
@@ -758,12 +758,12 @@ impl QuotedObject {
                 .typ
                 .fqname()
                 .and_then(|fqname| objects.get(fqname))
-                .is_some_and(|obj| obj.deprecation_notice().is_some())
+                .is_some_and(|obj| obj.is_deprecated())
         });
         let (deprecation_ignore_start, deprecation_ignore_end) =
             quote_deprecation_ignore_start_and_end(
                 &mut hpp_includes,
-                obj.deprecation_notice().is_some() || has_any_deprecated_fields,
+                obj.is_deprecated() || has_any_deprecated_fields,
             );
 
         let default_ctor = if obj.is_attr_set(ATTR_CPP_NO_DEFAULT_CTOR) {
@@ -788,7 +788,7 @@ impl QuotedObject {
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
-                struct #deprecation_notice #archetype_type_ident {
+                struct #deprecated_notice #archetype_type_ident {
                     #(#field_declarations;)*
 
                 public:
@@ -882,7 +882,7 @@ impl QuotedObject {
 
         let type_ident = obj.ident();
         let quoted_docs = quote_obj_docs(reporter, objects, obj);
-        let deprecation_notice = quote_deprecation_notice(obj);
+        let deprecated_notice = quote_deprecated_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         let mut hpp_declarations = ForwardDecls::default();
@@ -958,7 +958,7 @@ impl QuotedObject {
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
-                struct #deprecation_notice #type_ident {
+                struct #deprecated_notice #type_ident {
                     #(#field_declarations;)*
 
                     #hpp_type_extensions
@@ -1037,7 +1037,7 @@ impl QuotedObject {
         let pascal_case_name = &obj.name;
         let pascal_case_ident = obj.ident();
         let quoted_docs = quote_obj_docs(reporter, objects, obj);
-        let deprecation_notice = quote_deprecation_notice(obj);
+        let deprecated_notice = quote_deprecated_notice(obj);
 
         let tag_typename = format_ident!("{pascal_case_name}Tag");
         let data_typename = format_ident!("{pascal_case_name}Data");
@@ -1361,7 +1361,7 @@ impl QuotedObject {
                 }
 
                 #quoted_docs
-                struct #deprecation_notice #pascal_case_ident {
+                struct #deprecated_notice #pascal_case_ident {
                     #pascal_case_ident() : _tag(detail::#tag_typename::None) {}
 
                     #copy_constructor
@@ -1455,7 +1455,7 @@ impl QuotedObject {
 
         let type_ident = obj.ident();
         let quoted_docs = quote_obj_docs(reporter, objects, obj);
-        let deprecation_notice = quote_deprecation_notice(obj);
+        let deprecated_notice = quote_deprecated_notice(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         let mut hpp_declarations = ForwardDecls::default();
@@ -1495,7 +1495,7 @@ impl QuotedObject {
 
             namespace rerun::#quoted_namespace {
                 #quoted_docs
-                enum class #deprecation_notice #type_ident : uint8_t {
+                enum class #deprecated_notice #type_ident : uint8_t {
                     #(#field_declarations,)*
                 };
             }
@@ -2527,11 +2527,10 @@ fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> Token
         *first_line = format!("**{}**: {}", obj.kind.singular_name(), first_line);
     }
 
-    if obj.is_experimental() {
+    if let Some(docline_summary) = &obj.state.docline_summary() {
         lines.push(String::new());
-        lines.push(
-            "⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**".to_owned(),
-        );
+        lines.push(docline_summary.replace("⚠️", "⚠").clone());
+        lines.push(String::new());
     }
 
     quote_doc_lines(&lines)
@@ -2776,7 +2775,7 @@ fn quote_loggable_hpp_and_cpp(
     hpp_includes.insert_rerun("component_descriptor.hpp");
 
     let (deprecation_ignore_start, deprecation_ignore_end) =
-        quote_deprecation_ignore_start_and_end(hpp_includes, obj.deprecation_notice().is_some());
+        quote_deprecation_ignore_start_and_end(hpp_includes, obj.is_deprecated());
 
     let hpp = quote! {
         #deprecation_ignore_start
@@ -2810,11 +2809,11 @@ fn quote_loggable_hpp_and_cpp(
     (hpp, cpp)
 }
 
-fn quote_deprecation_notice(obj: &Object) -> TokenStream {
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
+fn quote_deprecated_notice(obj: &Object) -> TokenStream {
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
         // https://en.cppreference.com/w/cpp/language/attributes/deprecated
         quote! {
-            [[deprecated(#deprecation_notice)]]
+            [[deprecated(#deprecation_summary)]]
         }
     } else {
         quote! {}

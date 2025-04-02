@@ -27,54 +27,208 @@ service FrontendService {
 
   rpc ReadDatasetEntry(rerun.catalog.v1alpha1.ReadDatasetEntryRequest) returns (rerun.catalog.v1alpha1.ReadDatasetEntryResponse) {}
 
+  rpc ReadTableEntry(rerun.catalog.v1alpha1.ReadTableEntryRequest) returns (rerun.catalog.v1alpha1.ReadTableEntryResponse) {}
+
   // --- Manifest Registry ---
   // Automatically handles entry/dataset resolution.
 
+  /* Write data */
+
   // Register new partitions with the Dataset
-  rpc RegisterPartitions(RegisterPartitionsRequest) returns (rerun.manifest_registry.v1alpha1.RegisterPartitionsResponse) {}
+  rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse) {}
 
-  // Unregister partitions from the Dataset
-  rpc UnregisterPartitions(UnregisterPartitionsRequest) returns (rerun.manifest_registry.v1alpha1.UnregisterPartitionsResponse) {}
+  // Unimplemented.
+  rpc WriteChunks(stream WriteChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
 
-  // List partitions in the Dataset
-  rpc ListPartitions(ListPartitionsRequest) returns (stream rerun.manifest_registry.v1alpha1.ListPartitionsResponse) {}
+  /* Query schemas */
 
-  // Fetch partition from the Dataset
+  // Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
+  //
+  // * To inspect the data of the partition table, use `ScanPartitionTable`.
+  // * To retrieve the schema of the underlying dataset, use `GetDatasetSchema` instead.
+  rpc GetPartitionTableSchema(GetPartitionTableSchemaRequest) returns (rerun.manifest_registry.v1alpha1.GetPartitionTableSchemaResponse) {}
+
+  // Inspect the contents of the partition table (i.e. the dataset manifest).
+  //
+  // The returned data will follow the schema specified by `GetPartitionTableSchema`.
+  rpc ScanPartitionTable(ScanPartitionTableRequest) returns (stream rerun.manifest_registry.v1alpha1.ScanPartitionTableResponse) {}
+
+  // Returns the schema of the dataset.
+  //
+  // This is the union of all the schemas from all the underlying partitions. It will contain all the indexes,
+  // entities and components present in the dataset.
+  rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (rerun.manifest_registry.v1alpha1.GetDatasetSchemaResponse) {}
+
+  /* Indexing */
+
+  // Creates a custom index for a specific column (vector search, full-text search, etc).
+  rpc CreateIndex(CreateIndexRequest) returns (rerun.manifest_registry.v1alpha1.CreateIndexResponse) {}
+
+  // Recreate an index with the same configuration but (potentially) new data.
+  rpc ReIndex(ReIndexRequest) returns (rerun.manifest_registry.v1alpha1.ReIndexResponse) {}
+
+  /* Queries */
+
+  // Search a previously created index.
+  rpc SearchDataset(SearchDatasetRequest) returns (stream rerun.manifest_registry.v1alpha1.SearchDatasetResponse) {}
+
+  // Perform Rerun-native queries on a dataset, returning the matching chunk IDs.
+  //
+  // These Rerun-native queries include:
+  // * Filtering by specific partition and chunk IDs.
+  // * Latest-at, range and dataframe queries.
+  // * Arbitrary Lance filters.
+  //
+  // To fetch the actual chunks themselves, see `GetChunks`.
+  //
+  // Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
+  rpc QueryDataset(QueryDatasetRequest) returns (stream rerun.manifest_registry.v1alpha1.QueryDatasetResponse) {}
+
+  // Perform Rerun-native queries on a dataset, returning the underlying chunks.
+  //
+  // These Rerun-native queries include:
+  // * Filtering by specific partition and chunk IDs.
+  // * Latest-at, range and dataframe queries.
+  // * Arbitrary Lance filters.
+  //
+  // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
+  rpc GetChunks(GetChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.GetChunksResponse) {}
+
+  /* HACKS */
+
+  // Fetch an entire partition from the server, without any pre- or post-processing.
+  //
+  // This is a temporary hack while we get everything up and running.
   rpc FetchPartition(FetchPartitionRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchPartitionResponse) {}
+  // --- Table Apis ---
+  // TODO(jleibs): This will be replaced / extended by Arrow Flight
+
+  rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
+  rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
 }
 
 // --- Manifest Registry ---
 
-message RegisterPartitionsRequest {
+/* Write data */
+
+message RegisterWithDatasetRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
-
-  // Partitions to add
-  repeated rerun.manifest_registry.v1alpha1.Partition partitions = 2;
-
-  // what to do if partition is already registered
+  repeated rerun.manifest_registry.v1alpha1.DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
 }
 
-message UnregisterPartitionsRequest {
+message WriteChunksRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
-
-  // Partitions to remove
-  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
-
-  // What to do if partition is not found
-  rerun.common.v1alpha1.IfMissingBehavior on_unknown_partition = 3;
 }
 
-message ListPartitionsRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
+/* Query schemas */
 
-  // Scan parameters
+message GetPartitionTableSchemaRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+}
+
+message ScanPartitionTableRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
   rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
 }
 
-message FetchPartitionRequest {
-  rerun.common.v1alpha1.Tuid dataset_id = 1;
+message GetDatasetSchemaRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+}
 
-  // Partition for which we want to get chunks
+/* Indexing */
+
+message CreateIndexRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // List of specific partitions that will be indexed (all if left empty).
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  rerun.manifest_registry.v1alpha1.IndexConfig config = 3;
+
+  // Specify behavior when index for a partition was already created.
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
+}
+
+message ReIndexRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+}
+
+/* Queries */
+
+message SearchDatasetRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // Index column that is queried
+  rerun.manifest_registry.v1alpha1.IndexColumn column = 2;
+
+  // Query data - type of data is index specific. Caller must ensure
+  // to provide the right type. For vector search this should
+  // be a vector of appropriate size, for inverted index this should be a string.
+  // Query data is represented as a unit (single row) RecordBatch with 1 column.
+  rerun.common.v1alpha1.DataframePart query = 3;
+
+  // Index type specific properties
+  rerun.manifest_registry.v1alpha1.IndexQueryProperties properties = 4;
+
+  // Scan parameters
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
+}
+
+message QueryDatasetRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // Client can specify what partitions are queried. If left unspecified (empty list),
+  // all partitions will be queried.
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // Client can specify specific chunk ids to include. If left unspecified (empty list),
+  // all chunks that match other query parameters will be included.
+  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
+
+  // Generic parameters that will influence the behavior of the Lance scanner.
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
+
+  rerun.manifest_registry.v1alpha1.Query query = 5;
+}
+
+message GetChunksRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
+
+  // Client can specify from which partitions to get chunks. If left unspecified (empty list),
+  // data from all partition (that match other query parameters) will be included.
+  repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
+
+  // Client can specify chunk ids to include. If left unspecified (empty list),
+  // all chunks (that match other query parameters) will be included.
+  repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
+
+  // Query details
+  rerun.manifest_registry.v1alpha1.Query query = 5;
+}
+
+message FetchPartitionRequest {
+  rerun.common.v1alpha1.EntryId dataset_id = 1;
   rerun.common.v1alpha1.PartitionId partition_id = 2;
+}
+
+// --- Table Apis ---
+
+message GetTableSchemaRequest {
+  rerun.common.v1alpha1.EntryId table_id = 1;
+}
+
+message GetTableSchemaResponse {
+  rerun.common.v1alpha1.Schema schema = 1;
+}
+
+message ScanTableRequest {
+  rerun.common.v1alpha1.EntryId table_id = 1;
+  // TODO(jleibs): support ScanParameters iff we can plumb them into Datafusion TableProvider
+  // Otherwise, just wait for Arrow Flight
+  //rerun.common.v1alpha1.ScanParameters scan_parameters = 2;
+}
+
+message ScanTableResponse {
+  rerun.common.v1alpha1.DataframePart dataframe_part = 1;
 }

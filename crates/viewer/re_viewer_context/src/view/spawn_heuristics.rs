@@ -13,7 +13,7 @@ pub struct RecommendedView {
 /// Provides information in order to decide whether to spawn a views, putting them in relationship to others and spawning them.
 // TODO(andreas): allow bucketing decisions for 0-n buckets for recommended views.
 // TODO(andreas): Should `ViewClassLayoutPriority` be part of this struct?
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ViewSpawnHeuristics {
     /// The recommended views to spawn
     recommended_views: Vec<RecommendedView>,

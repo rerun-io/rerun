@@ -1,21 +1,21 @@
 /// When showing grid-lines representing time.
 ///
 /// Given some spacing (e.g. 10s), return the next spacing (60s).
-pub fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
-    if spacing_ns <= 1_000_000_000 {
-        spacing_ns * 10 // up to 10 second ticks
-    } else if spacing_ns == 10_000_000_000 {
-        spacing_ns * 6 // to the whole minute
-    } else if spacing_ns == 60_000_000_000 {
-        spacing_ns * 10 // to ten minutes
-    } else if spacing_ns == 600_000_000_000 {
-        spacing_ns * 6 // to an hour
-    } else if spacing_ns == 60 * 60 * 1_000_000_000 {
-        spacing_ns * 12 // to 12 h
-    } else if spacing_ns == 12 * 60 * 60 * 1_000_000_000 {
-        spacing_ns * 2 // to a day
+pub fn next_grid_tick_magnitude_nanos(spacing_nanos: i64) -> i64 {
+    if spacing_nanos <= 1_000_000_000 {
+        spacing_nanos * 10 // up to 10 second ticks
+    } else if spacing_nanos == 10_000_000_000 {
+        spacing_nanos * 6 // to the whole minute
+    } else if spacing_nanos == 60_000_000_000 {
+        spacing_nanos * 10 // to ten minutes
+    } else if spacing_nanos == 600_000_000_000 {
+        spacing_nanos * 6 // to an hour
+    } else if spacing_nanos == 60 * 60 * 1_000_000_000 {
+        spacing_nanos * 12 // to 12 h
+    } else if spacing_nanos == 12 * 60 * 60 * 1_000_000_000 {
+        spacing_nanos * 2 // to a day
     } else {
-        spacing_ns.checked_mul(10).unwrap_or(spacing_ns) // multiple of ten days
+        spacing_nanos.checked_mul(10).unwrap_or(spacing_nanos) // multiple of ten days
     }
 }
 
@@ -23,11 +23,11 @@ pub fn next_grid_tick_magnitude_ns(spacing_ns: i64) -> i64 {
 ///
 /// This is meant for a relatively stable display of timestamps that are typically in minutes
 /// where we still care about fractional seconds.
-pub fn format_timestamp_seconds(timestamp_seconds: f64) -> String {
-    let n = timestamp_seconds as i32;
+pub fn format_timestamp_secs(timestamp_secs: f64) -> String {
+    let n = timestamp_secs as i32;
     let hours = n / (60 * 60);
     let mins = (n / 60) % 60;
-    let secs = (n % 60) as f64 + timestamp_seconds.fract();
+    let secs = (n % 60) as f64 + timestamp_secs.fract();
 
     if hours > 0 {
         format!("{hours:02}:{mins:02}:{secs:02.02}")
@@ -44,7 +44,7 @@ pub fn format_timestamp_seconds(timestamp_seconds: f64) -> String {
 /// * fractional seconds
 /// * minutes:[fractional seconds]
 /// * hours:minutes:[fractional seconds]
-pub fn parse_timestamp_seconds(s: &str) -> Option<f64> {
+pub fn parse_timestamp_secs(s: &str) -> Option<f64> {
     let parts: Vec<&str> = s.split(':').collect();
     match parts.len() {
         1 => parts[0].parse::<f64>().ok(),

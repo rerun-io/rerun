@@ -7,6 +7,7 @@ namespace rerun.datatypes;
 /// This is internal to [components.AnnotationContext].
 table ClassDescriptionMapElem (
   "attr.python.aliases": "datatypes.ClassDescriptionLike",
+  "attr.rerun.state": "unstable",
   "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
   /// The key: the [components.ClassId].

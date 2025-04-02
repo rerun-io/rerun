@@ -4,9 +4,10 @@ namespace rerun.components;
 ///
 /// TODO(#6889): This is a temporary workaround. Right now we can't use [components.Visible] since it would conflict with the entity-wide visibility state.
 struct SeriesVisible (
-    "attr.docs.unreleased", // this component got moved, links changed.
     "attr.arrow.transparent",
+    "attr.docs.unreleased",
     "attr.python.aliases": "bool",
+    "attr.rerun.state": "stable", // this component got moved, links changed.
     "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"

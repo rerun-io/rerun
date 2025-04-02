@@ -17,6 +17,7 @@ namespace rerun.datatypes;
 table TensorData (
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq,"
 ) {
   /// The shape of the tensor, i.e. the length of each dimension.

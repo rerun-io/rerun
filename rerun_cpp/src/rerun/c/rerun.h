@@ -132,6 +132,9 @@ typedef struct rr_spawn_options {
     /// Hide the normal Rerun welcome screen.
     bool hide_welcome_screen;
 
+    /// Detach Rerun Viewer process from the application process.
+    bool detach_process;
+
     /// Specifies the name of the Rerun executable.
     ///
     /// You can omit the `.exe` suffix on Windows.
@@ -368,11 +371,11 @@ typedef struct rr_error {
 extern const char* rr_version_string(void);
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
-/// listen for incoming TCP connections.
+/// listen for incoming gRPC connections.
 ///
 /// `spawn_opts` can be set to NULL to use the recommended defaults.
 ///
-/// If a Rerun Viewer is already listening on this TCP port, this does nothing.
+/// If a Rerun Viewer is already listening on this gRPC port, this does nothing.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
 /// Registers a new component type to be used in `rr_component_batch`.
@@ -434,7 +437,7 @@ extern void rr_recording_stream_connect_grpc(
 );
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
-/// over TCP.
+/// over gRPC.
 ///
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
@@ -563,7 +566,7 @@ extern void rr_recording_stream_send_columns(
 // ----------------------------------------------------------------------------
 // Other utilities
 
-/// Allocation method for `rr_video_asset_read_frame_timestamps_ns`.
+/// Allocation method for `rr_video_asset_read_frame_timestamps_nanos`.
 typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timestamps);
 
 /// Determines the presentation timestamps of all frames inside the video.
@@ -575,7 +578,7 @@ typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timest
 /// \param alloc_func
 /// Function used to allocate memory for the returned timestamps.
 /// Guaranteed to be called exactly once with the `alloc_context` pointer as argument.
-extern int64_t* rr_video_asset_read_frame_timestamps_ns(
+extern int64_t* rr_video_asset_read_frame_timestamps_nanos(
     const uint8_t* video_bytes, uint64_t video_bytes_len, rr_string media_type, void* alloc_context,
     rr_alloc_timestamps alloc_timestamps, rr_error* error
 );

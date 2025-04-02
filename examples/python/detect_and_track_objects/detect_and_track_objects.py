@@ -43,10 +43,10 @@ COCO_CATEGORIES_PATH = EXAMPLE_DIR / "panoptic_coco_categories.json"
 DOWNSCALE_FACTOR = 2
 DETECTION_SCORE_THRESHOLD = 0.8
 
-os.environ["TRANSFORMERS_CACHE"] = str(CACHE_DIR.absolute())
+os.environ["HF_HOME"] = str(CACHE_DIR.absolute())
 from transformers import (  # noqa: E402 module level import not at top of file
-    DetrFeatureExtractor,
     DetrForSegmentation,
+    DetrImageProcessor,
 )
 
 
@@ -84,7 +84,7 @@ class Detector:
 
     def __init__(self, coco_categories: list[dict[str, Any]]) -> None:
         logging.info("Initializing neural net for detection and segmentation.")
-        self.feature_extractor = DetrFeatureExtractor.from_pretrained("facebook/detr-resnet-50-panoptic")
+        self.feature_extractor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50-panoptic")
         self.model = DetrForSegmentation.from_pretrained("facebook/detr-resnet-50-panoptic")
 
         self.is_thing_from_id: dict[int, bool] = {cat["id"]: bool(cat["isthing"]) for cat in coco_categories}
@@ -345,7 +345,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     logging.info("Detector initialized.")
 
     video_asset = rr.AssetVideo(path=video_path)
-    frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+    frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
 
     rr.log("video", video_asset, static=True)
 

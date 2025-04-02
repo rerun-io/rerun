@@ -11,6 +11,7 @@ use re_chunk_store::{
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind};
 use re_query::CachesStats;
+use re_smart_channel::SmartChannelSource;
 use re_types::components::Timestamp;
 
 use crate::{
@@ -842,7 +843,13 @@ impl StoreHub {
                 re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
                     endpoint.to_string() != uri
                 }
-                _ => true,
+
+                SmartChannelSource::File(_)
+                | SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::JsChannel { .. }
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::Stdin
+                | SmartChannelSource::MessageProxy { .. } => true,
             }
         });
     }

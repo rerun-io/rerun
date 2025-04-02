@@ -67,6 +67,12 @@ pub enum StreamError {
 
     #[error(transparent)]
     InvalidSorbetSchema(#[from] re_sorbet::SorbetError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] re_protos::TypeConversionError),
+
+    #[error("Chunk data missing in response")]
+    MissingChunkData,
 }
 
 impl From<tonic::Status> for StreamError {

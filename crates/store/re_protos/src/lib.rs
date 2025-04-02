@@ -35,14 +35,14 @@ mod v1alpha1 {
     #[path = "./rerun.log_msg.v1alpha1.rs"]
     pub mod rerun_log_msg_v1alpha1;
 
-    #[path = "./rerun.remote_store.v1alpha1.rs"]
-    pub mod rerun_remote_store_v1alpha1;
-
     #[path = "./rerun.sdk_comms.v1alpha1.rs"]
     pub mod rerun_sdk_comms_v1alpha1;
 
     #[path = "./rerun.manifest_registry.v1alpha1.rs"]
     pub mod rerun_manifest_registry_v1alpha1;
+
+    #[path = "./rerun.manifest_registry.v1alpha1.ext.rs"]
+    pub mod rerun_manifest_registry_v1alpha1_ext;
 
     #[path = "./rerun.frontend.v1alpha1.rs"]
     pub mod rerun_frontend_v1alpha1;
@@ -67,37 +67,25 @@ pub mod log_msg {
 }
 
 pub mod manifest_registry {
+    #[rustfmt::skip] // keep these constants single line for easy sorting
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1::*;
+        #[expect(unused_imports)]
+        pub mod ext {
+            pub use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::*;
+        }
 
         /// `DatasetManifest` mandatory field names. All mandatory metadata fields are prefixed
         /// with "rerun_" to avoid conflicts with user-defined fields.
-        pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
         pub const DATASET_MANIFEST_APP_ID_FIELD_NAME: &str = "rerun_application_id";
-        pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
-        pub const DATASET_MANIFEST_DESCRIPTION_FIELD_NAME: &str = "rerun_description";
+        pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
+        pub const DATASET_MANIFEST_PARTITION_MANIFEST_UPDATED_AT_FIELD_NAME: &str = "rerun_partition_manifest_updated_at";
+        pub const DATASET_MANIFEST_PARTITION_MANIFEST_URL_FIELD_NAME: &str = "rerun_partition_manifest_url";
         pub const DATASET_MANIFEST_RECORDING_TYPE_FIELD_NAME: &str = "rerun_partition_type";
-        pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
         pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
         pub const DATASET_MANIFEST_ROW_ID_FIELD_NAME: &str = "rerun_row_id";
-    }
-}
-
-/// Generated types for the remote store gRPC service API v1alpha1.
-pub mod remote_store {
-    pub mod v1alpha1 {
-        pub use crate::v1alpha1::rerun_remote_store_v1alpha1::*;
-
-        /// Recording catalog mandatory field names. All mandatory metadata fields are prefixed
-        /// with "rerun_" to avoid conflicts with user-defined fields.
-        pub const CATALOG_ID_FIELD_NAME: &str = "rerun_recording_id";
-        pub const CATALOG_APP_ID_FIELD_NAME: &str = "rerun_application_id";
-        pub const CATALOG_START_TIME_FIELD_NAME: &str = "rerun_start_time";
-        pub const CATALOG_DESCRIPTION_FIELD_NAME: &str = "rerun_description";
-        pub const CATALOG_RECORDING_TYPE_FIELD_NAME: &str = "rerun_recording_type";
-        pub const CATALOG_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
-        pub const CATALOG_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
-        pub const CATALOG_ROW_ID_FIELD_NAME: &str = "rerun_row_id";
+        pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
+        pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
     }
 }
 
@@ -155,6 +143,9 @@ pub enum TypeConversionError {
 
     #[error("failed to encode: {0}")]
     EncodeError(#[from] prost::EncodeError),
+
+    #[error("failed to convert arrow data: {0}")]
+    ArrowError(#[from] arrow::error::ArrowError),
 
     #[error("{0}")]
     UnknownEnumValue(#[from] prost::UnknownEnumValue),

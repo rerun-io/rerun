@@ -530,7 +530,7 @@ impl RecordingStreamBuilder {
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// web-based Rerun viewer via WebSockets.
+    /// web-based Rerun viewer via gRPC.
     ///
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
     /// connected web-viewer.
@@ -539,12 +539,11 @@ impl RecordingStreamBuilder {
     ///
     /// ## Details
     /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
-    /// and then one WebSocket server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
+    /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
     ///
-    /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
-    /// Once reached, the earliest logged data will be dropped.
-    /// Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// ## Example
     ///
@@ -579,7 +578,7 @@ impl RecordingStreamBuilder {
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
-    /// web-based Rerun viewer via WebSockets.
+    /// web-based Rerun viewer via gRPC.
     ///
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
     /// connected web-viewer.
@@ -588,12 +587,11 @@ impl RecordingStreamBuilder {
     ///
     /// ## Details
     /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
-    /// and then one WebSocket server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
+    /// and then one gRPC server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
     ///
-    /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
-    /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
-    /// Once reached, the earliest logged data will be dropped.
-    /// Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
     /// ## Example
     ///
@@ -2142,7 +2140,7 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_time`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_duration_seconds`]
+    /// - [`Self::set_duration_secs`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
@@ -2177,7 +2175,7 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_duration_seconds`]
+    /// - [`Self::set_duration_secs`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_time(&self, timeline: impl Into<TimelineName>, value: impl TryInto<TimeCell>) {
@@ -2212,7 +2210,7 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_time`]
     /// - [`Self::set_timepoint`]
-    /// - [`Self::set_duration_seconds`]
+    /// - [`Self::set_duration_secs`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[inline]
@@ -2227,7 +2225,7 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the index/time setting methods.
     ///
-    /// For example: `rec.set_duration_seconds("time_since_start", time_offset)`.
+    /// For example: `rec.set_duration_secs("time_since_start", time_offset)`.
     /// You can remove a timeline again using `rec.disable_timeline("time_since_start")`.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
@@ -2235,23 +2233,23 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_time`]
     /// - [`Self::set_timepoint`]
-    /// - [`Self::set_timestamp_seconds_since_epoch`]
+    /// - [`Self::set_timestamp_secs_since_epoch`]
     /// - [`Self::set_time_sequence`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[inline]
-    pub fn set_duration_seconds(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
+    pub fn set_duration_secs(&self, timeline: impl Into<TimelineName>, secs: impl Into<f64>) {
         self.set_time(timeline, std::time::Duration::from_secs_f64(secs.into()));
     }
 
     /// Set a timestamp as seconds since Unix epoch (1970-01-01 00:00:00 UTC).
     ///
-    /// Short for `self.set_time(timeline, rerun::TimeCell::from_timestamp_seconds_since_epoch(secs))`.
+    /// Short for `self.set_time(timeline, rerun::TimeCell::from_timestamp_secs_since_epoch(secs))`.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the index/time setting methods.
     ///
-    /// For example: `rec.set_duration_seconds("time_since_start", time_offset)`.
+    /// For example: `rec.set_duration_secs("time_since_start", time_offset)`.
     /// You can remove a timeline again using `rec.disable_timeline("time_since_start")`.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
@@ -2259,19 +2257,19 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_time`]
     /// - [`Self::set_timepoint`]
-    /// - [`Self::set_duration_seconds`]
+    /// - [`Self::set_duration_secs`]
     /// - [`Self::set_time_sequence`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[inline]
-    pub fn set_timestamp_seconds_since_epoch(
+    pub fn set_timestamp_secs_since_epoch(
         &self,
         timeline: impl Into<TimelineName>,
         secs: impl Into<f64>,
     ) {
         self.set_time(
             timeline,
-            TimeCell::from_timestamp_seconds_since_epoch(secs.into()),
+            TimeCell::from_timestamp_secs_since_epoch(secs.into()),
         );
     }
 
@@ -2280,7 +2278,7 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the index/time setting methods.
     ///
-    /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+    /// For example: `rec.set_time_secs("sim_time", sim_time_secs)`.
     /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
     ///
     /// There is no requirement of monotonicity. You can move the time backwards if you like.
@@ -2293,11 +2291,11 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     #[deprecated(
         since = "0.23.0",
-        note = "Use either `set_duration_seconds` or `set_timestamp_seconds_since_epoch` instead"
+        note = "Use either `set_duration_secs` or `set_timestamp_secs_since_epoch` instead"
     )]
     #[inline]
-    pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
-        self.set_duration_seconds(timeline, seconds);
+    pub fn set_time_secs(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
+        self.set_duration_secs(timeline, seconds);
     }
 
     /// Set the current time of the recording, for the current calling thread.
@@ -2313,7 +2311,7 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_secs`]
     /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     #[deprecated(
@@ -2340,7 +2338,7 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_secs`]
     /// - [`Self::set_time_nanos`]
     /// - [`Self::reset_time`]
     pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
@@ -2364,7 +2362,7 @@ impl RecordingStream {
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_secs`]
     /// - [`Self::set_time_nanos`]
     /// - [`Self::disable_timeline`]
     pub fn reset_time(&self) {

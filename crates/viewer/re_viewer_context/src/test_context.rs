@@ -319,6 +319,9 @@ impl TestContext {
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(&store_context.recording.store_id());
+        let maybe_visualizable_entities_per_visualizer = self
+            .view_class_registry
+            .maybe_visualizable_entities_for_visualizer_systems(&self.recording_store.store_id());
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
@@ -351,7 +354,7 @@ impl TestContext {
                 tables: &Default::default(),
             },
             active_table: None,
-            maybe_visualizable_entities_per_visualizer: &Default::default(),
+            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,

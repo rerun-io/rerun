@@ -76,9 +76,8 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
-    /// TODO(zehiko) make this optional (#9285)
-    #[prost(bytes = "vec", tag = "1")]
-    pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "1")]
+    pub arrow_schema: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 impl ::prost::Name for Schema {
     const NAME: &'static str = "Schema";
@@ -594,6 +593,28 @@ impl ::prost::Name for PartitionId {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.PartitionId".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ComponentDescriptor {
+    /// Optional name of the `Archetype` associated with this data.
+    #[prost(string, optional, tag = "1")]
+    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional name of the field within `Archetype` associated with this data.
+    #[prost(string, optional, tag = "2")]
+    pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Semantic name associated with this data.
+    #[prost(string, optional, tag = "3")]
+    pub component_name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ComponentDescriptor {
+    const NAME: &'static str = "ComponentDescriptor";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ComponentDescriptor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ComponentDescriptor".into()
     }
 }
 /// supported encoder versions for encoding data
