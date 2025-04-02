@@ -14,7 +14,7 @@ use re_query::CachesStats;
 use re_types::components::Timestamp;
 
 use crate::{
-    BlueprintUndoState, Caches, StoreBundle, StoreContext, TableContext, TableId, TableStore,
+    BlueprintUndoState, Caches, StoreBundle, StoreContext, TableId, TableStore, TableStores,
 };
 
 #[derive(Clone)]
@@ -189,13 +189,16 @@ impl StoreHub {
             store_bundle.blueprint_entry(&Self::welcome_screen_blueprint_id());
         (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
 
-        let table_id = TableId::new("test123".to_owned());
+        let table_stores = if std::env::var("RERUN_EXPERIMENTAL_TABLE").is_ok() {
+            let table_id = TableId::new("test123".to_owned());
+            std::iter::once((table_id, TableStore::dummy())).collect()
+        } else {
+            TableStores::default()
+        };
 
         Self {
             persistence,
-            active_entry: Some(Entry::Table {
-                table_id: table_id.clone(),
-            }),
+            active_entry: None,
             active_application_id: None,
 
             default_blueprint_by_app_id,
@@ -208,7 +211,7 @@ impl StoreHub {
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
 
-            table_stores: std::iter::once((table_id, Default::default())).collect(),
+            table_stores,
         }
     }
 
@@ -339,7 +342,8 @@ impl StoreHub {
     /// The closest neighbor is the next recording when sorted by (app ID, time), if any, or the
     /// previous one otherwise. This is used to update the selected recording when the current one
     /// is deleted.
-    fn find_closest_recording(&self, id: &StoreId) -> Option<StoreId> {
+    // TODO: This has no business in `StoreHub` because it is an UI implementation detail
+    fn _find_closest_recording(&self, id: &StoreId) -> Option<StoreId> {
         let mut recs = self.store_bundle.recordings().collect_vec();
 
         recs.sort_by_key(|entity_db| {

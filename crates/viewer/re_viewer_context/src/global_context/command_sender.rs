@@ -4,7 +4,7 @@ use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
-use crate::{Entry, TableId};
+use crate::Entry;
 
 // ----------------------------------------------------------------------------
 

@@ -13,7 +13,8 @@ use re_viewer_context::{
     store_hub::StorageContext, AppOptions, ApplicationSelectionState, BlueprintUndoState,
     CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, PlayState,
     RecordingConfig, SelectionChange, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
+    SystemCommandSender as _, TableContext, ViewClassExt as _, ViewClassRegistry, ViewStates,
+    ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -407,35 +408,29 @@ impl AppState {
 
                     display_mode_toggle_ui(ui, display_mode);
 
-                    match display_mode {
-                        DisplayMode::LocalRecordings => {
-                            let resizable = ctx.storage_context.bundle.recordings().count() > 3;
+                    if display_mode == &DisplayMode::LocalRecordings {
+                        let resizable = ctx.storage_context.bundle.recordings().count() > 3;
 
-                            if resizable {
-                                // Don't shrink either recordings panel or blueprint panel below this height
-                                let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
+                        if resizable {
+                            // Don't shrink either recordings panel or blueprint panel below this height
+                            let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
 
-                                egui::TopBottomPanel::top("recording_panel")
-                                    .frame(egui::Frame::new())
-                                    .resizable(resizable)
-                                    .show_separator_line(false)
-                                    .min_height(min_height_each)
-                                    .default_height(210.0)
-                                    .max_height(ui.available_height() - min_height_each)
-                                    .show_inside(ui, |ui| {
-                                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                                    });
-                            } else {
-                                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
-                            }
-
-                            ui.add_space(4.0);
+                            egui::TopBottomPanel::top("recording_panel")
+                                .frame(egui::Frame::new())
+                                .resizable(resizable)
+                                .show_separator_line(false)
+                                .min_height(min_height_each)
+                                .default_height(210.0)
+                                .max_height(ui.available_height() - min_height_each)
+                                .show_inside(ui, |ui| {
+                                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                });
+                        } else {
+                            recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
                         }
 
-                        _ => {
-                            // TODO: need to be handled
-                        }
-                    };
+                        ui.add_space(4.0);
+                    }
                 },
             );
 
@@ -452,9 +447,12 @@ impl AppState {
                         .active_table
                         .as_ref()
                         .expect("if we're here, we need to have a table id");
-                    if let Some(batch_store) = ctx.storage_context.tables.get(table_id) {
-                        crate::ui::table_ui(&ctx, ui, batch_store);
-                        return;
+                    if let Some(store) = ctx.storage_context.tables.get(table_id) {
+                        let context = TableContext {
+                            table_id: table_id.clone(),
+                            store,
+                        };
+                        crate::ui::table_ui(&ctx, ui, &context);
                     } else {
                         re_log::error_once!("Could not find batch store for table id {}", table_id);
                     }

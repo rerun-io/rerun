@@ -9,8 +9,8 @@ use parking_lot::Mutex;
 use crate::{
     blueprint_timeline, command_channel, store_hub::StorageContext, ApplicationSelectionState,
     CommandReceiver, CommandSender, ComponentUiRegistry, DataQueryResult, GlobalContext,
-    ItemCollection, RecordingConfig, StoreContext, SystemCommand, TableContext, TableId, ViewClass,
-    ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    ItemCollection, RecordingConfig, StoreContext, SystemCommand, ViewClass, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext,
 };
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;

@@ -7,8 +7,6 @@ use re_types::external::arrow::{
     datatypes::Schema,
 };
 
-use crate::{store_hub::StorageContext, StoreBundle, StoreHub};
-
 #[derive(
     Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
 )]
@@ -45,7 +43,7 @@ struct SorbetBatchStore {
     batches: Vec<re_sorbet::SorbetBatch>,
 }
 
-// TODO: remove `Default`
+#[derive(Default)]
 pub struct TableStore {
     // Don't ever expose this to the outside world.
     store_engine: parking_lot::RwLock<SorbetBatchStore>,
@@ -60,12 +58,11 @@ impl TableStore {
     pub fn add_batch(&self, batch: re_sorbet::SorbetBatch) {
         self.store_engine.write().batches.push(batch);
     }
-}
 
-// TODO(grtlr): This is just for debugging purposes until we can populate the
-// store from the outside, for example vie GRPC.
-impl Default for TableStore {
-    fn default() -> Self {
+    /// This is just for testing purposes and will go away soon™
+    // TODO(grtlr): This is just for debugging purposes until we can populate the
+    // store from the outside, for example vie GRPC.
+    pub fn dummy() -> Self {
         let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
             archetype_name: Some("archetype".to_owned().into()),
@@ -104,7 +101,10 @@ impl Default for TableStore {
 
 pub type TableStores = ahash::HashMap<TableId, TableStore>;
 
-pub struct TableContext {
+pub struct TableContext<'a> {
     /// The current active table.
     pub table_id: TableId,
+
+    /// The corresponding [`TableStore`]
+    pub store: &'a TableStore,
 }

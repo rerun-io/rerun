@@ -623,7 +623,7 @@ mod tests {
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
     use re_log_types::{example_components::MyPoint, StoreId, TimePoint, Timeline};
-    use re_viewer_context::{blueprint_timeline, StoreContext, StoreHub, VisualizableEntities};
+    use re_viewer_context::{blueprint_timeline, StoreContext, VisualizableEntities};
 
     use super::*;
 
