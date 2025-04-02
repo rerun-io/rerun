@@ -15,7 +15,6 @@
 use crate::web_tools::{url_to_receiver, window, JsResultExt as _};
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
-use re_viewer_context::StoreHub;
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 use std::sync::Arc;
 use std::sync::OnceLock;
