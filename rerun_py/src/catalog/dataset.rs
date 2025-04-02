@@ -1,16 +1,27 @@
-use arrow::datatypes::Schema as ArrowSchema;
+use std::sync::Arc;
+
+use arrow::array::{RecordBatch, StringArray};
+use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::{pyclass, pymethods, PyRef, PyResult};
+use re_dataframe::ComponentColumnSelector;
+use re_datafusion::SearchResultsTableProvider;
+use re_log_encoding::codec::wire::encoder::Encode as _;
+use re_protos::manifest_registry::v1alpha1::{
+    IndexColumn, IndexQueryProperties, InvertedIndexQuery,
+};
+use re_sdk::ComponentDescriptor;
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_grpc_client::redap::fetch_partition_response_to_chunk;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::ext::DatasetHandle;
-use re_protos::frontend::v1alpha1::FetchPartitionRequest;
+use re_protos::frontend::v1alpha1::{FetchPartitionRequest, SearchDatasetRequest};
 
 use crate::catalog::{to_py_err, PyEntry};
-use crate::dataframe::PyRecording;
+use crate::dataframe::{PyComponentColumnSelector, PyDataFusionTable, PyRecording};
 use crate::utils::wait_for_future;
 
 #[pyclass(name = "Dataset", extends=PyEntry)]
@@ -95,5 +106,60 @@ impl PyDataset {
             store: handle,
             cache,
         })
+    }
+
+    fn search_fts(
+        self_: PyRef<'_, Self>,
+        query: String,
+        column: PyComponentColumnSelector,
+    ) -> PyResult<PyDataFusionTable> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let column_selector: ComponentColumnSelector = column.into();
+        let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
+
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
+            Default::default(),
+        );
+
+        let query = RecordBatch::try_new(
+            Arc::new(schema),
+            vec![Arc::new(StringArray::from_iter_values([query]))],
+        )
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        let request = SearchDatasetRequest {
+            dataset_id: Some(dataset_id.into()),
+            column: Some(IndexColumn {
+                entity_path: Some(column_selector.entity_path.into()),
+                component: Some(component_descriptor.into()),
+            }),
+            properties: Some(IndexQueryProperties {
+                props: Some(
+                    re_protos::manifest_registry::v1alpha1::index_query_properties::Props::Inverted(
+                        InvertedIndexQuery {},
+                    ),
+                ),
+            }),
+            query: Some(
+                query
+                    .encode()
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            ),
+            scan_parameters: None,
+        };
+
+        let provider = wait_for_future(self_.py(), async move {
+            SearchResultsTableProvider::new(connection.client(), request)
+                .map_err(to_py_err)?
+                .into_provider()
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        Ok(PyDataFusionTable { provider })
     }
 }
