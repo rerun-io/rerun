@@ -598,6 +598,48 @@ class RecordingStream:
 
         disconnect(recording=self)
 
+    def serve_grpc(
+        self,
+        *,
+        grpc_port: int | None = None,
+        default_blueprint: BlueprintLike | None = None,
+        server_memory_limit: str = "75%",
+    ) -> None:
+        """
+        Serve log-data over gRPC.
+
+        You can to this server with the native viewer using `rerun rerun+http://localhost:{grpc_port}/proxy`.
+
+        The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+        You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+        Once reached, the earliest logged data will be dropped. Static data is never dropped.
+
+        This function returns immediately.
+
+        Parameters
+        ----------
+        grpc_port:
+            The port to serve the gRPC server on (defaults to 9876)
+        default_blueprint:
+            Optionally set a default blueprint to use for this application. If the application
+            already has an active blueprint, the new blueprint won't become active until the user
+            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            immediately, instead use the [`rerun.send_blueprint`][] API.
+        server_memory_limit:
+            Maximum amount of memory to use for buffering log data for clients that connect late.
+            This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
+
+        """
+
+        from .sinks import serve_grpc
+
+        serve_grpc(
+            grpc_port=grpc_port,
+            default_blueprint=default_blueprint,
+            server_memory_limit=server_memory_limit,
+            recording=self,
+        )
+
     def serve_web(
         self,
         *,

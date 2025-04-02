@@ -436,6 +436,16 @@ extern void rr_recording_stream_connect_grpc(
     rr_recording_stream stream, rr_string url, float flush_timeout_sec, rr_error* error
 );
 
+/// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
+///
+/// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+/// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+/// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+extern void rr_recording_stream_serve_grpc(
+    rr_recording_stream stream, rr_string bind_ip, uint16_t port, rr_string server_memory_limit,
+    rr_error* error
+);
+
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
 /// over gRPC.
 ///

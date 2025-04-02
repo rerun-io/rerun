@@ -101,7 +101,7 @@ run = [
 ]
 
 ## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
-server = ["dep:re_grpc_server"]
+server = ["dep:re_grpc_server", "re_sdk/server", "tokio/signal"]
 
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.
 sdk = ["dep:re_sdk", "dep:re_types"]

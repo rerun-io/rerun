@@ -123,6 +123,10 @@ pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, Loaded
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;
 
+/// Method for spawning a gRPC server and streaming the SDK log stream to it.
+#[cfg(feature = "server")]
+pub mod grpc_server;
+
 /// Re-exports of other crates.
 pub mod external {
     pub use re_grpc_client;

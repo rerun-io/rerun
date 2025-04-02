@@ -46,6 +46,8 @@ web_viewer = [
   "dep:webbrowser",
 ]
 
+server = ["dep:re_smart_channel", "dep:tokio"]
+
 
 [dependencies]
 re_build_info.workspace = true
