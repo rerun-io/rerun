@@ -13,6 +13,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Describe a component column to be selected in the dataframe view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct SelectedColumns {
         rerun::blueprint::datatypes::SelectedColumns selected_columns;
 

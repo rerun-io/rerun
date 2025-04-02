@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether empty cells in a dataframe should be filled with a latest-at query.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ApplyLatestAt {
         rerun::datatypes::Bool apply_latest_at;
 

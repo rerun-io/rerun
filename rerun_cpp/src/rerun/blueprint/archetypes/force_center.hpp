@@ -18,6 +18,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Tries to move the center of mass of the graph to the origin.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ForceCenter {
         /// Whether the center force is enabled.
         ///

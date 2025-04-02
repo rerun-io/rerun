@@ -16,7 +16,11 @@ __all__ = ["NearClipPlane", "NearClipPlaneBatch"]
 
 
 class NearClipPlane(datatypes.Float32, ComponentMixin):
-    """**Component**: Distance to the near clip plane used for `Spatial2DView`."""
+    """
+    **Component**: Distance to the near clip plane used for `Spatial2DView`.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of NearClipPlaneExt in near_clip_plane_ext.py

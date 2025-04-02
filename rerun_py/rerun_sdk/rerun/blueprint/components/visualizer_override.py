@@ -20,6 +20,8 @@ class VisualizerOverride(datatypes.Utf8, ComponentMixin):
     **Component**: Single visualizer override the visualizers for an entity.
 
     For details see [`archetypes.VisualizerOverrides`][rerun.blueprint.archetypes.VisualizerOverrides].
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None

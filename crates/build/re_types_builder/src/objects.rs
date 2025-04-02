@@ -491,12 +491,7 @@ impl Object {
         } else if is_testing_fqname(&fqname) {
             State::Stable
         } else if scope == Some("blueprint".to_owned()) {
-            if false {
-                // TODO(#9427)
-                State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
-            } else {
-                State::Stable
-            }
+            State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
         } else {
             match kind {
                 ObjectKind::Datatype | ObjectKind::Component => {

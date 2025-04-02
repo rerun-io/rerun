@@ -18,6 +18,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the background of a view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct Background {
         /// The type of the background.
         std::optional<ComponentBatch> kind;

@@ -18,6 +18,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the scalar axis of a plot.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ScalarAxis {
         /// The range of the axis.
         ///

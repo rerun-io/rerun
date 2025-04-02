@@ -20,6 +20,8 @@ class ForceStrength(datatypes.Float64, ComponentMixin):
     **Component**: The strength of a given force.
 
     Allows to assign different weights to the individual forces, prioritizing one over the other.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None
