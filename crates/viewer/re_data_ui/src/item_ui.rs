@@ -806,7 +806,7 @@ pub fn entity_db_button_ui(
                 });
             if resp.clicked() {
                 ctx.command_sender()
-                    .send_system(SystemCommand::CloseStore(store_id.clone()));
+                    .send_system(SystemCommand::CloseEntry(store_id.clone().into()));
             }
             resp
         });
@@ -860,13 +860,8 @@ pub fn table_id_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     table_id: &TableId,
-    // entity_db: &re_entity_db::EntityDb,
     ui_layout: UiLayout,
 ) {
-    // let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    // let title = format!("{app_id_prefix}{recording_name} - {size}");
-
-    // let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::TableId(table_id.clone());
 
     let icon = &icons::VIEW_DATAFRAME;
@@ -890,9 +885,8 @@ pub fn table_id_button_ui(
                 .small_icon_button(&icons::REMOVE)
                 .on_hover_text("Close this table (all data will be lost)");
             if resp.clicked() {
-                // TODO:
-                // ctx.command_sender()
-                //     .send_system(SystemCommand::CloseStore(store_id.clone()));
+                ctx.command_sender()
+                    .send_system(SystemCommand::CloseEntry(table_id.clone().into()));
             }
             resp
         });

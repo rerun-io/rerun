@@ -67,8 +67,8 @@ pub enum SystemCommand {
     /// Switch to this [`Entry`].
     ActivateEntry(Entry),
 
-    /// Close a recording or blueprint (free its memory).
-    CloseStore(StoreId),
+    /// Close an [`Entry`] and free its memory.
+    CloseEntry(Entry),
 
     /// Close all stores and show the welcome screen again.
     CloseAllRecordings,

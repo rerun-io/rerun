@@ -195,8 +195,8 @@ fn recording_list_ui(
     let title = list_item::LabelContent::header("Tables");
     if !ctx.storage_context.tables.is_empty() {
         item.show_hierarchical_with_children(ui, egui::Id::new("tables"), true, title, |ui| {
-            for (table_id) in ctx.storage_context.tables.keys() {
-                table_id_button_ui(ctx, ui, table_id, UiLayout::Tooltip);
+            for table_id in ctx.storage_context.tables.keys() {
+                table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
             }
         });
     };
@@ -308,7 +308,7 @@ impl DatasetKind {
             Self::Remote(..) => {
                 for db in dbs {
                     ctx.command_sender()
-                        .send_system(SystemCommand::CloseStore(db.store_id()));
+                        .send_system(SystemCommand::CloseEntry(db.store_id().into()));
                 }
             }
             Self::Local(app_id) => {

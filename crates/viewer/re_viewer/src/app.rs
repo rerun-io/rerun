@@ -512,8 +512,8 @@ impl App {
                 store_hub.set_active_entry(entry);
             }
 
-            SystemCommand::CloseStore(store_id) => {
-                store_hub.remove(&store_id);
+            SystemCommand::CloseEntry(entry) => {
+                store_hub.remove(&entry);
             }
 
             SystemCommand::CloseAllRecordings => {
@@ -817,7 +817,7 @@ impl App {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
                     self.command_sender
-                        .send_system(SystemCommand::CloseStore(cur_rec.clone()));
+                        .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
                 }
             }
             UICommand::CloseAllRecordings => {

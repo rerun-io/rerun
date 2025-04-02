@@ -478,6 +478,7 @@ impl TestContext {
                 SystemCommand::ActivateApp(_)
                 | SystemCommand::ActivateEntry(_)
                 | SystemCommand::CloseApp(_)
+                | SystemCommand::CloseEntry(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }
@@ -488,7 +489,6 @@ impl TestContext {
                 | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::SelectRedapDataset { .. }
                 | SystemCommand::SelectRedapServer { .. }
-                | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllRecordings

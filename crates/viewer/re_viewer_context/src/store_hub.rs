@@ -364,7 +364,7 @@ impl StoreHub {
         }
     }
 
-    pub fn remove(&mut self, store_id: &StoreId) {
+    fn remove_store(&mut self, store_id: &StoreId) {
         _ = self.caches_per_recording.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
 
@@ -404,6 +404,17 @@ impl StoreHub {
         // }
     }
 
+    pub fn remove(&mut self, entry: &Entry) {
+        match entry {
+            Entry::Recording { store_id } => {
+                self.remove_store(store_id);
+            }
+            Entry::Table { table_id } => {
+                self.table_stores.remove(table_id);
+            }
+        }
+    }
+
     pub fn retain(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
         let stores_to_remove: Vec<StoreId> = self
             .store_bundle
@@ -417,7 +428,7 @@ impl StoreHub {
             })
             .collect();
         for store in stores_to_remove {
-            self.remove(&store);
+            self.remove(&Entry::Recording { store_id: store });
         }
     }
 
@@ -703,7 +714,7 @@ impl StoreHub {
         if let Some(app_id) = &self.active_application_id {
             if let Some(blueprint_id) = self.active_blueprint_by_app_id.remove(app_id) {
                 re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
-                self.remove(&blueprint_id);
+                self.remove_store(&blueprint_id);
             }
         }
     }
@@ -785,7 +796,7 @@ impl StoreHub {
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {
-            self.remove(&store_id);
+            self.remove_store(&store_id);
             return;
         }
 
@@ -799,7 +810,7 @@ impl StoreHub {
         // log new things anyhow.
         let num_recordings = store_bundle.recordings().count();
         if store_size_before == store_size_after && num_recordings > 1 {
-            self.remove(&store_id);
+            self.remove_store(&store_id);
         }
 
         // Either we've reached our target goal or we couldn't fetch memory stats, in which case
