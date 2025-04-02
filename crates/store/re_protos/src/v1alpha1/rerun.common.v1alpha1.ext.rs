@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+use re_log_types::external::re_types_core::ComponentDescriptor;
 
 use crate::{invalid_field, missing_field, TypeConversionError};
 
@@ -788,6 +789,37 @@ impl From<ScanParameters> for crate::common::v1alpha1::ScanParameters {
             explain_plan: value.explain_plan,
             explain_filter: value.explain_filter,
         }
+    }
+}
+
+impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
+    fn from(value: ComponentDescriptor) -> Self {
+        Self {
+            archetype_name: value.archetype_name.map(|n| n.full_name().to_string()),
+            archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
+            component_name: Some(value.component_name.full_name().to_string()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescriptor {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
+        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
+            crate::common::v1alpha1::ComponentDescriptor,
+            "component_name"
+        ))?);
+
+        if let Some(archetype_name) = value.archetype_name {
+            descriptor = descriptor.with_archetype_name(archetype_name.into());
+        }
+
+        if let Some(archetype_field_name) = value.archetype_field_name {
+            descriptor = descriptor.with_archetype_field_name(archetype_field_name.into());
+        }
+
+        Ok(descriptor)
     }
 }
 
