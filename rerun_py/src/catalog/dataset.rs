@@ -1,28 +1,37 @@
 use std::sync::Arc;
 
-use arrow::array::{Float32Array, RecordBatch, StringArray};
+use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyRuntimeError;
-use pyo3::{pyclass, pymethods, FromPyObject, PyRef, PyResult};
-use re_dataframe::ComponentColumnSelector;
+use pyo3::{pyclass, pymethods, PyRef, PyResult};
+use re_dataframe::{ComponentColumnSelector, TimeColumnSelector};
 use re_datafusion::SearchResultsTableProvider;
 use re_log_encoding::codec::wire::encoder::Encode as _;
+use re_protos::common::v1alpha1::IfDuplicateBehavior;
+use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
 use re_protos::manifest_registry::v1alpha1::{
-    index_query_properties, IndexColumn, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
+    index_query_properties, IndexColumn, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
+    VectorIndexQuery,
 };
-use re_sdk::ComponentDescriptor;
+use re_sdk::{ComponentDescriptor, ComponentName};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_grpc_client::redap::fetch_partition_response_to_chunk;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::ext::DatasetHandle;
-use re_protos::frontend::v1alpha1::{FetchPartitionRequest, SearchDatasetRequest};
+use re_protos::frontend::v1alpha1::{
+    CreateIndexRequest, FetchPartitionRequest, SearchDatasetRequest,
+};
 
 use crate::catalog::{to_py_err, PyEntry};
-use crate::dataframe::{PyComponentColumnSelector, PyDataFusionTable, PyRecording};
+use crate::dataframe::{
+    PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording,
+};
 use crate::utils::wait_for_future;
+
+use super::{VectorDistanceMetricLike, VectorLike};
 
 #[pyclass(name = "Dataset", extends=PyEntry)]
 pub struct PyDataset {
@@ -105,6 +114,115 @@ impl PyDataset {
         Ok(PyRecording {
             store: handle,
             cache,
+        })
+    }
+
+    fn create_fts_index(
+        self_: PyRef<'_, Self>,
+        column: PyComponentColumnSelector,
+        time_index: PyIndexColumnSelector,
+        store_position: bool,
+        base_tokenizer: &str,
+    ) -> PyResult<()> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let time_selector: TimeColumnSelector = time_index.into();
+        let column_selector: ComponentColumnSelector = column.into();
+        let mut component_descriptor =
+            ComponentDescriptor::new(column_selector.component_name.clone());
+
+        // TODO(jleibs): get rid of this hack
+        if component_descriptor.component_name == ComponentName::from("rerun.components.Text") {
+            component_descriptor = component_descriptor
+                .or_with_archetype_name(|| "rerun.archetypes.TextLog".into())
+                .or_with_archetype_field_name(|| "text".into());
+        }
+
+        let properties = IndexProperties::Inverted {
+            store_position,
+            base_tokenizer: base_tokenizer.into(),
+        };
+
+        let request = CreateIndexRequest {
+            dataset_id: Some(dataset_id.into()),
+
+            partition_ids: vec![],
+
+            config: Some(IndexConfig {
+                properties: Some(properties.into()),
+                column: Some(IndexColumn {
+                    entity_path: Some(column_selector.entity_path.into()),
+                    component: Some(component_descriptor.into()),
+                }),
+                time_index: Some(time_selector.timeline.into()),
+            }),
+
+            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
+        };
+
+        wait_for_future(self_.py(), async {
+            connection
+                .client()
+                .create_index(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
+        })
+    }
+
+    fn create_vector_index(
+        self_: PyRef<'_, Self>,
+        column: PyComponentColumnSelector,
+        time_index: PyIndexColumnSelector,
+        num_partitions: usize,
+        num_sub_vectors: usize,
+        distance_metric: VectorDistanceMetricLike,
+    ) -> PyResult<()> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let time_selector: TimeColumnSelector = time_index.into();
+        let column_selector: ComponentColumnSelector = column.into();
+        let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
+
+        let distance_metric: re_protos::manifest_registry::v1alpha1::VectorDistanceMetric =
+            distance_metric.try_into()?;
+
+        let properties = IndexProperties::VectorIvfPq {
+            num_partitions,
+            num_sub_vectors,
+            metric: distance_metric.into(),
+        };
+
+        let request = CreateIndexRequest {
+            dataset_id: Some(dataset_id.into()),
+
+            partition_ids: vec![],
+
+            config: Some(IndexConfig {
+                properties: Some(properties.into()),
+                column: Some(IndexColumn {
+                    entity_path: Some(column_selector.entity_path.into()),
+                    component: Some(component_descriptor.into()),
+                }),
+                time_index: Some(time_selector.timeline.into()),
+            }),
+
+            on_duplicate: IfDuplicateBehavior::Overwrite as i32,
+        };
+
+        wait_for_future(self_.py(), async {
+            connection
+                .client()
+                .create_index(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
         })
     }
 
@@ -206,49 +324,5 @@ impl PyDataset {
         })?;
 
         Ok(PyDataFusionTable { provider })
-    }
-}
-
-/// A type alias for a vector (vector search input data).
-#[derive(FromPyObject)]
-enum VectorLike<'py> {
-    NumPy(numpy::PyArrayLike1<'py, f32>),
-    Vector(Vec<f32>),
-}
-
-impl VectorLike<'_> {
-    fn to_record_batch(&self) -> PyResult<RecordBatch> {
-        let schema = arrow::datatypes::Schema::new_with_metadata(
-            vec![Field::new(
-                "items",
-                arrow::datatypes::DataType::Float32,
-                false,
-            )],
-            Default::default(),
-        );
-
-        match self {
-            VectorLike::NumPy(array) => {
-                let floats: Vec<f32> = array
-                    .as_array()
-                    .as_slice()
-                    .ok_or_else(|| {
-                        PyRuntimeError::new_err("Failed to convert numpy array to slice".to_owned())
-                    })?
-                    .to_vec();
-
-                RecordBatch::try_new(Arc::new(schema), vec![Arc::new(Float32Array::from(floats))])
-                    .map_err(|err| {
-                        PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
-                    })
-            }
-            VectorLike::Vector(floats) => RecordBatch::try_new(
-                Arc::new(schema),
-                vec![Arc::new(Float32Array::from(floats.clone()))],
-            )
-            .map_err(|err| {
-                PyRuntimeError::new_err(format!("Failed to create RecordBatches: {err}"))
-            }),
-        }
     }
 }
