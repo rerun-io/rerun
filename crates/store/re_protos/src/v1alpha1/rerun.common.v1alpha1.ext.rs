@@ -32,6 +32,14 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
     }
 }
 
+impl TryFrom<crate::common::v1alpha1::Schema> for ArrowSchema {
+    type Error = ArrowError;
+
+    fn try_from(value: crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
+        (&value).try_into()
+    }
+}
+
 // --- EntryId ---
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]

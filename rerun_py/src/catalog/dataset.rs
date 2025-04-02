@@ -25,12 +25,7 @@ impl PyDataset {
 
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
-        let mut client = super_
-            .client
-            .borrow(self_.py())
-            .connection()
-            .client()
-            .clone();
+        let mut client = super_.client.borrow(self_.py()).connection().client();
 
         let dataset_id = super_.details.id;
         let dataset_name = super_.details.name.clone();

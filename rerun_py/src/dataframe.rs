@@ -6,17 +6,20 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     str::FromStr as _,
+    sync::Arc,
 };
 
 use arrow::{
     array::{make_array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
     pyarrow::PyArrowType,
 };
+use datafusion::catalog::TableProvider;
+use datafusion_ffi::table_provider::FFI_TableProvider;
 use numpy::PyArrayMethods as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
-    types::{PyDict, PyTuple},
+    types::{PyCapsule, PyDict, PyTuple},
     IntoPyObjectExt as _,
 };
 
@@ -32,6 +35,8 @@ use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
+use crate::utils::get_tokio_runtime;
+
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PySchema>()?;
@@ -43,6 +48,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
     m.add_class::<PyRecordingView>()?;
+    m.add_class::<PyDataFusionTable>()?;
 
     m.add_function(wrap_pyfunction!(crate::dataframe::load_archive, m)?)?;
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
@@ -1461,4 +1467,25 @@ pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
     let archive = PyRRDArchive { datasets: stores };
 
     Ok(archive)
+}
+
+#[pyclass(frozen, name = "DataFusionTable")]
+#[derive(Clone)]
+pub struct PyDataFusionTable {
+    pub provider: Arc<dyn TableProvider + Send>,
+}
+
+#[pymethods]
+impl PyDataFusionTable {
+    fn __datafusion_table_provider__<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyCapsule>> {
+        let capsule_name = cr"datafusion_table_provider".into();
+
+        let runtime = get_tokio_runtime().handle().clone();
+        let provider = FFI_TableProvider::new(Arc::clone(&self.provider), false, Some(runtime));
+
+        PyCapsule::new(py, provider, Some(capsule_name))
+    }
 }
