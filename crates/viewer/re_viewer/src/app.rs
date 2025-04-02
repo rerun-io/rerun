@@ -374,11 +374,9 @@ impl App {
 
         let callbacks = startup_options.callbacks.clone();
 
-        if state.app_options().enable_redap_browser {
-            let command_sender_clone = command_sender.clone();
-            command_sender_clone
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-            command_sender_clone.send_ui(UICommand::ExpandBlueprintPanel);
+        if !state.redap_servers.is_empty() {
+            // TODO: Select some entry?
+            command_sender.send_ui(UICommand::ExpandBlueprintPanel);
         }
 
         Self {
@@ -568,7 +566,6 @@ impl App {
             }
             SystemCommand::AddRedapServer { endpoint } => {
                 self.state.redap_servers.add_server(endpoint.origin);
-                self.state.display_mode = DisplayMode::RedapBrowser;
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
             SystemCommand::SelectRedapServer { origin } => {
@@ -922,11 +919,11 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
-                DisplayMode::LocalRecordings | DisplayMode::RedapBrowser => {
-                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
-                }
                 DisplayMode::ChunkStoreBrowser => {
                     self.state.display_mode = DisplayMode::LocalRecordings;
+                }
+                _ => {
+                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
                 }
             },
 
@@ -2095,12 +2092,6 @@ impl eframe::App for App {
                 store_hub.set_active_app(app_id.clone());
             } else {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
-                // If nothing was active and the redap browser is active
-                // Show the examples from there
-                if self.app_options().enable_redap_browser {
-                    self.command_sender
-                        .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-                }
             }
         }
 

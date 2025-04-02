@@ -84,18 +84,20 @@ fn local_dataset_ui(
             ));
     };
 }
+pub type DatasetRecordings<'a> = BTreeMap<EntryId, Vec<&'a EntityDb>>;
+pub type RemoteRecordings<'a> = BTreeMap<re_uri::Origin, DatasetRecordings<'a>>;
+pub type LocalRecordings<'a> = BTreeMap<ApplicationId, Vec<&'a EntityDb>>;
 
 pub struct SortDatasetsResults<'a> {
-    pub remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<EntryId, Vec<&'a EntityDb>>>,
-    pub example_recordings: BTreeMap<ApplicationId, Vec<&'a EntityDb>>,
-    pub local_recordings: BTreeMap<ApplicationId, Vec<&'a EntityDb>>,
+    pub remote_recordings: RemoteRecordings<'a>,
+    pub example_recordings: LocalRecordings<'a>,
+    pub local_recordings: LocalRecordings<'a>,
 }
 
 pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<'a> {
-    let mut remote_recordings: BTreeMap<re_uri::Origin, BTreeMap<EntryId, Vec<&EntityDb>>> =
-        BTreeMap::new();
-    let mut local_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
-    let mut example_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
+    let mut remote_recordings: RemoteRecordings = BTreeMap::new();
+    let mut local_recordings: LocalRecordings = BTreeMap::new();
+    let mut example_recordings: LocalRecordings = BTreeMap::new();
 
     for entity_db in viewer_ctx
         .store_context

@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use re_protos::common::v1alpha1::ext::EntryId;
-use re_ui::{list_item, UiExt as _};
-use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
-
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
 use crate::entries::{Dataset, Entries};
-use crate::local_ui::local_ui;
+use crate::local_ui::{local_ui, DatasetRecordings, RemoteRecordings};
+use re_protos::common::v1alpha1::ext::EntryId;
+use re_ui::{list_item, UiExt as _};
+use re_viewer_context::external::re_entity_db::EntityDb;
+use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 struct Server {
     origin: re_uri::Origin,
@@ -39,7 +39,13 @@ impl Server {
         self.entries.find_dataset_by_name(dataset_name)
     }
 
-    fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
+    fn panel_ui(
+        &self,
+        viewer_context: &ViewerContext<'_>,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        recordings: Option<DatasetRecordings>,
+    ) {
         let content = list_item::LabelContent::header(self.origin.host.to_string())
             .with_buttons(|ui| {
                 let response = ui
@@ -65,7 +71,7 @@ impl Server {
                 true,
                 content,
                 |ui| {
-                    self.entries.panel_ui(ctx, ui);
+                    self.entries.panel_ui(viewer_context, ctx, ui, recordings);
                 },
             );
     }
@@ -138,12 +144,17 @@ pub enum Command {
     SelectServer(re_uri::Origin),
     SelectEntry(EntryId),
     DeselectEntry,
+    OpenAddServerModal,
     AddServer(re_uri::Origin),
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
 }
 
 impl RedapServers {
+    pub fn is_empty(&self) -> bool {
+        self.servers.is_empty()
+    }
+
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         let _ = self.command_sender.send(Command::AddServer(origin));
@@ -221,6 +232,10 @@ impl RedapServers {
             }
             Command::DeselectEntry => self.selection = None,
 
+            Command::OpenAddServerModal => {
+                self.add_server_modal_ui.open();
+            }
+
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
@@ -247,90 +262,80 @@ impl RedapServers {
         }
     }
 
-    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>) {
-        ui.panel_content(|ui| {
-            ui.panel_title_bar_with_buttons(
-                "All data",
-                Some("These are the currently connected Redap servers."),
-                |ui| {
-                    if ui
-                        .small_icon_button(&re_ui::icons::ADD)
-                        .on_hover_text("Add a server")
-                        .clicked()
-                    {
-                        self.add_server_modal_ui.open();
-                    }
-                },
-            );
-        });
+    // pub fn server_panel_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>) {
+    //     ui.panel_content(|ui| {
+    //         ui.panel_title_bar_with_buttons(
+    //             "All data",
+    //             Some("These are the currently connected Redap servers."),
+    //             |ui| {
+    //                 if ui
+    //                     .small_icon_button(&re_ui::icons::ADD)
+    //                     .on_hover_text("Add a server")
+    //                     .clicked()
+    //                 {
+    //                     self.add_server_modal_ui.open();
+    //                 }
+    //             },
+    //         );
+    //     });
+    //
+    //     egui::ScrollArea::both()
+    //         .id_salt("servers_scroll_area")
+    //         .auto_shrink([false, true])
+    //         .show(ui, |ui| {
+    //             ui.panel_content(|ui| {
+    //                 re_ui::list_item::list_item_scope(ui, "server panel", |ui| {
+    //                     self.server_list_ui(ui, ctx);
+    //                 });
+    //             });
+    //         });
+    // }
 
-        egui::ScrollArea::both()
-            .id_salt("servers_scroll_area")
-            .auto_shrink([false, true])
-            .show(ui, |ui| {
-                ui.panel_content(|ui| {
-                    re_ui::list_item::list_item_scope(ui, "server panel", |ui| {
-                        self.server_list_ui(ui, ctx);
-                    });
-                });
-            });
-    }
-
-    fn server_list_ui(&self, ui: &mut egui::Ui, viewer_ctx: &ViewerContext<'_>) {
+    pub fn server_list_ui(
+        &self,
+        ui: &mut egui::Ui,
+        viewer_ctx: &ViewerContext<'_>,
+        mut remote_recordings: RemoteRecordings,
+    ) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
-                server.panel_ui(ctx, ui);
+                let recordings = remote_recordings.remove(&server.origin);
+                server.panel_ui(viewer_ctx, ctx, ui, recordings);
             }
-
-            local_ui(ui, viewer_ctx, ctx);
         });
     }
 
-    pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        if self.selection.is_none() {
-            if self.servers.is_empty() {
-                self.selection = Some(Selection::Server(re_uri::Origin::examples_origin()));
-            } else if let Some(entry) = self
-                .servers
-                .first_key_value()
-                .and_then(|(_, server)| server.entries.first_dataset())
-            {
-                self.selection = Some(Selection::Dataset(entry.id()));
+    pub fn entry_ui(
+        &mut self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        active_entry: EntryId,
+    ) {
+        // TODO: Make this a Command and call on start
+        // if self.selection.is_none() {
+        //     if self.servers.is_empty() {
+        //         self.selection = Some(Selection::Server(re_uri::Origin::examples_origin()));
+        //     } else if let Some(entry) = self
+        //         .servers
+        //         .first_key_value()
+        //         .and_then(|(_, server)| server.entries.first_dataset())
+        //     {
+        //         self.selection = Some(Selection::Dataset(entry.id()));
+        //     }
+        // }
+
+        for server in self.servers.values() {
+            if let Some(dataset) = server.find_dataset(active_entry) {
+                self.with_ctx(|ctx| {
+                    super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
+                });
+
+                return;
             }
-        }
-
-        self.add_server_modal_ui(ui);
-
-        //TODO(ab): we should display something even if no catalog is currently selected.
-
-        match self.selection.as_ref() {
-            Some(Selection::Dataset(id)) => {
-                for server in self.servers.values() {
-                    if let Some(dataset) = server.find_dataset(*id) {
-                        self.with_ctx(|ctx| {
-                            super::dataset_ui::dataset_ui(
-                                viewer_ctx,
-                                ctx,
-                                ui,
-                                &server.origin,
-                                dataset,
-                            );
-                        });
-
-                        return;
-                    }
-                }
-            }
-            Some(Selection::Server(origin)) => {
-                if origin == &re_uri::Origin::examples_origin() {
-                    ui.label("Examples");
-                }
-            }
-            None => {}
         }
     }
 
-    pub fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,

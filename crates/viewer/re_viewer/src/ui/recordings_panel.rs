@@ -2,7 +2,7 @@ use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg};
 use re_protos::common::v1alpha1::ext::EntryId;
-use re_redap_browser::RedapServers;
+use re_redap_browser::{dataset_and_its_recordings_ui, EntryKind, RedapServers};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
 use re_ui::{icons, list_item, UiExt as _};
@@ -112,6 +112,8 @@ fn recording_list_ui(
         local_recordings,
     } = re_redap_browser::sort_datasets(ctx);
 
+    servers.server_list_ui(ui, ctx, remote_recordings);
+
     if local_recordings.is_empty() && welcome_screen_state.hide {
         ui.list_item().interactive(false).show_flat(
             ui,
@@ -121,38 +123,37 @@ fn recording_list_ui(
         );
     }
 
-    for (origin, dataset_recordings) in remote_recordings {
-        if ui
-            .list_item()
-            .header()
-            .show_hierarchical_with_children(
-                ui,
-                egui::Id::new(&origin),
-                true,
-                list_item::LabelContent::header(origin.host.to_string()),
-                |ui| {
-                    for (dataset, entity_dbs) in dataset_recordings {
-                        dataset_and_its_recordings_ui(
-                            ui,
-                            ctx,
-                            servers,
-                            &EntryKind::Remote(origin.clone(), dataset),
-                            entity_dbs,
-                        );
-                    }
-                },
-            )
-            .item_response
-            .clicked()
-        {
-            ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-            ctx.command_sender()
-                .send_system(SystemCommand::SelectRedapServer {
-                    origin: origin.clone(),
-                });
-        }
-    }
+    // for (origin, dataset_recordings) in remote_recordings {
+    //     if ui
+    //         .list_item()
+    //         .header()
+    //         .show_hierarchical_with_children(
+    //             ui,
+    //             egui::Id::new(&origin),
+    //             true,
+    //             list_item::LabelContent::header(origin.host.to_string()),
+    //             |ui| {
+    //                 for (dataset, entity_dbs) in dataset_recordings {
+    //                     dataset_and_its_recordings_ui(
+    //                         ui,
+    //                         ctx,
+    //                         &EntryKind::Remote(origin.clone(), dataset),
+    //                         entity_dbs,
+    //                     );
+    //                 }
+    //             },
+    //         )
+    //         .item_response
+    //         .clicked()
+    //     {
+    //         ctx.command_sender()
+    //             .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
+    //         ctx.command_sender()
+    //             .send_system(SystemCommand::SelectRedapServer {
+    //                 origin: origin.clone(),
+    //             });
+    //     }
+    // }
 
     if !local_recordings.is_empty()
         && ui
@@ -168,7 +169,6 @@ fn recording_list_ui(
                         dataset_and_its_recordings_ui(
                             ui,
                             ctx,
-                            servers,
                             &EntryKind::Local(app_id.clone()),
                             entity_dbs,
                         );
@@ -179,11 +179,9 @@ fn recording_list_ui(
             .clicked()
     {
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-        ctx.command_sender()
-            .send_system(SystemCommand::SelectRedapServer {
-                origin: re_uri::Origin::local_recordings_origin(),
-            });
+            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                re_uri::Origin::local_recordings_origin(),
+            )));
     }
 
     // Always show welcome screen last, if at all:
@@ -208,7 +206,6 @@ fn recording_list_ui(
                         dataset_and_its_recordings_ui(
                             ui,
                             ctx,
-                            servers,
                             &EntryKind::Local(app_id.clone()),
                             entity_dbs,
                         );
@@ -221,169 +218,14 @@ fn recording_list_ui(
         if response.clicked() {
             if ctx.app_options().enable_redap_browser {
                 ctx.command_sender()
-                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-                ctx.command_sender()
-                    .send_system(SystemCommand::SelectRedapServer {
-                        origin: re_uri::Origin::examples_origin(),
-                    });
+                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                        re_uri::Origin::examples_origin(),
+                    )));
             } else {
                 ctx.command_sender()
                     .send_system(SystemCommand::ActivateApp(StoreHub::welcome_screen_app_id()));
             }
         }
-    }
-}
-
-#[derive(Clone, Hash)]
-enum EntryKind {
-    Remote(re_uri::Origin, EntryId),
-    Local(ApplicationId),
-}
-
-impl EntryKind {
-    fn name(&self, servers: &RedapServers) -> String {
-        match self {
-            Self::Remote(_, dataset) => servers
-                .find_entry(*dataset)
-                .map(|ds| ds.name().to_owned())
-                .unwrap_or_else(|| dataset.id.short_string()),
-            Self::Local(app_id) => app_id.to_string(),
-        }
-    }
-
-    fn select(&self, ctx: &ViewerContext<'_>) {
-        match self {
-            Self::Remote(_origin, dataset) => {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SelectRedapEntry(*dataset));
-                ctx.command_sender()
-                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapBrowser));
-            }
-            Self::Local(app) => {
-                ctx.command_sender()
-                    .send_system(re_viewer_context::SystemCommand::ActivateApp(app.clone()));
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(Item::AppId(app.clone())));
-            }
-        }
-    }
-
-    fn item(&self) -> Option<Item> {
-        match self {
-            Self::Remote(_, _) => None,
-            Self::Local(app_id) => Some(Item::AppId(app_id.clone())),
-        }
-    }
-
-    fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
-        match self {
-            Self::Remote(origin, _dataset) => ctx
-                .store_context
-                .recording
-                .data_source
-                .as_ref()
-                .is_some_and(|source| match source {
-                    SmartChannelSource::RedapGrpcStream(endpoint) => {
-                        &endpoint.origin == origin // TODO(lucasmerlin): Also check for dataset
-                    }
-
-                    SmartChannelSource::File(_)
-                    | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RrdWebEventListener
-                    | SmartChannelSource::JsChannel { .. }
-                    | SmartChannelSource::Sdk
-                    | SmartChannelSource::Stdin
-                    | SmartChannelSource::MessageProxy { .. } => false,
-                }),
-            Self::Local(app_id) => &ctx.store_context.app_id == app_id,
-        }
-    }
-
-    fn close(&self, ctx: &ViewerContext<'_>, dbs: &Vec<&EntityDb>) {
-        match self {
-            Self::Remote(..) => {
-                for db in dbs {
-                    ctx.command_sender()
-                        .send_system(SystemCommand::CloseStore(db.store_id()));
-                }
-            }
-            Self::Local(app_id) => {
-                ctx.command_sender()
-                    .send_system(SystemCommand::CloseApp(app_id.clone()));
-            }
-        }
-    }
-}
-
-fn dataset_and_its_recordings_ui(
-    ui: &mut egui::Ui,
-    ctx: &ViewerContext<'_>,
-    servers: &RedapServers,
-    kind: &EntryKind,
-    mut entity_dbs: Vec<&EntityDb>,
-) {
-    entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
-
-    let selected = kind
-        .item()
-        .is_some_and(|i| ctx.selection().contains_item(&i));
-
-    let dataset_list_item = ui.list_item().selected(selected);
-    let dataset_list_item_content = re_ui::list_item::LabelContent::new(kind.name(servers))
-        .with_icon_fn(|ui, rect, visuals| {
-            // Color icon based on whether this is the active dataset or not:
-            let color = if kind.is_active(ctx) {
-                visuals.fg_stroke.color
-            } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
-            };
-            icons::DATASET.as_image().tint(color).paint_at(ui, rect);
-        });
-
-    let id = ui.make_persistent_id(kind);
-    let app_list_item_content = dataset_list_item_content.with_buttons(|ui| {
-        // Close-button:
-        let resp = ui
-            .small_icon_button(&icons::REMOVE)
-            .on_hover_text("Close this dataset and all its recordings. This cannot be undone.");
-        if resp.clicked() {
-            kind.close(ctx, &entity_dbs);
-        }
-        resp
-    });
-
-    let mut item_response = dataset_list_item
-        .show_hierarchical_with_children(ui, id, true, app_list_item_content, |ui| {
-            // Show all the recordings for this application:
-            if entity_dbs.is_empty() {
-                ui.weak("(no recordings)").on_hover_ui(|ui| {
-                    ui.label("No recordings loaded for this application");
-                });
-            } else {
-                for entity_db in &entity_dbs {
-                    let include_app_id = false; // we already show it in the parent
-                    entity_db_button_ui(
-                        ctx,
-                        ui,
-                        entity_db,
-                        UiLayout::SelectionPanel,
-                        include_app_id,
-                    );
-                }
-            }
-        })
-        .item_response;
-
-    if let EntryKind::Local(app) = &kind {
-        item_response = item_response.on_hover_ui(|ui| {
-            app.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-        });
-
-        ctx.handle_select_hover_drag_interactions(&item_response, Item::AppId(app.clone()), false);
-    }
-
-    if item_response.clicked() {
-        kind.select(ctx);
     }
 }
 

@@ -496,7 +496,9 @@ impl AppState {
                     ui.spacing_mut().item_spacing.y = 0.0;
 
                     match display_mode {
-                        DisplayMode::LocalRecordings => {
+                        DisplayMode::LocalRecordings
+                        | DisplayMode::RedapEntry(..)
+                        | DisplayMode::RedapServer(..) => {
                             let resizable = ctx.store_context.bundle.recordings().count() > 3;
 
                             if resizable {
@@ -536,10 +538,6 @@ impl AppState {
                             }
                         }
 
-                        DisplayMode::RedapBrowser => {
-                            redap_servers.server_panel_ui(ui, &ctx);
-                        }
-
                         DisplayMode::ChunkStoreBrowser => {} // handled above
                     };
                 },
@@ -571,18 +569,20 @@ impl AppState {
                             }
                         }
 
-                        DisplayMode::RedapBrowser => {
-                            if redap_servers.should_show_example_ui() {
+                        DisplayMode::RedapEntry(entry) => {
+                            redap_servers.entry_ui(&ctx, ui, *entry);
+                        }
+
+                        DisplayMode::RedapServer(origin) => {
+                            if origin == &re_uri::Origin::examples_origin() {
                                 welcome_screen.ui(
                                     ui,
                                     command_sender,
                                     welcome_screen_state,
                                     is_history_enabled,
                                 );
-                                redap_servers.add_server_modal_ui(ui);
-                            } else {
-                                redap_servers.ui(&ctx, ui);
                             }
+                            // Servers have no ui yet
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above
@@ -593,6 +593,8 @@ impl AppState {
         //
         // Other UI things
         //
+
+        redap_servers.modals_ui(ui);
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
         drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());

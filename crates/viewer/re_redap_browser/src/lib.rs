@@ -9,6 +9,7 @@ mod local_ui;
 mod requested_object;
 mod servers;
 
+pub use entries::{dataset_and_its_recordings_ui, EntryKind};
 pub use servers::RedapServers;
 
 pub use local_ui::{sort_datasets, SortDatasetsResults};
