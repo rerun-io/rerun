@@ -3,8 +3,9 @@
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
+use re_log_types::TableId;
 use re_viewer_context::{
-    ContainerId, Contents, Item, ItemCollection, ItemContext, TableId, ViewId, ViewerContext,
+    ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 

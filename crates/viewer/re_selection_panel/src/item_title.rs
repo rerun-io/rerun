@@ -3,16 +3,14 @@ use egui::WidgetText;
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
-use re_log_types::ComponentPath;
+use re_log_types::{ComponentPath, TableId};
 use re_types::components::Timestamp;
 use re_ui::{
     icons,
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
     SyntaxHighlighting as _,
 };
-use re_viewer_context::{
-    contents_name_style, ContainerId, Contents, Item, TableId, ViewId, ViewerContext,
-};
+use re_viewer_context::{contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
@@ -77,7 +75,7 @@ impl ItemTitle {
     }
 
     pub fn from_table_id(_ctx: &ViewerContext<'_>, table_id: &TableId) -> Self {
-        Self::new(table_id.as_ref(), &icons::ENTITY_RESERVED).with_tooltip(table_id.as_ref())
+        Self::new(table_id.as_str(), &icons::ENTITY_RESERVED).with_tooltip(table_id.as_str())
     }
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {

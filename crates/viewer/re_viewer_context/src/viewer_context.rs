@@ -4,6 +4,7 @@ use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
+use re_log_types::TableId;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
@@ -14,7 +15,7 @@ use crate::{
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
-use crate::{GlobalContext, StoreHub, TableId};
+use crate::{GlobalContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {

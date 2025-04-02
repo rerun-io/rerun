@@ -5,13 +5,12 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, TimeInt, TimeType, Timeline, TimelineName,
+    ApplicationId, ComponentPath, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
-    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, TableId, UiLayout, ViewId,
-    ViewerContext,
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
 };
 
 use super::DataUi as _;
@@ -867,7 +866,7 @@ pub fn table_id_button_ui(
     let icon = &icons::VIEW_DATAFRAME;
 
     let mut item_content =
-        list_item::LabelContent::new(table_id.as_ref()).with_icon_fn(|ui, rect, visuals| {
+        list_item::LabelContent::new(table_id.as_str()).with_icon_fn(|ui, rect, visuals| {
             // Color icon based on whether this is the active recording or not:
             // let color = if ctx.store_context.is_active(&store_id) {
             let color = if false {

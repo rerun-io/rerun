@@ -9,14 +9,11 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_entity_db::EntityDb;
-use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind};
+use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId};
 use re_query::CachesStats;
-use re_smart_channel::SmartChannelSource;
 use re_types::components::Timestamp;
 
-use crate::{
-    BlueprintUndoState, Caches, StoreBundle, StoreContext, TableId, TableStore, TableStores,
-};
+use crate::{BlueprintUndoState, Caches, StoreBundle, StoreContext, TableStore, TableStores};
 
 #[derive(Clone)]
 pub enum Entry {
@@ -843,13 +840,7 @@ impl StoreHub {
                 re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
                     endpoint.to_string() != uri
                 }
-
-                SmartChannelSource::File(_)
-                | SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::JsChannel { .. }
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::Stdin
-                | SmartChannelSource::MessageProxy { .. } => true,
+                _ => true,
             }
         });
     }

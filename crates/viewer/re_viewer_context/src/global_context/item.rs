@@ -1,8 +1,8 @@
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataPath, EntityPath};
+use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
 use re_types::ComponentDescriptor;
 
-use crate::{ContainerId, Contents, TableId, ViewId};
+use crate::{ContainerId, Contents, ViewId};
 
 /// One "thing" in the UI.
 ///

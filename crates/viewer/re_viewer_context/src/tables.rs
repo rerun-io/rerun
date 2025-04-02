@@ -1,42 +1,12 @@
 use std::sync::Arc;
 
 use arrow::array::Int64Array;
+use re_log_types::TableId;
 use re_sorbet::ComponentColumnDescriptor;
 use re_types::external::arrow::{
     array::{ArrayRef, RecordBatch},
     datatypes::Schema,
 };
-
-#[derive(
-    Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
-pub struct TableId(Arc<String>);
-
-impl TableId {
-    pub fn new(id: String) -> Self {
-        Self(Arc::new(id))
-    }
-}
-
-impl std::fmt::Display for TableId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl AsRef<str> for TableId {
-    fn as_ref(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl std::ops::Deref for TableId {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.as_str()
-    }
-}
 
 #[derive(Default)]
 struct SorbetBatchStore {
