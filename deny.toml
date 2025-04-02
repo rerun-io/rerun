@@ -31,6 +31,7 @@ version = 2
 ignore = [
   "RUSTSEC-2024-0384", # Waiting for https://github.com/console-rs/indicatif/pull/666
   "RUSTSEC-2024-0436", # https://rustsec.org/advisories/RUSTSEC-2024-0436 - paste is unmaintained - https://github.com/dtolnay/paste
+  "RUSTSEC-2024-0014", # https://rustsec.org/advisories/RUSTSEC-2024-0014 - generational-arena is unmaintained
   "RUSTSEC-2025-0020", # https://rustsec.org/advisories/RUSTSEC-2025-0020  TODO(emilk): Update pyo3 to >=0.24.1 when we update arrow again
 ]
 
@@ -58,6 +59,7 @@ skip = [
   { name = "hashbrown" },          # Old version used by polar-rs
   { name = "heck" },               # clap and snafu use different versions.
   { name = "itertools" },          # once egui_tiles updates this can be removed
+  { name = "libloading" },         # datafusion-ffi needs an older version than wgpu
   { name = "ordered-float" },      # Old version being used by parquet, but super small!
   { name = "pollster" },           # rfd is still on 0.3
   { name = "pulldown-cmark" },     # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing

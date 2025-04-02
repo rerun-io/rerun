@@ -68,6 +68,7 @@ re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.23.0-alph
 re_data_loader = { path = "crates/store/re_data_loader", version = "=0.23.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/store/re_data_source", version = "=0.23.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.23.0-alpha.1", default-features = false }
+re_datafusion = { path = "crates/store/re_datafusion", version = "=0.23.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.23.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.23.0-alpha.1", default-features = false }
 re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.23.0-alpha.1", default-features = false }
@@ -197,6 +198,8 @@ convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
+datafusion = "46"
+datafusion-ffi = "46"
 directories = "5"
 document-features = "0.2.8"
 econtext = "0.2" # Prints error contexts on crashes
@@ -208,6 +211,7 @@ ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 fjadra = "0.2.1"
 flatbuffers = "24.12.23"
+futures-util = "0.3"
 getrandom = "0.2"
 glam = { version = "0.28", features = ["debug-glam-assert"] }
 glob = "0.3"
@@ -244,7 +248,7 @@ notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.23"
-object_store = { version = "0.12.0" }
+object_store = { version = "0.11.0" }
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.3.0"
 parking_lot = "0.12"
@@ -605,6 +609,33 @@ ref_option = "allow"
 significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 
 [patch.crates-io]
+# https://github.com/rerun-io/arrow-datafusion/pull/1 - workaround for https://github.com/rerun-io/rerun/issues/9440 :
+datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
