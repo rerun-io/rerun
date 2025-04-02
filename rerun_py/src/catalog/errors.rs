@@ -13,13 +13,13 @@
 //! - Error type (either built-in such as [`pyo3::exceptions::PyValueError`] or custom) can always
 //!   be used directly using, e.g. `PyValueError::new_err("message")`.
 
-use std::error::Error as _;
-
+use arrow::error::ArrowError;
 use pyo3::exceptions::{PyConnectionError, PyValueError};
 use pyo3::PyErr;
+use std::error::Error as _;
 
 use re_grpc_client::redap::ConnectionError;
-
+use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 // ---
 
 /// Private error type to server as a bridge between various external error type and the
@@ -32,6 +32,7 @@ enum ExternalError {
     ChunkError(re_chunk::ChunkError),
     ChunkStoreError(re_chunk_store::ChunkStoreError),
     StreamError(re_grpc_client::StreamError),
+    ArrowError(arrow::error::ArrowError),
 }
 
 impl From<ConnectionError> for ExternalError {
@@ -70,6 +71,25 @@ impl From<re_grpc_client::StreamError> for ExternalError {
     }
 }
 
+impl From<arrow::error::ArrowError> for ExternalError {
+    fn from(value: ArrowError) -> Self {
+        Self::ArrowError(value)
+    }
+}
+
+impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
+    for ExternalError
+{
+    fn from(value: GetDatasetSchemaResponseError) -> Self {
+        match value {
+            GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
+            GetDatasetSchemaResponseError::TypeConversionError(err) => {
+                re_grpc_client::StreamError::from(err).into()
+            }
+        }
+    }
+}
+
 impl From<ExternalError> for PyErr {
     fn from(err: ExternalError) -> Self {
         match err {
@@ -100,6 +120,8 @@ impl From<ExternalError> for PyErr {
             ExternalError::StreamError(err) => {
                 PyValueError::new_err(format!("Data streaming error: {err}"))
             }
+
+            ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
         }
     }
 }
