@@ -508,12 +508,8 @@ impl App {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateRecording(store_id) => {
-                store_hub.set_activate_recording(store_id);
-            }
-
-            SystemCommand::ActivateTable(table_id) => {
-                store_hub.set_activate_table(table_id);
+            SystemCommand::ActivateEntry(entry) => {
+                store_hub.set_active_entry(entry);
             }
 
             SystemCommand::CloseStore(store_id) => {

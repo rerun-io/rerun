@@ -28,6 +28,18 @@ pub enum Entry {
     },
 }
 
+impl From<StoreId> for Entry {
+    fn from(store_id: StoreId) -> Self {
+        Self::Recording { store_id }
+    }
+}
+
+impl From<TableId> for Entry {
+    fn from(table_id: TableId) -> Self {
+        Self::Table { table_id }
+    }
+}
+
 impl Entry {
     pub fn recording_ref(&self) -> Option<&StoreId> {
         match self {
@@ -563,6 +575,14 @@ impl StoreHub {
         _ = self.caches_per_recording.entry(recording_id).or_default();
     }
 
+    /// Activate an [`Entry`]
+    pub fn set_active_entry(&mut self, entry: Entry) {
+        match entry {
+            Entry::Recording { store_id } => self.set_activate_recording(store_id),
+            Entry::Table { table_id } => self.set_activate_table(table_id),
+        }
+    }
+
     /// Activate a recording by its [`StoreId`].
     pub fn set_activate_recording(&mut self, store_id: StoreId) {
         match store_id.kind {
@@ -574,7 +594,7 @@ impl StoreHub {
     }
 
     /// Activate a recording by its [`TableId`].
-    pub fn set_activate_table(&mut self, table_id: TableId) {
+    fn set_activate_table(&mut self, table_id: TableId) {
         self.active_entry = Some(Entry::Table { table_id });
     }
 

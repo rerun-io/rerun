@@ -4,7 +4,7 @@ use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
-use crate::TableId;
+use crate::{Entry, TableId};
 
 // ----------------------------------------------------------------------------
 
@@ -64,11 +64,8 @@ pub enum SystemCommand {
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
 
-    /// If this is a recording, switch to it.
-    ActivateRecording(StoreId),
-
-    /// If this is a atble, switch to it.
-    ActivateTable(TableId),
+    /// Switch to this [`Entry`].
+    ActivateEntry(Entry),
 
     /// Close a recording or blueprint (free its memory).
     CloseStore(StoreId),

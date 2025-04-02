@@ -476,7 +476,7 @@ impl TestContext {
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
-                | SystemCommand::ActivateTable(_)
+                | SystemCommand::ActivateEntry(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
@@ -488,7 +488,6 @@ impl TestContext {
                 | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::SelectRedapDataset { .. }
                 | SystemCommand::SelectRedapServer { .. }
-                | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }

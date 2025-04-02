@@ -848,7 +848,7 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.kind == re_log_types::StoreKind::Recording {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateRecording(store_id.clone()));
+                .send_system(SystemCommand::ActivateEntry(store_id.clone().into()));
         }
 
         ctx.command_sender()
@@ -920,6 +920,6 @@ pub fn table_id_button_ui(
 
     if response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::ActivateTable(table_id.clone()));
+            .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
     }
 }

@@ -273,7 +273,7 @@ impl DatasetKind {
             }
             Self::Table(table_id) => ctx
                 .command_sender()
-                .send_system(SystemCommand::ActivateTable(table_id.clone())),
+                .send_system(SystemCommand::ActivateEntry(table_id.clone().into())),
         }
     }
 
