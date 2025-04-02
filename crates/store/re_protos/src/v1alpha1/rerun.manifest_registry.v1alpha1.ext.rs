@@ -9,7 +9,7 @@ use arrow::{
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
 };
-use crate::TypeConversionError;
+use crate::{invalid_field, missing_field, TypeConversionError};
 // --- CreatePartitionManifestsResponse ---
 
 impl CreatePartitionManifestsResponse {
@@ -135,21 +135,23 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
     fn try_from(
         data_source: crate::manifest_registry::v1alpha1::DataSource,
     ) -> Result<Self, Self::Error> {
-        let storage_url =
-            data_source
-                .storage_url
-                .ok_or_else(|| {
-                    TypeConversionError::missing_field::<
-                        crate::manifest_registry::v1alpha1::DataSource,
-                    >("storage_url")
-                })?
-                .parse()?;
+        let storage_url = data_source
+            .storage_url
+            .ok_or_else(|| {
+                missing_field!(
+                    crate::manifest_registry::v1alpha1::DataSource,
+                    "storage_url"
+                )
+            })?
+            .parse()?;
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
         if kind == DataSourceKind::Unspecified {
-            return Err(TypeConversionError::invalid_field::<
+            return Err(invalid_field!(
                 crate::manifest_registry::v1alpha1::DataSource,
-            >("typ", &"data source kind is unspecified"));
+                "typ",
+                "data source kind is unspecified"
+            ));
         }
 
         Ok(Self { storage_url, kind })
