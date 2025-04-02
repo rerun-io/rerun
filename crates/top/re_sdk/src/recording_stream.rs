@@ -421,7 +421,7 @@ impl RecordingStreamBuilder {
     pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
         self.serve_grpc_opts(
             "0.0.0.0",
-            9876,
+            crate::DEFAULT_SERVER_PORT,
             re_memory::MemoryLimit::from_fraction_of_total(0.75),
         )
     }
@@ -1893,7 +1893,7 @@ impl RecordingStream {
         &self,
         server_memory_limit: re_memory::MemoryLimit,
     ) -> RecordingStreamResult<()> {
-        self.serve_grpc_opts("0.0.0.0", 9876, server_memory_limit)
+        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_memory_limit)
     }
 
     #[cfg(feature = "server")]
