@@ -568,12 +568,6 @@ impl App {
                 self.state.redap_servers.add_server(endpoint.origin);
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
-            SystemCommand::SelectRedapServer { origin } => {
-                self.state.redap_servers.select_server(origin);
-            }
-            SystemCommand::SelectRedapEntry(entry) => {
-                self.state.redap_servers.select_entry(entry);
-            }
 
             SystemCommand::LoadDataSource(data_source) => {
                 self.command_sender

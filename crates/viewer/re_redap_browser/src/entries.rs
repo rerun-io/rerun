@@ -1,5 +1,4 @@
 use crate::context::Context;
-use crate::local_ui::DatasetRecordings;
 use crate::requested_object::RequestedObject;
 use crate::servers::Command;
 use crate::RedapServers;
@@ -11,7 +10,7 @@ use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{redap, StreamError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::CodecError;
-use re_log_types::ApplicationId;
+use re_log_types::{ApplicationId, StoreKind};
 use re_protos::catalog::v1alpha1::ext::{DatasetEntry, EntryDetails};
 use re_protos::catalog::v1alpha1::{EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest};
 use re_protos::common::v1alpha1::ext::EntryId;
@@ -25,6 +24,7 @@ use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender, ViewerContext,
 };
+use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
 
 #[derive(Debug, thiserror::Error)]
@@ -180,6 +180,59 @@ impl Entries {
                 .on_hover_text(err.to_string());
             }
         }
+    }
+}
+
+pub type DatasetRecordings<'a> = BTreeMap<EntryId, Vec<&'a EntityDb>>;
+pub type RemoteRecordings<'a> = BTreeMap<re_uri::Origin, DatasetRecordings<'a>>;
+pub type LocalRecordings<'a> = BTreeMap<ApplicationId, Vec<&'a EntityDb>>;
+
+pub struct SortDatasetsResults<'a> {
+    pub remote_recordings: RemoteRecordings<'a>,
+    pub example_recordings: LocalRecordings<'a>,
+    pub local_recordings: LocalRecordings<'a>,
+}
+
+pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<'a> {
+    let mut remote_recordings: RemoteRecordings = BTreeMap::new();
+    let mut local_recordings: LocalRecordings = BTreeMap::new();
+    let mut example_recordings: LocalRecordings = BTreeMap::new();
+
+    for entity_db in viewer_ctx
+        .store_context
+        .bundle
+        .entity_dbs()
+        .filter(|r| r.store_kind() == StoreKind::Recording)
+    {
+        // We want to show all open applications, even if they have no recordings
+        let Some(app_id) = entity_db.app_id().cloned() else {
+            continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
+        };
+        if let Some(SmartChannelSource::RedapGrpcStream(endpoint)) = &entity_db.data_source {
+            let origin_recordings = remote_recordings
+                .entry(endpoint.origin.clone())
+                .or_default();
+
+            let dataset_recordings = origin_recordings
+                // Currently a origin only has a single dataset, this should change soon
+                .entry(EntryId::from(endpoint.dataset_id))
+                .or_default();
+
+            dataset_recordings.push(entity_db);
+        } else if matches!(&entity_db.data_source, Some(SmartChannelSource::RrdHttpStream {url, ..}) if url.starts_with("https://app.rerun.io"))
+        {
+            let recordings = example_recordings.entry(app_id).or_default();
+            recordings.push(entity_db);
+        } else {
+            let recordings = local_recordings.entry(app_id).or_default();
+            recordings.push(entity_db);
+        }
+    }
+
+    SortDatasetsResults {
+        remote_recordings,
+        example_recordings,
+        local_recordings,
     }
 }
 

@@ -5,11 +5,8 @@ mod add_server_modal;
 mod context;
 mod dataset_ui;
 mod entries;
-mod local_ui;
 mod requested_object;
 mod servers;
 
-pub use entries::{dataset_and_its_recordings_ui, EntryKind};
+pub use entries::{dataset_and_its_recordings_ui, sort_datasets, EntryKind, SortDatasetsResults};
 pub use servers::RedapServers;
-
-pub use local_ui::{sort_datasets, SortDatasetsResults};

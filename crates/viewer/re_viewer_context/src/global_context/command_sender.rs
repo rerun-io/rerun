@@ -31,12 +31,6 @@ pub enum SystemCommand {
         endpoint: re_uri::CatalogEndpoint,
     },
 
-    SelectRedapServer {
-        origin: re_uri::Origin,
-    },
-
-    SelectRedapEntry(EntryId),
-
     ChangeDisplayMode(crate::DisplayMode),
 
     /// Reset the `Viewer` to the default state
