@@ -21,7 +21,6 @@ pub struct TableStore {
 
 impl TableStore {
     pub fn batches(&self) -> Vec<re_sorbet::SorbetBatch> {
-        // TODO: avoid clone
         self.store_engine.read().batches.clone()
     }
 
