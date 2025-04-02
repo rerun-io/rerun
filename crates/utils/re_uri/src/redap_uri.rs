@@ -47,9 +47,11 @@ impl TryFrom<&str> for TimeRange {
         })?;
 
         if min.typ() != max.typ() {
-            return Err(Error::InvalidTimeRange(
-                format!("min/max had differing types. Min was identified as {}, whereas max was identified as {}", min.typ(), max.typ()),
-            ));
+            return Err(Error::InvalidTimeRange(format!(
+                "min/max had differing types. Min was identified as {}, whereas max was identified as {}",
+                min.typ(),
+                max.typ()
+            )));
         }
 
         let timeline = re_log_types::Timeline::new(timeline, min.typ());

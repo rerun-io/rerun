@@ -244,7 +244,9 @@ pub fn load_keypoint_connections(
             let (Some(a), Some(b)) = (keypoints_in_class.get(a), keypoints_in_class.get(b)) else {
                 re_log::warn_once!(
                     "Keypoint connection from index {:?} to {:?} could not be resolved in object {:?}",
-                    a, b, ent_path
+                    a,
+                    b,
+                    ent_path
                 );
                 continue;
             };

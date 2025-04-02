@@ -30,8 +30,8 @@ impl Profiler {
         self.server = match puffin_http::Server::new(&bind_addr) {
             Ok(puffin_server) => {
                 re_log::info!(
-                        "Started puffin profiling server. View with:  cargo install puffin_viewer && puffin_viewer"
-                    );
+                    "Started puffin profiling server. View with:  cargo install puffin_viewer && puffin_viewer"
+                );
                 Some(puffin_server)
             }
             Err(err) => {

@@ -66,7 +66,8 @@ impl ArrowRegistry {
             assert!(
                 num_fields == 1,
                 "{}: arrow-transparent structs must have exactly one field, but {:?} has {num_fields}",
-                obj.virtpath, obj.fqname,
+                obj.virtpath,
+                obj.fqname,
             );
         }
 

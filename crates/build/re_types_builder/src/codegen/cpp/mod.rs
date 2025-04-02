@@ -325,7 +325,9 @@ fn hpp_type_extensions(
                     });
                     includes.insert_system(&line[start + 1..end]);
                 } else {
-                    panic!("Expected to find '\"' or '<' in include line {line} in file {extension_file:?}");
+                    panic!(
+                        "Expected to find '\"' or '<' in include line {line} in file {extension_file:?}"
+                    );
                 }
             } else {
                 hpp_extension_string += line;
@@ -743,7 +745,9 @@ impl QuotedObject {
             .iter()
             .map(|m| m.to_cpp_tokens(&quote!(#archetype_type_ident)));
 
-        let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
+        let indicator_comment = quote_doc_comment(
+            "Indicator component, used to identify the archetype when converting to a list of components.",
+        );
         let indicator_component_fqname =
             format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
@@ -1310,7 +1314,9 @@ impl QuotedObject {
             }
         };
 
-        let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
+        let swap_comment = quote_comment(
+            "This bitwise swap would fail for self-referential types, but we don't have any of those.",
+        );
         let hide_from_docs_comment = quote_hide_from_docs();
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
@@ -2566,7 +2572,10 @@ fn lines_from_docs(reporter: &Reporter, objects: &Objects, docs: &Docs) -> Vec<S
             } = &example.base;
 
             for line in &example.lines {
-                assert!(!line.contains("```"), "Example {path:?} contains ``` in it, so we can't embed it in the C++ API docs.");
+                assert!(
+                    !line.contains("```"),
+                    "Example {path:?} contains ``` in it, so we can't embed it in the C++ API docs."
+                );
             }
 
             if let Some(title) = title {

@@ -223,7 +223,9 @@ impl WebViewerServerInner {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
-        panic!("web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!");
+        panic!(
+            "web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!"
+        );
     }
 
     #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]

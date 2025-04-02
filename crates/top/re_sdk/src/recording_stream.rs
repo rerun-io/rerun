@@ -825,7 +825,9 @@ impl fmt::Debug for RecordingStreamInner {
 impl Drop for RecordingStreamInner {
     fn drop(&mut self) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 
@@ -1287,7 +1289,9 @@ impl RecordingStream {
         prefer_current_recording: bool,
     ) -> RecordingStreamResult<()> {
         let Some(store_info) = self.store_info().clone() else {
-            re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
+            re_log::warn!(
+                "Ignored call to log_file() because RecordingStream has not been properly initialized"
+            );
             return Ok(());
         };
 
@@ -1663,7 +1667,9 @@ impl RecordingStream {
     /// cannot be repaired), all pending data in its buffers will be dropped.
     pub fn set_sink(&self, sink: Box<dyn LogSink>) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 
@@ -1700,7 +1706,9 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_async(&self) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 
@@ -1733,7 +1741,9 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_blocking(&self) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 

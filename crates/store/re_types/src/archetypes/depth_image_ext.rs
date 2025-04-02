@@ -50,7 +50,9 @@ impl DepthImage {
         let num_expected_bytes = image_format.num_bytes();
         if buffer.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {width}x{height} {} {datatype:?} image to be {num_expected_bytes} B, but got {} B", ColorModel::L, buffer.len()
+                "Expected {width}x{height} {} {datatype:?} image to be {num_expected_bytes} B, but got {} B",
+                ColorModel::L,
+                buffer.len()
             );
         }
 
@@ -77,7 +79,9 @@ impl DepthImage {
                 format.datatype(),
             ))
         } else {
-            re_log::warn_once!("Unsupported image format encountered while processing file contents. Only TIFF files with valid dimensions and supported data types are currently supported.");
+            re_log::warn_once!(
+                "Unsupported image format encountered while processing file contents. Only TIFF files with valid dimensions and supported data types are currently supported."
+            );
 
             Ok(Self::new(
                 ImageBuffer(bytes.into()),

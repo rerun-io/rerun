@@ -129,13 +129,19 @@ impl CpuMesh {
 
 #[derive(thiserror::Error, Debug)]
 pub enum MeshError {
-    #[error("Number of vertex positions {num_pos} differed from the number of vertex colors {num_color}")]
+    #[error(
+        "Number of vertex positions {num_pos} differed from the number of vertex colors {num_color}"
+    )]
     WrongNumberOfColors { num_pos: usize, num_color: usize },
 
-    #[error("Number of vertex positions {num_pos} differed from the number of vertex normals {num_normals}")]
+    #[error(
+        "Number of vertex positions {num_pos} differed from the number of vertex normals {num_normals}"
+    )]
     WrongNumberOfNormals { num_pos: usize, num_normals: usize },
 
-    #[error("Number of vertex positions {num_pos} differed from the number of vertex tex-coords {num_texcoords}")]
+    #[error(
+        "Number of vertex positions {num_pos} differed from the number of vertex tex-coords {num_texcoords}"
+    )]
     WrongNumberOfTexcoord {
         num_pos: usize,
         num_texcoords: usize,

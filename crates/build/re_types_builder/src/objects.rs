@@ -291,7 +291,9 @@ impl State {
                             notice: notice.clone(),
                         })
                     } else {
-                        Err(format!("Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"))
+                        Err(format!(
+                            "Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"
+                        ))
                     }
                 }
                 unknown => Err(format!("Unknown value for {ATTR_RERUN_STATE:?}: {unknown}")),
@@ -1183,9 +1185,11 @@ impl Type {
             match (typ, type_override.as_str()) {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
-                },
+                }
                 (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"
+                ),
             }
         }
 
@@ -1474,7 +1478,9 @@ impl ElementType {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
                 }
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"
+                ),
             }
         }
 

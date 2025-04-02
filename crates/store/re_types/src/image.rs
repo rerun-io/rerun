@@ -40,7 +40,9 @@ pub enum ImageConversionError {
     /// This should only happen if you are using a newer `image` crate than the one Rerun was built for,
     /// because `image` can add new color types without it being a breaking change,
     /// so we cannot exhaustively match on all color types.
-    #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
+    #[error(
+        "Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha."
+    )]
     UnsupportedImageColorType(image::ColorType),
 }
 
@@ -114,7 +116,9 @@ where
     BadImageShape(ArrowBuffer<u64>),
 
     /// Happens if you try to cast `NV12` or `YUY2` to a depth image or segmentation image.
-    #[error("Chroma downsampling is not supported for this image type (e.g. DepthImage or SegmentationImage)")]
+    #[error(
+        "Chroma downsampling is not supported for this image type (e.g. DepthImage or SegmentationImage)"
+    )]
     ChromaDownsamplingNotSupported,
 }
 

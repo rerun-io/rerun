@@ -107,7 +107,12 @@ impl Lines3DVisualizer {
 
                 num_rendered_strips += 1;
             }
-            debug_assert_eq!(data.strips.len(), num_rendered_strips, "the number of renderer strips after all post-processing is done should be equal to {} (got {num_rendered_strips} instead)", data.strips.len());
+            debug_assert_eq!(
+                data.strips.len(),
+                num_rendered_strips,
+                "the number of renderer strips after all post-processing is done should be equal to {} (got {num_rendered_strips} instead)",
+                data.strips.len()
+            );
 
             self.data
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
