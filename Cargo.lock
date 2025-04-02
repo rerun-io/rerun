@@ -8126,7 +8126,6 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_protos",
  "re_query",
  "re_redap_browser",
  "re_renderer",
