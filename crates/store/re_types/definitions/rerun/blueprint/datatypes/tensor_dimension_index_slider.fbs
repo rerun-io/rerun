@@ -2,15 +2,15 @@ namespace rerun.blueprint.datatypes;
 
 /// Defines a slider for the index of some dimension.
 struct TensorDimensionIndexSlider (
-    "attr.python.aliases": "int",
-    "attr.python.array_aliases": "npt.ArrayLike",
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default, Copy, Hash, PartialEq, Eq"
 ) {
-    /// The dimension number.
-    dimension: uint (order: 100);
+  /// The dimension number.
+  dimension: uint (order: 100);
 
-    // TODO(andreas): Range of the slider?
-    // Full Range if not specified.
-    //range: [uint: 2] (order: 200, nullable);
+  // TODO(andreas): Range of the slider?
+  // Full Range if not specified.
+  //range: [uint: 2] (order: 200, nullable);
 }
