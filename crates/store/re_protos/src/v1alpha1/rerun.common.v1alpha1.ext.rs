@@ -905,9 +905,9 @@ impl From<IfDuplicateBehavior> for crate::common::v1alpha1::IfDuplicateBehavior 
 impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
     fn from(value: ComponentDescriptor) -> Self {
         Self {
-            archetype_name: value.archetype_name.map(|n| n.full_name().to_string()),
+            archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
             archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
-            component_name: Some(value.component_name.full_name().to_string()),
+            component_name: Some(value.component_name.full_name().to_owned()),
         }
     }
 }
