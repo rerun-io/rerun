@@ -1,4 +1,5 @@
 use re_ui::modal::{ModalHandler, ModalWrapper};
+use re_ui::UiExt as _;
 use re_uri::Scheme;
 
 use crate::context::Context;
@@ -38,6 +39,11 @@ impl AddServerModal {
             ui.ctx(),
             || ModalWrapper::new("Add Server"),
             |ui, keep_open| {
+                ui.warning_label(
+                    "The dataplatform is very experimentaland not generally \
+                available yet. Proceed with caution!",
+                );
+
                 ui.label("Scheme:");
 
                 egui::ComboBox::new("scheme", "")
