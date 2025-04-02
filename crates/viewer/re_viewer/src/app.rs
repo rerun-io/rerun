@@ -1604,7 +1604,6 @@ impl App {
     fn handle_dropping_files(
         egui_ctx: &egui::Context,
         storage_ctx: &StorageContext<'_>,
-        store_ctx: Option<&StoreContext<'_>>,
         command_sender: &CommandSender,
     ) {
         preview_files_being_dropped(egui_ctx);
@@ -2111,12 +2110,7 @@ impl eframe::App for App {
                 self.command_sender.send_ui(cmd);
             }
 
-            Self::handle_dropping_files(
-                egui_ctx,
-                &storage_context,
-                store_context.as_ref(),
-                &self.command_sender,
-            );
+            Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
             self.run_pending_ui_commands(

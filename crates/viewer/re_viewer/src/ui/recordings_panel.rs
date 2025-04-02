@@ -10,8 +10,7 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_types::components::Timestamp;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
-    DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, TableId, UiLayout,
-    ViewerContext,
+    DisplayMode, Item, StoreHub, SystemCommand, SystemCommandSender as _, UiLayout, ViewerContext,
 };
 
 use crate::app_state::WelcomeScreenState;
@@ -242,7 +241,6 @@ fn recording_list_ui(
 enum DatasetKind {
     Remote(re_uri::Origin, String),
     Local(ApplicationId),
-    Table(TableId),
 }
 
 impl DatasetKind {
@@ -250,7 +248,6 @@ impl DatasetKind {
         match self {
             Self::Remote(_, dataset) => dataset,
             Self::Local(app_id) => app_id.as_str(),
-            Self::Table(table_id) => table_id.as_ref(),
         }
     }
 
@@ -271,9 +268,6 @@ impl DatasetKind {
                 ctx.command_sender()
                     .send_system(SystemCommand::SetSelection(Item::AppId(app.clone())));
             }
-            Self::Table(table_id) => ctx
-                .command_sender()
-                .send_system(SystemCommand::ActivateEntry(table_id.clone().into())),
         }
     }
 
@@ -281,7 +275,6 @@ impl DatasetKind {
         match self {
             Self::Remote(_, _) => None,
             Self::Local(app_id) => Some(Item::AppId(app_id.clone())),
-            Self::Table(table_id) => Some(Item::TableId(table_id.clone())),
         }
     }
 
@@ -299,7 +292,6 @@ impl DatasetKind {
                     _ => false,
                 }),
             Self::Local(app_id) => &ctx.store_context.app_id == app_id,
-            Self::Table(table_id) => ctx.active_table.as_ref() == Some(table_id),
         }
     }
 
@@ -314,9 +306,6 @@ impl DatasetKind {
             Self::Local(app_id) => {
                 ctx.command_sender()
                     .send_system(SystemCommand::CloseApp(app_id.clone()));
-            }
-            Self::Table(table_id) => {
-                todo!("Remove table from table store");
             }
         }
     }
