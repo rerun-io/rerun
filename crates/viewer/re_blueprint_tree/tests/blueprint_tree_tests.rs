@@ -152,7 +152,7 @@ fn setup_filter_test(query: Option<&str>) -> (TestContext, BlueprintTree) {
                 re_view_spatial::SpatialView3D::identifier(),
                 RecommendedView {
                     origin: "/path/to".into(),
-                    query_filter: "+ /**".try_into().expect("valid entity path filter"),
+                    query_filter: "+ /**".parse().expect("valid entity path filter"),
                 },
             )),
             None,
