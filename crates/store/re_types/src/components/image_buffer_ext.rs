@@ -20,7 +20,8 @@ impl ImageBuffer {
         let num_expected_bytes = image_format.num_bytes();
         if bytes.len() != num_expected_bytes {
             re_log::warn_once!(
-                "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {} B", bytes.len()
+                "Expected {width}x{height} {color_model:?} {datatype:?} image to be {num_expected_bytes} B, but got {} B",
+                bytes.len()
             );
         }
 
@@ -56,14 +57,14 @@ impl ImageBuffer {
 
             image::DynamicImage::ImageLumaA8(image) => {
                 re_log::warn!(
-                        "Rerun doesn't have native support for 8-bit Luma + Alpha. The image will be convert to RGBA."
-                    );
+                    "Rerun doesn't have native support for 8-bit Luma + Alpha. The image will be convert to RGBA."
+                );
                 Self::from_image(image::DynamicImage::ImageLumaA8(image).to_rgba8())
             }
             image::DynamicImage::ImageLumaA16(image) => {
                 re_log::warn!(
-                        "Rerun doesn't have native support for 16-bit Luma + Alpha. The image will be convert to RGBA."
-                    );
+                    "Rerun doesn't have native support for 16-bit Luma + Alpha. The image will be convert to RGBA."
+                );
                 Self::from_image(image::DynamicImage::ImageLumaA16(image).to_rgba16())
             }
 

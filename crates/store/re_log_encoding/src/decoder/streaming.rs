@@ -135,7 +135,10 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     // there's more unprocessed data, but there's nothing in the underlying
                     // bytes stream - this indicates a corrupted stream
                     if *expect_more_data {
-                        warn!("There's {} unprocessed data, but not enough for decoding a full message", unprocessed_bytes.len());
+                        warn!(
+                            "There's {} unprocessed data, but not enough for decoding a full message",
+                            unprocessed_bytes.len()
+                        );
                         return std::task::Poll::Ready(None);
                     }
                 }
@@ -213,8 +216,8 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                     &unprocessed_bytes[processed_length..processed_length + FileHeader::SIZE];
                 if Self::peek_file_header(data) {
                     re_log::debug!(
-                            "Reached end of stream, but it seems we have a concatenated file, continuing"
-                        );
+                        "Reached end of stream, but it seems we have a concatenated file, continuing"
+                    );
 
                     Pin::new(&mut self.reader).consume(buf_length);
                     continue;

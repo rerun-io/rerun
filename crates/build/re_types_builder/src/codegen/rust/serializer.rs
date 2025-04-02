@@ -579,7 +579,9 @@ fn quote_arrow_field_serializer(
         }
 
         DataType::Null => {
-            panic!("Null fields should only occur within enums and unions where they are handled separately.");
+            panic!(
+                "Null fields should only occur within enums and unions where they are handled separately."
+            );
         }
 
         DataType::Utf8 => {

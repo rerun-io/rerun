@@ -20,14 +20,18 @@ pub enum CpuWriteGpuReadError {
         num_elements_actually_added: usize,
     },
 
-    #[error("Target buffer has a size of {target_buffer_size}, can't write {copy_size} bytes with an offset of {destination_offset}!")]
+    #[error(
+        "Target buffer has a size of {target_buffer_size}, can't write {copy_size} bytes with an offset of {destination_offset}!"
+    )]
     TargetBufferTooSmall {
         target_buffer_size: u64,
         copy_size: u64,
         destination_offset: u64,
     },
 
-    #[error("Target texture doesn't fit the size of the written data to this buffer! Texture target buffer should be at most {max_copy_size} bytes, but the to be written data was {written_data_size} bytes.")]
+    #[error(
+        "Target texture doesn't fit the size of the written data to this buffer! Texture target buffer should be at most {max_copy_size} bytes, but the to be written data was {written_data_size} bytes."
+    )]
     TargetTextureBufferSizeMismatch {
         max_copy_size: u64,
         written_data_size: usize,

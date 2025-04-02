@@ -145,7 +145,8 @@ impl ArchetypeName {
     pub fn sanity_check(&self) {
         let full_name = self.0.as_str();
         debug_assert!(
-            !full_name.starts_with("rerun.archetypes.rerun.archetypes.") && !full_name.contains(':'),
+            !full_name.starts_with("rerun.archetypes.rerun.archetypes.")
+                && !full_name.contains(':'),
             "DEBUG ASSERT: Found archetype with full name {full_name:?}. Maybe some bad round-tripping?"
         );
     }

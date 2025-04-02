@@ -125,7 +125,9 @@ impl Verifier {
                 .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
             if let Some(deprecation_summary) = component_reflection.deprecation_summary {
-                anyhow::bail!("Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_summary:?}");
+                anyhow::bail!(
+                    "Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_summary:?}"
+                );
             }
 
             let list_array = column.as_list_opt::<i32>().ok_or_else(|| {

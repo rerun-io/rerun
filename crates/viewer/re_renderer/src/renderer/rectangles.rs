@@ -198,7 +198,9 @@ pub enum RectangleError {
     #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
     TextureFormatNotSupported(wgpu::TextureFormat),
 
-    #[error("Color mapping cannot be applied to a four-component RGBA image, but only to a single-component image.")]
+    #[error(
+        "Color mapping cannot be applied to a four-component RGBA image, but only to a single-component image."
+    )]
     ColormappingRgbaTexture,
 
     #[error("Only 1 and 4 component textures are supported, got {0} components")]

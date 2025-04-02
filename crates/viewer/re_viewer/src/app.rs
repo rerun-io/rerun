@@ -1014,7 +1014,9 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 if self.run_copy_direct_link_command(store_context).is_none() {
-                    re_log::error!("Failed to copy direct link to clipboard. Is this not running in a browser?");
+                    re_log::error!(
+                        "Failed to copy direct link to clipboard. Is this not running in a browser?"
+                    );
                 }
             }
 
@@ -1147,7 +1149,9 @@ impl App {
 
         let Some(range) = time_ctrl.loop_selection() else {
             // no loop selection
-            re_log::warn!("Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop");
+            re_log::warn!(
+                "Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop"
+            );
             return;
         };
 
@@ -1375,7 +1379,9 @@ impl App {
 
             if store_hub.is_active_blueprint(store_id) {
                 // TODO(#5514): handle loading of active blueprints.
-                re_log::warn_once!("Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details.");
+                re_log::warn_once!(
+                    "Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
+                );
             }
 
             // TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
@@ -1513,7 +1519,9 @@ impl App {
                     {
                         for &view_type in archetype.view_types {
                             if !cfg!(feature = "map_view") && view_type == "MapView" {
-                                re_log::warn_once!("Found map-related archetype, but viewer was not compiled with the `map_view` feature.");
+                                re_log::warn_once!(
+                                    "Found map-related archetype, but viewer was not compiled with the `map_view` feature."
+                                );
                             }
                         }
                     } else {
@@ -1870,7 +1878,9 @@ fn blueprint_loader() -> BlueprintPersistence {
                 if store.store_kind() == StoreKind::Blueprint
                     && !crate::blueprint::is_valid_blueprint(store)
                 {
-                    re_log::warn_once!("Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions.");
+                    re_log::warn_once!(
+                        "Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions."
+                    );
                     return Ok(None);
                 }
             }
