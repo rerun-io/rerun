@@ -3,7 +3,7 @@ use egui::WidgetText;
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
-use re_log_types::ComponentPath;
+use re_log_types::{ComponentPath, TableId};
 use re_types::components::Timestamp;
 use re_ui::{
     icons,
@@ -47,6 +47,7 @@ impl ItemTitle {
             }
 
             Item::StoreId(store_id) => Self::from_store_id(ctx, store_id),
+            Item::TableId(table_id) => Self::from_table_id(ctx, table_id),
 
             Item::InstancePath(instance_path) => {
                 Self::from_instance_path(ctx, style, instance_path)
@@ -73,10 +74,14 @@ impl ItemTitle {
         }
     }
 
+    pub fn from_table_id(_ctx: &ViewerContext<'_>, table_id: &TableId) -> Self {
+        Self::new(table_id.as_str(), &icons::ENTITY_RESERVED).with_tooltip(table_id.as_str())
+    }
+
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
         let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
-        let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+        let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
             match (
                 entity_db.app_id(),
                 entity_db.recording_property::<Timestamp>(),

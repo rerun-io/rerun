@@ -46,6 +46,7 @@ pub fn highlights_for_view(
             Item::AppId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
+            | Item::TableId(_)
             | Item::View(_)
             | Item::Container(_) => {}
 
@@ -86,6 +87,7 @@ pub fn highlights_for_view(
             Item::AppId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
+            | Item::TableId(_)
             | Item::View(_)
             | Item::Container(_) => {}
 

@@ -73,7 +73,7 @@ fn item_bread_crumbs_ui(
     item: &Item,
 ) {
     match item {
-        Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
+        Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::TableId(_) => {
             // These have no bread crumbs, at least not currently.
             // I guess one could argue that the `StoreId` should have the `AppId` as its ancestor?
         }
@@ -192,6 +192,7 @@ fn last_part_of_item_heading(
         | Item::DataSource { .. }
         | Item::Container { .. }
         | Item::View { .. }
+        | Item::TableId { .. }
         | Item::StoreId { .. } => true,
 
         Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,

@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use re_data_ui::{item_ui::entity_db_button_ui, DataUi as _};
+use re_data_ui::{
+    item_ui::{entity_db_button_ui, table_id_button_ui},
+    DataUi as _,
+};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -50,7 +53,7 @@ pub fn recordings_panel_ui(
 
 fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
     let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
-        .store_context
+        .storage_context
         .bundle
         .recordings()
         .filter_map(|store| store.data_source.clone())
@@ -110,7 +113,7 @@ fn recording_list_ui(
     let mut local_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
     let mut example_recordings: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
 
-    for entity_db in ctx.store_context.bundle.entity_dbs() {
+    for entity_db in ctx.storage_context.bundle.entity_dbs() {
         // We want to show all open applications, even if they have no recordings
         let Some(app_id) = entity_db.app_id().cloned() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
@@ -186,6 +189,16 @@ fn recording_list_ui(
             },
         );
     }
+
+    let item = ui.list_item().header();
+    let title = list_item::LabelContent::header("Tables");
+    if !ctx.storage_context.tables.is_empty() {
+        item.show_hierarchical_with_children(ui, egui::Id::new("tables"), true, title, |ui| {
+            for table_id in ctx.storage_context.tables.keys() {
+                table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
+            }
+        });
+    };
 
     // Always show welcome screen last, if at all:
     if (ctx
@@ -294,7 +307,7 @@ impl DatasetKind {
             Self::Remote(..) => {
                 for db in dbs {
                     ctx.command_sender()
-                        .send_system(SystemCommand::CloseStore(db.store_id()));
+                        .send_system(SystemCommand::CloseEntry(db.store_id().into()));
                 }
             }
             Self::Local(app_id) => {

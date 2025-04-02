@@ -241,17 +241,18 @@ impl ViewportBlueprint {
     /// of its descendent are always considered valid.
     pub fn is_item_valid(
         &self,
-        store_context: &re_viewer_context::StoreContext<'_>,
+        storage_ctx: &re_viewer_context::StorageContext<'_>,
         item: &Item,
     ) -> bool {
         match item {
-            Item::AppId(app_id) => store_context
+            Item::AppId(app_id) => storage_ctx
                 .hub
                 .store_bundle()
                 .entity_dbs()
                 .any(|db| db.app_id() == Some(app_id)),
 
             Item::DataSource(_)
+            | Item::TableId(_)
             | Item::StoreId(_)
             | Item::ComponentPath(_)
             | Item::InstancePath(_) => true,

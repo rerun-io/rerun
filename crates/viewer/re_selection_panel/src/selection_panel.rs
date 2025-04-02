@@ -644,7 +644,7 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
             Some(Box::new(instance_path.clone()))
         }
         // Skip data ui since we don't know yet what to show for these.
-        Item::View(_) | Item::Container(_) => None,
+        Item::TableId(_) | Item::View(_) | Item::Container(_) => None,
     }
 }
 

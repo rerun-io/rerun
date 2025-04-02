@@ -254,6 +254,7 @@ impl ItemCollection {
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
                 Item::View(_) => None,
+                Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
                     re_smart_channel::SmartChannelSource::File(path) => {
@@ -481,6 +482,7 @@ impl ApplicationSelectionState {
             .iter_items()
             .any(|current| match current {
                 Item::AppId(_)
+                | Item::TableId(_)
                 | Item::DataSource(_)
                 | Item::StoreId(_)
                 | Item::View(_)
@@ -488,6 +490,7 @@ impl ApplicationSelectionState {
 
                 Item::ComponentPath(component_path) => match test {
                     Item::AppId(_)
+                    | Item::TableId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::View(_)
@@ -508,6 +511,7 @@ impl ApplicationSelectionState {
 
                 Item::InstancePath(current_instance_path) => match test {
                     Item::AppId(_)
+                    | Item::TableId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
@@ -526,6 +530,7 @@ impl ApplicationSelectionState {
 
                 Item::DataResult(_current_view_id, current_instance_path) => match test {
                     Item::AppId(_)
+                    | Item::TableId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)

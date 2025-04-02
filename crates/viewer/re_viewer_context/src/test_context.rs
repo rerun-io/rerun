@@ -9,7 +9,8 @@ use parking_lot::Mutex;
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
-    StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    StorageContext, StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
+    ViewerContext,
 };
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
@@ -307,11 +308,10 @@ impl TestContext {
             blueprint: &self.blueprint_store,
             default_blueprint: None,
             recording: &self.recording_store,
-            bundle: &Default::default(),
             caches: &Default::default(),
-            hub: &Default::default(),
             should_enable_heuristics: false,
         };
+
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(&store_context.recording.store_id());
@@ -344,6 +344,12 @@ impl TestContext {
                 render_ctx,
             },
             store_context: &store_context,
+            storage_context: &StorageContext {
+                hub: &Default::default(),
+                bundle: &Default::default(),
+                tables: &Default::default(),
+            },
+            active_table: None,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
@@ -469,7 +475,9 @@ impl TestContext {
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
+                | SystemCommand::ActivateEntry(_)
                 | SystemCommand::CloseApp(_)
+                | SystemCommand::CloseEntry(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }
@@ -480,8 +488,6 @@ impl TestContext {
                 | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::SelectRedapDataset { .. }
                 | SystemCommand::SelectRedapServer { .. }
-                | SystemCommand::ActivateRecording(_)
-                | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllRecordings
