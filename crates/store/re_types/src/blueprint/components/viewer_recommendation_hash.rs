@@ -21,6 +21,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Hash of a viewer recommendation.
 ///
 /// The formation of this hash is considered an internal implementation detail of the viewer.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct ViewerRecommendationHash(pub crate::datatypes::UInt64);

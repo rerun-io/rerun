@@ -16,7 +16,11 @@ __all__ = ["FilterIsNotNull", "FilterIsNotNullBatch"]
 
 
 class FilterIsNotNull(blueprint_datatypes.FilterIsNotNull, ComponentMixin):
-    """**Component**: Configuration for the filter is not null feature of the dataframe view."""
+    """
+    **Component**: Configuration for the filter is not null feature of the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of FilterIsNotNullExt in filter_is_not_null_ext.py

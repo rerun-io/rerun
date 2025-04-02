@@ -176,7 +176,9 @@ pub fn url_to_receiver(
                             if tx.send(msg).is_ok() {
                                 ControlFlow::Continue(())
                             } else {
-                                re_log::info_once!("Failed to send log message to viewer - closing connection to {url}");
+                                re_log::info_once!(
+                                    "Failed to send log message to viewer - closing connection to {url}"
+                                );
                                 ControlFlow::Break(())
                             }
                         }

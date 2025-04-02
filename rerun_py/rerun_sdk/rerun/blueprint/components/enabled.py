@@ -16,7 +16,11 @@ __all__ = ["Enabled", "EnabledBatch"]
 
 
 class Enabled(datatypes.Bool, ComponentMixin):
-    """**Component**: Whether a procedure is enabled."""
+    """
+    **Component**: Whether a procedure is enabled.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of EnabledExt in enabled_ext.py

@@ -23,6 +23,8 @@ class TimeSeriesView(View):
     """
     **View**: A time series view for scalars over time, for use with [`archetypes.Scalars`][rerun.archetypes.Scalars].
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to customize a TimeSeriesView.:

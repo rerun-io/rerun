@@ -13,60 +13,54 @@
 //! - Error type (either built-in such as [`pyo3::exceptions::PyValueError`] or custom) can always
 //!   be used directly using, e.g. `PyValueError::new_err("message")`.
 
-use std::error::Error as _;
-
 use pyo3::exceptions::{PyConnectionError, PyValueError};
 use pyo3::PyErr;
+use std::error::Error as _;
 
 use re_grpc_client::redap::ConnectionError;
-
+use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 // ---
 
 /// Private error type to server as a bridge between various external error type and the
 /// [`to_py_err`] function.
+#[derive(Debug, thiserror::Error)]
 #[expect(clippy::enum_variant_names)] // this is by design
 enum ExternalError {
-    ConnectionError(ConnectionError),
-    TonicStatusError(tonic::Status),
-    UriError(re_uri::Error),
-    ChunkError(re_chunk::ChunkError),
-    ChunkStoreError(re_chunk_store::ChunkStoreError),
-    StreamError(re_grpc_client::StreamError),
+    #[error("{0}")]
+    ConnectionError(#[from] ConnectionError),
+
+    #[error("{0}")]
+    TonicStatusError(#[from] tonic::Status),
+
+    #[error("{0}")]
+    UriError(#[from] re_uri::Error),
+
+    #[error("{0}")]
+    ChunkError(#[from] re_chunk::ChunkError),
+
+    #[error("{0}")]
+    ChunkStoreError(#[from] re_chunk_store::ChunkStoreError),
+
+    #[error("{0}")]
+    StreamError(#[from] re_grpc_client::StreamError),
+
+    #[error("{0}")]
+    ArrowError(#[from] arrow::error::ArrowError),
+
+    #[error("{0}")]
+    UrlParseError(#[from] url::ParseError),
 }
 
-impl From<ConnectionError> for ExternalError {
-    fn from(value: ConnectionError) -> Self {
-        Self::ConnectionError(value)
-    }
-}
-
-impl From<tonic::Status> for ExternalError {
-    fn from(value: tonic::Status) -> Self {
-        Self::TonicStatusError(value)
-    }
-}
-
-impl From<re_uri::Error> for ExternalError {
-    fn from(value: re_uri::Error) -> Self {
-        Self::UriError(value)
-    }
-}
-
-impl From<re_chunk::ChunkError> for ExternalError {
-    fn from(value: re_chunk::ChunkError) -> Self {
-        Self::ChunkError(value)
-    }
-}
-
-impl From<re_chunk_store::ChunkStoreError> for ExternalError {
-    fn from(value: re_chunk_store::ChunkStoreError) -> Self {
-        Self::ChunkStoreError(value)
-    }
-}
-
-impl From<re_grpc_client::StreamError> for ExternalError {
-    fn from(value: re_grpc_client::StreamError) -> Self {
-        Self::StreamError(value)
+impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
+    for ExternalError
+{
+    fn from(value: GetDatasetSchemaResponseError) -> Self {
+        match value {
+            GetDatasetSchemaResponseError::ArrowError(err) => err.into(),
+            GetDatasetSchemaResponseError::TypeConversionError(err) => {
+                re_grpc_client::StreamError::from(err).into()
+            }
+        }
     }
 }
 
@@ -99,6 +93,12 @@ impl From<ExternalError> for PyErr {
 
             ExternalError::StreamError(err) => {
                 PyValueError::new_err(format!("Data streaming error: {err}"))
+            }
+
+            ExternalError::ArrowError(err) => PyValueError::new_err(format!("Arrow error: {err}")),
+
+            ExternalError::UrlParseError(err) => {
+                PyValueError::new_err(format!("Could not parse URL: {err}"))
             }
         }
     }

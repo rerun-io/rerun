@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Space between grid lines of one line to the next in scene units.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct GridSpacing {
         /// Space between grid lines of one line to the next in scene units.
         rerun::datatypes::Float32 distance;

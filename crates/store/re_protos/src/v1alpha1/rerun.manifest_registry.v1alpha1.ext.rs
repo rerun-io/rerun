@@ -3,9 +3,199 @@ use std::sync::Arc;
 use arrow::{
     array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
+    error::ArrowError,
 };
 
-use crate::manifest_registry::v1alpha1::CreatePartitionManifestsResponse;
+use re_log_types::EntityPath;
+
+use crate::manifest_registry::v1alpha1::{
+    CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
+};
+use crate::{invalid_field, missing_field, TypeConversionError};
+
+// --- QueryDataset ---
+
+#[derive(Debug, Clone)]
+pub struct QueryDatasetRequest {
+    pub entry: crate::common::v1alpha1::ext::DatasetHandle,
+    pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
+    pub chunk_ids: Vec<re_chunk::ChunkId>,
+    pub scan_parameters: Option<crate::common::v1alpha1::ext::ScanParameters>,
+    pub query: Option<Query>,
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::QueryDatasetRequest> for QueryDatasetRequest {
+    type Error = tonic::Status;
+
+    fn try_from(
+        value: crate::manifest_registry::v1alpha1::QueryDatasetRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            entry: value
+                .entry
+                .ok_or_else(|| tonic::Status::invalid_argument("entry is required"))?
+                .try_into()?,
+
+            partition_ids: value
+                .partition_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
+            chunk_ids: value
+                .chunk_ids
+                .into_iter()
+                .map(|tuid| {
+                    let id: re_tuid::Tuid = tuid.try_into()?;
+                    Ok::<_, tonic::Status>(re_chunk::ChunkId::from_u128(id.as_u128()))
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+
+            scan_parameters: value
+                .scan_parameters
+                .map(|params| params.try_into())
+                .transpose()?,
+
+            query: value.query.map(|q| q.try_into()).transpose()?,
+        })
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Query {
+    pub latest_at: Option<QueryLatestAt>,
+    pub range: Option<QueryRange>,
+    pub columns_always_include_everything: bool,
+    pub columns_always_include_chunk_ids: bool,
+    pub columns_always_include_byte_offsets: bool,
+    pub columns_always_include_entity_paths: bool,
+    pub columns_always_include_static_indexes: bool,
+    pub columns_always_include_global_indexes: bool,
+    pub columns_always_include_component_indexes: bool,
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
+    type Error = tonic::Status;
+
+    fn try_from(value: crate::manifest_registry::v1alpha1::Query) -> Result<Self, Self::Error> {
+        let latest_at = value
+            .latest_at
+            .map(|latest_at| {
+                Ok::<QueryLatestAt, tonic::Status>(QueryLatestAt {
+                    entity_paths: latest_at
+                        .entity_paths
+                        .into_iter()
+                        .map(|path| {
+                            path.try_into().map_err(|err| {
+                                tonic::Status::invalid_argument(format!(
+                                    "invalid entity path: {err}"
+                                ))
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
+                    index: latest_at
+                        .index
+                        .and_then(|index| index.timeline.map(|timeline| timeline.name))
+                        .ok_or_else(|| {
+                            tonic::Status::invalid_argument("index is required for latest_at query")
+                        })?,
+                    at: latest_at
+                        .at
+                        .ok_or_else(|| tonic::Status::invalid_argument("at is required"))?,
+                    fuzzy_descriptors: latest_at
+                        .fuzzy_descriptors
+                        .into_iter()
+                        .map(|desc| FuzzyComponentDescriptor {
+                            archetype_name: desc.archetype_name.map(Into::into),
+                            archetype_field_name: desc.archetype_field_name.map(Into::into),
+                            component_name: desc.component_name.map(Into::into),
+                        })
+                        .collect(),
+                })
+            })
+            .transpose()?;
+
+        let range = value
+            .range
+            .map(|range| {
+                Ok::<QueryRange, tonic::Status>(QueryRange {
+                    entity_paths: range
+                        .entity_paths
+                        .into_iter()
+                        .map(|path| {
+                            path.try_into().map_err(|err| {
+                                tonic::Status::invalid_argument(format!(
+                                    "invalid entity path: {err}"
+                                ))
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
+                    index_range: range
+                        .index_range
+                        .ok_or_else(|| {
+                            tonic::Status::invalid_argument(
+                                "index_range is required for range query",
+                            )
+                        })?
+                        .into(),
+                    index: range
+                        .index
+                        .and_then(|index| index.timeline.map(|timeline| timeline.name))
+                        .ok_or_else(|| {
+                            tonic::Status::invalid_argument("index is required for range query")
+                        })?,
+                    fuzzy_descriptors: range
+                        .fuzzy_descriptors
+                        .into_iter()
+                        .map(|desc| FuzzyComponentDescriptor {
+                            archetype_name: desc.archetype_name.map(Into::into),
+                            archetype_field_name: desc.archetype_field_name.map(Into::into),
+                            component_name: desc.component_name.map(Into::into),
+                        })
+                        .collect(),
+                })
+            })
+            .transpose()?;
+
+        Ok(Self {
+            latest_at,
+            range,
+            columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
+            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
+            columns_always_include_component_indexes: value
+                .columns_always_include_component_indexes,
+            columns_always_include_entity_paths: value.columns_always_include_entity_paths,
+            columns_always_include_everything: value.columns_always_include_everything,
+            columns_always_include_global_indexes: value.columns_always_include_global_indexes,
+            columns_always_include_static_indexes: value.columns_always_include_static_indexes,
+        })
+    }
+}
+
+/// A `ComponentDescriptor` meant for querying: all fields are optional.
+///
+/// This acts as a pattern matcher.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FuzzyComponentDescriptor {
+    pub archetype_name: Option<re_chunk::ArchetypeName>,
+    pub archetype_field_name: Option<re_chunk::ArchetypeFieldName>,
+    pub component_name: Option<re_chunk::ComponentName>,
+}
+
+#[derive(Debug, Clone)]
+pub struct QueryLatestAt {
+    pub entity_paths: Vec<EntityPath>,
+    pub index: String,
+    pub at: i64,
+    pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
+}
+
+#[derive(Debug, Clone)]
+pub struct QueryRange {
+    pub entity_paths: Vec<EntityPath>,
+    pub index: String,
+    pub index_range: re_log_types::ResolvedTimeRange,
+    pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
+}
 
 // --- CreatePartitionManifestsResponse ---
 
@@ -77,3 +267,80 @@ impl TryFrom<RecordBatch> for CreatePartitionManifestsResponse {
 }
 
 // TODO(#9430): the other way around would be nice too, but same problem.
+
+// --- GetDatasetSchemaResponse ---
+
+#[derive(Debug, thiserror::Error)]
+pub enum GetDatasetSchemaResponseError {
+    #[error(transparent)]
+    ArrowError(#[from] ArrowError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] TypeConversionError),
+}
+
+impl GetDatasetSchemaResponse {
+    pub fn schema(self) -> Result<Schema, GetDatasetSchemaResponseError> {
+        Ok(self
+            .schema
+            .ok_or_else(|| {
+                TypeConversionError::missing_field::<GetDatasetSchemaResponse>("schema")
+            })?
+            .try_into()?)
+    }
+}
+
+// --- DataSource --
+
+#[derive(Debug)]
+pub struct DataSource {
+    pub storage_url: url::Url,
+    pub kind: DataSourceKind,
+}
+
+impl DataSource {
+    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            kind: DataSourceKind::Rrd,
+        })
+    }
+}
+
+impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
+    fn from(value: DataSource) -> Self {
+        crate::manifest_registry::v1alpha1::DataSource {
+            storage_url: Some(value.storage_url.to_string()),
+            typ: value.kind as i32,
+        }
+    }
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        data_source: crate::manifest_registry::v1alpha1::DataSource,
+    ) -> Result<Self, Self::Error> {
+        let storage_url = data_source
+            .storage_url
+            .ok_or_else(|| {
+                missing_field!(
+                    crate::manifest_registry::v1alpha1::DataSource,
+                    "storage_url"
+                )
+            })?
+            .parse()?;
+
+        let kind = DataSourceKind::try_from(data_source.typ)?;
+        if kind == DataSourceKind::Unspecified {
+            return Err(invalid_field!(
+                crate::manifest_registry::v1alpha1::DataSource,
+                "typ",
+                "data source kind is unspecified"
+            ));
+        }
+
+        Ok(Self { storage_url, kind })
+    }
+}

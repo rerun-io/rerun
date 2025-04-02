@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: The layout share of a row in the container.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct RowShare {
         /// The layout share of a row in the container.
         rerun::datatypes::Float32 share;

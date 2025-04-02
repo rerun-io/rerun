@@ -20,6 +20,8 @@ class ForceIterations(datatypes.UInt64, ComponentMixin):
     **Component**: Specifies how often this force should be applied per iteration.
 
     Increasing this parameter can lead to better results at the cost of longer computation time.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None

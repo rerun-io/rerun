@@ -444,8 +444,6 @@ pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
     "pbm", "pgm", "png", "ppm", "tga", "tif", "tiff", "webp",
 ];
 
-/// Experimental video support!
-// TODO(#7298): stabilize video support
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
 pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl"];

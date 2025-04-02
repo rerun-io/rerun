@@ -70,8 +70,6 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
 
     ### Demonstrates manual use of video frame references:
     ```python
-    # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-
     import sys
 
     import rerun as rr

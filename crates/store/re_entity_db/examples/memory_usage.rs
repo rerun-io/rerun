@@ -133,7 +133,8 @@ fn log_messages() {
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing a Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            size_decoded(&encoded), encoded.len()
+            size_decoded(&encoded),
+            encoded.len()
         );
     }
 
@@ -154,7 +155,8 @@ fn log_messages() {
         let encoded = encode_log_msg(&log_msg);
         println!(
             "Arrow LogMsg containing {NUM_POINTS}x Pos2 uses {}-{log_msg_bytes} bytes in RAM, and {} bytes encoded",
-            size_decoded(&encoded), encoded.len()
+            size_decoded(&encoded),
+            encoded.len()
         );
     }
 }

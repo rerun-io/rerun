@@ -23,6 +23,9 @@ namespace rerun::blueprint::components {
     /// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
     /// (`/world/**` matches both `/world` and `/world/car/driver`).
     /// Other uses of `*` are not (yet) supported.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct QueryExpression {
         rerun::datatypes::Utf8 filter;
 

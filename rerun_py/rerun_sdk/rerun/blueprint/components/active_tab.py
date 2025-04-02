@@ -16,7 +16,11 @@ __all__ = ["ActiveTab", "ActiveTabBatch"]
 
 
 class ActiveTab(datatypes.EntityPath, ComponentMixin):
-    """**Component**: The active tab in a tabbed container."""
+    """
+    **Component**: The active tab in a tabbed container.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ActiveTabExt in active_tab_ext.py

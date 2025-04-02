@@ -4,12 +4,12 @@ namespace rerun.blueprint.components;
 
 /// Whether a procedure is enabled.
 struct Enabled (
-    "attr.arrow.transparent",
-    "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "bool",
-    "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent",
-    "attr.rust.tuple_struct"
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "bool",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
 ) {
-    visible: rerun.datatypes.Bool (order: 100);
+  visible: rerun.datatypes.Bool (order: 100);
 }

@@ -1,5 +1,4 @@
 """Manual use of individual video frame references."""
-# TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
 
 import sys
 

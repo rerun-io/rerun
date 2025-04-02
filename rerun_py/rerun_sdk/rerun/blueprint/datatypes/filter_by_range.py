@@ -22,7 +22,11 @@ __all__ = ["FilterByRange", "FilterByRangeArrayLike", "FilterByRangeBatch", "Fil
 
 @define(init=False)
 class FilterByRange(FilterByRangeExt):
-    """**Datatype**: Configuration for the filter-by-range feature of the dataframe view."""
+    """
+    **Datatype**: Configuration for the filter-by-range feature of the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(self: Any, start: datatypes.TimeIntLike, end: datatypes.TimeIntLike) -> None:
         """

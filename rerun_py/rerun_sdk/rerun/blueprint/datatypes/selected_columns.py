@@ -23,7 +23,11 @@ __all__ = ["SelectedColumns", "SelectedColumnsArrayLike", "SelectedColumnsBatch"
 
 @define(init=False)
 class SelectedColumns(SelectedColumnsExt):
-    """**Datatype**: List of selected columns in a dataframe."""
+    """
+    **Datatype**: List of selected columns in a dataframe.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     # __init__ can be found in selected_columns_ext.py
 

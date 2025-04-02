@@ -113,7 +113,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                             Err(err) => {
                                 return on_msg(HttpMessage::Failure(
                                     format!("Failed to fetch .rrd file from {url}: {err}").into(),
-                                ))
+                                ));
                             }
                         }
                     }

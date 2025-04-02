@@ -21,6 +21,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the 3D line grid.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct LineGrid3D {
         /// Whether the grid is visible.
         ///

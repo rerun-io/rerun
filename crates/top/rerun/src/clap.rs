@@ -170,7 +170,7 @@ impl RerunArgs {
             Some(None) => {
                 return Ok(RerunBehavior::Connect(
                     re_sdk::DEFAULT_CONNECT_URL.to_owned(),
-                ))
+                ));
             }
             None => {}
         }

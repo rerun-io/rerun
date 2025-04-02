@@ -81,7 +81,9 @@ impl VideoPlayer {
             if bit_depth < 8 {
                 re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
             } else if 8 < bit_depth {
-                re_log::warn_once!("{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more.");
+                re_log::warn_once!(
+                    "{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more."
+                );
             }
         }
 

@@ -91,7 +91,9 @@ impl CamerasVisualizer {
         let Some(twod_in_threed_info) = &transform_info.twod_in_threed_info else {
             // This implies that the transform context didn't see the pinhole transform.
             // Should be impossible!
-            re_log::error_once!("Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!");
+            re_log::error_once!(
+                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!"
+            );
             return;
         };
         if &twod_in_threed_info.parent_pinhole != ent_path {

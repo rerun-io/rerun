@@ -2,23 +2,23 @@ namespace rerun.blueprint.archetypes;
 
 /// Configures how tensor scalars are mapped to color.
 table TensorScalarMapping (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default"
 ) {
-    /// Filter used when zooming in on the tensor.
-    ///
-    /// Note that the filter is applied to the scalar values *before* they are mapped to color.
-    mag_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 1000);
+  /// Filter used when zooming in on the tensor.
+  ///
+  /// Note that the filter is applied to the scalar values *before* they are mapped to color.
+  mag_filter: rerun.components.MagnificationFilter ("attr.rerun.component_optional", nullable, order: 1000);
 
-    /// How scalar values map to colors.
-    colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 1100);
+  /// How scalar values map to colors.
+  colormap: rerun.components.Colormap ("attr.rerun.component_optional", nullable, order: 1100);
 
-    /// Gamma exponent applied to normalized values before mapping to color.
-    ///
-    /// Raises the normalized values to the power of this value before mapping to color.
-    /// Acts like an inverse brightness. Defaults to 1.0.
-    ///
-    /// The final value for display is set as:
-    /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
-    gamma: rerun.components.GammaCorrection ("attr.rerun.component_optional", nullable, order: 1200);
+  /// Gamma exponent applied to normalized values before mapping to color.
+  ///
+  /// Raises the normalized values to the power of this value before mapping to color.
+  /// Acts like an inverse brightness. Defaults to 1.0.
+  ///
+  /// The final value for display is set as:
+  /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
+  gamma: rerun.components.GammaCorrection ("attr.rerun.component_optional", nullable, order: 1200);
 }
