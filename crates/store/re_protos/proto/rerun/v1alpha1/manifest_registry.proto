@@ -106,6 +106,9 @@ service ManifestRegistryService {
   //
   // This is normally automatically done as part of the registration process.
   rpc CreatePartitionManifests(CreatePartitionManifestsRequest) returns (CreatePartitionManifestsResponse) {}
+
+  // Fetch the internal state of a Partition Manifest.
+  rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
 }
 
 // --- Write data ---
@@ -146,7 +149,7 @@ message GetPartitionTableSchemaRequest {
 }
 
 message GetPartitionTableSchemaResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  rerun.common.v1alpha1.Schema schema = 1;
 }
 
 message ScanPartitionTableRequest {
@@ -164,7 +167,7 @@ message GetDatasetSchemaRequest {
 }
 
 message GetDatasetSchemaResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
+  rerun.common.v1alpha1.Schema schema = 1;
 }
 
 // --- Indexing ---
@@ -427,6 +430,17 @@ message CreatePartitionManifestsRequest {
 }
 
 message CreatePartitionManifestsResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message FetchPartitionManifestRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.PartitionId id = 2;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+}
+
+// TODO(cmc): this should have response extensions too.
+message FetchPartitionManifestResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 

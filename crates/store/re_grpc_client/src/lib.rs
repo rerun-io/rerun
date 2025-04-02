@@ -70,6 +70,9 @@ pub enum StreamError {
 
     #[error(transparent)]
     TypeConversionError(#[from] re_protos::TypeConversionError),
+
+    #[error("Chunk data missing in response")]
+    MissingChunkData,
 }
 
 impl From<tonic::Status> for StreamError {

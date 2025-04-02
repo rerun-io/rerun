@@ -188,8 +188,9 @@ pub const ATTR_RERUN_LOG_MISSING_AS_EMPTY: &str = "attr.rerun.log_missing_as_emp
 pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
 pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
 pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
-pub const ATTR_RERUN_DEPRECATED: &str = "attr.rerun.deprecated";
-pub const ATTR_RERUN_EXPERIMENTAL: &str = "attr.rerun.experimental";
+pub const ATTR_RERUN_STATE: &str = "attr.rerun.state";
+pub const ATTR_RERUN_DEPRECATED_SINCE: &str = "attr.rerun.deprecated_since";
+pub const ATTR_RERUN_DEPRECATED_NOTICE: &str = "attr.rerun.deprecated_notice";
 
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
 pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
@@ -207,6 +208,7 @@ pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
 pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 
 pub const ATTR_DOCS_UNRELEASED: &str = "attr.docs.unreleased";
+
 pub const ATTR_DOCS_CATEGORY: &str = "attr.docs.category";
 pub const ATTR_DOCS_VIEW_TYPES: &str = "attr.docs.view_types";
 

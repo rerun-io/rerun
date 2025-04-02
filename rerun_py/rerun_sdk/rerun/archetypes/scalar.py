@@ -22,7 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["Scalar"]
 
 
-@deprecated("""Use `Scalars` instead.""")
+@deprecated("""since 0.23.0: Use `Scalars` instead.""")
 @define(str=False, repr=False, init=False)
 class Scalar(Archetype):
     """
@@ -35,6 +35,8 @@ class Scalar(Archetype):
     is referenced by [`archetypes.SeriesLines`][rerun.archetypes.SeriesLines] or [`archetypes.SeriesPoints`][rerun.archetypes.SeriesPoints]. You can do
     this by logging both archetypes to the same path, or alternatively configuring
     the plot-specific archetypes through the blueprint.
+
+    ⚠️ **Deprecated since 0.23.0**: Use `Scalars` instead.
 
     Examples
     --------
@@ -116,7 +118,7 @@ class Scalar(Archetype):
         )
 
     @classmethod
-    @deprecated("""Use `Scalars` instead.""")
+    @deprecated("""since 0.23.0: Use `Scalars` instead.""")
     def _clear(cls) -> Scalar:
         """Produce an empty Scalar, bypassing `__init__`."""
         inst = cls.__new__(cls)
@@ -124,7 +126,7 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
-    @deprecated("""Use `Scalars` instead.""")
+    @deprecated("""since 0.23.0: Use `Scalars` instead.""")
     def from_fields(
         cls,
         *,
@@ -164,7 +166,7 @@ class Scalar(Archetype):
         return cls.from_fields(clear_unset=True)
 
     @classmethod
-    @deprecated("""Use `Scalars` instead.""")
+    @deprecated("""since 0.23.0: Use `Scalars` instead.""")
     def columns(
         cls,
         *,

@@ -73,7 +73,10 @@ namespace rerun::archetypes {
     ///     }
     /// }
     /// ```
-    struct [[deprecated("Use `SeriesLines` instead.")]] SeriesLine {
+    ///
+    /// ⚠ **Deprecated since 0.23.0**: Use `SeriesLines` instead.
+    ///
+    struct [[deprecated("since 0.23.0: Use `SeriesLines` instead.")]] SeriesLine {
         /// Color for the corresponding series.
         std::optional<ComponentBatch> color;
 

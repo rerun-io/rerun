@@ -9,7 +9,7 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
 Handles different ways of loading Rerun data, e.g.:
 * Over HTTP(s)
-* Over WebSocket
+* Over gRPC
 * From disk
 
 Also handles different file types:

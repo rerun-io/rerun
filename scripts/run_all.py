@@ -154,7 +154,7 @@ class Viewer:
     web: bool
     sdk_port: int  # where the logging SDK sends the log stream (where the server receives)
     web_viewer_port: int  # the HTTP port where we serve the web viewer
-    ws_server_port: int  # the WebSocket port where we serve the log stream
+    grpc_server_port: int  # the gRPC port where we serve the log stream
     process: Any | None
 
     def __init__(self, close: bool = False, web: bool = False) -> None:
@@ -162,7 +162,7 @@ class Viewer:
         self.web = web
         self.sdk_port = get_free_port()
         self.web_viewer_port = get_free_port()
-        self.ws_server_port = get_free_port()
+        self.grpc_server_port = get_free_port()
         self.process = None
 
     def close(self) -> None:
@@ -177,7 +177,7 @@ class Viewer:
             args += [
                 "--web-viewer",
                 f"--web-viewer-port={self.web_viewer_port}",
-                f"--port={self.ws_server_port}",
+                f"--port={self.grpc_server_port}",
             ]
 
         self.process = subprocess.Popen(args)

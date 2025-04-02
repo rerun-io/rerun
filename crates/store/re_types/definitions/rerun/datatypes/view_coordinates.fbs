@@ -35,6 +35,7 @@ struct ViewCoordinates (
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.ArrayLike",
   "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.state": "unstable",
   "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"

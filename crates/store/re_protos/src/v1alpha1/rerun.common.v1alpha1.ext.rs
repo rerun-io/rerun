@@ -10,8 +10,14 @@ impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
     type Error = ArrowError;
 
     fn try_from(value: &crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
+        let schema_bytes = value
+            .arrow_schema
+            .as_ref()
+            .ok_or(ArrowError::InvalidArgumentError(
+                "missing schema bytes".to_owned(),
+            ))?;
         Ok(Self::clone(
-            re_sorbet::schema_from_ipc(&value.arrow_schema)?.as_ref(),
+            re_sorbet::schema_from_ipc(schema_bytes)?.as_ref(),
         ))
     }
 }
@@ -21,8 +27,16 @@ impl TryFrom<&ArrowSchema> for crate::common::v1alpha1::Schema {
 
     fn try_from(value: &ArrowSchema) -> Result<Self, Self::Error> {
         Ok(Self {
-            arrow_schema: re_sorbet::ipc_from_schema(value)?,
+            arrow_schema: Some(re_sorbet::ipc_from_schema(value)?),
         })
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::Schema> for ArrowSchema {
+    type Error = ArrowError;
+
+    fn try_from(value: crate::common::v1alpha1::Schema) -> Result<Self, Self::Error> {
+        (&value).try_into()
     }
 }
 
@@ -101,7 +115,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PartitionId {
     pub id: String,
 }
@@ -113,9 +127,21 @@ impl PartitionId {
     }
 }
 
-impl From<PartitionId> for crate::common::v1alpha1::PartitionId {
-    fn from(value: PartitionId) -> Self {
-        Self { id: Some(value.id) }
+impl From<String> for PartitionId {
+    fn from(id: String) -> Self {
+        Self { id }
+    }
+}
+
+impl From<&str> for PartitionId {
+    fn from(id: &str) -> Self {
+        Self { id: id.to_owned() }
+    }
+}
+
+impl std::fmt::Display for PartitionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.id.fmt(f)
     }
 }
 
@@ -123,11 +149,27 @@ impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::PartitionId) -> Result<Self, Self::Error> {
-        let id = value
-            .id
-            .ok_or(missing_field!(crate::common::v1alpha1::PartitionId, "id"))?;
+        Ok(Self {
+            id: value
+                .id
+                .ok_or(missing_field!(crate::common::v1alpha1::PartitionId, "id"))?,
+        })
+    }
+}
 
-        Ok(Self { id })
+// shortcuts
+
+impl From<String> for crate::common::v1alpha1::PartitionId {
+    fn from(id: String) -> Self {
+        Self { id: Some(id) }
+    }
+}
+
+impl From<&str> for crate::common::v1alpha1::PartitionId {
+    fn from(id: &str) -> Self {
+        Self {
+            id: Some(id.to_owned()),
+        }
     }
 }
 
@@ -136,7 +178,13 @@ impl TryFrom<crate::common::v1alpha1::PartitionId> for PartitionId {
 #[derive(Debug, Clone)]
 pub struct DatasetHandle {
     pub id: Option<EntryId>,
-    pub url: String,
+    pub url: url::Url,
+}
+
+impl DatasetHandle {
+    pub fn new(url: url::Url) -> Self {
+        Self { id: None, url }
+    }
 }
 
 impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
@@ -145,10 +193,16 @@ impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
     fn try_from(value: crate::common::v1alpha1::DatasetHandle) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.entry_id.map(|id| id.try_into()).transpose()?,
-            url: value.dataset_url.ok_or(missing_field!(
-                crate::common::v1alpha1::DatasetHandle,
-                "dataset_url"
-            ))?,
+            url: value
+                .dataset_url
+                .ok_or(missing_field!(
+                    crate::common::v1alpha1::DatasetHandle,
+                    "dataset_url"
+                ))?
+                .parse()
+                .map_err(|err| {
+                    invalid_field!(crate::common::v1alpha1::DatasetHandle, "dataset_url", err)
+                })?,
         })
     }
 }
@@ -157,7 +211,7 @@ impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
     fn from(value: DatasetHandle) -> Self {
         Self {
             entry_id: value.id.map(Into::into),
-            dataset_url: Some(value.url),
+            dataset_url: Some(value.url.to_string()),
         }
     }
 }

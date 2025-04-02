@@ -33,6 +33,8 @@ class AnnotationContext(AnnotationContextExt, ComponentMixin):
     annotation context. We use the *first* annotation context we find in the
     path-hierarchy when searching up through the ancestors of a given entity
     path.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None

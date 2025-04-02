@@ -9,6 +9,7 @@ use crate::{
         common::{collect_snippets_for_api_docs, ExampleInfo},
         Target,
     },
+    objects::State,
     Docs, Object, ObjectKind, Objects, Reporter, ATTR_RUST_TUPLE_STRUCT,
 };
 
@@ -298,17 +299,15 @@ pub fn doc_as_lines(
     objects: &Objects,
     virtpath: &str,
     fqname: &str,
+    state: &State,
     docs: &Docs,
     target: Target,
-    is_experimental: bool,
 ) -> Vec<String> {
     let mut lines = docs.lines_for(reporter, objects, target);
 
-    if is_experimental {
+    if let Some(docline_summary) = state.docline_summary() {
         lines.push(String::new());
-        lines.push(
-            "⚠️ **This type is experimental and may be removed in future versions**".to_owned(),
-        );
+        lines.push(docline_summary);
     }
 
     let examples = if !fqname.starts_with("rerun.blueprint.views") {

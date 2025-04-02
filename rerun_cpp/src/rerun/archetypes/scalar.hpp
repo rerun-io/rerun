@@ -81,7 +81,10 @@ namespace rerun::archetypes {
     ///     );
     /// }
     /// ```
-    struct [[deprecated("Use `Scalars` instead.")]] Scalar {
+    ///
+    /// ⚠ **Deprecated since 0.23.0**: Use `Scalars` instead.
+    ///
+    struct [[deprecated("since 0.23.0: Use `Scalars` instead.")]] Scalar {
         /// The scalar value to log.
         std::optional<ComponentBatch> scalar;
 
