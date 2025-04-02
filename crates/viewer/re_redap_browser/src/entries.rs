@@ -20,7 +20,7 @@ use re_protos::TypeConversionError;
 use re_smart_channel::SmartChannelSource;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
 use re_types::components::Timestamp;
-use re_ui::{icons, list_item, UiExt as _, UiLayout};
+use re_ui::{icons, list_item, UICommandSender, UiExt as _, UiLayout};
 use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender, ViewerContext,
@@ -196,10 +196,6 @@ pub enum EntryKind {
 impl EntryKind {
     fn name(&self) -> String {
         match self {
-            // Self::Remote(_, dataset) => servers
-            //     .find_entry(*dataset)
-            //     .map(|ds| ds.name().to_owned())
-            //     .unwrap_or_else(|| dataset.id.short_string()),
             Self::Remote {
                 origin: _,
                 entry_id: dataset,
@@ -210,10 +206,10 @@ impl EntryKind {
     }
 
     fn select(&self, ctx: &ViewerContext<'_>) {
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(self.item()));
         match self {
             Self::Remote { entry_id, .. } => {
-                ctx.command_sender()
-                    .send_system(SystemCommand::SelectRedapEntry(*entry_id));
                 ctx.command_sender()
                     .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
                         *entry_id,
@@ -221,21 +217,19 @@ impl EntryKind {
             }
             Self::Local(app) => {
                 ctx.command_sender()
-                    .send_system(re_viewer_context::SystemCommand::ActivateApp(app.clone()));
-                ctx.command_sender()
-                    .send_system(SystemCommand::SetSelection(Item::AppId(app.clone())));
+                    .send_system(SystemCommand::ActivateApp(app.clone()));
             }
         }
     }
 
-    fn item(&self) -> Option<Item> {
+    fn item(&self) -> Item {
         match self {
             Self::Remote {
                 name: _,
                 origin: _,
-                entry_id: _,
-            } => None, // TODO
-            Self::Local(app_id) => Some(Item::AppId(app_id.clone())),
+                entry_id,
+            } => Item::RedapEntry(*entry_id),
+            Self::Local(app_id) => Item::AppId(app_id.clone()),
         }
     }
 
@@ -291,9 +285,8 @@ pub fn dataset_and_its_recordings_ui(
 ) {
     entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
 
-    let selected = kind
-        .item()
-        .is_some_and(|i| ctx.selection().contains_item(&i));
+    let item = kind.item();
+    let selected = ctx.selection().contains_item(&item);
 
     let dataset_list_item = ui.list_item().selected(selected);
     let dataset_list_item_content =

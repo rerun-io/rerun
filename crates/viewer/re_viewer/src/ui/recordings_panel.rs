@@ -191,40 +191,42 @@ fn recording_list_ui(
         && !welcome_screen_state.hide)
         || !example_recordings.is_empty()
     {
-        let item = ui.list_item().header();
+        let item = Item::RedapServer(re_uri::Origin::examples_origin());
+        let selected = ctx.selection().contains_item(&item);
+        let list_item = ui.list_item().header().selected(selected);
         let title = list_item::LabelContent::header("Rerun examples");
         let response = if example_recordings.is_empty() {
-            item.show_flat(ui, title)
+            list_item.show_flat(ui, title)
         } else {
-            item.show_hierarchical_with_children(
-                ui,
-                egui::Id::new("example items"),
-                true,
-                title,
-                |ui| {
-                    for (app_id, entity_dbs) in example_recordings {
-                        dataset_and_its_recordings_ui(
-                            ui,
-                            ctx,
-                            &EntryKind::Local(app_id.clone()),
-                            entity_dbs,
-                        );
-                    }
-                },
-            )
-            .item_response
+            list_item
+                .show_hierarchical_with_children(
+                    ui,
+                    egui::Id::new("example items"),
+                    true,
+                    title,
+                    |ui| {
+                        for (app_id, entity_dbs) in example_recordings {
+                            dataset_and_its_recordings_ui(
+                                ui,
+                                ctx,
+                                &EntryKind::Local(app_id.clone()),
+                                entity_dbs,
+                            );
+                        }
+                    },
+                )
+                .item_response
         };
 
         if response.clicked() {
-            if ctx.app_options().enable_redap_browser {
-                ctx.command_sender()
-                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                        re_uri::Origin::examples_origin(),
-                    )));
-            } else {
-                ctx.command_sender()
-                    .send_system(SystemCommand::ActivateApp(StoreHub::welcome_screen_app_id()));
-            }
+            ctx.command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                    re_uri::Origin::examples_origin(),
+                )));
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(Item::RedapServer(
+                    re_uri::Origin::examples_origin(),
+                )));
         }
     }
 }
