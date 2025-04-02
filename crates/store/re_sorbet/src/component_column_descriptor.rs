@@ -3,7 +3,7 @@ use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
-use crate::{ArrowFieldMetadata, BatchType, MetadataExt as _};
+use crate::{ArrowFieldMetadata, BatchType, ColumnKind, MetadataExt as _};
 
 /// Describes a data/component column, such as `Position3D`, in a dataframe.
 ///
@@ -196,7 +196,7 @@ impl ComponentColumnDescriptor {
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
         // We use the long names for the archetype and component names so that they roundtrip properly!
         let mut metadata = std::collections::HashMap::from([
-            ("rerun.kind".to_owned(), "data".to_owned()),
+            ("rerun.kind".to_owned(), ColumnKind::Component.to_string()),
             (
                 "rerun.component".to_owned(),
                 component_name.full_name().to_owned(),

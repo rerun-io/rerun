@@ -36,7 +36,7 @@ pub use self::{
     chunk_schema::ChunkSchema,
     column_descriptor::{ColumnDescriptor, ColumnError},
     column_descriptor_ref::ColumnDescriptorRef,
-    column_kind::ColumnKind,
+    column_kind::{ColumnKind, UnknownColumnKind},
     component_column_descriptor::ComponentColumnDescriptor,
     error::SorbetError,
     index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType},
