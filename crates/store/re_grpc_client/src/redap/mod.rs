@@ -1,4 +1,4 @@
-use tokio_stream::StreamExt as _;
+use tokio_stream::{Stream, StreamExt as _};
 
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -7,7 +7,7 @@ use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::FetchPartitionRequest;
-
+use re_protos::manifest_registry::v1alpha1::FetchPartitionResponse;
 use re_uri::{DatasetDataEndpoint, Origin};
 
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
@@ -154,6 +154,20 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
     )
 }
 
+/// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
+//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
+pub fn fetch_partition_response_to_chunk(
+    response: tonic::Streaming<FetchPartitionResponse>,
+) -> impl Stream<Item = Result<Chunk, StreamError>> {
+    response.map(|resp| {
+        resp.map_err(Into::into).and_then(|r| {
+            let batch = r.chunk.ok_or(StreamError::MissingChunkData)?.decode()?;
+
+            Chunk::from_record_batch(&batch).map_err(Into::into)
+        })
+    })
+}
+
 pub async fn stream_partition_async(
     tx: re_smart_channel::Sender<LogMsg>,
     endpoint: re_uri::DatasetDataEndpoint,
@@ -188,15 +202,6 @@ pub async fn stream_partition_async(
         .await?
         .into_inner();
 
-    let mut chunk_stream = catalog_chunk_stream.map(|resp| {
-        resp.and_then(|r| {
-            r.chunk
-                .ok_or_else(|| tonic::Status::internal("missing chunk in FetchPartitionResponse"))?
-                .decode()
-                .map_err(|err| tonic::Status::internal(err.to_string()))
-        })
-    });
-
     drop(client);
 
     let store_id = StoreId::from_string(StoreKind::Recording, endpoint.partition_id.clone());
@@ -227,9 +232,10 @@ pub async fn stream_partition_async(
         return Ok(());
     }
 
-    while let Some(result) = chunk_stream.next().await {
-        let batch = result?;
-        let chunk = Chunk::from_record_batch(&batch)?;
+    let mut chunk_stream = fetch_partition_response_to_chunk(catalog_chunk_stream);
+
+    while let Some(chunk) = chunk_stream.next().await {
+        let chunk = chunk?;
 
         if tx
             .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
