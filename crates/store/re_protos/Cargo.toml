@@ -33,6 +33,7 @@ jiff.workspace = true
 prost-types.workspace = true
 prost.workspace = true
 pyo3 = { workspace = true, optional = true }
+serde.workspace = true
 thiserror.workspace = true
 
 # Native dependencies:

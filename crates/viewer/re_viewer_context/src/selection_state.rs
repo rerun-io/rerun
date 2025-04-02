@@ -254,6 +254,9 @@ impl ItemCollection {
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
                 Item::View(_) => None,
+                // TODO: Should these be URLs?
+                Item::RedapServer(_) => None,
+                Item::RedapEntry(_) => None,
 
                 Item::DataSource(source) => match source {
                     re_smart_channel::SmartChannelSource::File(path) => {
@@ -484,14 +487,18 @@ impl ApplicationSelectionState {
                 | Item::DataSource(_)
                 | Item::StoreId(_)
                 | Item::View(_)
-                | Item::Container(_) => current == test,
+                | Item::Container(_)
+                | Item::RedapEntry(_)
+                | Item::RedapServer(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
                     Item::AppId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
                         test_component_path == component_path
@@ -512,7 +519,9 @@ impl ApplicationSelectionState {
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
@@ -530,7 +539,9 @@ impl ApplicationSelectionState {
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {

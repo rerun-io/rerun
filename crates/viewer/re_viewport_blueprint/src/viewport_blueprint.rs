@@ -254,7 +254,9 @@ impl ViewportBlueprint {
             Item::DataSource(_)
             | Item::StoreId(_)
             | Item::ComponentPath(_)
-            | Item::InstancePath(_) => true,
+            | Item::InstancePath(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => true,
 
             Item::View(view_id) => self.view(view_id).is_some(),
 

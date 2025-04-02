@@ -70,6 +70,12 @@ impl ItemTitle {
                     item_title
                 }
             }
+
+            // TODO: Icon? Should RedapServers be part of ViewerContext?
+            Item::RedapEntry(entry) => Self::new(entry.to_string(), &icons::DATASET),
+
+            // TODO: Icon?
+            Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),
         }
     }
 

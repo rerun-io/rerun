@@ -644,7 +644,12 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
             Some(Box::new(instance_path.clone()))
         }
         // Skip data ui since we don't know yet what to show for these.
-        Item::View(_) | Item::Container(_) => None,
+        Item::View(_) | Item::Container(_)
+
+        // TODO?
+        | Item::RedapEntry(_)
+        | Item::RedapServer(_)
+        => None,
     }
 }
 

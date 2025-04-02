@@ -1023,7 +1023,11 @@ impl BlueprintTree {
         focused_item: &Item,
     ) -> Option<Item> {
         match focused_item {
-            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => None,
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => None,
 
             Item::Container(container_id) => {
                 self.expand_all_contents_until(
