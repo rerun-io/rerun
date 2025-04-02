@@ -149,6 +149,9 @@ pub enum TypeConversionError {
 
     #[error("{0}")]
     UnknownEnumValue(#[from] prost::UnknownEnumValue),
+
+    #[error("could not parse url: {0}")]
+    UrlParseError(#[from] url::ParseError),
 }
 
 impl TypeConversionError {
