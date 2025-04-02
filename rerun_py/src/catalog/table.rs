@@ -47,7 +47,7 @@ impl PyTable {
         let provider = self_
             .lazy_provider
             .as_ref()
-            .ok_or_else(|| PyRuntimeError::new_err(format!("Missing TableProvider")))?
+            .ok_or_else(|| PyRuntimeError::new_err("Missing TableProvider".to_owned()))?
             .clone();
 
         let capsule_name = cr"datafusion_table_provider".into();
