@@ -62,12 +62,12 @@ The `serve_web` call starts an additional server which hosts the assets required
 * `serve_web` is not available.
 
 #### Python
-* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc)
+* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc?speculative-link)
 * [`rr.serve_web`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_web)
 
 #### Rust
-* [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc)
-* [`RecordingStream::serve_web`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web)
+* [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc?speculative-link)
+* [`RecordingStream::serve_web`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web?speculative-link)
 
 
 ### Save
