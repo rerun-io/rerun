@@ -164,7 +164,12 @@ fn replace_and_parse(value: &str) -> Result<(crate::Origin, url::Url), Error> {
     // We have to first rewrite the endpoint, because `Url` does not allow
     // `.set_scheme()` for non-opaque origins, nor does it return a proper
     // `Origin` in that case.
-    let http_url = url::Url::parse(&rewritten)?;
+    let mut http_url = url::Url::parse(&rewritten)?;
+
+    if http_url.port().is_none() {
+        // If no port is specified, we assume the default redap port:
+        http_url.set_port(Some(51234)).ok();
+    }
 
     let url::Origin::Tuple(_, host, port) = http_url.origin() else {
         return Err(Error::UnexpectedOpaqueOrigin(value.to_owned()));
@@ -553,5 +558,35 @@ mod tests {
         let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_default_port() {
+        let url = "rerun://localhost";
+
+        let expected = RedapUri::Catalog(CatalogEndpoint {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 51234,
+            },
+        });
+
+        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_custom_port() {
+        let url = "rerun://localhost:123";
+
+        let expected = RedapUri::Catalog(CatalogEndpoint {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 123,
+            },
+        });
+
+        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
     }
 }
