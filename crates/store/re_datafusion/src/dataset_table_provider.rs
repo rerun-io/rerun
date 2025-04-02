@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::{
-    array::{StructArray, UInt64Array},
+    array::{StringArray, StructArray, UInt64Array},
     datatypes::SchemaRef,
 };
 use arrow_flight::{
@@ -21,12 +21,12 @@ use re_protos::{
         catalog_service_client::CatalogServiceClient, CatalogFlightRequest, EntryFilter, EntryKind,
         FindEntriesRequest, ReadDatasetEntryRequest,
     },
-    common::v1alpha1::{ext::EntryId, DatasetHandle, IndexColumnSelector, Timeline},
+    common::v1alpha1::{ext::EntryId, DatasetHandle, IndexColumnSelector, PartitionId, Timeline},
     flights::v1alpha1::FlightRequest,
     manifest_registry::v1alpha1::{
         manifest_registry_service_client::ManifestRegistryServiceClient, GetDatasetSchemaRequest,
         ManifestRegistryFlightRequest, Query, QueryDatasetLatestAtRelevantChunks,
-        QueryDatasetRequest,
+        QueryDatasetRequest, ScanPartitionTableRequest,
     },
 };
 use re_tuid::Tuid;
@@ -129,7 +129,16 @@ async fn create_table_provider(
     let mut manifest_client = ManifestRegistryServiceClient::new(channel);
     let schema = get_dataset_schema(&mut manifest_client, dataset_handle.clone()).await?;
 
-    query_dataset(&mut flight_client, dataset_handle, timeline, schema).await
+    let partition_ids = get_partition_ids(&mut flight_client, dataset_handle.clone()).await?;
+
+    query_dataset(
+        &mut flight_client,
+        dataset_handle,
+        partition_ids,
+        timeline,
+        schema,
+    )
+    .await
 }
 
 async fn find_entry_id_for_dataset(
@@ -174,7 +183,7 @@ async fn find_entry_id_for_dataset(
         let id_col = flight_data
             .column_by_name("id")
             .ok_or(exec_datafusion_err!(
-                "Expected column `id` for FindEntries not retruned"
+                "Expected column `id` for FindEntries not returned"
             ))?
             .as_any()
             .downcast_ref::<StructArray>()
@@ -229,6 +238,61 @@ async fn find_dataset_handle(
     Ok(handle)
 }
 
+async fn get_partition_ids(
+    client: &mut FlightServiceClient<Channel>,
+    dataset_handle: DatasetHandle,
+) -> DataFusionResult<Vec<PartitionId>> {
+    let scan_partitions_request = FlightRequest {
+        request_type: Some(
+            re_protos::flights::v1alpha1::flight_request::RequestType::ManifestRegistryRequest(
+                ManifestRegistryFlightRequest {
+                        request_type: Some(re_protos::manifest_registry::v1alpha1::manifest_registry_flight_request::RequestType::ScanPartitionTable(
+
+                            ScanPartitionTableRequest { entry: dataset_handle.into(), scan_parameters: None })),
+                    }))
+                };
+    let scan_partitions_bytes = scan_partitions_request.encode_to_vec();
+
+    let scan_partitions_ticket = Ticket {
+        ticket: scan_partitions_bytes.into(),
+    };
+
+    let scan_partitions_stream = client
+        .do_get(scan_partitions_ticket)
+        .await
+        .map_err(|err| DataFusionError::Execution(err.to_string()))?
+        .into_inner();
+
+    let mut record_batch_stream =
+        FlightRecordBatchStream::new_from_flight_data(scan_partitions_stream.map_err(|e| e.into()));
+
+    let mut partitions = Vec::default();
+    while let Some(flight_result) = record_batch_stream.next().await {
+        let record_batch = flight_result.map_err(|err| exec_datafusion_err!("{err}"))?;
+
+        let Some(id_array) = record_batch.column_by_name("rerun_partition_id") else {
+            return exec_err!("Missing partition ID from returned batch");
+        };
+
+        let Some(id_string_array) = id_array.as_any().downcast_ref::<StringArray>() else {
+            return exec_err!(
+                "Unexpected array type for partition ID. Expected UTF8. Received {}",
+                id_array.data_type()
+            );
+        };
+
+        for partition in id_string_array {
+            if let Some(id) = partition {
+                partitions.push(PartitionId {
+                    id: Some(id.to_string()),
+                })
+            }
+        }
+    }
+
+    Ok(partitions)
+}
+
 async fn get_dataset_schema(
     client: &mut ManifestRegistryServiceClient<Channel>,
     dataset_handle: DatasetHandle,
@@ -251,9 +315,14 @@ async fn get_dataset_schema(
 async fn query_dataset(
     client: &mut FlightServiceClient<Channel>,
     dataset_handle: DatasetHandle,
+    partition_ids: Vec<PartitionId>,
     timeline: &str,
     schema: SchemaRef,
 ) -> DataFusionResult<Arc<dyn TableProvider>> {
+    use re_protos::flights::v1alpha1::flight_request::RequestType::ManifestRegistryRequest;
+    use re_protos::manifest_registry::v1alpha1::manifest_registry_flight_request::RequestType::GetDatasetSchema;
+    use re_protos::manifest_registry::v1alpha1::manifest_registry_flight_request::RequestType::QueryDataset;
+
     let mut query = Query::default();
     query.latest_at = Some(QueryDatasetLatestAtRelevantChunks {
         entity_paths: Vec::new(),
@@ -265,26 +334,39 @@ async fn query_dataset(
         at: None,
         fuzzy_descriptors: Vec::new(),
     });
-    let find_entries_request = FlightRequest {
-        request_type: Some(
-            re_protos::flights::v1alpha1::flight_request::RequestType::ManifestRegistryRequest(
-                ManifestRegistryFlightRequest {
-                    request_type: Some(re_protos::manifest_registry::v1alpha1::manifest_registry_flight_request::RequestType::QueryDataset(
-
-                        QueryDatasetRequest { entry: dataset_handle.into(), partition_ids: Vec::new(), chunk_ids: Vec::new(), scan_parameters: None, query: Some(query), })),
-                },
-            ),
-        ),
+    let query_dataset_request = QueryDatasetRequest {
+        entry: dataset_handle.into(),
+        partition_ids,
+        chunk_ids: Vec::new(),
+        scan_parameters: None,
+        query: Some(query),
     };
-    let find_entries_bytes = find_entries_request.encode_to_vec();
 
-    let ticket = Ticket {
-        ticket: find_entries_bytes.into(),
-    };
+    let ticket = FlightRequest {
+        request_type: Some(ManifestRegistryRequest(ManifestRegistryFlightRequest {
+            request_type: Some(QueryDataset(query_dataset_request.clone())),
+        })),
+    }
+    .encode_to_vec()
+    .into();
+
+    let ticket = Ticket { ticket };
+
+    let schema_ticket = FlightRequest {
+        request_type: Some(ManifestRegistryRequest(ManifestRegistryFlightRequest {
+            request_type: Some(GetDatasetSchema(query_dataset_request)),
+        })),
+    }
+    .encode_to_vec()
+    .into();
+    let schema_ticket = Some(Ticket {
+        ticket: schema_ticket,
+    });
 
     FlightResponseProvider {
-        schema,
+        schema: schema,
         ticket: Some(ticket),
+        schema_ticket,
         client: client.clone(),
     }
     .into_provider()

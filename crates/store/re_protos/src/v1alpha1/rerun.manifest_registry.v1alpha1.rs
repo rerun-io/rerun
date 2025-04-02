@@ -21,7 +21,7 @@ pub mod manifest_registry_flight_request {
         #[prost(message, tag = "4")]
         ScanPartitionTable(super::ScanPartitionTableRequest),
         #[prost(message, tag = "5")]
-        GetDatasetSchema(super::GetDatasetSchemaRequest),
+        GetDatasetSchema(super::QueryDatasetRequest),
         #[prost(message, tag = "6")]
         CreateIndex(super::CreateIndexRequest),
         #[prost(message, tag = "7")]

@@ -1,4 +1,3 @@
-
 use datafusion::catalog::TableFunctionImpl as _;
 use datafusion::prelude::lit;
 use datafusion_ffi::table_provider::FFI_TableProvider;

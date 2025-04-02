@@ -119,7 +119,7 @@ message ManifestRegistryFlightRequest {
     WriteChunksRequest write_chunks = 2;
     GetPartitionTableSchemaRequest get_partition_table_schema = 3;
     ScanPartitionTableRequest scan_partition_table = 4;
-    GetDatasetSchemaRequest get_dataset_schema = 5;
+    QueryDatasetRequest get_dataset_schema = 5;
     CreateIndexRequest create_index = 6;
     ReIndexRequest re_index = 7;
     SearchDatasetRequest search_dataset = 8;
