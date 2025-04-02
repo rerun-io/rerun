@@ -1,5 +1,4 @@
-//! Client connection handle which ch
-
+use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyResult, Python,
 };
@@ -11,7 +10,10 @@ use re_protos::catalog::v1alpha1::{
     ReadTableEntryRequest,
 };
 use re_protos::common::v1alpha1::ext::EntryId;
+use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
+use re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
+use re_protos::manifest_registry::v1alpha1::ext::DataSource;
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
@@ -124,5 +126,46 @@ impl ConnectionHandle {
             .table
             .ok_or(PyRuntimeError::new_err("No table in response"))?
             .try_into()?)
+    }
+
+    pub fn get_dataset_schema(
+        &mut self,
+        py: Python<'_>,
+        entry_id: EntryId,
+    ) -> PyResult<ArrowSchema> {
+        wait_for_future(py, async {
+            self.client
+                .get_dataset_schema(GetDatasetSchemaRequest {
+                    dataset_id: Some(entry_id.into()),
+                })
+                .await
+                .map_err(to_py_err)?
+                .into_inner()
+                .schema()
+                .map_err(to_py_err)
+        })
+    }
+
+    pub fn register_with_dataset(
+        &mut self,
+        py: Python<'_>,
+        dataset_id: EntryId,
+        recording_uri: String,
+    ) -> PyResult<()> {
+        wait_for_future(py, async {
+            self.client
+                .register_with_dataset(RegisterWithDatasetRequest {
+                    dataset_id: Some(dataset_id.into()),
+                    data_sources: vec![DataSource::new_rrd(recording_uri)
+                        .map_err(to_py_err)?
+                        .into()],
+                    //TODO(ab): expose this to as a method argument
+                    on_duplicate: IfDuplicateBehavior::Error as i32,
+                })
+                .await
+                .map_err(to_py_err)?;
+
+            Ok(())
+        })
     }
 }

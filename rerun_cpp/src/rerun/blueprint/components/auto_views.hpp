@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether or not views should be created automatically.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct AutoViews {
         rerun::datatypes::Bool auto_views;
 

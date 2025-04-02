@@ -11,7 +11,8 @@ namespace rerun.archetypes;
 /// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png"
 table VideoFrameReference (
   "attr.docs.category": "Video",
-  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "stable"
 ){
     // --- Required ---
 

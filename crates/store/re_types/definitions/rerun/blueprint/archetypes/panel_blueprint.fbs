@@ -4,15 +4,15 @@ namespace rerun.blueprint.archetypes;
 
 /// Shared state for the 3 collapsible panels.
 table PanelBlueprint (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default"
 ) {
-    // --- Required ---
+  // --- Required ---
 
-    // --- Optional ---
+  // --- Optional ---
 
-    /// Current state of the panels.
-    state: rerun.blueprint.components.PanelState ("attr.rerun.component_optional", nullable, order: 1000);
+  /// Current state of the panels.
+  state: rerun.blueprint.components.PanelState ("attr.rerun.component_optional", nullable, order: 1000);
 
-    // TODO(jleibs): Add a float to track how expanded the panel is.
+  // TODO(jleibs): Add a float to track how expanded the panel is.
 }

@@ -16,7 +16,11 @@ __all__ = ["FilterByRange", "FilterByRangeBatch"]
 
 
 class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
-    """**Component**: Configuration for a filter-by-range feature of the dataframe view."""
+    """
+    **Component**: Configuration for a filter-by-range feature of the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of FilterByRangeExt in filter_by_range_ext.py

@@ -20,7 +20,11 @@ __all__ = ["TensorScalarMapping"]
 
 @define(str=False, repr=False, init=False)
 class TensorScalarMapping(Archetype):
-    """**Archetype**: Configures how tensor scalars are mapped to color."""
+    """
+    **Archetype**: Configures how tensor scalars are mapped to color.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     def __init__(
         self: Any,

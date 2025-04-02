@@ -12,10 +12,11 @@ namespace rerun.archetypes;
 /// \example archetypes/depth_image_simple !api title="Simple example" image="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/1200w.png"
 /// \example archetypes/depth_image_3d title="Depth to 3D example" image="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png"
 table DepthImage (
-  "attr.rust.derive": "PartialEq",
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Image & tensor",
-  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

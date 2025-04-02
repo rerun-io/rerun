@@ -2,13 +2,13 @@ namespace rerun.blueprint.archetypes;
 
 /// Tries to move the center of mass of the graph to the origin.
 struct ForceCenter (
-    "attr.rerun.scope": "blueprint"
+  "attr.rerun.scope": "blueprint"
 ) {
-    /// Whether the center force is enabled.
-    ///
-    /// The center force tries to move the center of mass of the graph towards the origin.
-    enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
+  /// Whether the center force is enabled.
+  ///
+  /// The center force tries to move the center of mass of the graph towards the origin.
+  enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 
-    /// The strength of the force.
-    strength: rerun.blueprint.components.ForceStrength ("attr.rerun.component_optional", nullable, order: 200);
+  /// The strength of the force.
+  strength: rerun.blueprint.components.ForceStrength ("attr.rerun.component_optional", nullable, order: 200);
 }

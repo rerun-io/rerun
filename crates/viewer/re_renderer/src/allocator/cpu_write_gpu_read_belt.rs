@@ -129,27 +129,13 @@ where
 
         // TODO(emilk): optimize the extend function.
         // Right now it is 3-4x faster to collect to a vec first, which is crazy.
-        //
-        // Mimalloc can't align types larger than 64 bytes now and will silently ignore it.
-        // https://github.com/purpleprotocol/mimalloc_rust/issues/128
-        // Therefore, large alignments won't work with collect.
-        let pretend_mimalloc_aligns_correctly = false; // TODO(#5875): update mimalloc
-        if std::mem::align_of::<T>() <= 32 || pretend_mimalloc_aligns_correctly {
+        if true {
             let vec: Vec<T> = elements.collect();
 
-            #[allow(clippy::dbg_macro)]
-            if pretend_mimalloc_aligns_correctly {
-                dbg!(std::any::type_name::<T>());
-                dbg!(std::mem::size_of::<T>());
-                dbg!(std::mem::align_of::<T>());
-                dbg!(vec.len());
-                dbg!(vec.as_ptr());
-                dbg!(vec.as_ptr() as usize % std::mem::align_of::<T>());
-            }
             debug_assert_eq!(
                 vec.as_ptr() as usize % std::mem::align_of::<T>(),
                 0,
-                "Vec::collect collects into unaligned memory!"
+                "Vec::collect collects into unaligned memory! Is this a bug in the allocator?"
             );
 
             self.extend_from_slice(vec.as_slice())?;

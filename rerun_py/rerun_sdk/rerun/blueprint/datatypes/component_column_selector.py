@@ -43,7 +43,11 @@ def _component_column_selector__component__special_field_converter_override(x: d
 
 @define(init=False)
 class ComponentColumnSelector(ComponentColumnSelectorExt):
-    """**Datatype**: Describe a component column to be selected in the dataframe view."""
+    """
+    **Datatype**: Describe a component column to be selected in the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     # __init__ can be found in component_column_selector_ext.py
 

@@ -21,6 +21,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The strength of a given force.
 ///
 /// Allows to assign different weights to the individual forces, prioritizing one over the other.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, Copy, PartialEq)]
 #[repr(transparent)]
 pub struct ForceStrength(pub crate::datatypes::Float64);

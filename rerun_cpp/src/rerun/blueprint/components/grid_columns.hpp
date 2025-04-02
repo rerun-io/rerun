@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: How many columns a grid container should have.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct GridColumns {
         /// The number of columns.
         rerun::datatypes::UInt32 columns;

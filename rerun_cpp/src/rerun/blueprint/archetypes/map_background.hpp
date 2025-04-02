@@ -17,6 +17,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the background map of the map view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct MapBackground {
         /// Map provider and style to use.
         ///

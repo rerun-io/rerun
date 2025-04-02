@@ -26,6 +26,9 @@ namespace rerun::blueprint::archetypes {
     ///
     /// This can only be used as part of blueprints. It will have no effect if used
     /// in a regular entity.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct VisualizerOverrides {
         /// Names of the visualizers that should be active.
         std::optional<ComponentBatch> ranges;

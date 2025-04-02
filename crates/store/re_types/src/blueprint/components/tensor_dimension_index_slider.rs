@@ -19,6 +19,8 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Show a slider for the index of some dimension of a slider.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(transparent)]
 pub struct TensorDimensionIndexSlider(pub crate::blueprint::datatypes::TensorDimensionIndexSlider);

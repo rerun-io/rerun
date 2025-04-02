@@ -18,6 +18,9 @@ namespace arrow {
 
 namespace rerun::blueprint::datatypes {
     /// **Datatype**: Configuration for the filter-by-range feature of the dataframe view.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct FilterByRange {
         /// Beginning of the time range.
         rerun::datatypes::TimeInt start;

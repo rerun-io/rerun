@@ -3,10 +3,13 @@ use std::sync::Arc;
 use arrow::{
     array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
+    error::ArrowError,
 };
 
-use crate::manifest_registry::v1alpha1::CreatePartitionManifestsResponse;
-
+use crate::manifest_registry::v1alpha1::{
+    CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
+};
+use crate::{invalid_field, missing_field, TypeConversionError};
 // --- CreatePartitionManifestsResponse ---
 
 impl CreatePartitionManifestsResponse {
@@ -77,3 +80,80 @@ impl TryFrom<RecordBatch> for CreatePartitionManifestsResponse {
 }
 
 // TODO(#9430): the other way around would be nice too, but same problem.
+
+// --- GetDatasetSchemaResponse ---
+
+#[derive(Debug, thiserror::Error)]
+pub enum GetDatasetSchemaResponseError {
+    #[error(transparent)]
+    ArrowError(#[from] ArrowError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] TypeConversionError),
+}
+
+impl GetDatasetSchemaResponse {
+    pub fn schema(self) -> Result<Schema, GetDatasetSchemaResponseError> {
+        Ok(self
+            .schema
+            .ok_or_else(|| {
+                TypeConversionError::missing_field::<GetDatasetSchemaResponse>("schema")
+            })?
+            .try_into()?)
+    }
+}
+
+// --- DataSource --
+
+#[derive(Debug)]
+pub struct DataSource {
+    pub storage_url: url::Url,
+    pub kind: DataSourceKind,
+}
+
+impl DataSource {
+    pub fn new_rrd(storage_url: impl AsRef<str>) -> Result<Self, url::ParseError> {
+        Ok(Self {
+            storage_url: storage_url.as_ref().parse()?,
+            kind: DataSourceKind::Rrd,
+        })
+    }
+}
+
+impl From<DataSource> for crate::manifest_registry::v1alpha1::DataSource {
+    fn from(value: DataSource) -> Self {
+        crate::manifest_registry::v1alpha1::DataSource {
+            storage_url: Some(value.storage_url.to_string()),
+            typ: value.kind as i32,
+        }
+    }
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        data_source: crate::manifest_registry::v1alpha1::DataSource,
+    ) -> Result<Self, Self::Error> {
+        let storage_url = data_source
+            .storage_url
+            .ok_or_else(|| {
+                missing_field!(
+                    crate::manifest_registry::v1alpha1::DataSource,
+                    "storage_url"
+                )
+            })?
+            .parse()?;
+
+        let kind = DataSourceKind::try_from(data_source.typ)?;
+        if kind == DataSourceKind::Unspecified {
+            return Err(invalid_field!(
+                crate::manifest_registry::v1alpha1::DataSource,
+                "typ",
+                "data source kind is unspecified"
+            ));
+        }
+
+        Ok(Self { storage_url, kind })
+    }
+}

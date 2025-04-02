@@ -650,9 +650,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            let typ = db.timeline_type(&query.timeline());
-            let timeline = Timeline::new(query.timeline(), typ);
-            entity_tree_stats_ui(ui, &timeline, db, subtree, include_subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats
