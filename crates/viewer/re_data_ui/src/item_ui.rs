@@ -915,5 +915,7 @@ pub fn table_id_button_ui(
     if response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(item));
     }
 }
