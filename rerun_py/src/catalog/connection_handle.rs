@@ -1,10 +1,13 @@
 use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::{
-    create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyResult, Python,
+    create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
+    Python,
 };
+use tokio_stream::StreamExt as _;
 
-use re_grpc_client::redap::client;
-use re_log_types::EntryId;
+use re_chunk_store::ChunkStore;
+use re_grpc_client::redap::{client, fetch_partition_response_to_chunk};
+use re_log_types::{EntryId, StoreInfo};
 use re_protos::catalog::v1alpha1::{
     ext::{DatasetEntry, EntryDetails, TableEntry},
     CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
@@ -12,7 +15,9 @@ use re_protos::catalog::v1alpha1::{
 };
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-use re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
+use re_protos::frontend::v1alpha1::{
+    FetchPartitionRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest,
+};
 use re_protos::manifest_registry::v1alpha1::ext::DataSource;
 
 use crate::catalog::to_py_err;
@@ -167,5 +172,44 @@ impl ConnectionHandle {
 
             Ok(())
         })
+    }
+
+    //TODO(ab): improve that by actually using `GetChunks`
+    pub fn get_chunks(
+        &mut self,
+        py: Python<'_>,
+        store_info: StoreInfo,
+        dataset_id: EntryId,
+        partition_ids: &[impl AsRef<str> + Sync],
+    ) -> PyResult<ChunkStore> {
+        let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
+        store.set_info(store_info);
+
+        wait_for_future(py, async {
+            for partition_id in partition_ids {
+                let catalog_chunk_stream = self
+                    .client
+                    .fetch_partition(FetchPartitionRequest {
+                        dataset_id: Some(dataset_id.into()),
+                        partition_id: Some(partition_id.as_ref().into()),
+                    })
+                    .await
+                    .map_err(to_py_err)?
+                    .into_inner();
+
+                let mut chunk_stream = fetch_partition_response_to_chunk(catalog_chunk_stream);
+
+                while let Some(chunk) = chunk_stream.next().await {
+                    let chunk = chunk.map_err(to_py_err)?;
+                    store
+                        .insert_chunk(&std::sync::Arc::new(chunk))
+                        .map_err(to_py_err)?;
+                }
+            }
+
+            Ok::<(), PyErr>(())
+        })?;
+
+        Ok(store)
     }
 }

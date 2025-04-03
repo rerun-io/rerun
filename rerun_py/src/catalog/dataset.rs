@@ -4,7 +4,7 @@ use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyRuntimeError;
-use pyo3::{pyclass, pymethods, PyRef, PyResult};
+use pyo3::{pyclass, pymethods, Py, PyAny, PyRef, PyResult};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -25,6 +25,7 @@ use re_protos::manifest_registry::v1alpha1::{
 };
 use re_sdk::{ComponentDescriptor, ComponentName};
 
+use crate::catalog::dataframe_query::PyDataframeQueryView;
 use crate::catalog::{to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike};
 use crate::dataframe::{
     PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording,
@@ -86,6 +87,7 @@ impl PyDataset {
         let dataset_id = super_.details.id;
         let dataset_name = super_.details.name.clone();
 
+        //TODO(ab): use `ConnectionHandle::get_chunk()`
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
             let catalog_chunk_stream = client
                 .fetch_partition(FetchPartitionRequest {
@@ -129,6 +131,25 @@ impl PyDataset {
             store: handle,
             cache,
         })
+    }
+
+    #[expect(clippy::fn_params_excessive_bools)]
+    fn dataframe_query_view(
+        self_: Py<Self>,
+        index: String,
+        contents: Py<PyAny>,
+        include_semantically_empty_columns: bool,
+        include_indicator_columns: bool,
+        include_tombstone_columns: bool,
+    ) -> PyDataframeQueryView {
+        PyDataframeQueryView::new(
+            self_,
+            index,
+            contents,
+            include_semantically_empty_columns,
+            include_indicator_columns,
+            include_tombstone_columns,
+        )
     }
 
     fn create_fts_index(

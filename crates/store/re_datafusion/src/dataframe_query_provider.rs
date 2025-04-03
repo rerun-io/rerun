@@ -7,36 +7,29 @@ use datafusion::{
     execution::SendableRecordBatchStream,
     physical_plan::{stream::RecordBatchStreamAdapter, streaming::PartitionStream},
 };
-use futures_util::StreamExt;
-use re_chunk_store::ChunkStore;
-use re_dataframe::{ChunkStoreHandle, QueryEngine, QueryExpression, QueryHandle, StorageEngine};
+use futures_util::StreamExt as _;
+
+use re_dataframe::{QueryEngine, QueryExpression, StorageEngine};
 
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
     query_expression: QueryExpression,
-    chunk_store: ChunkStoreHandle,
-}
-
-fn create_query_handle(
-    query_expression: &QueryExpression,
-    chunk_store: &ChunkStoreHandle,
-) -> QueryHandle<StorageEngine> {
-    let cache =
-        re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(chunk_store.clone()));
-
-    let engine = QueryEngine::new(chunk_store.clone(), cache);
-    engine.query(query_expression.clone())
+    query_engine: QueryEngine<StorageEngine>,
 }
 
 impl DataframeQueryTableProvider {
-    pub fn new(chunk_store: ChunkStore, query_expression: QueryExpression) -> Self {
-        let chunk_store = ChunkStoreHandle::new(chunk_store);
-        let schema = create_query_handle(&query_expression, &chunk_store)
+    pub fn new(
+        query_engine: QueryEngine<StorageEngine>,
+        query_expression: QueryExpression,
+    ) -> Self {
+        let schema = query_engine
+            .query(query_expression.clone())
             .schema()
-            .to_owned();
+            .clone();
+
         Self {
             schema,
-            chunk_store,
+            query_engine,
             query_expression,
         }
     }
@@ -60,9 +53,12 @@ impl PartitionStream for DataframeQueryTableProvider {
     }
 
     fn execute(&self, _ctx: Arc<datafusion::execution::TaskContext>) -> SendableRecordBatchStream {
-        let query_handle = create_query_handle(&self.query_expression, &self.chunk_store);
-
-        let stream = futures_util::stream::iter(query_handle.into_batch_iter()).map(|v| (Ok(v)));
+        let stream = futures_util::stream::iter(
+            self.query_engine
+                .query(self.query_expression.clone())
+                .into_batch_iter(),
+        )
+        .map(Ok);
         let adapter = RecordBatchStreamAdapter::new(Arc::clone(&self.schema), stream);
         Box::pin(adapter)
     }

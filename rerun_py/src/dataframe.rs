@@ -310,7 +310,7 @@ impl AnyColumn {
 
 /// A type alias for any component-column-like object.
 #[derive(FromPyObject)]
-enum AnyComponentColumn {
+pub(crate) enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
     Name(String),
     #[pyo3(transparent, annotation = "component_descriptor")]
@@ -321,7 +321,7 @@ enum AnyComponentColumn {
 
 impl AnyComponentColumn {
     #[allow(dead_code)]
-    fn into_selector(self) -> PyResult<ComponentColumnSelector> {
+    pub(crate) fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
             Self::Name(name) => {
                 let component_path =
@@ -344,7 +344,7 @@ impl AnyComponentColumn {
 ///
 /// This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
 #[derive(FromPyObject)]
-enum IndexValuesLike<'py> {
+pub(crate) enum IndexValuesLike<'py> {
     PyArrow(PyArrowType<ArrayData>),
     NumPy(numpy::PyArrayLike1<'py, i64>),
 
@@ -354,7 +354,7 @@ enum IndexValuesLike<'py> {
 }
 
 impl IndexValuesLike<'_> {
-    fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
+    pub(crate) fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
         match self {
             Self::PyArrow(array) => {
                 let array = make_array(array.0.clone());
