@@ -690,7 +690,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&ctx);
+        check_for_clicked_hyperlinks(&ctx, &redap_servers);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
@@ -877,7 +877,7 @@ pub(crate) fn recording_config_entry<'cfgs>(
 /// Must run after any ui code, or other code that tells egui to open an url.
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
-fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
+fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>, redap_servers: &RedapServers) {
     let recording_scheme = "recording://";
 
     let mut recording_path = None;
@@ -885,9 +885,9 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let is_rerun_url = open_url.url.parse::<re_uri::RedapUri>().is_ok();
+                let redap_uri = open_url.url.parse::<re_uri::RedapUri>();
 
-                if is_rerun_url {
+                if let Ok(redap_uri) = redap_uri {
                     let data_source = re_data_source::DataSource::from_uri(
                         re_log_types::FileSource::Uri,
                         open_url.url.clone(),
@@ -905,6 +905,18 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                             time_range,
                         }),
                     });
+
+                    // If this is a dataset url, we add the server if we don't know about it already.
+                    // Otherwise we end up in a situation where we have a data from an unknown server,
+                    // which is unnecessary and can get us into a strange ui state.
+                    if let re_uri::RedapUri::DatasetData(dataset_endpoint) = redap_uri {
+                        if !redap_servers.has_server(&dataset_endpoint.origin) {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::AddRedapServer {
+                                    endpoint: re_uri::CatalogEndpoint::new(dataset_endpoint.origin),
+                                });
+                        }
+                    }
 
                     match data_source.stream(on_cmd, None) {
                         Ok(re_data_source::StreamSource::LogMessages(rx)) => {
