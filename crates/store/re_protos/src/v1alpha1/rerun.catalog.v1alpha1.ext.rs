@@ -1,13 +1,10 @@
-use crate::{
-    common::v1alpha1::ext::{DatasetHandle, EntryId},
-    missing_field, TypeConversionError,
-};
+use crate::{common::v1alpha1::ext::DatasetHandle, missing_field, TypeConversionError};
 
 // --- EntryDetails ---
 
 #[derive(Debug, Clone)]
 pub struct EntryDetails {
-    pub id: EntryId,
+    pub id: re_log_types::EntryId,
     pub name: String,
     pub kind: crate::catalog::v1alpha1::EntryKind,
     pub created_at: jiff::Timestamp,

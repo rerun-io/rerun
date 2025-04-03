@@ -9,7 +9,7 @@ use datafusion::{
 use tonic::transport::Channel;
 
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::common::v1alpha1::ext::EntryId;
+use re_log_types::EntryId;
 use re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest;
 use re_protos::{
     frontend::v1alpha1::{

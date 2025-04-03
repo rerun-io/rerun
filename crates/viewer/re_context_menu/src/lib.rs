@@ -24,7 +24,7 @@ use actions::{
     show_hide::{HideAction, ShowAction},
     CopyEntityPathToClipboard,
 };
-use re_protos::common::v1alpha1::ext::EntryId;
+
 use sub_menu::SubMenu;
 
 /// Controls how [`context_menu_ui_for_item`] should handle the current selection state.
@@ -401,7 +401,12 @@ trait ContextMenuAction {
     fn process_redap_server(&self, _ctx: &ContextMenuContext<'_>, _origin: &re_uri::Origin) {}
 
     /// Process a single redap entry.
-    fn process_redap_entry(&self, _ctx: &ContextMenuContext<'_>, _entry_id: &EntryId) {}
+    fn process_redap_entry(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _entry_id: &re_log_types::EntryId,
+    ) {
+    }
 
     /// Process a single view.
     fn process_view(&self, _ctx: &ContextMenuContext<'_>, _view_id: &ViewId) {}

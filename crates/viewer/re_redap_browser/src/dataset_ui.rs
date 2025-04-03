@@ -7,8 +7,7 @@ use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_types::{EntityPath, TimelineName};
-use re_protos::common::v1alpha1::ext::EntryId;
+use re_log_types::{EntityPath, EntryId, TimelineName};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;

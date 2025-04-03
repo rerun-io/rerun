@@ -43,39 +43,16 @@ impl TryFrom<crate::common::v1alpha1::Schema> for ArrowSchema {
 
 // --- EntryId ---
 
-#[derive(
-    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, serde::Deserialize, serde::Serialize,
-)]
-#[serde(transparent)]
-pub struct EntryId {
-    pub id: re_tuid::Tuid,
-}
-
-impl EntryId {
+impl From<re_log_types::EntryId> for crate::common::v1alpha1::EntryId {
     #[inline]
-    pub fn new() -> Self {
-        Self {
-            id: re_tuid::Tuid::new(),
-        }
-    }
-}
-
-impl std::fmt::Display for EntryId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.id.fmt(f)
-    }
-}
-
-impl From<EntryId> for crate::common::v1alpha1::EntryId {
-    #[inline]
-    fn from(value: EntryId) -> Self {
+    fn from(value: re_log_types::EntryId) -> Self {
         Self {
             id: Some(value.id.into()),
         }
     }
 }
 
-impl TryFrom<crate::common::v1alpha1::EntryId> for EntryId {
+impl TryFrom<crate::common::v1alpha1::EntryId> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::EntryId) -> Result<Self, Self::Error> {
@@ -86,17 +63,11 @@ impl TryFrom<crate::common::v1alpha1::EntryId> for EntryId {
     }
 }
 
-impl From<re_tuid::Tuid> for EntryId {
-    fn from(id: re_tuid::Tuid) -> Self {
-        Self { id }
-    }
-}
-
 // shortcuts
 
 impl From<re_tuid::Tuid> for crate::common::v1alpha1::EntryId {
     fn from(id: re_tuid::Tuid) -> Self {
-        let id: EntryId = id.into();
+        let id: re_log_types::EntryId = id.into();
         Self {
             id: Some(id.id.into()),
         }
@@ -178,7 +149,7 @@ impl From<&str> for crate::common::v1alpha1::PartitionId {
 
 #[derive(Debug, Clone)]
 pub struct DatasetHandle {
-    pub id: Option<EntryId>,
+    pub id: Option<re_log_types::EntryId>,
     pub url: url::Url,
 }
 
