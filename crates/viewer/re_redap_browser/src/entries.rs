@@ -1,29 +1,32 @@
-use crate::context::Context;
-use crate::requested_object::RequestedObject;
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
+use tokio_stream::StreamExt as _;
+
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_data_ui::DataUi as _;
 use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{redap, StreamError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::CodecError;
-use re_log_types::{ApplicationId, StoreKind};
-use re_protos::catalog::v1alpha1::ext::{DatasetEntry, EntryDetails};
-use re_protos::catalog::v1alpha1::{EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest};
-use re_protos::common::v1alpha1::ext::EntryId;
+use re_log_types::{ApplicationId, EntryId, StoreKind};
+use re_protos::catalog::v1alpha1::{
+    ext::{DatasetEntry, EntryDetails},
+    EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
+};
 use re_protos::frontend::v1alpha1::ScanPartitionTableRequest;
 use re_protos::TypeConversionError;
 use re_smart_channel::SmartChannelSource;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
 use re_types::components::Timestamp;
 use re_ui::{icons, list_item, UiExt as _, UiLayout};
-use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry, SystemCommand, SystemCommandSender as _,
-    ViewerContext,
+    external::re_entity_db::EntityDb, AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry,
+    SystemCommand, SystemCommandSender as _, ViewerContext,
 };
-use std::collections::BTreeMap;
-use tokio_stream::StreamExt as _;
+
+use crate::context::Context;
+use crate::requested_object::RequestedObject;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {

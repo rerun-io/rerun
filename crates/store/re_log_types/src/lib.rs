@@ -18,6 +18,7 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
+mod entry_id;
 pub mod example_components;
 pub mod hash;
 mod index;
@@ -36,6 +37,7 @@ use re_byte_size::SizeBytes;
 
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
+    entry_id::EntryId,
     index::{
         Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, TimeCell, TimeInt, TimePoint,
         TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,

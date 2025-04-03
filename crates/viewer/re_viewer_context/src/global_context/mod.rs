@@ -21,7 +21,6 @@ pub use self::{
 use crate::ViewClassRegistry;
 
 pub(crate) use item::resolve_mono_instance_path_item;
-use re_protos::common::v1alpha1::ext::EntryId;
 
 /// Application context that is shared across all parts of the viewer.
 pub struct GlobalContext<'a> {
@@ -60,7 +59,7 @@ pub enum DisplayMode {
     LocalRecordings,
 
     /// The Redap server/catalog/collection browser.
-    RedapEntry(EntryId),
+    RedapEntry(re_log_types::EntryId),
     RedapServer(re_uri::Origin),
 
     /// The current recording's data store browser.

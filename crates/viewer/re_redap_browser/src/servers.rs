@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
+use re_log_types::EntryId;
+use re_ui::{list_item, UiExt as _};
+use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
+
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
 use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
-use re_protos::common::v1alpha1::ext::EntryId;
-use re_ui::{list_item, UiExt as _};
-use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 struct Server {
     origin: re_uri::Origin,
