@@ -8,9 +8,9 @@ use parking_lot::Mutex;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
-    StorageContext, StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext,
+    ComponentUiRegistry, DataQueryResult, DisplayMode, GlobalContext, ItemCollection,
+    RecordingConfig, StorageContext, StoreContext, SystemCommand, ViewClass, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext,
 };
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
@@ -342,6 +342,7 @@ impl TestContext {
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
+                display_mode: &DisplayMode::LocalRecordings,
             },
             store_context: &store_context,
             storage_context: &StorageContext {

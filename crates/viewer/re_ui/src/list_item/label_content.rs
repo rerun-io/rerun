@@ -137,6 +137,8 @@ impl<'a> LabelContent<'a> {
     /// Buttons also show when the item is selected, in order to support clicking them on touch
     /// screens. The buttons can be set to be always shown with [`Self::always_show_buttons`].
     ///
+    /// If there are multiple buttons, the response returned should be the union of both buttons.
+    ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
     ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't

@@ -42,7 +42,7 @@ pub fn test_list_items_should_match_snapshot() {
                             ui.painter().circle(
                                 rect.center(),
                                 rect.width() / 2.0,
-                                visuals.fg_stroke.color,
+                                visuals.icon_tint(),
                                 egui::Stroke::NONE,
                             );
                         }),
