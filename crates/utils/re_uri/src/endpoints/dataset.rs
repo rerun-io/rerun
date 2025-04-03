@@ -7,7 +7,7 @@ use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
 /// Currently, the following format is supported:
 /// `<origin>/dataset/$DATASET_ID/data?partition_id=$PARTITION_ID&time_range=$TIME_RANGE`
 ///
-/// `partition_id` is currnelty mandatory, and `time_range` is optional.
+/// `partition_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetDataEndpoint {
