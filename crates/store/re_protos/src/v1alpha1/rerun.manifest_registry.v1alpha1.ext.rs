@@ -6,6 +6,7 @@ use arrow::{
     error::ArrowError,
 };
 
+use re_chunk::TimelineName;
 use re_log_types::EntityPath;
 
 use crate::manifest_registry::v1alpha1::{
@@ -162,6 +163,41 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
             columns_always_include_global_indexes: value.columns_always_include_global_indexes,
             columns_always_include_static_indexes: value.columns_always_include_static_indexes,
         })
+    }
+}
+
+impl From<Query> for crate::manifest_registry::v1alpha1::Query {
+    fn from(value: Query) -> Self {
+        crate::manifest_registry::v1alpha1::Query {
+            latest_at: value.latest_at.map(|latest_at| {
+                crate::manifest_registry::v1alpha1::QueryLatestAt {
+                    index: Some({
+                        let timeline: TimelineName = latest_at.index.into();
+                        timeline.into()
+                    }),
+                    at: Some(latest_at.at),
+                    fuzzy_descriptors: latest_at.fuzzy_descriptors,
+                }
+            }),
+            range: value
+                .range
+                .map(|range| crate::manifest_registry::v1alpha1::QueryRange {
+                    index: Some({
+                        let timeline: TimelineName = range.index.into();
+                        timeline.into()
+                    }),
+                    index_range: Some(range.index_range.into()),
+                    fuzzy_descriptors: range.fuzzy_descriptors,
+                }),
+            columns_always_include_byte_offsets: value.columns_always_include_byte_offsets,
+            columns_always_include_chunk_ids: value.columns_always_include_chunk_ids,
+            columns_always_include_component_indexes: value
+                .columns_always_include_component_indexes,
+            columns_always_include_entity_paths: value.columns_always_include_entity_paths,
+            columns_always_include_everything: value.columns_always_include_everything,
+            columns_always_include_global_indexes: value.columns_always_include_global_indexes,
+            columns_always_include_static_indexes: value.columns_always_include_static_indexes,
+        }
     }
 }
 

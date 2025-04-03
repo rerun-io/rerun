@@ -390,12 +390,6 @@ impl PyDataframeQueryView {
             store_version: None,
         };
 
-        let entity_paths = self_
-            .query_expression
-            .view_contents
-            .as_ref()
-            .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
-
         //
         // Fetch relevant chunks
         //
@@ -405,7 +399,9 @@ impl PyDataframeQueryView {
             py,
             store_info,
             dataset_id,
-            entity_paths.as_slice(),
+            &self_.query_expression.view_contents,
+            self_.query_expression.min_latest_at(),
+            self_.query_expression.max_range(),
             self_.partition_ids.as_slice(),
         )?;
 

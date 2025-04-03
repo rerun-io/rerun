@@ -3,7 +3,8 @@ use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
-use re_sdk::EntityPath;
+use re_chunk::{LatestAtQuery, RangeQuery};
+use re_dataframe::ViewContentsSelector;
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::ChunkStore;
@@ -12,7 +13,7 @@ use re_log_types::{EntryId, StoreInfo};
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
-use re_protos::manifest_registry::v1alpha1::ext::DataSource;
+use re_protos::manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange};
 use re_protos::{
     catalog::v1alpha1::{
         ext::{DatasetEntry, EntryDetails, TableEntry},
@@ -182,11 +183,40 @@ impl ConnectionHandle {
         py: Python<'_>,
         store_info: StoreInfo,
         dataset_id: EntryId,
-        entity_paths: &[&EntityPath],
+        contents: &Option<ViewContentsSelector>,
+        latest_at: Option<LatestAtQuery>,
+        range: Option<RangeQuery>,
         partition_ids: &[impl AsRef<str> + Sync],
     ) -> PyResult<ChunkStore> {
+        let entity_paths = contents
+            .as_ref()
+            .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
+
         let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
         store.set_info(store_info);
+
+        let query = Query {
+            // TODO
+            latest_at: latest_at.map(|latest_at| QueryLatestAt {
+                index: latest_at.timeline().to_string(),
+                at: latest_at.at().as_i64(),
+                fuzzy_descriptors: vec![], // TODO(jleibs): support this
+            }),
+            range: range.map(|range| {
+                QueryRange {
+                    index: range.timeline().to_string(),
+                    index_range: range.range.into(),
+                    fuzzy_descriptors: vec![], // TODO(jleibs): support this
+                }
+            }),
+            columns_always_include_everything: false,
+            columns_always_include_chunk_ids: false,
+            columns_always_include_entity_paths: false,
+            columns_always_include_byte_offsets: false,
+            columns_always_include_static_indexes: false,
+            columns_always_include_global_indexes: false,
+            columns_always_include_component_indexes: false,
+        };
 
         wait_for_future(py, async {
             let get_chunks_response_stream = self
@@ -202,18 +232,7 @@ impl ConnectionHandle {
                         .into_iter()
                         .map(|p| (*p).clone().into())
                         .collect(),
-                    query: Some(re_protos::manifest_registry::v1alpha1::Query {
-                        // TODO
-                        latest_at: None,
-                        range: None,
-                        columns_always_include_everything: false,
-                        columns_always_include_chunk_ids: false,
-                        columns_always_include_entity_paths: false,
-                        columns_always_include_byte_offsets: false,
-                        columns_always_include_static_indexes: false,
-                        columns_always_include_global_indexes: false,
-                        columns_always_include_component_indexes: false,
-                    }),
+                    query: Some(query.into()),
                 })
                 .await
                 .map_err(to_py_err)?
