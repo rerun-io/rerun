@@ -14,6 +14,7 @@ pub struct DatasetDataEndpoint {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
+    // Query parameters: these affect what data is returned.
     pub partition_id: String,
     pub time_range: Option<TimeRange>,
 }
@@ -43,29 +44,28 @@ impl std::fmt::Display for DatasetDataEndpoint {
 }
 
 impl DatasetDataEndpoint {
-    pub fn new(
-        origin: Origin,
-        dataset_id: re_tuid::Tuid,
-        partition_id: String,
-        time_range: Option<TimeRange>,
-    ) -> Self {
+    /// All the mandatory fields.
+    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, partition_id: String) -> Self {
         Self {
             origin,
             dataset_id,
             partition_id,
-            time_range,
+            time_range: None,
         }
     }
 
-    /// Returns a [`DatasetDataEndpoint`] without the optional query part.
-    pub fn without_query(&self) -> std::borrow::Cow<'_, Self> {
-        let mut cow = std::borrow::Cow::Borrowed(self);
+    /// Returns a [`DatasetDataEndpoint`] without any (optional) query or fragment..
+    pub fn without_query_and_fragment(mut self) -> Self {
+        let Self {
+            origin: _,       // Mandatory
+            dataset_id: _,   // Mandatory
+            partition_id: _, // Mandatory
+            time_range,
+        } = &mut self;
 
-        if self.time_range.is_some() {
-            cow.to_mut().time_range = None;
-        }
+        *time_range = None;
 
-        cow
+        self
     }
 }
 

@@ -56,12 +56,12 @@ impl std::str::FromStr for RedapUri {
                     .1
                     .into_owned();
 
-                Ok(Self::DatasetData(DatasetDataEndpoint::new(
+                Ok(Self::DatasetData(DatasetDataEndpoint {
                     origin,
                     dataset_id,
                     partition_id,
-                    time_range.transpose()?,
-                )))
+                    time_range: time_range.transpose()?,
+                }))
             }
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
