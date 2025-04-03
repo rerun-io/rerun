@@ -1024,7 +1024,8 @@ impl BlueprintTree {
     ) -> Option<Item> {
         match focused_item {
             Item::AppId(_)
-            | Item::TableId(_) | Item::DataSource(_)
+            | Item::TableId(_)
+            | Item::DataSource(_)
             | Item::StoreId(_)
             | Item::RedapEntry(_)
             | Item::RedapServer(_) => None,
