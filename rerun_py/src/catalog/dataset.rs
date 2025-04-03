@@ -134,6 +134,14 @@ impl PyDataset {
     }
 
     #[expect(clippy::fn_params_excessive_bools)]
+    #[pyo3(signature = (
+        *,
+        index,
+        contents,
+        include_semantically_empty_columns = false,
+        include_indicator_columns = false,
+        include_tombstone_columns = false,
+    ))]
     fn dataframe_query_view(
         self_: Py<Self>,
         index: String,
