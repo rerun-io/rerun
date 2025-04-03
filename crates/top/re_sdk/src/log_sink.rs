@@ -364,7 +364,7 @@ impl GrpcSink {
 
 impl LogSink for GrpcSink {
     fn send(&self, msg: LogMsg) {
-        self.client.send(msg);
+        self.client.send_msg(msg);
     }
 
     fn flush_blocking(&self) {
