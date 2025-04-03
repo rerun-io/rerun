@@ -9,7 +9,7 @@ use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_dataframe::{ComponentColumnSelector, TimeColumnSelector};
-use re_datafusion::SearchResultsTableProvider;
+use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_grpc_client::redap::fetch_partition_response_to_chunk;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
@@ -52,6 +52,22 @@ impl PyDataset {
         let schema = connection.get_dataset_schema(self_.py(), super_.details.id)?;
 
         Ok(schema.into())
+    }
+
+    /// Return the partition table as a Datafusion table provider.
+    fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let provider = wait_for_future(self_.py(), async move {
+            PartitionTableProvider::new(connection.client(), dataset_id)
+                .into_provider()
+                .await
+                .map_err(to_py_err)
+        })?;
+
+        Ok(PyDataFusionTable { provider })
     }
 
     /// Register a RRD URI to the dataset.
