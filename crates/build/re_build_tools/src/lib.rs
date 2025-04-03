@@ -216,16 +216,9 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
     }
 }
 
-/// ISO 8601 / RFC 3339 build time.
-///
-/// Example: `"2023-02-23T19:33:26Z"`
+/// Jiff directly gives IOS 8601 / RFC 3339 format
 fn date_time() -> String {
-    let time_format =
-        time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]Z").unwrap();
-
-    time::OffsetDateTime::now_utc()
-        .format(&time_format)
-        .unwrap()
+    jiff::Timestamp::now().to_string()
 }
 
 fn set_env(name: &str, value: &str) {
@@ -329,4 +322,22 @@ pub fn enabled_features_of(crate_name: &str) -> anyhow::Result<Vec<String>> {
     }
 
     Ok(features)
+}
+
+// Test for jiff
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_date_time_format() {
+        // Get a timestamp string
+        let timestamp = date_time();
+        
+        // Check it matches the expected format: YYYY-MM-DDThh:mm:ssZ
+        // This regex checks for the ISO 8601 / RFC 3339 format
+        let regex = regex::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$").unwrap();
+        assert!(regex.is_match(&timestamp), "Timestamp format is incorrect: {}", timestamp);
+    }
 }

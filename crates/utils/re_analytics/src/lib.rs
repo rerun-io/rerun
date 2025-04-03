@@ -41,7 +41,7 @@ use std::io::Error as IoError;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use time::OffsetDateTime;
+use jiff::Timestamp;
 
 // ----------------------------------------------------------------------------
 
@@ -62,8 +62,8 @@ pub enum EventKind {
 pub struct AnalyticsEvent {
     // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
     // data we send out.
-    #[serde(with = "::time::serde::rfc3339")]
-    time_utc: OffsetDateTime,
+    // #[serde(with = "jiff::serde::timestamp")]
+    time_utc: Timestamp,
     kind: EventKind,
     name: Cow<'static, str>,
     props: HashMap<Cow<'static, str>, Property>,
@@ -73,7 +73,7 @@ impl AnalyticsEvent {
     #[inline]
     pub fn new(name: impl Into<Cow<'static, str>>, kind: EventKind) -> Self {
         Self {
-            time_utc: OffsetDateTime::now_utc(),
+            time_utc: Timestamp::now(),
             kind,
             name: name.into(),
             props: Default::default(),
@@ -366,5 +366,61 @@ impl Properties for re_build_info::BuildInfo {
         event.insert("build_date", datetime);
         event.insert("debug", cfg!(debug_assertions)); // debug-build?
         event.insert("rerun_workspace", is_in_rerun_workspace);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    #[test]
+    fn test_analytics_event_serialization() {
+        // Create an event using the new jiff implementation
+        let mut event = AnalyticsEvent::new("test_event", EventKind::Append);
+        event.insert("test_property", "test_value");
+        
+        // Serialize to JSON
+        let serialized = serde_json::to_string(&event).expect("Failed to serialize event");
+        let parsed: Value = serde_json::from_str(&serialized).expect("Failed to parse JSON");
+        
+        // Verify the timestamp format is correct (RFC3339)
+        let time_str = parsed["time_utc"].as_str().expect("time_utc should be a string");
+        
+        // The format should be like: "2025-04-03T01:20:10.557958200Z"
+        // RFC3339 regex pattern
+        let re = regex::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
+            .expect("Failed to compile regex");
+        
+        assert!(re.is_match(time_str), 
+                "Timestamp '{}' does not match expected RFC3339 format", time_str);
+                
+        // Verify other fields
+        assert_eq!(parsed["kind"], "Append");
+        assert_eq!(parsed["name"], "test_event");
+        
+        // Check the property structure - it's an object with "String" field
+        let property = &parsed["props"]["test_property"];
+        assert!(property.is_object(), "Property should be an object");
+        assert_eq!(property["String"], "test_value");
+    }
+    
+    #[test]
+    fn test_timestamp_now_behavior() {
+        // Create an event
+        let event = AnalyticsEvent::new("test_event", EventKind::Append);
+        
+        // Verify the timestamp is close to now
+        // This ensures jiff::Timestamp::now() behavior matches time::OffsetDateTime::now_utc()
+        let now = jiff::Timestamp::now();
+        let event_time = event.time_utc;
+        
+        // The timestamps should be within a few seconds of each other
+        let diff = (now.as_nanosecond() - event_time.as_nanosecond()).abs();
+        let five_seconds_ns = 5_000_000_000;
+        
+        assert!(diff < five_seconds_ns, 
+                "Timestamp difference is too large: {} nanoseconds", diff);
     }
 }

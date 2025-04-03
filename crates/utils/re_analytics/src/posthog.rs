@@ -1,7 +1,7 @@
 use crate::{AnalyticsEvent, Property};
 use std::collections::HashMap;
 
-use time::OffsetDateTime;
+use jiff::Timestamp;
 
 /// The "public" API key can be obtained at <https://eu.posthog.com/project/settings#project-api-key>.
 /// Make sure you are logged in to the right organization and have the correct project open.
@@ -56,8 +56,8 @@ impl<'a> PostHogEvent<'a> {
 // See https://posthog.com/docs/api/post-only-endpoints#capture.
 #[derive(Debug, serde::Serialize)]
 pub struct PostHogCaptureEvent<'a> {
-    #[serde(with = "::time::serde::rfc3339")]
-    timestamp: OffsetDateTime,
+    // #[serde(with = "jiff::timestamp")]
+    timestamp: Timestamp,
     event: &'a str,
     distinct_id: &'a str,
     properties: HashMap<&'a str, serde_json::Value>,
@@ -66,8 +66,8 @@ pub struct PostHogCaptureEvent<'a> {
 // See https://posthog.com/docs/api/post-only-endpoints#identify.
 #[derive(Debug, serde::Serialize)]
 pub struct PostHogIdentifyEvent<'a> {
-    #[serde(with = "::time::serde::rfc3339")]
-    timestamp: OffsetDateTime,
+    // #[serde(with = "jiff::timestamp")]
+    timestamp: Timestamp,
     event: &'a str,
     distinct_id: &'a str,
     properties: HashMap<&'a str, serde_json::Value>,

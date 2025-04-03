@@ -31,7 +31,8 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
-time = { workspace = true, features = ["serde", "formatting", "parsing"] }
+jiff = { workspace = true, features = ["serde"] }
+regex = "1.0"
 url.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 
