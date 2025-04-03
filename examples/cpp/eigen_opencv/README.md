@@ -78,7 +78,6 @@ rec.log(
 );
 
 // Or by passing a pointer to the image data.
-rec.log("image1", rerun::Image(tensor_shape(img), reinterpret_cast<const uint8_t*>(img.data)));
 rec.log(
     "image1",
     rerun::Image(
