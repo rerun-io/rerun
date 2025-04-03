@@ -600,9 +600,11 @@ pub struct QueryLatestAt {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(message, repeated, tag = "3")]
-    pub fuzzy_descriptors:
-        ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ComponentDescriptor>,
+    ///
+    /// TODO(cmc): I shall bring that back into a more structured form later.
+    /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
+    #[prost(string, repeated, tag = "3")]
+    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryLatestAt {
     const NAME: &'static str = "QueryLatestAt";
@@ -634,9 +636,11 @@ pub struct QueryRange {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(message, repeated, tag = "3")]
-    pub fuzzy_descriptors:
-        ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ComponentDescriptor>,
+    ///
+    /// TODO(cmc): I shall bring that back into a more structured form later.
+    /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
+    #[prost(string, repeated, tag = "3")]
+    pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for QueryRange {
     const NAME: &'static str = "QueryRange";
