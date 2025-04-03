@@ -35,10 +35,16 @@
 
 mod endpoints;
 mod error;
+mod origin;
 mod redap_uri;
+mod scheme;
+mod time_range;
 
 pub use self::{
     endpoints::{catalog::CatalogEndpoint, dataset::DatasetDataEndpoint, proxy::ProxyEndpoint},
     error::Error,
-    redap_uri::{Origin, RedapUri, Scheme, TimeRange},
+    origin::Origin,
+    redap_uri::RedapUri,
+    scheme::Scheme,
+    time_range::TimeRange,
 };
