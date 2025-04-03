@@ -4,13 +4,13 @@ namespace rerun.blueprint.datatypes;
 /// Configuration for the filter is not null feature of the dataframe view.
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table FilterIsNotNull (
-    "attr.python.aliases": "blueprint_datatypes.ComponentColumnSelectorLike",
-    "attr.rust.derive": "Default, PartialEq, Eq",
-    "attr.rerun.scope": "blueprint"
+  "attr.python.aliases": "blueprint_datatypes.ComponentColumnSelectorLike",
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rerun.scope": "blueprint"
 ) {
-    /// Whether the filter by event feature is active.
-    active: rerun.datatypes.Bool (order: 100);
+  /// Whether the filter by event feature is active.
+  active: rerun.datatypes.Bool (order: 100);
 
-    /// The column used when the filter by event feature is used.
-    column: rerun.blueprint.datatypes.ComponentColumnSelector (order: 200);
+  /// The column used when the filter by event feature is used.
+  column: rerun.blueprint.datatypes.ComponentColumnSelector (order: 200);
 }

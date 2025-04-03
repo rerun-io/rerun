@@ -500,6 +500,9 @@ pub struct QueryDatasetRequest {
     /// Generic parameters that will influence the behavior of the Lance scanner.
     #[prost(message, optional, tag = "4")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+    /// A chunk-level latest-at or range query, or both.
+    ///
+    /// This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
     #[prost(message, optional, tag = "5")]
     pub query: ::core::option::Option<Query>,
 }
@@ -530,33 +533,39 @@ impl ::prost::Name for QueryDatasetResponse {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Query {
+    /// If specified, will perform a latest-at query with the given parameters.
+    ///
+    /// You can combine this with a `QueryRange` in order to gather all the relevant chunks for
+    /// a full-fledged dataframe query (i.e. they get OR'd together).
+    #[prost(message, optional, tag = "1")]
+    pub latest_at: ::core::option::Option<QueryLatestAt>,
+    /// If specified, will perform a range query with the given parameters.
+    ///
+    /// You can combine this with a `QueryLatestAt` in order to gather all the relevant chunks for
+    /// a full-fledged dataframe query (i.e. they get OR'd together).
+    #[prost(message, optional, tag = "2")]
+    pub range: ::core::option::Option<QueryRange>,
     /// If true, `columns` will contain the entire schema.
-    #[prost(bool, tag = "4")]
+    #[prost(bool, tag = "3")]
     pub columns_always_include_everything: bool,
     /// If true, `columns` always includes `chunk_id`,
-    #[prost(bool, tag = "5")]
+    #[prost(bool, tag = "4")]
     pub columns_always_include_chunk_ids: bool,
     /// If true, `columns` always includes `byte_offset` and `byte_size`.
-    #[prost(bool, tag = "6")]
+    #[prost(bool, tag = "5")]
     pub columns_always_include_byte_offsets: bool,
     /// If true, `columns` always includes `entity_path`.
-    #[prost(bool, tag = "7")]
+    #[prost(bool, tag = "6")]
     pub columns_always_include_entity_paths: bool,
     /// If true, `columns` always includes all static component-level indexes.
-    #[prost(bool, tag = "8")]
+    #[prost(bool, tag = "7")]
     pub columns_always_include_static_indexes: bool,
     /// If true, `columns` always includes all temporal chunk-level indexes.
-    #[prost(bool, tag = "9")]
+    #[prost(bool, tag = "8")]
     pub columns_always_include_global_indexes: bool,
     /// If true, `columns` always includes all component-level indexes.
-    #[prost(bool, tag = "10")]
+    #[prost(bool, tag = "9")]
     pub columns_always_include_component_indexes: bool,
-    /// If specified, will perform a latest-at query with the given parameters.
-    #[prost(message, optional, tag = "11")]
-    pub latest_at: ::core::option::Option<QueryDatasetLatestAtRelevantChunks>,
-    /// If specified, will perform a range query with the given parameters.
-    #[prost(message, optional, tag = "12")]
-    pub range: ::core::option::Option<QueryDatasetRangeRelevantChunks>,
 }
 impl ::prost::Name for Query {
     const NAME: &'static str = "Query";
@@ -568,9 +577,12 @@ impl ::prost::Name for Query {
         "/rerun.manifest_registry.v1alpha1.Query".into()
     }
 }
+/// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
+///
+/// This has the exact same semantics as the query of the same name on our `ChunkStore`.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryDatasetLatestAtRelevantChunks {
-    /// Which entity paths are we interested in? Empty list means all entity paths
+pub struct QueryLatestAt {
+    /// Which entity paths are we interested in? Leave empty to query all of them.
     #[prost(message, repeated, tag = "1")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
@@ -592,19 +604,22 @@ pub struct QueryDatasetLatestAtRelevantChunks {
     pub fuzzy_descriptors:
         ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ComponentDescriptor>,
 }
-impl ::prost::Name for QueryDatasetLatestAtRelevantChunks {
-    const NAME: &'static str = "QueryDatasetLatestAtRelevantChunks";
+impl ::prost::Name for QueryLatestAt {
+    const NAME: &'static str = "QueryLatestAt";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.QueryDatasetLatestAtRelevantChunks".into()
+        "rerun.manifest_registry.v1alpha1.QueryLatestAt".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.QueryDatasetLatestAtRelevantChunks".into()
+        "/rerun.manifest_registry.v1alpha1.QueryLatestAt".into()
     }
 }
+/// / A chunk-level range query, aka `RangeRelevantChunks`.
+///
+/// This has the exact same semantics as the query of the same name on our `ChunkStore`.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryDatasetRangeRelevantChunks {
-    /// Which entity paths are we interested in?
+pub struct QueryRange {
+    /// Which entity paths are we interested in? Leave empty to query all of them.
     #[prost(message, repeated, tag = "1")]
     pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
@@ -626,14 +641,14 @@ pub struct QueryDatasetRangeRelevantChunks {
     pub fuzzy_descriptors:
         ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ComponentDescriptor>,
 }
-impl ::prost::Name for QueryDatasetRangeRelevantChunks {
-    const NAME: &'static str = "QueryDatasetRangeRelevantChunks";
+impl ::prost::Name for QueryRange {
+    const NAME: &'static str = "QueryRange";
     const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.QueryDatasetRangeRelevantChunks".into()
+        "rerun.manifest_registry.v1alpha1.QueryRange".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.QueryDatasetRangeRelevantChunks".into()
+        "/rerun.manifest_registry.v1alpha1.QueryRange".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -649,7 +664,9 @@ pub struct GetChunksRequest {
     /// all chunks (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
-    /// Query details
+    /// A chunk-level latest-at or range query, or both.
+    ///
+    /// This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
     #[prost(message, optional, tag = "4")]
     pub query: ::core::option::Option<Query>,
 }

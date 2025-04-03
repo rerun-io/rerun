@@ -57,11 +57,17 @@ Examples:
     Open an .rrd file and stream it to a Web Viewer:
         rerun recording.rrd --web-viewer
 
-    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serves the results:
+    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results:
         rerun --serve-web
 
     Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers:
         rerun --serve-web recording.rrd
+
+    Host a Rerun gRPC server without spawning a Viewer:
+        rerun --serve-grpc
+
+    Spawn a Viewer without also hosting a gRPC server:
+        rerun --connect
 
     Connect to a Rerun Server:
         rerun rerun+http://localhost:9877/proxy
@@ -157,6 +163,13 @@ When persisted, the state will be stored at the following locations:
     /// logging SDKs, and forwarding it to Rerun viewers.
     #[clap(long)]
     serve_web: bool,
+
+    /// This will host a gRPC server.
+    ///
+    /// The server will act like a proxy, listening for incoming connections from
+    /// logging SDKs, and forwarding it to Rerun viewers.
+    #[clap(long)]
+    serve_grpc: bool,
 
     /// Do not attempt to start a new server, instead try to connect to an existing one.
     ///
@@ -638,7 +651,7 @@ fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
-    _tokio_runtime_handle: &tokio::runtime::Handle,
+    tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
@@ -660,8 +673,11 @@ fn run_impl(
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
             detach_process: args.detach_process,
-            memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
-                .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?,
+            memory_limit: {
+                re_log::debug!("Parsing memory limit for Viewer");
+                re_memory::MemoryLimit::parse(&args.memory_limit)
+                    .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?
+            },
             persist_state: args.persist_state,
             is_in_notebook: false,
             screenshot_to_path_then_quit: args.screenshot_to.clone(),
@@ -690,8 +706,11 @@ fn run_impl(
     #[cfg(feature = "server")]
     let server_addr = std::net::SocketAddr::new(args.bind, args.port);
     #[cfg(feature = "server")]
-    let server_memory_limit = re_memory::MemoryLimit::parse(&args.server_memory_limit)
-        .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
+    let server_memory_limit = {
+        re_log::debug!("Parsing memory limit for gRPC server");
+        re_memory::MemoryLimit::parse(&args.server_memory_limit)
+            .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
+    };
 
     #[allow(unused_variables)]
     let (command_sender, command_receiver) = re_viewer_context::command_channel();
@@ -762,8 +781,7 @@ fn run_impl(
         #[cfg(feature = "server")]
         if let Some(url) = args.connect {
             let url = url.unwrap_or_else(|| format!("rerun+http://{server_addr}/proxy"));
-            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
-            else {
+            let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
                 anyhow::bail!("expected `/proxy` endpoint");
             };
             let rx = re_sdk::external::re_grpc_client::message_proxy::stream(endpoint, None);
@@ -782,7 +800,7 @@ fn run_impl(
             //       we want all receivers to push their data to the server.
             //       For that we spawn the server a bit further down, after we've collected
             //       all receivers into `rxs`.
-            } else if !args.serve && !args.serve_web {
+            } else if !args.serve && !args.serve_web && !args.serve_grpc {
                 let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
                     server_addr,
                     server_memory_limit,
@@ -811,6 +829,35 @@ fn run_impl(
 
         let rx = ReceiveSet::new(rxs);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
+    } else if args.serve_grpc {
+        if !catalog_endpoints.is_empty() {
+            anyhow::bail!("`--serve` does not support catalogs");
+        }
+
+        if !cfg!(feature = "server") {
+            _ = (call_source, rxs);
+            anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
+        }
+
+        #[cfg(feature = "server")]
+        {
+            let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
+            // Spawn a server which the Web Viewer can connect to.
+            // All `rxs` are consumed by the server.
+            re_grpc_server::spawn_from_rx_set(
+                server_addr,
+                server_memory_limit,
+                shutdown,
+                ReceiveSet::new(rxs),
+            );
+
+            // Gracefully shut down the server on SIGINT
+            tokio_runtime_handle.block_on(tokio::signal::ctrl_c()).ok();
+
+            signal.stop();
+        }
+
+        Ok(())
     } else if args.serve || args.serve_web {
         if !catalog_endpoints.is_empty() {
             anyhow::bail!("`--serve` does not support catalogs");
@@ -857,8 +904,7 @@ fn run_impl(
                 format!("rerun+http://{server_addr}/proxy")
             };
 
-            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
-            else {
+            let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
                 anyhow::bail!("expected `/proxy` endpoint");
             };
 
@@ -917,7 +963,7 @@ fn run_impl(
     } else {
         #[cfg(feature = "native_viewer")]
         {
-            let tokio_runtime_handle = _tokio_runtime_handle.clone();
+            let tokio_runtime_handle = tokio_runtime_handle.clone();
 
             return re_viewer::run_native_app(
                 _main_thread_token,

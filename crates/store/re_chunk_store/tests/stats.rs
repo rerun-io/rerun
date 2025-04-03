@@ -5,7 +5,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreConfig, TimeInt};
 use re_log_types::{
     build_frame_nr,
     example_components::{MyColor, MyPoint},
-    EntityPath, Timeline,
+    EntityPath,
 };
 use re_types_core::Component as _;
 
@@ -128,8 +128,7 @@ fn stats() -> anyhow::Result<()> {
         assert_eq!(stats.num_events, 4);
     }
     {
-        let stats =
-            store.entity_stats_on_timeline(&entity_path, &Timeline::new_sequence("frame_nr"));
+        let stats = store.entity_stats_on_timeline(&entity_path, &"frame_nr".into());
         assert_eq!(stats.num_chunks, 2, "We logged two temporal chunks");
         assert_eq!(stats.num_rows, 4);
         assert_eq!(stats.num_events, 5);

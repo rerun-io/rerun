@@ -50,7 +50,7 @@ pub fn recordings_panel_ui(
 
 fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
     let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
-        .store_context
+        .storage_context
         .bundle
         .recordings()
         .filter_map(|store| store.data_source.clone())
@@ -150,6 +150,16 @@ fn recording_list_ui(
                 LOCAL_ORIGIN.clone(),
             )));
     }
+
+    let item = ui.list_item().header();
+    let title = list_item::LabelContent::header("Tables");
+    if !ctx.storage_context.tables.is_empty() {
+        item.show_hierarchical_with_children(ui, egui::Id::new("tables"), true, title, |ui| {
+            for table_id in ctx.storage_context.tables.keys() {
+                table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
+            }
+        });
+    };
 
     // Always show welcome screen last, if at all:
     if (ctx

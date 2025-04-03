@@ -3,6 +3,9 @@ use arrow::error::ArrowError;
 #[derive(thiserror::Error, Debug)]
 pub enum SorbetError {
     #[error(transparent)]
+    UnknownColumnKind(#[from] crate::UnknownColumnKind),
+
+    #[error(transparent)]
     MissingMetadataKey(#[from] crate::MissingMetadataKey),
 
     #[error(transparent)]

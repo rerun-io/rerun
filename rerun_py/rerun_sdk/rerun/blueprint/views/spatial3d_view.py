@@ -23,6 +23,8 @@ class Spatial3DView(View):
     """
     **View**: For viewing spatial 3D data.
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to customize a Spatial3DView.:

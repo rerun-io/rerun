@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+use re_log_types::external::re_types_core::ComponentDescriptor;
 
 use crate::{invalid_field, missing_field, TypeConversionError};
 
@@ -344,6 +345,14 @@ impl TryFrom<crate::common::v1alpha1::IndexColumnSelector> for re_log_types::Tim
             "timeline"
         ))?;
         Ok(timeline.into())
+    }
+}
+
+impl From<re_log_types::TimelineName> for crate::common::v1alpha1::IndexColumnSelector {
+    fn from(value: re_log_types::TimelineName) -> Self {
+        Self {
+            timeline: Some(value.into()),
+        }
     }
 }
 
@@ -732,6 +741,202 @@ impl TryFrom<crate::log_msg::v1alpha1::BlueprintActivationCommand>
         })
     }
 }
+
+// --- Scanning & Querying ---
+
+#[derive(Debug, Default, Clone)]
+pub struct ScanParameters {
+    pub columns: Vec<String>,
+    pub on_missing_columns: IfMissingBehavior,
+    pub filter: Option<String>,
+    pub limit_offset: Option<i64>,
+    pub limit_len: Option<i64>,
+    pub order_by: Option<ScanParametersOrderClause>,
+    pub explain_plan: bool,
+    pub explain_filter: bool,
+}
+
+impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
+    type Error = tonic::Status;
+
+    fn try_from(value: crate::common::v1alpha1::ScanParameters) -> Result<Self, Self::Error> {
+        let order_by = if let Some(order_by) = value.order_by {
+            Some(order_by.try_into()?)
+        } else {
+            None
+        };
+        Ok(Self {
+            columns: value.columns,
+            on_missing_columns: crate::common::v1alpha1::IfMissingBehavior::try_from(
+                value.on_missing_columns,
+            )
+            .map_err(|err| {
+                tonic::Status::invalid_argument(format!(
+                    "unknown enum variant for IfMissingBehavior: {err}"
+                ))
+            })?
+            .into(),
+            filter: value.filter,
+            limit_offset: value.limit_offset,
+            limit_len: value.limit_len,
+            order_by,
+            explain_plan: value.explain_plan,
+            explain_filter: value.explain_filter,
+        })
+    }
+}
+
+impl From<ScanParameters> for crate::common::v1alpha1::ScanParameters {
+    fn from(value: ScanParameters) -> Self {
+        Self {
+            columns: value.columns,
+            on_missing_columns: crate::common::v1alpha1::IfMissingBehavior::from(
+                value.on_missing_columns,
+            ) as _,
+            filter: value.filter,
+            limit_offset: value.limit_offset,
+            limit_len: value.limit_len,
+            order_by: value.order_by.map(Into::into),
+            explain_plan: value.explain_plan,
+            explain_filter: value.explain_filter,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ScanParametersOrderClause {
+    pub descending: bool,
+    pub nulls_last: bool,
+    pub column_name: String,
+}
+
+impl TryFrom<crate::common::v1alpha1::ScanParametersOrderClause> for ScanParametersOrderClause {
+    type Error = tonic::Status;
+
+    fn try_from(
+        value: crate::common::v1alpha1::ScanParametersOrderClause,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            descending: value.descending,
+            nulls_last: value.nulls_last,
+            column_name: value
+                .column_name
+                .ok_or(tonic::Status::invalid_argument("column_name is required"))?,
+        })
+    }
+}
+
+impl From<ScanParametersOrderClause> for crate::common::v1alpha1::ScanParametersOrderClause {
+    fn from(value: ScanParametersOrderClause) -> Self {
+        Self {
+            descending: value.descending,
+            nulls_last: value.nulls_last,
+            column_name: Some(value.column_name),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum IfMissingBehavior {
+    Skip,
+    Error,
+}
+
+impl Default for IfMissingBehavior {
+    fn default() -> Self {
+        Self::Skip
+    }
+}
+
+impl From<crate::common::v1alpha1::IfMissingBehavior> for IfMissingBehavior {
+    fn from(value: crate::common::v1alpha1::IfMissingBehavior) -> Self {
+        use crate::common::v1alpha1 as common;
+        match value {
+            common::IfMissingBehavior::Unspecified | common::IfMissingBehavior::Skip => Self::Skip,
+            common::IfMissingBehavior::Error => Self::Error,
+        }
+    }
+}
+
+impl From<IfMissingBehavior> for crate::common::v1alpha1::IfMissingBehavior {
+    fn from(value: IfMissingBehavior) -> Self {
+        match value {
+            IfMissingBehavior::Skip => Self::Skip,
+            IfMissingBehavior::Error => Self::Error,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum IfDuplicateBehavior {
+    Overwrite,
+    Skip,
+    Error,
+}
+
+impl Default for IfDuplicateBehavior {
+    fn default() -> Self {
+        Self::Skip
+    }
+}
+
+impl From<crate::common::v1alpha1::IfDuplicateBehavior> for IfDuplicateBehavior {
+    fn from(value: crate::common::v1alpha1::IfDuplicateBehavior) -> Self {
+        use crate::common::v1alpha1 as common;
+        match value {
+            common::IfDuplicateBehavior::Unspecified | common::IfDuplicateBehavior::Skip => {
+                Self::Skip
+            }
+            common::IfDuplicateBehavior::Overwrite => Self::Overwrite,
+            common::IfDuplicateBehavior::Error => Self::Error,
+        }
+    }
+}
+
+impl From<IfDuplicateBehavior> for crate::common::v1alpha1::IfDuplicateBehavior {
+    fn from(value: IfDuplicateBehavior) -> Self {
+        match value {
+            IfDuplicateBehavior::Overwrite => Self::Overwrite,
+            IfDuplicateBehavior::Skip => Self::Skip,
+            IfDuplicateBehavior::Error => Self::Error,
+        }
+    }
+}
+
+// ---
+
+impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor {
+    fn from(value: ComponentDescriptor) -> Self {
+        Self {
+            archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
+            archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
+            component_name: Some(value.component_name.full_name().to_owned()),
+        }
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescriptor {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
+        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
+            crate::common::v1alpha1::ComponentDescriptor,
+            "component_name"
+        ))?);
+
+        if let Some(archetype_name) = value.archetype_name {
+            descriptor = descriptor.with_archetype_name(archetype_name.into());
+        }
+
+        if let Some(archetype_field_name) = value.archetype_field_name {
+            descriptor = descriptor.with_archetype_field_name(archetype_field_name.into());
+        }
+
+        Ok(descriptor)
+    }
+}
+
+// --
 
 #[cfg(test)]
 mod tests {

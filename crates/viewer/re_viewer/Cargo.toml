@@ -95,6 +95,10 @@ re_viewport.workspace = true
 re_analytics = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
+# TODO(grtlr): The following deps are for the table. They should go into a separate crate.
+re_sorbet.workspace = true
+egui_table.workspace = true
+
 
 # External
 ahash.workspace = true

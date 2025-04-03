@@ -181,7 +181,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, RowId};
     use re_log_types::{
-        example_components::MyPoint, ResolvedTimeRange, StoreId, TimeInt, Timeline,
+        example_components::MyPoint, ResolvedTimeRange, StoreId, TimeInt, Timeline, TimelineName,
     };
 
     use super::{EntityTimelineChunks, PathRecursiveChunksPerTimelineStoreSubscriber};
@@ -231,7 +231,7 @@ mod tests {
 
         assert_eq!(
             PathRecursiveChunksPerTimelineStoreSubscriber::access(&store.id(), |subs| {
-                test_subscriber_status_before_removal(subs, t0, t1)
+                test_subscriber_status_before_removal(subs, *t0.name(), *t1.name())
             }),
             Some(Some(()))
         );
@@ -249,7 +249,7 @@ mod tests {
 
         assert_eq!(
             PathRecursiveChunksPerTimelineStoreSubscriber::access(&store.id(), |subs| {
-                test_subscriber_status_after_t0_child_chunk_removal(subs, t0, t1)
+                test_subscriber_status_after_t0_child_chunk_removal(subs, *t0.name(), *t1.name())
             }),
             Some(Some(()))
         );
@@ -259,8 +259,8 @@ mod tests {
 
     fn test_subscriber_status_before_removal(
         subs: &PathRecursiveChunksPerTimelineStoreSubscriber,
-        t0: Timeline,
-        t1: Timeline,
+        t0: TimelineName,
+        t1: TimelineName,
     ) -> Option<()> {
         // The root accumulates all chunks & events for each timeline.
         let root_t0 = subs.path_recursive_chunks_for_entity_and_timeline(&"/".into(), &t0)?;
@@ -286,8 +286,8 @@ mod tests {
 
     fn test_subscriber_status_after_t0_child_chunk_removal(
         subs: &PathRecursiveChunksPerTimelineStoreSubscriber,
-        t0: Timeline,
-        t1: Timeline,
+        t0: TimelineName,
+        t1: TimelineName,
     ) -> Option<()> {
         // The root accumulates all chunks & events for each timeline.
         let root_t0 = subs.path_recursive_chunks_for_entity_and_timeline(&"/".into(), &t0)?;
@@ -315,8 +315,8 @@ mod tests {
         subs: &PathRecursiveChunksPerTimelineStoreSubscriber,
         child_t0: &EntityTimelineChunks,
         child_t1: &EntityTimelineChunks,
-        t0: Timeline,
-        t1: Timeline,
+        t0: TimelineName,
+        t1: TimelineName,
     ) -> Option<()> {
         // We only logged at `parent/child`, so we expect all events to `parent` copies over everything `parent/child` has.
         assert_eq!(

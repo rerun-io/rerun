@@ -348,6 +348,15 @@ SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
     }
 }
 
+SCENARIO("RecordingStream can serve grpc", TEST_TAG) {
+    GIVEN("a new serving RecordingStream") {
+        rerun::RecordingStream stream("test-local");
+        THEN("serve_grpc call succeeds") {
+            CHECK(stream.serve_grpc("0.0.0.0", 21521).code == rerun::ErrorCode::Ok);
+        }
+    }
+}
+
 SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test");

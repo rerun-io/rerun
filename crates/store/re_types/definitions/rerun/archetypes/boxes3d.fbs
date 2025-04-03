@@ -11,11 +11,12 @@ namespace rerun.archetypes;
 /// \example archetypes/boxes3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
 /// \example archetypes/boxes3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png"
 table Boxes3D (
-  "attr.rust.derive": "PartialEq",
-  "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate"
 ) {
   // --- Required ---
 

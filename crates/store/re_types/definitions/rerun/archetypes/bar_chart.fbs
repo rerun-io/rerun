@@ -8,9 +8,10 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/bar_chart title="Simple bar chart" image="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1200w.png"
 table BarChart (
-  "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Plotting",
-  "attr.docs.view_types": "BarChartView"
+  "attr.docs.view_types": "BarChartView",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

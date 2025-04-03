@@ -37,7 +37,7 @@ impl crate::DataUi for ApplicationId {
 
         // Find all recordings with this app id
         let recordings: Vec<&EntityDb> = ctx
-            .store_context
+            .storage_context
             .bundle
             .recordings()
             .filter(|db| db.app_id() == Some(self))

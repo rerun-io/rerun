@@ -15,7 +15,7 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StoreContext, SystemCommand,
+    ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
     SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
@@ -495,10 +495,11 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, store_context, cmd);
+            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
         }
     }
 
@@ -518,16 +519,16 @@ impl App {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateRecording(store_id) => {
+            SystemCommand::ActivateEntry(entry) => {
                 self.command_sender
                     .send_system(SystemCommand::ChangeDisplayMode(
                         DisplayMode::LocalRecordings,
                     ));
-                store_hub.set_activate_recording(store_id);
+                store_hub.set_active_entry(entry);
             }
 
-            SystemCommand::CloseStore(store_id) => {
-                store_hub.remove(&store_id);
+            SystemCommand::CloseEntry(entry) => {
+                store_hub.remove(&entry);
             }
 
             SystemCommand::CloseAllRecordings => {
@@ -552,7 +553,7 @@ impl App {
 
             SystemCommand::ClearSourceAndItsStores(source) => {
                 self.rx.retain(|r| r.source() != &source);
-                store_hub.retain(|db| db.data_source.as_ref() != Some(&source));
+                store_hub.retain_recordings(|db| db.data_source.as_ref() != Some(&source));
             }
 
             SystemCommand::AddReceiver(rx) => {
@@ -710,36 +711,33 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        storage_ctx: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
-        let active_application_id = store_context
-            .and_then(|ctx| {
-                ctx.hub
-                    .active_app()
-                    // Don't redirect data to the welcome screen.
-                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-                    .cloned()
-            })
+        let active_application_id = storage_ctx
+            .hub
+            .active_app()
+            // Don't redirect data to the welcome screen.
+            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
             .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
-        let active_recording_id = store_context
-            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
-            .or_else(|| {
-                // When we're on the welcome screen, there is no recording ID to recommend.
-                // But we want one, otherwise multiple things being dropped simultaneously on the
-                // welcome screen would end up in different recordings!
+        let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
+            // When we're on the welcome screen, there is no recording ID to recommend.
+            // But we want one, otherwise multiple things being dropped simultaneously on the
+            // welcome screen would end up in different recordings!
 
-                // We're creating a recording just-in-time, directly from the viewer.
-                // We need those store infos or the data will just be silently ignored.
-                force_store_info = true;
+            // We're creating a recording just-in-time, directly from the viewer.
+            // We need those store infos or the data will just be silently ignored.
+            force_store_info = true;
 
-                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-                // this can only be a recording.
-                Some(re_log_types::StoreId::random(StoreKind::Recording))
-            });
+            // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+            // this can only be a recording.
+            Some(re_log_types::StoreId::random(StoreKind::Recording))
+        });
 
         match cmd {
             UICommand::SaveRecording => {
@@ -831,7 +829,7 @@ impl App {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
                     self.command_sender
-                        .send_system(SystemCommand::CloseStore(cur_rec.clone()));
+                        .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
                 }
             }
             UICommand::CloseAllRecordings => {
@@ -1021,7 +1019,9 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 if self.run_copy_direct_link_command(store_context).is_none() {
-                    re_log::error!("Failed to copy direct link to clipboard. Is this not running in a browser?");
+                    re_log::error!(
+                        "Failed to copy direct link to clipboard. Is this not running in a browser?"
+                    );
                 }
             }
 
@@ -1158,7 +1158,9 @@ impl App {
 
         let Some(range) = time_ctrl.loop_selection() else {
             // no loop selection
-            re_log::warn!("Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop");
+            re_log::warn!(
+                "Could not copy time range link: No loop selection set. Use shift+left click on the timeline to create a loop"
+            );
             return;
         };
 
@@ -1271,6 +1273,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
+        storage_context: &StorageContext<'_>,
         store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
@@ -1325,6 +1328,7 @@ impl App {
                             ui,
                             render_ctx,
                             store_context,
+                            storage_context,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
@@ -1339,9 +1343,9 @@ impl App {
                         );
                         render_ctx.before_submit();
                     }
-                }
 
-                self.show_text_logs_as_notifications();
+                    self.show_text_logs_as_notifications();
+                }
             });
     }
 
@@ -1384,7 +1388,9 @@ impl App {
 
             if store_hub.is_active_blueprint(store_id) {
                 // TODO(#5514): handle loading of active blueprints.
-                re_log::warn_once!("Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details.");
+                re_log::warn_once!(
+                    "Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
+                );
             }
 
             // TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
@@ -1522,7 +1528,9 @@ impl App {
                     {
                         for &view_type in archetype.view_types {
                             if !cfg!(feature = "map_view") && view_type == "MapView" {
-                                re_log::warn_once!("Found map-related archetype, but viewer was not compiled with the `map_view` feature.");
+                                re_log::warn_once!(
+                                    "Found map-related archetype, but viewer was not compiled with the `map_view` feature."
+                                );
                             }
                         }
                     } else {
@@ -1621,7 +1629,7 @@ impl App {
     // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
         egui_ctx: &egui::Context,
-        store_ctx: Option<&StoreContext<'_>>,
+        storage_ctx: &StorageContext<'_>,
         command_sender: &CommandSender,
     ) {
         preview_files_being_dropped(egui_ctx);
@@ -1633,32 +1641,28 @@ impl App {
         }
 
         let mut force_store_info = false;
-        let active_application_id = store_ctx
-            .and_then(|ctx| {
-                ctx.hub
-                    .active_app()
-                    // Don't redirect data to the welcome screen.
-                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-                    .cloned()
-            })
+        let active_application_id = storage_ctx
+            .hub
+            .active_app()
+            // Don't redirect data to the welcome screen.
+            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
             .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
-        let active_recording_id = store_ctx
-            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
-            .or_else(|| {
-                // When we're on the welcome screen, there is no recording ID to recommend.
-                // But we want one, otherwise multiple things being dropped simultaneously on the
-                // welcome screen would end up in different recordings!
+        let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
+            // When we're on the welcome screen, there is no recording ID to recommend.
+            // But we want one, otherwise multiple things being dropped simultaneously on the
+            // welcome screen would end up in different recordings!
 
-                // We're creating a recording just-in-time, directly from the viewer.
-                // We need those store infos or the data will just be silently ignored.
-                force_store_info = true;
+            // We're creating a recording just-in-time, directly from the viewer.
+            // We need those store infos or the data will just be silently ignored.
+            force_store_info = true;
 
-                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-                // this can only be a recording.
-                Some(re_log_types::StoreId::random(StoreKind::Recording))
-            });
+            // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+            // this can only be a recording.
+            Some(re_log_types::StoreId::random(StoreKind::Recording))
+        });
 
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
@@ -1883,7 +1887,9 @@ fn blueprint_loader() -> BlueprintPersistence {
                 if store.store_kind() == StoreKind::Blueprint
                     && !crate::blueprint::is_valid_blueprint(store)
                 {
-                    re_log::warn_once!("Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions.");
+                    re_log::warn_once!(
+                        "Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions."
+                    );
                     return Ok(None);
                 }
             }
@@ -2095,7 +2101,7 @@ impl eframe::App for App {
         }
 
         {
-            let store_context = store_hub.read_context();
+            let (storage_context, store_context) = store_hub.read_context();
 
             let blueprint_query = store_context.as_ref().map_or(
                 BlueprintUndoState::default_query(),
@@ -2119,6 +2125,7 @@ impl eframe::App for App {
                 &app_blueprint,
                 &gpu_resource_stats,
                 store_context.as_ref(),
+                &storage_context,
                 store_stats.as_ref(),
             );
 
@@ -2131,10 +2138,15 @@ impl eframe::App for App {
                 self.command_sender.send_ui(cmd);
             }
 
-            Self::handle_dropping_files(egui_ctx, store_context.as_ref(), &self.command_sender);
+            Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
+            );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

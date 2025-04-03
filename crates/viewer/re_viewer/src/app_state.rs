@@ -12,8 +12,8 @@ use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
     DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
-    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _,
-    ViewClassRegistry, ViewStates, ViewerContext,
+    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableContext,
+    ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -150,6 +150,7 @@ impl AppState {
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
         store_context: &StoreContext<'_>,
+        storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
@@ -215,7 +216,7 @@ impl AppState {
                     }
                 }
 
-                viewport_ui.blueprint.is_item_valid(store_context, item)
+                viewport_ui.blueprint.is_item_valid(storage_context, item)
             },
             Some(re_viewer_context::Item::StoreId(
                 store_context.recording.store_id().clone(),
@@ -287,9 +288,11 @@ impl AppState {
                 command_sender,
             },
             store_context,
+            storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
+            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -367,9 +370,11 @@ impl AppState {
                 command_sender,
             },
             store_context,
+            storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
+            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -380,6 +385,78 @@ impl AppState {
 
         if *show_settings_ui {
             // nothing: this is already handled above
+        } else if storage_context.hub.active_table_id().is_some() {
+            // TODO(grtlr): This is almost a verbatim copy of the code below. Once the dust has settled around the
+            // catalog, we should strive to unify both draw calls.
+            let left_panel = egui::SidePanel::left("left_panel_table")
+                .resizable(true)
+                .frame(egui::Frame {
+                    fill: ui.visuals().panel_fill,
+                    ..Default::default()
+                })
+                .min_width(120.0)
+                .default_width(default_blueprint_panel_width(
+                    ui.ctx().screen_rect().width(),
+                ));
+
+            left_panel.show_animated_inside(
+                ui,
+                app_blueprint.blueprint_panel_state().is_expanded(),
+                |ui: &mut egui::Ui| {
+                    // ListItem don't need vertical spacing so we disable it, but restore it
+                    // before drawing the blueprint panel.
+                    ui.spacing_mut().item_spacing.y = 0.0;
+
+                    display_mode_toggle_ui(ui, display_mode);
+
+                    if display_mode == &DisplayMode::LocalRecordings {
+                        let resizable = ctx.storage_context.bundle.recordings().count() > 3;
+
+                        if resizable {
+                            // Don't shrink either recordings panel or blueprint panel below this height
+                            let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
+
+                            egui::TopBottomPanel::top("recording_panel")
+                                .frame(egui::Frame::new())
+                                .resizable(resizable)
+                                .show_separator_line(false)
+                                .min_height(min_height_each)
+                                .default_height(210.0)
+                                .max_height(ui.available_height() - min_height_each)
+                                .show_inside(ui, |ui| {
+                                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                });
+                        } else {
+                            recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                        }
+
+                        ui.add_space(4.0);
+                    }
+                },
+            );
+
+            let viewport_frame = egui::Frame {
+                fill: ui.style().visuals.panel_fill,
+                ..Default::default()
+            };
+
+            egui::CentralPanel::default()
+                .frame(viewport_frame)
+                .show_inside(ui, |ui| {
+                    let table_id = ctx
+                        .active_table
+                        .as_ref()
+                        .expect("if we're here, we need to have a table id");
+                    if let Some(store) = ctx.storage_context.tables.get(table_id) {
+                        let context = TableContext {
+                            table_id: table_id.clone(),
+                            store,
+                        };
+                        crate::ui::table_ui(&ctx, ui, &context);
+                    } else {
+                        re_log::error_once!("Could not find batch store for table id {}", table_id);
+                    }
+                });
         } else if *display_mode == DisplayMode::ChunkStoreBrowser {
             let should_datastore_ui_remain_active =
                 datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
@@ -472,6 +549,8 @@ impl AppState {
             // Left panel (recordings and blueprint)
             //
 
+            // TODO(grtlr): This is almost a verbatim copy of the code above for tables. Once the dust has settled
+            // around the catalog, we should strive to unify both draw calls.
             let left_panel = egui::SidePanel::left("blueprint_panel")
                 .resizable(true)
                 .frame(egui::Frame {
@@ -499,7 +578,7 @@ impl AppState {
                         DisplayMode::LocalRecordings
                         | DisplayMode::RedapEntry(..)
                         | DisplayMode::RedapServer(..) => {
-                            let resizable = ctx.store_context.bundle.recordings().count() > 3;
+                            let resizable = ctx.storage_context.bundle.recordings().count() > 3;
 
                             if resizable {
                                 // Don't shrink either recordings panel or blueprint panel below this height
@@ -802,7 +881,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let is_rerun_url = re_uri::RedapUri::try_from(open_url.url.as_ref()).is_ok();
+                let is_rerun_url = open_url.url.parse::<re_uri::RedapUri>().is_ok();
 
                 if is_rerun_url {
                     let data_source = re_data_source::DataSource::from_uri(

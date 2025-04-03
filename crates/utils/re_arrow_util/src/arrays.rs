@@ -300,7 +300,8 @@ pub fn concat_arrays(arrays: &[&dyn Array]) -> arrow::error::Result<ArrayRef> {
 /// [filter]: arrow::compute::filter
 pub fn filter_array<A: Array + Clone + 'static>(array: &A, filter: &BooleanArray) -> A {
     assert_eq!(
-        array.len(), filter.len(),
+        array.len(),
+        filter.len(),
         "the length of the filter must match the length of the array (the underlying kernel will panic otherwise)",
     );
     debug_assert!(

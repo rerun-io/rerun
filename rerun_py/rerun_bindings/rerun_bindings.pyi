@@ -750,6 +750,14 @@ def set_callback_sink(
 ) -> None:
     """Set callback sink."""
 
+def serve_grpc(
+    grpc_port: Optional[int],
+    server_memory_limit: str,
+    default_blueprint: Optional[PyMemorySinkStorage] = None,
+    recording: Optional[PyRecordingStream] = None,
+) -> None:
+    """Spawn a gRPC server which an SDK or Viewer can connect to."""
+
 def serve_web(
     open_browser: bool,
     web_port: Optional[int],

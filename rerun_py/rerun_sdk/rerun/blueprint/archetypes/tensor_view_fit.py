@@ -19,7 +19,11 @@ __all__ = ["TensorViewFit"]
 
 @define(str=False, repr=False, init=False)
 class TensorViewFit(TensorViewFitExt, Archetype):
-    """**Archetype**: Configures how a selected tensor slice is shown on screen."""
+    """
+    **Archetype**: Configures how a selected tensor slice is shown on screen.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     # __init__ can be found in tensor_view_fit_ext.py
 

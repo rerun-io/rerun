@@ -68,7 +68,8 @@ impl CallbackSelectionItem {
             | Item::ComponentPath(_)
             | Item::DataSource(_)
             | Item::RedapEntry(_)
-            | Item::RedapServer(_) => None,
+            | Item::RedapServer(_)
+            | Item::TableId(_) => None,
             Item::View(view_id) => Some(Self::View {
                 view_id: *view_id,
                 view_name: if let Some(name) = get_view_name(blueprint, view_id) {

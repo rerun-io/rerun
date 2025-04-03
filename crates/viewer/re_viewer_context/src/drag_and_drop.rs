@@ -273,6 +273,7 @@ struct ItemCounter {
     container_cnt: u32,
     view_cnt: u32,
     app_cnt: u32,
+    table_cnt: u32,
     data_source_cnt: u32,
     store_cnt: u32,
     entity_cnt: u32,
@@ -288,6 +289,7 @@ impl ItemCounter {
             Item::Container(_) => self.container_cnt += 1,
             Item::View(_) => self.view_cnt += 1,
             Item::AppId(_) => self.app_cnt += 1,
+            Item::TableId(_) => self.table_cnt += 1,
             Item::DataSource(_) => self.data_source_cnt += 1,
             Item::StoreId(_) => self.store_cnt += 1,
             Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {

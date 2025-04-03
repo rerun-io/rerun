@@ -79,7 +79,7 @@ impl MessageHeader {
             _ => {
                 return Err(crate::decoder::DecodeError::Codec(
                     crate::codec::CodecError::UnknownMessageHeader,
-                ))
+                ));
             }
         };
 

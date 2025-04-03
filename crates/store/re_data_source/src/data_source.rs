@@ -102,7 +102,7 @@ impl DataSource {
             }
         }
 
-        if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
+        if let Ok(endpoint) = uri.as_str().parse::<re_uri::RedapUri>() {
             return Self::RerunGrpcStream(endpoint);
         }
 

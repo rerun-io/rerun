@@ -16,7 +16,11 @@ __all__ = ["ComponentColumnSelector", "ComponentColumnSelectorBatch"]
 
 
 class ComponentColumnSelector(blueprint_datatypes.ComponentColumnSelector, ComponentMixin):
-    """**Component**: Describe a component column to be selected in the dataframe view."""
+    """
+    **Component**: Describe a component column to be selected in the dataframe view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ComponentColumnSelectorExt in component_column_selector_ext.py

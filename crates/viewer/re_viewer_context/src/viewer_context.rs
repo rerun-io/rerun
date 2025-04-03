@@ -4,6 +4,7 @@ use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
+use re_log_types::TableId;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
@@ -13,15 +14,18 @@ use crate::{
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
-use crate::{GlobalContext, StoreHub};
+use crate::{GlobalContext, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
 
-    /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
+    pub storage_context: &'a StorageContext<'a>,
+
+    /// If `active_table` is `Some(...)`, we have a table in the context, otherwise it's a regular store.
+    pub active_table: Option<TableId>,
 
     /// Mapping from class and system to entities for the store
     ///

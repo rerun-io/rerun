@@ -97,6 +97,10 @@ pub enum RecordingStreamError {
     /// Invalid endpoint
     #[error("not a `/proxy` endpoint")]
     NotAProxyEndpoint,
+
+    /// Invalid bind IP.
+    #[error(transparent)]
+    InvalidAddress(#[from] std::net::AddrParseError),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -384,8 +388,7 @@ impl RecordingStreamBuilder {
         let (enabled, store_info, properties, batcher_config) = self.into_args();
         if enabled {
             let url: String = url.into();
-            let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())?
-            else {
+            let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
                 return Err(RecordingStreamError::NotAProxyEndpoint);
             };
 
@@ -397,6 +400,63 @@ impl RecordingStreamBuilder {
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
+            Ok(RecordingStream::disabled())
+        }
+    }
+
+    #[cfg(feature = "server")]
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// locally hosted gRPC server.
+    ///
+    /// The server is hosted on the default IP and port, and may be connected to by any SDK or Viewer
+    /// at `rerun+http://127.0.0.1:9876/proxy`.
+    ///
+    /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
+    ///
+    /// The gRPC server will buffer in memory so that late connecting viewers will still get all the data.
+    /// You can limit the amount of data buffered by the gRPC server using [`Self::serve_grpc_opts`],
+    /// with the `server_memory_limit` argument. Once the memory limit is reached, the earliest logged data
+    /// will be dropped. Static data is never dropped.
+    pub fn serve_grpc(self) -> RecordingStreamResult<RecordingStream> {
+        self.serve_grpc_opts(
+            "0.0.0.0",
+            crate::DEFAULT_SERVER_PORT,
+            re_memory::MemoryLimit::from_fraction_of_total(0.75),
+        )
+    }
+
+    #[cfg(feature = "server")]
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// locally hosted gRPC server.
+    ///
+    /// The server is hosted on the given `bind_ip` and `port`, may be connected to by any SDK or Viewer
+    /// at `rerun+http://{bind_ip}:{port}/proxy`.
+    ///
+    /// `0.0.0.0` is a good default for `bind_ip`.
+    ///
+    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+    pub fn serve_grpc_opts(
+        self,
+        bind_ip: impl AsRef<str>,
+        port: u16,
+        server_memory_limit: re_memory::MemoryLimit,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let (enabled, store_info, properties, batcher_config) = self.into_args();
+        if enabled {
+            RecordingStream::new(
+                store_info,
+                properties,
+                batcher_config,
+                Box::new(crate::grpc_server::GrpcServerSink::new(
+                    bind_ip.as_ref(),
+                    port,
+                    server_memory_limit,
+                )?),
+            )
+        } else {
+            re_log::debug!("Rerun disabled - call to serve_grpc() ignored");
             Ok(RecordingStream::disabled())
         }
     }
@@ -825,7 +885,9 @@ impl fmt::Debug for RecordingStreamInner {
 impl Drop for RecordingStreamInner {
     fn drop(&mut self) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected while dropping RecordingStreamInner. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 
@@ -1287,7 +1349,9 @@ impl RecordingStream {
         prefer_current_recording: bool,
     ) -> RecordingStreamResult<()> {
         let Some(store_info) = self.store_info().clone() else {
-            re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
+            re_log::warn!(
+                "Ignored call to log_file() because RecordingStream has not been properly initialized"
+            );
             return Ok(());
         };
 
@@ -1663,7 +1727,9 @@ impl RecordingStream {
     /// cannot be repaired), all pending data in its buffers will be dropped.
     pub fn set_sink(&self, sink: Box<dyn LogSink>) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 
@@ -1700,7 +1766,9 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_async(&self) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 
@@ -1733,7 +1801,9 @@ impl RecordingStream {
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_blocking(&self) {
         if self.is_forked_child() {
-            re_log::error_once!("Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            re_log::error_once!(
+                "Fork detected during flush. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK."
+            );
             return;
         }
 
@@ -1799,11 +1869,54 @@ impl RecordingStream {
         }
 
         let url: String = url.into();
-        let re_uri::RedapUri::Proxy(endpoint) = re_uri::RedapUri::try_from(url.as_str())? else {
+        let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
             return Err(RecordingStreamError::NotAProxyEndpoint);
         };
 
         let sink = crate::log_sink::GrpcSink::new(endpoint, flush_timeout);
+
+        self.set_sink(Box::new(sink));
+        Ok(())
+    }
+
+    #[cfg(feature = "server")]
+    /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
+    /// `rerun+http://127.0.0.1:9876/proxy`.
+    ///
+    /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
+    ///
+    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+    pub fn serve_grpc(
+        &self,
+        server_memory_limit: re_memory::MemoryLimit,
+    ) -> RecordingStreamResult<()> {
+        self.serve_grpc_opts("0.0.0.0", crate::DEFAULT_SERVER_PORT, server_memory_limit)
+    }
+
+    #[cfg(feature = "server")]
+    /// Swaps the underlying sink for a [`crate::grpc_server::GrpcServerSink`] pre-configured to listen on
+    /// `rerun+http://{bind_ip}:{port}/proxy`.
+    ///
+    /// `0.0.0.0` is a good default for `bind_ip`.
+    ///
+    /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+    pub fn serve_grpc_opts(
+        &self,
+        bind_ip: impl AsRef<str>,
+        port: u16,
+        server_memory_limit: re_memory::MemoryLimit,
+    ) -> RecordingStreamResult<()> {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting GrpcServerSink since {ENV_FORCE_SAVE} is set");
+            return Ok(());
+        }
+
+        let sink =
+            crate::grpc_server::GrpcServerSink::new(bind_ip.as_ref(), port, server_memory_limit)?;
 
         self.set_sink(Box::new(sink));
         Ok(())

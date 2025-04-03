@@ -3,6 +3,7 @@
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
+use re_log_types::TableId;
 use re_viewer_context::{
     ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
 };
@@ -359,6 +360,7 @@ trait ContextMenuAction {
         for (item, _) in ctx.selection.iter() {
             match item {
                 Item::AppId(app_id) => self.process_app_id(ctx, app_id),
+                Item::TableId(table_id) => self.process_table_id(ctx, table_id),
                 Item::DataSource(data_source) => self.process_data_source(ctx, data_source),
                 Item::StoreId(store_id) => self.process_store_id(ctx, store_id),
                 Item::ComponentPath(component_path) => {
@@ -388,6 +390,9 @@ trait ContextMenuAction {
 
     /// Process a single recording.
     fn process_store_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &re_log_types::StoreId) {}
+
+    /// Process a table.
+    fn process_table_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &TableId) {}
 
     /// Process a single container.
     fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}

@@ -61,12 +61,10 @@ pub struct EntityPathFilter {
     rules: BTreeMap<EntityPathRule, RuleEffect>,
 }
 
-// Note: it's not possible to implement that for `S: AsRef<str>` because this conflicts with some
-// blanket implementation in `core` :(
-impl TryFrom<&str> for EntityPathFilter {
-    type Error = EntityPathFilterError;
+impl std::str::FromStr for EntityPathFilter {
+    type Err = EntityPathFilterError;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         Self::parse_strict(value)
     }
 }

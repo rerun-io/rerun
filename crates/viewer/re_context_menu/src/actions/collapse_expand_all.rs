@@ -39,7 +39,8 @@ impl ContextMenuAction for CollapseExpandAllAction {
             | Item::StoreId(_)
             | Item::ComponentPath(_)
             | Item::RedapEntry(_)
-            | Item::RedapServer(_) => false,
+            | Item::RedapServer(_)
+            | Item::TableId(_) => false,
 
             Item::View(_) | Item::Container(_) | Item::InstancePath(_) => true,
 

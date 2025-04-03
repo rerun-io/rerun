@@ -12,7 +12,7 @@ Before reading this document, you might want to familiarize yourself with the [R
 
 ## Operating modes
 
-The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve_web` & `save`.
+The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve`, and `save`.
 
 All four of them are optional: when none of these modes are active, the client will simply buffer the logged data in memory, waiting for one of these modes to be enabled so that it can flush it.
 
@@ -48,16 +48,26 @@ You will need to start a stand-alone Viewer first by typing `rerun` in your term
 
 ### Serve
 
-This starts the web version of the Rerun Viewer in your browser, and streams data to it in real-time using gRPC.
+There are two kinds of `serve` calls:
+
+* `serve_web`
+* `serve_grpc`
+
+Both will start a Rerun gRPC server in your process, and stream logged data to it.
+
+The `serve_web` call starts an additional server which hosts the assets required to run the Rerun Viewer in your browser.
 
 #### C++
-Not available yet.
+* [`RecordingStream::serve_grpc`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
+* `serve_web` is not available.
 
 #### Python
-Use [`rr.serve`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve).
+* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc?speculative-link)
+* [`rr.serve_web`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_web)
 
 #### Rust
-[`RecordingStream::serve`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve)
+* [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc?speculative-link)
+* [`RecordingStream::serve_web`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web?speculative-link)
 
 
 ### Save

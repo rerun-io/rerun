@@ -39,7 +39,9 @@ pub enum Error {
     #[error("Failed to start FFmpeg: {0}")]
     FailedToStartFfmpeg(std::io::Error),
 
-    #[error("FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported.")]
+    #[error(
+        "FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported."
+    )]
     UnsupportedFFmpegVersion {
         actual_version: FFmpegVersion,
         minimum_version_major: u32,
@@ -537,8 +539,12 @@ impl FrameBuffer {
                 // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
                 // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
                 if self.highest_dts > frame_info.decode_timestamp {
-                    re_log::warn!("Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
-                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.", self.highest_dts, frame_info.decode_timestamp);
+                    re_log::warn!(
+                        "Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
+                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.",
+                        self.highest_dts,
+                        frame_info.decode_timestamp
+                    );
                 }
                 self.highest_dts = frame_info.decode_timestamp;
 
@@ -733,7 +739,9 @@ fn read_ffmpeg_output(
             FfmpegEvent::ParsedVersion(ffmpeg_version) => {
                 fn download_advice() -> String {
                     if let Ok(download_url) = ffmpeg_sidecar::download::ffmpeg_download_url() {
-                        format!("\nYou can download an up to date version for your system at {download_url}.")
+                        format!(
+                            "\nYou can download an up to date version for your system at {download_url}."
+                        )
                     } else {
                         String::new()
                     }
@@ -1105,12 +1113,16 @@ mod tests {
         );
 
         assert_eq!(
-            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8100] Warning: invalid poxel format specified [swscaler @ 0x148db8200]"),
+            sanitize_ffmpeg_log_message(
+                "[swscaler @ 0x148db8100] Warning: invalid poxel format specified [swscaler @ 0x148db8200]"
+            ),
             "[swscaler] Warning: invalid poxel format specified [swscaler]"
         );
 
         assert_eq!(
-            sanitize_ffmpeg_log_message("[swscaler @ 0x248db8000] Warning: invalid päxel format specified [swscaler @ 0x198db8000] [swscaler @ 0x148db8030]"),
+            sanitize_ffmpeg_log_message(
+                "[swscaler @ 0x248db8000] Warning: invalid päxel format specified [swscaler @ 0x198db8000] [swscaler @ 0x148db8030]"
+            ),
             "[swscaler] Warning: invalid päxel format specified [swscaler] [swscaler]"
         );
 

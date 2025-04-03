@@ -99,7 +99,7 @@ enum EndpointCategory {
 
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
-        if let Ok(uri) = re_uri::RedapUri::try_from(uri.as_ref()) {
+        if let Ok(uri) = uri.parse() {
             return Self::RerunGrpcStream(uri);
         }
 
@@ -176,7 +176,9 @@ pub fn url_to_receiver(
                             if tx.send(msg).is_ok() {
                                 ControlFlow::Continue(())
                             } else {
-                                re_log::info_once!("Failed to send log message to viewer - closing connection to {url}");
+                                re_log::info_once!(
+                                    "Failed to send log message to viewer - closing connection to {url}"
+                                );
                                 ControlFlow::Break(())
                             }
                         }

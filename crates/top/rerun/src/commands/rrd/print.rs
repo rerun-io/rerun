@@ -132,7 +132,9 @@ fn print_msg(verbose: u8, msg: LogMsg) -> anyhow::Result<()> {
             make_active,
             make_default,
         }) => {
-            println!("BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})");
+            println!(
+                "BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})"
+            );
         }
     }
 

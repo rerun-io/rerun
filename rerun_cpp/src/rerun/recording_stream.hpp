@@ -153,6 +153,18 @@ namespace rerun {
             std::string_view url = "rerun+http://127.0.0.1:9876", float flush_timeout_sec = 2.0
         ) const;
 
+        /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
+        ///
+        /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+        /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+        /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+        ///
+        /// This function returns immediately.
+        Error serve_grpc(
+            std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
+            std::string_view server_memory_limit = "75%"
+        ) const;
+
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over gRPC.
         ///

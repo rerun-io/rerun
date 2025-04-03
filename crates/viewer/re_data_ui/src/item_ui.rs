@@ -5,11 +5,13 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, TimeInt, TimeType, Timeline, TimelineName,
+    ApplicationId, ComponentPath, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
-use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewId, ViewerContext};
+use re_viewer_context::{
+    HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
+};
 
 use super::DataUi as _;
 
@@ -648,9 +650,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance.is_all() {
         if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
-            let typ = db.timeline_type(&query.timeline());
-            let timeline = Timeline::new(query.timeline(), typ);
-            entity_tree_stats_ui(ui, &timeline, db, subtree, include_subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
         }
     } else {
         // TODO(emilk): per-component stats
@@ -724,7 +724,7 @@ pub fn store_id_button_ui(
     store_id: &re_log_types::StoreId,
     ui_layout: UiLayout,
 ) {
-    if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+    if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
         entity_db_button_ui(ctx, ui, entity_db, ui_layout, true);
     } else {
         ui_layout.label(ui, store_id.to_string());
@@ -803,7 +803,7 @@ pub fn entity_db_button_ui(
                 });
             if resp.clicked() {
                 ctx.command_sender()
-                    .send_system(SystemCommand::CloseStore(store_id.clone()));
+                    .send_system(SystemCommand::CloseEntry(store_id.clone().into()));
             }
             resp
         });
@@ -845,9 +845,72 @@ pub fn entity_db_button_ui(
         // for the blueprint.
         if store_id.kind == re_log_types::StoreKind::Recording {
             ctx.command_sender()
-                .send_system(SystemCommand::ActivateRecording(store_id.clone()));
+                .send_system(SystemCommand::ActivateEntry(store_id.clone().into()));
         }
 
+        ctx.command_sender()
+            .send_system(SystemCommand::SetSelection(item));
+    }
+}
+
+pub fn table_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    table_id: &TableId,
+    ui_layout: UiLayout,
+) {
+    let item = re_viewer_context::Item::TableId(table_id.clone());
+
+    let icon = &icons::VIEW_DATAFRAME;
+
+    let mut item_content =
+        list_item::LabelContent::new(table_id.as_str()).with_icon_fn(|ui, rect, visuals| {
+            // Color icon based on whether this is the active table or not:
+            let color = if ctx.active_table.as_ref() == Some(table_id) {
+                visuals.fg_stroke.color
+            } else {
+                ui.visuals().widgets.noninteractive.fg_stroke.color
+            };
+            icon.as_image().tint(color).paint_at(ui, rect);
+        });
+
+    if ui_layout.is_selection_panel() {
+        item_content = item_content.with_buttons(|ui| {
+            // Close-button:
+            let resp = ui
+                .small_icon_button(&icons::REMOVE)
+                .on_hover_text("Close this table (all data will be lost)");
+            if resp.clicked() {
+                ctx.command_sender()
+                    .send_system(SystemCommand::CloseEntry(table_id.clone().into()));
+            }
+            resp
+        });
+    }
+
+    let mut list_item = ui
+        .list_item()
+        .selected(ctx.selection().contains_item(&item));
+
+    if ctx.hovered().contains_item(&item) {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item::list_item_scope(ui, "entity db button", |ui| {
+        list_item
+            .show_hierarchical(ui, item_content)
+            .on_hover_ui(|ui| {
+                ui.label(format!("Table: {table_id}"));
+            })
+    });
+
+    if response.hovered() {
+        ctx.selection_state().set_hovered(item.clone());
+    }
+
+    if response.clicked() {
+        ctx.command_sender()
+            .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
         ctx.command_sender()
             .send_system(SystemCommand::SetSelection(item));
     }

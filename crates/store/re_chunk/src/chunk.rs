@@ -1572,7 +1572,8 @@ impl Chunk {
                     reason: format!(
                         "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs. \
                          Found {} row IDs but {} timestamps for timeline '{timeline_name}'",
-                        row_ids.len(), time_column.times.len(),
+                        row_ids.len(),
+                        time_column.times.len(),
                     ),
                 });
             }
@@ -1603,7 +1604,8 @@ impl Chunk {
                         reason: format!(
                             "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
-                            row_ids.len(), list_array.len(),
+                            row_ids.len(),
+                            list_array.len(),
                         ),
                     });
                 }

@@ -20,6 +20,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Specifies a 2D slice of a tensor.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct TensorSliceSelection {
         /// Which dimension to map to width.
         ///

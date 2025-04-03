@@ -20,7 +20,11 @@ __all__ = ["Background"]
 
 @define(str=False, repr=False, init=False)
 class Background(BackgroundExt, Archetype):
-    """**Archetype**: Configuration for the background of a view."""
+    """
+    **Archetype**: Configuration for the background of a view.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     # __init__ can be found in background_ext.py
 

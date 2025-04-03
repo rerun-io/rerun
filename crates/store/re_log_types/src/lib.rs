@@ -199,6 +199,40 @@ impl std::fmt::Display for ApplicationId {
 
 // ----------------------------------------------------------------------------
 
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TableId(Arc<String>);
+
+impl TableId {
+    pub fn new(id: String) -> Self {
+        Self(Arc::new(id))
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl From<&str> for TableId {
+    fn from(s: &str) -> Self {
+        Self(Arc::new(s.into()))
+    }
+}
+
+impl From<String> for TableId {
+    fn from(s: String) -> Self {
+        Self(Arc::new(s))
+    }
+}
+
+impl std::fmt::Display for TableId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
 /// Command used for activating a blueprint once it has been fully transmitted.
 ///
 /// This command serves two purposes:

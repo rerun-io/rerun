@@ -7,7 +7,13 @@ mod entry;
 mod errors;
 mod table;
 
-use pyo3::{prelude::*, Bound, PyResult};
+use std::sync::Arc;
+
+use arrow::{
+    array::{Float32Array, RecordBatch},
+    datatypes::Field,
+};
+use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
 
 pub use catalog_client::PyCatalogClient;
 pub use connection_handle::ConnectionHandle;
@@ -90,5 +96,45 @@ impl From<PyVectorDistanceMetric> for i32 {
             re_protos::manifest_registry::v1alpha1::VectorDistanceMetric::from(metric);
 
         proto_typed as Self
+    }
+}
+
+/// A type alias for a vector (vector search input data).
+#[derive(FromPyObject)]
+enum VectorLike<'py> {
+    NumPy(numpy::PyArrayLike1<'py, f32>),
+    Vector(Vec<f32>),
+}
+
+impl VectorLike<'_> {
+    fn to_record_batch(&self) -> PyResult<RecordBatch> {
+        let schema = arrow::datatypes::Schema::new_with_metadata(
+            vec![Field::new(
+                "items",
+                arrow::datatypes::DataType::Float32,
+                false,
+            )],
+            Default::default(),
+        );
+
+        match self {
+            VectorLike::NumPy(array) => {
+                let floats: Vec<f32> = array
+                    .as_array()
+                    .as_slice()
+                    .ok_or_else(|| {
+                        PyRuntimeError::new_err("Failed to convert numpy array to slice".to_owned())
+                    })?
+                    .to_vec();
+
+                RecordBatch::try_new(Arc::new(schema), vec![Arc::new(Float32Array::from(floats))])
+                    .map_err(to_py_err)
+            }
+            VectorLike::Vector(floats) => RecordBatch::try_new(
+                Arc::new(schema),
+                vec![Arc::new(Float32Array::from(floats.clone()))],
+            )
+            .map_err(to_py_err),
+        }
     }
 }

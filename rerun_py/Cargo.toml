@@ -22,7 +22,7 @@ extra = []
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "nasm", "web_viewer"]
+pypi = ["extension-module", "nasm", "web_viewer", "server"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -45,6 +45,7 @@ web_viewer = [
   "dep:re_grpc_server",
 ]
 
+server = ["re_sdk/server", "dep:re_grpc_server"]
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -92,6 +93,7 @@ tokio = { workspace = true, features = ["rt-multi-thread"] }
 tokio-stream.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 url.workspace = true
+thiserror.workspace = true
 
 
 [build-dependencies]

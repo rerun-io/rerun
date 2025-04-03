@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: A zoom level determines how much of the world is visible on a map.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ZoomLevel {
         /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
         rerun::datatypes::Float64 zoom;

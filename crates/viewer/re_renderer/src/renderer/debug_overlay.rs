@@ -92,7 +92,7 @@ impl DebugOverlayDrawData {
             None => {
                 return Err(DebugOverlayError::UnsupportedTextureFormat(
                     debug_texture.texture.format(),
-                ))
+                ));
             }
         };
 

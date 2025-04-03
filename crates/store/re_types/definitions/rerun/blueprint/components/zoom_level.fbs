@@ -3,11 +3,11 @@ namespace rerun.blueprint.components;
 // ---
 /// A zoom level determines how much of the world is visible on a map.
 table ZoomLevel (
-    "attr.python.aliases": "float",
-    "attr.python.array_aliases": "npt.ArrayLike",
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
+  "attr.python.aliases": "float",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default"
 ) {
-    /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
-    zoom: rerun.datatypes.Float64 (order: 100);
+  /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
+  zoom: rerun.datatypes.Float64 (order: 100);
 }

@@ -24,7 +24,9 @@ fn handle_async_error(
             if let Some(error) = now_or_never::now_or_never(error_future) {
                 resolve_callback(error);
             } else {
-                re_log::error_once!("Expected wgpu errors to be ready immediately when using any of the wgpu-core based (native & webgl) backends.");
+                re_log::error_once!(
+                    "Expected wgpu errors to be ready immediately when using any of the wgpu-core based (native & webgl) backends."
+                );
             }
         }
     }

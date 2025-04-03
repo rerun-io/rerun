@@ -163,7 +163,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: "/boxes".into(),
-                query_filter: "+ $origin/**".try_into().unwrap(),
+                query_filter: "+ $origin/**".parse().unwrap(),
             },
         );
 
@@ -171,7 +171,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: "/spheres".into(),
-                query_filter: "+ $origin/**".try_into().unwrap(),
+                query_filter: "+ $origin/**".parse().unwrap(),
             },
         );
 

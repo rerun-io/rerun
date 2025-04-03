@@ -73,7 +73,12 @@ async fn serve_impl(
     let incoming =
         TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
 
-    re_log::info!("Listening for gRPC connections on {addr}");
+    let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
+        format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
+    } else {
+        format!("rerun+http://{addr}/proxy")
+    };
+    re_log::info!("Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`");
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();

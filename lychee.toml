@@ -122,6 +122,7 @@ exclude = [
   'https://foo.zip',
   'https://redap.rerun.io',
   'http://wrong-scheme',
+  'rerun\+http://localhost:\{grpc_port\}/proxy',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.

@@ -27,7 +27,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         let mut blueprints = vec![];
 
         for other in ctx
-            .store_context
+            .storage_context
             .bundle
             .entity_dbs()
             .filter(|db| db.data_source.as_ref() == Some(self))

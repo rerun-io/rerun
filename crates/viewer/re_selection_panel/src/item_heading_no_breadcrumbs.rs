@@ -44,6 +44,7 @@ fn item_heading_no_breadcrumbs(
         Item::AppId(_)
         | Item::DataSource(_)
         | Item::StoreId(_)
+        | Item::TableId(_)
         | Item::Container(_)
         | Item::View(_)
         | Item::RedapEntry(_)

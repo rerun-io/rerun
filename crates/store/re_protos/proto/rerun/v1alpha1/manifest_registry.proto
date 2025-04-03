@@ -313,6 +313,9 @@ message QueryDatasetRequest {
   // Generic parameters that will influence the behavior of the Lance scanner.
   rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
 
+  // A chunk-level latest-at or range query, or both.
+  //
+  // This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
   Query query = 5;
 }
 
@@ -321,36 +324,45 @@ message QueryDatasetResponse {
 }
 
 message Query {
-  // If true, `columns` will contain the entire schema.
-  bool columns_always_include_everything = 4;
-
-  // If true, `columns` always includes `chunk_id`,
-  bool columns_always_include_chunk_ids = 5;
-
-  // If true, `columns` always includes `byte_offset` and `byte_size`.
-  bool columns_always_include_byte_offsets = 6;
-
-  // If true, `columns` always includes `entity_path`.
-  bool columns_always_include_entity_paths = 7;
-
-  // If true, `columns` always includes all static component-level indexes.
-  bool columns_always_include_static_indexes = 8;
-
-  // If true, `columns` always includes all temporal chunk-level indexes.
-  bool columns_always_include_global_indexes = 9;
-
-  // If true, `columns` always includes all component-level indexes.
-  bool columns_always_include_component_indexes = 10;
-
   // If specified, will perform a latest-at query with the given parameters.
-  QueryDatasetLatestAtRelevantChunks latest_at = 11;
+  //
+  // You can combine this with a `QueryRange` in order to gather all the relevant chunks for
+  // a full-fledged dataframe query (i.e. they get OR'd together).
+  QueryLatestAt latest_at = 1;
 
   // If specified, will perform a range query with the given parameters.
-  QueryDatasetRangeRelevantChunks range = 12;
+  //
+  // You can combine this with a `QueryLatestAt` in order to gather all the relevant chunks for
+  // a full-fledged dataframe query (i.e. they get OR'd together).
+  QueryRange range = 2;
+
+  // If true, `columns` will contain the entire schema.
+  bool columns_always_include_everything = 3;
+
+  // If true, `columns` always includes `chunk_id`,
+  bool columns_always_include_chunk_ids = 4;
+
+  // If true, `columns` always includes `byte_offset` and `byte_size`.
+  bool columns_always_include_byte_offsets = 5;
+
+  // If true, `columns` always includes `entity_path`.
+  bool columns_always_include_entity_paths = 6;
+
+  // If true, `columns` always includes all static component-level indexes.
+  bool columns_always_include_static_indexes = 7;
+
+  // If true, `columns` always includes all temporal chunk-level indexes.
+  bool columns_always_include_global_indexes = 8;
+
+  // If true, `columns` always includes all component-level indexes.
+  bool columns_always_include_component_indexes = 9;
 }
 
-message QueryDatasetLatestAtRelevantChunks {
-  // Which entity paths are we interested in? Empty list means all entity paths
+// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
+//
+// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+message QueryLatestAt {
+  // Which entity paths are we interested in? Leave empty to query all of them.
   repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
 
   // Which index column should we perform the query on? E.g. `log_time`.
@@ -371,8 +383,11 @@ message QueryDatasetLatestAtRelevantChunks {
   repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 4;
 }
 
-message QueryDatasetRangeRelevantChunks {
-  // Which entity paths are we interested in?
+/// A chunk-level range query, aka `RangeRelevantChunks`.
+//
+// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+message QueryRange {
+  // Which entity paths are we interested in? Leave empty to query all of them.
   repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
 
   // Which index column should we perform the query on? E.g. `log_time`.
@@ -405,7 +420,9 @@ message GetChunksRequest {
   // all chunks (that match other query parameters) will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
-  // Query details
+  // A chunk-level latest-at or range query, or both.
+  //
+  // This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
   Query query = 4;
 }
 

@@ -105,7 +105,10 @@ impl IndexColumnDescriptor {
         let nullable = true; // Time column must be nullable since static data doesn't have a time.
 
         let mut metadata = std::collections::HashMap::from([
-            ("rerun.kind".to_owned(), "index".to_owned()),
+            (
+                "rerun.kind".to_owned(),
+                crate::ColumnKind::Index.to_string(),
+            ),
             ("rerun.index_name".to_owned(), timeline.name().to_string()),
         ]);
         if *is_sorted {
@@ -134,7 +137,10 @@ impl TryFrom<&ArrowField> for IndexColumnDescriptor {
         let name = if let Some(name) = field.metadata().get("rerun.index_name") {
             name.to_owned()
         } else {
-            re_log::warn_once!("Timeline '{}' is missing 'rerun.index_name' metadata. Falling back on field/column name", field.name());
+            re_log::warn_once!(
+                "Timeline '{}' is missing 'rerun.index_name' metadata. Falling back on field/column name",
+                field.name()
+            );
             field.name().to_owned()
         };
 

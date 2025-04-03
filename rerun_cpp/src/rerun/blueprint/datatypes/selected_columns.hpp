@@ -20,6 +20,9 @@ namespace arrow {
 
 namespace rerun::blueprint::datatypes {
     /// **Datatype**: List of selected columns in a dataframe.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct SelectedColumns {
         /// The time columns to include
         rerun::Collection<rerun::datatypes::Utf8> time_columns;

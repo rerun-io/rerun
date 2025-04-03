@@ -16,7 +16,11 @@ __all__ = ["GridColumns", "GridColumnsBatch"]
 
 
 class GridColumns(datatypes.UInt32, ComponentMixin):
-    """**Component**: How many columns a grid container should have."""
+    """
+    **Component**: How many columns a grid container should have.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GridColumnsExt in grid_columns_ext.py

@@ -18,9 +18,12 @@ mod maybe_mut_ref;
 mod query_context;
 mod query_range;
 mod selection_state;
+mod storage_context;
 mod store_bundle;
 mod store_context;
 pub mod store_hub;
+mod table_context;
+mod tables;
 mod tensor;
 mod time_control;
 mod time_drag_value;
@@ -65,9 +68,12 @@ pub use self::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
         ItemContext, SelectionChange, SelectionHighlight,
     },
+    storage_context::StorageContext,
     store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
-    store_hub::StoreHub,
+    store_hub::{StoreHub, StoreHubEntry},
+    table_context::TableContext,
+    tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
     time_drag_value::TimeDragValue,

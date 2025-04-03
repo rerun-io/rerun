@@ -566,7 +566,8 @@ impl SpatialView3D {
                 | Item::StoreId(_)
                 | Item::Container(_)
                 | Item::RedapEntry(_)
-                | Item::RedapServer(_) => None,
+                | Item::RedapServer(_)
+                | Item::TableId(_) => None,
 
                 Item::View(view_id) => {
                     if view_id == &query.view_id {

@@ -88,7 +88,19 @@ if(APPLE)
 elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
 elseif(WIN32)
-    target_link_libraries(rerun_c INTERFACE ws2_32 Bcrypt Userenv ntdll Crypt32 Secur32 Ncrypt)
+    target_link_libraries(rerun_c INTERFACE
+        Crypt32
+        Iphlpapi
+        Ncrypt
+        Netapi32
+        ntdll
+        Pdh
+        PowrProf
+        Psapi
+        Secur32
+        Userenv
+        ws2_32
+    )
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_c)

@@ -507,8 +507,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
                 latency_text(latency_sec),
                 format_uint(queue_len),
             );
-            let hover_text =
-                    "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
+            let hover_text = "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
                     This latency does NOT include network latency.";
 
             if latency_sec < app.app_options().warn_latency {

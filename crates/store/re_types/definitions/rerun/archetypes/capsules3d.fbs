@@ -14,11 +14,12 @@ namespace rerun.archetypes;
 // TODO(#1361): This archetype should eventually generalize to cylinders without caps, truncated
 // cones, and tapered capsules -- all common shapes based on expanding a line segment circularly.
 table Capsules3D (
-  "attr.rust.derive": "PartialEq",
-  "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate"
 ) {
   // --- Required ---
 

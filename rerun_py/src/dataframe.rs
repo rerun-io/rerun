@@ -483,6 +483,7 @@ impl SchemaIterator {
 
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
+//TODO(#9457): improve this object and use it for `Dataset.schema()`.
 pub struct PySchema {
     pub schema: SorbetColumnDescriptors,
 }

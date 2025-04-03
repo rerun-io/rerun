@@ -291,7 +291,9 @@ impl State {
                             notice: notice.clone(),
                         })
                     } else {
-                        Err(format!("Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"))
+                        Err(format!(
+                            "Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"
+                        ))
                     }
                 }
                 unknown => Err(format!("Unknown value for {ATTR_RERUN_STATE:?}: {unknown}")),
@@ -488,25 +490,33 @@ impl Object {
                 reporter.error(&virtpath, &fqname, &err);
                 State::Stable
             })
-        } else if kind == ObjectKind::Datatype || is_testing_fqname(&fqname) {
+        } else if is_testing_fqname(&fqname) {
             State::Stable
         } else if scope == Some("blueprint".to_owned()) {
-            if false {
-                // TODO(#9427)
-                State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
-            } else {
-                State::Stable
-            }
+            State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
         } else {
-            if false {
-                // TODO(#9427): make ATTR_DOCS_STATE attribute mandatory
-                reporter.error(
-                    &virtpath,
-                    &fqname,
-                    format!("Missing attribute '{ATTR_RERUN_STATE}'"),
-                );
+            match kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    if false {
+                        // TODO(#9427): make ATTR_RERUN_STATE attribute mandatory
+                        reporter.warn(
+                            &virtpath,
+                            &fqname,
+                            format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                        );
+                    }
+                    State::Stable
+                }
+                ObjectKind::Archetype => {
+                    reporter.error(
+                        &virtpath,
+                        &fqname,
+                        format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                    );
+                    State::Stable
+                }
+                ObjectKind::View => State::Unstable,
             }
-            State::Stable
         };
 
         let fields: Vec<_> = {
@@ -1175,9 +1185,11 @@ impl Type {
             match (typ, type_override.as_str()) {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
-                },
+                }
                 (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"
+                ),
             }
         }
 
@@ -1466,7 +1478,9 @@ impl ElementType {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
                 }
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"
+                ),
             }
         }
 

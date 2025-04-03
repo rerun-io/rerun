@@ -20,12 +20,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An image made up of integer [`components::ClassId`][crate::components::ClassId]s.
 ///
-/// Each pixel corresponds to a [`components::ClassId`][crate::components::ClassId] that will be mapped to a color based on annotation context.
+/// Each pixel corresponds to a [`components::ClassId`][crate::components::ClassId] that will be mapped to a color based on [`archetypes::AnnotationContext`][crate::archetypes::AnnotationContext].
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest
 /// integer value.
 ///
-/// See also [`archetypes::AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
+/// Use [`archetypes::AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
 ///
 /// ## Example
 ///

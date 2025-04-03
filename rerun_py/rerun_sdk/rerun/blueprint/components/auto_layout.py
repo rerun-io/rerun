@@ -16,7 +16,11 @@ __all__ = ["AutoLayout", "AutoLayoutBatch"]
 
 
 class AutoLayout(datatypes.Bool, ComponentMixin):
-    """**Component**: Whether the viewport layout is determined automatically."""
+    """
+    **Component**: Whether the viewport layout is determined automatically.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of AutoLayoutExt in auto_layout_ext.py
