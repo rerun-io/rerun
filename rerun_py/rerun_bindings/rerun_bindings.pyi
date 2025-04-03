@@ -881,6 +881,14 @@ def send_blueprint(
 ) -> None:
     """Send a blueprint to the given recording stream."""
 
+def send_recording(rrd: Recording, recording: Optional[PyRecordingStream] = None) -> None:
+    """
+    Send all chunks from a [`PyRecording`] to the given recording stream.
+
+    .. warning::
+        ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+    """
+
 #
 # misc
 #
