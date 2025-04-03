@@ -402,9 +402,7 @@ pub struct QueryExpression {
 
 impl QueryExpression {
     pub fn min_latest_at(&self) -> Option<LatestAtQuery> {
-        let Some(index) = self.filtered_index else {
-            return None;
-        };
+        let index = self.filtered_index?;
 
         if let Some(using_index_values) = &self.using_index_values {
             return Some(LatestAtQuery::new(
@@ -424,13 +422,11 @@ impl QueryExpression {
             return Some(LatestAtQuery::new(index, filtered_index_range.min()));
         }
 
-        return None;
+        None
     }
 
     pub fn max_range(&self) -> Option<RangeQuery> {
-        let Some(index) = self.filtered_index else {
-            return None;
-        };
+        let index = self.filtered_index?;
 
         if let Some(using_index_values) = &self.using_index_values {
             return Some(RangeQuery::new(
@@ -453,10 +449,10 @@ impl QueryExpression {
         }
 
         if let Some(filtered_index_range) = &self.filtered_index_range {
-            return Some(RangeQuery::new(index, filtered_index_range.clone()));
+            return Some(RangeQuery::new(index, *filtered_index_range));
         }
 
-        return None;
+        None
     }
 }
 
