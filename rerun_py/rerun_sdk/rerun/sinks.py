@@ -404,6 +404,9 @@ def send_recording(rrd: Recording, recording: RecordingStream | None = None) -> 
     """
     Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
 
+    .. warning::
+        ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+
     Parameters
     ----------
     rrd:
