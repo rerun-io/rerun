@@ -4,6 +4,7 @@ use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
+use crossbeam::channel::Receiver as CrossbeamReceiver;
 use re_data_source::DataSource;
 use re_log_types::{LogMsg, TableMsg};
 use re_sdk::sink::LogSink as _;
@@ -717,7 +718,7 @@ fn run_impl(
 
     // Where do we get the data from?
     let mut catalog_endpoints: Vec<_> = Vec::new();
-    let rxs: Vec<Receiver<LogMsg>> = {
+    let (rxs_log, rxs_table): (Vec<Receiver<LogMsg>>, Vec<CrossbeamReceiver<TableMsg>>) = {
         let data_sources = args
             .url_or_paths
             .iter()
@@ -764,7 +765,8 @@ fn run_impl(
             }
         });
 
-        let mut rxs = data_sources
+        let mut rxs_table = Vec::new();
+        let mut rxs_logs = data_sources
             .into_iter()
             .filter_map(
                 |data_source| match data_source.stream(on_cmd.clone(), None) {
@@ -785,7 +787,7 @@ fn run_impl(
                 anyhow::bail!("expected `/proxy` endpoint");
             };
             let rx = re_sdk::external::re_grpc_client::message_proxy::stream(endpoint, None);
-            rxs.push(rx);
+            rxs_logs.push(rx);
         } else {
             // Check if there is already a viewer running and if so, send the data to it.
             use std::net::TcpStream;
@@ -801,18 +803,20 @@ fn run_impl(
             //       For that we spawn the server a bit further down, after we've collected
             //       all receivers into `rxs`.
             } else if !args.serve && !args.serve_web && !args.serve_grpc {
-                let (log_server, table_server): (Receiver<LogMsg>, Receiver<TableMsg>) =
-                    re_grpc_server::spawn_with_recv(
-                        server_addr,
-                        server_memory_limit,
-                        re_grpc_server::shutdown::never(),
-                    );
-                rxs.push(log_server);
-                // rxs.push(table_server);
+                let (log_server, table_server): (
+                    Receiver<LogMsg>,
+                    crossbeam::channel::Receiver<TableMsg>,
+                ) = re_grpc_server::spawn_with_recv(
+                    server_addr,
+                    server_memory_limit,
+                    re_grpc_server::shutdown::never(),
+                );
+                rxs_logs.push(log_server);
+                rxs_table.push(table_server);
             }
         }
 
-        rxs
+        (rxs_logs, rxs_table)
     };
 
     // Now what do we do with the data?
@@ -822,14 +826,14 @@ fn run_impl(
             anyhow::bail!("`--test-receive` does not support catalogs");
         }
 
-        let rx = ReceiveSet::new(rxs);
+        let rx = ReceiveSet::new(rxs_log);
         assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
         if !catalog_endpoints.is_empty() {
             anyhow::bail!("`--save` does not support catalogs");
         }
 
-        let rx = ReceiveSet::new(rxs);
+        let rx = ReceiveSet::new(rxs_log);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.serve_grpc {
         if !catalog_endpoints.is_empty() {
@@ -837,7 +841,7 @@ fn run_impl(
         }
 
         if !cfg!(feature = "server") {
-            _ = (call_source, rxs);
+            _ = (call_source, rxs_log);
             anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
         }
 
@@ -850,7 +854,7 @@ fn run_impl(
                 server_addr,
                 server_memory_limit,
                 shutdown,
-                ReceiveSet::new(rxs),
+                ReceiveSet::new(rxs_log),
             );
 
             // Gracefully shut down the server on SIGINT
@@ -866,7 +870,7 @@ fn run_impl(
         }
 
         if !cfg!(feature = "server") {
-            _ = (call_source, rxs);
+            _ = (call_source, rxs_log);
             anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
         }
 
@@ -893,7 +897,7 @@ fn run_impl(
                 server_addr,
                 server_memory_limit,
                 re_grpc_server::shutdown::never(),
-                ReceiveSet::new(rxs),
+                ReceiveSet::new(rxs_log),
             );
 
             // We always host the web-viewer in case the users wants it,
@@ -934,7 +938,7 @@ fn run_impl(
         // no need to `rt.enter()`:
         let sink = re_sdk::sink::GrpcSink::new(endpoint, crate::default_flush_timeout());
 
-        for rx in rxs {
+        for rx in rxs_log {
             while rx.is_connected() {
                 while let Ok(msg) = rx.recv() {
                     if let Some(log_msg) = msg.into_data() {
@@ -979,8 +983,8 @@ fn run_impl(
                         re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
                         (command_sender, command_receiver),
                     );
-                    for rx in rxs {
-                        app.add_receiver(rx);
+                    for rx in rxs_log {
+                        app.add_log_receiver(rx);
                     }
                     app.set_profiler(profiler);
                     if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {

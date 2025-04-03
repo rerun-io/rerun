@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-use re_log_types::external::re_types_core::ComponentDescriptor;
+use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
 
 use crate::{invalid_field, missing_field, TypeConversionError};
 
@@ -399,6 +399,21 @@ impl From<re_log_types::StoreId> for crate::common::v1alpha1::RecordingId {
         Self {
             id: String::clone(&*value.id),
         }
+    }
+}
+
+impl From<re_log_types::TableId> for crate::sdk_comms::v1alpha1::TableId {
+    #[inline]
+    fn from(value: re_log_types::TableId) -> Self {
+        Self {
+            id: value.as_str().to_owned(),
+        }
+    }
+}
+
+impl From<crate::sdk_comms::v1alpha1::TableId> for re_log_types::TableId {
+    fn from(value: crate::sdk_comms::v1alpha1::TableId) -> Self {
+        TableId::from(value.id)
     }
 }
 

@@ -644,10 +644,10 @@ impl std::fmt::Display for StoreSource {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TableMsg {
     /// The id of the table.
-    table_id: TableId,
+    pub table_id: TableId,
 
     /// The table stored as an [`ArrowRecordBatch`].
-    data: ArrowRecordBatch,
+    pub data: ArrowRecordBatch,
 }
 
 // ---
