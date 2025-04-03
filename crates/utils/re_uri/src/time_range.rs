@@ -8,10 +8,6 @@ pub struct TimeRange {
     pub range: re_log_types::ResolvedTimeRangeF,
 }
 
-impl TimeRange {
-    pub(crate) const QUERY_KEY: &'static str = "time_range";
-}
-
 impl std::fmt::Display for TimeRange {
     /// Used for formatting time ranges in URLs
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

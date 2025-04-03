@@ -1,4 +1,4 @@
-use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, Origin, ProxyEndpoint, TimeRange};
+use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, Origin, ProxyEndpoint};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -79,7 +79,7 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 #[cfg(test)]
 mod tests {
 
-    use crate::Scheme;
+    use crate::{Scheme, TimeRange};
 
     use super::*;
     use core::net::Ipv4Addr;

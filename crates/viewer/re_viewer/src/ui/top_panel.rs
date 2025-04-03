@@ -228,7 +228,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
                 format!(
                     "Waiting for data on {}…",
-                    endpoint.without_query_and_fragment()
+                    endpoint.clone().without_query_and_fragment()
                 )
             }
             re_smart_channel::SmartChannelSource::RrdWebEventListener

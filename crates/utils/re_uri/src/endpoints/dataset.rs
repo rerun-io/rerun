@@ -51,10 +51,10 @@ impl DatasetDataEndpoint {
         for (key, value) in url.query_pairs() {
             match key.as_ref() {
                 "partition_id" => {
-                    partition_id = Some(value.to_owned());
+                    partition_id = Some(value.to_string());
                 }
                 "time_range" => {
-                    time_range = Some(value.parse()?);
+                    time_range = Some(value.parse::<TimeRange>()?);
                 }
                 _ => {
                     re_log::warn_once!("Unknown query parameter: {key}={value}");
@@ -70,7 +70,7 @@ impl DatasetDataEndpoint {
             origin,
             dataset_id,
             partition_id,
-            time_range: None,
+            time_range,
         })
     }
 
