@@ -306,17 +306,12 @@ pub fn dataset_and_its_recordings_ui(
     let item = kind.item();
     let selected = ctx.selection().contains_item(&item);
 
-    let dataset_list_item = ui.list_item().selected(selected);
+    let dataset_list_item = ui
+        .list_item()
+        .selected(selected)
+        .active(kind.is_active(ctx));
     let dataset_list_item_content =
-        re_ui::list_item::LabelContent::new(kind.name()).with_icon_fn(|ui, rect, visuals| {
-            // Color icon based on whether this is the active dataset or not:
-            let color = if kind.is_active(ctx) {
-                visuals.fg_stroke.color
-            } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
-            };
-            icons::DATASET.as_image().tint(color).paint_at(ui, rect);
-        });
+        re_ui::list_item::LabelContent::new(kind.name()).with_icon(&icons::DATASET);
 
     let id = ui.make_persistent_id(kind);
     let app_list_item_content = dataset_list_item_content.with_buttons(|ui| {
