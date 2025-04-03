@@ -1,11 +1,10 @@
 //! Core list item functionality.
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::{design_tokens, ColorToken, DesignTokens, Scale, UiExt as _};
+use crate::{design_tokens, DesignTokens, Scale, UiExt as _};
 use egui::emath::GuiRounding as _;
-use egui::style::{Interaction, WidgetVisuals, Widgets};
+use egui::style::Widgets;
 use egui::{Color32, NumExt as _, Response, Shape, Ui};
-use std::mem;
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -73,7 +72,7 @@ impl Default for ListItem {
     }
 }
 
-/// Implemented after https://www.figma.com/design/04eHlTWW361rIs3YesfTJo/Data-platform?node-id=813-9806&t=Kofxiju5Tn4DszG2-1
+/// Implemented after <https://www.figma.com/design/04eHlTWW361rIs3YesfTJo/Data-platform?node-id=813-9806&t=Kofxiju5Tn4DszG2-1>
 #[derive(Debug, Clone, Copy)]
 pub struct ListVisuals {
     hovered: bool,

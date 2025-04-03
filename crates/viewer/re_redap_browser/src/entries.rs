@@ -250,29 +250,11 @@ impl EntryKind {
 
     fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
         match self {
-            Self::Remote {
-                origin,
-                entry_id: dataset,
-                ..
-            } => ctx
-                .store_context
-                .recording
-                .data_source
-                .as_ref()
-                .is_some_and(|source| match source {
-                    SmartChannelSource::RedapGrpcStream(endpoint) => {
-                        &endpoint.origin == origin && endpoint.dataset_id == dataset.id
-                    }
-
-                    SmartChannelSource::File(_)
-                    | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RrdWebEventListener
-                    | SmartChannelSource::JsChannel { .. }
-                    | SmartChannelSource::Sdk
-                    | SmartChannelSource::Stdin
-                    | SmartChannelSource::MessageProxy { .. } => false,
-                }),
-            Self::Local(app_id) => &ctx.store_context.app_id == app_id,
+            Self::Remote { entry_id, .. } => {
+                matches!(ctx.global_context.display_mode, DisplayMode::RedapEntry(id) if id == entry_id)
+            }
+            // TODO: Update this when local datasets have a view like remote datasets
+            Self::Local(_) => false,
         }
     }
 

@@ -212,7 +212,7 @@ impl ListItemContent for LabelContent<'_> {
 
         if weak {
             text_color = ui.style().visuals.gray_out(text_color);
-        } else {
+        } else if subdued {
             text_color = text_color.gamma_multiply(0.5);
         }
 
@@ -222,6 +222,8 @@ impl ListItemContent for LabelContent<'_> {
                 text_color = text_color.gamma_multiply(0.5);
             }
         }
+
+        text = text.color(text_color);
 
         // Draw icon
         if let Some(icon_fn) = icon_fn {
