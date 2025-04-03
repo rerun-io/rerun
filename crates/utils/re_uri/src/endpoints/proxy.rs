@@ -1,6 +1,6 @@
 use crate::{Origin, RedapUri};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProxyEndpoint {
     pub origin: Origin,
 }
@@ -30,5 +30,26 @@ impl std::str::FromStr for ProxyEndpoint {
                 Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
             }
         }
+    }
+}
+
+// Serialize as string:
+impl serde::Serialize for ProxyEndpoint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for ProxyEndpoint {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse::<Self>()
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
     }
 }

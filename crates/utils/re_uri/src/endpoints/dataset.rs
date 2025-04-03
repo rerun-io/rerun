@@ -9,7 +9,7 @@ use crate::{Origin, RedapUri, TimeRange};
 ///
 /// `partition_id` is mandatory, and `time_range` is optional. In the future, it will be extended to
 /// richer queries.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetDataEndpoint {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
@@ -20,15 +20,21 @@ pub struct DatasetDataEndpoint {
 
 impl std::fmt::Display for DatasetDataEndpoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/dataset/{}", self.origin, self.dataset_id)?;
+        let Self {
+            origin,
+            dataset_id,
+            partition_id,
+            time_range,
+        } = self;
+
+        write!(f, "{origin}/dataset/{dataset_id}")?;
 
         // query (for now, partition_id is the only supported one and is mandatory)
         {
-            write!(f, "?partition_id={}", self.partition_id)?;
+            write!(f, "?partition_id={partition_id}")?;
         }
 
-        // time range
-        if let Some(time_range) = &self.time_range {
+        if let Some(time_range) = time_range {
             write!(f, "&time_range={time_range}")?;
         }
 
@@ -78,3 +84,28 @@ impl std::str::FromStr for DatasetDataEndpoint {
         }
     }
 }
+
+// --------------------------------
+
+// Serialize as string:
+impl serde::Serialize for DatasetDataEndpoint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for DatasetDataEndpoint {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse::<Self>()
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
+    }
+}
+
+// --------------------------------
