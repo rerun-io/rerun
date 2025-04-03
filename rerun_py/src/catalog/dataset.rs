@@ -5,33 +5,31 @@ use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::{pyclass, pymethods, PyRef, PyResult};
+use tokio_stream::StreamExt as _;
+
+use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_dataframe::{ComponentColumnSelector, TimeColumnSelector};
 use re_datafusion::SearchResultsTableProvider;
+use re_grpc_client::redap::fetch_partition_response_to_chunk;
 use re_log_encoding::codec::wire::encoder::Encode as _;
+use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
+use re_protos::frontend::v1alpha1::{
+    CreateIndexRequest, FetchPartitionRequest, SearchDatasetRequest,
+};
 use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
 use re_protos::manifest_registry::v1alpha1::{
     index_query_properties, IndexColumn, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
     VectorIndexQuery,
 };
 use re_sdk::{ComponentDescriptor, ComponentName};
-use tokio_stream::StreamExt as _;
 
-use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_grpc_client::redap::fetch_partition_response_to_chunk;
-use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::common::v1alpha1::ext::DatasetHandle;
-use re_protos::frontend::v1alpha1::{
-    CreateIndexRequest, FetchPartitionRequest, SearchDatasetRequest,
-};
-
-use crate::catalog::{to_py_err, PyEntry};
+use crate::catalog::{to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike};
 use crate::dataframe::{
     PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording,
 };
 use crate::utils::wait_for_future;
-
-use super::{VectorDistanceMetricLike, VectorLike};
 
 #[pyclass(name = "Dataset", extends=PyEntry)]
 pub struct PyDataset {
@@ -195,7 +193,7 @@ impl PyDataset {
         let properties = IndexProperties::VectorIvfPq {
             num_partitions,
             num_sub_vectors,
-            metric: distance_metric.into(),
+            metric: distance_metric,
         };
 
         let request = CreateIndexRequest {

@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
-
 use arrow::{array::RecordBatch, datatypes::SchemaRef};
+use async_trait::async_trait;
 use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
+use tokio_stream::StreamExt as _;
+use tonic::transport::Channel;
+
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
     common::v1alpha1::ScanParameters,
     frontend::v1alpha1::{frontend_service_client::FrontendServiceClient, SearchDatasetRequest},
     manifest_registry::v1alpha1::SearchDatasetResponse,
 };
-use tokio_stream::StreamExt;
-use tonic::transport::Channel;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
