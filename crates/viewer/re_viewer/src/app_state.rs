@@ -690,7 +690,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&ctx, &redap_servers);
+        check_for_clicked_hyperlinks(&ctx, redap_servers);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
