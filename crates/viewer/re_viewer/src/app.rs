@@ -565,7 +565,8 @@ impl App {
                 self.state.display_mode = display_mode;
             }
             SystemCommand::AddRedapServer { endpoint } => {
-                self.state.redap_servers.add_server(endpoint.origin);
+                let re_uri::CatalogEndpoint { origin } = endpoint;
+                self.state.redap_servers.add_server(origin);
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 

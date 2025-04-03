@@ -1,4 +1,4 @@
-use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, Origin, ProxyEndpoint, TimeRange};
+use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, Fragment, Origin, ProxyEndpoint};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -9,6 +9,16 @@ pub enum RedapUri {
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
     Proxy(ProxyEndpoint),
+}
+
+impl RedapUri {
+    /// Return the parsed `#fragment` of the URI, if any.
+    pub fn fragment(&self) -> Option<&Fragment> {
+        match self {
+            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
+        }
+    }
 }
 
 impl std::fmt::Display for RedapUri {
@@ -36,11 +46,6 @@ impl std::str::FromStr for RedapUri {
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        let time_range = http_url
-            .query_pairs()
-            .find(|(key, _)| key == TimeRange::QUERY_KEY)
-            .map(|(_, value)| TimeRange::from_str(value.as_ref()));
-
         match segments.as_slice() {
             ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
 
@@ -49,19 +54,7 @@ impl std::str::FromStr for RedapUri {
             ["dataset", dataset_id] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
 
-                let partition_id = http_url
-                    .query_pairs()
-                    .find(|(key, _)| key == "partition_id")
-                    .ok_or(Error::MissingPartitionId)?
-                    .1
-                    .into_owned();
-
-                Ok(Self::DatasetData(DatasetDataEndpoint::new(
-                    origin,
-                    dataset_id,
-                    partition_id,
-                    time_range.transpose()?,
-                )))
+                DatasetDataEndpoint::new(origin, dataset_id, &http_url).map(Self::DatasetData)
             }
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
@@ -96,7 +89,9 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 #[cfg(test)]
 mod tests {
 
-    use crate::Scheme;
+    use re_log_types::DataPath;
+
+    use crate::{Fragment, Scheme, TimeRange};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -143,6 +138,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -157,6 +153,45 @@ mod tests {
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(time_range, None);
+        assert_eq!(fragment, Default::default());
+    }
+
+    #[test]
+    fn test_dataset_data_url_with_fragment() {
+        let url =
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#/some/entity[#42]";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::DatasetData(DatasetDataEndpoint {
+            origin,
+            dataset_id,
+            partition_id,
+            time_range,
+            fragment,
+        }) = address
+        else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            dataset_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+        assert_eq!(partition_id, "pid");
+        assert_eq!(time_range, None);
+        assert_eq!(
+            fragment,
+            Fragment {
+                data_path: Some(DataPath {
+                    entity_path: "/some/entity".into(),
+                    instance: Some(42.into()),
+                    component_name: None,
+                })
+            }
+        );
     }
 
     #[test]
@@ -169,6 +204,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -192,6 +228,7 @@ mod tests {
                 )
             })
         );
+        assert_eq!(fragment, Default::default());
     }
 
     #[test]
@@ -204,6 +241,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -231,6 +269,7 @@ mod tests {
                 )
             })
         );
+        assert_eq!(fragment, Default::default());
     }
 
     #[test]
@@ -246,6 +285,7 @@ mod tests {
                 dataset_id,
                 partition_id,
                 time_range,
+                fragment,
             }) = address
             else {
                 panic!("Expected recording");
@@ -269,6 +309,7 @@ mod tests {
                     )
                 })
             );
+            assert_eq!(fragment, Default::default());
         }
     }
 

@@ -35,6 +35,7 @@
 
 mod endpoints;
 mod error;
+mod fragment;
 mod origin;
 mod redap_uri;
 mod scheme;
@@ -43,6 +44,7 @@ mod time_range;
 pub use self::{
     endpoints::{catalog::CatalogEndpoint, dataset::DatasetDataEndpoint, proxy::ProxyEndpoint},
     error::Error,
+    fragment::Fragment,
     origin::Origin,
     redap_uri::RedapUri,
     scheme::Scheme,

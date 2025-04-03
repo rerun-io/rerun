@@ -3,7 +3,7 @@ use egui::{text_selection::LabelSelectionState, NumExt as _};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityDb;
+use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
@@ -11,9 +11,10 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
-    StorageContext, StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, TableContext,
-    ViewClassExt as _, ViewClassRegistry, ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState, RecordingConfig,
+    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableContext, ViewClassExt as _, ViewClassRegistry, ViewStates,
+    ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -80,7 +81,7 @@ pub struct AppState {
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
     #[serde(skip)]
-    pub(crate) focused_item: Option<re_viewer_context::Item>,
+    pub(crate) focused_item: Option<Item>,
 }
 
 impl Default for AppState {
@@ -210,7 +211,7 @@ impl AppState {
 
         let selection_change = selection_state.on_frame_start(
             |item| {
-                if let re_viewer_context::Item::StoreId(store_id) = item {
+                if let Item::StoreId(store_id) = item {
                     if store_id.is_empty_recording() {
                         return false;
                     }
@@ -218,9 +219,7 @@ impl AppState {
 
                 viewport_ui.blueprint.is_item_valid(storage_context, item)
             },
-            Some(re_viewer_context::Item::StoreId(
-                store_context.recording.store_id().clone(),
-            )),
+            Some(Item::StoreId(store_context.recording.store_id().clone())),
         );
 
         if let SelectionChange::SelectionChanged(selection) = selection_change {
@@ -230,9 +229,8 @@ impl AppState {
         }
 
         // The root container cannot be dragged.
-        let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
-            viewport_ui.blueprint.root_container,
-        ));
+        let drag_and_drop_manager =
+            DragAndDropManager::new(Item::Container(viewport_ui.blueprint.root_container));
 
         let recording = store_context.recording;
 
@@ -881,6 +879,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     let recording_scheme = "recording://";
 
     let mut recording_path = None;
+    let mut fragment = None;
 
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
@@ -892,6 +891,10 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                         re_log_types::FileSource::Uri,
                         open_url.url.clone(),
                     );
+
+                    if let re_data_source::DataSource::RerunGrpcStream(redap_uri) = &data_source {
+                        fragment = redap_uri.fragment().cloned();
+                    }
 
                     let command_sender = ctx.command_sender().clone();
                     let on_cmd = Box::new(move |cmd| match cmd {
@@ -940,7 +943,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     });
 
     if let Some(path) = recording_path {
-        match path.parse::<re_viewer_context::Item>() {
+        match path.parse::<Item>() {
             Ok(item) => {
                 ctx.selection_state.set_selection(item);
             }
@@ -948,6 +951,30 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                 re_log::warn!("Failed to parse entity path {path:?}: {err}");
             }
         }
+    }
+
+    // Focus on a specific thing:
+    let re_uri::Fragment { data_path } = fragment.unwrap_or_default();
+    if let Some(data_path) = data_path {
+        let re_log_types::DataPath {
+            entity_path,
+            instance,
+            component_name,
+        } = data_path;
+
+        let item = if let Some(component_name) = component_name {
+            Item::from(re_log_types::ComponentPath::new(
+                entity_path,
+                component_name,
+            ))
+        } else if let Some(instance) = instance {
+            Item::from(InstancePath::instance(entity_path, instance))
+        } else {
+            Item::from(entity_path)
+        };
+
+        ctx.command_sender()
+            .send_system(SystemCommand::SetFocus(item));
     }
 }
 

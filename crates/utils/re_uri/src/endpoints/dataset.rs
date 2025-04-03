@@ -1,4 +1,4 @@
-use crate::{Origin, RedapUri, TimeRange};
+use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
 
 //TODO(ab): add `DatasetTableEndpoint`, the URI pointing at the "table view" of the dataset (aka. its partition table).
 
@@ -7,15 +7,20 @@ use crate::{Origin, RedapUri, TimeRange};
 /// Currently, the following format is supported:
 /// `<origin>/dataset/$DATASET_ID/data?partition_id=$PARTITION_ID&time_range=$TIME_RANGE`
 ///
-/// `partition_id` is mandatory, and `time_range` is optional. In the future, it will be extended to
-/// richer queries.
+/// `partition_id` is currently mandatory, and `time_range` is optional.
+/// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetDataEndpoint {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
+    // Query parameters: these affect what data is returned.
+    /// Currently mandatory.
     pub partition_id: String,
     pub time_range: Option<TimeRange>,
+
+    // Fragment parameters: these affect what the viewer focuses on:
+    pub fragment: Fragment,
 }
 
 impl std::fmt::Display for DatasetDataEndpoint {
@@ -25,17 +30,23 @@ impl std::fmt::Display for DatasetDataEndpoint {
             dataset_id,
             partition_id,
             time_range,
+            fragment,
         } = self;
 
         write!(f, "{origin}/dataset/{dataset_id}")?;
 
-        // query (for now, partition_id is the only supported one and is mandatory)
+        // ?query:
         {
             write!(f, "?partition_id={partition_id}")?;
         }
-
         if let Some(time_range) = time_range {
             write!(f, "&time_range={time_range}")?;
+        }
+
+        // #fragment:
+        let fragment = fragment.to_string();
+        if !fragment.is_empty() {
+            write!(f, "#{fragment}")?;
         }
 
         Ok(())
@@ -43,44 +54,67 @@ impl std::fmt::Display for DatasetDataEndpoint {
 }
 
 impl DatasetDataEndpoint {
-    pub fn new(
-        origin: Origin,
-        dataset_id: re_tuid::Tuid,
-        partition_id: String,
-        time_range: Option<TimeRange>,
-    ) -> Self {
-        Self {
+    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
+        let mut partition_id = None;
+        let mut time_range = None;
+
+        for (key, value) in url.query_pairs() {
+            match key.as_ref() {
+                "partition_id" => {
+                    partition_id = Some(value.to_string());
+                }
+                "time_range" => {
+                    time_range = Some(value.parse::<TimeRange>()?);
+                }
+                _ => {
+                    re_log::warn_once!("Unknown query parameter: {key}={value}");
+                }
+            }
+        }
+
+        let Some(partition_id) = partition_id else {
+            return Err(Error::MissingPartitionId);
+        };
+
+        let mut fragment = Fragment::default();
+        if let Some(string) = url.fragment() {
+            fragment = Fragment::parse_forgiving(string);
+        }
+
+        Ok(Self {
             origin,
             dataset_id,
             partition_id,
             time_range,
-        }
+            fragment,
+        })
     }
 
-    /// Returns a [`DatasetDataEndpoint`] without the optional query part.
-    pub fn without_query(&self) -> std::borrow::Cow<'_, Self> {
-        let mut cow = std::borrow::Cow::Borrowed(self);
+    /// Returns a [`DatasetDataEndpoint`] without any (optional) `?query` or `#fragment`.
+    pub fn without_query_and_fragment(mut self) -> Self {
+        let Self {
+            origin: _,       // Mandatory
+            dataset_id: _,   // Mandatory
+            partition_id: _, // Mandatory
+            time_range,
+            fragment,
+        } = &mut self;
 
-        if self.time_range.is_some() {
-            cow.to_mut().time_range = None;
-        }
+        *time_range = None;
+        *fragment = Default::default();
 
-        cow
+        self
     }
 }
 
 impl std::str::FromStr for DatasetDataEndpoint {
-    type Err = crate::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match RedapUri::from_str(s)? {
             RedapUri::DatasetData(endpoint) => Ok(endpoint),
-            RedapUri::Catalog(endpoint) => {
-                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
-            }
-            RedapUri::Proxy(endpoint) => {
-                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
-            }
+            RedapUri::Catalog(endpoint) => Err(Error::UnexpectedEndpoint(format!("/{endpoint}"))),
+            RedapUri::Proxy(endpoint) => Err(Error::UnexpectedEndpoint(format!("/{endpoint}"))),
         }
     }
 }

@@ -249,11 +249,6 @@ def lint_line(
             if not app_id.startswith("rerun_example_") and not app_id == "<your_app_name>":
                 return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
 
-    # Methods that return Self should usually be marked #[inline] or #[inline(always)] since they indicate a builder.
-    if re.search(r"\(mut self.*-> Self", line):
-        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
-            return "Builder methods impls should be marked #[inline]"
-
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
         if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
@@ -406,7 +401,6 @@ def test_lint_line() -> None:
         'rr.script_setup(args, "missing_prefix")',
         'rr.script_setup(args, "")',
         "I accidentally wrote the same same word twice",
-        "fn foo(mut self) -> Self {",
         "fn deref(&self) -> Self::Target {",
         "fn deref_mut(&mut self) -> &mut Self::Target",
         "fn borrow(&self) -> &Self",
