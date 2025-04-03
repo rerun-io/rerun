@@ -89,6 +89,7 @@ impl ::prost::Name for Schema {
         "/rerun.common.v1alpha1.Schema".into()
     }
 }
+/// TODO(cmc): can we kill this?
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Query {
     /// The subset of the database that the query will run on: a set of EntityPath(s) and their

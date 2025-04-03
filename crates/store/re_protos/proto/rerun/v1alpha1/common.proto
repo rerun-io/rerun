@@ -45,6 +45,7 @@ message Schema {
   optional bytes arrow_schema = 1;
 }
 
+// TODO(cmc): can we kill this?
 message Query {
   // The subset of the database that the query will run on: a set of EntityPath(s) and their
   // associated Component(s)
