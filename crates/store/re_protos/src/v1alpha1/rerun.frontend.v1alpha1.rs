@@ -168,10 +168,13 @@ pub struct QueryDatasetRequest {
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    /// Which entity paths are we interested in? Leave empty to query all of them.
+    #[prost(message, repeated, tag = "4")]
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Generic parameters that will influence the behavior of the Lance scanner.
-    #[prost(message, optional, tag = "4")]
-    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
     #[prost(message, optional, tag = "5")]
+    pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
+    #[prost(message, optional, tag = "6")]
     pub query: ::core::option::Option<super::super::manifest_registry::v1alpha1::Query>,
 }
 impl ::prost::Name for QueryDatasetRequest {

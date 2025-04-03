@@ -497,13 +497,16 @@ pub struct QueryDatasetRequest {
     /// all chunks that match other query parameters will be included.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    /// Which entity paths are we interested in? Leave empty to query all of them.
+    #[prost(message, repeated, tag = "4")]
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Generic parameters that will influence the behavior of the Lance scanner.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
     /// A chunk-level latest-at or range query, or both.
     ///
     /// This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "6")]
     pub query: ::core::option::Option<Query>,
 }
 impl ::prost::Name for QueryDatasetRequest {
@@ -582,14 +585,11 @@ impl ::prost::Name for Query {
 /// This has the exact same semantics as the query of the same name on our `ChunkStore`.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryLatestAt {
-    /// Which entity paths are we interested in? Leave empty to query all of them.
-    #[prost(message, repeated, tag = "1")]
-    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// What index value are we looking for?
-    #[prost(int64, optional, tag = "3")]
+    #[prost(int64, optional, tag = "2")]
     pub at: ::core::option::Option<i64>,
     /// Which components are we interested in?
     ///
@@ -600,7 +600,7 @@ pub struct QueryLatestAt {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag = "3")]
     pub fuzzy_descriptors:
         ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ComponentDescriptor>,
 }
@@ -619,14 +619,11 @@ impl ::prost::Name for QueryLatestAt {
 /// This has the exact same semantics as the query of the same name on our `ChunkStore`.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryRange {
-    /// Which entity paths are we interested in? Leave empty to query all of them.
-    #[prost(message, repeated, tag = "1")]
-    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Which index column should we perform the query on? E.g. `log_time`.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub index: ::core::option::Option<super::super::common::v1alpha1::IndexColumnSelector>,
     /// What index range are we looking for?
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub index_range: ::core::option::Option<super::super::common::v1alpha1::TimeRange>,
     /// Which components are we interested in?
     ///
@@ -637,7 +634,7 @@ pub struct QueryRange {
     /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
     /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
     /// `SeriesLine`, etc.
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag = "3")]
     pub fuzzy_descriptors:
         ::prost::alloc::vec::Vec<super::super::common::v1alpha1::ComponentDescriptor>,
 }

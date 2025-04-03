@@ -22,6 +22,7 @@ pub struct QueryDatasetRequest {
     pub entry: crate::common::v1alpha1::ext::DatasetHandle,
     pub partition_ids: Vec<crate::common::v1alpha1::ext::PartitionId>,
     pub chunk_ids: Vec<re_chunk::ChunkId>,
+    pub entity_paths: Vec<EntityPath>,
     pub scan_parameters: Option<crate::common::v1alpha1::ext::ScanParameters>,
     pub query: Option<Query>,
 }
@@ -43,12 +44,23 @@ impl TryFrom<crate::manifest_registry::v1alpha1::QueryDatasetRequest> for QueryD
                 .into_iter()
                 .map(TryInto::try_into)
                 .collect::<Result<Vec<_>, _>>()?,
+
             chunk_ids: value
                 .chunk_ids
                 .into_iter()
                 .map(|tuid| {
                     let id: re_tuid::Tuid = tuid.try_into()?;
                     Ok::<_, tonic::Status>(re_chunk::ChunkId::from_u128(id.as_u128()))
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+
+            entity_paths: value
+                .entity_paths
+                .into_iter()
+                .map(|path| {
+                    path.try_into().map_err(|err| {
+                        tonic::Status::invalid_argument(format!("invalid entity path: {err}"))
+                    })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
 
@@ -83,17 +95,6 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
             .latest_at
             .map(|latest_at| {
                 Ok::<QueryLatestAt, tonic::Status>(QueryLatestAt {
-                    entity_paths: latest_at
-                        .entity_paths
-                        .into_iter()
-                        .map(|path| {
-                            path.try_into().map_err(|err| {
-                                tonic::Status::invalid_argument(format!(
-                                    "invalid entity path: {err}"
-                                ))
-                            })
-                        })
-                        .collect::<Result<Vec<_>, _>>()?,
                     index: latest_at
                         .index
                         .and_then(|index| index.timeline.map(|timeline| timeline.name))
@@ -120,17 +121,6 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
             .range
             .map(|range| {
                 Ok::<QueryRange, tonic::Status>(QueryRange {
-                    entity_paths: range
-                        .entity_paths
-                        .into_iter()
-                        .map(|path| {
-                            path.try_into().map_err(|err| {
-                                tonic::Status::invalid_argument(format!(
-                                    "invalid entity path: {err}"
-                                ))
-                            })
-                        })
-                        .collect::<Result<Vec<_>, _>>()?,
                     index_range: range
                         .index_range
                         .ok_or_else(|| {
@@ -185,7 +175,6 @@ pub struct FuzzyComponentDescriptor {
 
 #[derive(Debug, Clone)]
 pub struct QueryLatestAt {
-    pub entity_paths: Vec<EntityPath>,
     pub index: String,
     pub at: i64,
     pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
@@ -193,7 +182,6 @@ pub struct QueryLatestAt {
 
 #[derive(Debug, Clone)]
 pub struct QueryRange {
-    pub entity_paths: Vec<EntityPath>,
     pub index: String,
     pub index_range: re_log_types::ResolvedTimeRange,
     pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,

@@ -310,13 +310,16 @@ message QueryDatasetRequest {
   // all chunks that match other query parameters will be included.
   repeated rerun.common.v1alpha1.Tuid chunk_ids = 3;
 
+  // Which entity paths are we interested in? Leave empty to query all of them.
+  repeated rerun.common.v1alpha1.EntityPath entity_paths = 4;
+
   // Generic parameters that will influence the behavior of the Lance scanner.
-  rerun.common.v1alpha1.ScanParameters scan_parameters = 4;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 5;
 
   // A chunk-level latest-at or range query, or both.
   //
   // This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
-  Query query = 5;
+  Query query = 6;
 }
 
 message QueryDatasetResponse {
@@ -362,14 +365,11 @@ message Query {
 //
 // This has the exact same semantics as the query of the same name on our `ChunkStore`.
 message QueryLatestAt {
-  // Which entity paths are we interested in? Leave empty to query all of them.
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
-
   // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 2;
+  rerun.common.v1alpha1.IndexColumnSelector index = 1;
 
   // What index value are we looking for?
-  optional int64 at = 3;
+  optional int64 at = 2;
 
   // Which components are we interested in?
   //
@@ -380,21 +380,18 @@ message QueryLatestAt {
   // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
   // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
   // `SeriesLine`, etc.
-  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 4;
+  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
 }
 
 /// A chunk-level range query, aka `RangeRelevantChunks`.
 //
 // This has the exact same semantics as the query of the same name on our `ChunkStore`.
 message QueryRange {
-  // Which entity paths are we interested in? Leave empty to query all of them.
-  repeated rerun.common.v1alpha1.EntityPath entity_paths = 1;
-
   // Which index column should we perform the query on? E.g. `log_time`.
-  rerun.common.v1alpha1.IndexColumnSelector index = 2;
+  rerun.common.v1alpha1.IndexColumnSelector index = 1;
 
   // What index range are we looking for?
-  rerun.common.v1alpha1.TimeRange index_range = 3;
+  rerun.common.v1alpha1.TimeRange index_range = 2;
 
   // Which components are we interested in?
   //
@@ -405,7 +402,7 @@ message QueryRange {
   // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
   // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
   // `SeriesLine`, etc.
-  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 4;
+  repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
 }
 
 message GetChunksRequest {
