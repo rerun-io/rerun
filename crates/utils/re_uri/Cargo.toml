@@ -21,4 +21,4 @@ re_tuid.workspace = true
 # External
 serde.workspace = true
 thiserror.workspace = true
-url = { workspace = true, features = ["serde"] }
+url.workspace = true
