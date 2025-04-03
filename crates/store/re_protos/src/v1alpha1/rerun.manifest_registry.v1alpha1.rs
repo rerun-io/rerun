@@ -665,10 +665,13 @@ pub struct GetChunksRequest {
     /// all chunks (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    /// Which entity paths are we interested in? Leave empty to query all of them.
+    #[prost(message, repeated, tag = "4")]
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// A chunk-level latest-at or range query, or both.
     ///
     /// This query is AND'd together with the `partition_ids` and `chunk_ids` filters above.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "5")]
     pub query: ::core::option::Option<Query>,
 }
 impl ::prost::Name for GetChunksRequest {
