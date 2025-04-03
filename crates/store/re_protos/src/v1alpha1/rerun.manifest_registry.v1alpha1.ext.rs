@@ -105,14 +105,15 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                         .at
                         .ok_or_else(|| tonic::Status::invalid_argument("at is required"))?,
                     fuzzy_descriptors: latest_at
-                        .fuzzy_descriptors
-                        .into_iter()
-                        .map(|desc| FuzzyComponentDescriptor {
-                            archetype_name: desc.archetype_name.map(Into::into),
-                            archetype_field_name: desc.archetype_field_name.map(Into::into),
-                            component_name: desc.component_name.map(Into::into),
-                        })
-                        .collect(),
+                        // TODO(cmc): I shall bring that back into a more structured form later.
+                        // .into_iter()
+                        // .map(|desc| FuzzyComponentDescriptor {
+                        //     archetype_name: desc.archetype_name.map(Into::into),
+                        //     archetype_field_name: desc.archetype_field_name.map(Into::into),
+                        //     component_name: desc.component_name.map(Into::into),
+                        // })
+                        // .collect(),
+                        .fuzzy_descriptors,
                 })
             })
             .transpose()?;
@@ -136,14 +137,15 @@ impl TryFrom<crate::manifest_registry::v1alpha1::Query> for Query {
                             tonic::Status::invalid_argument("index is required for range query")
                         })?,
                     fuzzy_descriptors: range
-                        .fuzzy_descriptors
-                        .into_iter()
-                        .map(|desc| FuzzyComponentDescriptor {
-                            archetype_name: desc.archetype_name.map(Into::into),
-                            archetype_field_name: desc.archetype_field_name.map(Into::into),
-                            component_name: desc.component_name.map(Into::into),
-                        })
-                        .collect(),
+                        // TODO(cmc): I shall bring that back into a more structured form later.
+                        // .into_iter()
+                        // .map(|desc| FuzzyComponentDescriptor {
+                        //     archetype_name: desc.archetype_name.map(Into::into),
+                        //     archetype_field_name: desc.archetype_field_name.map(Into::into),
+                        //     component_name: desc.component_name.map(Into::into),
+                        // })
+                        // .collect(),
+                        .fuzzy_descriptors,
                 })
             })
             .transpose()?;
@@ -177,14 +179,18 @@ pub struct FuzzyComponentDescriptor {
 pub struct QueryLatestAt {
     pub index: String,
     pub at: i64,
-    pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
+    pub fuzzy_descriptors: Vec<String>,
+    // TODO(cmc): I shall bring that back into a more structured form later.
+    // pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
 }
 
 #[derive(Debug, Clone)]
 pub struct QueryRange {
     pub index: String,
     pub index_range: re_log_types::ResolvedTimeRange,
-    pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
+    pub fuzzy_descriptors: Vec<String>,
+    // TODO(cmc): I shall bring that back into a more structured form later.
+    // pub fuzzy_descriptors: Vec<FuzzyComponentDescriptor>,
 }
 
 // --- CreatePartitionManifestsResponse ---

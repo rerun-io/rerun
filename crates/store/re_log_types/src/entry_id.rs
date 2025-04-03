@@ -1,7 +1,7 @@
 /// The id for an entry (i.e. a dataset or a table) in a remote catalog.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[serde(transparent)]
+#[cfg_attr(feature = "serde", serde(transparent))]
 pub struct EntryId {
     pub id: re_tuid::Tuid,
 }
