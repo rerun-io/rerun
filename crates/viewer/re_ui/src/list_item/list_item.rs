@@ -79,6 +79,7 @@ pub struct ListVisuals {
     hovered: bool,
     selected: bool,
     active: bool,
+    interactive: bool,
 }
 
 impl ListVisuals {
@@ -99,6 +100,8 @@ impl ListVisuals {
             design_tokens().color_table.blue(Scale::S800)
         } else if self.active {
             design_tokens().color_table.gray(Scale::S1000)
+        } else if !self.interactive {
+            design_tokens().color_table.gray(Scale::S550)
         } else if self.hovered {
             design_tokens().color_table.gray(Scale::S800)
         } else {
@@ -478,6 +481,7 @@ impl ListItem {
                 && !egui::DragAndDrop::has_any_payload(ui.ctx()),
             selected,
             active,
+            interactive,
         };
 
         let mut collapse_response = None;
