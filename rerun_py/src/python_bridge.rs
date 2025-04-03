@@ -15,9 +15,8 @@ use pyo3::{
 };
 
 use re_log::ResultExt as _;
+use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-use re_log_types::{LogMsg, SetStoreInfo};
-use re_sdk::external::re_tuid::Tuid;
 use re_sdk::sink::CallbackSink;
 use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, TimeCell};
 use re_sdk::{
@@ -1356,7 +1355,6 @@ fn send_recording(rrd: &PyRecording, recording: Option<&PyRecordingStream>) {
     };
 
     let store = rrd.store.read();
-
     for chunk in store.iter_chunks() {
         recording.send_chunk((**chunk).clone());
     }
