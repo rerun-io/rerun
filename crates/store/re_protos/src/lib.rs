@@ -288,7 +288,7 @@ mod sizes {
         }
     }
 
-    impl SizeBytes for crate::sdk_comms::v1alpha1::TableId {
+    impl SizeBytes for crate::common::v1alpha1::TableId {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
             let Self { id } = self;
