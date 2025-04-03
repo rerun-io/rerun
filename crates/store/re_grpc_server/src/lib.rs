@@ -360,7 +360,6 @@ enum Event {
     Table(TableMsgProto),
 }
 
-// TODO: just use `WriteTableRequest` directly?
 #[derive(Clone)]
 struct TableMsgProto {
     id: TableIdProto,
@@ -630,7 +629,7 @@ impl MessageProxy {
         self.event_tx.send(Event::Table(table)).await.ok();
     }
 
-    async fn new_client_stream(&self) -> ReadMessagesStream {
+    async fn new_client_message_stream(&self) -> ReadMessagesStream {
         let (sender, receiver) = oneshot::channel();
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
             re_log::error!("Error initializing new client: {err}");
@@ -662,6 +661,50 @@ impl MessageProxy {
             result
                 .map(|log_msg| ReadMessagesResponse {
                     log_msg: Some(log_msg),
+                })
+                .map_err(|err| {
+                    re_log::error!("Error reading message from broadcast channel: {err}");
+                    tonic::Status::internal("internal channel error")
+                })
+        });
+
+        Box::pin(history.chain(channel))
+    }
+
+    async fn new_client_table_stream(&self) -> ReadTablesStream {
+        let (sender, receiver) = oneshot::channel();
+        if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
+            re_log::error!("Error initializing new client: {err}");
+            return Box::pin(tokio_stream::empty());
+        };
+        let (history, _, table_channel) = match receiver.await {
+            Ok(v) => v,
+            Err(err) => {
+                re_log::error!("Error initializing new client: {err}");
+                return Box::pin(tokio_stream::empty());
+            }
+        };
+
+        let history = tokio_stream::iter(
+            history
+                .into_iter()
+                .filter_map(|table| {
+                    if let Msg::Table(table) = table {
+                        Some(ReadTablesResponse {
+                            id: Some(table.id),
+                            data: Some(table.data),
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .map(Ok),
+        );
+        let channel = BroadcastStream::new(table_channel).map(|result| {
+            result
+                .map(|table| ReadTablesResponse {
+                    id: Some(table.id),
+                    data: Some(table.data),
                 })
                 .map_err(|err| {
                     re_log::error!("Error reading message from broadcast channel: {err}");
@@ -716,7 +759,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         &self,
         _: tonic::Request<ReadMessagesRequest>,
     ) -> tonic::Result<tonic::Response<Self::ReadMessagesStream>> {
-        Ok(tonic::Response::new(self.new_client_stream().await))
+        Ok(tonic::Response::new(self.new_client_message_stream().await))
     }
 
     type ReadTablesStream = ReadTablesStream;
@@ -742,7 +785,7 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         &self,
         _: tonic::Request<ReadTablesRequest>,
     ) -> tonic::Result<tonic::Response<Self::ReadTablesStream>> {
-        todo!()
+        Ok(tonic::Response::new(self.new_client_table_stream().await))
     }
 }
 
