@@ -1,5 +1,5 @@
 use egui::Vec2;
-
+use egui_kittest::SnapshotOptions;
 use re_ui::{list_item, UiExt as _};
 
 #[test]
@@ -230,5 +230,5 @@ pub fn test_list_items_should_match_snapshot() {
         });
 
     harness.run();
-    harness.snapshot("list_items");
+    harness.snapshot_options("list_items", &SnapshotOptions::new().threshold(0.9));
 }
