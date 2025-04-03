@@ -253,7 +253,7 @@ impl EntryKind {
             Self::Remote { entry_id, .. } => {
                 matches!(ctx.global_context.display_mode, DisplayMode::RedapEntry(id) if id == entry_id)
             }
-            // TODO: Update this when local datasets have a view like remote datasets
+            // TODO(lucasmerlin): Update this when local datasets have a view like remote datasets
             Self::Local(_) => false,
         }
     }
