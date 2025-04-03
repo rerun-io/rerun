@@ -1,201 +1,7 @@
-use std::str::FromStr;
-
-use re_log_types::{TimeCell, TimeInt};
-
-use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, ProxyEndpoint};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct TimeRange {
-    pub timeline: re_log_types::Timeline,
-    pub range: re_log_types::ResolvedTimeRangeF,
-}
-
-impl TimeRange {
-    const QUERY_KEY: &'static str = "time_range";
-}
-
-impl std::fmt::Display for TimeRange {
-    /// Used for formatting time ranges in URLs
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { timeline, range } = self;
-
-        let min = TimeCell::new(timeline.typ(), range.min.floor());
-        let max = TimeCell::new(timeline.typ(), range.max.ceil());
-
-        let name = timeline.name();
-        write!(f, "{name}@{min}..{max}")
-    }
-}
-
-impl FromStr for TimeRange {
-    type Err = Error;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let (timeline, range) = value
-            .split_once('@')
-            .ok_or_else(|| Error::InvalidTimeRange("Missing @".to_owned()))?;
-
-        let (min, max) = range
-            .split_once("..")
-            .ok_or_else(|| Error::InvalidTimeRange("Missing ..".to_owned()))?;
-
-        let min = min.parse::<TimeCell>().map_err(|err| {
-            Error::InvalidTimeRange(format!("Failed to parse time index '{min}': {err}"))
-        })?;
-        let max = max.parse::<TimeCell>().map_err(|err| {
-            Error::InvalidTimeRange(format!("Failed to parse time index '{max}': {err}"))
-        })?;
-
-        if min.typ() != max.typ() {
-            return Err(Error::InvalidTimeRange(format!(
-                "min/max had differing types. Min was identified as {}, whereas max was identified as {}",
-                min.typ(),
-                max.typ()
-            )));
-        }
-
-        let timeline = re_log_types::Timeline::new(timeline, min.typ());
-        let range = re_log_types::ResolvedTimeRangeF::new(TimeInt::from(min), TimeInt::from(max));
-
-        Ok(Self { timeline, range })
-    }
-}
-
-/// The different schemes supported by Rerun.
-///
-/// We support `rerun`, `rerun+http`, and `rerun+https`.
-#[derive(
-    Debug, PartialEq, Eq, Copy, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
-pub enum Scheme {
-    Rerun,
-    RerunHttp,
-    RerunHttps,
-}
-
-impl std::fmt::Display for Scheme {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Rerun => write!(f, "rerun"),
-            Self::RerunHttp => write!(f, "rerun+http"),
-            Self::RerunHttps => write!(f, "rerun+https"),
-        }
-    }
-}
-
-impl Scheme {
-    /// Converts a [`Scheme`] to either `http` or `https`.
-    fn as_http_scheme(&self) -> &str {
-        match self {
-            Self::Rerun | Self::RerunHttps => "https",
-            Self::RerunHttp => "http",
-        }
-    }
-
-    /// Converts a rerun url into a canonical http or https url.
-    fn canonical_url(&self, url: &str) -> String {
-        match self {
-            Self::Rerun => {
-                debug_assert!(url.starts_with("rerun://"));
-                url.replace("rerun://", "https://")
-            }
-            Self::RerunHttp => {
-                debug_assert!(url.starts_with("rerun+http://"));
-                url.replace("rerun+http://", "http://")
-            }
-            Self::RerunHttps => {
-                debug_assert!(url.starts_with("rerun+https://"));
-                url.replace("rerun+https://", "https://")
-            }
-        }
-    }
-}
-
-impl FromStr for Scheme {
-    type Err = Error;
-
-    fn from_str(url: &str) -> Result<Self, Self::Err> {
-        if url.starts_with("rerun://") {
-            Ok(Self::Rerun)
-        } else if url.starts_with("rerun+http://") {
-            Ok(Self::RerunHttp)
-        } else if url.starts_with("rerun+https://") {
-            Ok(Self::RerunHttps)
-        } else {
-            Err(crate::Error::InvalidScheme)
-        }
-    }
-}
-
-#[derive(
-    Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
-)]
-pub struct Origin {
-    pub scheme: Scheme,
-    pub host: url::Host<String>,
-    pub port: u16,
-}
-
-impl crate::Origin {
-    /// Converts the [`crate::Origin`] to a URL that starts with either `http` or `https`.
-    pub fn as_url(&self) -> String {
-        format!(
-            "{}://{}:{}",
-            self.scheme.as_http_scheme(),
-            self.host,
-            self.port
-        )
-    }
-
-    /// Converts the [`crate::Origin`] to a `http` URL.
-    ///
-    /// In most cases you want to use [`crate::Origin::as_url()`] instead.
-    pub fn coerce_http_url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
-    }
-}
-
-/// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
-///  starts with `http://` or `https://`).
-fn replace_and_parse(value: &str) -> Result<(crate::Origin, url::Url), Error> {
-    let scheme = Scheme::from_str(value)?;
-    let rewritten = scheme.canonical_url(value);
-
-    // We have to first rewrite the endpoint, because `Url` does not allow
-    // `.set_scheme()` for non-opaque origins, nor does it return a proper
-    // `Origin` in that case.
-    let mut http_url = url::Url::parse(&rewritten)?;
-
-    if http_url.port().is_none() {
-        // If no port is specified, we assume the default redap port:
-        http_url.set_port(Some(51234)).ok();
-    }
-
-    let url::Origin::Tuple(_, host, port) = http_url.origin() else {
-        return Err(Error::UnexpectedOpaqueOrigin(value.to_owned()));
-    };
-
-    let origin = crate::Origin { scheme, host, port };
-
-    Ok((origin, http_url))
-}
-
-impl FromStr for crate::Origin {
-    type Err = Error;
-
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        replace_and_parse(value).map(|(origin, _)| origin)
-    }
-}
-
-impl std::fmt::Display for crate::Origin {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}://{}:{}", self.scheme, self.host, self.port)
-    }
-}
+use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, Origin, ProxyEndpoint, TimeRange};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum RedapUri {
     Catalog(CatalogEndpoint),
 
@@ -219,7 +25,7 @@ impl std::str::FromStr for RedapUri {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let (origin, http_url) = replace_and_parse(value)?;
+        let (origin, http_url) = Origin::replace_and_parse(value)?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
@@ -262,8 +68,35 @@ impl std::str::FromStr for RedapUri {
     }
 }
 
+// --------------------------------
+
+// Serialize as string:
+impl serde::Serialize for RedapUri {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for RedapUri {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse::<Self>()
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
+    }
+}
+
+// --------------------------------
+
 #[cfg(test)]
 mod tests {
+
+    use crate::Scheme;
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -320,7 +153,7 @@ mod tests {
         assert_eq!(origin.port, 1234);
         assert_eq!(
             dataset_id,
-            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap(),
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(time_range, None);
@@ -346,7 +179,7 @@ mod tests {
         assert_eq!(origin.port, 1234);
         assert_eq!(
             dataset_id,
-            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap()
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(
@@ -381,7 +214,7 @@ mod tests {
         assert_eq!(origin.port, 1234);
         assert_eq!(
             dataset_id,
-            re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap()
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(
@@ -423,7 +256,7 @@ mod tests {
             assert_eq!(origin.port, 1234);
             assert_eq!(
                 dataset_id,
-                re_tuid::Tuid::from_str("1830B33B45B963E7774455beb91701ae").unwrap()
+                "1830B33B45B963E7774455beb91701ae".parse().unwrap()
             );
             assert_eq!(partition_id, "pid");
             assert_eq!(
@@ -443,7 +276,7 @@ mod tests {
     fn test_dataset_data_url_missing_partition_id() {
         let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data";
 
-        assert!(RedapUri::from_str(url).is_err());
+        assert!(url.parse::<RedapUri>().is_err());
     }
 
     #[test]
@@ -482,7 +315,7 @@ mod tests {
     #[test]
     fn test_localhost_url() {
         let url = "rerun+http://localhost:51234/catalog";
-        let address = RedapUri::from_str(url).unwrap();
+        let address: RedapUri = url.parse().unwrap();
 
         assert_eq!(
             address,
