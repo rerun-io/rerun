@@ -7,14 +7,15 @@ use crate::{Origin, RedapUri, TimeRange};
 /// Currently, the following format is supported:
 /// `<origin>/dataset/$DATASET_ID/data?partition_id=$PARTITION_ID&time_range=$TIME_RANGE`
 ///
-/// `partition_id` is mandatory, and `time_range` is optional. In the future, it will be extended to
-/// richer queries.
+/// `partition_id` is currnelty mandatory, and `time_range` is optional.
+/// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetDataEndpoint {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
     // Query parameters: these affect what data is returned.
+    /// Currently mandatory.
     pub partition_id: String,
     pub time_range: Option<TimeRange>,
 }
@@ -30,11 +31,10 @@ impl std::fmt::Display for DatasetDataEndpoint {
 
         write!(f, "{origin}/dataset/{dataset_id}")?;
 
-        // query (for now, partition_id is the only supported one and is mandatory)
+        // ?query:
         {
             write!(f, "?partition_id={partition_id}")?;
         }
-
         if let Some(time_range) = time_range {
             write!(f, "&time_range={time_range}")?;
         }
