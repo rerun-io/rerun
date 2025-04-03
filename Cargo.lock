@@ -6879,7 +6879,6 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_protos",
  "re_smart_channel",
  "re_tracing",
  "re_types",
