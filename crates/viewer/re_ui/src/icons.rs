@@ -84,6 +84,7 @@ pub const EDIT: Icon = icon_from_path!("../data/icons/edit.png");
 pub const MORE: Icon = icon_from_path!("../data/icons/more.png");
 
 pub const CLOSE: Icon = icon_from_path!("../data/icons/close.png");
+pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.png");
 
 /// Used for HTTP URLs that lead out of the app.
 ///
@@ -124,6 +125,7 @@ pub const COMPONENT_STATIC: Icon = icon_from_path!("../data/icons/component_stat
 
 pub const APPLICATION: Icon = icon_from_path!("../data/icons/application.png");
 pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.png");
+pub const TABLE: Icon = icon_from_path!("../data/icons/table.png");
 pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.png");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
