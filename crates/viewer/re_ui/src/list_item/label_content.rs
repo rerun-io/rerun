@@ -218,13 +218,6 @@ impl ListItemContent for LabelContent<'_> {
             text_color = text_color.gamma_multiply(0.5);
         }
 
-        match label_style {
-            LabelStyle::Normal => {}
-            LabelStyle::Unnamed => {
-                text_color = text_color.gamma_multiply(0.5);
-            }
-        }
-
         // Draw icon
         if let Some(icon_fn) = icon_fn {
             icon_fn(ui, icon_rect, visuals);
