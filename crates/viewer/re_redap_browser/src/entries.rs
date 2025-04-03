@@ -19,7 +19,8 @@ use re_types::components::Timestamp;
 use re_ui::{icons, list_item, UiExt as _, UiLayout};
 use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{
-    AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
+    AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry, SystemCommand, SystemCommandSender as _,
+    ViewerContext,
 };
 use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
@@ -160,7 +161,7 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
     let mut example_recordings: LocalRecordings<'_> = BTreeMap::new();
 
     for entity_db in viewer_ctx
-        .store_context
+        .storage_context
         .bundle
         .entity_dbs()
         .filter(|r| r.store_kind() == StoreKind::Recording)
@@ -279,8 +280,11 @@ impl EntryKind {
         match self {
             Self::Remote { .. } => {
                 for db in dbs {
-                    ctx.command_sender()
-                        .send_system(SystemCommand::CloseStore(db.store_id()));
+                    ctx.command_sender().send_system(SystemCommand::CloseEntry(
+                        StoreHubEntry::Recording {
+                            store_id: db.store_id(),
+                        },
+                    ));
                 }
             }
             Self::Local(app_id) => {
