@@ -12,11 +12,7 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
-    command_channel,
-    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    command_channel, store_hub::{BlueprintPersistence, StoreHub, StoreHubStats}, AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError
 };
 
 use crate::{
@@ -171,6 +167,8 @@ struct PendingFilePromise {
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
 
+type ReceiveSetTable = parking_lot::Mutex<Vec<crossbeam::channel::Receiver<TableMsg>>>;
+
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     #[allow(dead_code)] // Unused on wasm32
@@ -194,7 +192,7 @@ pub struct App {
     component_ui_registry: ComponentUiRegistry,
 
     rx_log: ReceiveSet<LogMsg>,
-    rx_table: ReceiveSet<TableMsg>,
+    rx_table: ReceiveSetTable,
 
     #[cfg(target_arch = "wasm32")]
     open_files_promise: Option<PendingFilePromise>,
@@ -471,12 +469,12 @@ impl App {
     }
 
     #[allow(clippy::needless_pass_by_ref_mut)]
-    pub fn add_table_receiver(&mut self, rx: re_smart_channel::Receiver<TableMsg>) {
+    pub fn add_table_receiver(&mut self, rx: crossbeam::channel::Receiver<TableMsg>) {
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
-        let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
+        let rx = crate::wake_up_ui_thread_on_each_msg_crossbeam(rx, self.egui_ctx.clone());
 
-        self.rx_table.add(rx);
+        self.rx_table.lock().push(rx);
     }
 
     pub fn msg_receive_set(&self) -> &ReceiveSet<LogMsg> {
@@ -1372,6 +1370,27 @@ impl App {
 
     fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
+
+        self.rx_table.lock().retain(|rx| match rx.try_recv() {
+            Ok(table) => {
+
+                match re_sorbet::SorbetBatch::try_from_record_batch(&table.data, re_sorbet::BatchType::Dataframe)  {
+                    Ok(sorbet_batch) => {
+                        // TODO(grtlr): For now we don't append anything to existing stores and always replace.
+                        let store = TableStore::default();
+                        store.add_batch(sorbet_batch);
+                        store_hub.insert_table_store(table.table_id, store);
+                    },
+                    Err(err) => {
+                        re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
+                    }
+                }
+                
+                true
+            }
+            Err(crossbeam::channel::TryRecvError::Empty) => true,
+            Err(_) => false,
+        });
 
         let start = web_time::Instant::now();
 

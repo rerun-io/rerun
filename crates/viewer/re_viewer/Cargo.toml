@@ -105,6 +105,7 @@ ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
+crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = [
   "default_fonts",
   "persistence",

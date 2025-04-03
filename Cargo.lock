@@ -7144,6 +7144,7 @@ dependencies = [
 name = "re_grpc_server"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
+ "crossbeam",
  "parking_lot",
  "re_build_info",
  "re_byte_size",
@@ -8096,6 +8097,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "cfg-if",
+ "crossbeam",
  "eframe",
  "egui",
  "egui-wgpu",
@@ -8507,6 +8509,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "clap",
+ "crossbeam",
  "document-features",
  "env_filter",
  "itertools 0.14.0",

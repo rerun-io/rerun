@@ -6,6 +6,8 @@ use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::pin::Pin;
 
+use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_log_types::TableMsg;
 use re_protos::sdk_comms::v1alpha1::ReadTablesRequest;
 use re_protos::sdk_comms::v1alpha1::ReadTablesResponse;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
@@ -253,7 +255,7 @@ pub fn spawn_with_recv(
     shutdown: shutdown::Shutdown,
 ) -> (
     re_smart_channel::Receiver<re_log_types::LogMsg>,
-    re_smart_channel::Receiver<re_log_types::TableMsg>,
+    crossbeam::channel::Receiver<re_log_types::TableMsg>,
 ) {
     let (channel_log_tx, channel_log_rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy {
@@ -263,14 +265,7 @@ pub fn spawn_with_recv(
             url: format!("rerun+http://{addr}/proxy"),
         },
     );
-    let (channel_table_tx, channel_table_rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy {
-            url: format!("rerun+http://{addr}/proxy"),
-        },
-        re_smart_channel::SmartChannelSource::MessageProxy {
-            url: format!("rerun+http://{addr}/proxy"),
-        },
-    );
+    let (channel_table_tx, channel_table_rx) = crossbeam::channel::unbounded();
     let (message_proxy, mut broadcast_log_rx, mut broadcast_table_rx) =
         MessageProxy::new_with_recv(memory_limit);
     tokio::spawn(async move {
@@ -310,7 +305,41 @@ pub fn spawn_with_recv(
             }
         }
     });
-    todo!("tables");
+    tokio::spawn(async move {
+        loop {
+            let msg = match broadcast_table_rx.recv().await {
+                Ok(msg) => msg.data.decode().map(|data| TableMsg {
+                    table_id: msg.id.into(),
+                    data,
+                }),
+                Err(broadcast::error::RecvError::Closed) => {
+                    re_log::debug!("message proxy server shut down, closing receiver");
+                    // We don't have to explicitly call `quit` on crossbeam channels.
+                    break;
+                }
+                Err(broadcast::error::RecvError::Lagged(n)) => {
+                    re_log::debug!(
+                        "message proxy receiver dropped {n} messages due to backpressure"
+                    );
+                    continue;
+                }
+            };
+            match msg {
+                Ok(msg) => {
+                    if channel_table_tx.send(msg).is_err() {
+                        re_log::debug!(
+                            "message proxy smart channel receiver closed, closing sender"
+                        );
+                        break;
+                    }
+                }
+                Err(err) => {
+                    re_log::error!("dropping table due to failed decode: {err}");
+                    continue;
+                }
+            }
+        }
+    });
     (channel_log_rx, channel_table_rx)
 }
 
@@ -347,8 +376,8 @@ enum Msg {
 impl Msg {
     fn total_size_bytes(&self) -> u64 {
         match self {
-            Msg::LogMsg(log_msg) => message_size(log_msg),
-            Msg::Table(table) => table_size(table),
+            Self::LogMsg(log_msg) => message_size(log_msg),
+            Self::Table(table) => table_size(table),
         }
     }
 }
@@ -618,7 +647,6 @@ impl MessageProxy {
         let history = tokio_stream::iter(
             history
                 .into_iter()
-                // TODO:
                 .filter_map(|log_msg| {
                     if let Msg::LogMsg(log_msg) = log_msg {
                         Some(ReadMessagesResponse {
