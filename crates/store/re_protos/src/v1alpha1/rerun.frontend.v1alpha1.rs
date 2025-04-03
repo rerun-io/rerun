@@ -199,6 +199,9 @@ pub struct GetChunksRequest {
     /// all chunks (that match other query parameters) will be included.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
+    /// Which entity paths are we interested in? Leave empty to query all of them.
+    #[prost(message, repeated, tag = "4")]
+    pub entity_paths: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::EntityPath>,
     /// Query details
     #[prost(message, optional, tag = "5")]
     pub query: ::core::option::Option<super::super::manifest_registry::v1alpha1::Query>,
