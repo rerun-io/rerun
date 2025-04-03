@@ -254,6 +254,9 @@ impl ItemCollection {
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
                 Item::View(_) => None,
+                // TODO(lucasmerlin): Should these be copyable as URLs?
+                Item::RedapServer(_) => None,
+                Item::RedapEntry(_) => None,
                 Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
@@ -486,7 +489,9 @@ impl ApplicationSelectionState {
                 | Item::DataSource(_)
                 | Item::StoreId(_)
                 | Item::View(_)
-                | Item::Container(_) => current == test,
+                | Item::Container(_)
+                | Item::RedapEntry(_)
+                | Item::RedapServer(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
                     Item::AppId(_)
@@ -494,7 +499,9 @@ impl ApplicationSelectionState {
                     | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
                         test_component_path == component_path
@@ -516,7 +523,9 @@ impl ApplicationSelectionState {
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
@@ -535,7 +544,9 @@ impl ApplicationSelectionState {
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::View(_)
-                    | Item::Container(_) => false,
+                    | Item::Container(_)
+                    | Item::RedapEntry(_)
+                    | Item::RedapServer(_) => false,
 
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {

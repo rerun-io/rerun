@@ -43,7 +43,10 @@ impl TryFrom<crate::common::v1alpha1::Schema> for ArrowSchema {
 
 // --- EntryId ---
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, serde::Deserialize, serde::Serialize,
+)]
+#[serde(transparent)]
 pub struct EntryId {
     pub id: re_tuid::Tuid,
 }

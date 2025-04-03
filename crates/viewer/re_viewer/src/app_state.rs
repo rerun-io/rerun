@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{text_selection::LabelSelectionState, NumExt as _, Ui};
+use egui::{text_selection::LabelSelectionState, NumExt as _};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -407,8 +407,6 @@ impl AppState {
                     // before drawing the blueprint panel.
                     ui.spacing_mut().item_spacing.y = 0.0;
 
-                    display_mode_toggle_ui(ui, display_mode);
-
                     if display_mode == &DisplayMode::LocalRecordings {
                         let resizable = ctx.storage_context.bundle.recordings().count() > 3;
 
@@ -424,10 +422,16 @@ impl AppState {
                                 .default_height(210.0)
                                 .max_height(ui.available_height() - min_height_each)
                                 .show_inside(ui, |ui| {
-                                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                    recordings_panel_ui(
+                                        &ctx,
+                                        rx,
+                                        ui,
+                                        welcome_screen_state,
+                                        redap_servers,
+                                    );
                                 });
                         } else {
-                            recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                            recordings_panel_ui(&ctx, rx, ui, welcome_screen_state, redap_servers);
                         }
 
                         ui.add_space(4.0);
@@ -574,10 +578,10 @@ impl AppState {
                     // before drawing the blueprint panel.
                     ui.spacing_mut().item_spacing.y = 0.0;
 
-                    display_mode_toggle_ui(ui, display_mode);
-
                     match display_mode {
-                        DisplayMode::LocalRecordings => {
+                        DisplayMode::LocalRecordings
+                        | DisplayMode::RedapEntry(..)
+                        | DisplayMode::RedapServer(..) => {
                             let resizable = ctx.storage_context.bundle.recordings().count() > 3;
 
                             if resizable {
@@ -592,10 +596,22 @@ impl AppState {
                                     .default_height(210.0)
                                     .max_height(ui.available_height() - min_height_each)
                                     .show_inside(ui, |ui| {
-                                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                        recordings_panel_ui(
+                                            &ctx,
+                                            rx,
+                                            ui,
+                                            welcome_screen_state,
+                                            redap_servers,
+                                        );
                                     });
                             } else {
-                                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                recordings_panel_ui(
+                                    &ctx,
+                                    rx,
+                                    ui,
+                                    welcome_screen_state,
+                                    redap_servers,
+                                );
                             }
 
                             ui.add_space(4.0);
@@ -603,10 +619,6 @@ impl AppState {
                             if !show_welcome {
                                 blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
                             }
-                        }
-
-                        DisplayMode::RedapBrowser => {
-                            redap_servers.server_panel_ui(ui);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // handled above
@@ -640,8 +652,20 @@ impl AppState {
                             }
                         }
 
-                        DisplayMode::RedapBrowser => {
-                            redap_servers.ui(&ctx, ui);
+                        DisplayMode::RedapEntry(entry) => {
+                            redap_servers.entry_ui(&ctx, ui, *entry);
+                        }
+
+                        DisplayMode::RedapServer(origin) => {
+                            if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
+                                welcome_screen.ui(
+                                    ui,
+                                    command_sender,
+                                    welcome_screen_state,
+                                    is_history_enabled,
+                                );
+                            }
+                            // Servers have no ui yet
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above
@@ -652,6 +676,8 @@ impl AppState {
         //
         // Other UI things
         //
+
+        redap_servers.modals_ui(ui);
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
         drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
@@ -800,42 +826,6 @@ fn handle_time_ctrl_callbacks(
     if let Some(time) = response.time_change {
         callbacks.on_time_update(time);
     }
-}
-
-fn display_mode_toggle_ui(ui: &mut Ui, display_mode: &mut DisplayMode) {
-    ui.allocate_ui_with_layout(
-        egui::vec2(
-            ui.available_width(),
-            re_ui::DesignTokens::title_bar_height(),
-        ),
-        egui::Layout::left_to_right(egui::Align::Center),
-        |ui| {
-            egui::Frame::new()
-                .inner_margin(re_ui::DesignTokens::panel_margin())
-                .show(ui, |ui| {
-                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.expansion = 0.0;
-                    ui.visuals_mut().widgets.inactive.expansion = 0.0;
-
-                    ui.visuals_mut().selection.bg_fill = ui.visuals_mut().widgets.inactive.bg_fill;
-                    ui.visuals_mut().selection.stroke = ui.visuals_mut().widgets.inactive.fg_stroke;
-                    ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-
-                    ui.visuals_mut().widgets.hovered.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.active.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.inactive.fg_stroke.color =
-                        ui.visuals().widgets.noninteractive.fg_stroke.color;
-
-                    ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
-                    ui.spacing_mut().item_spacing.x = 3.0;
-
-                    ui.selectable_value(display_mode, DisplayMode::LocalRecordings, "Local");
-                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Servers");
-                });
-        },
-    );
 }
 
 pub(crate) fn recording_config_entry<'cfgs>(

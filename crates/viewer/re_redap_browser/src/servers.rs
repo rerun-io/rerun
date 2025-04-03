@@ -1,13 +1,12 @@
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
+use crate::add_server_modal::AddServerModal;
+use crate::context::Context;
+use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
 use re_protos::common::v1alpha1::ext::EntryId;
 use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
-
-use crate::add_server_modal::AddServerModal;
-use crate::context::Context;
-use crate::entries::{Dataset, Entries};
 
 struct Server {
     origin: re_uri::Origin,
@@ -34,12 +33,14 @@ impl Server {
         self.entries.find_dataset(entry_id)
     }
 
-    fn find_dataset_by_name(&self, dataset_name: &str) -> Option<&Dataset> {
-        self.entries.find_dataset_by_name(dataset_name)
-    }
-
-    fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
-        let content = list_item::LabelContent::new(self.origin.to_string())
+    fn panel_ui(
+        &self,
+        viewer_context: &ViewerContext<'_>,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        recordings: Option<DatasetRecordings<'_>>,
+    ) {
+        let content = list_item::LabelContent::header(self.origin.host.to_string())
             .with_buttons(|ui| {
                 let response = ui
                     .small_icon_button(&re_ui::icons::REMOVE)
@@ -57,13 +58,14 @@ impl Server {
 
         ui.list_item()
             .interactive(false)
+            .header()
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),
                 true,
                 content,
                 |ui| {
-                    self.entries.panel_ui(ctx, ui);
+                    self.entries.panel_ui(viewer_context, ctx, ui, recordings);
                 },
             );
     }
@@ -73,7 +75,9 @@ impl Server {
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selected_entry: Option<EntryId>,
+    /// When deserializing we can't construct the [`Server`]s right away
+    /// so they get queued here.
+    pending_servers: Vec<re_uri::Origin>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -101,12 +105,12 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
     {
         let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
 
-        let servers = Self::default();
+        let mut servers = Self::default();
 
         // We cannot create `Server` right away, because we need an async handle and an
         // `egui::Context` for that, so we just queue commands to be processed early next frame.
         for origin in origins {
-            let _ = servers.command_sender.send(Command::AddServer(origin));
+            servers.pending_servers.push(origin);
         }
 
         Ok(servers)
@@ -119,7 +123,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
-            selected_entry: None,
+            pending_servers: Default::default(),
             command_sender,
             command_receiver,
             add_server_modal_ui: Default::default(),
@@ -128,42 +132,20 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
-    SelectEntry(EntryId),
-    DeselectEntry,
+    OpenAddServerModal,
     AddServer(re_uri::Origin),
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
 }
 
 impl RedapServers {
+    pub fn is_empty(&self) -> bool {
+        self.servers.is_empty() && self.pending_servers.is_empty()
+    }
+
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         let _ = self.command_sender.send(Command::AddServer(origin));
-    }
-
-    #[expect(clippy::unused_self)]
-    pub fn select_server(&self, _origin: re_uri::Origin) {
-        //TODO(ab): we don't have support for selecting servers yet.
-    }
-
-    pub fn find_dataset_by_name(
-        &self,
-        origin: &re_uri::Origin,
-        dataset_name: &str,
-    ) -> Option<&Dataset> {
-        self.servers.get(origin)?.find_dataset_by_name(dataset_name)
-    }
-
-    #[allow(clippy::needless_pass_by_value)]
-    pub fn select_dataset_by_name(&self, origin: &re_uri::Origin, dataset_name: &str) {
-        let Some(entry_id) = self
-            .find_dataset_by_name(origin, dataset_name)
-            .map(|dataset| dataset.id())
-        else {
-            return;
-        };
-
-        let _ = self.command_sender.send(Command::SelectEntry(entry_id));
     }
 
     /// Per-frame housekeeping.
@@ -171,6 +153,9 @@ impl RedapServers {
     /// - Process commands from the queue.
     /// - Update all servers.
     pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+        self.pending_servers.drain(..).for_each(|origin| {
+            let _ = self.command_sender.send(Command::AddServer(origin));
+        });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(runtime, egui_ctx, command);
         }
@@ -187,11 +172,9 @@ impl RedapServers {
         command: Command,
     ) {
         match command {
-            Command::SelectEntry(collection_handle) => {
-                self.selected_entry = Some(collection_handle);
+            Command::OpenAddServerModal => {
+                self.add_server_modal_ui.open();
             }
-
-            Command::DeselectEntry => self.selected_entry = None,
 
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
@@ -219,68 +202,45 @@ impl RedapServers {
         }
     }
 
-    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui) {
-        ui.panel_content(|ui| {
-            ui.panel_title_bar_with_buttons(
-                "Servers",
-                Some("These are the currently connected Redap servers."),
-                |ui| {
-                    if ui
-                        .small_icon_button(&re_ui::icons::ADD)
-                        .on_hover_text("Add a server")
-                        .clicked()
-                    {
-                        self.add_server_modal_ui.open();
-                    }
-                },
-            );
-        });
-
-        egui::ScrollArea::both()
-            .id_salt("servers_scroll_area")
-            .auto_shrink([false, true])
-            .show(ui, |ui| {
-                ui.panel_content(|ui| {
-                    re_ui::list_item::list_item_scope(ui, "server panel", |ui| {
-                        self.server_list_ui(ui);
-                    });
-                });
-            });
-    }
-
-    fn server_list_ui(&self, ui: &mut egui::Ui) {
+    pub fn server_list_ui(
+        &self,
+        ui: &mut egui::Ui,
+        viewer_ctx: &ViewerContext<'_>,
+        mut remote_recordings: RemoteRecordings<'_>,
+    ) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
-                server.panel_ui(ctx, ui);
+                let recordings = remote_recordings.remove(&server.origin);
+                server.panel_ui(viewer_ctx, ctx, ui, recordings);
             }
         });
     }
 
-    pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        self.add_server_modal_ui(ui);
+    pub fn open_add_server_modal(&self) {
+        let _ = self.command_sender.send(Command::OpenAddServerModal);
+    }
 
-        //TODO(ab): we should display something even if no catalog is currently selected.
+    pub fn entry_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        active_entry: EntryId,
+    ) {
+        for server in self.servers.values() {
+            if let Some(dataset) = server.find_dataset(active_entry) {
+                self.with_ctx(|ctx| {
+                    super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
+                });
 
-        if let Some(selected_entry) = self.selected_entry.as_ref() {
-            for server in self.servers.values() {
-                let dataset = server.find_dataset(*selected_entry);
-
-                if let Some(dataset) = dataset {
-                    self.with_ctx(|ctx| {
-                        super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
-                    });
-
-                    return;
-                }
+                return;
             }
         }
     }
 
-    fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_entry: &self.selected_entry,
         };
 
         self.add_server_modal_ui.ui(&ctx, ui);
@@ -290,7 +250,6 @@ impl RedapServers {
     fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_entry: &self.selected_entry,
         };
 
         func(&ctx)

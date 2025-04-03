@@ -374,6 +374,10 @@ impl App {
 
         let callbacks = startup_options.callbacks.clone();
 
+        if !state.redap_servers.is_empty() {
+            command_sender.send_ui(UICommand::ExpandBlueprintPanel);
+        }
+
         Self {
             main_thread_token,
             build_info,
@@ -516,6 +520,10 @@ impl App {
             }
 
             SystemCommand::ActivateEntry(entry) => {
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(
+                        DisplayMode::LocalRecordings,
+                    ));
                 store_hub.set_active_entry(entry);
             }
 
@@ -558,19 +566,14 @@ impl App {
             }
             SystemCommand::AddRedapServer { endpoint } => {
                 self.state.redap_servers.add_server(endpoint.origin);
-                self.state.display_mode = DisplayMode::RedapBrowser;
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
-            }
-            SystemCommand::SelectRedapServer { origin } => {
-                self.state.redap_servers.select_server(origin);
-            }
-            SystemCommand::SelectRedapDataset { origin, dataset } => {
-                self.state
-                    .redap_servers
-                    .select_dataset_by_name(&origin, dataset.as_ref());
             }
 
             SystemCommand::LoadDataSource(data_source) => {
+                self.command_sender
+                    .send_system(SystemCommand::ChangeDisplayMode(
+                        DisplayMode::LocalRecordings,
+                    ));
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need
@@ -907,7 +910,9 @@ impl App {
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
             UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
-                DisplayMode::LocalRecordings | DisplayMode::RedapBrowser => {
+                DisplayMode::LocalRecordings
+                | DisplayMode::RedapEntry(_)
+                | DisplayMode::RedapServer(_) => {
                     self.state.display_mode = DisplayMode::ChunkStoreBrowser;
                 }
                 DisplayMode::ChunkStoreBrowser => {
@@ -1036,6 +1041,10 @@ impl App {
                 if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgpu").is_err() {
                     re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
                 }
+            }
+
+            UICommand::AddRedapServer => {
+                self.state.redap_servers.open_add_server_modal();
             }
         }
     }

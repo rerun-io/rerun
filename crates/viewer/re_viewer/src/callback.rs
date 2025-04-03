@@ -67,6 +67,8 @@ impl CallbackSelectionItem {
             | Item::AppId(_)
             | Item::ComponentPath(_)
             | Item::DataSource(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_)
             | Item::TableId(_) => None,
             Item::View(view_id) => Some(Self::View {
                 view_id: *view_id,

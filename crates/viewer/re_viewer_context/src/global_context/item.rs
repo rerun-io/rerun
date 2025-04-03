@@ -1,5 +1,6 @@
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
+use re_protos::common::v1alpha1::ext::EntryId;
 use re_types::ComponentDescriptor;
 
 use crate::{ContainerId, Contents, ViewId};
@@ -35,6 +36,12 @@ pub enum Item {
 
     /// An entity or instance in the context of a view's data results.
     DataResult(ViewId, InstancePath),
+
+    /// A dataset or table.
+    RedapEntry(EntryId),
+
+    /// A Redap server.
+    RedapServer(re_uri::Origin),
 }
 
 impl Item {
@@ -45,7 +52,9 @@ impl Item {
             | Self::DataSource(_)
             | Self::View(_)
             | Self::Container(_)
-            | Self::StoreId(_) => None,
+            | Self::StoreId(_)
+            | Self::RedapServer(_)
+            | Self::RedapEntry(_) => None,
 
             Self::ComponentPath(component_path) => Some(&component_path.entity_path),
 
@@ -136,6 +145,8 @@ impl std::fmt::Debug for Item {
                 write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
+            Self::RedapEntry(entry_id) => write!(f, "{entry_id}"),
+            Self::RedapServer(server) => write!(f, "{server}"),
         }
     }
 }
@@ -161,6 +172,8 @@ impl Item {
                     "Data result entity"
                 }
             }
+            Self::RedapEntry(_) => "Redap entry",
+            Self::RedapServer(_) => "Redap server",
         }
     }
 }
@@ -186,7 +199,9 @@ pub fn resolve_mono_instance_path_item(
         | Item::StoreId(_)
         | Item::ComponentPath(_)
         | Item::View(_)
-        | Item::Container(_) => item.clone(),
+        | Item::Container(_)
+        | Item::RedapEntry(_)
+        | Item::RedapServer(_) => item.clone(),
     }
 }
 

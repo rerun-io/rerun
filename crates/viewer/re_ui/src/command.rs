@@ -94,6 +94,9 @@ pub enum UICommand {
     RestartWithWebGl,
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGpu,
+
+    // Redap commands
+    AddRedapServer,
 }
 
 impl UICommand {
@@ -296,6 +299,11 @@ impl UICommand {
                 "Restart with WebGPU",
                 "Reloads the webpage and force WebGPU for rendering. All data will be lost.",
             ),
+
+            Self::AddRedapServer => (
+                "Add Redap server",
+                "Connect to a Redap server (experimental)"
+            ),
         }
     }
 
@@ -415,6 +423,8 @@ impl UICommand {
             Self::RestartWithWebGl => smallvec![],
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGpu => smallvec![],
+
+            Self::AddRedapServer => smallvec![],
         }
     }
 

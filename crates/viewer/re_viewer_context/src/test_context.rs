@@ -486,8 +486,6 @@ impl TestContext {
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
-                | SystemCommand::SelectRedapDataset { .. }
-                | SystemCommand::SelectRedapServer { .. }
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllRecordings

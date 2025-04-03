@@ -35,10 +35,12 @@ impl ContextMenuAction for CollapseExpandAllAction {
         // avoid showing a command that wouldn't have an effect but that's lots of added complexity.
         match item {
             Item::AppId(_)
-            | Item::TableId(_)
             | Item::DataSource(_)
             | Item::StoreId(_)
-            | Item::ComponentPath(_) => false,
+            | Item::ComponentPath(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_)
+            | Item::TableId(_) => false,
 
             Item::View(_) | Item::Container(_) | Item::InstancePath(_) => true,
 
