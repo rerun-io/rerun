@@ -49,6 +49,9 @@ enum ExternalError {
 
     #[error("{0}")]
     UrlParseError(#[from] url::ParseError),
+
+    #[error("{0}")]
+    DatafusionError(#[from] datafusion::error::DataFusionError),
 }
 
 impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
@@ -99,6 +102,10 @@ impl From<ExternalError> for PyErr {
 
             ExternalError::UrlParseError(err) => {
                 PyValueError::new_err(format!("Could not parse URL: {err}"))
+            }
+
+            ExternalError::DatafusionError(err) => {
+                PyValueError::new_err(format!("DataFusion error: {err}"))
             }
         }
     }
