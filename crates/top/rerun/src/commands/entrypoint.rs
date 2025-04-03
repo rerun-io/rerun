@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
-use re_log_types::LogMsg;
+use re_log_types::{LogMsg, TableMsg};
 use re_sdk::sink::LogSink as _;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
@@ -801,12 +801,14 @@ fn run_impl(
             //       For that we spawn the server a bit further down, after we've collected
             //       all receivers into `rxs`.
             } else if !args.serve && !args.serve_web && !args.serve_grpc {
-                let server: Receiver<LogMsg> = re_grpc_server::spawn_with_recv(
-                    server_addr,
-                    server_memory_limit,
-                    re_grpc_server::shutdown::never(),
-                );
-                rxs.push(server);
+                let (log_server, table_server): (Receiver<LogMsg>, Receiver<TableMsg>) =
+                    re_grpc_server::spawn_with_recv(
+                        server_addr,
+                        server_memory_limit,
+                        re_grpc_server::shutdown::never(),
+                    );
+                rxs.push(log_server);
+                // rxs.push(table_server);
             }
         }
 

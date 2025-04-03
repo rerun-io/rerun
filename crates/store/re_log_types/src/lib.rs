@@ -640,6 +640,18 @@ impl std::fmt::Display for StoreSource {
 
 // ---
 
+#[must_use]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TableMsg {
+    /// The id of the table.
+    table_id: TableId,
+
+    /// The table stored as an [`ArrowRecordBatch`].
+    data: ArrowRecordBatch,
+}
+
+// ---
+
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
 pub fn build_log_time(log_time: Timestamp) -> (Timeline, TimeInt) {

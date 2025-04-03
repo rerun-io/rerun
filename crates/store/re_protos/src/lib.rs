@@ -288,6 +288,15 @@ mod sizes {
         }
     }
 
+    impl SizeBytes for crate::sdk_comms::v1alpha1::TableId {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { id } = self;
+
+            id.heap_size_bytes()
+        }
+    }
+
     impl SizeBytes for crate::log_msg::v1alpha1::StoreSource {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
@@ -346,6 +355,18 @@ mod sizes {
             blueprint_id.heap_size_bytes()
                 + make_active.heap_size_bytes()
                 + make_default.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v1alpha1::DataframePart {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self {
+                encoder_version,
+                payload,
+            } = self;
+
+            encoder_version.heap_size_bytes() + payload.heap_size_bytes()
         }
     }
 }
