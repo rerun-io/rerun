@@ -79,6 +79,8 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 #[cfg(test)]
 mod tests {
 
+    use re_log_types::DataPath;
+
     use crate::{Scheme, TimeRange};
 
     use super::*;
@@ -126,6 +128,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
+            data_path,
         }) = address
         else {
             panic!("Expected recording");
@@ -140,6 +143,43 @@ mod tests {
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(time_range, None);
+        assert_eq!(data_path, None);
+    }
+
+    #[test]
+    fn test_dataset_data_url_with_fragment() {
+        let url =
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#/some/entity[#42]";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::DatasetData(DatasetDataEndpoint {
+            origin,
+            dataset_id,
+            partition_id,
+            time_range,
+            data_path,
+        }) = address
+        else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            dataset_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+        assert_eq!(partition_id, "pid");
+        assert_eq!(time_range, None);
+        assert_eq!(
+            data_path,
+            Some(DataPath {
+                entity_path: "/some/entity".into(),
+                instance: Some(42.into()),
+                component_name: None,
+            })
+        );
     }
 
     #[test]
@@ -152,6 +192,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
+            data_path,
         }) = address
         else {
             panic!("Expected recording");
@@ -175,6 +216,7 @@ mod tests {
                 )
             })
         );
+        assert_eq!(data_path, None);
     }
 
     #[test]
@@ -187,6 +229,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
+            data_path,
         }) = address
         else {
             panic!("Expected recording");
@@ -214,6 +257,7 @@ mod tests {
                 )
             })
         );
+        assert_eq!(data_path, None);
     }
 
     #[test]
@@ -229,6 +273,7 @@ mod tests {
                 dataset_id,
                 partition_id,
                 time_range,
+                data_path,
             }) = address
             else {
                 panic!("Expected recording");
@@ -252,6 +297,7 @@ mod tests {
                     )
                 })
             );
+            assert_eq!(data_path, None);
         }
     }
 

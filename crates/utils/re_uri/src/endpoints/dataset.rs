@@ -1,3 +1,5 @@
+use re_log_types::DataPath;
+
 use crate::{Error, Origin, RedapUri, TimeRange};
 
 //TODO(ab): add `DatasetTableEndpoint`, the URI pointing at the "table view" of the dataset (aka. its partition table).
@@ -18,6 +20,9 @@ pub struct DatasetDataEndpoint {
     /// Currently mandatory.
     pub partition_id: String,
     pub time_range: Option<TimeRange>,
+
+    // Fragment parameters: these affect what the viewer focuses on:
+    pub data_path: Option<DataPath>,
 }
 
 impl std::fmt::Display for DatasetDataEndpoint {
@@ -27,6 +32,7 @@ impl std::fmt::Display for DatasetDataEndpoint {
             dataset_id,
             partition_id,
             time_range,
+            data_path,
         } = self;
 
         write!(f, "{origin}/dataset/{dataset_id}")?;
@@ -37,6 +43,12 @@ impl std::fmt::Display for DatasetDataEndpoint {
         }
         if let Some(time_range) = time_range {
             write!(f, "&time_range={time_range}")?;
+        }
+
+        // #fragment:
+
+        if let Some(data_path) = data_path {
+            write!(f, "#{data_path}")?;
         }
 
         Ok(())
@@ -66,11 +78,26 @@ impl DatasetDataEndpoint {
             return Err(Error::MissingPartitionId);
         };
 
+        let mut data_path = None;
+        if let Some(fragment) = url.fragment() {
+            match fragment.parse::<DataPath>() {
+                Ok(path) => {
+                    data_path = Some(path);
+                }
+                Err(err) => {
+                    re_log::warn_once!(
+                        "Failed to parse URL fragment '#{fragment}`: {err} (expected a data path)"
+                    );
+                }
+            };
+        }
+
         Ok(Self {
             origin,
             dataset_id,
             partition_id,
             time_range,
+            data_path,
         })
     }
 
@@ -81,9 +108,11 @@ impl DatasetDataEndpoint {
             dataset_id: _,   // Mandatory
             partition_id: _, // Mandatory
             time_range,
+            data_path,
         } = &mut self;
 
         *time_range = None;
+        *data_path = None;
 
         self
     }
