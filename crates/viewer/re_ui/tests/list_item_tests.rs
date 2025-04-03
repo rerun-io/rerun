@@ -10,6 +10,10 @@ pub fn test_list_items_should_match_snapshot() {
 
     let mut test_code = |ui: &mut egui::Ui| {
         ui.list_item()
+            .header()
+            .show_hierarchical(ui, list_item::LabelContent::header("Header item"));
+
+        ui.list_item()
             .show_hierarchical(ui, list_item::LabelContent::new("Default"));
 
         ui.list_item()
@@ -32,6 +36,24 @@ pub fn test_list_items_should_match_snapshot() {
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with icon")
+                        .with_icon(&re_ui::icons::VIEW_TEXT),
+                );
+
+                ui.list_item().active(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + active")
+                        .with_icon(&re_ui::icons::VIEW_TEXT),
+                );
+
+                ui.list_item().selected(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + selected")
+                        .with_icon(&re_ui::icons::VIEW_TEXT),
+                );
+
+                ui.list_item().force_hovered(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + hovered")
                         .with_icon(&re_ui::icons::VIEW_TEXT),
                 );
 
