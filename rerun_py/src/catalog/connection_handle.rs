@@ -4,12 +4,12 @@ use pyo3::{
 };
 
 use re_grpc_client::redap::client;
+use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::{
     ext::{DatasetEntry, EntryDetails, TableEntry},
     CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
     ReadTableEntryRequest,
 };
-use re_protos::common::v1alpha1::ext::EntryId;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};

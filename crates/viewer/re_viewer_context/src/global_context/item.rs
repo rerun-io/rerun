@@ -1,6 +1,5 @@
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataPath, EntityPath, TableId};
-use re_protos::common::v1alpha1::ext::EntryId;
+use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId, TableId};
 use re_types::ComponentDescriptor;
 
 use crate::{ContainerId, Contents, ViewId};

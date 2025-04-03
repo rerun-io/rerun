@@ -7,15 +7,14 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
-use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_protos::{
-    common::v1alpha1::ext::EntryId,
-    frontend::v1alpha1::{
-        frontend_service_client::FrontendServiceClient, GetTableSchemaRequest, ScanTableRequest,
-        ScanTableResponse,
-    },
-};
 use tonic::transport::Channel;
+
+use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_log_types::EntryId;
+use re_protos::frontend::v1alpha1::{
+    frontend_service_client::FrontendServiceClient, GetTableSchemaRequest, ScanTableRequest,
+    ScanTableResponse,
+};
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
