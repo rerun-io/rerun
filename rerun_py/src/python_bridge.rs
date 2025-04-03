@@ -1346,7 +1346,8 @@ fn send_blueprint(
 
 /// Send all chunks from a [`PyRecording`] to the given recording stream.
 ///
-/// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+/// .. warning::
+///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
 #[pyfunction]
 #[pyo3(signature = (rrd, recording = None))]
 fn send_recording(rrd: &PyRecording, recording: Option<&PyRecordingStream>) {
