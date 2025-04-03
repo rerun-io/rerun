@@ -144,6 +144,11 @@ impl RedapServers {
         self.servers.is_empty() && self.pending_servers.is_empty()
     }
 
+    /// Whether we already know about a given server (or have it queued to be added).
+    pub fn has_server(&self, origin: &re_uri::Origin) -> bool {
+        self.servers.contains_key(origin) || self.pending_servers.contains(origin)
+    }
+
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         let _ = self.command_sender.send(Command::AddServer(origin));
