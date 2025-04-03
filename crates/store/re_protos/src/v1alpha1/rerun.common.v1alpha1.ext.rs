@@ -402,7 +402,7 @@ impl From<re_log_types::StoreId> for crate::common::v1alpha1::RecordingId {
     }
 }
 
-impl From<re_log_types::TableId> for crate::sdk_comms::v1alpha1::TableId {
+impl From<re_log_types::TableId> for crate::common::v1alpha1::TableId {
     #[inline]
     fn from(value: re_log_types::TableId) -> Self {
         Self {
@@ -411,8 +411,9 @@ impl From<re_log_types::TableId> for crate::sdk_comms::v1alpha1::TableId {
     }
 }
 
-impl From<crate::sdk_comms::v1alpha1::TableId> for re_log_types::TableId {
-    fn from(value: crate::sdk_comms::v1alpha1::TableId) -> Self {
+impl From<crate::common::v1alpha1::TableId> for re_log_types::TableId {
+    #[inline]
+    fn from(value: crate::common::v1alpha1::TableId) -> Self {
         TableId::from(value.id)
     }
 }

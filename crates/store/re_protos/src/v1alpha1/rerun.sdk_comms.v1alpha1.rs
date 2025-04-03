@@ -54,24 +54,9 @@ impl ::prost::Name for ReadMessagesResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TableId {
-    #[prost(string, tag = "1")]
-    pub id: ::prost::alloc::string::String,
-}
-impl ::prost::Name for TableId {
-    const NAME: &'static str = "TableId";
-    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.sdk_comms.v1alpha1.TableId".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.sdk_comms.v1alpha1.TableId".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteTableRequest {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<TableId>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TableId>,
     #[prost(message, optional, tag = "2")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
@@ -112,7 +97,7 @@ impl ::prost::Name for ReadTablesRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ReadTablesResponse {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<TableId>,
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TableId>,
     #[prost(message, optional, tag = "2")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }

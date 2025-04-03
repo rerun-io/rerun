@@ -27,11 +27,13 @@ use tower_http::cors::CorsLayer;
 use re_byte_size::SizeBytes as _;
 use re_memory::MemoryLimit;
 use re_protos::{
-    common::v1alpha1::{DataframePart as DataframePartProto, StoreKind as StoreKindProto},
+    common::v1alpha1::{
+        DataframePart as DataframePartProto, StoreKind as StoreKindProto, TableId as TableIdProto,
+    },
     log_msg::v1alpha1::LogMsg as LogMsgProto,
     sdk_comms::v1alpha1::{
         message_proxy_service_server, ReadMessagesRequest, ReadMessagesResponse,
-        TableId as TableIdProto, WriteMessagesResponse,
+        WriteMessagesResponse,
     },
 };
 

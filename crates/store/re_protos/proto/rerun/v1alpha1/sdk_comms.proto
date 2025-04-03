@@ -40,14 +40,10 @@ message ReadMessagesResponse {
   rerun.log_msg.v1alpha1.LogMsg log_msg = 1;
 }
 
-message TableId {
-  string id = 1;
-}
-
 // WriteTable
 
 message WriteTableRequest {
-  TableId id = 1;
+  rerun.common.v1alpha1.TableId id = 1;
   rerun.common.v1alpha1.DataframePart data = 2;
 }
 
@@ -58,7 +54,7 @@ message WriteTableResponse {}
 message ReadTablesRequest {}
 
 message ReadTablesResponse {
-  TableId id = 1;
+  rerun.common.v1alpha1.TableId id = 1;
   rerun.common.v1alpha1.DataframePart data = 2;
 }
 
