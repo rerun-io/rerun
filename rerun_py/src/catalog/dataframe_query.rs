@@ -394,7 +394,6 @@ impl PyDataframeQueryView {
         // Fetch relevant chunks
         //
 
-        // TODO(jleibs): Time filters?
         let chunk_store = connection.get_chunks(
             py,
             store_info,
