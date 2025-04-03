@@ -1,4 +1,4 @@
-use crate::{Origin, RedapUri, TimeRange};
+use crate::{Error, Origin, RedapUri, TimeRange};
 
 //TODO(ab): add `DatasetTableEndpoint`, the URI pointing at the "table view" of the dataset (aka. its partition table).
 
@@ -44,17 +44,37 @@ impl std::fmt::Display for DatasetDataEndpoint {
 }
 
 impl DatasetDataEndpoint {
-    /// All the mandatory fields.
-    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, partition_id: String) -> Self {
-        Self {
+    pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
+        let mut partition_id = None;
+        let mut time_range = None;
+
+        for (key, value) in url.query_pairs() {
+            match key.as_ref() {
+                "partition_id" => {
+                    partition_id = Some(value.to_owned());
+                }
+                "time_range" => {
+                    time_range = Some(value.parse()?);
+                }
+                _ => {
+                    re_log::warn_once!("Unknown query parameter: {key}={value}");
+                }
+            }
+        }
+
+        let Some(partition_id) = partition_id else {
+            return Err(Error::MissingPartitionId);
+        };
+
+        Ok(Self {
             origin,
             dataset_id,
             partition_id,
             time_range: None,
-        }
+        })
     }
 
-    /// Returns a [`DatasetDataEndpoint`] without any (optional) query or fragment..
+    /// Returns a [`DatasetDataEndpoint`] without any (optional) `?query` or `#fragment`.
     pub fn without_query_and_fragment(mut self) -> Self {
         let Self {
             origin: _,       // Mandatory
@@ -70,17 +90,13 @@ impl DatasetDataEndpoint {
 }
 
 impl std::str::FromStr for DatasetDataEndpoint {
-    type Err = crate::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match RedapUri::from_str(s)? {
             RedapUri::DatasetData(endpoint) => Ok(endpoint),
-            RedapUri::Catalog(endpoint) => {
-                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
-            }
-            RedapUri::Proxy(endpoint) => {
-                Err(crate::Error::UnexpectedEndpoint(format!("/{endpoint}")))
-            }
+            RedapUri::Catalog(endpoint) => Err(Error::UnexpectedEndpoint(format!("/{endpoint}"))),
+            RedapUri::Proxy(endpoint) => Err(Error::UnexpectedEndpoint(format!("/{endpoint}"))),
         }
     }
 }

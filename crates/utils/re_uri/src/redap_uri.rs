@@ -36,11 +36,6 @@ impl std::str::FromStr for RedapUri {
             .filter(|s| !s.is_empty()) // handle trailing slashes
             .collect::<Vec<_>>();
 
-        let time_range = http_url
-            .query_pairs()
-            .find(|(key, _)| key == TimeRange::QUERY_KEY)
-            .map(|(_, value)| TimeRange::from_str(value.as_ref()));
-
         match segments.as_slice() {
             ["proxy"] => Ok(Self::Proxy(ProxyEndpoint::new(origin))),
 
@@ -49,19 +44,7 @@ impl std::str::FromStr for RedapUri {
             ["dataset", dataset_id] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
 
-                let partition_id = http_url
-                    .query_pairs()
-                    .find(|(key, _)| key == "partition_id")
-                    .ok_or(Error::MissingPartitionId)?
-                    .1
-                    .into_owned();
-
-                Ok(Self::DatasetData(DatasetDataEndpoint {
-                    origin,
-                    dataset_id,
-                    partition_id,
-                    time_range: time_range.transpose()?,
-                }))
+                DatasetDataEndpoint::new(origin, dataset_id, &http_url).map(Self::DatasetData)
             }
             [unknown, ..] => Err(Error::UnexpectedEndpoint(format!("{unknown}/"))),
         }
