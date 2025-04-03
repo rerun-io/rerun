@@ -986,6 +986,11 @@ fn run_impl(
                     for rx in rxs_log {
                         app.add_log_receiver(rx);
                     }
+                    for rx in rxs_table {
+                        // TODO: remove!
+                        re_log::info!("Added table receiver");
+                        app.add_table_receiver(rx);
+                    }
                     app.set_profiler(profiler);
                     if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
                         app.set_examples_manifest_url(url);
