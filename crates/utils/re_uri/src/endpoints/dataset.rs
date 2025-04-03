@@ -9,7 +9,7 @@ use crate::{Origin, RedapUri, TimeRange};
 ///
 /// `partition_id` is mandatory, and `time_range` is optional. In the future, it will be extended to
 /// richer queries.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DatasetDataEndpoint {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
@@ -84,3 +84,28 @@ impl std::str::FromStr for DatasetDataEndpoint {
         }
     }
 }
+
+// --------------------------------
+
+// Serialize as string:
+impl serde::Serialize for DatasetDataEndpoint {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for DatasetDataEndpoint {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse::<Self>()
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
+    }
+}
+
+// --------------------------------

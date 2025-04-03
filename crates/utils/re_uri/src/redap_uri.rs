@@ -195,7 +195,7 @@ impl std::fmt::Display for crate::Origin {
 }
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
-#[derive(Debug, PartialEq, Eq, Clone, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum RedapUri {
     Catalog(CatalogEndpoint),
 
@@ -261,6 +261,31 @@ impl std::str::FromStr for RedapUri {
         }
     }
 }
+
+// --------------------------------
+
+// Serialize as string:
+impl serde::Serialize for RedapUri {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.to_string().serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for RedapUri {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse::<Self>()
+            .map_err(|err| serde::de::Error::custom(err.to_string()))
+    }
+}
+
+// --------------------------------
 
 #[cfg(test)]
 mod tests {
