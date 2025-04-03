@@ -1,4 +1,4 @@
-use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, Origin, ProxyEndpoint};
+use crate::{CatalogEndpoint, DatasetDataEndpoint, Error, Fragment, Origin, ProxyEndpoint};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -9,6 +9,16 @@ pub enum RedapUri {
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
     Proxy(ProxyEndpoint),
+}
+
+impl RedapUri {
+    /// Return the parsed `#fragment` of the URI, if any.
+    pub fn fragment(&self) -> Option<&Fragment> {
+        match self {
+            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
+        }
+    }
 }
 
 impl std::fmt::Display for RedapUri {
