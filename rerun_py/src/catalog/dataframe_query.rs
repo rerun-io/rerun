@@ -408,7 +408,7 @@ impl PyDataframeQueryView {
         query_expression.view_contents = Some(contents);
 
         let provider: Arc<dyn TableProvider> =
-            DataframeQueryTableProvider::new(query_engine, self_.query_expression.clone())
+            DataframeQueryTableProvider::new(query_engine, query_expression)
                 .try_into()
                 .map_err(to_py_err)?;
 
