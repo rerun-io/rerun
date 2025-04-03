@@ -327,5 +327,5 @@ message ComponentDescriptor {
 // Unique identifier of a task submitted in the redap
 // tasks subsystem
 message TaskId {
-	string  id = 1;
+  string id = 1;
 }

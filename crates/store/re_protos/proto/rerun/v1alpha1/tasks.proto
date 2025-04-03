@@ -60,4 +60,3 @@ message FetchOutputResponse {
   // The output of the task, encoded as a record batch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
-
