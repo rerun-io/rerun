@@ -177,7 +177,6 @@ impl ConnectionHandle {
         })
     }
 
-    // TODO(jleibs): Time range filtering
     pub fn get_chunks(
         &mut self,
         py: Python<'_>,
@@ -196,7 +195,6 @@ impl ConnectionHandle {
         store.set_info(store_info);
 
         let query = Query {
-            // TODO
             latest_at: latest_at.map(|latest_at| QueryLatestAt {
                 index: latest_at.timeline().to_string(),
                 at: latest_at.at().as_i64(),
