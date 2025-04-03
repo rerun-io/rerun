@@ -225,8 +225,6 @@ impl ListItemContent for LabelContent<'_> {
             }
         }
 
-        text = text.color(text_color);
-
         // Draw icon
         if let Some(icon_fn) = icon_fn {
             icon_fn(ui, icon_rect, visuals);
@@ -282,7 +280,7 @@ impl ListItemContent for LabelContent<'_> {
             .align_size_within_rect(galley.size(), text_rect)
             .min;
 
-        ui.painter().galley(text_pos, galley, visuals.text_color());
+        ui.painter().galley(text_pos, galley, text_color);
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
