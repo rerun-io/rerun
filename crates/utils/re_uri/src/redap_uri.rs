@@ -81,7 +81,7 @@ mod tests {
 
     use re_log_types::DataPath;
 
-    use crate::{Scheme, TimeRange};
+    use crate::{Fragment, Scheme, TimeRange};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -128,7 +128,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
-            data_path,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -143,7 +143,7 @@ mod tests {
         );
         assert_eq!(partition_id, "pid");
         assert_eq!(time_range, None);
-        assert_eq!(data_path, None);
+        assert_eq!(fragment, Default::default());
     }
 
     #[test]
@@ -157,7 +157,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
-            data_path,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -173,12 +173,14 @@ mod tests {
         assert_eq!(partition_id, "pid");
         assert_eq!(time_range, None);
         assert_eq!(
-            data_path,
-            Some(DataPath {
-                entity_path: "/some/entity".into(),
-                instance: Some(42.into()),
-                component_name: None,
-            })
+            fragment,
+            Fragment {
+                data_path: Some(DataPath {
+                    entity_path: "/some/entity".into(),
+                    instance: Some(42.into()),
+                    component_name: None,
+                })
+            }
         );
     }
 
@@ -192,7 +194,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
-            data_path,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -216,7 +218,7 @@ mod tests {
                 )
             })
         );
-        assert_eq!(data_path, None);
+        assert_eq!(fragment, Default::default());
     }
 
     #[test]
@@ -229,7 +231,7 @@ mod tests {
             dataset_id,
             partition_id,
             time_range,
-            data_path,
+            fragment,
         }) = address
         else {
             panic!("Expected recording");
@@ -257,7 +259,7 @@ mod tests {
                 )
             })
         );
-        assert_eq!(data_path, None);
+        assert_eq!(fragment, Default::default());
     }
 
     #[test]
@@ -273,7 +275,7 @@ mod tests {
                 dataset_id,
                 partition_id,
                 time_range,
-                data_path,
+                fragment,
             }) = address
             else {
                 panic!("Expected recording");
@@ -297,7 +299,7 @@ mod tests {
                     )
                 })
             );
-            assert_eq!(data_path, None);
+            assert_eq!(fragment, Default::default());
         }
     }
 

@@ -1,6 +1,4 @@
-use re_log_types::DataPath;
-
-use crate::{Error, Origin, RedapUri, TimeRange};
+use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
 
 //TODO(ab): add `DatasetTableEndpoint`, the URI pointing at the "table view" of the dataset (aka. its partition table).
 
@@ -22,7 +20,7 @@ pub struct DatasetDataEndpoint {
     pub time_range: Option<TimeRange>,
 
     // Fragment parameters: these affect what the viewer focuses on:
-    pub data_path: Option<DataPath>,
+    pub fragment: Fragment,
 }
 
 impl std::fmt::Display for DatasetDataEndpoint {
@@ -32,7 +30,7 @@ impl std::fmt::Display for DatasetDataEndpoint {
             dataset_id,
             partition_id,
             time_range,
-            data_path,
+            fragment,
         } = self;
 
         write!(f, "{origin}/dataset/{dataset_id}")?;
@@ -46,9 +44,9 @@ impl std::fmt::Display for DatasetDataEndpoint {
         }
 
         // #fragment:
-
-        if let Some(data_path) = data_path {
-            write!(f, "#{data_path}")?;
+        let fragment = fragment.to_string();
+        if !fragment.is_empty() {
+            write!(f, "#{fragment}")?;
         }
 
         Ok(())
@@ -78,18 +76,9 @@ impl DatasetDataEndpoint {
             return Err(Error::MissingPartitionId);
         };
 
-        let mut data_path = None;
-        if let Some(fragment) = url.fragment() {
-            match fragment.parse::<DataPath>() {
-                Ok(path) => {
-                    data_path = Some(path);
-                }
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Failed to parse URL fragment '#{fragment}`: {err} (expected a data path)"
-                    );
-                }
-            };
+        let mut fragment = Fragment::default();
+        if let Some(string) = url.fragment() {
+            fragment = Fragment::parse_forgiving(string);
         }
 
         Ok(Self {
@@ -97,7 +86,7 @@ impl DatasetDataEndpoint {
             dataset_id,
             partition_id,
             time_range,
-            data_path,
+            fragment,
         })
     }
 
@@ -108,11 +97,11 @@ impl DatasetDataEndpoint {
             dataset_id: _,   // Mandatory
             partition_id: _, // Mandatory
             time_range,
-            data_path,
+            fragment,
         } = &mut self;
 
         *time_range = None;
-        *data_path = None;
+        *fragment = Default::default();
 
         self
     }
