@@ -4,7 +4,7 @@ use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyRuntimeError;
-use pyo3::{pyclass, pymethods, Py, PyAny, PyRef, PyResult};
+use pyo3::{pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -141,7 +141,8 @@ impl PyDataset {
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
-    ) -> PyDataframeQueryView {
+        py: Python<'_>,
+    ) -> PyResult<PyDataframeQueryView> {
         PyDataframeQueryView::new(
             self_,
             index,
@@ -149,6 +150,7 @@ impl PyDataset {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
+            py,
         )
     }
 

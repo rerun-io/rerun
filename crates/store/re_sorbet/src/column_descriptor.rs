@@ -8,6 +8,7 @@ use arrow::datatypes::{
 };
 
 use re_log_types::EntityPath;
+use re_types_core::ComponentName;
 
 use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor};
 
@@ -54,6 +55,14 @@ impl ColumnDescriptor {
         match self {
             Self::Time(_) => None,
             Self::Component(descr) => Some(&descr.entity_path),
+        }
+    }
+
+    #[inline]
+    pub fn component_name(&self) -> Option<&ComponentName> {
+        match self {
+            Self::Time(_) => None,
+            Self::Component(descr) => Some(&descr.component_name),
         }
     }
 

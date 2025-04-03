@@ -1,6 +1,7 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use arrow::datatypes::Schema;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
@@ -9,15 +10,14 @@ use pyo3::types::{PyCapsule, PyDict};
 use pyo3::{pyclass, pymethods, Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python};
 
 use re_chunk::ComponentName;
-use re_chunk_store::{
-    ChunkStoreHandle, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
-    TimeColumnSelector, ViewContentsSelector,
-};
-use re_dataframe::{QueryCache, QueryEngine, StorageEngine};
+use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
+use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{
     EntityPath, EntityPathFilter, ResolvedTimeRange, StoreId, StoreInfo, StoreKind, StoreSource,
 };
+use re_sdk::ComponentDescriptor;
+use re_sorbet::ColumnDescriptor;
 
 use crate::catalog::{to_py_err, PyDataset};
 use crate::dataframe::ComponentLike;
@@ -26,12 +26,6 @@ use crate::utils::get_tokio_runtime;
 #[pyclass(name = "DataframeQueryView")]
 pub struct PyDataframeQueryView {
     dataset: Py<PyDataset>,
-
-    /// Index to use (resolved last minute)
-    index: String,
-
-    /// Contents to use (resolved last minute)
-    contents: Py<PyAny>,
 
     query_expression: QueryExpression,
 
@@ -50,18 +44,32 @@ impl PyDataframeQueryView {
         include_semantically_empty_columns: bool,
         include_indicator_columns: bool,
         include_tombstone_columns: bool,
-    ) -> Self {
-        Self {
+        py: Python<'_>,
+    ) -> PyResult<Self> {
+        // We get the schema from the store since we need it to resolve our columns
+        // TODO(jleibs): This is way too slow -- maybe we cache it somewhere?
+        let schema = {
+            let dataset_py = dataset.borrow(py);
+            let entry = dataset_py.as_super();
+            let dataset_id = entry.details.id;
+            let mut connection = entry.client.borrow(py).connection().clone();
+
+            connection.get_dataset_schema(py, dataset_id)?
+        };
+
+        // TODO(jleibs): Check schema for the index name
+
+        let view_contents = extract_contents_expr(contents.bind(py), &schema)?;
+
+        Ok(Self {
             dataset,
-            index,
-            contents,
 
             query_expression: QueryExpression {
-                view_contents: None, // this is resolved and populated when we have a chunk store
+                view_contents: Some(view_contents),
                 include_semantically_empty_columns,
                 include_indicator_columns,
                 include_tombstone_columns,
-                filtered_index: None, // this is resolved and populated when we have a chunk store
+                filtered_index: Some(index.into()),
                 filtered_index_range: None,
                 filtered_index_values: None,
                 using_index_values: None,
@@ -70,7 +78,7 @@ impl PyDataframeQueryView {
                 selection: None,
             },
             partition_ids: vec![],
-        }
+        })
     }
 }
 
@@ -373,12 +381,6 @@ impl PyDataframeQueryView {
         let dataset_id = entry.details.id;
         let mut connection = entry.client.borrow(py).connection().clone();
 
-        //TODO: fetch all partition ids if none are specified
-
-        //
-        // Fetch relevant chunks
-        //
-
         let store_id = StoreId::from_string(StoreKind::Recording, "query_chunks".to_owned());
         let store_info = StoreInfo {
             application_id: "query_chunks".into(),
@@ -387,28 +389,34 @@ impl PyDataframeQueryView {
             store_source: StoreSource::Unknown,
             store_version: None,
         };
-        let chunk_store =
-            connection.get_chunks(py, store_info, dataset_id, self_.partition_ids.as_slice())?;
+
+        let entity_paths = self_
+            .query_expression
+            .view_contents
+            .as_ref()
+            .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
+
+        //
+        // Fetch relevant chunks
+        //
+
+        // TODO(jleibs): Time filters?
+        let chunk_store = connection.get_chunks(
+            py,
+            store_info,
+            dataset_id,
+            entity_paths.as_slice(),
+            self_.partition_ids.as_slice(),
+        )?;
+
         let store_handle = ChunkStoreHandle::new(chunk_store);
         let query_engine = QueryEngine::new(
             store_handle.clone(),
             QueryCache::new_handle(store_handle.clone()),
         );
 
-        //
-        // Resolve index and contents, and build final query.
-        //
-
-        let selector = TimeColumnSelector::from(self_.index.as_str());
-        let time_column = store_handle.read().resolve_time_selector(&selector);
-        let contents = extract_contents_expr(self_.contents.bind(py), &query_engine)?;
-
-        let mut query_expression = self_.query_expression.clone();
-        query_expression.filtered_index = Some(*time_column.timeline().name());
-        query_expression.view_contents = Some(contents);
-
         let provider: Arc<dyn TableProvider> =
-            DataframeQueryTableProvider::new(query_engine, query_expression)
+            DataframeQueryTableProvider::new(query_engine, self_.query_expression.clone())
                 .try_into()
                 .map_err(to_py_err)?;
 
@@ -431,8 +439,35 @@ impl PyDataframeQueryView {
 /// `QueryEngine` to resolve the entity paths.
 fn extract_contents_expr(
     expr: &Bound<'_, PyAny>,
-    engine: &QueryEngine<StorageEngine>,
+    schema: &Schema,
 ) -> PyResult<re_chunk_store::ViewContentsSelector> {
+    let descriptors = schema
+        .fields()
+        .iter()
+        .map(|field| ColumnDescriptor::try_from_arrow_field(None, field.as_ref()))
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
+
+    let component_descriptors = descriptors
+        .iter()
+        .filter_map(|descriptor| match descriptor {
+            ColumnDescriptor::Component(component) => Some(component),
+            _ => None,
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let mut known_components = BTreeMap::<EntityPath, BTreeSet<ComponentDescriptor>>::new();
+
+    for component in &component_descriptors {
+        // We need to resolve the component name to the best one in the schema
+        // (e.g. "color" -> "rerun.color")
+        known_components
+            .entry(component.entity_path.clone())
+            .or_default()
+            .insert(component.into());
+    }
+
     if let Ok(expr) = expr.extract::<String>() {
         // `str`
 
@@ -442,11 +477,14 @@ fn extract_contents_expr(
                         PyValueError::new_err(format!(
                             "Could not interpret `contents` as a ViewContentsLike. Failed to parse {expr}: {err}.",
                         ))
-                    })?;
+                    })?.resolve_without_substitutions();
 
-        let contents = engine
-            .iter_entity_paths_sorted(&path_filter)
-            .map(|p| (p, None))
+        // Iterate every entity path in the schema
+
+        let contents = known_components
+            .keys()
+            .filter(|p| path_filter.matches(p))
+            .map(|p| (p.clone(), None))
             .collect();
 
         Ok(contents)
@@ -466,7 +504,7 @@ fn extract_contents_expr(
                     PyValueError::new_err(format!(
                         "Could not interpret `contents` as a ViewContentsLike. Failed to parse {key}: {err}.",
                     ))
-                })?;
+                })?.resolve_without_substitutions();
 
             let component_strs: BTreeSet<String> = if let Ok(component) =
                 value.extract::<ComponentLike>()
@@ -480,20 +518,21 @@ fn extract_contents_expr(
                     ));
             };
 
-            contents.append(
-                &mut engine
-                    .iter_entity_paths_sorted(&path_filter)
-                    .map(|entity_path| {
-                        let components = component_strs
-                            .iter()
-                            .map(|component_name| {
-                                find_best_component(engine, &entity_path, component_name)
-                            })
-                            .collect();
-                        (entity_path, Some(components))
-                    })
-                    .collect(),
-            );
+            let mut key_contents = known_components
+                .keys()
+                .filter(|p| path_filter.matches(p))
+                .map(|entity_path| {
+                    let components: BTreeSet<ComponentName> = component_strs
+                        .iter()
+                        .map(|component_name| {
+                            find_best_component(&known_components, &entity_path, component_name)
+                        })
+                        .collect();
+                    (entity_path.clone(), Some(components))
+                })
+                .collect();
+
+            contents.append(&mut key_contents);
         }
 
         Ok(contents)
@@ -505,19 +544,17 @@ fn extract_contents_expr(
 }
 
 fn find_best_component(
-    engine: &QueryEngine<StorageEngine>,
+    mapping: &BTreeMap<EntityPath, BTreeSet<ComponentDescriptor>>,
     entity_path: &EntityPath,
     component_name: &str,
 ) -> ComponentName {
-    let selector = ComponentColumnSelector {
-        entity_path: entity_path.clone(),
-        component_name: component_name.into(),
-    };
-
-    engine
-        .engine
-        .read()
-        .store()
-        .resolve_component_selector(&selector)
-        .component_name
+    mapping
+        .get(entity_path)
+        .and_then(|components| {
+            components
+                .iter()
+                .find(|component| component.component_name.matches(component_name))
+        })
+        .map(|component| component.component_name.clone())
+        .unwrap_or_else(|| ComponentName::new(component_name))
 }
