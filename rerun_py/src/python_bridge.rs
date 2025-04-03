@@ -1490,7 +1490,7 @@ fn send_recording_start_time_nanos(
 
 // --- Helpers ---
 
-pub(crate) fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
+pub fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     let py_version = py.version_info();
     re_log_types::PythonVersion {
         major: py_version.major,
