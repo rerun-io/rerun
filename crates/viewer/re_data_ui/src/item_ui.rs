@@ -778,29 +778,21 @@ pub fn entity_db_button_ui(
         re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
     };
 
-    let mut item_content = list_item::LabelContent::new(title).with_icon_fn(|ui, rect, visuals| {
-        // Color icon based on whether this is the active recording or not:
-        let color = if ctx.store_context.is_active(&store_id) {
-            visuals.fg_stroke.color
-        } else {
-            ui.visuals().widgets.noninteractive.fg_stroke.color
-        };
-        icon.as_image().tint(color).paint_at(ui, rect);
-    });
+    let mut item_content = list_item::LabelContent::new(title).with_icon(icon);
 
     if ui_layout.is_selection_panel() {
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
-            let resp = ui
-                .small_icon_button(&icons::REMOVE)
-                .on_hover_text(match store_id.kind {
-                    re_log_types::StoreKind::Recording => {
-                        "Close this recording (unsaved data will be lost)"
-                    }
-                    re_log_types::StoreKind::Blueprint => {
-                        "Close this blueprint (unsaved data will be lost)"
-                    }
-                });
+            let resp =
+                ui.small_icon_button(&icons::CLOSE_SMALL)
+                    .on_hover_text(match store_id.kind {
+                        re_log_types::StoreKind::Recording => {
+                            "Close this recording (unsaved data will be lost)"
+                        }
+                        re_log_types::StoreKind::Blueprint => {
+                            "Close this blueprint (unsaved data will be lost)"
+                        }
+                    });
             if resp.clicked() {
                 ctx.command_sender()
                     .send_system(SystemCommand::CloseEntry(store_id.clone().into()));
@@ -811,6 +803,7 @@ pub fn entity_db_button_ui(
 
     let mut list_item = ui
         .list_item()
+        .active(ctx.store_context.is_active(&store_id))
         .selected(ctx.selection().contains_item(&item));
 
     if ctx.hovered().contains_item(&item) {
@@ -861,24 +854,14 @@ pub fn table_id_button_ui(
 ) {
     let item = re_viewer_context::Item::TableId(table_id.clone());
 
-    let icon = &icons::VIEW_DATAFRAME;
-
     let mut item_content =
-        list_item::LabelContent::new(table_id.as_str()).with_icon_fn(|ui, rect, visuals| {
-            // Color icon based on whether this is the active table or not:
-            let color = if ctx.active_table.as_ref() == Some(table_id) {
-                visuals.fg_stroke.color
-            } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
-            };
-            icon.as_image().tint(color).paint_at(ui, rect);
-        });
+        list_item::LabelContent::new(table_id.as_str()).with_icon(&icons::VIEW_DATAFRAME);
 
     if ui_layout.is_selection_panel() {
         item_content = item_content.with_buttons(|ui| {
             // Close-button:
             let resp = ui
-                .small_icon_button(&icons::REMOVE)
+                .small_icon_button(&icons::CLOSE_SMALL)
                 .on_hover_text("Close this table (all data will be lost)");
             if resp.clicked() {
                 ctx.command_sender()
@@ -890,7 +873,8 @@ pub fn table_id_button_ui(
 
     let mut list_item = ui
         .list_item()
-        .selected(ctx.selection().contains_item(&item));
+        .selected(ctx.selection().contains_item(&item))
+        .active(ctx.active_table.as_ref() == Some(table_id));
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);

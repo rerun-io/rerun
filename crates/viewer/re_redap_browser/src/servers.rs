@@ -41,8 +41,8 @@ impl Server {
         ui: &mut egui::Ui,
         recordings: Option<DatasetRecordings<'_>>,
     ) {
-        let content = list_item::LabelContent::header(self.origin.host.to_string())
-            .with_buttons(|ui| {
+        let content =
+            list_item::LabelContent::header(self.origin.host.to_string()).with_buttons(|ui| {
                 let response = ui
                     .small_icon_button(&re_ui::icons::REMOVE)
                     .on_hover_text("Remove server");
@@ -54,21 +54,17 @@ impl Server {
                 }
 
                 response
-            })
-            .always_show_buttons(true);
+            });
 
-        ui.list_item()
-            .interactive(false)
-            .header()
-            .show_hierarchical_with_children(
-                ui,
-                egui::Id::new(&self.origin).with("server_item"),
-                true,
-                content,
-                |ui| {
-                    self.entries.panel_ui(viewer_context, ctx, ui, recordings);
-                },
-            );
+        ui.list_item().header().show_hierarchical_with_children(
+            ui,
+            egui::Id::new(&self.origin).with("server_item"),
+            true,
+            content,
+            |ui| {
+                self.entries.panel_ui(viewer_context, ctx, ui, recordings);
+            },
+        );
     }
 }
 

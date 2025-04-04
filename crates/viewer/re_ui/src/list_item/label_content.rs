@@ -1,6 +1,6 @@
 use egui::{text::TextWrapping, Align, Align2, NumExt as _, RichText, Ui};
 
-use super::{ContentContext, DesiredWidth, ListItemContent};
+use super::{ContentContext, DesiredWidth, ListItemContent, ListVisuals};
 use crate::{DesignTokens, Icon, LabelStyle};
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
@@ -14,7 +14,7 @@ pub struct LabelContent<'a> {
     italics: bool,
 
     label_style: LabelStyle,
-    icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
+    icon_fn: Option<Box<dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&mut egui::Ui) -> egui::Response + 'a>>,
     always_show_buttons: bool,
 
@@ -118,8 +118,7 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|ui, rect, visuals| {
-            let tint = visuals.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, rect);
+            icon.as_image().tint(visuals.icon_tint()).paint_at(ui, rect);
         })
     }
 
@@ -127,7 +126,7 @@ impl<'a> LabelContent<'a> {
     #[inline]
     pub fn with_icon_fn(
         mut self,
-        icon_fn: impl FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+        icon_fn: impl FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a,
     ) -> Self {
         self.icon_fn = Some(Box::new(icon_fn));
         self
@@ -137,6 +136,8 @@ impl<'a> LabelContent<'a> {
     ///
     /// Buttons also show when the item is selected, in order to support clicking them on touch
     /// screens. The buttons can be set to be always shown with [`Self::always_show_buttons`].
+    ///
+    /// If there are multiple buttons, the response returned should be the union of both buttons.
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
@@ -207,22 +208,14 @@ impl ListItemContent for LabelContent<'_> {
             text = text.italics();
         }
 
-        let mut visuals = ui
-            .style()
-            .interact_selectable(context.response, context.list_item.selected);
+        let visuals = context.visuals;
 
-        // TODO(ab): use design tokens instead
+        let mut text_color = visuals.text_color();
+
         if weak {
-            visuals.fg_stroke.color = ui.visuals().weak_text_color();
+            text_color = ui.style().visuals.gray_out(text_color);
         } else if subdued {
-            visuals.fg_stroke.color = visuals.fg_stroke.color.gamma_multiply(0.5);
-        }
-
-        match label_style {
-            LabelStyle::Normal => {}
-            LabelStyle::Unnamed => {
-                text = text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
-            }
+            text_color = text_color.gamma_multiply(0.5);
         }
 
         // Draw icon
@@ -280,7 +273,7 @@ impl ListItemContent for LabelContent<'_> {
             .align_size_within_rect(galley.size(), text_rect)
             .min;
 
-        ui.painter().galley(text_pos, galley, visuals.text_color());
+        ui.painter().galley(text_pos, galley, text_color);
     }
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {

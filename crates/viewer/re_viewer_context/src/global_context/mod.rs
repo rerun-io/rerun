@@ -50,6 +50,8 @@ pub struct GlobalContext<'a> {
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
+
+    pub display_mode: &'a DisplayMode,
 }
 
 /// Which display mode are we currently in?

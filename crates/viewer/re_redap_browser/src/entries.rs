@@ -253,29 +253,11 @@ impl EntryKind {
 
     fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
         match self {
-            Self::Remote {
-                origin,
-                entry_id: dataset,
-                ..
-            } => ctx
-                .store_context
-                .recording
-                .data_source
-                .as_ref()
-                .is_some_and(|source| match source {
-                    SmartChannelSource::RedapGrpcStream(endpoint) => {
-                        &endpoint.origin == origin && endpoint.dataset_id == dataset.id
-                    }
-
-                    SmartChannelSource::File(_)
-                    | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RrdWebEventListener
-                    | SmartChannelSource::JsChannel { .. }
-                    | SmartChannelSource::Sdk
-                    | SmartChannelSource::Stdin
-                    | SmartChannelSource::MessageProxy { .. } => false,
-                }),
-            Self::Local(app_id) => &ctx.store_context.app_id == app_id,
+            Self::Remote { entry_id, .. } => {
+                matches!(ctx.global_context.display_mode, DisplayMode::RedapEntry(id) if id == entry_id)
+            }
+            // TODO(lucasmerlin): Update this when local datasets have a view like remote datasets
+            Self::Local(_) => false,
         }
     }
 
@@ -309,33 +291,30 @@ pub fn dataset_and_its_recordings_ui(
     let item = kind.item();
     let selected = ctx.selection().contains_item(&item);
 
-    let dataset_list_item = ui.list_item().selected(selected);
-    let dataset_list_item_content =
-        re_ui::list_item::LabelContent::new(kind.name()).with_icon_fn(|ui, rect, visuals| {
-            // Color icon based on whether this is the active dataset or not:
-            let color = if kind.is_active(ctx) {
-                visuals.fg_stroke.color
-            } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
-            };
-            icons::DATASET.as_image().tint(color).paint_at(ui, rect);
-        });
+    let dataset_list_item = ui
+        .list_item()
+        .selected(selected)
+        .active(kind.is_active(ctx));
+    let mut dataset_list_item_content =
+        re_ui::list_item::LabelContent::new(kind.name()).with_icon(&icons::DATASET);
 
     let id = ui.make_persistent_id(kind);
-    let app_list_item_content = dataset_list_item_content.with_buttons(|ui| {
-        // Close-button:
-        let resp = ui
-            .small_icon_button(&icons::REMOVE)
-            .on_hover_text("Close this dataset and all its recordings. This cannot be undone.");
-        if resp.clicked() {
-            kind.close(ctx, &entity_dbs);
-        }
-        resp
-    });
+    if !entity_dbs.is_empty() {
+        dataset_list_item_content = dataset_list_item_content.with_buttons(|ui| {
+            // Close-button:
+            let resp = ui
+                .small_icon_button(&icons::CLOSE_SMALL)
+                .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
+            if resp.clicked() {
+                kind.close(ctx, &entity_dbs);
+            }
+            resp
+        });
+    }
 
     let mut item_response = if !entity_dbs.is_empty() {
         dataset_list_item
-            .show_hierarchical_with_children(ui, id, true, app_list_item_content, |ui| {
+            .show_hierarchical_with_children(ui, id, true, dataset_list_item_content, |ui| {
                 for entity_db in &entity_dbs {
                     let include_app_id = false; // we already show it in the parent
                     entity_db_button_ui(
@@ -349,7 +328,7 @@ pub fn dataset_and_its_recordings_ui(
             })
             .item_response
     } else {
-        dataset_list_item.show_flat(ui, app_list_item_content)
+        dataset_list_item.show_flat(ui, dataset_list_item_content)
     };
 
     if let EntryKind::Local(app) = &kind {

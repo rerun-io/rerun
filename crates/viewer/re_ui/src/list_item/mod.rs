@@ -44,6 +44,9 @@ pub struct ContentContext<'a> {
 
     /// Layout information to use for rendering.
     pub layout_info: LayoutInfo,
+
+    /// The colors to use for rendering.
+    pub visuals: ListVisuals,
 }
 
 #[derive(Debug, Clone, Copy)]
