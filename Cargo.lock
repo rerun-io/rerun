@@ -7504,6 +7504,7 @@ name = "re_sdk"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "const_format",
  "crossbeam",
  "document-features",
@@ -7531,6 +7532,7 @@ dependencies = [
  "similar-asserts",
  "thiserror 1.0.65",
  "tokio",
+ "url",
  "webbrowser",
 ]
 
