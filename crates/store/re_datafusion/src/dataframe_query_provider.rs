@@ -132,15 +132,12 @@ pub fn align_record_batch_to_schema(
     let mut aligned_columns = Vec::with_capacity(target_schema.fields().len());
 
     for field in target_schema.fields() {
-        match batch.schema().column_with_name(field.name()) {
-            Some((idx, _)) => {
-                aligned_columns.push(batch.column(idx).clone());
-            }
-            None => {
-                // Fill with nulls of the right data type
-                let array = new_null_array(field.data_type(), num_rows);
-                aligned_columns.push(array);
-            }
+        if let Some((idx, _)) = batch.schema().column_with_name(field.name()) {
+            aligned_columns.push(batch.column(idx).clone());
+        } else {
+            // Fill with nulls of the right data type
+            let array = new_null_array(field.data_type(), num_rows);
+            aligned_columns.push(array);
         }
     }
 
