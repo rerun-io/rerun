@@ -218,7 +218,7 @@ class Viewer:
     def _add_table_id(self, record_batch: RecordBatch, table_id: str):
         # Get current schema
         schema = record_batch.schema
-        schema.with_metadata({"__table_id": table_id})
+        schema = schema.with_metadata({b"__table_id": table_id})
 
         # Create new record batch with updated schema
         return pyarrow.RecordBatch.from_arrays(record_batch.columns, schema=schema)
@@ -229,7 +229,6 @@ class Viewer:
         table: RecordBatch,
     ) -> None:
         new_table = self._add_table_id(table, id)
-        print(new_table)
         sink = pyarrow.BufferOutputStream()
         writer = ipc.new_stream(sink, new_table.schema)
         writer.write_batch(new_table)
