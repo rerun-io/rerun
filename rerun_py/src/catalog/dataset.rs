@@ -68,7 +68,12 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable { provider })
+        #[expect(clippy::string_add)]
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name: super_.name() + "_partition_table",
+            provider,
+        })
     }
 
     /// Register a RRD URI to the dataset.
@@ -323,7 +328,14 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable { provider })
+        let uuid = uuid::Uuid::new_v4();
+        let name = format!("{}_search_fts_{uuid}", super_.name());
+
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name,
+            provider,
+        })
     }
 
     fn search_vector(
@@ -368,6 +380,13 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable { provider })
+        let uuid = uuid::Uuid::new_v4();
+        let name = format!("{}_search_vector_{uuid}", super_.name());
+
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name,
+            provider,
+        })
     }
 }

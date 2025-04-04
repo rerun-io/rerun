@@ -35,7 +35,7 @@ use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
-use crate::utils::get_tokio_runtime;
+use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -1471,9 +1471,10 @@ pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
 }
 
 #[pyclass(frozen, name = "DataFusionTable")]
-#[derive(Clone)]
 pub struct PyDataFusionTable {
     pub provider: Arc<dyn TableProvider + Send>,
+    pub name: String,
+    pub client: Py<PyCatalogClient>,
 }
 
 #[pymethods]
@@ -1488,5 +1489,32 @@ impl PyDataFusionTable {
         let provider = FFI_TableProvider::new(Arc::clone(&self.provider), false, Some(runtime));
 
         PyCapsule::new(py, provider, Some(capsule_name))
+    }
+
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+
+        let client = self_.client.borrow(py);
+
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+
+        drop(client);
+
+        let name = self_.name.clone();
+
+        // We're fine with this failing.
+        ctx.call_method1("deregister_table", (name.clone(),))?;
+
+        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
+
+        let df = ctx.call_method1("table", (name.clone(),))?;
+
+        Ok(df)
+    }
+
+    #[getter]
+    fn name(&self) -> String {
+        self.name.clone()
     }
 }
