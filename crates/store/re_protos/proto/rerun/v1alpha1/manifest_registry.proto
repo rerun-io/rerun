@@ -10,6 +10,8 @@ service ManifestRegistryService {
   // Register new partitions with the Dataset
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
+  rpc RegisterWithDatasetAsync(RegisterWithDatasetAsyncRequest) returns (RegisterWithDatasetAsyncResponse) {}
+
   // Unimplemented.
   rpc WriteChunks(stream WriteChunksRequest) returns (stream WriteChunksResponse) {}
 
@@ -134,6 +136,16 @@ message RegisterWithDatasetRequest {
 
 message RegisterWithDatasetResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message RegisterWithDatasetAsyncRequest {
+  // today this just wraps the sync request. This at least avoids
+  // repetition and the two messages going out of sync.
+  RegisterWithDatasetRequest request = 1;
+}
+
+message RegisterWithDatasetAsyncResponse {
+  rerun.common.v1alpha1.TaskId id = 1;
 }
 
 message WriteChunksRequest {

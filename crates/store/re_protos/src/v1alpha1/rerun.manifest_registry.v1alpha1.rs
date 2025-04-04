@@ -56,6 +56,38 @@ impl ::prost::Name for RegisterWithDatasetResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterWithDatasetAsyncRequest {
+    /// today this just wraps the sync request. This at least avoids
+    /// repetition and the two messages going out of sync.
+    #[prost(message, optional, tag = "1")]
+    pub request: ::core::option::Option<RegisterWithDatasetRequest>,
+}
+impl ::prost::Name for RegisterWithDatasetAsyncRequest {
+    const NAME: &'static str = "RegisterWithDatasetAsyncRequest";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.RegisterWithDatasetAsyncRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetAsyncRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterWithDatasetAsyncResponse {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
+}
+impl ::prost::Name for RegisterWithDatasetAsyncResponse {
+    const NAME: &'static str = "RegisterWithDatasetAsyncResponse";
+    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.manifest_registry.v1alpha1.RegisterWithDatasetAsyncResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.manifest_registry.v1alpha1.RegisterWithDatasetAsyncResponse".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteChunksRequest {
     #[prost(message, optional, tag = "1")]
     pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
@@ -1067,6 +1099,27 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn register_with_dataset_async(
+            &mut self,
+            request: impl tonic::IntoRequest<super::RegisterWithDatasetAsyncRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RegisterWithDatasetAsyncResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetAsync",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
+                "RegisterWithDatasetAsync",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Unimplemented.
         pub async fn write_chunks(
             &mut self,
@@ -1418,6 +1471,13 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::RegisterWithDatasetRequest>,
         ) -> std::result::Result<tonic::Response<super::RegisterWithDatasetResponse>, tonic::Status>;
+        async fn register_with_dataset_async(
+            &self,
+            request: tonic::Request<super::RegisterWithDatasetAsyncRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::RegisterWithDatasetAsyncResponse>,
+            tonic::Status,
+        >;
         /// Server streaming response type for the WriteChunks method.
         type WriteChunksStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::WriteChunksResponse, tonic::Status>,
@@ -1691,6 +1751,59 @@ pub mod manifest_registry_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = RegisterWithDatasetSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetAsync" => {
+                    #[allow(non_camel_case_types)]
+                    struct RegisterWithDatasetAsyncSvc<T: ManifestRegistryService>(
+                        pub Arc<T>,
+                    );
+                    impl<
+                        T: ManifestRegistryService,
+                    > tonic::server::UnaryService<super::RegisterWithDatasetAsyncRequest>
+                    for RegisterWithDatasetAsyncSvc<T> {
+                        type Response = super::RegisterWithDatasetAsyncResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::RegisterWithDatasetAsyncRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as ManifestRegistryService>::register_with_dataset_async(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = RegisterWithDatasetAsyncSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
