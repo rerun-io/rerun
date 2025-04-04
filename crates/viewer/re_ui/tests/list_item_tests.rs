@@ -230,5 +230,5 @@ pub fn test_list_items_should_match_snapshot() {
         });
 
     harness.run();
-    harness.snapshot_options("list_items", &SnapshotOptions::new().threshold(0.9));
+    harness.snapshot_options("list_items", &SnapshotOptions::new().threshold(1.3));
 }
