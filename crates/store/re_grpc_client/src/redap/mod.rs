@@ -170,7 +170,8 @@ pub fn fetch_partition_response_to_chunk(
 
 /// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
 //TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-//TODO(ab): ideally chunks should contain a partition id directly.
+//TODO(#9497): This is a hack to extract the partition id from the record batch before they are lost to
+//the `Chunk` conversion. The chunks should instead include that information.
 pub fn get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
 ) -> impl Stream<Item = Result<(Chunk, Option<String>), StreamError>> {
