@@ -332,8 +332,8 @@ impl StoreHub {
     }
 
     /// Inserts a new table into the store (potentially overwriting an existing entry).
-    pub fn insert_table_store(&mut self, table_id: TableId, store: TableStore) {
-        self.table_stores.insert(table_id, store);
+    pub fn insert_table_store(&mut self, id: TableId, store: TableStore) {
+        self.table_stores.insert(id, store);
     }
 
     fn remove_store(&mut self, store_id: &StoreId) {
