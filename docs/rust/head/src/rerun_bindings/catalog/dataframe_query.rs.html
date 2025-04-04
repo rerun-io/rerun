@@ -573,12 +573,7 @@
 <a href="#572" id="572">572</a>
 <a href="#573" id="573">573</a>
 <a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<a href="#575" id="575">575</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>arrow::datatypes::Schema;
@@ -593,9 +588,7 @@
 <span class="kw">use </span>re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
 <span class="kw">use </span>re_dataframe::{QueryCache, QueryEngine};
 <span class="kw">use </span>re_datafusion::DataframeQueryTableProvider;
-<span class="kw">use </span>re_log_types::{
-    EntityPath, EntityPathFilter, ResolvedTimeRange, StoreId, StoreInfo, StoreKind, StoreSource,
-};
+<span class="kw">use </span>re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 <span class="kw">use </span>re_sdk::ComponentDescriptor;
 <span class="kw">use </span>re_sorbet::ColumnDescriptor;
 
@@ -961,22 +954,12 @@
         <span class="kw">let </span>dataset_id = entry.details.id;
         <span class="kw">let </span><span class="kw-2">mut </span>connection = entry.client.borrow(py).connection().clone();
 
-        <span class="kw">let </span>store_id = StoreId::from_string(StoreKind::Recording, <span class="string">"query_chunks"</span>.to_owned());
-        <span class="kw">let </span>store_info = StoreInfo {
-            application_id: <span class="string">"query_chunks"</span>.into(),
-            store_id,
-            cloned_from: <span class="prelude-val">None</span>,
-            store_source: StoreSource::Unknown,
-            store_version: <span class="prelude-val">None</span>,
-        };
-
         <span class="comment">//
         // Fetch relevant chunks
         //
 
-        </span><span class="kw">let </span>chunk_store = connection.get_chunks(
+        </span><span class="kw">let </span>chunk_stores = connection.get_chunks_for_dataframe_query(
             py,
-            store_info,
             dataset_id,
             <span class="kw-2">&amp;</span>self_.query_expression.view_contents,
             self_.query_expression.min_latest_at(),
@@ -984,14 +967,21 @@
             self_.partition_ids.as_slice(),
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>store_handle = ChunkStoreHandle::new(chunk_store);
-        <span class="kw">let </span>query_engine = QueryEngine::new(
-            store_handle.clone(),
-            QueryCache::new_handle(store_handle.clone()),
-        );
+        <span class="kw">let </span>query_engines = chunk_stores
+            .into_iter()
+            .map(|(partition_id, chunk_store)| {
+                <span class="kw">let </span>store_handle = ChunkStoreHandle::new(chunk_store);
+                <span class="kw">let </span>query_engine = QueryEngine::new(
+                    store_handle.clone(),
+                    QueryCache::new_handle(store_handle.clone()),
+                );
+
+                (partition_id, query_engine)
+            })
+            .collect();
 
         <span class="kw">let </span>provider: Arc&lt;<span class="kw">dyn </span>TableProvider&gt; =
-            DataframeQueryTableProvider::new(query_engine, self_.query_expression.clone())
+            DataframeQueryTableProvider::new(query_engines, self_.query_expression.clone())
                 .try_into()
                 .map_err(to_py_err)<span class="question-mark">?</span>;
 

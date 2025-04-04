@@ -266,7 +266,12 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a></pre></div><pre class="rust"><code><span class="kw">use </span>tokio_stream::{Stream, StreamExt <span class="kw">as _</span>};
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a></pre></div><pre class="rust"><code><span class="kw">use </span>tokio_stream::{Stream, StreamExt <span class="kw">as _</span>};
 
 <span class="kw">use </span>re_chunk::Chunk;
 <span class="kw">use </span>re_log_encoding::codec::wire::decoder::Decode <span class="kw">as _</span>;
@@ -438,14 +443,19 @@
 
 <span class="doccomment">/// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
 </span><span class="comment">//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-</span><span class="kw">pub fn </span>get_chunks_response_to_chunk(
+//TODO(#9497): This is a hack to extract the partition id from the record batch before they are lost to
+//the `Chunk` conversion. The chunks should instead include that information.
+</span><span class="kw">pub fn </span>get_chunks_response_to_chunk_and_partition_id(
     response: tonic::Streaming&lt;re_protos::manifest_registry::v1alpha1::GetChunksResponse&gt;,
-) -&gt; <span class="kw">impl </span>Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;Chunk, StreamError&gt;&gt; {
+) -&gt; <span class="kw">impl </span>Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;(Chunk, <span class="prelude-ty">Option</span>&lt;String&gt;), StreamError&gt;&gt; {
     response.map(|resp| {
         resp.map_err(Into::into).and_then(|r| {
             <span class="kw">let </span>batch = r.chunk.ok_or(StreamError::MissingChunkData)<span class="question-mark">?</span>.decode()<span class="question-mark">?</span>;
 
-            Chunk::from_record_batch(<span class="kw-2">&amp;</span>batch).map_err(Into::into)
+            <span class="kw">let </span>partition_id = batch.schema().metadata().get(<span class="string">"rerun.partition_id"</span>).cloned();
+            <span class="kw">let </span>chunk = Chunk::from_record_batch(<span class="kw-2">&amp;</span>batch).map_err(Into::&lt;StreamError&gt;::into)<span class="question-mark">?</span>;
+
+            <span class="prelude-val">Ok</span>((chunk, partition_id))
         })
     })
 }

@@ -274,8 +274,33 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+
+<span class="kw">use </span>ahash::HashMap;
 <span class="kw">use </span>arrow::datatypes::Schema <span class="kw">as </span>ArrowSchema;
+<span class="kw">use </span>pyo3::exceptions::PyValueError;
 <span class="kw">use </span>pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
@@ -286,8 +311,8 @@
 <span class="kw">use </span>re_chunk::{LatestAtQuery, RangeQuery};
 <span class="kw">use </span>re_chunk_store::ChunkStore;
 <span class="kw">use </span>re_dataframe::ViewContentsSelector;
-<span class="kw">use </span>re_grpc_client::redap::{client, get_chunks_response_to_chunk};
-<span class="kw">use </span>re_log_types::{EntryId, StoreInfo};
+<span class="kw">use </span>re_grpc_client::redap::{client, get_chunks_response_to_chunk_and_partition_id};
+<span class="kw">use </span>re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 <span class="kw">use </span>re_protos::common::v1alpha1::IfDuplicateBehavior;
 <span class="kw">use </span>re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 <span class="kw">use </span>re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
@@ -476,22 +501,18 @@
     }
 
     <span class="attr">#[allow(clippy::too_many_arguments)]
-    </span><span class="kw">pub fn </span>get_chunks(
+    </span><span class="kw">pub fn </span>get_chunks_for_dataframe_query(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         py: Python&lt;<span class="lifetime">'_</span>&gt;,
-        store_info: StoreInfo,
         dataset_id: EntryId,
         contents: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;ViewContentsSelector&gt;,
         latest_at: <span class="prelude-ty">Option</span>&lt;LatestAtQuery&gt;,
         range: <span class="prelude-ty">Option</span>&lt;RangeQuery&gt;,
         partition_ids: <span class="kw-2">&amp;</span>[<span class="kw">impl </span>AsRef&lt;str&gt; + Sync],
-    ) -&gt; PyResult&lt;ChunkStore&gt; {
+    ) -&gt; PyResult&lt;BTreeMap&lt;String, ChunkStore&gt;&gt; {
         <span class="kw">let </span>entity_paths = contents
             .as_ref()
             .map_or(<span class="macro">vec!</span>[], |contents| contents.keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;());
-
-        <span class="kw">let </span><span class="kw-2">mut </span>store = ChunkStore::new(store_info.store_id.clone(), Default::default());
-        store.set_info(store_info);
 
         <span class="kw">let </span>query = Query {
             latest_at: latest_at.map(|latest_at| QueryLatestAt {
@@ -515,6 +536,8 @@
             columns_always_include_component_indexes: <span class="bool-val">false</span>,
         };
 
+        <span class="kw">let </span><span class="kw-2">mut </span>stores = BTreeMap::default();
+
         wait_for_future(py, <span class="kw">async </span>{
             <span class="kw">let </span>get_chunks_response_stream = <span class="self">self
                 </span>.client
@@ -535,10 +558,31 @@
                 </span>.map_err(to_py_err)<span class="question-mark">?
                 </span>.into_inner();
 
-            <span class="kw">let </span><span class="kw-2">mut </span>chunk_stream = get_chunks_response_to_chunk(get_chunks_response_stream);
+            <span class="kw">let </span><span class="kw-2">mut </span>chunk_stream =
+                get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
 
-            <span class="kw">while let </span><span class="prelude-val">Some</span>(chunk) = chunk_stream.next().<span class="kw">await </span>{
-                <span class="kw">let </span>chunk = chunk.map_err(to_py_err)<span class="question-mark">?</span>;
+            <span class="kw">while let </span><span class="prelude-val">Some</span>(chunk_and_partition_id) = chunk_stream.next().<span class="kw">await </span>{
+                <span class="kw">let </span>(chunk, partition_id) = chunk_and_partition_id.map_err(to_py_err)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>partition_id = partition_id.ok_or_else(|| {
+                    PyValueError::new_err(<span class="string">"Received chunk without a partition id"</span>)
+                })<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>store = stores.entry(partition_id.clone()).or_insert_with(|| {
+                    <span class="kw">let </span>store_info = StoreInfo {
+                        application_id: ApplicationId::from(partition_id),
+                        store_id: StoreId::random(StoreKind::Recording),
+                        cloned_from: <span class="prelude-val">None</span>,
+                        store_source: StoreSource::Unknown,
+                        store_version: <span class="prelude-val">None</span>,
+                    };
+
+                    <span class="kw">let </span><span class="kw-2">mut </span>store =
+                        ChunkStore::new(store_info.store_id.clone(), Default::default());
+                    store.set_info(store_info);
+                    store
+                });
+
                 store
                     .insert_chunk(<span class="kw-2">&amp;</span>std::sync::Arc::new(chunk))
                     .map_err(to_py_err)<span class="question-mark">?</span>;
@@ -547,7 +591,7 @@
             <span class="prelude-val">Ok</span>::&lt;<span class="kw">_</span>, PyErr&gt;(())
         })<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(store)
+        <span class="prelude-val">Ok</span>(stores)
     }
 }
 </code></pre></div></section></main></body></html>

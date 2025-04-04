@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DataframeQueryTableProvider"]};
+window.SIDEBAR_ITEMS = {"fn":["prepend_string_column"],"struct":["DataframeQueryTableProvider"]};
