@@ -644,7 +644,7 @@ impl std::fmt::Display for StoreSource {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TableMsg {
     /// The id of the table.
-    pub table_id: TableId,
+    pub id: TableId,
 
     /// The table stored as an [`ArrowRecordBatch`].
     pub data: ArrowRecordBatch,

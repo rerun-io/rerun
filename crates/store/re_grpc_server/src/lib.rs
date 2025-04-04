@@ -311,7 +311,7 @@ pub fn spawn_with_recv(
         loop {
             let msg = match broadcast_table_rx.recv().await {
                 Ok(msg) => msg.data.decode().map(|data| TableMsg {
-                    table_id: msg.id.into(),
+                    id: msg.id.into(),
                     data,
                 }),
                 Err(broadcast::error::RecvError::Closed) => {

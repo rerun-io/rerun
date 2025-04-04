@@ -261,7 +261,7 @@ async fn message_proxy_client_tables(
             cmd = cmd_rx.recv() => {
                 if let Some(table) = cmd {
 
-                let id = TableIdProto::from(table.table_id);
+                let id = TableIdProto::from(table.id);
                 let data = match table.data.encode() {
                     Ok(data) => data,
                     Err(err) => {

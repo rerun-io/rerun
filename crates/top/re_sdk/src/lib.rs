@@ -18,6 +18,7 @@
 // Private modules:
 
 mod binary_stream_sink;
+mod client;
 mod global;
 mod log_sink;
 mod recording_stream;
@@ -28,6 +29,7 @@ mod spawn;
 
 pub use spawn::{spawn, SpawnError, SpawnOptions};
 
+pub use self::client::RerunClient;
 pub use self::recording_stream::{
     forced_sink_path, RecordingStream, RecordingStreamBuilder, RecordingStreamError,
     RecordingStreamResult,

@@ -1379,7 +1379,7 @@ impl App {
                         // TODO(grtlr): For now we don't append anything to existing stores and always replace.
                         let store = TableStore::default();
                         store.add_batch(sorbet_batch);
-                        store_hub.insert_table_store(table.table_id, store);
+                        store_hub.insert_table_store(table.id, store);
                     },
                     Err(err) => {
                         re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
