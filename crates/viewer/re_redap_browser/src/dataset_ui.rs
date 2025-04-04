@@ -4,7 +4,7 @@ use arrow::array::{
     Array as _, ArrayRef, ListArray as ArrowListArray, StringArray as ArrowStringArray,
 };
 use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
-use egui::{Frame, Margin, RichText, Stroke, Style};
+use egui::{Frame, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -12,7 +12,7 @@ use re_log_types::{EntityPath, EntryId, TimelineName};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;
-use re_ui::{design_tokens, icons, Scale, UiExt as _};
+use re_ui::{icons, UiExt as _};
 use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
@@ -86,45 +86,43 @@ pub fn dataset_ui(
         selected_columns: &columns,
     };
 
-    egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
-        Frame::new()
-            .inner_margin(Margin {
-                top: 16,
-                bottom: 12,
-                left: 16,
-                right: 16,
-            })
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.heading(RichText::new(dataset.name()).strong());
-                    if ui.small_icon_button(&icons::RESET).clicked() {
-                        let _ = ctx
-                            .command_sender
-                            .send(Command::RefreshCollection(origin.clone()));
-                    }
-                });
+    Frame::new()
+        .inner_margin(Margin {
+            top: 16,
+            bottom: 12,
+            left: 16,
+            right: 16,
+        })
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.heading(RichText::new(dataset.name()).strong());
+                if ui.small_icon_button(&icons::RESET).clicked() {
+                    let _ = ctx
+                        .command_sender
+                        .send(Command::RefreshCollection(origin.clone()));
+                }
             });
+        });
 
-        apply_table_style_fixes(ui.style_mut());
+    apply_table_style_fixes(ui.style_mut());
 
-        egui_table::Table::new()
-            .id_salt(table_id_salt)
-            .columns(
-                columns
-                    .iter()
-                    .map(|field| {
-                        egui_table::Column::new(200.0)
-                            .resizable(true)
-                            .id(egui::Id::new(field))
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .headers(vec![egui_table::HeaderRow::new(
-                re_ui::DesignTokens::table_header_height() + CELL_MARGIN.sum().y,
-            )])
-            .num_rows(num_rows)
-            .show(ui, &mut table_delegate);
-    });
+    egui_table::Table::new()
+        .id_salt(table_id_salt)
+        .columns(
+            columns
+                .iter()
+                .map(|field| {
+                    egui_table::Column::new(200.0)
+                        .resizable(true)
+                        .id(egui::Id::new(field))
+                })
+                .collect::<Vec<_>>(),
+        )
+        .headers(vec![egui_table::HeaderRow::new(
+            re_ui::DesignTokens::table_header_height() + CELL_MARGIN.sum().y,
+        )])
+        .num_rows(num_rows)
+        .show(ui, &mut table_delegate);
 }
 
 /// Descriptor for the generated `RecordingUri` component.

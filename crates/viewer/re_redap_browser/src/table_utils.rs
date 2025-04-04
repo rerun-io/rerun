@@ -3,6 +3,9 @@ use re_ui::{design_tokens, Scale};
 
 pub const CELL_MARGIN: Margin = Margin::symmetric(8, 6);
 
+/// This applies some fixes so that the column resize bar is correctly displayed
+/// TODO(lucasmerlin): this might affect widgets within the table, and should probably be reverted
+/// within the cell. Also should be properly fixed via egui_table.
 pub fn apply_table_style_fixes(style: &mut Style) {
     style.visuals.widgets.hovered.bg_stroke =
         Stroke::new(1.0, design_tokens().color_table.gray(Scale::S300));
