@@ -5,4 +5,4 @@ pub use read::stream;
 pub mod write;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use write::Client;
+pub use write::{Client, TableClient};

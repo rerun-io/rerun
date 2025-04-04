@@ -150,6 +150,10 @@ class ViewerWidget {
       if (!this.channel)
         throw new Error("on_custom_message called before channel init");
       this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
+    } else if (msg?.type === "table") {
+      if (!this.channel)
+        throw new Error("on_custom_message called before channel init")
+      this.channel.send_table(new Uint8Array(buffers[0].buffer));
     } else {
       console.log("unknown message type", msg, buffers);
     }

@@ -161,6 +161,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
     _ready = False
     _data_queue: list[bytes]
+    _table_queue: list[bytes]
 
     _time_ctrl = traitlets.Tuple(
         traitlets.Unicode(allow_none=True),
@@ -218,9 +219,14 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
     def _on_ready(self) -> None:
         self._ready = True
+
         for data in self._data_queue:
             self.send_rrd(data)
         self._data_queue.clear()
+
+        for data in self._table_queue:
+            self.send_table(data)
+        self._table_queue.clear()
 
     def send_rrd(self, data: bytes) -> None:
         """Send a recording to the viewer."""
@@ -230,6 +236,13 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
             return
 
         self.send({"type": "rrd"}, buffers=[data])
+
+    def send_table(self, data: bytes) -> None:
+        if not self._ready:
+            self._table_queue.append(data)
+            return
+
+        self.send({"type": "table"}, buffers=[data])
 
     def block_until_ready(self, timeout: float = 5.0) -> None:
         """Block until the viewer is ready."""

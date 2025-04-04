@@ -62,6 +62,7 @@ re_memory.workspace = true
 re_types.workspace = true
 re_uri.workspace = true
 
+arrow.workspace = true
 ahash.workspace = true
 const_format.workspace = true
 crossbeam.workspace = true
@@ -72,6 +73,7 @@ once_cell.workspace = true
 parking_lot.workspace = true
 percent-encoding.workspace = true
 thiserror.workspace = true
+url.workspace = true
 
 # Optional dependencies
 

@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+from pyarrow import RecordBatch
+import pyarrow
+import pyarrow.ipc as ipc
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -38,7 +41,7 @@ if importlib.util.find_spec("rerun_notebook") is not None:
 
 from rerun import bindings
 
-from .recording_stream import RecordingStream, get_data_recording
+from .recording_stream import RecordingStream, get_data_recording, get_global_data_recording
 
 _default_width = 640
 _default_height = 480
@@ -211,6 +214,27 @@ class Viewer:
 
         if blueprint is not None:
             recording.send_blueprint(blueprint)
+
+    def _add_table_id(self, record_batch: RecordBatch, table_id: str):
+        # Get current schema
+        schema = record_batch.schema
+        schema = schema.with_metadata({b"__table_id": table_id})
+
+        # Create new record batch with updated schema
+        return pyarrow.RecordBatch.from_arrays(record_batch.columns, schema=schema)
+
+    def send_table(
+        self,
+        id: str,
+        table: RecordBatch,
+    ) -> None:
+        new_table = self._add_table_id(table, id)
+        sink = pyarrow.BufferOutputStream()
+        writer = ipc.new_stream(sink, new_table.schema)
+        writer.write_batch(new_table)
+        writer.close()
+        table_as_bytes = sink.getvalue().to_pybytes()
+        self._viewer.send_table(table_as_bytes)
 
     def display(self, block_until_ready: bool = True) -> None:
         """

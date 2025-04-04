@@ -19,3 +19,4 @@ mod dataframe;
 mod python_bridge;
 mod utils;
 mod video;
+mod viewer;

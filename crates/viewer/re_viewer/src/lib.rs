@@ -253,6 +253,31 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     new_rx
 }
 
+/// This wakes up the ui thread each time we receive a new message.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn wake_up_ui_thread_on_each_msg_crossbeam<T: Send + 'static>(
+    rx: crossbeam::channel::Receiver<T>,
+    ctx: egui::Context,
+) -> crossbeam::channel::Receiver<T> {
+    // We need to intercept messages to wake up the ui thread.
+    // For that, we need a new channel.
+    let (tx, new_rx) = crossbeam::channel::unbounded();
+    std::thread::Builder::new()
+        .name("ui_waker".to_owned())
+        .spawn(move || {
+            while let Ok(msg) = rx.recv() {
+                if tx.send(msg).is_ok() {
+                    ctx.request_repaint();
+                } else {
+                    break;
+                }
+            }
+            re_log::trace!("Shutting down ui_waker thread");
+        })
+        .expect("Failed to spawn UI waker thread");
+    new_rx
+}
+
 /// Reset the viewer state as stored on disk and local storage,
 /// keeping only the analytics state.
 #[allow(clippy::unnecessary_wraps)] // wasm only

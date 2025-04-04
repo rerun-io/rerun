@@ -22,6 +22,11 @@ use crate::web_tools::{
 static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
+struct Channel {
+    log_tx: re_smart_channel::Sender<re_log_types::LogMsg>,
+    table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
+}
+
 #[wasm_bindgen]
 pub struct WebHandle {
     runner: eframe::WebRunner,
@@ -30,7 +35,7 @@ pub struct WebHandle {
     ///
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
-    tx_channels: HashMap<String, re_smart_channel::Sender<re_log_types::LogMsg>>,
+    tx_channels: HashMap<String, Channel>,
 
     app_options: AppOptions,
 }
@@ -187,7 +192,7 @@ impl WebHandle {
             url.to_owned(),
             app.command_sender.clone(),
         ) {
-            app.add_receiver(rx);
+            app.add_log_receiver(rx);
         }
     }
 
@@ -216,15 +221,18 @@ impl WebHandle {
             return;
         }
 
-        let (tx, rx) = re_smart_channel::smart_channel(
+        let (log_tx, log_rx) = re_smart_channel::smart_channel(
             re_smart_channel::SmartMessageSource::JsChannelPush,
             re_smart_channel::SmartChannelSource::JsChannel {
                 channel_name: channel_name.to_owned(),
             },
         );
+        let (table_tx, table_rx) = crossbeam::channel::unbounded();
 
-        app.add_receiver(rx);
-        self.tx_channels.insert(id.to_owned(), tx);
+        app.add_log_receiver(log_rx);
+        app.add_table_receiver(table_rx);
+        self.tx_channels
+            .insert(id.to_owned(), Channel { log_tx, table_tx });
     }
 
     /// Close an existing channel for streaming data.
@@ -236,8 +244,12 @@ impl WebHandle {
             return;
         };
 
-        if let Some(tx) = self.tx_channels.remove(id) {
-            tx.quit(None).warn_on_err_once("Failed to send quit marker");
+        if let Some(channel) = self.tx_channels.remove(id) {
+            channel
+                .log_tx
+                .quit(None)
+                .warn_on_err_once("Failed to send quit marker");
+            drop(channel.table_tx);
         }
 
         // Request a repaint since closing the channel may update the top bar.
@@ -253,7 +265,8 @@ impl WebHandle {
             return;
         };
 
-        if let Some(tx) = self.tx_channels.get(id).cloned() {
+        if let Some(channel) = self.tx_channels.get(id) {
+            let tx = channel.log_tx.clone();
             let data: Vec<u8> = data.to_vec();
 
             let egui_ctx = app.egui_ctx.clone();
@@ -290,6 +303,37 @@ impl WebHandle {
                     }
                 }),
             );
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn send_table_to_channel(&self, id: &str, data: &[u8]) {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if let Some(channel) = self.tx_channels.get(id) {
+            let tx = channel.table_tx.clone();
+
+            // TODO: error handling
+            let cursor = std::io::Cursor::new(data);
+            let stream_reader = arrow::ipc::reader::StreamReader::try_new(cursor, None)
+                .expect("failed to create cursor");
+
+            let encoded = &stream_reader
+                .collect::<Result<Vec<_>, _>>()
+                .expect("could not read from IPC stream")[0];
+            let msg =
+                re_log_types::TableMsg::from_arrow_encoded(encoded).expect("msg decode failed");
+
+            let egui_ctx = app.egui_ctx.clone();
+
+            if tx.send(msg).is_ok() {
+                // TODO(jan): Is this enough to request a repaint?
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            } else {
+                re_log::info_once!("Failed to dispatch log message to viewer.");
+            }
         }
     }
 
