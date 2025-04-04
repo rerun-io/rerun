@@ -26,6 +26,7 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_dataframe.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true

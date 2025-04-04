@@ -2,6 +2,7 @@
 
 mod catalog_client;
 mod connection_handle;
+mod dataframe_query;
 mod dataset;
 mod entry;
 mod errors;
@@ -15,6 +16,7 @@ use arrow::{
 };
 use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
 
+use crate::catalog::dataframe_query::PyDataframeQueryView;
 pub use catalog_client::PyCatalogClient;
 pub use connection_handle::ConnectionHandle;
 pub use dataset::PyDataset;
@@ -30,6 +32,8 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntry>()?;
 
     m.add_class::<PyDataset>()?;
+
+    m.add_class::<PyDataframeQueryView>()?;
 
     m.add_class::<PyVectorDistanceMetric>()?;
 

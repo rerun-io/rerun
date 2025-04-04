@@ -7024,6 +7024,7 @@ dependencies = [
  "datafusion",
  "futures-util",
  "itertools 0.14.0",
+ "re_dataframe",
  "re_log_encoding",
  "re_log_types",
  "re_protos",

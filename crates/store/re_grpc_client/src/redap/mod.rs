@@ -168,6 +168,20 @@ pub fn fetch_partition_response_to_chunk(
     })
 }
 
+/// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
+//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
+pub fn get_chunks_response_to_chunk(
+    response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
+) -> impl Stream<Item = Result<Chunk, StreamError>> {
+    response.map(|resp| {
+        resp.map_err(Into::into).and_then(|r| {
+            let batch = r.chunk.ok_or(StreamError::MissingChunkData)?.decode()?;
+
+            Chunk::from_record_batch(&batch).map_err(Into::into)
+        })
+    })
+}
+
 pub async fn stream_partition_async(
     tx: re_smart_channel::Sender<LogMsg>,
     endpoint: re_uri::DatasetDataEndpoint,
