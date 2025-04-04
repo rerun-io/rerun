@@ -1384,20 +1384,26 @@ impl App {
                         // TODO(grtlr): For now we don't append anything to existing stores and always replace.
                         let store = TableStore::default();
                         store.add_batch(sorbet_batch);
-                        store_hub.insert_table_store(table.id.clone(), store);
+
+                        if store_hub.insert_table_store(table.id.clone(), store).is_some() {
+                            re_log::debug!("Overwritten table store with id: `{}`", table.id);
+                        } else {
+                            re_log::debug!("Inserted table store with id: `{}`", table.id);
+                        };
                         store_hub.set_active_entry(table.id.clone().into());
 
-                            // Also select the new recording:
-                            self.command_sender.send_system(SystemCommand::SetSelection(
-                                re_viewer_context::Item::TableId(table.id.clone()),
-                            ));
 
-                            // If the viewer is in the background, tell the user that it has received something new.
-                            egui_ctx.send_viewport_cmd(
-                                egui::ViewportCommand::RequestUserAttention(
-                                    egui::UserAttentionType::Informational,
-                                ),
-                            );
+                        // Also select the new recording:
+                        self.command_sender.send_system(SystemCommand::SetSelection(
+                            re_viewer_context::Item::TableId(table.id.clone()),
+                        ));
+
+                        // If the viewer is in the background, tell the user that it has received something new.
+                        egui_ctx.send_viewport_cmd(
+                            egui::ViewportCommand::RequestUserAttention(
+                                egui::UserAttentionType::Informational,
+                            ),
+                        );
                     },
                     Err(err) => {
                         re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
