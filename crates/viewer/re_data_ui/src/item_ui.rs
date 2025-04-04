@@ -854,8 +854,7 @@ pub fn table_id_button_ui(
 ) {
     let item = re_viewer_context::Item::TableId(table_id.clone());
 
-    let mut item_content =
-        list_item::LabelContent::new(table_id.as_str()).with_icon(&icons::VIEW_DATAFRAME);
+    let mut item_content = list_item::LabelContent::new(table_id.as_str()).with_icon(&icons::TABLE);
 
     if ui_layout.is_selection_panel() {
         item_content = item_content.with_buttons(|ui| {
