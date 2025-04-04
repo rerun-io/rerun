@@ -149,7 +149,6 @@ impl PyCatalogClient {
         Py::new(py, (table, entry))
     }
 
-    #[getter]
     fn entries_table(self_: Py<Self>, py: Python<'_>) -> PyResult<Py<PyTable>> {
         Self::get_table(self_, EntryIdLike::Str("__entries".to_string()), py)
     }
