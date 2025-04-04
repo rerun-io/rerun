@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+from pyarrow import RecordBatch
+import pyarrow
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -38,7 +40,7 @@ if importlib.util.find_spec("rerun_notebook") is not None:
 
 from rerun import bindings
 
-from .recording_stream import RecordingStream, get_data_recording
+from .recording_stream import RecordingStream, get_data_recording, get_global_data_recording
 
 _default_width = 640
 _default_height = 480
@@ -211,6 +213,13 @@ class Viewer:
 
         if blueprint is not None:
             recording.send_blueprint(blueprint)
+
+    def send_table(
+        self,
+        table: RecordBatch,
+    ) -> None:
+        # TODO(jochen): serialize `table` to bytes
+        self._viewer.send_table(b"")
 
     def display(self, block_until_ready: bool = True) -> None:
         """
