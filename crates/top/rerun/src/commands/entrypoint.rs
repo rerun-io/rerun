@@ -1006,7 +1006,7 @@ fn run_impl(
         }
         #[cfg(not(feature = "native_viewer"))]
         {
-            _ = (call_source, rxs);
+            _ = (call_source, rxs_log);
             anyhow::bail!(
                 "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
             );

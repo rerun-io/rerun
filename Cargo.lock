@@ -8097,6 +8097,7 @@ version = "0.23.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "bytemuck",
  "cfg-if",
  "crossbeam",
