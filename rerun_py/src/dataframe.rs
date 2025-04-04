@@ -1491,7 +1491,7 @@ impl PyDataFusionTable {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
-    fn df<'py>(self_: PyRef<'py, Self>) -> PyResult<Bound<'py, PyAny>> {
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let client = self_.client.borrow(py);
@@ -1514,7 +1514,7 @@ impl PyDataFusionTable {
     }
 
     #[getter]
-    fn name(&self) -> PyResult<String> {
-        Ok(self.name.clone())
+    fn name(&self) -> String {
+        self.name.clone()
     }
 }

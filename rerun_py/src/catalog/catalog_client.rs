@@ -150,7 +150,7 @@ impl PyCatalogClient {
     }
 
     fn entries_table(self_: Py<Self>, py: Python<'_>) -> PyResult<Py<PyTable>> {
-        Self::get_table(self_, EntryIdLike::Str("__entries".to_string()), py)
+        Self::get_table(self_, EntryIdLike::Str("__entries".to_owned()), py)
     }
 
     #[getter]
@@ -159,7 +159,7 @@ impl PyCatalogClient {
             Ok(datafusion_ctx.clone_ref(py))
         } else {
             Err(PyRuntimeError::new_err(
-                "DataFusion context not available (the `datafusion` package may need to be installed)".to_string(),
+                "DataFusion context not available (the `datafusion` package may need to be installed)".to_owned(),
             ))
         }
     }

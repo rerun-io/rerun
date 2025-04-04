@@ -423,7 +423,7 @@ impl PyDataframeQueryView {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
-    fn df<'py>(self_: PyRef<'py, Self>) -> PyResult<Bound<'py, PyAny>> {
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let dataset = self_.dataset.borrow(py);

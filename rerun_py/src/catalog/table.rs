@@ -5,7 +5,7 @@ use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::{
     exceptions::PyRuntimeError,
     pyclass, pymethods,
-    types::{PyAnyMethods, PyCapsule},
+    types::{PyAnyMethods as _, PyCapsule},
     Bound, PyAny, PyRef, PyRefMut, PyResult,
 };
 
@@ -24,9 +24,9 @@ pub struct PyTable {
 
 #[pymethods]
 impl PyTable {
-    fn __datafusion_table_provider__<'py>(
-        mut self_: PyRefMut<'py, Self>,
-    ) -> PyResult<Bound<'py, PyCapsule>> {
+    fn __datafusion_table_provider__(
+        mut self_: PyRefMut<'_, Self>,
+    ) -> PyResult<Bound<'_, PyCapsule>> {
         let py = self_.py();
         if self_.lazy_provider.is_none() {
             let super_ = self_.as_mut();
@@ -60,7 +60,7 @@ impl PyTable {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
-    fn df<'py>(self_: PyRef<'py, Self>) -> PyResult<Bound<'py, PyAny>> {
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
         let super_ = self_.as_super();

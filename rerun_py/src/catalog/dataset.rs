@@ -68,6 +68,7 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
+        #[expect(clippy::string_add)]
         Ok(PyDataFusionTable {
             client: super_.client.clone_ref(self_.py()),
             name: super_.name() + "_partition_table",
@@ -332,7 +333,7 @@ impl PyDataset {
 
         Ok(PyDataFusionTable {
             client: super_.client.clone_ref(self_.py()),
-            name: name,
+            name,
             provider,
         })
     }
@@ -384,7 +385,7 @@ impl PyDataset {
 
         Ok(PyDataFusionTable {
             client: super_.client.clone_ref(self_.py()),
-            name: name,
+            name,
             provider,
         })
     }
