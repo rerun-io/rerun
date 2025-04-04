@@ -155,7 +155,7 @@ impl ConnectionHandle {
         wait_for_future(py, async {
             let mut cache = self.schema_cache.lock().await;
 
-            // TODO(rerun.io/dataplatform#521): Remove this cache once the response is faster
+            // TODO(rerun-io/dataplatform#521): Remove this cache once the response is faster
             if let Some(schema) = cache.get(&entry_id) {
                 return Ok(schema.clone());
             }
