@@ -1696,10 +1696,20 @@ impl RecordingStream {
         }
     }
 
-    /// Records a single [`Chunk`].
+    /// Logs multiple [`Chunk`]s.
     ///
     /// This will _not_ inject `log_tick` and `log_time` timeline columns into the chunk,
-    /// for that use [`Self::log_chunk`].
+    /// for that use [`Self::log_chunks`].
+    pub fn log_chunks(&self, chunks: impl IntoIterator<Item = Chunk>) {
+        for chunk in chunks {
+            self.log_chunk(chunk);
+        }
+    }
+
+    /// Records a single [`Chunk`].
+    ///
+    /// Will inject `log_tick` and `log_time` timeline columns into the chunk.
+    /// If you don't want to inject these, use [`Self::send_chunks`] instead.
     #[inline]
     pub fn send_chunk(&self, chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
@@ -1708,6 +1718,16 @@ impl RecordingStream {
 
         if self.with(f).is_none() {
             re_log::warn_once!("Recording disabled - call to send_chunk() ignored");
+        }
+    }
+
+    /// Records multiple [`Chunk`]s.
+    ///
+    /// This will _not_ inject `log_tick` and `log_time` timeline columns into the chunk,
+    /// for that use [`Self::log_chunks`].
+    pub fn send_chunks(&self, chunks: impl IntoIterator<Item = Chunk>) {
+        for chunk in chunks {
+            self.send_chunk(chunk);
         }
     }
 

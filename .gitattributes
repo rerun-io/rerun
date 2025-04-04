@@ -5,3 +5,4 @@ pixi.lock linguist-generated=true
 # git-lfs stuff
 **/snapshots/**/*.png filter=lfs diff=lfs merge=lfs -text
 tests/assets/video/*.mp4 filter=lfs diff=lfs merge=lfs -text
+examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text

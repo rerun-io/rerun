@@ -42,6 +42,8 @@ impl PyRuntimeErrorExt for PyRuntimeError {
 
 use once_cell::sync::{Lazy, OnceCell};
 
+use crate::dataframe::PyRecording;
+
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
 // data and joining a bunch of threads) can end up running at any time depending on what the
@@ -172,6 +174,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
+    m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -1341,6 +1344,23 @@ fn send_blueprint(
     }
 }
 
+/// Send all chunks from a [`PyRecording`] to the given recording stream.
+///
+/// .. warning::
+///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
+#[pyfunction]
+#[pyo3(signature = (rrd, recording = None))]
+fn send_recording(rrd: &PyRecording, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+
+    let store = rrd.store.read();
+    for chunk in store.iter_chunks() {
+        recording.send_chunk((**chunk).clone());
+    }
+}
+
 // --- Misc ---
 
 /// Return a verbose version string.
@@ -1471,7 +1491,7 @@ fn send_recording_start_time_nanos(
 
 // --- Helpers ---
 
-fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
+pub fn python_version(py: Python<'_>) -> re_log_types::PythonVersion {
     let py_version = py.version_info();
     re_log_types::PythonVersion {
         major: py_version.major,
