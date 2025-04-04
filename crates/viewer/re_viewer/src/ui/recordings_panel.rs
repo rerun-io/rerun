@@ -123,7 +123,7 @@ fn recording_list_ui(
         );
     }
 
-    if !local_recordings.is_empty()
+    if (!local_recordings.is_empty() || !ctx.storage_context.tables.is_empty())
         && ui
             .list_item()
             .header()
@@ -131,7 +131,7 @@ fn recording_list_ui(
                 ui,
                 egui::Id::new("local items"),
                 true,
-                list_item::LabelContent::header("Local Recordings"),
+                list_item::LabelContent::header("Local"),
                 |ui| {
                     for (app_id, entity_dbs) in local_recordings {
                         dataset_and_its_recordings_ui(
@@ -140,6 +140,9 @@ fn recording_list_ui(
                             &EntryKind::Local(app_id.clone()),
                             entity_dbs,
                         );
+                    }
+                    for table_id in ctx.storage_context.tables.keys() {
+                        table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
                     }
                 },
             )
@@ -151,16 +154,6 @@ fn recording_list_ui(
                 LOCAL_ORIGIN.clone(),
             )));
     }
-
-    let item = ui.list_item().header();
-    let title = list_item::LabelContent::header("Tables");
-    if !ctx.storage_context.tables.is_empty() {
-        item.show_hierarchical_with_children(ui, egui::Id::new("tables"), true, title, |ui| {
-            for table_id in ctx.storage_context.tables.keys() {
-                table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
-            }
-        });
-    };
 
     // Always show welcome screen last, if at all:
     if (ctx
