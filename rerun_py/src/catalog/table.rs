@@ -3,8 +3,10 @@ use std::sync::Arc;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::{
-    exceptions::PyRuntimeError, pyclass, pymethods, types::PyCapsule, Bound, PyRefMut, PyResult,
-    Python,
+    exceptions::PyRuntimeError,
+    pyclass, pymethods,
+    types::{PyAnyMethods as _, PyCapsule},
+    Bound, PyAny, PyRef, PyRefMut, PyResult,
 };
 
 use re_datafusion::TableEntryTableProvider;
@@ -22,10 +24,10 @@ pub struct PyTable {
 
 #[pymethods]
 impl PyTable {
-    fn __datafusion_table_provider__<'py>(
-        mut self_: PyRefMut<'py, Self>,
-        py: Python<'py>,
-    ) -> PyResult<Bound<'py, PyCapsule>> {
+    fn __datafusion_table_provider__(
+        mut self_: PyRefMut<'_, Self>,
+    ) -> PyResult<Bound<'_, PyCapsule>> {
+        let py = self_.py();
         if self_.lazy_provider.is_none() {
             let super_ = self_.as_mut();
 
@@ -56,5 +58,26 @@ impl PyTable {
         let provider = FFI_TableProvider::new(provider, false, Some(runtime));
 
         PyCapsule::new(py, provider, Some(capsule_name))
+    }
+
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+
+        let super_ = self_.as_super();
+        let client = super_.client.borrow(py);
+        let table_name = super_.name().clone();
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+
+        drop(client);
+
+        // We're fine with this failing.
+        ctx.call_method1("deregister_table", (table_name.clone(),))?;
+
+        ctx.call_method1("register_table_provider", (table_name.clone(), self_))?;
+
+        let df = ctx.call_method1("table", (table_name,))?;
+
+        Ok(df)
     }
 }

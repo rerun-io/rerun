@@ -1,4 +1,9 @@
-use pyo3::{exceptions::PyLookupError, pyclass, pymethods, FromPyObject, Py, PyResult, Python};
+use pyo3::{
+    exceptions::{PyLookupError, PyRuntimeError},
+    pyclass, pymethods,
+    types::PyAnyMethods as _,
+    FromPyObject, Py, PyAny, PyResult, Python,
+};
 
 use re_protos::catalog::v1alpha1::EntryFilter;
 
@@ -13,6 +18,9 @@ pub struct PyCatalogClient {
     origin: re_uri::Origin,
 
     connection: ConnectionHandle,
+
+    // If this isn't set, it means datafusion wasn't found
+    datafusion_ctx: Option<Py<PyAny>>,
 }
 
 impl PyCatalogClient {
@@ -30,7 +38,16 @@ impl PyCatalogClient {
 
         let connection = ConnectionHandle::new(py, origin.clone())?;
 
-        Ok(Self { origin, connection })
+        let datafusion_ctx = py
+            .import("datafusion")
+            .and_then(|datafusion| Ok(datafusion.getattr("SessionContext")?.call0()?.unbind()))
+            .ok();
+
+        Ok(Self {
+            origin,
+            connection,
+            datafusion_ctx,
+        })
     }
 
     fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
@@ -130,6 +147,21 @@ impl PyCatalogClient {
         let table = PyTable::default();
 
         Py::new(py, (table, entry))
+    }
+
+    fn entries_table(self_: Py<Self>, py: Python<'_>) -> PyResult<Py<PyTable>> {
+        Self::get_table(self_, EntryIdLike::Str("__entries".to_owned()), py)
+    }
+
+    #[getter]
+    pub fn ctx(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
+        if let Some(datafusion_ctx) = &self.datafusion_ctx {
+            Ok(datafusion_ctx.clone_ref(py))
+        } else {
+            Err(PyRuntimeError::new_err(
+                "DataFusion context not available (the `datafusion` package may need to be installed)".to_owned(),
+            ))
+        }
     }
 }
 

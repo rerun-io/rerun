@@ -13,9 +13,7 @@ use re_chunk::ComponentName;
 use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
 use re_dataframe::{QueryCache, QueryEngine};
 use re_datafusion::DataframeQueryTableProvider;
-use re_log_types::{
-    EntityPath, EntityPathFilter, ResolvedTimeRange, StoreId, StoreInfo, StoreKind, StoreSource,
-};
+use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
@@ -381,22 +379,12 @@ impl PyDataframeQueryView {
         let dataset_id = entry.details.id;
         let mut connection = entry.client.borrow(py).connection().clone();
 
-        let store_id = StoreId::from_string(StoreKind::Recording, "query_chunks".to_owned());
-        let store_info = StoreInfo {
-            application_id: "query_chunks".into(),
-            store_id,
-            cloned_from: None,
-            store_source: StoreSource::Unknown,
-            store_version: None,
-        };
-
         //
         // Fetch relevant chunks
         //
 
-        let chunk_store = connection.get_chunks(
+        let chunk_stores = connection.get_chunks_for_dataframe_query(
             py,
-            store_info,
             dataset_id,
             &self_.query_expression.view_contents,
             self_.query_expression.min_latest_at(),
@@ -404,14 +392,21 @@ impl PyDataframeQueryView {
             self_.partition_ids.as_slice(),
         )?;
 
-        let store_handle = ChunkStoreHandle::new(chunk_store);
-        let query_engine = QueryEngine::new(
-            store_handle.clone(),
-            QueryCache::new_handle(store_handle.clone()),
-        );
+        let query_engines = chunk_stores
+            .into_iter()
+            .map(|(partition_id, chunk_store)| {
+                let store_handle = ChunkStoreHandle::new(chunk_store);
+                let query_engine = QueryEngine::new(
+                    store_handle.clone(),
+                    QueryCache::new_handle(store_handle.clone()),
+                );
+
+                (partition_id, query_engine)
+            })
+            .collect();
 
         let provider: Arc<dyn TableProvider> =
-            DataframeQueryTableProvider::new(query_engine, self_.query_expression.clone())
+            DataframeQueryTableProvider::new(query_engines, self_.query_expression.clone())
                 .try_into()
                 .map_err(to_py_err)?;
 
@@ -421,6 +416,31 @@ impl PyDataframeQueryView {
         let provider = FFI_TableProvider::new(provider, false, Some(runtime));
 
         PyCapsule::new(py, provider, Some(capsule_name))
+    }
+
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+
+        let dataset = self_.dataset.borrow(py);
+        let super_ = dataset.as_super();
+        let client = super_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+
+        let uuid = uuid::Uuid::new_v4();
+        let name = format!("{}_dataframe_query_{uuid}", super_.name());
+
+        drop(client);
+        drop(dataset);
+
+        // We're fine with this failing.
+        ctx.call_method1("deregister_table", (name.clone(),))?;
+
+        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
+
+        let df = ctx.call_method1("table", (name,))?;
+
+        Ok(df)
     }
 }
 

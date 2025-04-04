@@ -1,15 +1,20 @@
+use std::collections::BTreeMap;
+
+use ahash::HashMap;
 use arrow::datatypes::Schema as ArrowSchema;
+use pyo3::exceptions::PyValueError;
 use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
+use tokio::sync::Mutex;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{client, get_chunks_response_to_chunk};
-use re_log_types::{EntryId, StoreInfo};
+use re_grpc_client::redap::{client, get_chunks_response_to_chunk_and_partition_id};
+use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
@@ -31,22 +36,31 @@ create_exception!(catalog, ConnectionError, PyConnectionError);
 /// Connection handle to a catalog service.
 #[derive(Clone)]
 pub struct ConnectionHandle {
-    #[expect(dead_code)]
     origin: re_uri::Origin,
 
     /// The actual tonic connection.
     client: FrontendServiceClient<tonic::transport::Channel>,
+
+    schema_cache: std::sync::Arc<Mutex<HashMap<EntryId, ArrowSchema>>>,
 }
 
 impl ConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
         let client = wait_for_future(py, client(origin.clone())).map_err(to_py_err)?;
 
-        Ok(Self { origin, client })
+        Ok(Self {
+            origin,
+            client,
+            schema_cache: Default::default(),
+        })
     }
 
     pub fn client(&self) -> FrontendServiceClient<tonic::transport::Channel> {
         self.client.clone()
+    }
+
+    pub fn origin(&self) -> &re_uri::Origin {
+        &self.origin
     }
 }
 
@@ -142,7 +156,14 @@ impl ConnectionHandle {
         entry_id: EntryId,
     ) -> PyResult<ArrowSchema> {
         wait_for_future(py, async {
-            self.client
+            let mut cache = self.schema_cache.lock().await;
+
+            // TODO(rerun-io/dataplatform#521): Remove this cache once the response is faster
+            if let Some(schema) = cache.get(&entry_id) {
+                return Ok(schema.clone());
+            }
+            let schema = self
+                .client
                 .get_dataset_schema(GetDatasetSchemaRequest {
                     dataset_id: Some(entry_id.into()),
                 })
@@ -150,7 +171,11 @@ impl ConnectionHandle {
                 .map_err(to_py_err)?
                 .into_inner()
                 .schema()
-                .map_err(to_py_err)
+                .map_err(to_py_err)?;
+
+            cache.insert(entry_id, schema.clone());
+
+            Ok(schema)
         })
     }
 
@@ -178,22 +203,18 @@ impl ConnectionHandle {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn get_chunks(
+    pub fn get_chunks_for_dataframe_query(
         &mut self,
         py: Python<'_>,
-        store_info: StoreInfo,
         dataset_id: EntryId,
         contents: &Option<ViewContentsSelector>,
         latest_at: Option<LatestAtQuery>,
         range: Option<RangeQuery>,
         partition_ids: &[impl AsRef<str> + Sync],
-    ) -> PyResult<ChunkStore> {
+    ) -> PyResult<BTreeMap<String, ChunkStore>> {
         let entity_paths = contents
             .as_ref()
             .map_or(vec![], |contents| contents.keys().collect::<Vec<_>>());
-
-        let mut store = ChunkStore::new(store_info.store_id.clone(), Default::default());
-        store.set_info(store_info);
 
         let query = Query {
             latest_at: latest_at.map(|latest_at| QueryLatestAt {
@@ -217,6 +238,8 @@ impl ConnectionHandle {
             columns_always_include_component_indexes: false,
         };
 
+        let mut stores = BTreeMap::default();
+
         wait_for_future(py, async {
             let get_chunks_response_stream = self
                 .client
@@ -237,10 +260,31 @@ impl ConnectionHandle {
                 .map_err(to_py_err)?
                 .into_inner();
 
-            let mut chunk_stream = get_chunks_response_to_chunk(get_chunks_response_stream);
+            let mut chunk_stream =
+                get_chunks_response_to_chunk_and_partition_id(get_chunks_response_stream);
 
-            while let Some(chunk) = chunk_stream.next().await {
-                let chunk = chunk.map_err(to_py_err)?;
+            while let Some(chunk_and_partition_id) = chunk_stream.next().await {
+                let (chunk, partition_id) = chunk_and_partition_id.map_err(to_py_err)?;
+
+                let partition_id = partition_id.ok_or_else(|| {
+                    PyValueError::new_err("Received chunk without a partition id")
+                })?;
+
+                let store = stores.entry(partition_id.clone()).or_insert_with(|| {
+                    let store_info = StoreInfo {
+                        application_id: ApplicationId::from(partition_id),
+                        store_id: StoreId::random(StoreKind::Recording),
+                        cloned_from: None,
+                        store_source: StoreSource::Unknown,
+                        store_version: None,
+                    };
+
+                    let mut store =
+                        ChunkStore::new(store_info.store_id.clone(), Default::default());
+                    store.set_info(store_info);
+                    store
+                });
+
                 store
                     .insert_chunk(&std::sync::Arc::new(chunk))
                     .map_err(to_py_err)?;
@@ -249,6 +293,6 @@ impl ConnectionHandle {
             Ok::<_, PyErr>(())
         })?;
 
-        Ok(store)
+        Ok(stores)
     }
 }

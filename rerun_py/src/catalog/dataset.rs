@@ -68,7 +68,30 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable { provider })
+        #[expect(clippy::string_add)]
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name: super_.name() + "_partition_table",
+            provider,
+        })
+    }
+
+    /// Return the URL for the given partition.
+    fn partition_url(self_: PyRef<'_, Self>, partition_id: String) -> String {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+
+        let url = re_uri::DatasetDataEndpoint {
+            origin: connection.origin().clone(),
+            dataset_id: super_.details.id.id,
+            partition_id,
+
+            //TODO(ab): add support for these two
+            time_range: None,
+            fragment: Default::default(),
+        };
+
+        url.to_string()
     }
 
     /// Register a RRD URI to the dataset.
@@ -323,7 +346,14 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable { provider })
+        let uuid = uuid::Uuid::new_v4();
+        let name = format!("{}_search_fts_{uuid}", super_.name());
+
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name,
+            provider,
+        })
     }
 
     fn search_vector(
@@ -368,6 +398,13 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        Ok(PyDataFusionTable { provider })
+        let uuid = uuid::Uuid::new_v4();
+        let name = format!("{}_search_vector_{uuid}", super_.name());
+
+        Ok(PyDataFusionTable {
+            client: super_.client.clone_ref(self_.py()),
+            name,
+            provider,
+        })
     }
 }

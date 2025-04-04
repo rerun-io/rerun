@@ -67,6 +67,7 @@ re_uri.workspace = true
 re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 
+ahash.workspace = true
 arrow = { workspace = true, features = ["pyarrow"] }
 chrono.workspace = true #TODO(#9317): migrate to jiff when upgrading to pyo3 0.24
 crossbeam.workspace = true

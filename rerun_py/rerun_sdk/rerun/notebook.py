@@ -87,9 +87,10 @@ class Viewer:
         *,
         width: int | None = None,
         height: int | None = None,
+        url: str | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
-        use_global_recording: bool = True,
+        use_global_recording: bool | None = None,
     ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
@@ -105,6 +106,8 @@ class Viewer:
             The width of the viewer in pixels.
         height : int
             The height of the viewer in pixels.
+        url:
+            Optional URL passed to the viewer for displaying its contents.
         recording:
             Specifies the [`rerun.RecordingStream`][] to use.
             If left unspecified, defaults to the current active data recording, if there is one.
@@ -115,10 +118,12 @@ class Viewer:
 
             Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
         use_global_recording:
-            Whether or not the Viewer should default to the global recording in case no explicit `recording`
-            is specified.
+            If no explicit `recording` is provided, the Viewer uses the thread-local/global recording created by `rr.init`
+            or set explicitly via `rr.set_thread_local_data_recording`/`rr.set_global_data_recording`.
 
-            If this is set to `False`, then `blueprint` is ignored.
+            Settings this to `False` causes the Viewer to not pick up the global recording.
+
+            Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
 
@@ -147,11 +152,15 @@ class Viewer:
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
+            url=url,
         )
 
-        recording = get_data_recording(recording)
-        if recording is None and use_global_recording:
-            recording = get_global_data_recording()
+        # By default, we use the global recording only if no `url` is provided.
+        if use_global_recording is None:
+            use_global_recording = url is None
+
+        if use_global_recording:
+            recording = get_data_recording(recording)
 
         if recording is not None:
             bindings.set_callback_sink(
@@ -159,8 +168,13 @@ class Viewer:
                 callback=self._flush_hook,
             )
 
-        if recording is not None and blueprint is not None:
-            recording.send_blueprint(blueprint)
+        if blueprint is not None:
+            if recording is not None:
+                recording.send_blueprint(blueprint)
+            else:
+                raise ValueError(
+                    "Can only set a blueprint if there's either an active recording or a recording passed in"
+                )
 
     def add_recording(
         self,
