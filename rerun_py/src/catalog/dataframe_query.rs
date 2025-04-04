@@ -422,6 +422,31 @@ impl PyDataframeQueryView {
 
         PyCapsule::new(py, provider, Some(capsule_name))
     }
+
+    fn df<'py>(self_: PyRef<'py, Self>) -> PyResult<Bound<'py, PyAny>> {
+        let py = self_.py();
+
+        let dataset = self_.dataset.borrow(py);
+        let super_ = dataset.as_super();
+        let client = super_.client.borrow(py);
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+
+        let uuid = uuid::Uuid::new_v4();
+        let name = format!("{}_dataframe_query_{uuid}", super_.name());
+
+        drop(client);
+        drop(dataset);
+
+        // We're fine with this failing.
+        ctx.call_method1("deregister_table", (name.clone(),))?;
+
+        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
+
+        let df = ctx.call_method1("table", (name,))?;
+
+        Ok(df)
+    }
 }
 
 /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
