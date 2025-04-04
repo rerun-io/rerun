@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use arrow::array::{Array, RecordBatch, StringArray};
+use arrow::array::{new_null_array, Array, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::{
     catalog::{streaming::StreamingTable, TableProvider},
@@ -22,22 +22,19 @@ impl DataframeQueryTableProvider {
     pub fn new(
         query_engines: BTreeMap<String, QueryEngine<StorageEngine>>,
         query_expression: QueryExpression,
-    ) -> Self {
-        let schema = query_engines
-            .first_key_value()
-            .map(|(_, query_engine)| {
-                query_engine
-                    .query(query_expression.clone())
-                    .schema()
-                    .clone()
-            })
-            .unwrap_or_else(|| Arc::new(arrow::datatypes::Schema::empty()));
+    ) -> Result<Self, DataFusionError> {
+        let all_schemas = query_engines
+            .values()
+            .map(|engine| (**engine.query(query_expression.clone()).schema()).clone())
+            .collect::<Vec<_>>();
 
-        Self {
-            schema,
+        let merged = Schema::try_merge(all_schemas)?;
+
+        Ok(Self {
+            schema: Arc::new(prepend_string_column_schema(&merged, "rerun_partition_id")),
             query_engines,
             query_expression,
-        }
+        })
     }
 }
 
@@ -62,14 +59,22 @@ impl PartitionStream for DataframeQueryTableProvider {
         let engines = self.query_engines.clone();
         let query_expression = self.query_expression.clone();
 
+        let target_schema = self.schema.clone();
         let stream = futures_util::stream::iter(engines.into_iter().flat_map(
             move |(partition_id, query_engine)| {
+                let inner_schema = target_schema.clone();
                 query_engine
                     .query(query_expression.clone())
                     .into_batch_iter()
                     .map(move |batch| {
-                        prepend_string_column(&batch, "__partition_id", partition_id.as_str())
-                            .map_err(Into::into)
+                        align_record_batch_to_schema(
+                            &prepend_string_column(
+                                &batch,
+                                "rerun_partition_id",
+                                partition_id.as_str(),
+                            )?,
+                            &inner_schema,
+                        )
                     })
             },
         ));
@@ -87,6 +92,12 @@ impl std::fmt::Debug for DataframeQueryTableProvider {
             .field("query_expression", &self.query_expression)
             .finish()
     }
+}
+
+fn prepend_string_column_schema(schema: &Schema, column_name: &str) -> Schema {
+    let mut fields = vec![Field::new(column_name, DataType::Utf8, false)];
+    fields.extend(schema.fields().iter().map(|f| (**f).clone()));
+    Schema::new_with_metadata(fields, schema.metadata.clone())
 }
 
 fn prepend_string_column(
@@ -110,4 +121,31 @@ fn prepend_string_column(
     columns.extend(batch.columns().iter().cloned());
 
     RecordBatch::try_new(schema, columns)
+}
+
+pub fn align_record_batch_to_schema(
+    batch: &RecordBatch,
+    target_schema: &Arc<Schema>,
+) -> Result<RecordBatch, DataFusionError> {
+    let num_rows = batch.num_rows();
+
+    let mut aligned_columns = Vec::with_capacity(target_schema.fields().len());
+
+    for field in target_schema.fields() {
+        match batch.schema().column_with_name(field.name()) {
+            Some((idx, _)) => {
+                aligned_columns.push(batch.column(idx).clone());
+            }
+            None => {
+                // Fill with nulls of the right data type
+                let array = new_null_array(field.data_type(), num_rows);
+                aligned_columns.push(array);
+            }
+        }
+    }
+
+    Ok(RecordBatch::try_new(
+        target_schema.clone(),
+        aligned_columns,
+    )?)
 }
