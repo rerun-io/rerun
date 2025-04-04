@@ -332,8 +332,8 @@ impl StoreHub {
     }
 
     /// Inserts a new table into the store (potentially overwriting an existing entry).
-    pub fn insert_table_store(&mut self, id: TableId, store: TableStore) {
-        self.table_stores.insert(id, store);
+    pub fn insert_table_store(&mut self, id: TableId, store: TableStore) -> Option<TableStore> {
+        self.table_stores.insert(id, store)
     }
 
     fn remove_store(&mut self, store_id: &StoreId) {
@@ -396,6 +396,7 @@ impl StoreHub {
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
+    // TODO: Make sure we also clear all tables
     pub fn clear_recordings(&mut self) {
         // Keep only the welcome screen:
         let mut store_ids_retained = HashSet::default();
