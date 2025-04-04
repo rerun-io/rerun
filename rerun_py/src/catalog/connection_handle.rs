@@ -177,6 +177,7 @@ impl ConnectionHandle {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn get_chunks(
         &mut self,
         py: Python<'_>,
@@ -203,7 +204,7 @@ impl ConnectionHandle {
             range: range.map(|range| {
                 QueryRange {
                     index: range.timeline().to_string(),
-                    index_range: range.range.into(),
+                    index_range: range.range,
                     fuzzy_descriptors: vec![], // TODO(jleibs): support this
                 }
             }),
@@ -223,7 +224,7 @@ impl ConnectionHandle {
                     dataset_id: Some(dataset_id.into()),
                     partition_ids: partition_ids
                         .iter()
-                        .map(|id| id.as_ref().to_string().into())
+                        .map(|id| id.as_ref().to_owned().into())
                         .collect(),
                     chunk_ids: vec![],
                     entity_paths: entity_paths

@@ -447,7 +447,7 @@ fn extract_contents_expr(
         .iter()
         .filter_map(|descriptor| match descriptor {
             ColumnDescriptor::Component(component) => Some(component),
-            _ => None,
+            ColumnDescriptor::Time(_) => None,
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -520,7 +520,7 @@ fn extract_contents_expr(
                     let components: BTreeSet<ComponentName> = component_strs
                         .iter()
                         .map(|component_name| {
-                            find_best_component(&known_components, &entity_path, component_name)
+                            find_best_component(&known_components, entity_path, component_name)
                         })
                         .collect();
                     (entity_path.clone(), Some(components))
@@ -550,6 +550,6 @@ fn find_best_component(
                 .iter()
                 .find(|component| component.component_name.matches(component_name))
         })
-        .map(|component| component.component_name.clone())
+        .map(|component| component.component_name)
         .unwrap_or_else(|| ComponentName::new(component_name))
 }
