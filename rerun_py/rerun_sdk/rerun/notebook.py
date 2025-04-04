@@ -87,7 +87,7 @@ class Viewer:
         url: str | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
-        use_global_recording: bool | None = None
+        use_global_recording: bool | None = None,
     ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
@@ -172,7 +172,6 @@ class Viewer:
                 raise ValueError(
                     "Can only set a blueprint if there's either an active recording or a recording passed in"
                 )
-
 
     def add_recording(
         self,
