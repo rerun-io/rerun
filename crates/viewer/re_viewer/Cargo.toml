@@ -103,6 +103,7 @@ egui_table.workspace = true
 # External
 ahash.workspace = true
 anyhow.workspace = true
+arrow.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
 crossbeam.workspace = true

@@ -314,12 +314,26 @@ impl WebHandle {
 
         if let Some(channel) = self.tx_channels.get(id) {
             let tx = channel.table_tx.clone();
-            let data: Vec<u8> = data.to_vec();
+
+            // TODO: error handling
+            let cursor = std::io::Cursor::new(data);
+            let stream_reader = arrow::ipc::reader::StreamReader::try_new(cursor, None)
+                .expect("failed to create cursor");
+
+            let encoded = &stream_reader
+                .collect::<Result<Vec<_>, _>>()
+                .expect("could not read from IPC stream")[0];
+            let msg =
+                re_log_types::TableMsg::from_arrow_encoded(encoded).expect("msg decode failed");
 
             let egui_ctx = app.egui_ctx.clone();
 
-            // TODO(jochen): decode the table from `data`, and send it through `tx`.
-            todo!();
+            if tx.send(msg).is_ok() {
+                // TODO(jan): Is this enough to request a repaint?
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            } else {
+                re_log::info_once!("Failed to dispatch log message to viewer.");
+            }
         }
     }
 
