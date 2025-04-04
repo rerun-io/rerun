@@ -84,6 +84,7 @@ class Viewer:
         *,
         width: int | None = None,
         height: int | None = None,
+        url: str | None = None,
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
         use_global_recording: bool = True,
@@ -102,6 +103,8 @@ class Viewer:
             The width of the viewer in pixels.
         height : int
             The height of the viewer in pixels.
+        url:
+            Optional URL passed to the viewer for displaying its contents.
         recording:
             Specifies the [`rerun.RecordingStream`][] to use.
             If left unspecified, defaults to the current active data recording, if there is one.
@@ -144,20 +147,26 @@ class Viewer:
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
+            url=url,
         )
 
         if use_global_recording:
             recording = get_data_recording(recording)
             if recording is None:
-                raise ValueError("No recording specified and no active recording found")
+                if url is None:
+                    raise ValueError("No recording or url specified and no active recording found")
+                elif blueprint is not None:
+                    raise ValueError(
+                        "Can only set a blueprint if there's either an active recording or a recording passed in"
+                    )
+            else:
+                bindings.set_callback_sink(
+                    recording=recording.to_native(),
+                    callback=self._flush_hook,
+                )
 
-            bindings.set_callback_sink(
-                recording=recording.to_native(),
-                callback=self._flush_hook,
-            )
-
-            if blueprint is not None:
-                recording.send_blueprint(blueprint)
+                if blueprint is not None:
+                    recording.send_blueprint(blueprint)
 
     def add_recording(
         self,
