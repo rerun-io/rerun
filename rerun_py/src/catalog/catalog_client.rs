@@ -159,7 +159,7 @@ impl PyCatalogClient {
             Ok(datafusion_ctx.clone_ref(py))
         } else {
             Err(PyRuntimeError::new_err(
-                "DataFusion context not available".to_string(),
+                "DataFusion context not available (the `datafusion` package may need to be installed)".to_string(),
             ))
         }
     }
