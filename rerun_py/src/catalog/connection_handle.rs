@@ -3,11 +3,11 @@ use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
-use re_chunk::{LatestAtQuery, RangeQuery};
-use re_dataframe::ViewContentsSelector;
 use tokio_stream::StreamExt as _;
 
+use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
+use re_dataframe::ViewContentsSelector;
 use re_grpc_client::redap::{client, get_chunks_response_to_chunk};
 use re_log_types::{EntryId, StoreInfo};
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
@@ -246,7 +246,7 @@ impl ConnectionHandle {
                     .map_err(to_py_err)?;
             }
 
-            Ok::<(), PyErr>(())
+            Ok::<_, PyErr>(())
         })?;
 
         Ok(store)

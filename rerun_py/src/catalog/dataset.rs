@@ -3,8 +3,7 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyRuntimeError;
-use pyo3::{pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
+use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -25,8 +24,9 @@ use re_protos::manifest_registry::v1alpha1::{
 };
 use re_sdk::{ComponentDescriptor, ComponentName};
 
-use crate::catalog::dataframe_query::PyDataframeQueryView;
-use crate::catalog::{to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike};
+use crate::catalog::{
+    dataframe_query::PyDataframeQueryView, to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike,
+};
 use crate::dataframe::{
     PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording,
 };
