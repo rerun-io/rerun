@@ -120,7 +120,7 @@ class Viewer:
 
             Settings this to `False` causes the Viewer to not pick up the global recording.
 
-            This default to `False` if `url` is provided, and `True` otherwise.
+            Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
 
