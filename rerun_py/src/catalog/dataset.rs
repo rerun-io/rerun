@@ -76,6 +76,24 @@ impl PyDataset {
         })
     }
 
+    /// Return the URL for the given partition.
+    fn partition_url(self_: PyRef<'_, Self>, partition_id: String) -> String {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+
+        let url = re_uri::DatasetDataEndpoint {
+            origin: connection.origin().clone(),
+            dataset_id: super_.details.id.id,
+            partition_id,
+
+            //TODO(ab): add support for these two
+            time_range: None,
+            fragment: Default::default(),
+        };
+
+        url.to_string()
+    }
+
     /// Register a RRD URI to the dataset.
     fn register(self_: PyRef<'_, Self>, recording_uri: String) -> PyResult<()> {
         let super_ = self_.as_super();

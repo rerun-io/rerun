@@ -31,7 +31,6 @@ create_exception!(catalog, ConnectionError, PyConnectionError);
 /// Connection handle to a catalog service.
 #[derive(Clone)]
 pub struct ConnectionHandle {
-    #[expect(dead_code)]
     origin: re_uri::Origin,
 
     /// The actual tonic connection.
@@ -47,6 +46,10 @@ impl ConnectionHandle {
 
     pub fn client(&self) -> FrontendServiceClient<tonic::transport::Channel> {
         self.client.clone()
+    }
+
+    pub fn origin(&self) -> &re_uri::Origin {
+        &self.origin
     }
 }
 
