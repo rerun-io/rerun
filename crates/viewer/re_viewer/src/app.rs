@@ -12,7 +12,11 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_viewer_context::{
-    command_channel, store_hub::{BlueprintPersistence, StoreHub, StoreHubStats}, AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError
+    command_channel,
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
+    SystemCommandSender as _, TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
@@ -1371,6 +1375,7 @@ impl App {
     fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
+        // TODO: Should we bring back analytics for this too?
         self.rx_table.lock().retain(|rx| match rx.try_recv() {
             Ok(table) => {
 
@@ -1379,13 +1384,26 @@ impl App {
                         // TODO(grtlr): For now we don't append anything to existing stores and always replace.
                         let store = TableStore::default();
                         store.add_batch(sorbet_batch);
-                        store_hub.insert_table_store(table.id, store);
+                        store_hub.insert_table_store(table.id.clone(), store);
+                        store_hub.set_active_entry(table.id.clone().into());
+
+                            // Also select the new recording:
+                            self.command_sender.send_system(SystemCommand::SetSelection(
+                                re_viewer_context::Item::TableId(table.id.clone()),
+                            ));
+
+                            // If the viewer is in the background, tell the user that it has received something new.
+                            egui_ctx.send_viewport_cmd(
+                                egui::ViewportCommand::RequestUserAttention(
+                                    egui::UserAttentionType::Informational,
+                                ),
+                            );
                     },
                     Err(err) => {
                         re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
                     }
                 }
-                
+
                 true
             }
             Err(crossbeam::channel::TryRecvError::Empty) => true,
