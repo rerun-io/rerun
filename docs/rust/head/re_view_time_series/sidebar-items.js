@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PlotSeriesKind"],"fn":["plot_id"],"mod":["aggregation","line_visualizer_system","point_visualizer_system","series_query","util","view_class"],"struct":["PlotPoint","PlotPointAttrs","PlotSeries","ScatterAttrs","TimeSeriesView"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Error","RedapUri","Scheme"],"mod":["endpoints","error","fragment","origin","redap_uri","scheme","time_range"],"struct":["CatalogEndpoint","DatasetDataEndpoint","Fragment","Origin","ProxyEndpoint","TimeRange"]};

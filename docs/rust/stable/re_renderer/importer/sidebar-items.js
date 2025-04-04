@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["cpu_model","gltf","obj","stl"],"struct":["CpuMeshInstance","CpuModel","CpuModelMeshKey"]};

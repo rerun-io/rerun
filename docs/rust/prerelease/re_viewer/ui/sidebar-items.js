@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["blueprint_panel","memory_panel","mobile_warning_ui","recordings_panel","rerun_menu","selection_history_ui","selection_panel","top_panel","welcome_screen"]};

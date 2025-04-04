@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ARROW_VERSION"],"macro":["downcast_dictionary_array","downcast_primitive_array"],"mod":["alloc","array","buffer","compute","datatypes","error","ipc","pyarrow","record_batch","row","tensor","util"]};

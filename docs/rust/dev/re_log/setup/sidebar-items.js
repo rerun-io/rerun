@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PANIC_ON_WARN_SCOPE_DEPTH"],"fn":["env_var_bool","setup_logging"],"struct":["PanicOnWarn","PanicOnWarnScope"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME","FIELD_METADATA_KEY_ARCHETYPE_NAME"],"struct":["ComponentDescriptor"]};

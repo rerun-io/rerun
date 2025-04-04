@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["BindingError","BindingLayoutSource","BindingTypeName","FilteringError","InputError","StageError"],"fn":["check_texture_format","map_storage_format_from_naga","map_storage_format_to_naga","validate_color_attachment_bytes_per_sample"],"struct":["Interface","InterfaceVar","NumericType"],"type":["StageIo"]};

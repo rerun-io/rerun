@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["dataframe_query_provider","datafusion_connector","grpc_streaming_provider","partition_table","search_provider","table_entry_provider"],"struct":["DataFusionConnector","DataframeQueryTableProvider","PartitionTableProvider","SearchResultsTableProvider","TableEntryTableProvider"]};

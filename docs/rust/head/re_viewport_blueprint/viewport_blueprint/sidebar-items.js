@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["apply_viewport_command","build_tree_from_views_and_containers","tree_simplification_options"],"struct":["ViewportBlueprint"]};

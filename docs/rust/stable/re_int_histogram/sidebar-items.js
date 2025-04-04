@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["i64_key_from_u64_key","u64_key_from_i64_key"],"mod":["tree"],"struct":["Int64Histogram","Iter","RangeI64","RangeU64"]};

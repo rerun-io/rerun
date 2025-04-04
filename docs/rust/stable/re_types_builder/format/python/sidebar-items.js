@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_path_for_tmp_dir","format_python_dir","python_project_path","run_ruff_check_fix_on_dir","run_ruff_format_on_dir"],"struct":["PythonCodeFormatter"]};
