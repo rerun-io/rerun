@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -- CONNECT TO VIEWER AND SEND TABLE  -----------------------------------
 
     let client = rerun::ViewerClient::default();
-    client.send_table("My dataframe", dataframe);
+    client.send_table("Hello from Rust", dataframe);
 
     Ok(())
 }
