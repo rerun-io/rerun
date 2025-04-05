@@ -16,6 +16,7 @@ pub struct PyEntryId {
 
 #[pymethods]
 impl PyEntryId {
+    /// Create a new `EntryId` from a string.
     #[new]
     pub fn new(id: String) -> PyResult<Self> {
         Ok(Self {
@@ -25,6 +26,7 @@ impl PyEntryId {
         })
     }
 
+    /// Entry id as a string.
     pub fn __str__(&self) -> String {
         self.id.to_string()
     }
@@ -38,7 +40,8 @@ impl From<EntryId> for PyEntryId {
 
 // ---
 
-#[pyclass(name = "EntryType", eq, eq_int)]
+/// The kinds of entries that can be stored in the catalog.
+#[pyclass(name = "EntryKind", eq, eq_int)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PyEntryKind {
     #[pyo3(name = "DATASET")]
@@ -83,6 +86,7 @@ impl TryFrom<EntryKind> for PyEntryKind {
 
 // ---
 
+/// An entry in the catalog.
 #[pyclass(name = "Entry", subclass)]
 pub struct PyEntry {
     pub client: Py<PyCatalogClient>,
@@ -94,26 +98,31 @@ pub struct PyEntry {
 
 #[pymethods]
 impl PyEntry {
+    /// The entry's id.
     #[getter]
     pub fn id(&self, py: Python<'_>) -> Py<PyEntryId> {
         self.id.clone_ref(py)
     }
 
+    /// The entry's name.
     #[getter]
     pub fn name(&self) -> String {
         self.details.name.clone()
     }
 
+    /// The catalog client that this entry belongs to.
     #[getter]
     pub fn catalog(&self, py: Python<'_>) -> Py<PyCatalogClient> {
         self.client.clone_ref(py)
     }
 
+    /// The entry's kind.
     #[getter]
     pub fn kind(&self) -> PyResult<PyEntryKind> {
         self.details.kind.try_into()
     }
 
+    /// The entry's creation date and time.
     #[getter]
     //TODO(ab): use jiff when updating to pyo3 0.24.0
     pub fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
@@ -123,6 +132,7 @@ impl PyEntry {
         chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
     }
 
+    /// The entry's last updated date and time.
     #[getter]
     //TODO(ab): use jiff when updating to pyo3 0.24.0
     pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
@@ -134,6 +144,7 @@ impl PyEntry {
 
     // ---
 
+    /// Delete this entry from the catalog.
     fn delete(&mut self, py: Python<'_>) -> PyResult<()> {
         let entry_id = self.id.borrow(py).id;
         let mut connection = self.client.borrow_mut(py).connection().clone();

@@ -1479,6 +1479,7 @@ pub struct PyDataFusionTable {
 
 #[pymethods]
 impl PyDataFusionTable {
+    /// Returns a DataFusion table provider capsule.
     fn __datafusion_table_provider__<'py>(
         &self,
         py: Python<'py>,
@@ -1491,6 +1492,7 @@ impl PyDataFusionTable {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
+    /// Register this view to the global DataFusion context and return a DataFrame.
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
@@ -1513,6 +1515,7 @@ impl PyDataFusionTable {
         Ok(df)
     }
 
+    /// Name of this table.
     #[getter]
     fn name(&self) -> String {
         self.name.clone()

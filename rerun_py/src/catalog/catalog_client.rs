@@ -1,17 +1,17 @@
+use std::str::FromStr as _;
+
 use pyo3::{
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
     FromPyObject, Py, PyAny, PyResult, Python,
 };
-
+use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::EntryFilter;
 
-use crate::catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId};
+use crate::catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId, PyTable};
 
-use super::table::PyTable;
-
-/// A connection to a remote storage node.
+/// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClient")]
 pub struct PyCatalogClient {
     #[expect(dead_code)]
@@ -50,6 +50,7 @@ impl PyCatalogClient {
         })
     }
 
+    /// Get a list of all entries in the catalog.
     fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
         let mut connection = self_.borrow(py).connection.clone();
 
@@ -79,10 +80,15 @@ impl PyCatalogClient {
             .collect()
     }
 
-    fn get_dataset(self_: Py<Self>, id: EntryIdLike, py: Python<'_>) -> PyResult<Py<PyDataset>> {
+    /// Get a dataset by name or id.
+    fn get_dataset(
+        self_: Py<Self>,
+        name_or_id: EntryIdLike,
+        py: Python<'_>,
+    ) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow(py).connection.clone();
 
-        let id = id.resolve(&mut connection, py)?;
+        let id = name_or_id.resolve(&mut connection, py)?;
 
         let entry_id = id.borrow(py).id;
 
@@ -105,6 +111,7 @@ impl PyCatalogClient {
 
     //TODO(#9369): `datasets()` (needs FindDatasetsEntries rpc)
 
+    /// Create a new dataset with the provided name.
     fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow_mut(py).connection.clone();
 
@@ -127,10 +134,17 @@ impl PyCatalogClient {
 
     //TODO(#9360): `dataset_from_url()`
 
-    fn get_table(self_: Py<Self>, id: EntryIdLike, py: Python<'_>) -> PyResult<Py<PyTable>> {
+    /// Get a table by name or id.
+    ///
+    /// Note: the entry table is named `__entries`.
+    fn get_table(
+        self_: Py<Self>,
+        name_or_id: EntryIdLike,
+        py: Python<'_>,
+    ) -> PyResult<Py<PyTable>> {
         let mut connection = self_.borrow(py).connection.clone();
 
-        let id = id.resolve(&mut connection, py)?;
+        let id = name_or_id.resolve(&mut connection, py)?;
 
         let entry_id = id.borrow(py).id;
 
@@ -149,10 +163,12 @@ impl PyCatalogClient {
         Py::new(py, (table, entry))
     }
 
+    /// Get the entries table.
     fn entries_table(self_: Py<Self>, py: Python<'_>) -> PyResult<Py<PyTable>> {
         Self::get_table(self_, EntryIdLike::Str("__entries".to_owned()), py)
     }
 
+    /// The DataFusion context (if available).
     #[getter]
     pub fn ctx(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         if let Some(datafusion_ctx) = &self.datafusion_ctx {
@@ -168,25 +184,45 @@ impl PyCatalogClient {
 /// A type alias for a vector (vector search input data).
 #[derive(FromPyObject)]
 enum EntryIdLike {
+    /// Name or id of the entry.
     Str(String),
+
+    /// Id of the entry.
     Id(Py<PyEntryId>),
 }
 
 impl EntryIdLike {
     fn resolve(self, connection: &mut ConnectionHandle, py: Python<'_>) -> PyResult<Py<PyEntryId>> {
         match self {
-            Self::Str(name) => {
-                let entry_details = connection.find_entries(
+            Self::Str(name_or_id) => {
+                // First try to find by name
+                let mut entry_details = connection.find_entries(
                     py,
                     EntryFilter {
                         id: None,
-                        name: Some(name),
+                        name: Some(name_or_id.clone()),
                         entry_kind: None,
                     },
                 )?;
 
+                // If that fails, try to find by id
                 if entry_details.is_empty() {
-                    return Err(PyLookupError::new_err("No entry found"));
+                    if let Ok(entry_id) = EntryId::from_str(name_or_id.as_str()) {
+                        entry_details = connection.find_entries(
+                            py,
+                            EntryFilter {
+                                id: Some(entry_id.into()),
+                                name: None,
+                                entry_kind: None,
+                            },
+                        )?;
+                    }
+                }
+
+                if entry_details.is_empty() {
+                    return Err(PyLookupError::new_err(
+                        "No entry found with name or id 'name_or_id'",
+                    ));
                 }
 
                 Py::new(
