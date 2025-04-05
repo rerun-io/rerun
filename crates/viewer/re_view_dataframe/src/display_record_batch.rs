@@ -151,6 +151,46 @@ impl ComponentData {
                 data
             };
 
+            // TODO(ab): somehow address this hack.
+            //
+            // Background: the `row_id` passed to `ui_raw` is only ever used as a cache key for
+            // images, and we must provide one for images to be displayed. Since in general we don't
+            // have a row id available (e.g. for an arbitrary table entry, or for a dataframe query
+            // result), we just hash the data to get a deterministic row id.
+            let row_id = (component_name.as_str() == "rerun.components.Blob")
+                .then(|| {
+                    re_tracing::profile_scope!("Blob hash");
+
+                    let blob = re_types::components::Blob::from_arrow(&data_to_display).ok()?;
+                    let blob = &blob[0];
+
+                    fn hash_u8_arrays(data1: &[u8], data2: &[u8]) -> u128 {
+                        use ahash::AHasher;
+                        use std::hash::{Hash as _, Hasher as _};
+
+                        let mut hasher = AHasher::default();
+                        data1.hash(&mut hasher);
+                        data2.hash(&mut hasher);
+                        let hash = hasher.finish();
+
+                        u128::from(hash) | (u128::from(hash) << 64)
+                    }
+
+                    // According to Claude, hashing the first and last 2kBi of the image buffer
+                    // provides enough entropy. For performance reasons, I decided to cut that to
+                    // 2x512KiB.
+                    const MAX_SLICE_SIZE: usize = 512 * 1_024;
+
+                    let buffer = blob.as_slice();
+                    let half_len = (buffer.len() / 2).min(MAX_SLICE_SIZE);
+
+                    Some(re_chunk_store::RowId::from_u128(hash_u8_arrays(
+                        &buffer[..half_len],
+                        &buffer[buffer.len().saturating_sub(half_len)..],
+                    )))
+                })
+                .flatten();
+
             ctx.component_ui_registry().ui_raw(
                 ctx,
                 ui,
@@ -159,7 +199,7 @@ impl ComponentData {
                 ctx.recording(),
                 entity_path,
                 component_name,
-                None,
+                row_id,
                 data_to_display.as_ref(),
             );
         } else {
