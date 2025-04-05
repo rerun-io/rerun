@@ -4,7 +4,7 @@ import os
 from collections.abc import Iterator, Sequence
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional, Self
+from typing import Any, Callable, Optional, Self, Iterable
 
 import pyarrow as pa
 
@@ -1069,7 +1069,7 @@ class Table(Entry):
 
 class DataframeQueryView:
 
-    def filter_partition_id(self, partition_id: str, *args: str) -> Self:
+    def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more partition ids. All partition ids are included if not specified."""
 
     def filter_range_sequence(self, start: int, end: int) -> Self:

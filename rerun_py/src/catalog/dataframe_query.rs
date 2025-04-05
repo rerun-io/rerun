@@ -90,13 +90,14 @@ impl PyDataframeQueryView {
         partition_id: String,
         args: &Bound<'py, PyTuple>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        self_.partition_ids = std::iter::once(Ok(partition_id))
-            .chain(args.try_iter().map(|s| {
-                s.extract::<String>().map_err(|_err| {
-                    PyValueError::new_err("All arguments to `filter_partition_id` must be strings.")
-                })
-            }))
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut partition_ids = vec![partition_id];
+
+        for i in 0..args.len()? {
+            let item = args.get_item(i)?;
+            partition_ids.push(item.extract()?);
+        }
+
+        self_.partition_ids = partition_ids;
 
         Ok(self_)
     }
