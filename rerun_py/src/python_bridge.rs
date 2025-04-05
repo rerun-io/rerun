@@ -17,6 +17,7 @@ use pyo3::{
 use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
+use re_sdk::send_file_to_sink;
 use re_sdk::sink::CallbackSink;
 use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, TimeCell};
 use re_sdk::{
@@ -182,6 +183,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
+    m.add_function(wrap_pyfunction!(dataloader_bytes_from_path_to_callback, m)?)?;
 
     // properties
     m.add_function(wrap_pyfunction!(new_property_entity_path, m)?)?;
@@ -1448,6 +1450,29 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
             .collect_vec(),
     );
     Ok(path.to_string())
+}
+
+#[pyfunction]
+fn dataloader_bytes_from_path_to_callback(
+    file_path: std::path::PathBuf,
+    callback: PyObject,
+    py: Python<'_>,
+) -> PyResult<()> {
+    let callback = move |msgs: &[LogMsg]| {
+        Python::with_gil(|py| {
+            let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+            let bytes = PyBytes::new(py, &data);
+            callback.bind(py).call1((bytes,)).ok_or_log_error()?;
+            Some(())
+        });
+    };
+
+    let callback_sink = CallbackSink::new(callback);
+
+    py.allow_threads(|| {
+        send_file_to_sink(file_path, &callback_sink)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    })
 }
 
 // --- Properties ---
