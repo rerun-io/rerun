@@ -673,7 +673,6 @@ impl TableMsg {
     // This is required to send bytes around in the notebook.
     // If you ever change this, you also need to adapt `notebook.py` too.
     pub fn from_arrow_encoded(data: &ArrowRecordBatch) -> Option<Self> {
-        re_log::info!("{:?}", data);
         let mut metadata = data.schema().metadata().clone();
         let id = metadata.remove("__table_id").expect("this has to be here");
 
