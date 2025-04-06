@@ -538,6 +538,7 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateApp(app_id) => {
+                self.state.display_mode = DisplayMode::LocalRecordings;
                 store_hub.set_active_app(app_id);
             }
 
@@ -546,10 +547,7 @@ impl App {
             }
 
             SystemCommand::ActivateEntry(entry) => {
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(
-                        DisplayMode::LocalRecordings,
-                    ));
+                self.state.display_mode = DisplayMode::LocalRecordings;
                 store_hub.set_active_entry(entry);
             }
 
@@ -597,10 +595,10 @@ impl App {
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(
-                        DisplayMode::LocalRecordings,
-                    ));
+                // Note that we *do not* change the display mode here.
+                // For instance if the datasource is a blueprint for a dataset that may be loaded later,
+                // we don't want to switch out to it while the user browses a server.
+
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need
