@@ -590,7 +590,15 @@ impl App {
             }
             SystemCommand::AddRedapServer { endpoint } => {
                 let re_uri::CatalogEndpoint { origin } = endpoint;
-                self.state.redap_servers.add_server(origin);
+                self.state.redap_servers.add_server(origin.clone());
+
+                if self
+                    .store_hub
+                    .as_ref()
+                    .map_or(true, |store_hub| store_hub.active_entry().is_none())
+                {
+                    self.state.display_mode = DisplayMode::RedapServer(origin);
+                }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
