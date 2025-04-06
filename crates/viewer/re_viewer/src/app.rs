@@ -465,7 +465,7 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
 
-        // Whenever adding a redap receiver from a server that we don't know about already add it.
+        // Add unknown redap servers.
         //
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
