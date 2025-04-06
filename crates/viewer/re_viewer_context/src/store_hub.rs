@@ -412,7 +412,10 @@ impl StoreHub {
     // ---------------------
     // Active app
 
-    /// Change the active [`ApplicationId`]
+    /// Change the active [`ApplicationId`].
+    ///
+    /// Will ignore this request if the application id has no matching recording,
+    /// unless no app id has been set yet at all so far.
     #[allow(clippy::needless_pass_by_value)]
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
@@ -427,8 +430,13 @@ impl StoreHub {
             return;
         }
 
-        self.active_application_id = Some(app_id.clone());
-        self.active_entry = None;
+        // If this is the welcome screen, or we didn't have any app id at all so far,
+        // we set the active application_id even if we don't find a matching recording.
+        // (otherwise we don't, because we don't want to leave towards a state without any recording if we don't have to)
+        if StoreHub::welcome_screen_app_id() == app_id || self.active_application_id.is_none() {
+            self.active_application_id = Some(app_id.clone());
+            self.active_entry = None;
+        }
 
         // Find any matching recording and activate it
         for rec in self
@@ -437,6 +445,7 @@ impl StoreHub {
             .sorted_by_key(|entity_db| entity_db.recording_property::<Timestamp>())
         {
             if rec.app_id() == Some(&app_id) {
+                self.active_application_id = Some(app_id.clone());
                 self.active_entry = Some(StoreHubEntry::Recording {
                     store_id: rec.store_id().clone(),
                 });
@@ -499,6 +508,11 @@ impl StoreHub {
     #[inline]
     pub fn active_table_id(&self) -> Option<&TableId> {
         self.active_entry.as_ref().and_then(|e| e.table_ref())
+    }
+
+    /// Currently active entry if any.
+    pub fn active_entry(&self) -> Option<&StoreHubEntry> {
+        self.active_entry.as_ref()
     }
 
     /// Directly access the [`Caches`] for the active recording.
