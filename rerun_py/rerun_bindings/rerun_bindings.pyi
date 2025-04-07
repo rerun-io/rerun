@@ -935,13 +935,11 @@ def asset_video_read_frame_timestamps_nanos(
 ## CATALOG                                                                                                         ##
 #####################################################################################################################
 
-
 class EntryId:
     """A unique identifier for an entry in the catalog."""
 
     def __str__(self) -> str:
         """Return str(self)."""
-
 
 class EntryKind:
     """The kinds of entries that can be stored in the catalog."""
@@ -953,7 +951,6 @@ class EntryKind:
 
     def __str__(self, /) -> str:
         """Return str(self)."""
-
 
 class Entry:
     """An entry in the catalog."""
@@ -985,7 +982,6 @@ class Entry:
     def delete(self) -> None:
         """Delete this entry from the catalog."""
 
-
 class Dataset(Entry):
     @property
     def manifest_url(self) -> str:
@@ -1007,49 +1003,49 @@ class Dataset(Entry):
         """Download a partition from the dataset."""
 
     def dataframe_query_view(
-            self,
-            *,
-            index: str,
-            contents: Any,
-            include_semantically_empty_columns: bool = False,
-            include_indicator_columns: bool = False,
-            include_tombstone_columns: bool = False,
+        self,
+        *,
+        index: str,
+        contents: Any,
+        include_semantically_empty_columns: bool = False,
+        include_indicator_columns: bool = False,
+        include_tombstone_columns: bool = False,
     ) -> DataframeQueryView:
         """Create a view to run a dataframe query on the dataset."""
 
     def create_fts_index(
-            self,
-            *,
-            column: ComponentColumnSelector,
-            time_index: IndexColumnSelector,
-            store_position: bool = False,
-            base_tokenizer: str = "simple",
+        self,
+        *,
+        column: ComponentColumnSelector,
+        time_index: IndexColumnSelector,
+        store_position: bool = False,
+        base_tokenizer: str = "simple",
     ) -> None:
         """Create a full-text search index on the given column."""
 
     def create_vector_index(
-            self,
-            *,
-            column: ComponentColumnSelector,
-            time_index: IndexColumnSelector,
-            num_partitions: int = 5,
-            num_sub_vectors: int = 16,
-            distance_metric: VectorDistanceMetric |  str = ...,
+        self,
+        *,
+        column: ComponentColumnSelector,
+        time_index: IndexColumnSelector,
+        num_partitions: int = 5,
+        num_sub_vectors: int = 16,
+        distance_metric: VectorDistanceMetric | str = ...,
     ) -> None:
         """Create a vector index on the given column."""
 
     def search_fts(
-            self,
-            query: str,
-            column: ComponentColumnSelector,
+        self,
+        query: str,
+        column: ComponentColumnSelector,
     ) -> DataFusionTable:
         """Search the dataset using a full-text search query."""
 
     def search_vector(
-            self,
-            query: Any,  # VectorLike
-            column: ComponentColumnSelector,
-            top_k: int,
+        self,
+        query: Any,  # VectorLike
+        column: ComponentColumnSelector,
+        top_k: int,
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""
 
@@ -1061,14 +1057,12 @@ class Table(Entry):
     """
 
     def __datafusion_table_provider__(self) -> Any:
-       """Returns a DataFusion table provider capsule."""
-
+        """Returns a DataFusion table provider capsule."""
 
     def df(self) -> Any:
         """Registers the table with the DataFusion context and return a DataFrame."""
 
 class DataframeQueryView:
-
     def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
         """Filter by one or more partition ids. All partition ids are included if not specified."""
 
@@ -1266,5 +1260,5 @@ class DataFusionTable:
         """Register this view to the global DataFusion context and return a DataFrame."""
 
     @property
-    def name(self)-> str:
+    def name(self) -> str:
         """Name of this table."""
