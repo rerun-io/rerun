@@ -582,7 +582,7 @@ impl App {
                 if self
                     .store_hub
                     .as_ref()
-                    .map_or(true, |store_hub| store_hub.active_entry().is_none())
+                    .is_none_or(|store_hub| store_hub.active_entry().is_none())
                 {
                     self.state.display_mode = DisplayMode::RedapServer(origin);
                 }
