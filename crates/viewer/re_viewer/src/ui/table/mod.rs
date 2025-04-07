@@ -7,6 +7,7 @@ use re_redap_browser::table_utils::{
     apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
 };
 use re_sorbet::{ColumnDescriptorRef, SorbetBatch};
+use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::{TableContext, ViewerContext};
@@ -62,6 +63,16 @@ pub fn table_ui(viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, context: &Tab
         }),
     );
 
+    let has_thumbnail = columns.iter().any(|desc| {
+        matches!(
+            desc,
+            ColumnDescriptorRef::Component(&re_sorbet::ComponentColumnDescriptor {
+                component_name,
+                ..
+            } ) if component_name == ComponentName::from("rerun.components.Blob")
+        )
+    });
+
     Frame::new()
         .inner_margin(Margin {
             top: 16,
@@ -86,6 +97,7 @@ pub fn table_ui(viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, context: &Tab
         display_record_batches: &display_record_batches,
         selected_columns: &columns,
         table_config,
+        has_thumbnail,
     };
 
     apply_table_style_fixes(ui.style_mut());
@@ -123,6 +135,7 @@ struct CollectionTableDelegate<'a> {
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     selected_columns: &'a Vec<ColumnDescriptorRef<'a>>,
     table_config: TableConfig,
+    has_thumbnail: bool,
 }
 
 impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
@@ -183,7 +196,10 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        //re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
-        100.0
+        if self.has_thumbnail {
+            70.0
+        } else {
+            re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
+        }
     }
 }
