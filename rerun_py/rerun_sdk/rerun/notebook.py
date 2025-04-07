@@ -8,6 +8,9 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+import pyarrow
+import pyarrow.ipc as ipc
+from pyarrow import RecordBatch
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -211,6 +214,39 @@ class Viewer:
 
         if blueprint is not None:
             recording.send_blueprint(blueprint)
+
+    def _add_table_id(self, record_batch: RecordBatch, table_id: str) -> RecordBatch:
+        # Get current schema
+        schema = record_batch.schema
+        schema = schema.with_metadata({b"__table_id": table_id})
+
+        # Create new record batch with updated schema
+        return RecordBatch.from_arrays(record_batch.columns, schema=schema)
+
+    def send_table(
+        self,
+        id: str,
+        table: RecordBatch,
+    ) -> None:
+        """
+        Sends a table in the form of a dataframe to the viewer.
+
+        Parameters
+        ----------
+        id:
+            The name that uniquely identifies the table in the viewer.
+            This name will also be shown in the recording panel.
+        table:
+            The table as a single Arrow record batch.
+
+        """
+        new_table = self._add_table_id(table, id)
+        sink = pyarrow.BufferOutputStream()
+        writer = ipc.new_stream(sink, new_table.schema)
+        writer.write_batch(new_table)
+        writer.close()
+        table_as_bytes = sink.getvalue().to_pybytes()
+        self._viewer.send_table(table_as_bytes)
 
     def display(self, block_until_ready: bool = True) -> None:
         """

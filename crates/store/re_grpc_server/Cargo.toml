@@ -32,8 +32,10 @@ re_protos.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
+re_uri.workspace = true
 
 # External
+crossbeam.workspace = true
 parking_lot.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 tonic-web.workspace = true

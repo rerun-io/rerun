@@ -28,9 +28,7 @@ pub enum SystemCommand {
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Add a new server to the redap browser.
-    AddRedapServer {
-        endpoint: re_uri::CatalogEndpoint,
-    },
+    AddRedapServer(re_uri::CatalogUri),
 
     ChangeDisplayMode(crate::DisplayMode),
 
@@ -62,7 +60,7 @@ pub enum SystemCommand {
     CloseEntry(StoreHubEntry),
 
     /// Close all stores and show the welcome screen again.
-    CloseAllRecordings,
+    CloseAllEntries,
 
     /// Update the blueprint with additional data
     ///

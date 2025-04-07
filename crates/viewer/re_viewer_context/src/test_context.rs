@@ -489,7 +489,7 @@ impl TestContext {
                 | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
-                | SystemCommand::CloseAllRecordings
+                | SystemCommand::CloseAllEntries
                 | SystemCommand::SetLoopSelection { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
