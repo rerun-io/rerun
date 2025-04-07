@@ -316,7 +316,7 @@ pub fn spawn_with_recv(
                 }),
                 Err(broadcast::error::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
-                    // We don't have to explicitly call `quit` on crossbeam channels.
+                    // `crossbeam` does not have a `quit` method, so we're done here.
                     break;
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {

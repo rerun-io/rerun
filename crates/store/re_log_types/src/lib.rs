@@ -640,6 +640,10 @@ impl std::fmt::Display for StoreSource {
 
 // ---
 
+/// A table, encoded as a dataframe of Arrow record batches.
+///
+/// Tables have a [`TableId`], but don't belong to an application and therefore don't have an [`ApplicationId`].
+/// For now, the table is always sent as a whole, i.e. tables can't be streamed.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 pub struct TableMsg {
