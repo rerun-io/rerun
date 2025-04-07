@@ -215,19 +215,31 @@ class Viewer:
         if blueprint is not None:
             recording.send_blueprint(blueprint)
 
-    def _add_table_id(self, record_batch: RecordBatch, table_id: str):
+    def _add_table_id(self, record_batch: RecordBatch, table_id: str) -> RecordBatch:
         # Get current schema
         schema = record_batch.schema
         schema = schema.with_metadata({b"__table_id": table_id})
 
         # Create new record batch with updated schema
-        return pyarrow.RecordBatch.from_arrays(record_batch.columns, schema=schema)
+        return RecordBatch.from_arrays(record_batch.columns, schema=schema)
 
     def send_table(
         self,
         id: str,
         table: RecordBatch,
     ) -> None:
+        """
+        Sends a table in the form of a dataframe to the viewer.
+
+        Parameters
+        ----------
+        id : str
+            The name that uniquely identifies the table in the viewer.
+            This name will also be shown in the recording panel.
+        table : RecordBatch
+            The table as a single Arrow record batch.
+
+        """
         new_table = self._add_table_id(table, id)
         sink = pyarrow.BufferOutputStream()
         writer = ipc.new_stream(sink, new_table.schema)

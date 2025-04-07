@@ -3,7 +3,7 @@
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use ahash::HashMap;
-use arrow::{array::RecordBatch, error::ArrowError};
+use arrow::array::RecordBatch;
 use serde::Deserialize;
 use std::rc::Rc;
 use std::str::FromStr as _;
@@ -247,12 +247,11 @@ impl WebHandle {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.remove(id) {
-            channel
-                .log_tx
+        if let Some(Channel { log_tx, table_tx }) = self.tx_channels.remove(id) {
+            log_tx
                 .quit(None)
                 .warn_on_err_once("Failed to send quit marker");
-            drop(channel.table_tx);
+            drop(table_tx);
         }
 
         // Request a repaint since closing the channel may update the top bar.
@@ -319,28 +318,38 @@ impl WebHandle {
             let tx = channel.table_tx.clone();
 
             let cursor = std::io::Cursor::new(data);
-            let stream_reader = arrow::ipc::reader::StreamReader::try_new(cursor, None) else {
-                re_log::error_once!("Failed to create cursor");
-                return;
+            let stream_reader = match arrow::ipc::reader::StreamReader::try_new(cursor, None) {
+                Ok(stream_reader) => stream_reader,
+                Err(err) => {
+                    re_log::error_once!("Failed to interpret data as IPC-encoded arrow: {err}");
+                    return;
+                }
             };
 
-            let encoded = &stream_reader.collect::<Result<Vec<_>, _>>() else {
-                re_log::error_once!("Could not read from IPC stream");
-                return;
+            let encoded = match stream_reader.collect::<Result<Vec<_>, _>>() {
+                Ok(encoded) => encoded,
+                Err(err) => {
+                    re_log::error_once!("Could not read from IPC stream: {err}");
+                    return;
+                }
             };
 
-            let msg = from_arrow_encoded(encoded[0]) else {
-                re_log::error_once!("Failed to decode Arrow message");
-                return;
+            let msg = match from_arrow_encoded(&encoded[0]) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    re_log::error_once!("Failed to decode Arrow message: {err}");
+                    return;
+                }
             };
 
             let egui_ctx = app.egui_ctx.clone();
 
-            if tx.send(msg).is_ok() {
-                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-            } else {
-                re_log::info_once!("Failed to dispatch log message to viewer.");
-            }
+            match tx.send(msg) {
+                Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
+                Err(err) => {
+                    re_log::info_once!("Failed to dispatch log message to viewer: {err}");
+                }
+            };
         }
     }
 
@@ -896,31 +905,15 @@ pub fn set_email(email: String) {
     config.save().unwrap();
 }
 
-/// Returns the [`TableMsg`] encoded as a record batch.
-// This is required to send bytes to a viewer running in a notebook.
-// If you ever change this, you also need to adapt `notebook.py` too.
-pub fn to_arrow_encoded(table: &TableMsg) -> Result<RecordBatch, ArrowError> {
-    let current_schema = table.data.schema();
-    let mut metadata = current_schema.metadata().clone();
-    metadata.insert("__table_id".to_owned(), table.id.as_str().to_owned());
-
-    // Create a new schema with the updated metadata
-    let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
-        current_schema.fields().clone(),
-        metadata,
-    ));
-
-    // Create a new record batch with the same data but updated schema
-    RecordBatch::try_new(new_schema, table.data.columns().to_vec())
-}
-
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn from_arrow_encoded(data: &RecordBatch) -> Option<TableMsg> {
+pub fn from_arrow_encoded(data: &RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
     re_log::info!("{:?}", data);
     let mut metadata = data.schema().metadata().clone();
-    let id = metadata.remove("__table_id").expect("this has to be here");
+    let id = metadata
+        .remove("__table_id")
+        .ok_or("encoded record batch is missing `__table_id` metadata.")?;
 
     let data = RecordBatch::try_new(
         Arc::new(arrow::datatypes::Schema::new_with_metadata(
@@ -928,10 +921,9 @@ pub fn from_arrow_encoded(data: &RecordBatch) -> Option<TableMsg> {
             metadata,
         )),
         data.columns().to_vec(),
-    )
-    .ok()?;
+    )?;
 
-    Some(TableMsg {
+    Ok(TableMsg {
         id: TableId::new(id),
         data,
     })
@@ -940,6 +932,25 @@ pub fn from_arrow_encoded(data: &RecordBatch) -> Option<TableMsg> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arrow::ArrowError;
+
+    /// Returns the [`TableMsg`] encoded as a record batch.
+    // This is required to send bytes to a viewer running in a notebook.
+    // If you ever change this, you also need to adapt `notebook.py` too.
+    pub fn to_arrow_encoded(table: &TableMsg) -> Result<RecordBatch, ArrowError> {
+        let current_schema = table.data.schema();
+        let mut metadata = current_schema.metadata().clone();
+        metadata.insert("__table_id".to_owned(), table.id.as_str().to_owned());
+
+        // Create a new schema with the updated metadata
+        let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
+            current_schema.fields().clone(),
+            metadata,
+        ));
+
+        // Create a new record batch with the same data but updated schema
+        RecordBatch::try_new(new_schema, table.data.columns().to_vec())
+    }
 
     #[test]
     fn table_msg_encoded_roundtrip() {

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 /// The id for an entry (i.e. a dataset or a table) in a remote catalog.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
@@ -25,5 +27,13 @@ impl std::fmt::Display for EntryId {
 impl From<re_tuid::Tuid> for EntryId {
     fn from(id: re_tuid::Tuid) -> Self {
         Self { id }
+    }
+}
+
+impl FromStr for EntryId {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        re_tuid::Tuid::from_str(s).map(|id| Self { id })
     }
 }

@@ -285,7 +285,7 @@ pub fn spawn_with_recv(
                     break;
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {
-                    re_log::debug!(
+                    re_log::warn!(
                         "message proxy receiver dropped {n} messages due to backpressure"
                     );
                     continue;
@@ -316,11 +316,11 @@ pub fn spawn_with_recv(
                 }),
                 Err(broadcast::error::RecvError::Closed) => {
                     re_log::debug!("message proxy server shut down, closing receiver");
-                    // We don't have to explicitly call `quit` on crossbeam channels.
+                    // `crossbeam` does not have a `quit` method, so we're done here.
                     break;
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {
-                    re_log::debug!(
+                    re_log::warn!(
                         "message proxy receiver dropped {n} messages due to backpressure"
                     );
                     continue;
@@ -634,13 +634,13 @@ impl MessageProxy {
     async fn new_client_message_stream(&self) -> ReadMessagesStream {
         let (sender, receiver) = oneshot::channel();
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
-            re_log::error!("Error initializing new client: {err}");
+            re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
         };
         let (history, log_channel, _) = match receiver.await {
             Ok(v) => v,
             Err(err) => {
-                re_log::error!("Error initializing new client: {err}");
+                re_log::error!("Error accepting new client: {err}");
                 return Box::pin(tokio_stream::empty());
             }
         };
@@ -676,13 +676,13 @@ impl MessageProxy {
     async fn new_client_table_stream(&self) -> ReadTablesStream {
         let (sender, receiver) = oneshot::channel();
         if let Err(err) = self.event_tx.send(Event::NewClient(sender)).await {
-            re_log::error!("Error initializing new client: {err}");
+            re_log::error!("Error accepting new client: {err}");
             return Box::pin(tokio_stream::empty());
         };
         let (history, _, table_channel) = match receiver.await {
             Ok(v) => v,
             Err(err) => {
-                re_log::error!("Error initializing new client: {err}");
+                re_log::error!("Error accepting new client: {err}");
                 return Box::pin(tokio_stream::empty());
             }
         };

@@ -469,6 +469,18 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))]
         let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
 
+        // Add unknown redap servers.
+        //
+        // Otherwise we end up in a situation where we have a data from an unknown server,
+        // which is unnecessary and can get us into a strange ui state.
+        if let SmartChannelSource::RedapGrpcStream(endpoint) = rx.source() {
+            if !self.state.redap_servers.has_server(&endpoint.origin) {
+                self.command_sender
+                    .send_system(SystemCommand::AddRedapServer {
+                        endpoint: re_uri::CatalogEndpoint::new(endpoint.origin.clone()),
+                    });
+            }
+        }
         self.rx_log.add(rx);
     }
 
@@ -525,6 +537,7 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateApp(app_id) => {
+                self.state.display_mode = DisplayMode::LocalRecordings;
                 store_hub.set_active_app(app_id);
             }
 
@@ -533,10 +546,7 @@ impl App {
             }
 
             SystemCommand::ActivateEntry(entry) => {
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(
-                        DisplayMode::LocalRecordings,
-                    ));
+                self.state.display_mode = DisplayMode::LocalRecordings;
                 store_hub.set_active_entry(entry);
             }
 
@@ -579,15 +589,23 @@ impl App {
             }
             SystemCommand::AddRedapServer { endpoint } => {
                 let re_uri::CatalogEndpoint { origin } = endpoint;
-                self.state.redap_servers.add_server(origin);
+                self.state.redap_servers.add_server(origin.clone());
+
+                if self
+                    .store_hub
+                    .as_ref()
+                    .is_none_or(|store_hub| store_hub.active_entry().is_none())
+                {
+                    self.state.display_mode = DisplayMode::RedapServer(origin);
+                }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(
-                        DisplayMode::LocalRecordings,
-                    ));
+                // Note that we *do not* change the display mode here.
+                // For instance if the datasource is a blueprint for a dataset that may be loaded later,
+                // we don't want to switch out to it while the user browses a server.
+
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need
