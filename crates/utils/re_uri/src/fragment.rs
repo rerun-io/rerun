@@ -46,7 +46,7 @@ impl Fragment {
 
         for part in split_on_unescaped_ampersand(fragment) {
             if let Some((timeline, time)) = part.split_once('=') {
-                let timelinen = TimelineName::from(timeline);
+                let timeline = TimelineName::from(timeline);
                 match time.parse::<TimeCell>() {
                     Ok(time_cell) => {
                         if when.is_some() {
@@ -54,7 +54,7 @@ impl Fragment {
                                 "Multiple times set in uri #fragment {fragment:?}. Ignoring all but last."
                             );
                         }
-                        when = Some((timelinen, time_cell));
+                        when = Some((timeline, time_cell));
                     }
                     Err(err) => {
                         re_log::warn_once!(
