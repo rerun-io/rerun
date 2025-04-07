@@ -111,10 +111,8 @@ impl TableConfig {
         columns: impl Iterator<Item = ColumnConfig>,
     ) -> Self {
         ctx.data_mut(|data| {
-            let config: &mut Self = data.get_persisted_mut_or_insert_with(persisted_id, || {
-                println!("Creating new table config");
-                Self::new(persisted_id)
-            });
+            let config: &mut Self =
+                data.get_persisted_mut_or_insert_with(persisted_id, || Self::new(persisted_id));
 
             let mut has_cols = HashSet::default();
 
