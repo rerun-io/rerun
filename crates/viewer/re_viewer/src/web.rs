@@ -3,6 +3,7 @@
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use ahash::HashMap;
+use arrow::{array::RecordBatch, error::ArrowErros};
 use serde::Deserialize;
 use std::rc::Rc;
 use std::str::FromStr as _;
@@ -887,4 +888,99 @@ pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
     config.save().unwrap();
+}
+
+/// Returns the [`TableMsg`] encoded as a record batch.
+// This is required to send bytes to a viewer running in a notebook.
+// If you ever change this, you also need to adapt `notebook.py` too.
+pub fn to_arrow_encoded(&table: TableMsg) -> Result<ArrowRecordBatch, ArrowError> {
+    let current_schema = self.data.schema();
+    let mut metadata = current_schema.metadata().clone();
+    metadata.insert("__table_id".to_owned(), self.id.as_str().to_owned());
+
+    // Create a new schema with the updated metadata
+    let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
+        current_schema.fields().clone(),
+        metadata,
+    ));
+
+    // Create a new record batch with the same data but updated schema
+    ArrowRecordBatch::try_new(new_schema, self.data.columns().to_vec())
+}
+
+/// Returns the [`TableMsg`] back from a encoded record batch.
+// This is required to send bytes around in the notebook.
+// If you ever change this, you also need to adapt `notebook.py` too.
+pub fn from_arrow_encoded(data: &ArrowRecordBatch) -> Option<TableMsg> {
+    re_log::info!("{:?}", data);
+    let mut metadata = data.schema().metadata().clone();
+    let id = metadata.remove("__table_id").expect("this has to be here");
+
+    let data = ArrowRecordBatch::try_new(
+        Arc::new(arrow::datatypes::Schema::new_with_metadata(
+            data.schema().fields().clone(),
+            metadata,
+        )),
+        data.columns().to_vec(),
+    )
+    .ok()?;
+
+    Some(Self {
+        id: TableId::new(id),
+        data,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn table_msg_encoded_roundtrip() {
+        use arrow::{
+            array::{ArrayRef, StringArray, UInt64Array},
+            datatypes::{DataType, Field, Schema},
+        };
+
+        let data = {
+            let schema = Arc::new(Schema::new_with_metadata(
+                vec![
+                    Field::new("id", DataType::UInt64, false),
+                    Field::new("name", DataType::Utf8, false),
+                ],
+                Default::default(),
+            ));
+
+            // Create a UInt64 array
+            let id_array = UInt64Array::from(vec![1, 2, 3, 4, 5]);
+
+            // Create a String array
+            let name_array = StringArray::from(vec![
+                "Alice",
+                "Bob",
+                "Charlie",
+                "Dave",
+                "http://www.rerun.io",
+            ]);
+
+            // Convert arrays to ArrayRef (trait objects)
+            let arrays: Vec<ArrayRef> = vec![
+                Arc::new(id_array) as ArrayRef,
+                Arc::new(name_array) as ArrayRef,
+            ];
+
+            // Create a RecordBatch
+            ArrowRecordBatch::try_new(schema, arrays).unwrap()
+        };
+
+        let msg = TableMsg {
+            id: TableId::new("test123".to_owned()),
+            data,
+        };
+
+        let encoded = to_arrow_encoded(&msg).expect("to encoded failed");
+        let decoded = from_arrow_encoded(&encoded).expect("from concatenated failed");
+
+        assert_eq!(msg, decoded);
+    }
 }
