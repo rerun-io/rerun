@@ -7,9 +7,11 @@ use arrow::{array::RecordBatch, error::ArrowErros};
 use serde::Deserialize;
 use std::rc::Rc;
 use std::str::FromStr as _;
+use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
+use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
 
@@ -324,8 +326,7 @@ impl WebHandle {
             let encoded = &stream_reader
                 .collect::<Result<Vec<_>, _>>()
                 .expect("could not read from IPC stream")[0];
-            let msg =
-                re_log_types::TableMsg::from_arrow_encoded(encoded).expect("msg decode failed");
+            let msg = from_arrow_encoded(encoded).expect("msg decode failed");
 
             let egui_ctx = app.egui_ctx.clone();
 
@@ -893,10 +894,10 @@ pub fn set_email(email: String) {
 /// Returns the [`TableMsg`] encoded as a record batch.
 // This is required to send bytes to a viewer running in a notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn to_arrow_encoded(&table: TableMsg) -> Result<ArrowRecordBatch, ArrowError> {
-    let current_schema = self.data.schema();
+pub fn to_arrow_encoded(&table: TableMsg) -> Result<RecordBatch, ArrowError> {
+    let current_schema = table.data.schema();
     let mut metadata = current_schema.metadata().clone();
-    metadata.insert("__table_id".to_owned(), self.id.as_str().to_owned());
+    metadata.insert("__table_id".to_owned(), table.id.as_str().to_owned());
 
     // Create a new schema with the updated metadata
     let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
@@ -905,7 +906,7 @@ pub fn to_arrow_encoded(&table: TableMsg) -> Result<ArrowRecordBatch, ArrowError
     ));
 
     // Create a new record batch with the same data but updated schema
-    ArrowRecordBatch::try_new(new_schema, self.data.columns().to_vec())
+    RecordBatch::try_new(new_schema, table.data.columns().to_vec())
 }
 
 /// Returns the [`TableMsg`] back from a encoded record batch.
@@ -916,7 +917,7 @@ pub fn from_arrow_encoded(data: &ArrowRecordBatch) -> Option<TableMsg> {
     let mut metadata = data.schema().metadata().clone();
     let id = metadata.remove("__table_id").expect("this has to be here");
 
-    let data = ArrowRecordBatch::try_new(
+    let data = RecordBatch::try_new(
         Arc::new(arrow::datatypes::Schema::new_with_metadata(
             data.schema().fields().clone(),
             metadata,
