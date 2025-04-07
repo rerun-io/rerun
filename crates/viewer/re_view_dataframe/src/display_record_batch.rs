@@ -16,7 +16,6 @@ use thiserror::Error;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
-use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
 use re_types_core::{ComponentName, DeserializationError, Loggable as _, RowId};
@@ -153,8 +152,7 @@ impl ComponentData {
                 data
             };
 
-            let mut row_id = row_ids
-                .and_then(|row_ids| row_ids.get(row_index).map(|&tuid| RowId::from_tuid(tuid)));
+            let mut row_id = row_ids.and_then(|row_ids| row_ids.get(row_index)).copied();
 
             // TODO(ab): we should find an alternative to using content-hashing to generate cache
             // keys.
