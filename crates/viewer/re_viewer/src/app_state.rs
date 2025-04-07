@@ -272,8 +272,7 @@ impl AppState {
                 .collect::<_>()
         };
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
+        let rec_cfg = recording_config_entry(recording_configs, recording);
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             global_context: GlobalContext {
@@ -838,7 +837,6 @@ fn handle_time_ctrl_callbacks(
 
 pub(crate) fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
-    id: StoreId,
     entity_db: &'_ EntityDb,
 ) -> &'cfgs mut RecordingConfig {
     fn new_recording_config(entity_db: &'_ EntityDb) -> RecordingConfig {
@@ -873,7 +871,7 @@ pub(crate) fn recording_config_entry<'cfgs>(
     }
 
     configs
-        .entry(id)
+        .entry(entity_db.store_id().clone())
         .or_insert_with(|| new_recording_config(entity_db))
 }
 
