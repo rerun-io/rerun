@@ -864,7 +864,7 @@ impl App {
                         .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
                 }
             }
-            UICommand::CloseAllRecordings => {
+            UICommand::CloseAllEntries => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllEntries);
             }
