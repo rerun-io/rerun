@@ -18,7 +18,7 @@ use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
-use re_types_core::{ComponentName, DeserializationError, Loggable as _};
+use re_types_core::{ComponentName, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -162,32 +162,12 @@ impl ComponentData {
                     re_tracing::profile_scope!("Blob hash");
 
                     let blob = re_types::components::Blob::from_arrow(&data_to_display).ok()?;
-                    let blob = &blob[0];
+                    let buffer = &blob[0].as_slice();
 
-                    fn hash_u8_arrays(data1: &[u8], data2: &[u8]) -> u128 {
-                        use ahash::AHasher;
-                        use std::hash::{Hash as _, Hasher as _};
+                    // cap the max amount of data to hash to 9 KiB
+                    const SECTION_LENGTH: usize = 3 * 1024;
 
-                        let mut hasher = AHasher::default();
-                        data1.hash(&mut hasher);
-                        data2.hash(&mut hasher);
-                        let hash = hasher.finish();
-
-                        u128::from(hash) | (u128::from(hash) << 64)
-                    }
-
-                    // According to Claude, hashing the first and last 2kBi of the image buffer
-                    // provides enough entropy. For performance reasons, I decided to cut that to
-                    // 2x512KiB.
-                    const MAX_SLICE_SIZE: usize = 512 * 1_024;
-
-                    let buffer = blob.as_slice();
-                    let half_len = (buffer.len() / 2).min(MAX_SLICE_SIZE);
-
-                    Some(re_chunk_store::RowId::from_u128(hash_u8_arrays(
-                        &buffer[..half_len],
-                        &buffer[buffer.len().saturating_sub(half_len)..],
-                    )))
+                    Some(RowId::from_u128(quick_partial_hash(buffer, SECTION_LENGTH)))
                 })
                 .flatten();
 
@@ -206,6 +186,39 @@ impl ComponentData {
             ui.label("-");
         }
     }
+}
+
+/// Compute a quick partial hash of an image data buffer, capping the max amount of hashed data to
+/// `3*section_length`.
+///
+/// If the buffer is smaller or equal to than `3*section_length`, the entire buffer is hashed.
+/// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
+/// are hashed.
+fn quick_partial_hash(data: &[u8], section_length: usize) -> u128 {
+    use ahash::AHasher;
+    use std::hash::{Hash as _, Hasher as _};
+
+    re_tracing::profile_function!();
+
+    let mut hasher = AHasher::default();
+    data.len().hash(&mut hasher);
+
+    if data.len() <= 3 * section_length {
+        data.hash(&mut hasher);
+    } else {
+        let first_section = &data[..section_length];
+        let last_section = &data[data.len() - section_length..];
+
+        let middle_offset = (data.len() - section_length) / 2;
+        let middle_section = &data[middle_offset..middle_offset + section_length];
+
+        first_section.hash(&mut hasher);
+        middle_section.hash(&mut hasher);
+        last_section.hash(&mut hasher);
+    }
+
+    let hash = hasher.finish();
+    u128::from(hash) | (u128::from(hash) << 64)
 }
 
 /// A single column of data in a record batch.
