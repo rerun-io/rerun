@@ -646,6 +646,7 @@ impl App {
                 if let DataSource::RerunGrpcStream(RedapUri::DatasetData(uri)) = data_source {
                     // Focus on a specific thing:
 
+                    let rec_id = uri.recording_id();
                     let re_uri::Fragment { data_path, when } = uri.fragment;
 
                     if let Some(data_path) = data_path {
@@ -673,7 +674,7 @@ impl App {
                     if let Some((timeline, timecell)) = when {
                         self.command_sender
                             .send_system(SystemCommand::SetActiveTime {
-                                rec_id: uri.store_id(),
+                                rec_id,
                                 timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
                                 time: Some(timecell.as_i64().into()),
                             });

@@ -29,7 +29,7 @@ impl RedapUri {
         }
     }
 
-    pub fn store_id(&self) -> Option<StoreId> {
+    pub fn recording_id(&self) -> Option<StoreId> {
         self.partition_id().map(|partition_id| {
             StoreId::from_string(re_log_types::StoreKind::Recording, partition_id.to_owned())
         })
