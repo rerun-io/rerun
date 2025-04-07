@@ -319,28 +319,38 @@ impl WebHandle {
             let tx = channel.table_tx.clone();
 
             let cursor = std::io::Cursor::new(data);
-            let Ok(stream_reader) = arrow::ipc::reader::StreamReader::try_new(cursor, None) else {
-                re_log::error_once!("Failed to create cursor");
-                return;
+            let stream_reader = match arrow::ipc::reader::StreamReader::try_new(cursor, None) {
+                Ok(stream_reader) => stream_reader,
+                Err(err) => {
+                    re_log::error_once!("Failed to interpret data as IPC-encoded arrow: {err}");
+                    return;
+                }
             };
 
-            let Ok(encoded) = &stream_reader.collect::<Result<Vec<_>, _>>() else {
-                re_log::error_once!("Could not read from IPC stream");
-                return;
+            let encoded = match stream_reader.collect::<Result<Vec<_>, _>>() {
+                Ok(encoded) => encoded,
+                Err(err) => {
+                    re_log::error_once!("Could not read from IPC stream: {err}");
+                    return;
+                }
             };
 
-            let Some(msg) = from_arrow_encoded(&encoded[0]) else {
-                re_log::error_once!("Failed to decode Arrow message");
-                return;
+            let msg = match from_arrow_encoded(&encoded[0]) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    re_log::error_once!("Failed to decode Arrow message: {err}");
+                    return;
+                }
             };
 
             let egui_ctx = app.egui_ctx.clone();
 
-            if tx.send(msg).is_ok() {
-                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
-            } else {
-                re_log::info_once!("Failed to dispatch log message to viewer.");
-            }
+            match tx.send(msg) {
+                Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
+                Err(err) => {
+                    re_log::info_once!("Failed to dispatch log message to viewer: {err}");
+                }
+            };
         }
     }
 
@@ -899,10 +909,12 @@ pub fn set_email(email: String) {
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
-pub fn from_arrow_encoded(data: &RecordBatch) -> Option<TableMsg> {
+pub fn from_arrow_encoded(data: &RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
     re_log::info!("{:?}", data);
     let mut metadata = data.schema().metadata().clone();
-    let id = metadata.remove("__table_id").expect("this has to be here");
+    let id = metadata
+        .remove("__table_id")
+        .ok_or("encoded record batch is missing `__table_id` metadata.")?;
 
     let data = RecordBatch::try_new(
         Arc::new(arrow::datatypes::Schema::new_with_metadata(
@@ -910,10 +922,9 @@ pub fn from_arrow_encoded(data: &RecordBatch) -> Option<TableMsg> {
             metadata,
         )),
         data.columns().to_vec(),
-    )
-    .ok()?;
+    )?;
 
-    Some(TableMsg {
+    Ok(TableMsg {
         id: TableId::new(id),
         data,
     })

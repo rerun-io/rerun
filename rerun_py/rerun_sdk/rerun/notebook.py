@@ -228,6 +228,18 @@ class Viewer:
         id: str,
         table: RecordBatch,
     ) -> None:
+        """
+        Sends a table in the form of a dataframe to the viewer.
+
+        Parameters
+        ----------
+        id : str
+            The name that uniquely identifies the table in the viewer.
+            This name will also be shown in the recording panel.
+        table : RecordBatch
+            The table as a single Arrow record batch.
+
+        """
         new_table = self._add_table_id(table, id)
         sink = pyarrow.BufferOutputStream()
         writer = ipc.new_stream(sink, new_table.schema)

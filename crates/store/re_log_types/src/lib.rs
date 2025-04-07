@@ -201,6 +201,7 @@ impl std::fmt::Display for ApplicationId {
 
 // ----------------------------------------------------------------------------
 
+/// Either the user-chosen name of a table, or an id that is created by the catalog server.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TableId(Arc<String>);
