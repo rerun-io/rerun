@@ -20,7 +20,7 @@ pub enum UICommand {
     SaveRecordingSelection,
     SaveBlueprint,
     CloseCurrentRecording,
-    CloseAllRecordings,
+    CloseAllEntries,
 
     Undo,
     Redo,
@@ -139,7 +139,7 @@ impl UICommand {
                 "Close the current recording (unsaved data will be lost)",
             ),
 
-            Self::CloseAllRecordings => (
+            Self::CloseAllEntries => (
                 "Close all recordings",
                 "Close all open current recording (unsaved data will be lost)",
             ),
@@ -340,7 +340,7 @@ impl UICommand {
             Self::Open => smallvec![cmd(Key::O)],
             Self::Import => smallvec![cmd_shift(Key::O)],
             Self::CloseCurrentRecording => smallvec![],
-            Self::CloseAllRecordings => smallvec![],
+            Self::CloseAllEntries => smallvec![],
 
             Self::Undo => smallvec![cmd(Key::Z)],
             Self::Redo => {

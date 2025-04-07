@@ -18,7 +18,7 @@ use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
-use re_types_core::{ComponentName, DeserializationError, Loggable as _};
+use re_types_core::{ComponentName, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -151,6 +151,27 @@ impl ComponentData {
                 data
             };
 
+            // TODO(ab): we should find an alternative to using content-hashing to generate cache
+            // keys.
+            //
+            // Background: the `row_id` passed to `ui_raw` is only ever used as a cache key for
+            // images, and we must provide one for images to be displayed. Since in general we don't
+            // have a row id available (e.g. for an arbitrary table entry, or for a dataframe query
+            // result), we just hash the data to get a deterministic row id.
+            let row_id = (component_name.as_str() == "rerun.components.Blob")
+                .then(|| {
+                    re_tracing::profile_scope!("Blob hash");
+
+                    let blob = re_types::components::Blob::from_arrow(&data_to_display).ok()?;
+                    let buffer = blob.first().map(|b| b.as_slice())?;
+
+                    // cap the max amount of data to hash to 9 KiB
+                    const SECTION_LENGTH: usize = 3 * 1024;
+
+                    Some(RowId::from_u128(quick_partial_hash(buffer, SECTION_LENGTH)))
+                })
+                .flatten();
+
             ctx.component_ui_registry().ui_raw(
                 ctx,
                 ui,
@@ -159,13 +180,46 @@ impl ComponentData {
                 ctx.recording(),
                 entity_path,
                 component_name,
-                None,
+                row_id,
                 data_to_display.as_ref(),
             );
         } else {
             ui.label("-");
         }
     }
+}
+
+/// Compute a quick partial hash of an image data buffer, capping the max amount of hashed data to
+/// `3*section_length`.
+///
+/// If the buffer is smaller or equal to than `3*section_length`, the entire buffer is hashed.
+/// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
+/// are hashed.
+fn quick_partial_hash(data: &[u8], section_length: usize) -> u128 {
+    use ahash::AHasher;
+    use std::hash::{Hash as _, Hasher as _};
+
+    re_tracing::profile_function!();
+
+    let mut hasher = AHasher::default();
+    data.len().hash(&mut hasher);
+
+    if data.len() <= 3 * section_length {
+        data.hash(&mut hasher);
+    } else {
+        let first_section = &data[..section_length];
+        let last_section = &data[data.len() - section_length..];
+
+        let middle_offset = (data.len() - section_length) / 2;
+        let middle_section = &data[middle_offset..middle_offset + section_length];
+
+        first_section.hash(&mut hasher);
+        middle_section.hash(&mut hasher);
+        last_section.hash(&mut hasher);
+    }
+
+    let hash = hasher.finish();
+    u128::from(hash) | (u128::from(hash) << 64)
 }
 
 /// A single column of data in a record batch.

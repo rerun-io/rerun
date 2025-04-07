@@ -331,6 +331,11 @@ impl StoreHub {
         self.store_bundle.insert(entity_db);
     }
 
+    /// Inserts a new table into the store (potentially overwriting an existing entry).
+    pub fn insert_table_store(&mut self, id: TableId, store: TableStore) -> Option<TableStore> {
+        self.table_stores.insert(id, store)
+    }
+
     fn remove_store(&mut self, store_id: &StoreId) {
         _ = self.caches_per_recording.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
@@ -391,7 +396,7 @@ impl StoreHub {
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
-    pub fn clear_recordings(&mut self) {
+    pub fn clear_entries(&mut self) {
         // Keep only the welcome screen:
         let mut store_ids_retained = HashSet::default();
         self.store_bundle.retain(|db| {
@@ -404,6 +409,8 @@ impl StoreHub {
         });
         self.caches_per_recording
             .retain(|store_id, _| store_ids_retained.contains(store_id));
+
+        self.table_stores.clear();
 
         self.active_entry = None;
         self.active_application_id = Some(Self::welcome_screen_app_id());
