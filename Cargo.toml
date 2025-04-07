@@ -158,6 +158,7 @@ egui = { version = "0.31.1", features = [
   "rayon",
 ] }
 egui_commonmark = { version = "0.20.0", default-features = false }
+egui_dnd = { version = "0.12.0" }
 egui_extras = { version = "0.31.1", features = ["http", "image", "serde"] }
 egui_kittest = { version = "0.31.1", features = ["wgpu", "snapshot", "eframe"] }
 egui_plot = "0.32.1" # https://github.com/emilk/egui_plot
