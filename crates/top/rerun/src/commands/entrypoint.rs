@@ -841,7 +841,7 @@ fn run_impl(
         }
 
         if !cfg!(feature = "server") {
-            _ = (call_source, rxs_log);
+            _ = (call_source, rxs_log, rxs_table);
             anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
         }
 
