@@ -98,6 +98,13 @@ impl TableConfig {
         }
     }
 
+    /// Get a table config, creating it if it doesn't exist.
+    ///
+    /// Columns is an iterator of default [`ColumnConfig`]s that will be added to the table config.
+    /// Any columns that are not in the iterator will be removed from the table config.
+    /// New columns will be added in order at the end.
+    ///
+    /// Don't forget to call [`Self::store`] to persist the changes.
     pub fn get_with_columns(
         ctx: &Context,
         persisted_id: Id,
