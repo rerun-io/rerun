@@ -183,6 +183,7 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
+        //re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
+        100.0
     }
 }

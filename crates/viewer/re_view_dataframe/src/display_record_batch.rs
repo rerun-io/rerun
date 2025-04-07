@@ -177,6 +177,33 @@ impl ComponentData {
                 }
             }
 
+            // Override the way `Blob` are rendered
+            //TODO: un-mergeable hack!
+            if component_name.as_str() == "rerun.components.Blob" {
+                if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
+                    .as_ref()
+                    .map(|blob| blob.first().map(|blob| blob.as_slice()))
+                {
+                    if let Ok(image) = ctx.store_context.caches.entry(
+                        |c: &mut re_viewer_context::ImageDecodeCache| {
+                            c.entry(row_id.expect("always generated for such Bob"), buffer, None)
+                        },
+                    ) {
+                        re_data_ui::image_preview_ui(
+                            ctx,
+                            ui,
+                            UiLayout::List,
+                            latest_at_query,
+                            entity_path,
+                            &image,
+                            None,
+                        );
+
+                        return;
+                    }
+                }
+            }
+
             ctx.component_ui_registry().ui_raw(
                 ctx,
                 ui,
