@@ -91,7 +91,7 @@ pub fn dataset_ui(
                 .strip_prefix("rerun_")
                 .unwrap_or(name.as_str())
                 .replace('_', " ");
-            ColumnConfig::new(Id::new(c.name()), name)
+            ColumnConfig::new(Id::new(c), name)
         }),
     );
 
@@ -266,7 +266,7 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
                     .selected_columns
                     .iter()
                     .enumerate()
-                    .find(|(_, c)| Id::new(c.name()) == id)
+                    .find(|(_, c)| Id::new(c) == id)
                 {
                     for display_record_batch in self.display_record_batches {
                         let row_count = display_record_batch.num_rows();
