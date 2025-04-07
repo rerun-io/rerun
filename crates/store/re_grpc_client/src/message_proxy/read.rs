@@ -16,8 +16,8 @@ pub fn stream(
     re_log::debug!("Loading {url} via gRPC…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
-        re_smart_channel::SmartChannelSource::MessageProxy { url: url.clone() },
+        re_smart_channel::SmartMessageSource::MessageProxy(url.clone()),
+        re_smart_channel::SmartChannelSource::MessageProxy(url.clone()),
     );
 
     crate::spawn_future(async move {

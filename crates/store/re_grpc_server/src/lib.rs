@@ -257,8 +257,8 @@ pub fn spawn_with_recv(
         port: addr.port(),
     });
     let (channel_tx, channel_rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
-        re_smart_channel::SmartChannelSource::MessageProxy { url },
+        re_smart_channel::SmartMessageSource::MessageProxy(url.clone()),
+        re_smart_channel::SmartChannelSource::MessageProxy(url),
     );
     let (message_proxy, mut broadcast_rx) = MessageProxy::new_with_recv(memory_limit);
     tokio::spawn(async move {

@@ -53,7 +53,7 @@ pub enum SmartChannelSource {
     RedapGrpcStream(re_uri::DatasetDataEndpoint),
 
     /// The data is streaming in via a message proxy.
-    MessageProxy { url: re_uri::ProxyEndpoint },
+    MessageProxy(re_uri::ProxyEndpoint),
 }
 
 impl std::fmt::Display for SmartChannelSource {
@@ -61,7 +61,7 @@ impl std::fmt::Display for SmartChannelSource {
         match self {
             Self::File(path) => path.display().fmt(f),
             Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
-            Self::MessageProxy { url } => url.fmt(f),
+            Self::MessageProxy(endpoint) => endpoint.fmt(f),
             Self::RedapGrpcStream(endpoint) => endpoint.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
@@ -124,7 +124,7 @@ pub enum SmartMessageSource {
     RedapGrpcStream(re_uri::DatasetDataEndpoint),
 
     /// A stream of messages over message proxy gRPC interface.
-    MessageProxy { url: re_uri::ProxyEndpoint },
+    MessageProxy(re_uri::ProxyEndpoint),
 }
 
 impl std::fmt::Display for SmartMessageSource {
@@ -133,7 +133,7 @@ impl std::fmt::Display for SmartMessageSource {
             Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
             Self::RrdHttpStream { url } => url.clone(),
-            Self::MessageProxy { url } => url.to_string(),
+            Self::MessageProxy(endpoint) => endpoint.to_string(),
             Self::RedapGrpcStream(endpoint) => endpoint.to_string(),
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),

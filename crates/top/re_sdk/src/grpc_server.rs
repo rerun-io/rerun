@@ -27,12 +27,12 @@ impl GrpcServerSink {
 
         let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
 
-        let url = re_uri::ProxyEndpoint::new(re_uri::Origin::from_scheme_and_socket_addr(
+        let endpoint = re_uri::ProxyEndpoint::new(re_uri::Origin::from_scheme_and_socket_addr(
             re_uri::Scheme::RerunHttp,
             grpc_server_addr,
         ));
         let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
-            re_smart_channel::SmartMessageSource::MessageProxy { url },
+            re_smart_channel::SmartMessageSource::MessageProxy(endpoint),
             re_smart_channel::SmartChannelSource::Sdk,
         );
         let server_handle = std::thread::Builder::new()

@@ -273,8 +273,8 @@ impl ItemCollection {
                     re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
                         Some((ClipboardTextDesc::Url, endpoint.to_string()))
                     }
-                    re_smart_channel::SmartChannelSource::MessageProxy { url } => {
-                        Some((ClipboardTextDesc::Url, url.to_string()))
+                    re_smart_channel::SmartChannelSource::MessageProxy(endpoint) => {
+                        Some((ClipboardTextDesc::Url, endpoint.to_string()))
                     }
                 },
 
