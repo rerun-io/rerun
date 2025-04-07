@@ -3,10 +3,10 @@ use std::sync::Arc;
 use arrow::array::{ArrayData, ArrayRef, RecordBatch, StringArray, StringViewArray};
 use arrow::datatypes::{DataType, Field, Schema as ArrowSchema};
 use arrow::pyarrow::{FromPyArrow as _, PyArrowType, ToPyArrow as _};
-use datafusion::common::exec_err;
-use pyo3::types::{PyAnyMethods, PyCFunction, PyDict, PyString, PyTuple, PyTupleMethods};
+use datafusion::{common::exec_err, logical_expr_common::signature::Volatility};
+use pyo3::types::{PyDict, PyTuple, PyTupleMethods};
+use pyo3::Bound;
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
-use pyo3::{Bound, IntoPyObject};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -33,6 +33,7 @@ use crate::catalog::{
 use crate::dataframe::{
     PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording,
 };
+use crate::datafusion_utils::create_datafusion_scalar_udf;
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
@@ -155,30 +156,13 @@ impl PyDataset {
             }
         };
 
-        let py = self_.py();
-
-        let udf_factory = py
-            .import("datafusion")
-            .and_then(|datafusion| datafusion.getattr("udf"))?;
-        let pa_utf8 = py
-            .import("pyarrow")
-            .and_then(|pa| pa.getattr("utf8")?.call0())?;
-
-        let inner = PyCFunction::new_closure(py, None, None, partition_url_inner)?;
-        let bound_inner = inner.into_pyobject(py)?;
-        let py_stable = PyString::new(py, "stable");
-
-        let args = PyTuple::new(
-            py,
-            vec![
-                bound_inner.as_any(),
-                pa_utf8.as_any(),
-                pa_utf8.as_any(),
-                py_stable.as_any(),
-            ],
-        )?;
-
-        Ok(udf_factory.call1(args)?.unbind())
+        create_datafusion_scalar_udf(
+            self_.py(),
+            partition_url_inner,
+            &[&DataType::Utf8],
+            &DataType::Utf8,
+            Volatility::Stable,
+        )
     }
 
     /// Register a RRD URI to the dataset.
