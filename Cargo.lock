@@ -7886,6 +7886,7 @@ dependencies = [
 name = "re_view_dataframe"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "anyhow",
  "arrow",
  "egui",

@@ -39,13 +39,6 @@ impl EntityDataUi for Blob {
 
         if ui_layout.is_single_line() {
             ui.horizontal(|ui| {
-                ui.label(compact_size_string);
-
-                if let Some(media_type) = &media_type {
-                    ui.label(media_type.to_string())
-                        .on_hover_text("Media type (MIME) based on magic header bytes");
-                }
-
                 blob_preview_and_save_ui(
                     ctx,
                     ui,
@@ -57,6 +50,13 @@ impl EntityDataUi for Blob {
                     media_type.as_ref(),
                     None,
                 );
+
+                ui.label(compact_size_string);
+
+                if let Some(media_type) = &media_type {
+                    ui.label(media_type.to_string())
+                        .on_hover_text("Media type (MIME) based on magic header bytes");
+                }
             });
         } else {
             let all_digits_size_string = format!("{} B", re_format::format_uint(self.len()));

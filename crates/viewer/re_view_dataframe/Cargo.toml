@@ -39,6 +39,7 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
+ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 egui_table.workspace = true
