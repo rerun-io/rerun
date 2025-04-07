@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from pyarrow import RecordBatch
 import pyarrow
 import pyarrow.ipc as ipc
+from pyarrow import RecordBatch
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -41,7 +41,7 @@ if importlib.util.find_spec("rerun_notebook") is not None:
 
 from rerun import bindings
 
-from .recording_stream import RecordingStream, get_data_recording, get_global_data_recording
+from .recording_stream import RecordingStream, get_data_recording
 
 _default_width = 640
 _default_height = 480

@@ -1375,7 +1375,7 @@ impl App {
     fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
-        // TODO: Should we bring back analytics for this too?
+        // TODO(grtlr): Should we bring back analytics for this too?
         self.rx_table.lock().retain(|rx| match rx.try_recv() {
             Ok(table) => {
 

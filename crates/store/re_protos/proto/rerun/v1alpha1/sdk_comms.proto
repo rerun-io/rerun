@@ -57,4 +57,3 @@ message ReadTablesResponse {
   rerun.common.v1alpha1.TableId id = 1;
   rerun.common.v1alpha1.DataframePart data = 2;
 }
-
