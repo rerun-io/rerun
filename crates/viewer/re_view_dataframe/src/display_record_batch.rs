@@ -246,7 +246,7 @@ pub enum DisplayColumn {
         component_data: ComponentData,
 
         // if available, used to pass a row id to the component UI (e.g. to cache image)
-        row_ids: Option<Arc<Vec<Tuid>>>,
+        row_ids: Option<Arc<Vec<RowId>>>,
     },
 }
 
