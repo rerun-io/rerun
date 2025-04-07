@@ -650,7 +650,7 @@ impl std::fmt::Display for StoreSource {
 /// Tables have a [`TableId`], but don't belong to an application and therefore don't have an [`ApplicationId`].
 /// For now, the table is always sent as a whole, i.e. tables can't be streamed.
 ///
-/// It's important to note that tables are not sent via the smart channel of [`LogMsg`], but use a seprate `crossbeam`
+/// It's important to note that tables are not sent via the smart channel of [`LogMsg`], but use a separate `crossbeam`
 /// channel. The reasoning behind this is that tables are fundamentally different from recordings. For example,
 /// we don't want to store tables in `.rrd` files, as there are much better formats out there.
 #[must_use]

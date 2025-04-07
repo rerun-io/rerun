@@ -215,13 +215,13 @@ class Viewer:
         if blueprint is not None:
             recording.send_blueprint(blueprint)
 
-    def _add_table_id(self, record_batch: RecordBatch, table_id: str):
+    def _add_table_id(self, record_batch: RecordBatch, table_id: str) -> RecordBatch:
         # Get current schema
         schema = record_batch.schema
         schema = schema.with_metadata({b"__table_id": table_id})
 
         # Create new record batch with updated schema
-        return pyarrow.RecordBatch.from_arrays(record_batch.columns, schema=schema)
+        return RecordBatch.from_arrays(record_batch.columns, schema=schema)
 
     def send_table(
         self,
