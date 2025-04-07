@@ -7,7 +7,7 @@ use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
-use pyo3::{pyclass, pymethods, Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python};
+use pyo3::{pyclass, pymethods, Bound, Py, PyAny, PyRef, PyResult, Python};
 
 use re_chunk::ComponentName;
 use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
@@ -79,6 +79,22 @@ impl PyDataframeQueryView {
             partition_ids: vec![],
         })
     }
+
+    fn clone_with_new_query(
+        &self,
+        py: Python<'_>,
+        mutation_fn: impl FnOnce(&mut QueryExpression),
+    ) -> Self {
+        let mut copy = Self {
+            dataset: self.dataset.clone_ref(py),
+            query_expression: self.query_expression.clone(),
+            partition_ids: self.partition_ids.clone(),
+        };
+
+        mutation_fn(&mut copy.query_expression);
+
+        copy
+    }
 }
 
 #[pymethods]
@@ -86,10 +102,11 @@ impl PyDataframeQueryView {
     /// Filter by one or more partition ids. All partition ids are included if not specified.
     #[pyo3(signature = (partition_id, *args))]
     fn filter_partition_id<'py>(
-        mut self_: PyRefMut<'py, Self>,
+        &self,
+        py: Python<'py>,
         partition_id: String,
         args: &Bound<'py, PyTuple>,
-    ) -> PyResult<PyRefMut<'py, Self>> {
+    ) -> PyResult<Self> {
         let mut partition_ids = vec![partition_id];
 
         for i in 0..args.len()? {
@@ -97,9 +114,11 @@ impl PyDataframeQueryView {
             partition_ids.push(item.extract()?);
         }
 
-        self_.partition_ids = partition_ids;
-
-        Ok(self_)
+        Ok(Self {
+            dataset: self.dataset.clone_ref(py),
+            query_expression: self.query_expression.clone(),
+            partition_ids,
+        })
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -122,12 +141,8 @@ impl PyDataframeQueryView {
     ///     A new view containing only the data within the specified range.
     ///
     ///     The original view will not be modified.
-    fn filter_range_sequence(
-        mut self_: PyRefMut<'_, Self>,
-        start: i64,
-        end: i64,
-    ) -> PyResult<PyRefMut<'_, Self>> {
-        match self_.query_expression.filtered_index.as_ref() {
+    fn filter_range_sequence(&self, py: Python<'_>, start: i64, end: i64) -> PyResult<Self> {
+        match self.query_expression.filtered_index.as_ref() {
             // TODO(#9084): do we need this check? If so, how can we accomplish it?
             // Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
             //     return Err(PyValueError::new_err(format!(
@@ -168,9 +183,9 @@ impl PyDataframeQueryView {
 
         let resolved = ResolvedTimeRange::new(start, end);
 
-        self_.query_expression.filtered_index_range = Some(resolved);
-
-        Ok(self_)
+        Ok(self.clone_with_new_query(py, |query_expression| {
+            query_expression.filtered_index_range = Some(resolved);
+        }))
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -193,12 +208,8 @@ impl PyDataframeQueryView {
     ///     A new view containing only the data within the specified range.
     ///
     ///     The original view will not be modified.
-    fn filter_range_secs(
-        mut self_: PyRefMut<'_, Self>,
-        start: f64,
-        end: f64,
-    ) -> PyResult<PyRefMut<'_, Self>> {
-        match self_.query_expression.filtered_index.as_ref() {
+    fn filter_range_secs(&self, py: Python<'_>, start: f64, end: f64) -> PyResult<Self> {
+        match self.query_expression.filtered_index.as_ref() {
             // TODO(#9084): do we need this check? If so, how can we accomplish it?
             // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
             //     return Err(PyValueError::new_err(format!(
@@ -220,9 +231,9 @@ impl PyDataframeQueryView {
 
         let resolved = ResolvedTimeRange::new(start, end);
 
-        self_.query_expression.filtered_index_range = Some(resolved);
-
-        Ok(self_)
+        Ok(self.clone_with_new_query(py, |query_expression| {
+            query_expression.filtered_index_range = Some(resolved);
+        }))
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -245,12 +256,8 @@ impl PyDataframeQueryView {
     ///     A new view containing only the data within the specified range.
     ///
     ///     The original view will not be modified.
-    fn filter_range_nanos(
-        mut self_: PyRefMut<'_, Self>,
-        start: i64,
-        end: i64,
-    ) -> PyResult<PyRefMut<'_, Self>> {
-        match self_.query_expression.filtered_index.as_ref() {
+    fn filter_range_nanos(&self, py: Python<'_>, start: i64, end: i64) -> PyResult<Self> {
+        match self.query_expression.filtered_index.as_ref() {
             // TODO(#9084): do we need this?
             // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
             //     return Err(PyValueError::new_err(format!(
@@ -272,9 +279,9 @@ impl PyDataframeQueryView {
 
         let resolved = ResolvedTimeRange::new(start, end);
 
-        self_.query_expression.filtered_index_range = Some(resolved);
-
-        Ok(self_)
+        Ok(self.clone_with_new_query(py, |query_expression| {
+            query_expression.filtered_index_range = Some(resolved);
+        }))
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -298,15 +305,16 @@ impl PyDataframeQueryView {
     ///     A new view containing only the data at the specified index values.
     ///
     ///     The original view will not be modified.
-    fn filter_index_values<'py>(
-        mut self_: PyRefMut<'py, Self>,
+    fn filter_index_values(
+        &self,
+        py: Python<'_>,
         values: crate::dataframe::IndexValuesLike<'_>,
-    ) -> PyResult<PyRefMut<'py, Self>> {
+    ) -> PyResult<Self> {
         let values = values.to_index_values()?;
 
-        self_.query_expression.filtered_index_values = Some(values);
-
-        Ok(self_)
+        Ok(self.clone_with_new_query(py, |query_expression| {
+            query_expression.filtered_index_values = Some(values);
+        }))
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -327,12 +335,15 @@ impl PyDataframeQueryView {
     ///
     ///     The original view will not be modified.
     fn filter_is_not_null(
-        mut self_: PyRefMut<'_, Self>,
+        &self,
+        py: Python<'_>,
         column: crate::dataframe::AnyComponentColumn,
-    ) -> PyResult<PyRefMut<'_, Self>> {
-        let column = column.into_selector();
-        self_.query_expression.filtered_is_not_null = Some(column?);
-        Ok(self_)
+    ) -> PyResult<Self> {
+        let column = column.into_selector()?;
+
+        Ok(self.clone_with_new_query(py, |query_expression| {
+            query_expression.filtered_is_not_null = Some(column);
+        }))
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -357,14 +368,16 @@ impl PyDataframeQueryView {
     ///     A new view containing the provided index values.
     ///
     ///     The original view will not be modified.
-    fn using_index_values<'py>(
-        mut self_: PyRefMut<'py, Self>,
+    fn using_index_values(
+        &self,
+        py: Python<'_>,
         values: crate::dataframe::IndexValuesLike<'_>,
-    ) -> PyResult<PyRefMut<'py, Self>> {
+    ) -> PyResult<Self> {
         let values = values.to_index_values()?;
 
-        self_.query_expression.using_index_values = Some(values);
-        Ok(self_)
+        Ok(self.clone_with_new_query(py, |query_expression| {
+            query_expression.using_index_values = Some(values);
+        }))
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -376,9 +389,10 @@ impl PyDataframeQueryView {
     ///     A new view with the null values filled in.
     ///
     ///     The original view will not be modified.
-    fn fill_latest_at(mut self_: PyRefMut<'_, Self>) -> PyRefMut<'_, Self> {
-        self_.query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
-        self_
+    fn fill_latest_at(&self, py: Python<'_>) -> Self {
+        self.clone_with_new_query(py, |query_expression| {
+            query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+        })
     }
 
     /// Returns a DataFusion table provider capsule.
