@@ -25,19 +25,20 @@ impl Origin {
 
     /// Converts the [`Origin`] to a URL that starts with either `http` or `https`.
     pub fn as_url(&self) -> String {
-        format!(
-            "{}://{}:{}",
-            self.scheme.as_http_scheme(),
-            self.host,
-            self.port
-        )
+        let Self { scheme, host, port } = self;
+        format!("{}://{host}:{port}", scheme.as_http_scheme())
     }
 
     /// Converts the [`Origin`] to a `http` URL.
     ///
     /// In most cases you want to use [`Origin::as_url()`] instead.
     pub fn coerce_http_url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
+        let Self {
+            scheme: _,
+            host,
+            port,
+        } = self;
+        format!("http://{host}:{port}")
     }
 
     /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
@@ -76,6 +77,7 @@ impl std::str::FromStr for Origin {
 
 impl std::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}://{}:{}", self.scheme, self.host, self.port)
+        let Self { scheme, host, port } = self;
+        write!(f, "{scheme}://{host}:{port}")
     }
 }
