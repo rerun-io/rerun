@@ -726,6 +726,10 @@ impl App {
                     if let Some(time) = time {
                         time_ctrl.set_time(time);
                     }
+                } else {
+                    re_log::debug!(
+                        "SystemCommand::SetActiveTime ignored: unknown recording ID '{rec_id}'"
+                    );
                 }
             }
 
@@ -739,6 +743,10 @@ impl App {
                     guard.set_timeline(timeline);
                     guard.set_loop_selection(time_range);
                     guard.set_looping(re_viewer_context::Looping::Selection);
+                } else {
+                    re_log::debug!(
+                        "SystemCommand::SetLoopSelection ignored: unknown recording ID '{rec_id}'"
+                    );
                 }
             }
 
