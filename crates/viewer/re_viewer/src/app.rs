@@ -7,7 +7,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
+use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
@@ -16,7 +16,7 @@ use re_viewer_context::{
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    SystemCommandSender as _, TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
@@ -171,6 +171,8 @@ struct PendingFilePromise {
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
 
+type ReceiveSetTable = parking_lot::Mutex<Vec<crossbeam::channel::Receiver<TableMsg>>>;
+
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     #[allow(dead_code)] // Unused on wasm32
@@ -193,7 +195,8 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx: ReceiveSet<LogMsg>,
+    rx_log: ReceiveSet<LogMsg>,
+    rx_table: ReceiveSetTable,
 
     #[cfg(target_arch = "wasm32")]
     open_files_promise: Option<PendingFilePromise>,
@@ -395,7 +398,8 @@ impl App {
 
             text_log_rx,
             component_ui_registry,
-            rx: Default::default(),
+            rx_log: Default::default(),
+            rx_table: Default::default(),
             #[cfg(target_arch = "wasm32")]
             open_files_promise: Default::default(),
             state,
@@ -460,7 +464,7 @@ impl App {
     }
 
     #[allow(clippy::needless_pass_by_ref_mut)]
-    pub fn add_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
+    pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
         let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
@@ -477,12 +481,20 @@ impl App {
                     });
             }
         }
+        self.rx_log.add(rx);
+    }
 
-        self.rx.add(rx);
+    #[allow(clippy::needless_pass_by_ref_mut)]
+    pub fn add_table_receiver(&mut self, rx: crossbeam::channel::Receiver<TableMsg>) {
+        // Make sure we wake up when a message is sent.
+        #[cfg(not(target_arch = "wasm32"))]
+        let rx = crate::wake_up_ui_thread_on_each_msg_crossbeam(rx, self.egui_ctx.clone());
+
+        self.rx_table.lock().push(rx);
     }
 
     pub fn msg_receive_set(&self) -> &ReceiveSet<LogMsg> {
-        &self.rx
+        &self.rx_log
     }
 
     /// Adds a new view class to the viewer.
@@ -542,15 +554,15 @@ impl App {
                 store_hub.remove(&entry);
             }
 
-            SystemCommand::CloseAllRecordings => {
-                store_hub.clear_recordings();
+            SystemCommand::CloseAllEntries => {
+                store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
                 // This is most important when going back to the example screen by using the "Back"
                 // button in the browser, and there is still a connection downloading an .rrd.
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
-                self.rx.retain(|r| match r.source() {
+                self.rx_log.retain(|r| match r.source() {
                     SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
 
                     SmartChannelSource::JsChannel { .. }
@@ -563,13 +575,13 @@ impl App {
             }
 
             SystemCommand::ClearSourceAndItsStores(source) => {
-                self.rx.retain(|r| r.source() != &source);
+                self.rx_log.retain(|r| r.source() != &source);
                 store_hub.retain_recordings(|db| db.data_source.as_ref() != Some(&source));
             }
 
             SystemCommand::AddReceiver(rx) => {
                 re_log::debug!("Received AddReceiver");
-                self.add_receiver(rx);
+                self.add_log_receiver(rx);
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
@@ -618,7 +630,7 @@ impl App {
                 });
 
                 match data_source.stream(on_cmd, Some(waker)) {
-                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
                     Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
                         self.command_sender
                             .send_system(SystemCommand::AddRedapServer { endpoint });
@@ -852,9 +864,9 @@ impl App {
                         .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
                 }
             }
-            UICommand::CloseAllRecordings => {
+            UICommand::CloseAllEntries => {
                 self.command_sender
-                    .send_system(SystemCommand::CloseAllRecordings);
+                    .send_system(SystemCommand::CloseAllEntries);
             }
 
             UICommand::Undo => {
@@ -1352,7 +1364,7 @@ impl App {
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
-                            &self.rx,
+                            &self.rx_log,
                             &self.command_sender,
                             &WelcomeScreenState {
                                 hide: self.startup_options.hide_welcome_screen,
@@ -1381,9 +1393,50 @@ impl App {
     fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
+        // TODO(grtlr): Should we bring back analytics for this too?
+        self.rx_table.lock().retain(|rx| match rx.try_recv() {
+            Ok(table) => {
+
+                match re_sorbet::SorbetBatch::try_from_record_batch(&table.data, re_sorbet::BatchType::Dataframe)  {
+                    Ok(sorbet_batch) => {
+                        // TODO(grtlr): For now we don't append anything to existing stores and always replace.
+                        let store = TableStore::default();
+                        store.add_batch(sorbet_batch);
+
+                        if store_hub.insert_table_store(table.id.clone(), store).is_some() {
+                            re_log::debug!("Overwritten table store with id: `{}`", table.id);
+                        } else {
+                            re_log::debug!("Inserted table store with id: `{}`", table.id);
+                        };
+                        store_hub.set_active_entry(table.id.clone().into());
+
+
+                        // Also select the new recording:
+                        self.command_sender.send_system(SystemCommand::SetSelection(
+                            re_viewer_context::Item::TableId(table.id.clone()),
+                        ));
+
+                        // If the viewer is in the background, tell the user that it has received something new.
+                        egui_ctx.send_viewport_cmd(
+                            egui::ViewportCommand::RequestUserAttention(
+                                egui::UserAttentionType::Informational,
+                            ),
+                        );
+                    },
+                    Err(err) => {
+                        re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
+                    }
+                }
+
+                true
+            }
+            Err(crossbeam::channel::TryRecvError::Empty) => true,
+            Err(_) => false,
+        });
+
         let start = web_time::Instant::now();
 
-        while let Some((channel_source, msg)) = self.rx.try_recv() {
+        while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
             let msg = match msg.payload {
@@ -1726,7 +1779,7 @@ impl App {
         // flickering quickly before receiving some data.
         // So: if we expect data very soon, we do a fade-in.
 
-        for source in self.rx.sources() {
+        for source in self.rx_log.sources() {
             #[allow(clippy::match_same_arms)]
             match &*source {
                 SmartChannelSource::File(_)

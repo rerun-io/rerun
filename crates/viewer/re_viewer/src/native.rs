@@ -110,7 +110,7 @@ pub fn run_native_viewer_with_messages(
                 cc,
                 async_runtime,
             );
-            app.add_receiver(rx);
+            app.add_log_receiver(rx);
             Box::new(app)
         }),
         force_wgpu_backend.as_deref(),
