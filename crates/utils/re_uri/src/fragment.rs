@@ -88,22 +88,24 @@ impl Fragment {
 
 /// Split on all '&' that is not immediately proceeded by '\':
 fn split_on_unescaped_ampersand(str: &str) -> Vec<&str> {
-    str.split('&')
-        .collect::<Vec<_>>()
-        .iter()
-        .scan(false, |escaped, part| {
-            if *escaped {
-                *escaped = false;
-                Some(None)
-            } else if part.ends_with('\\') {
-                *escaped = true;
-                Some(None)
-            } else {
-                Some(Some(*part))
-            }
-        })
-        .flatten()
-        .collect()
+    if str.is_empty() {
+        return Vec::new();
+    }
+
+    let mut result = Vec::new();
+    let mut start = 0;
+    let bytes = str.as_bytes();
+
+    for i in 0..bytes.len() {
+        if bytes[i] == b'&' && (i == 0 || bytes[i - 1] != b'\\') {
+            result.push(&str[start..i]);
+            start = i + 1;
+        }
+    }
+
+    result.push(&str[start..]);
+
+    result
 }
 
 #[test]
@@ -111,14 +113,14 @@ fn test_split_on_unescaped_ampersand() {
     assert_eq!(split_on_unescaped_ampersand(""), Vec::<&str>::default());
     assert_eq!(split_on_unescaped_ampersand("foo"), vec!["foo"]);
     assert_eq!(split_on_unescaped_ampersand("a&b&c"), vec!["a", "b", "c"]);
-    assert_eq!(split_on_unescaped_ampersand("a\\&b&c"), vec!["a\\&b", "c"]);
+    assert_eq!(split_on_unescaped_ampersand(r"a\&b&c"), vec![r"a\&b", "c"]);
     assert_eq!(
-        split_on_unescaped_ampersand("a&b\\&c&d"),
-        vec!["a", "b\\&c", "d"]
+        split_on_unescaped_ampersand(r"a&b\&c&d"),
+        vec!["a", r"b\&c", "d"]
     );
-    assert_eq!(split_on_unescaped_ampersand("a\\&b\\&c"), vec!["a\\&b\\&c"]);
+    assert_eq!(split_on_unescaped_ampersand(r"a\&b\&c"), vec![r"a\&b\&c"]);
     assert_eq!(split_on_unescaped_ampersand("a&&b"), vec!["a", "", "b"]);
-    assert_eq!(split_on_unescaped_ampersand("a\\&&b"), vec!["a\\&", "b"]);
+    assert_eq!(split_on_unescaped_ampersand(r"a\&&b"), vec![r"a\&", "b"]);
 }
 
 #[test]
