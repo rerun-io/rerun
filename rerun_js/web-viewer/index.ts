@@ -498,6 +498,21 @@ export class WebViewer {
       }
     };
 
+    const on_send_table = (/** @type {Uint8Array} */ data: Uint8Array) => {
+      if (!this.#handle) {
+        throw new Error(
+          `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
+        );
+      }
+
+      try {
+        this.#handle.send_table_to_channel(id, data);
+      } catch (e) {
+        this.stop();
+        throw e;
+      }
+    }
+
     const on_close = () => {
       if (!this.#handle) {
         throw new Error(
@@ -515,7 +530,7 @@ export class WebViewer {
 
     const get_state = () => this.#state;
 
-    return new LogChannel(on_send, on_close, get_state);
+    return new LogChannel(on_send, on_send_table, on_close, get_state);
   }
 
   /**
@@ -794,6 +809,7 @@ export class WebViewer {
 
 export class LogChannel {
   #on_send;
+  #on_send_table;
   #on_close;
   #get_state;
   #closed = false;
@@ -805,10 +821,12 @@ export class LogChannel {
    */
   constructor(
     on_send: (data: Uint8Array) => void,
+    on_send_table: (data: Uint8Array) => void,
     on_close: () => void,
     get_state: () => "ready" | "starting" | "stopped",
   ) {
     this.#on_send = on_send;
+    this.#on_send_table = on_send_table;
     this.#on_close = on_close;
     this.#get_state = get_state;
   }
@@ -827,6 +845,11 @@ export class LogChannel {
   send_rrd(rrd_bytes: Uint8Array) {
     if (!this.ready) return;
     this.#on_send(rrd_bytes);
+  }
+
+  send_table(table_bytes: Uint8Array) {
+    if (!this.ready) return;
+    this.#on_send_table(table_bytes)
   }
 
   /**

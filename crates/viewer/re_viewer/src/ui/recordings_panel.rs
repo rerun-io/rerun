@@ -62,7 +62,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
             SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
-            SmartChannelSource::RedapGrpcStream(endpoint) => format!("Loading {endpoint}…"),
+            SmartChannelSource::RedapGrpcStream(uri) => format!("Loading {uri}…"),
 
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
@@ -114,7 +114,12 @@ fn recording_list_ui(
 
     servers.server_list_ui(ui, ctx, remote_recordings);
 
-    if local_recordings.is_empty() && welcome_screen_state.hide {
+    // Show placeholder message if there's absolutely nothing else to show.
+    if ctx.storage_context.tables.is_empty()
+        && servers.is_empty()
+        && local_recordings.is_empty()
+        && welcome_screen_state.hide
+    {
         ui.list_item().interactive(false).show_flat(
             ui,
             re_ui::list_item::LabelContent::new("No recordings loaded")

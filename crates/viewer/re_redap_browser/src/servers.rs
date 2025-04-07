@@ -56,15 +56,19 @@ impl Server {
                 response
             });
 
-        ui.list_item().header().show_hierarchical_with_children(
-            ui,
-            egui::Id::new(&self.origin).with("server_item"),
-            true,
-            content,
-            |ui| {
-                self.entries.panel_ui(viewer_context, ctx, ui, recordings);
-            },
-        );
+        ui.list_item()
+            .header()
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new(&self.origin).with("server_item"),
+                true,
+                content,
+                |ui| {
+                    self.entries.panel_ui(viewer_context, ctx, ui, recordings);
+                },
+            )
+            .item_response
+            .on_hover_text(self.origin.to_string());
     }
 }
 
@@ -185,8 +189,10 @@ impl RedapServers {
                         Server::new(runtime, egui_ctx, origin.clone()),
                     );
                 } else {
-                    re_log::warn!(
-                        "Tried to add pre-existing sever at {:?}",
+                    // Since we persist the server list on disk this happens quite often.
+                    // E.g. run `pixi run rerun "rerun+http://localhost:51234"` more than once.
+                    re_log::debug!(
+                        "Tried to add pre-existing server at {:?}",
                         origin.to_string()
                     );
                 }

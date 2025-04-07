@@ -152,7 +152,7 @@ fn handle_popstate(
         // the user navigated back to the history entry where the viewer was initially opened
         // in that case they likely expect to land back at the welcome screen.
         // We just close all recordings, which should automatically show the welcome screen or the redap browser.
-        command_sender.send_system(SystemCommand::CloseAllRecordings);
+        command_sender.send_system(SystemCommand::CloseAllEntries);
 
         set_stored_history_entry(new_state);
         egui_ctx.request_repaint();

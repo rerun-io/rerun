@@ -1,5 +1,8 @@
+use std::net::SocketAddr;
+
 use crate::{Error, Scheme};
 
+/// `scheme://hostname:port`
 #[derive(
     Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
@@ -10,21 +13,33 @@ pub struct Origin {
 }
 
 impl Origin {
+    pub fn from_scheme_and_socket_addr(scheme: Scheme, socket_addr: SocketAddr) -> Self {
+        Self {
+            scheme,
+            host: match socket_addr.ip() {
+                std::net::IpAddr::V4(ipv4_addr) => url::Host::Ipv4(ipv4_addr),
+                std::net::IpAddr::V6(ipv6_addr) => url::Host::Ipv6(ipv6_addr),
+            },
+            port: socket_addr.port(),
+        }
+    }
+
     /// Converts the [`Origin`] to a URL that starts with either `http` or `https`.
     pub fn as_url(&self) -> String {
-        format!(
-            "{}://{}:{}",
-            self.scheme.as_http_scheme(),
-            self.host,
-            self.port
-        )
+        let Self { scheme, host, port } = self;
+        format!("{}://{host}:{port}", scheme.as_http_scheme())
     }
 
     /// Converts the [`Origin`] to a `http` URL.
     ///
     /// In most cases you want to use [`Origin::as_url()`] instead.
     pub fn coerce_http_url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
+        let Self {
+            scheme: _,
+            host,
+            port,
+        } = self;
+        format!("http://{host}:{port}")
     }
 
     /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
@@ -38,7 +53,10 @@ impl Origin {
         // `Origin` in that case.
         let mut http_url = url::Url::parse(&rewritten)?;
 
-        if http_url.port().is_none() {
+        // If we parse a Url from e.g. `https://redap.rerun.io:443`, `port` in the Url struct will
+        // be `None`. So we need to use `port_or_known_default` to get the port back.
+        // See also: https://github.com/servo/rust-url/issues/957
+        if http_url.port_or_known_default().is_none() {
             // If no port is specified, we assume the default redap port:
             http_url.set_port(Some(51234)).ok();
         }
@@ -63,6 +81,7 @@ impl std::str::FromStr for Origin {
 
 impl std::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}://{}:{}", self.scheme, self.host, self.port)
+        let Self { scheme, host, port } = self;
+        write!(f, "{scheme}://{host}:{port}")
     }
 }

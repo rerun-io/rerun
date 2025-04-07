@@ -6,7 +6,7 @@ use re_log_encoding::Compression;
 use re_log_types::LogMsg;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
-use re_uri::ProxyEndpoint;
+use re_uri::ProxyUri;
 use tokio::runtime;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
@@ -45,7 +45,7 @@ pub struct Client {
 
 impl Client {
     #[expect(clippy::needless_pass_by_value)]
-    pub fn new(endpoint: ProxyEndpoint, options: Options) -> Self {
+    pub fn new(uri: ProxyUri, options: Options) -> Self {
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
         let (shutdown_tx, shutdown_rx) = mpsc::channel(1);
 
@@ -58,7 +58,7 @@ impl Client {
                     .build()
                     .expect("Failed to build tokio runtime")
                     .block_on(message_proxy_client(
-                        endpoint,
+                        uri,
                         cmd_rx,
                         shutdown_rx,
                         options.compression,
@@ -137,12 +137,12 @@ impl Drop for Client {
 }
 
 async fn message_proxy_client(
-    endpoint: ProxyEndpoint,
+    uri: ProxyUri,
     mut cmd_rx: UnboundedReceiver<Cmd>,
     mut shutdown_rx: Receiver<()>,
     compression: Compression,
 ) {
-    let endpoint = match Endpoint::from_shared(endpoint.origin.as_url()) {
+    let endpoint = match Endpoint::from_shared(uri.origin.as_url()) {
         Ok(endpoint) => endpoint,
         Err(err) => {
             re_log::error!("Invalid message proxy server endpoint: {err}");

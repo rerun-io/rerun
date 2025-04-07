@@ -42,7 +42,7 @@ mod scheme;
 mod time_range;
 
 pub use self::{
-    endpoints::{catalog::CatalogEndpoint, dataset::DatasetDataEndpoint, proxy::ProxyEndpoint},
+    endpoints::{catalog::CatalogUri, dataset::DatasetDataUri, proxy::ProxyUri},
     error::Error,
     fragment::Fragment,
     origin::Origin,
@@ -50,3 +50,7 @@ pub use self::{
     scheme::Scheme,
     time_range::TimeRange,
 };
+
+pub mod external {
+    pub use url;
+}

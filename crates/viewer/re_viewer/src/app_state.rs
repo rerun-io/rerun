@@ -155,7 +155,7 @@ impl AppState {
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
-        rx: &ReceiveSet<LogMsg>,
+        rx_log: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
@@ -309,7 +309,7 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx, callbacks);
+        move_time(&ctx, recording, rx_log, callbacks);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport_ui.on_frame_start(&ctx);
@@ -424,14 +424,20 @@ impl AppState {
                                 .show_inside(ui, |ui| {
                                     recordings_panel_ui(
                                         &ctx,
-                                        rx,
+                                        rx_log,
                                         ui,
                                         welcome_screen_state,
                                         redap_servers,
                                     );
                                 });
                         } else {
-                            recordings_panel_ui(&ctx, rx, ui, welcome_screen_state, redap_servers);
+                            recordings_panel_ui(
+                                &ctx,
+                                rx_log,
+                                ui,
+                                welcome_screen_state,
+                                redap_servers,
+                            );
                         }
 
                         ui.add_space(4.0);
@@ -598,7 +604,7 @@ impl AppState {
                                     .show_inside(ui, |ui| {
                                         recordings_panel_ui(
                                             &ctx,
-                                            rx,
+                                            rx_log,
                                             ui,
                                             welcome_screen_state,
                                             redap_servers,
@@ -607,7 +613,7 @@ impl AppState {
                             } else {
                                 recordings_panel_ui(
                                     &ctx,
-                                    rx,
+                                    rx_log,
                                     ui,
                                     welcome_screen_state,
                                     redap_servers,
@@ -690,7 +696,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&ctx, redap_servers);
+        check_for_clicked_hyperlinks(&ctx);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
@@ -877,7 +883,7 @@ pub(crate) fn recording_config_entry<'cfgs>(
 /// Must run after any ui code, or other code that tells egui to open an url.
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
-fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>, redap_servers: &RedapServers) {
+fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     let recording_scheme = "recording://";
 
     let mut recording_path = None;
@@ -888,7 +894,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>, redap_servers: &RedapSe
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 let redap_uri = open_url.url.parse::<re_uri::RedapUri>();
 
-                if let Ok(redap_uri) = redap_uri {
+                if redap_uri.is_ok() {
                     let data_source = re_data_source::DataSource::from_uri(
                         re_log_types::FileSource::Uri,
                         open_url.url.clone(),
@@ -911,18 +917,6 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>, redap_servers: &RedapSe
                         }),
                     });
 
-                    // If this is a dataset url, we add the server if we don't know about it already.
-                    // Otherwise we end up in a situation where we have a data from an unknown server,
-                    // which is unnecessary and can get us into a strange ui state.
-                    if let re_uri::RedapUri::DatasetData(dataset_endpoint) = redap_uri {
-                        if !redap_servers.has_server(&dataset_endpoint.origin) {
-                            ctx.command_sender()
-                                .send_system(SystemCommand::AddRedapServer {
-                                    endpoint: re_uri::CatalogEndpoint::new(dataset_endpoint.origin),
-                                });
-                        }
-                    }
-
                     match data_source.stream(on_cmd, None) {
                         Ok(re_data_source::StreamSource::LogMessages(rx)) => {
                             ctx.command_sender()
@@ -936,9 +930,9 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>, redap_servers: &RedapSe
                             }
                         }
 
-                        Ok(re_data_source::StreamSource::CatalogData { endpoint }) => ctx
+                        Ok(re_data_source::StreamSource::CatalogData(uri)) => ctx
                             .command_sender()
-                            .send_system(SystemCommand::AddRedapServer { endpoint }),
+                            .send_system(SystemCommand::AddRedapServer(uri)),
                         Err(err) => {
                             re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
                         }

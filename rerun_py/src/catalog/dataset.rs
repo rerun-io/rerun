@@ -32,6 +32,7 @@ use crate::dataframe::{
 };
 use crate::utils::wait_for_future;
 
+/// A dataset entry in the catalog.
 #[pyclass(name = "Dataset", extends=PyEntry)]
 pub struct PyDataset {
     pub dataset_handle: DatasetHandle,
@@ -39,6 +40,8 @@ pub struct PyDataset {
 
 #[pymethods]
 impl PyDataset {
+    /// Return the dataset manifest URL.
+    //TODO(ab): not sure we want this to be public
     #[getter]
     fn manifest_url(&self) -> String {
         self.dataset_handle.url.to_string()
@@ -81,7 +84,7 @@ impl PyDataset {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
 
-        let url = re_uri::DatasetDataEndpoint {
+        re_uri::DatasetDataUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
             partition_id,
@@ -89,9 +92,8 @@ impl PyDataset {
             //TODO(ab): add support for these two
             time_range: None,
             fragment: Default::default(),
-        };
-
-        url.to_string()
+        }
+        .to_string()
     }
 
     /// Register a RRD URI to the dataset.
@@ -103,6 +105,7 @@ impl PyDataset {
         connection.register_with_dataset(self_.py(), dataset_id, recording_uri)
     }
 
+    /// Download a partition from the dataset.
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
         let mut client = super_.client.borrow(self_.py()).connection().client();
@@ -156,6 +159,7 @@ impl PyDataset {
         })
     }
 
+    /// Create a view to run a dataframe query on the dataset.
     #[expect(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
@@ -185,6 +189,14 @@ impl PyDataset {
         )
     }
 
+    /// Create a full-text search index on the given column.
+    #[pyo3(signature = (
+            *,
+            column,
+            time_index,
+            store_position = false,
+            base_tokenizer = "simple",
+        ))]
     fn create_fts_index(
         self_: PyRef<'_, Self>,
         column: PyComponentColumnSelector,
@@ -241,6 +253,15 @@ impl PyDataset {
         })
     }
 
+    /// Create a vector index on the given column.
+    #[pyo3(signature = (
+        *,
+        column,
+        time_index,
+        num_partitions = 5,
+        num_sub_vectors = 16,
+        distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
+    ))]
     fn create_vector_index(
         self_: PyRef<'_, Self>,
         column: PyComponentColumnSelector,
@@ -294,6 +315,7 @@ impl PyDataset {
         })
     }
 
+    /// Search the dataset using a full-text search query.
     fn search_fts(
         self_: PyRef<'_, Self>,
         query: String,
@@ -356,6 +378,7 @@ impl PyDataset {
         })
     }
 
+    /// Search the dataset using a vector search query.
     fn search_vector(
         self_: PyRef<'_, Self>,
         query: VectorLike<'_>,

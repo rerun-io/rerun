@@ -53,6 +53,64 @@ impl ::prost::Name for ReadMessagesResponse {
         "/rerun.sdk_comms.v1alpha1.ReadMessagesResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WriteTableRequest {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TableId>,
+    #[prost(message, optional, tag = "2")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for WriteTableRequest {
+    const NAME: &'static str = "WriteTableRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.WriteTableRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.WriteTableRequest".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct WriteTableResponse {}
+impl ::prost::Name for WriteTableResponse {
+    const NAME: &'static str = "WriteTableResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.WriteTableResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.WriteTableResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ReadTablesRequest {}
+impl ::prost::Name for ReadTablesRequest {
+    const NAME: &'static str = "ReadTablesRequest";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ReadTablesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ReadTablesRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadTablesResponse {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::TableId>,
+    #[prost(message, optional, tag = "2")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+}
+impl ::prost::Name for ReadTablesResponse {
+    const NAME: &'static str = "ReadTablesResponse";
+    const PACKAGE: &'static str = "rerun.sdk_comms.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.sdk_comms.v1alpha1.ReadTablesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.sdk_comms.v1alpha1.ReadTablesResponse".into()
+    }
+}
 /// Generated client implementations.
 pub mod message_proxy_service_client {
     #![allow(
@@ -183,6 +241,46 @@ pub mod message_proxy_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        pub async fn write_table(
+            &mut self,
+            request: impl tonic::IntoRequest<super::WriteTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::WriteTableResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.MessageProxyService/WriteTable",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.MessageProxyService",
+                "WriteTable",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn read_tables(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ReadTablesRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::ReadTablesResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.sdk_comms.v1alpha1.MessageProxyService/ReadTables",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.sdk_comms.v1alpha1.MessageProxyService",
+                "ReadTables",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -213,6 +311,19 @@ pub mod message_proxy_service_server {
             &self,
             request: tonic::Request<super::ReadMessagesRequest>,
         ) -> std::result::Result<tonic::Response<Self::ReadMessagesStream>, tonic::Status>;
+        async fn write_table(
+            &self,
+            request: tonic::Request<super::WriteTableRequest>,
+        ) -> std::result::Result<tonic::Response<super::WriteTableResponse>, tonic::Status>;
+        /// Server streaming response type for the ReadTables method.
+        type ReadTablesStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::ReadTablesResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        async fn read_tables(
+            &self,
+            request: tonic::Request<super::ReadTablesRequest>,
+        ) -> std::result::Result<tonic::Response<Self::ReadTablesStream>, tonic::Status>;
     }
     /// Simple buffer for messages between SDKs and viewers.
     ///
@@ -367,6 +478,91 @@ pub mod message_proxy_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = ReadMessagesSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.MessageProxyService/WriteTable" => {
+                    #[allow(non_camel_case_types)]
+                    struct WriteTableSvc<T: MessageProxyService>(pub Arc<T>);
+                    impl<T: MessageProxyService>
+                        tonic::server::UnaryService<super::WriteTableRequest> for WriteTableSvc<T>
+                    {
+                        type Response = super::WriteTableResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::WriteTableRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MessageProxyService>::write_table(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = WriteTableSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.sdk_comms.v1alpha1.MessageProxyService/ReadTables" => {
+                    #[allow(non_camel_case_types)]
+                    struct ReadTablesSvc<T: MessageProxyService>(pub Arc<T>);
+                    impl<T: MessageProxyService>
+                        tonic::server::ServerStreamingService<super::ReadTablesRequest>
+                        for ReadTablesSvc<T>
+                    {
+                        type Response = super::ReadTablesResponse;
+                        type ResponseStream = T::ReadTablesStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ReadTablesRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as MessageProxyService>::read_tables(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ReadTablesSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

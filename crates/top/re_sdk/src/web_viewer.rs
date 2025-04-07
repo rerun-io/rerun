@@ -1,5 +1,5 @@
 use re_log_types::LogMsg;
-use re_uri::ProxyEndpoint;
+use re_uri::ProxyUri;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
 // ----------------------------------------------------------------------------
@@ -47,10 +47,12 @@ impl WebViewerSink {
         let (server_shutdown_signal, shutdown) = re_grpc_server::shutdown::shutdown();
 
         let grpc_server_addr = format!("{bind_ip}:{grpc_port}").parse()?;
+        let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
+            re_uri::Scheme::RerunHttp,
+            grpc_server_addr,
+        ));
         let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
-            re_smart_channel::SmartMessageSource::MessageProxy {
-                url: format!("rerun+http://{grpc_server_addr}/proxy"),
-            },
+            re_smart_channel::SmartMessageSource::MessageProxy(uri),
             re_smart_channel::SmartChannelSource::Sdk,
         );
         let server_handle = std::thread::Builder::new()
@@ -142,7 +144,7 @@ pub struct WebViewerConfig {
     ///
     /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub source_url: Option<ProxyEndpoint>,
+    pub source_url: Option<ProxyUri>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
