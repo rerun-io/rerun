@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 
 use crate::{Error, Scheme};
 
+/// `scheme://hostname:port`
 #[derive(
     Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize,
 )]
