@@ -11,7 +11,6 @@ use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
-use re_uri::RedapUri;
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -481,7 +480,10 @@ impl App {
                         uri.origin.clone(),
                     )));
             }
+
+            self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
         }
+
         self.rx_log.add(rx);
     }
 
@@ -642,44 +644,6 @@ impl App {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
                     }
                 }
-
-                if let DataSource::RerunGrpcStream(RedapUri::DatasetData(uri)) = data_source {
-                    // Focus on a specific thing:
-
-                    let rec_id = uri.recording_id();
-                    let re_uri::Fragment { data_path, when } = uri.fragment;
-
-                    if let Some(data_path) = data_path {
-                        let re_log_types::DataPath {
-                            entity_path,
-                            instance,
-                            component_name,
-                        } = data_path;
-
-                        let item = if let Some(component_name) = component_name {
-                            Item::from(re_log_types::ComponentPath::new(
-                                entity_path,
-                                component_name,
-                            ))
-                        } else if let Some(instance) = instance {
-                            Item::from(InstancePath::instance(entity_path, instance))
-                        } else {
-                            Item::from(entity_path)
-                        };
-
-                        self.command_sender
-                            .send_system(SystemCommand::SetFocus(item));
-                    }
-
-                    if let Some((timeline, timecell)) = when {
-                        self.command_sender
-                            .send_system(SystemCommand::SetActiveTime {
-                                rec_id,
-                                timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
-                                time: Some(timecell.as_i64().into()),
-                            });
-                    }
-                }
             }
 
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
@@ -787,6 +751,41 @@ impl App {
                     re_log::error!("Failed to save file: {err}");
                 }
             }
+        }
+    }
+
+    fn go_to_uri_fragment(&self, rec_id: re_log_types::StoreId, fragment: re_uri::Fragment) {
+        let re_uri::Fragment { data_path, when } = fragment;
+
+        if let Some(data_path) = data_path {
+            let re_log_types::DataPath {
+                entity_path,
+                instance,
+                component_name,
+            } = data_path;
+
+            let item = if let Some(component_name) = component_name {
+                Item::from(re_log_types::ComponentPath::new(
+                    entity_path,
+                    component_name,
+                ))
+            } else if let Some(instance) = instance {
+                Item::from(InstancePath::instance(entity_path, instance))
+            } else {
+                Item::from(entity_path)
+            };
+
+            self.command_sender
+                .send_system(SystemCommand::SetFocus(item));
+        }
+
+        if let Some((timeline, timecell)) = when {
+            self.command_sender
+                .send_system(SystemCommand::SetActiveTime {
+                    rec_id,
+                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
+                    time: Some(timecell.as_i64().into()),
+                });
         }
     }
 
