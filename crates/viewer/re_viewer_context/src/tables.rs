@@ -10,6 +10,7 @@ use re_types::external::arrow::{
     array::{ArrayRef, RecordBatch},
     datatypes::Schema,
 };
+use re_types_core::ComponentBatch as _;
 
 #[derive(Default)]
 struct SorbetBatchStore {
@@ -48,7 +49,7 @@ impl TableStore {
                 is_static: true,
                 is_tombstone: false,
                 is_semantically_empty: false,
-                is_indicator: true,
+                is_indicator: false,
             });
 
             descriptors.push(descriptor);
@@ -67,7 +68,7 @@ impl TableStore {
                 is_static: true,
                 is_tombstone: false,
                 is_semantically_empty: false,
-                is_indicator: true,
+                is_indicator: false,
             });
 
             let data = ListArray::new(
@@ -93,7 +94,7 @@ impl TableStore {
                 is_static: true,
                 is_tombstone: false,
                 is_semantically_empty: false,
-                is_indicator: true,
+                is_indicator: false,
             });
 
             let data = ListArray::new(
@@ -105,6 +106,32 @@ impl TableStore {
 
             descriptors.push(descriptor);
             columns.push(Arc::new(data) as ArrayRef);
+        }
+
+        {
+            let blob = re_types::components::Blob(re_types::datatypes::Blob::from(
+                re_ui::icons::RERUN_MENU.png_bytes,
+            ));
+
+            let array = Arc::new(
+                blob.to_arrow_list_array()
+                    .expect("serialization should succeed"),
+            ) as ArrayRef;
+
+            let descriptor = re_sorbet::ColumnDescriptor::Component(ComponentColumnDescriptor {
+                entity_path: re_log_types::EntityPath::from("/some/path"),
+                archetype_name: Some("archetype".to_owned().into()),
+                archetype_field_name: Some("thumbnail".to_owned().into()),
+                component_name: "rerun.components.Blob".into(),
+                store_datatype: array.data_type().clone(),
+                is_static: true,
+                is_tombstone: false,
+                is_semantically_empty: false,
+                is_indicator: false,
+            });
+
+            descriptors.push(descriptor);
+            columns.push(array);
         }
 
         let schema = Arc::new(Schema::new_with_metadata(
