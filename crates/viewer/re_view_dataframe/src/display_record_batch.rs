@@ -257,7 +257,7 @@ impl DisplayColumn {
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
             ColumnDescriptorRef::RowId(_desc) => Ok(Self::RowId {
-                row_ids: Arc::new(Tuid::from_arrow(column_data)?),
+                row_ids: Arc::new(RowId::from_arrow(column_data)?),
             }),
 
             ColumnDescriptorRef::Time(desc) => {
