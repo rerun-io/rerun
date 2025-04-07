@@ -5,8 +5,8 @@ use arrow::datatypes::{DataType, Field, Schema as ArrowSchema};
 use arrow::pyarrow::{FromPyArrow as _, PyArrowType, ToPyArrow};
 use datafusion::common::exec_err;
 use pyo3::types::{PyAnyMethods, PyString, PyTuple};
-use pyo3::{Bound, IntoPyObject};
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
+use pyo3::{Bound, IntoPyObject};
 use re_tuid::Tuid;
 use tokio_stream::StreamExt as _;
 
@@ -102,10 +102,7 @@ impl PyDataset {
     }
 
     #[getter]
-    fn partition_url_udf(
-        self_: PyRef<'_, Self>
-    ) -> PyResult<Py<PyAny>> {
-
+    fn partition_url_udf(self_: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let py = self_.py();
@@ -118,20 +115,23 @@ impl PyDataset {
 
         #[pymethods]
         impl PartitionUrlInner {
-            pub fn __call__(&self, py: Python<'_>, partition_id_expr: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
-
-                let mut url = re_uri::DatasetDataEndpoint {
+            pub fn __call__(
+                &self,
+                py: Python<'_>,
+                partition_id_expr: &Bound<'_, PyAny>,
+            ) -> PyResult<Py<PyAny>> {
+                let mut url = re_uri::DatasetDataUri {
                     origin: self.connection.origin().clone(),
                     dataset_id: self.dataset_id,
                     partition_id: "default".to_owned(), // to be replaced during loop
-        
+
                     //TODO(ab): add support for these two
                     time_range: None,
                     fragment: Default::default(),
                 };
-        
+
                 let array_data = ArrayData::from_pyarrow_bound(partition_id_expr)?;
-        
+
                 match array_data.data_type() {
                     DataType::Utf8 => {
                         let str_array = StringArray::from(array_data);
@@ -164,8 +164,12 @@ impl PyDataset {
             }
         }
 
-        let udf_factory = py.import("datafusion").and_then(|datafusion| datafusion.getattr("udf"))?;
-        let pa_utf8 = py.import("pyarrow").and_then(|pa| pa.getattr("utf8")?.call0())?;
+        let udf_factory = py
+            .import("datafusion")
+            .and_then(|datafusion| datafusion.getattr("udf"))?;
+        let pa_utf8 = py
+            .import("pyarrow")
+            .and_then(|pa| pa.getattr("utf8")?.call0())?;
 
         let inner = PartitionUrlInner {
             connection,
@@ -173,9 +177,17 @@ impl PyDataset {
         };
         let bound_inner = inner.into_pyobject(py)?;
         let py_stable = PyString::new(py, "stable");
-        
+
         // df.udf(dataset.partition_url_udf,  pa.utf8(), pa.utf8(), 'stable')
-        let args = PyTuple::new(py, vec![bound_inner.as_any(), pa_utf8.as_any(), pa_utf8.as_any(), py_stable.as_any()])?;
+        let args = PyTuple::new(
+            py,
+            vec![
+                bound_inner.as_any(),
+                pa_utf8.as_any(),
+                pa_utf8.as_any(),
+                py_stable.as_any(),
+            ],
+        )?;
 
         Ok(udf_factory.call1(args)?.unbind())
     }
