@@ -6,16 +6,17 @@ use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
-use re_entity_db::entity_db::EntityDb;
+use re_entity_db::{entity_db::EntityDb, InstancePath};
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
+use re_uri::RedapUri;
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
+    ComponentUiRegistry, DisplayMode, Item, PlayState, StorageContext, StoreContext, SystemCommand,
     SystemCommandSender as _, TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError,
 };
 
@@ -629,14 +630,53 @@ impl App {
                     }),
                 });
 
-                match data_source.stream(on_cmd, Some(waker)) {
+                match data_source.clone().stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
+
                     Ok(re_data_source::StreamSource::CatalogData(uri)) => {
                         self.command_sender
                             .send_system(SystemCommand::AddRedapServer(uri));
                     }
+
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
+                    }
+                }
+
+                if let DataSource::RerunGrpcStream(RedapUri::DatasetData(uri)) = data_source {
+                    // Focus on a specific thing:
+
+                    let re_uri::Fragment { data_path, when } = uri.fragment;
+
+                    if let Some(data_path) = data_path {
+                        let re_log_types::DataPath {
+                            entity_path,
+                            instance,
+                            component_name,
+                        } = data_path;
+
+                        let item = if let Some(component_name) = component_name {
+                            Item::from(re_log_types::ComponentPath::new(
+                                entity_path,
+                                component_name,
+                            ))
+                        } else if let Some(instance) = instance {
+                            Item::from(InstancePath::instance(entity_path, instance))
+                        } else {
+                            Item::from(entity_path)
+                        };
+
+                        self.command_sender
+                            .send_system(SystemCommand::SetFocus(item));
+                    }
+
+                    if let Some((timeline, timecell)) = when {
+                        self.command_sender
+                            .send_system(SystemCommand::SetActiveTime {
+                                rec_id: uri.store_id(),
+                                timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
+                                time: Some(timecell.as_i64().into()),
+                            });
                     }
                 }
             }

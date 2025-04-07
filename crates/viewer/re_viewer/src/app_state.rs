@@ -3,7 +3,7 @@ use egui::{text_selection::LabelSelectionState, NumExt as _};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{EntityDb, InstancePath};
+use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
@@ -889,51 +889,23 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     let recording_scheme = "recording://";
 
     let mut recording_path = None;
-    let mut fragment = None;
-    let mut store_id = None;
 
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Ok(redap_uri) = open_url.url.parse::<re_uri::RedapUri>() {
-                    fragment = redap_uri.fragment().cloned();
-                    store_id = redap_uri.store_id();
+                if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
+                    let is_ctalog_uri = matches!(uri, re_uri::RedapUri::Catalog { .. });
 
-                    let command_sender = ctx.command_sender().clone();
-                    let on_cmd = Box::new(move |cmd| match cmd {
-                        re_data_source::DataSourceCommand::SetLoopSelection {
-                            recording_id,
-                            timeline,
-                            time_range,
-                        } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                            rec_id: recording_id,
-                            timeline,
-                            time_range,
-                        }),
-                    });
+                    ctx.command_sender()
+                        .send_system(SystemCommand::LoadDataSource(
+                            re_data_source::DataSource::RerunGrpcStream(uri),
+                        ));
 
-                    let data_source =
-                        re_data_source::DataSource::RerunGrpcStream(redap_uri.clone());
-
-                    match data_source.stream(on_cmd, None) {
-                        Ok(re_data_source::StreamSource::LogMessages(rx)) => {
-                            ctx.command_sender()
-                                .send_system(SystemCommand::AddReceiver(rx));
-
-                            if !open_url.new_tab {
-                                ctx.command_sender()
-                                    .send_system(SystemCommand::ChangeDisplayMode(
-                                        DisplayMode::LocalRecordings,
-                                    ));
-                            }
-                        }
-
-                        Ok(re_data_source::StreamSource::CatalogData(uri)) => ctx
-                            .command_sender()
-                            .send_system(SystemCommand::AddRedapServer(uri)),
-                        Err(err) => {
-                            re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
-                        }
+                    if is_ctalog_uri && !open_url.new_tab {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::ChangeDisplayMode(
+                                DisplayMode::LocalRecordings,
+                            ));
                     }
                     return false;
                 } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
@@ -956,44 +928,6 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
             Err(err) => {
                 re_log::warn!("Failed to parse entity path {path:?}: {err}");
             }
-        }
-    }
-
-    // Focus on a specific thing:
-    let re_uri::Fragment { data_path, when } = fragment.unwrap_or_default();
-
-    if let Some(data_path) = data_path {
-        let re_log_types::DataPath {
-            entity_path,
-            instance,
-            component_name,
-        } = data_path;
-
-        let item = if let Some(component_name) = component_name {
-            Item::from(re_log_types::ComponentPath::new(
-                entity_path,
-                component_name,
-            ))
-        } else if let Some(instance) = instance {
-            Item::from(InstancePath::instance(entity_path, instance))
-        } else {
-            Item::from(entity_path)
-        };
-
-        ctx.command_sender()
-            .send_system(SystemCommand::SetFocus(item));
-    }
-
-    if let Some((timeline, timecell)) = when {
-        if let Some(store_id) = store_id {
-            ctx.command_sender()
-                .send_system(SystemCommand::SetActiveTime {
-                    rec_id: store_id,
-                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
-                    time: Some(timecell.as_i64().into()),
-                });
-        } else {
-            re_log::warn_once!("#fragment told us to set a specific time on a specific timeline, but we don't know on which recording");
         }
     }
 }

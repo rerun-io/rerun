@@ -1,3 +1,5 @@
+use re_log_types::StoreId;
+
 use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
 
 //TODO(ab): add `DatasetTableUri`, the URI pointing at the "table view" of the dataset (aka. its partition table).
@@ -104,6 +106,13 @@ impl DatasetDataUri {
         *fragment = Default::default();
 
         self
+    }
+
+    pub fn store_id(&self) -> StoreId {
+        StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            self.partition_id.clone(),
+        )
     }
 }
 
