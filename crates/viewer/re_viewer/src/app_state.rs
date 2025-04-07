@@ -385,7 +385,9 @@ impl AppState {
 
         if *show_settings_ui {
             // nothing: this is already handled above
-        } else if storage_context.hub.active_table_id().is_some() {
+        } else if storage_context.hub.active_table_id().is_some()
+            && *display_mode == DisplayMode::LocalRecordings
+        {
             // TODO(grtlr): This is almost a verbatim copy of the code below. Once the dust has settled around the
             // catalog, we should strive to unify both draw calls.
             let left_panel = egui::SidePanel::left("left_panel_table")

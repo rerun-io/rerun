@@ -41,6 +41,7 @@ ahash.workspace = true
 arrow.workspace = true
 crossbeam-channel.workspace = true
 egui.workspace = true
+egui_dnd.workspace = true
 egui_table.workspace = true
 once_cell.workspace = true
 serde.workspace = true
