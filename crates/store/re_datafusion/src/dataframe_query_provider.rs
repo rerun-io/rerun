@@ -11,6 +11,7 @@ use datafusion::{
 };
 
 use re_dataframe::{QueryEngine, QueryExpression, StorageEngine};
+use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 
 pub struct DataframeQueryTableProvider {
     pub schema: SchemaRef,
@@ -31,7 +32,10 @@ impl DataframeQueryTableProvider {
         let merged = Schema::try_merge(all_schemas)?;
 
         Ok(Self {
-            schema: Arc::new(prepend_string_column_schema(&merged, "rerun_partition_id")),
+            schema: Arc::new(prepend_string_column_schema(
+                &merged,
+                DATASET_MANIFEST_ID_FIELD_NAME,
+            )),
             query_engines,
             query_expression,
         })
@@ -70,7 +74,7 @@ impl PartitionStream for DataframeQueryTableProvider {
                         align_record_batch_to_schema(
                             &prepend_string_column(
                                 &batch,
-                                "rerun_partition_id",
+                                DATASET_MANIFEST_ID_FIELD_NAME,
                                 partition_id.as_str(),
                             )?,
                             &inner_schema,
