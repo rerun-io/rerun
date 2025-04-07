@@ -124,7 +124,7 @@ impl ComponentData {
         latest_at_query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        row_ids: Option<&[Tuid]>,
+        row_ids: Option<&[RowId]>,
         row_index: usize,
         instance_index: Option<u64>,
     ) {
