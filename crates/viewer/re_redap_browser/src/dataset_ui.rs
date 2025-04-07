@@ -113,14 +113,12 @@ pub fn dataset_ui(
             egui::Sides::new().show(
                 ui,
                 |ui| {
-                    ui.horizontal(|ui| {
-                        ui.heading(RichText::new(dataset.name()).strong());
-                        if ui.small_icon_button(&icons::RESET).clicked() {
-                            let _ = ctx
-                                .command_sender
-                                .send(Command::RefreshCollection(origin.clone()));
-                        }
-                    });
+                    ui.heading(RichText::new(dataset.name()).strong());
+                    if ui.small_icon_button(&icons::RESET).clicked() {
+                        let _ = ctx
+                            .command_sender
+                            .send(Command::RefreshCollection(origin.clone()));
+                    }
                 },
                 |ui| {
                     table_delegate.table_config.button_ui(ui);
