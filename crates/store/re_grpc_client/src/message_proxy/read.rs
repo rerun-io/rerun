@@ -10,19 +10,18 @@ use crate::TonicStatusError;
 use crate::MAX_DECODING_MESSAGE_SIZE;
 
 pub fn stream(
-    endpoint: re_uri::ProxyEndpoint,
+    url: re_uri::ProxyEndpoint,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
-    re_log::debug!("Loading {endpoint} via gRPC…");
+    re_log::debug!("Loading {url} via gRPC…");
 
-    let url = format!("{endpoint}");
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
-        re_smart_channel::SmartChannelSource::MessageProxy { url },
+        re_smart_channel::SmartChannelSource::MessageProxy { url: url.clone() },
     );
 
     crate::spawn_future(async move {
-        if let Err(err) = stream_async(endpoint, &tx, on_msg).await {
+        if let Err(err) = stream_async(url, &tx, on_msg).await {
             tx.quit(Some(Box::new(err))).ok();
         }
     });

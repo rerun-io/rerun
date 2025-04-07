@@ -248,13 +248,17 @@ pub fn spawn_with_recv(
     memory_limit: MemoryLimit,
     shutdown: shutdown::Shutdown,
 ) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
+    let url = re_uri::ProxyEndpoint::new(re_uri::Origin {
+        scheme: re_uri::Scheme::RerunHttp,
+        host: match addr.ip() {
+            std::net::IpAddr::V4(ipv4_addr) => re_uri::external::url::Host::Ipv4(ipv4_addr),
+            std::net::IpAddr::V6(ipv6_addr) => re_uri::external::url::Host::Ipv6(ipv6_addr),
+        },
+        port: addr.port(),
+    });
     let (channel_tx, channel_rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy {
-            url: format!("rerun+http://{addr}/proxy"),
-        },
-        re_smart_channel::SmartChannelSource::MessageProxy {
-            url: format!("rerun+http://{addr}/proxy"),
-        },
+        re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
+        re_smart_channel::SmartChannelSource::MessageProxy { url },
     );
     let (message_proxy, mut broadcast_rx) = MessageProxy::new_with_recv(memory_limit);
     tokio::spawn(async move {

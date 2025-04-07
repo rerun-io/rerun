@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use crate::{Error, Scheme};
 
 #[derive(
@@ -10,6 +12,17 @@ pub struct Origin {
 }
 
 impl Origin {
+    pub fn from_scheme_and_socket_addr(scheme: Scheme, socket_addr: SocketAddr) -> Self {
+        Self {
+            scheme,
+            host: match socket_addr.ip() {
+                std::net::IpAddr::V4(ipv4_addr) => url::Host::Ipv4(ipv4_addr),
+                std::net::IpAddr::V6(ipv6_addr) => url::Host::Ipv6(ipv6_addr),
+            },
+            port: socket_addr.port(),
+        }
+    }
+
     /// Converts the [`Origin`] to a URL that starts with either `http` or `https`.
     pub fn as_url(&self) -> String {
         format!(

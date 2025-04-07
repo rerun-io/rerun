@@ -274,7 +274,7 @@ impl ItemCollection {
                         Some((ClipboardTextDesc::Url, endpoint.to_string()))
                     }
                     re_smart_channel::SmartChannelSource::MessageProxy { url } => {
-                        Some((ClipboardTextDesc::Url, url.clone()))
+                        Some((ClipboardTextDesc::Url, url.to_string()))
                     }
                 },
 

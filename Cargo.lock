@@ -7157,6 +7157,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
+ "re_uri",
  "similar-asserts",
  "tokio",
  "tokio-stream",

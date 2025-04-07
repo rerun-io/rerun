@@ -32,6 +32,7 @@ re_protos.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
+re_uri.workspace = true
 
 # External
 parking_lot.workspace = true

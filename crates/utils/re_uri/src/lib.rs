@@ -50,3 +50,7 @@ pub use self::{
     scheme::Scheme,
     time_range::TimeRange,
 };
+
+pub mod external {
+    pub use url;
+}
