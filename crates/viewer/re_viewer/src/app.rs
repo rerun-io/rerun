@@ -1525,12 +1525,13 @@ impl App {
             // everything and some of it is mutable and some not… it's really not pretty, but it
             // does the job for now.
 
-            {
+            let was_empty = {
                 let entity_db = store_hub.entity_db_mut(store_id);
                 if entity_db.data_source.is_none() {
                     entity_db.data_source = Some((*channel_source).clone());
                 }
-            }
+                entity_db.is_empty()
+            };
 
             match store_hub.entity_db_mut(store_id).add(&msg) {
                 Ok(store_events) => {
@@ -1547,6 +1548,14 @@ impl App {
             }
 
             let entity_db = store_hub.entity_db_mut(store_id);
+
+            if was_empty && !entity_db.is_empty() {
+                // Hack: we cannot go to a specific timeline or entity until we know about it.
+                // Now we _hopefully_ do.
+                if let SmartChannelSource::RedapGrpcStream(uri) = channel_source.as_ref() {
+                    self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
+                }
+            }
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
