@@ -433,7 +433,7 @@ fn open_example_url(
     _is_history_enabled: bool,
 ) {
     let data_source = re_data_source::DataSource::RrdHttpUrl {
-        url: rrd_url.to_owned(),
+        uri: rrd_url.to_owned(),
         follow: false,
     };
 

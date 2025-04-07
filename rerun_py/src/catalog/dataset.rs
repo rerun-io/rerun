@@ -84,7 +84,7 @@ impl PyDataset {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
 
-        let url = re_uri::DatasetDataEndpoint {
+        re_uri::DatasetDataUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
             partition_id,
@@ -92,9 +92,8 @@ impl PyDataset {
             //TODO(ab): add support for these two
             time_range: None,
             fragment: Default::default(),
-        };
-
-        url.to_string()
+        }
+        .to_string()
     }
 
     /// Register a RRD URI to the dataset.

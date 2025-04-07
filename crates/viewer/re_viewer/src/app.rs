@@ -473,12 +473,12 @@ impl App {
         //
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
-        if let SmartChannelSource::RedapGrpcStream(endpoint) = rx.source() {
-            if !self.state.redap_servers.has_server(&endpoint.origin) {
+        if let SmartChannelSource::RedapGrpcStream(uri) = rx.source() {
+            if !self.state.redap_servers.has_server(&uri.origin) {
                 self.command_sender
-                    .send_system(SystemCommand::AddRedapServer {
-                        endpoint: re_uri::CatalogEndpoint::new(endpoint.origin.clone()),
-                    });
+                    .send_system(SystemCommand::AddRedapServer(re_uri::CatalogUri::new(
+                        uri.origin.clone(),
+                    )));
             }
         }
         self.rx_log.add(rx);
@@ -587,8 +587,8 @@ impl App {
             SystemCommand::ChangeDisplayMode(display_mode) => {
                 self.state.display_mode = display_mode;
             }
-            SystemCommand::AddRedapServer { endpoint } => {
-                let re_uri::CatalogEndpoint { origin } = endpoint;
+            SystemCommand::AddRedapServer(uri) => {
+                let re_uri::CatalogUri { origin } = uri;
                 self.state.redap_servers.add_server(origin.clone());
 
                 if self
@@ -631,9 +631,9 @@ impl App {
 
                 match data_source.stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
-                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
+                    Ok(re_data_source::StreamSource::CatalogData(uri)) => {
                         self.command_sender
-                            .send_system(SystemCommand::AddRedapServer { endpoint });
+                            .send_system(SystemCommand::AddRedapServer(uri));
                     }
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
@@ -1175,7 +1175,7 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut endpoint)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStream(mut uri)) = entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1196,7 +1196,7 @@ impl App {
             return;
         };
 
-        endpoint.time_range = Some(re_uri::TimeRange {
+        uri.time_range = Some(re_uri::TimeRange {
             timeline: *time_ctrl.timeline(),
             range,
         });
@@ -1214,7 +1214,7 @@ impl App {
                 return;
             };
 
-            let time_range_url = endpoint.to_string();
+            let time_range_url = uri.to_string();
             // %-encode the time range URL, because it's a url-within-a-url.
             // This results in VERY ugly links.
             // TODO(jan): Tweak the asciiset used here.
@@ -1230,7 +1230,7 @@ impl App {
         };
 
         #[cfg(not(target_arch = "wasm32"))]
-        let url = endpoint.to_string();
+        let url = uri.to_string();
 
         self.egui_ctx.copy_text(url.clone());
         self.notifications
@@ -1927,9 +1927,9 @@ impl App {
         }
     }
 
-    pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
+    pub fn add_redap_server(&self, uri: re_uri::CatalogUri) {
         self.command_sender
-            .send_system(SystemCommand::AddRedapServer { endpoint });
+            .send_system(SystemCommand::AddRedapServer(uri));
     }
 }
 

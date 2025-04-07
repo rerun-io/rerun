@@ -133,7 +133,7 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(endpoint)) => {
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::redap::Command::SetLoopSelection {
                     recording_id,
@@ -152,12 +152,12 @@ pub fn url_to_receiver(
             ))
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
-            command_sender.send_system(SystemCommand::AddRedapServer { endpoint });
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer(uri));
             None
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Some(
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Some(
             re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
         ),
 

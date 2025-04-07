@@ -388,7 +388,7 @@ impl RecordingStreamBuilder {
         let (enabled, store_info, properties, batcher_config) = self.into_args();
         if enabled {
             let url: String = url.into();
-            let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
+            let re_uri::RedapUri::Proxy(uri) = url.as_str().parse()? else {
                 return Err(RecordingStreamError::NotAProxyEndpoint);
             };
 
@@ -396,7 +396,7 @@ impl RecordingStreamBuilder {
                 store_info,
                 properties,
                 batcher_config,
-                Box::new(crate::log_sink::GrpcSink::new(endpoint, flush_timeout)),
+                Box::new(crate::log_sink::GrpcSink::new(uri, flush_timeout)),
             )
         } else {
             re_log::debug!("Rerun disabled - call to connect() ignored");
@@ -1889,11 +1889,11 @@ impl RecordingStream {
         }
 
         let url: String = url.into();
-        let re_uri::RedapUri::Proxy(endpoint) = url.as_str().parse()? else {
+        let re_uri::RedapUri::Proxy(uri) = url.as_str().parse()? else {
             return Err(RecordingStreamError::NotAProxyEndpoint);
         };
 
-        let sink = crate::log_sink::GrpcSink::new(endpoint, flush_timeout);
+        let sink = crate::log_sink::GrpcSink::new(uri, flush_timeout);
 
         self.set_sink(Box::new(sink));
         Ok(())

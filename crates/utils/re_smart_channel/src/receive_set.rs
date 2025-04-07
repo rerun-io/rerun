@@ -53,8 +53,8 @@ impl<T: Send> ReceiveSet<T> {
             // - aren't network sources
             // - don't point at the given `uri`
             SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-            SmartChannelSource::MessageProxy(endpoint) => endpoint.to_string() != uri,
-            SmartChannelSource::RedapGrpcStream(endpoint) => endpoint.to_string() != uri,
+            SmartChannelSource::MessageProxy(uri) => uri.to_string() != uri,
+            SmartChannelSource::RedapGrpcStream(uri) => uri.to_string() != uri,
 
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
