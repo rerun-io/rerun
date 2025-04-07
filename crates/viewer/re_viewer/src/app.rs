@@ -707,9 +707,19 @@ impl App {
                 self.state.selection_state.set_selection(item);
             }
 
-            SystemCommand::SetActiveTimeline { rec_id, timeline } => {
+            SystemCommand::SetActiveTime {
+                rec_id,
+                timeline,
+                time,
+            } => {
                 if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
-                    rec_cfg.time_ctrl.write().set_timeline(timeline);
+                    let mut time_ctrl = rec_cfg.time_ctrl.write();
+
+                    time_ctrl.set_timeline(timeline);
+
+                    if let Some(time) = time {
+                        time_ctrl.set_time(time);
+                    }
                 }
             }
 
