@@ -7968,6 +7968,7 @@ dependencies = [
  "re_arrow_util",
  "re_chunk_store",
  "re_component_ui",
+ "re_data_ui",
  "re_dataframe",
  "re_error",
  "re_format",
