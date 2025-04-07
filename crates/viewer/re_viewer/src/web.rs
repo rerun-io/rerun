@@ -3,7 +3,7 @@
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use ahash::HashMap;
-use arrow::{array::RecordBatch, error::ArrowError};
+use arrow::array::RecordBatch;
 use serde::Deserialize;
 use std::rc::Rc;
 use std::str::FromStr as _;
@@ -319,17 +319,17 @@ impl WebHandle {
             let tx = channel.table_tx.clone();
 
             let cursor = std::io::Cursor::new(data);
-            let stream_reader = arrow::ipc::reader::StreamReader::try_new(cursor, None) else {
+            let Ok(stream_reader) = arrow::ipc::reader::StreamReader::try_new(cursor, None) else {
                 re_log::error_once!("Failed to create cursor");
                 return;
             };
 
-            let encoded = &stream_reader.collect::<Result<Vec<_>, _>>() else {
+            let Ok(encoded) = &stream_reader.collect::<Result<Vec<_>, _>>() else {
                 re_log::error_once!("Could not read from IPC stream");
                 return;
             };
 
-            let msg = from_arrow_encoded(encoded[0]) else {
+            let Some(msg) = from_arrow_encoded(&encoded[0]) else {
                 re_log::error_once!("Failed to decode Arrow message");
                 return;
             };
@@ -896,24 +896,6 @@ pub fn set_email(email: String) {
     config.save().unwrap();
 }
 
-/// Returns the [`TableMsg`] encoded as a record batch.
-// This is required to send bytes to a viewer running in a notebook.
-// If you ever change this, you also need to adapt `notebook.py` too.
-pub fn to_arrow_encoded(table: &TableMsg) -> Result<RecordBatch, ArrowError> {
-    let current_schema = table.data.schema();
-    let mut metadata = current_schema.metadata().clone();
-    metadata.insert("__table_id".to_owned(), table.id.as_str().to_owned());
-
-    // Create a new schema with the updated metadata
-    let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
-        current_schema.fields().clone(),
-        metadata,
-    ));
-
-    // Create a new record batch with the same data but updated schema
-    RecordBatch::try_new(new_schema, table.data.columns().to_vec())
-}
-
 /// Returns the [`TableMsg`] back from a encoded record batch.
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
@@ -940,6 +922,25 @@ pub fn from_arrow_encoded(data: &RecordBatch) -> Option<TableMsg> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arrow::ArrowError;
+
+    /// Returns the [`TableMsg`] encoded as a record batch.
+    // This is required to send bytes to a viewer running in a notebook.
+    // If you ever change this, you also need to adapt `notebook.py` too.
+    pub fn to_arrow_encoded(table: &TableMsg) -> Result<RecordBatch, ArrowError> {
+        let current_schema = table.data.schema();
+        let mut metadata = current_schema.metadata().clone();
+        metadata.insert("__table_id".to_owned(), table.id.as_str().to_owned());
+
+        // Create a new schema with the updated metadata
+        let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
+            current_schema.fields().clone(),
+            metadata,
+        ));
+
+        // Create a new record batch with the same data but updated schema
+        RecordBatch::try_new(new_schema, table.data.columns().to_vec())
+    }
 
     #[test]
     fn table_msg_encoded_roundtrip() {
