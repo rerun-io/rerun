@@ -328,3 +328,9 @@ message ComponentDescriptor {
   // Semantic name associated with this data.
   optional string component_name = 3;
 }
+
+// Unique identifier of a task submitted in the redap
+// tasks subsystem
+message TaskId {
+  string id = 1;
+}

@@ -6,7 +6,7 @@ use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::types::{PyCapsule, PyDict};
+use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{pyclass, pymethods, Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python};
 
 use re_chunk::ComponentName;
@@ -21,6 +21,7 @@ use crate::catalog::{to_py_err, PyDataset};
 use crate::dataframe::ComponentLike;
 use crate::utils::get_tokio_runtime;
 
+/// View into a remote dataset acting as DataFusion table provider.
 #[pyclass(name = "DataframeQueryView")]
 pub struct PyDataframeQueryView {
     dataset: Py<PyDataset>,
@@ -82,13 +83,23 @@ impl PyDataframeQueryView {
 
 #[pymethods]
 impl PyDataframeQueryView {
-    fn filter_partition_id(
-        mut self_: PyRefMut<'_, Self>,
-        //TODO(ab): provide a nicer API (single, etc.)
-        partition_ids: Vec<String>,
-    ) -> PyRefMut<'_, Self> {
+    /// Filter by one or more partition ids. All partition ids are included if not specified.
+    #[pyo3(signature = (partition_id, *args))]
+    fn filter_partition_id<'py>(
+        mut self_: PyRefMut<'py, Self>,
+        partition_id: String,
+        args: &Bound<'py, PyTuple>,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        let mut partition_ids = vec![partition_id];
+
+        for i in 0..args.len()? {
+            let item = args.get_item(i)?;
+            partition_ids.push(item.extract()?);
+        }
+
         self_.partition_ids = partition_ids;
-        self_
+
+        Ok(self_)
     }
 
     #[allow(rustdoc::private_doc_tests)]
@@ -215,7 +226,7 @@ impl PyDataframeQueryView {
     }
 
     #[allow(rustdoc::private_doc_tests)]
-    /// Filter the view to only include data between the given index values expressed as seconds.
+    /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
     ///
@@ -370,6 +381,7 @@ impl PyDataframeQueryView {
         self_
     }
 
+    /// Returns a DataFusion table provider capsule.
     fn __datafusion_table_provider__<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
@@ -418,6 +430,7 @@ impl PyDataframeQueryView {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
+    /// Register this view to the global DataFusion context and return a DataFrame.
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 

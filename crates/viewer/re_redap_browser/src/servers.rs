@@ -56,15 +56,19 @@ impl Server {
                 response
             });
 
-        ui.list_item().header().show_hierarchical_with_children(
-            ui,
-            egui::Id::new(&self.origin).with("server_item"),
-            true,
-            content,
-            |ui| {
-                self.entries.panel_ui(viewer_context, ctx, ui, recordings);
-            },
-        );
+        ui.list_item()
+            .header()
+            .show_hierarchical_with_children(
+                ui,
+                egui::Id::new(&self.origin).with("server_item"),
+                true,
+                content,
+                |ui| {
+                    self.entries.panel_ui(viewer_context, ctx, ui, recordings);
+                },
+            )
+            .item_response
+            .on_hover_text(self.origin.to_string());
     }
 }
 

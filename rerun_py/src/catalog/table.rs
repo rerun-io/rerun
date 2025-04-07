@@ -16,6 +16,9 @@ use crate::{
     utils::{get_tokio_runtime, wait_for_future},
 };
 
+/// A table entry in the catalog.
+///
+/// Note: this object acts as a table provider for DataFusion.
 #[pyclass(name = "Table", extends=PyEntry)]
 #[derive(Default)]
 pub struct PyTable {
@@ -24,6 +27,7 @@ pub struct PyTable {
 
 #[pymethods]
 impl PyTable {
+    /// Returns a DataFusion table provider capsule.
     fn __datafusion_table_provider__(
         mut self_: PyRefMut<'_, Self>,
     ) -> PyResult<Bound<'_, PyCapsule>> {
@@ -60,6 +64,7 @@ impl PyTable {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
+    /// Registers the table with the DataFusion context and return a DataFrame.
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
