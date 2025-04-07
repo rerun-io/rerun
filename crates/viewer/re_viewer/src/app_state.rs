@@ -894,17 +894,8 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let redap_uri = open_url.url.parse::<re_uri::RedapUri>();
-
-                if redap_uri.is_ok() {
-                    let data_source = re_data_source::DataSource::from_uri(
-                        re_log_types::FileSource::Uri,
-                        open_url.url.clone(),
-                    );
-
-                    if let re_data_source::DataSource::RerunGrpcStream(redap_uri) = &data_source {
-                        fragment = redap_uri.fragment().cloned();
-                    }
+                if let Ok(redap_uri) = open_url.url.parse::<re_uri::RedapUri>() {
+                    fragment = redap_uri.fragment().cloned();
 
                     let command_sender = ctx.command_sender().clone();
                     let on_cmd = Box::new(move |cmd| match cmd {
@@ -918,6 +909,9 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                             time_range,
                         }),
                     });
+
+                    let data_source =
+                        re_data_source::DataSource::RerunGrpcStream(redap_uri.clone());
 
                     match data_source.stream(on_cmd, None) {
                         Ok(re_data_source::StreamSource::LogMessages(rx)) => {
