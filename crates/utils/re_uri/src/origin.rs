@@ -38,7 +38,10 @@ impl Origin {
         // `Origin` in that case.
         let mut http_url = url::Url::parse(&rewritten)?;
 
-        if http_url.port().is_none() {
+        // If we parse a Url from e.g. `https://redap.rerun.io:443`, `port` in the Url struct will
+        // be `None`. So we need to use `port_or_known_default` to get the port back.
+        // See also: https://github.com/servo/rust-url/issues/957
+        if http_url.port_or_known_default().is_none() {
             // If no port is specified, we assume the default redap port:
             http_url.set_port(Some(51234)).ok();
         }
