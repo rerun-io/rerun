@@ -114,7 +114,12 @@ fn recording_list_ui(
 
     servers.server_list_ui(ui, ctx, remote_recordings);
 
-    if local_recordings.is_empty() && welcome_screen_state.hide {
+    // Show placeholder message if there's absolutely nothing else to show.
+    if ctx.storage_context.tables.is_empty()
+        && servers.is_empty()
+        && local_recordings.is_empty()
+        && welcome_screen_state.hide
+    {
         ui.list_item().interactive(false).show_flat(
             ui,
             re_ui::list_item::LabelContent::new("No recordings loaded")
