@@ -233,10 +233,10 @@ class Viewer:
 
         Parameters
         ----------
-        id : str
+        id:
             The name that uniquely identifies the table in the viewer.
             This name will also be shown in the recording panel.
-        table : RecordBatch
+        table:
             The table as a single Arrow record batch.
 
         """

@@ -62,7 +62,7 @@ pub enum SystemCommand {
     CloseEntry(StoreHubEntry),
 
     /// Close all stores and show the welcome screen again.
-    CloseAllRecordings,
+    CloseAllEntries,
 
     /// Update the blueprint with additional data
     ///

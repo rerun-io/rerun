@@ -554,8 +554,8 @@ impl App {
                 store_hub.remove(&entry);
             }
 
-            SystemCommand::CloseAllRecordings => {
-                store_hub.clear_recordings();
+            SystemCommand::CloseAllEntries => {
+                store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
                 // This is most important when going back to the example screen by using the "Back"
@@ -864,9 +864,9 @@ impl App {
                         .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
                 }
             }
-            UICommand::CloseAllRecordings => {
+            UICommand::CloseAllEntries => {
                 self.command_sender
-                    .send_system(SystemCommand::CloseAllRecordings);
+                    .send_system(SystemCommand::CloseAllEntries);
             }
 
             UICommand::Undo => {
