@@ -233,7 +233,7 @@ fn quick_partial_hash(data: &[u8], section_length: usize) -> u128 {
 #[derive(Debug)]
 pub enum DisplayColumn {
     RowId {
-        row_ids: Arc<Vec<Tuid>>,
+        row_ids: Arc<Vec<RowId>>,
     },
     Timeline {
         timeline: Timeline,
