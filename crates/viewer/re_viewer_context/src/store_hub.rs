@@ -433,7 +433,7 @@ impl StoreHub {
         // If this is the welcome screen, or we didn't have any app id at all so far,
         // we set the active application_id even if we don't find a matching recording.
         // (otherwise we don't, because we don't want to leave towards a state without any recording if we don't have to)
-        if StoreHub::welcome_screen_app_id() == app_id || self.active_application_id.is_none() {
+        if Self::welcome_screen_app_id() == app_id || self.active_application_id.is_none() {
             self.active_application_id = Some(app_id.clone());
             self.active_entry = None;
         }
