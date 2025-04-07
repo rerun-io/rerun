@@ -135,6 +135,7 @@ impl PyCatalogClient {
     //TODO(#9360): `dataset_from_url()`
 
     /// Get a table by name or id.
+    ///
     /// Note: the entry table is named `__entries`.
     fn get_table(
         self_: Py<Self>,
