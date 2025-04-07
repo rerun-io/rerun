@@ -1122,7 +1122,7 @@ class DataframeQueryView:
 
     def filter_range_nanos(self, start: int, end: int) -> Self:
         """
-        Filter the view to only include data between the given index values expressed as seconds.
+        Filter the view to only include data between the given index values expressed as nanoseconds.
 
         This range is inclusive and will contain both the value at the start and the value at the end.
 
