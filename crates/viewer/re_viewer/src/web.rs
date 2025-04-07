@@ -247,12 +247,11 @@ impl WebHandle {
             return;
         };
 
-        if let Some(channel) = self.tx_channels.remove(id) {
-            channel
-                .log_tx
+        if let Some(Channel { log_tx, table_tx }) = self.tx_channels.remove(id) {
+            log_tx
                 .quit(None)
                 .warn_on_err_once("Failed to send quit marker");
-            drop(channel.table_tx);
+            drop(table_tx);
         }
 
         // Request a repaint since closing the channel may update the top bar.
