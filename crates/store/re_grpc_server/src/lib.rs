@@ -6,6 +6,7 @@ use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::pin::Pin;
 
+use re_byte_size::SizeBytes;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::TableMsg;
 use re_protos::sdk_comms::v1alpha1::ReadTablesRequest;
@@ -24,7 +25,6 @@ use tonic::transport::server::TcpIncoming;
 use tonic::transport::Server;
 use tower_http::cors::CorsLayer;
 
-use re_byte_size::SizeBytes as _;
 use re_memory::MemoryLimit;
 use re_protos::{
     common::v1alpha1::{
@@ -377,8 +377,8 @@ enum Msg {
 impl Msg {
     fn total_size_bytes(&self) -> u64 {
         match self {
-            Self::LogMsg(log_msg) => message_size(log_msg),
-            Self::Table(table) => table_size(table),
+            Self::LogMsg(log_msg) => log_msg.total_size_bytes(),
+            Self::Table(table) => table.total_size_bytes(),
         }
     }
 }
@@ -509,7 +509,7 @@ impl EventLoop {
 
             // Recording data
             Msg::ArrowMsg(..) => {
-                let approx_size_bytes = message_size(&msg);
+                let approx_size_bytes = msg.total_size_bytes();
                 self.ordered_message_bytes += approx_size_bytes;
                 self.ordered_message_queue.push_back(msg.into());
             }
@@ -521,7 +521,7 @@ impl EventLoop {
 
         self.gc_if_using_too_much_ram();
 
-        let approx_size_bytes = table_size(&table);
+        let approx_size_bytes = table.total_size_bytes();
         self.ordered_message_bytes += approx_size_bytes;
         self.ordered_message_queue.push_back(Msg::Table(table));
     }
@@ -570,13 +570,11 @@ impl EventLoop {
     }
 }
 
-fn message_size(msg: &LogMsgProto) -> u64 {
-    msg.total_size_bytes()
-}
-
-fn table_size(table: &TableMsgProto) -> u64 {
-    let TableMsgProto { id, data } = table;
-    id.total_size_bytes() + data.total_size_bytes()
+impl SizeBytes for TableMsgProto {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { id, data } = self;
+        id.heap_size_bytes() + data.heap_size_bytes()
+    }
 }
 
 pub struct MessageProxy {
