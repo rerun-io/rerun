@@ -385,7 +385,9 @@ impl AppState {
 
         if *show_settings_ui {
             // nothing: this is already handled above
-        } else if storage_context.hub.active_table_id().is_some() {
+        } else if storage_context.hub.active_table_id().is_some()
+            && *display_mode == DisplayMode::LocalRecordings
+        {
             // TODO(grtlr): This is almost a verbatim copy of the code below. Once the dust has settled around the
             // catalog, we should strive to unify both draw calls.
             let left_panel = egui::SidePanel::left("left_panel_table")
@@ -930,9 +932,9 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
                             }
                         }
 
-                        Ok(re_data_source::StreamSource::CatalogData { endpoint }) => ctx
+                        Ok(re_data_source::StreamSource::CatalogData(uri)) => ctx
                             .command_sender()
-                            .send_system(SystemCommand::AddRedapServer { endpoint }),
+                            .send_system(SystemCommand::AddRedapServer(uri)),
                         Err(err) => {
                             re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
                         }

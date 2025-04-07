@@ -259,13 +259,13 @@ pub fn spawn_with_recv(
     re_smart_channel::Receiver<re_log_types::LogMsg>,
     crossbeam::channel::Receiver<re_log_types::TableMsg>,
 ) {
+    let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
+        re_uri::Scheme::RerunHttp,
+        addr,
+    ));
     let (channel_log_tx, channel_log_rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy {
-            url: format!("rerun+http://{addr}/proxy"),
-        },
-        re_smart_channel::SmartChannelSource::MessageProxy {
-            url: format!("rerun+http://{addr}/proxy"),
-        },
+        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
+        re_smart_channel::SmartChannelSource::MessageProxy(uri),
     );
     let (channel_table_tx, channel_table_rx) = crossbeam::channel::unbounded();
     let (message_proxy, mut broadcast_log_rx, mut broadcast_table_rx) =

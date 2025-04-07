@@ -158,9 +158,10 @@ egui = { version = "0.31.1", features = [
   "rayon",
 ] }
 egui_commonmark = { version = "0.20.0", default-features = false }
+egui_dnd = { version = "0.12.0" }
 egui_extras = { version = "0.31.1", features = ["http", "image", "serde"] }
 egui_kittest = { version = "0.31.1", features = ["wgpu", "snapshot", "eframe"] }
-egui_plot = "0.31.0" # https://github.com/emilk/egui_plot
+egui_plot = "0.32.1" # https://github.com/emilk/egui_plot
 egui_table = "0.3.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.12.0" # https://github.com/rerun-io/egui_tiles
 egui-wgpu = "0.31.1"
@@ -658,7 +659,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } # 2025-02-20 - everything is id identified, allowing for instance reading out hidden items reliable
+# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }

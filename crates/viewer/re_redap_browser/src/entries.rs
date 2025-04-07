@@ -173,14 +173,12 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
         let Some(app_id) = entity_db.app_id().cloned() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
         };
-        if let Some(SmartChannelSource::RedapGrpcStream(endpoint)) = &entity_db.data_source {
-            let origin_recordings = remote_recordings
-                .entry(endpoint.origin.clone())
-                .or_default();
+        if let Some(SmartChannelSource::RedapGrpcStream(uri)) = &entity_db.data_source {
+            let origin_recordings = remote_recordings.entry(uri.origin.clone()).or_default();
 
             let dataset_recordings = origin_recordings
                 // Currently a origin only has a single dataset, this should change soon
-                .entry(EntryId::from(endpoint.dataset_id))
+                .entry(EntryId::from(uri.dataset_id))
                 .or_default();
 
             dataset_recordings.push(entity_db);

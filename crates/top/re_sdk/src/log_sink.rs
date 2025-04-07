@@ -351,13 +351,13 @@ impl GrpcSink {
     /// GrpcSink::new("rerun+http://127.0.0.1:9434/proxy");
     /// ```
     #[inline]
-    pub fn new(endpoint: re_uri::ProxyEndpoint, flush_timeout: Option<Duration>) -> Self {
+    pub fn new(uri: re_uri::ProxyUri, flush_timeout: Option<Duration>) -> Self {
         let options = Options {
             flush_timeout,
             ..Default::default()
         };
         Self {
-            client: MessageProxyClient::new(endpoint, options),
+            client: MessageProxyClient::new(uri, options),
         }
     }
 }

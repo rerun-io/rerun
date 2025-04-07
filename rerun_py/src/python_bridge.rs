@@ -619,8 +619,8 @@ fn connect_grpc(
     };
 
     let url = url.unwrap_or_else(|| re_sdk::DEFAULT_CONNECT_URL.to_owned());
-    let endpoint = url
-        .parse::<re_uri::ProxyEndpoint>()
+    let uri = url
+        .parse::<re_uri::ProxyUri>()
         .map_err(|err| PyRuntimeError::wrap(err, format!("invalid endpoint {url:?}")))?;
 
     if re_sdk::forced_sink_path().is_some() {
@@ -630,7 +630,7 @@ fn connect_grpc(
 
     py.allow_threads(|| {
         let sink = re_sdk::sink::GrpcSink::new(
-            endpoint,
+            uri,
             flush_timeout_sec.map(std::time::Duration::from_secs_f32),
         );
 
