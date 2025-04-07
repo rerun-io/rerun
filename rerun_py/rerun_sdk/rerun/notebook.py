@@ -8,9 +8,9 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-from pyarrow import RecordBatch
 import pyarrow
 import pyarrow.ipc as ipc
+from pyarrow import RecordBatch
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
