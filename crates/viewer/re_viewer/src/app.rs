@@ -726,6 +726,8 @@ impl App {
                     if let Some(time) = time {
                         time_ctrl.set_time(time);
                     }
+
+                    time_ctrl.pause();
                 } else {
                     re_log::debug!(
                         "SystemCommand::SetActiveTime ignored: unknown recording ID '{rec_id}'"
