@@ -151,7 +151,8 @@ impl ComponentData {
                 data
             };
 
-            // TODO(ab): somehow address this hack.
+            // TODO(ab): we should find an alternative to using content-hashing to generate cache
+            // keys.
             //
             // Background: the `row_id` passed to `ui_raw` is only ever used as a cache key for
             // images, and we must provide one for images to be displayed. Since in general we don't
@@ -162,7 +163,7 @@ impl ComponentData {
                     re_tracing::profile_scope!("Blob hash");
 
                     let blob = re_types::components::Blob::from_arrow(&data_to_display).ok()?;
-                    let buffer = &blob[0].as_slice();
+                    let buffer = blob.first().map(|b| b.as_slice())?;
 
                     // cap the max amount of data to hash to 9 KiB
                     const SECTION_LENGTH: usize = 3 * 1024;
