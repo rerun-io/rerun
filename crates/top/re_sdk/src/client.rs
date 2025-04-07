@@ -2,18 +2,18 @@ use std::{net::Ipv4Addr, str::FromStr as _};
 
 use re_grpc_client::message_proxy::TableClient;
 use re_log_types::{TableId, TableMsg};
-use re_uri::{Origin, ProxyEndpoint};
+use re_uri::{Origin, ProxyUri};
 use url::Host;
 
 /// A builder for [`ViewerClient`].
 pub struct ViewerClientBuilder {
-    endpoint: ProxyEndpoint,
+    endpoint: ProxyUri,
 }
 
 impl Default for ViewerClientBuilder {
     fn default() -> Self {
         Self {
-            endpoint: ProxyEndpoint {
+            endpoint: ProxyUri {
                 origin: Origin {
                     scheme: re_uri::Scheme::RerunHttp,
                     host: Host::Ipv4(Ipv4Addr::new(0, 0, 0, 0)),
@@ -35,7 +35,7 @@ impl ViewerClientBuilder {
     /// The url of the Rerun viewer.
     pub fn with_url(mut self, url: impl AsRef<str>) -> Result<Self, re_uri::Error> {
         let origin = Origin::from_str(url.as_ref())?;
-        self.endpoint = ProxyEndpoint { origin };
+        self.endpoint = ProxyUri { origin };
         Ok(self)
     }
 }
