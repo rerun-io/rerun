@@ -4596,15 +4596,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_threads"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c7398b9c8b70908f6371f47ed36737907c87c52af34c268fed0bf0ceb92ead9"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "number_prefix"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5534,7 +5525,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7778bffd85cf38175ac1f545509665d0b9b92a198ca7941f131f85f7a4f9a872"
 dependencies = [
  "cfg-if",
- "chrono",
  "indoc",
  "libc",
  "memoffset",
@@ -6940,6 +6930,7 @@ dependencies = [
  "egui_tiles",
  "getrandom 0.2.15",
  "itertools 0.14.0",
+ "jiff",
  "once_cell",
  "parking_lot",
  "rand 0.8.5",
@@ -6956,7 +6947,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "sublime_fuzzy",
- "time",
  "url",
 ]
 
@@ -7723,11 +7713,11 @@ name = "rerun_py"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
- "chrono",
  "crossbeam",
  "document-features",
  "infer",
  "itertools 0.14.0",
+ "jiff",
  "mimalloc",
  "numpy",
  "object_store",
@@ -9021,10 +9011,7 @@ checksum = "8a7619e19bc266e0f9c5e6686659d394bc57973859340060a69221e57dbc0c40"
 dependencies = [
  "deranged",
  "itoa",
- "js-sys",
- "libc",
  "num-conv",
- "num_threads",
  "powerfmt",
  "serde",
  "time-core",

@@ -58,16 +58,8 @@ smallvec.workspace = true
 strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
-time = { workspace = true, features = ["formatting", "local-offset", "macros"] }
 url.workspace = true
-
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-time = { workspace = true, features = [
-  "formatting",
-  "local-offset",
-  "wasm-bindgen",
-] }
+jiff = { workspace = true }
 
 
 [dev-dependencies]

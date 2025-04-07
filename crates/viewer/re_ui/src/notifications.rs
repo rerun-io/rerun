@@ -2,7 +2,8 @@ use std::time::Duration;
 
 use egui::NumExt as _;
 pub use re_log::Level;
-use time::OffsetDateTime;
+// use time::OffsetDateTime;
+use jiff::Timestamp;
 
 use crate::design_tokens;
 use crate::icons;
@@ -10,8 +11,12 @@ use crate::ColorToken;
 use crate::Scale;
 use crate::UiExt as _;
 
-fn now() -> OffsetDateTime {
-    OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
+// fn now() -> OffsetDateTime {
+//     OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
+// }
+
+fn now() -> Timestamp {
+    Timestamp::now()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -85,7 +90,7 @@ struct Notification {
     text: String,
 
     /// When this notification was added to the list.
-    created_at: OffsetDateTime,
+    created_at: Timestamp,
 
     /// Time to live for toasts, the notification itself lives until dismissed.
     toast_ttl: Duration,
@@ -414,7 +419,8 @@ fn show_notification(
 }
 
 fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
-    let age = (now() - notification.created_at).as_seconds_f64();
+    // let age = (now() - notification.created_at).as_seconds_f64();
+    let age = now().duration_since(notification.created_at).as_secs_f64();
 
     let formatted = if age < 10.0 {
         ui.ctx().request_repaint_after(Duration::from_secs(1));
@@ -429,8 +435,8 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
 
         notification
             .created_at
-            .format(&time::macros::format_description!("[hour]:[minute]"))
-            .unwrap_or_default()
+            .strftime("%H:%M")
+            .to_string()
     };
 
     ui.horizontal_top(|ui| {
