@@ -146,7 +146,7 @@ pub fn url_to_receiver(
                 }),
             });
             Some(re_grpc_client::redap::stream_dataset_from_redap(
-                endpoint,
+                uri,
                 on_cmd,
                 Some(ui_waker),
             ))
@@ -158,7 +158,7 @@ pub fn url_to_receiver(
         }
 
         EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Some(
-            re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
+            re_grpc_client::message_proxy::read::stream(uri, Some(ui_waker)),
         ),
 
         EndpointCategory::WebEventListener(url) => {
