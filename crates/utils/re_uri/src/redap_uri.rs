@@ -88,6 +88,7 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unnecessary_fallible_conversions)]
 
     use re_log_types::DataPath;
 
