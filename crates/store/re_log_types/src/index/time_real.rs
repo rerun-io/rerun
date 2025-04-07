@@ -2,6 +2,8 @@ use fixed::{traits::LossyInto as _, FixedI128};
 
 use crate::TimeInt;
 
+use super::NonMinI64;
+
 /// Either nanoseconds or sequence numbers.
 ///
 /// Must be matched with a [`crate::TimeType`] to know what.
@@ -73,6 +75,13 @@ impl From<i64> for TimeReal {
     #[inline]
     fn from(integer: i64) -> Self {
         Self(integer.into())
+    }
+}
+
+impl From<NonMinI64> for TimeReal {
+    #[inline]
+    fn from(integer: NonMinI64) -> Self {
+        Self(integer.get().into())
     }
 }
 

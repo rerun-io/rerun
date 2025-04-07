@@ -88,8 +88,8 @@ impl TimeInt {
 
     /// For time timelines.
     #[inline]
-    pub fn from_secs(seconds: NonMinI64) -> Self {
-        Self::new_temporal(seconds.get().saturating_mul(1_000_000_000))
+    pub fn from_secs(seconds: f64) -> Self {
+        Self::new_temporal((seconds * 1e9).round() as _)
     }
 
     /// For sequence timelines.

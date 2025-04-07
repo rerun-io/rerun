@@ -1198,7 +1198,8 @@ impl App {
 
         uri.time_range = Some(re_uri::TimeRange {
             timeline: *time_ctrl.timeline(),
-            range,
+            min: range.min.floor().into(),
+            max: range.max.ceil().into(),
         });
 
         // On web we can produce a link to the web viewer,

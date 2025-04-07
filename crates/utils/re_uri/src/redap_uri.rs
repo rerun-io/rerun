@@ -223,10 +223,8 @@ mod tests {
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeReal::from(100.0),
-                    re_log_types::TimeReal::from(200.0)
-                )
+                min: 100.try_into().unwrap(),
+                max: 200.try_into().unwrap(),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -260,14 +258,8 @@ mod tests {
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_203_123_456_789.try_into().unwrap()
-                    ),
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_213_123_456_789.try_into().unwrap()
-                    ),
-                )
+                min: 1_640_995_203_123_456_789.try_into().unwrap(),
+                max: 1_640_995_213_123_456_789.try_into().unwrap(),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -304,10 +296,8 @@ mod tests {
                 time_range,
                 Some(TimeRange {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
-                    range: re_log_types::ResolvedTimeRangeF::new(
-                        re_log_types::TimeReal::from_secs(1.23),
-                        re_log_types::TimeReal::from_secs(72.0)
-                    )
+                    min: re_log_types::TimeInt::from_secs(1.23).try_into().unwrap(),
+                    max: re_log_types::TimeInt::from_secs(72.0).try_into().unwrap(),
                 })
             );
             assert_eq!(fragment, Default::default());
