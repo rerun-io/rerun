@@ -890,12 +890,14 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
 
     let mut recording_path = None;
     let mut fragment = None;
+    let mut store_id = None;
 
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(redap_uri) = open_url.url.parse::<re_uri::RedapUri>() {
                     fragment = redap_uri.fragment().cloned();
+                    store_id = redap_uri.store_id();
 
                     let command_sender = ctx.command_sender().clone();
                     let on_cmd = Box::new(move |cmd| match cmd {
@@ -958,7 +960,8 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     }
 
     // Focus on a specific thing:
-    let re_uri::Fragment { data_path } = fragment.unwrap_or_default();
+    let re_uri::Fragment { data_path, when } = fragment.unwrap_or_default();
+
     if let Some(data_path) = data_path {
         let re_log_types::DataPath {
             entity_path,
@@ -979,6 +982,19 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
 
         ctx.command_sender()
             .send_system(SystemCommand::SetFocus(item));
+    }
+
+    if let Some((timeline, timecell)) = when {
+        if let Some(store_id) = store_id {
+            ctx.command_sender()
+                .send_system(SystemCommand::SetActiveTime {
+                    rec_id: store_id,
+                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
+                    time: Some(timecell.as_i64().into()),
+                });
+        } else {
+            re_log::warn_once!("#fragment told us to set a specific time on a specific timeline, but we don't know on which recording");
+        }
     }
 }
 

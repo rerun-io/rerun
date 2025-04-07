@@ -1,3 +1,5 @@
+use re_log_types::StoreId;
+
 use crate::{CatalogUri, DatasetDataUri, Error, Fragment, Origin, ProxyUri};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
@@ -18,6 +20,19 @@ impl RedapUri {
             Self::Catalog(_) | Self::Proxy(_) => None,
             Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
         }
+    }
+
+    fn partition_id(&self) -> Option<&str> {
+        match self {
+            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.partition_id.as_str()),
+        }
+    }
+
+    pub fn store_id(&self) -> Option<StoreId> {
+        self.partition_id().map(|partition_id| {
+            StoreId::from_string(re_log_types::StoreKind::Recording, partition_id.to_owned())
+        })
     }
 }
 
@@ -190,7 +205,8 @@ mod tests {
                     entity_path: "/some/entity".into(),
                     instance: Some(42.into()),
                     component_name: None,
-                })
+                }),
+                ..Default::default()
             }
         );
     }
