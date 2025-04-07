@@ -41,7 +41,7 @@ if importlib.util.find_spec("rerun_notebook") is not None:
 
 from rerun import bindings
 
-from .recording_stream import RecordingStream, get_data_recording, get_global_data_recording
+from .recording_stream import RecordingStream, get_data_recording
 
 _default_width = 640
 _default_height = 480

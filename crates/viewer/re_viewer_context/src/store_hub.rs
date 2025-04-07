@@ -396,7 +396,7 @@ impl StoreHub {
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
-    // TODO: Make sure we also clear all tables
+    // TODO(grtlr): Make sure we also clear all tables
     pub fn clear_recordings(&mut self) {
         // Keep only the welcome screen:
         let mut store_ids_retained = HashSet::default();
