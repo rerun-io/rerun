@@ -86,6 +86,7 @@ impl ColumnConfig {
 
 // TODO(lucasmerlin): It would be nice to have this in egui_table, so egui_table could do the work
 // of showing / hiding columns based on the config.
+// https://github.com/rerun-io/egui_table/issues/27
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TableConfig {
     id: Id,
