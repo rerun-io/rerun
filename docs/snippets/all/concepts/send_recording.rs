@@ -22,11 +22,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .recording_id(store_id.to_string())
             .spawn()?;
 
-        new_recording.record_msg(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: Tuid::new(),
-            info,
-        }));
-
         // Forward all chunks to the new recording stream.
         new_recording.send_chunks(store.iter_chunks().map(|chunk| (**chunk).clone()));
     }
