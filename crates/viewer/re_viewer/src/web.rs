@@ -909,7 +909,6 @@ pub fn set_email(email: String) {
 // This is required to send bytes around in the notebook.
 // If you ever change this, you also need to adapt `notebook.py` too.
 pub fn from_arrow_encoded(data: &RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
-    re_log::info!("{:?}", data);
     let mut metadata = data.schema().metadata().clone();
     let id = metadata
         .remove("__table_id")
