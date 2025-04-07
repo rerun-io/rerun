@@ -987,8 +987,6 @@ fn run_impl(
                         app.add_log_receiver(rx);
                     }
                     for rx in rxs_table {
-                        // TODO: remove!
-                        re_log::info!("Added table receiver");
                         app.add_table_receiver(rx);
                     }
                     app.set_profiler(profiler);

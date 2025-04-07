@@ -650,49 +650,6 @@ pub struct TableMsg {
     pub data: ArrowRecordBatch,
 }
 
-impl TableMsg {
-    /// Returns the [`TableMsg`] encoded as a record batch.
-    // This is required to send bytes to a viewer running in a notebook.
-    // If you ever change this, you also need to adapt `notebook.py` too.
-    pub fn to_arrow_encoded(&self) -> Result<ArrowRecordBatch, ArrowError> {
-        let current_schema = self.data.schema();
-        let mut metadata = current_schema.metadata().clone();
-        metadata.insert("__table_id".to_owned(), self.id.as_str().to_owned());
-
-        // Create a new schema with the updated metadata
-        let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
-            current_schema.fields().clone(),
-            metadata,
-        ));
-
-        // Create a new record batch with the same data but updated schema
-        ArrowRecordBatch::try_new(new_schema, self.data.columns().to_vec())
-    }
-
-    /// Returns the [`TableMsg`] back from a encoded record batch.
-    // This is required to send bytes around in the notebook.
-    // If you ever change this, you also need to adapt `notebook.py` too.
-    pub fn from_arrow_encoded(data: &ArrowRecordBatch) -> Option<Self> {
-        re_log::info!("{:?}", data);
-        let mut metadata = data.schema().metadata().clone();
-        let id = metadata.remove("__table_id").expect("this has to be here");
-
-        let data = ArrowRecordBatch::try_new(
-            Arc::new(arrow::datatypes::Schema::new_with_metadata(
-                data.schema().fields().clone(),
-                metadata,
-            )),
-            data.columns().to_vec(),
-        )
-        .ok()?;
-
-        Some(Self {
-            id: TableId::new(id),
-            data,
-        })
-    }
-}
-
 // ---
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
