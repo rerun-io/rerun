@@ -23,7 +23,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .spawn()?;
 
         // Forward all chunks to the new recording stream.
-        new_recording.send_chunks(store.iter_chunks().map(|chunk| (**chunk).clone()));
+        for chunk in store.iter_chunks() {
+            recording.send_chunk((**chunk).clone());
+        }
     }
 
     Ok(())
