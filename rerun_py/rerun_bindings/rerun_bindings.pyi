@@ -916,6 +916,12 @@ def escape_entity_path_part(part: str) -> str:
 def new_entity_path(parts: list[str]) -> str:
     """Create an entity path."""
 
+def dataloader_bytes_from_path_to_callback(
+    file_path: str | os.PathLike[str],
+    callback: Callable[[bytes], Any],
+) -> None:
+    """Runs a dataloader on a file and directs the output to a callback."""
+
 def new_property_entity_path(parts: list[str]) -> str:
     """Create a property entity path."""
 

@@ -21,6 +21,8 @@ mod binary_stream_sink;
 mod global;
 mod log_sink;
 mod recording_stream;
+#[cfg(feature = "data_loaders")]
+mod send_file;
 mod spawn;
 
 // -------------
@@ -100,6 +102,9 @@ pub mod log {
     };
     pub use re_log_types::LogMsg;
 }
+
+#[cfg(feature = "data_loaders")]
+pub use send_file::{send_file_grpc, send_file_grpc_opts, send_file_to_sink};
 
 /// Time-related types.
 pub mod time {
