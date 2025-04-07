@@ -1,6 +1,6 @@
 [package]
 name = "rerun-loader-rust-file"
-version = "0.23.0-alpha.1+dev"
+version = "0.23.0-alpha.1"
 edition = "2021"
 rust-version = "1.84"
 license = "MIT OR Apache-2.0"
