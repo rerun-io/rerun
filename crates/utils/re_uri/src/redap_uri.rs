@@ -435,6 +435,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
+    // TODO(lucasmerlin): This should ideally work but doesn't right now because of a issue in the `url` crate:
+    // https://github.com/servo/rust-url/issues/957
+    // See also `replace_and_parse` in `origin.rs`
     fn test_default_port() {
         let url = "rerun://localhost";
 

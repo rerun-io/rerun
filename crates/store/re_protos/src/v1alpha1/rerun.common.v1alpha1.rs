@@ -618,6 +618,23 @@ impl ::prost::Name for ComponentDescriptor {
         "/rerun.common.v1alpha1.ComponentDescriptor".into()
     }
 }
+/// Unique identifier of a task submitted in the redap
+/// tasks subsystem
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TaskId {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TaskId {
+    const NAME: &'static str = "TaskId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TaskId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TaskId".into()
+    }
+}
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
