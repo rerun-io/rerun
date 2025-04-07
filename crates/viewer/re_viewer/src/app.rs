@@ -7,7 +7,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::{entity_db::EntityDb, InstancePath};
-use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind, TableMsg};
+use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
@@ -15,8 +15,9 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, Item, PlayState, StorageContext, StoreContext, SystemCommand,
-    SystemCommandSender as _, TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
+    StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
@@ -717,7 +718,7 @@ impl App {
                 timeline,
                 time,
             } => {
-                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
                     let mut time_ctrl = rec_cfg.time_ctrl.write();
 
                     time_ctrl.set_timeline(timeline);
@@ -733,7 +734,7 @@ impl App {
                 timeline,
                 time_range,
             } => {
-                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
                     let mut guard = rec_cfg.time_ctrl.write();
                     guard.set_timeline(timeline);
                     guard.set_loop_selection(time_range);
@@ -1139,10 +1140,7 @@ impl App {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             return;
         };
-        let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
-            return;
-        };
+        let rec_cfg = self.state.recording_config_mut(entity_db);
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let times_per_timeline = entity_db.times_per_timeline();
@@ -1231,11 +1229,7 @@ impl App {
             return;
         };
 
-        let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
-            re_log::warn!("Could not copy time range link: Failed to get recording config");
-            return;
-        };
+        let rec_cfg = self.state.recording_config_mut(entity_db);
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let Some(range) = time_ctrl.loop_selection() else {
@@ -1747,6 +1741,19 @@ impl App {
         self.store_hub
             .as_ref()
             .and_then(|store_hub| store_hub.active_recording())
+    }
+
+    pub fn recording_config_mut(
+        &mut self,
+        store_hub: &StoreHub,
+        rec_id: &StoreId,
+    ) -> Option<&mut RecordingConfig> {
+        if let Some(entity_db) = store_hub.store_bundle().get(rec_id) {
+            Some(self.state.recording_config_mut(entity_db))
+        } else {
+            re_log::debug!("Failed to find recording '{rec_id}' in store hub");
+            None
+        }
     }
 
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal

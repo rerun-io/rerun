@@ -720,8 +720,8 @@ impl AppState {
         self.recording_configs.get(rec_id)
     }
 
-    pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
-        self.recording_configs.get_mut(rec_id)
+    pub fn recording_config_mut(&mut self, entity_db: &EntityDb) -> &mut RecordingConfig {
+        recording_config_entry(&mut self.recording_configs, entity_db)
     }
 
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
