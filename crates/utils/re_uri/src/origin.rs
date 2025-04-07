@@ -38,7 +38,7 @@ impl Origin {
         // `Origin` in that case.
         let mut http_url = url::Url::parse(&rewritten)?;
 
-        if http_url.port().is_none() {
+        if http_url.port_or_known_default().is_none() {
             // If no port is specified, we assume the default redap port:
             http_url.set_port(Some(51234)).ok();
         }
