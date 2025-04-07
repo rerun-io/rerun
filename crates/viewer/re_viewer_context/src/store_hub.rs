@@ -396,8 +396,7 @@ impl StoreHub {
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
-    // TODO(grtlr): Make sure we also clear all tables
-    pub fn clear_recordings(&mut self) {
+    pub fn clear_entries(&mut self) {
         // Keep only the welcome screen:
         let mut store_ids_retained = HashSet::default();
         self.store_bundle.retain(|db| {
@@ -410,6 +409,8 @@ impl StoreHub {
         });
         self.caches_per_recording
             .retain(|store_id, _| store_ids_retained.contains(store_id));
+
+        self.table_stores.clear();
 
         self.active_entry = None;
         self.active_application_id = Some(Self::welcome_screen_app_id());
