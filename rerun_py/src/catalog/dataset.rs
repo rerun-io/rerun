@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayData, ArrayRef, RecordBatch, StringArray, StringViewArray};
 use arrow::datatypes::{DataType, Field, Schema as ArrowSchema};
-use arrow::pyarrow::{FromPyArrow as _, PyArrowType, ToPyArrow};
+use arrow::pyarrow::{FromPyArrow as _, PyArrowType, ToPyArrow as _};
 use datafusion::common::exec_err;
 use pyo3::Bound;
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
@@ -100,15 +100,15 @@ impl PyDataset {
 
     fn partition_url_udf(
         self_: PyRef<'_, Self>,
-        partition_id_expr: &Bound<'_, PyAny>
+        partition_id_expr: &Bound<'_, PyAny>,
     ) -> PyResult<Py<PyAny>> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
 
-        let mut url = re_uri::DatasetDataEndpoint {
+        let mut url = re_uri::DatasetDataUri {
             origin: connection.origin().clone(),
             dataset_id: super_.details.id.id,
-            partition_id: "default".to_string(), // to be replaced during loop
+            partition_id: "default".to_owned(), // to be replaced during loop
 
             //TODO(ab): add support for these two
             time_range: None,
@@ -117,30 +117,35 @@ impl PyDataset {
 
         let array_data = ArrayData::from_pyarrow_bound(partition_id_expr)?;
 
-       match array_data.data_type() {
+        match array_data.data_type() {
             DataType::Utf8 => {
                 let str_array = StringArray::from(array_data);
-                let str_iter = str_array.iter().map(|maybe_id| maybe_id.map(|id| {
-                    url.partition_id = id.to_string();
-                    url.to_string()
-                }));
-                let output_array: ArrayRef = Arc::new(StringArray::from_iter(str_iter));
+                let str_iter = str_array.iter().map(|maybe_id| {
+                    maybe_id.map(|id| {
+                        url.partition_id = id.to_owned();
+                        url.to_string()
+                    })
+                });
+                let output_array: ArrayRef = Arc::new(str_iter.collect::<StringArray>());
                 output_array.to_data().to_pyarrow(super_.py())
             }
             DataType::Utf8View => {
                 let str_array = StringViewArray::from(array_data);
-                let str_iter =  str_array.iter().map(|maybe_id| maybe_id.map(|id| {
-                    url.partition_id = id.to_string();
-                    url.to_string()
-                }));
-                let output_array: ArrayRef = Arc::new(StringViewArray::from_iter(str_iter));
+                let str_iter = str_array.iter().map(|maybe_id| {
+                    maybe_id.map(|id| {
+                        url.partition_id = id.to_owned();
+                        url.to_string()
+                    })
+                });
+                let output_array: ArrayRef = Arc::new(str_iter.collect::<StringViewArray>());
                 output_array.to_data().to_pyarrow(super_.py())
             }
-            _ => {
-                return exec_err!("Incorrect data type for partition_url_udf. Expected utf8 or utf8view. Received {}", array_data.data_type()).map_err(to_py_err)
-            }
+            _ => exec_err!(
+                "Incorrect data type for partition_url_udf. Expected utf8 or utf8view. Received {}",
+                array_data.data_type()
+            )
+            .map_err(to_py_err),
         }
-
     }
 
     /// Register a RRD URI to the dataset.
