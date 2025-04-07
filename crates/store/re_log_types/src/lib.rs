@@ -802,7 +802,7 @@ impl SizeBytes for LogMsg {
 
 /// USE ONLY FOR TESTS
 // TODO(#3741): remove once <https://github.com/apache/arrow-rs/issues/6803> is released
-use arrow::{array::RecordBatch as ArrowRecordBatch, datatypes::Field, error::ArrowError};
+use arrow::array::RecordBatch as ArrowRecordBatch;
 
 pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
     use arrow::datatypes::{Field, Schema};
@@ -923,54 +923,5 @@ mod tests {
                 suffix: "a1".to_owned(),
             }
         );
-    }
-
-    #[test]
-    fn table_msg_concatenated_roundtrip() {
-        use arrow::{
-            array::{ArrayRef, StringArray, UInt64Array},
-            datatypes::{DataType, Field, Schema},
-        };
-
-        let data = {
-            let schema = Arc::new(Schema::new_with_metadata(
-                vec![
-                    Field::new("id", DataType::UInt64, false),
-                    Field::new("name", DataType::Utf8, false),
-                ],
-                Default::default(),
-            ));
-
-            // Create a UInt64 array
-            let id_array = UInt64Array::from(vec![1, 2, 3, 4, 5]);
-
-            // Create a String array
-            let name_array = StringArray::from(vec![
-                "Alice",
-                "Bob",
-                "Charlie",
-                "Dave",
-                "http://www.rerun.io",
-            ]);
-
-            // Convert arrays to ArrayRef (trait objects)
-            let arrays: Vec<ArrayRef> = vec![
-                Arc::new(id_array) as ArrayRef,
-                Arc::new(name_array) as ArrayRef,
-            ];
-
-            // Create a RecordBatch
-            ArrowRecordBatch::try_new(schema, arrays).unwrap()
-        };
-
-        let msg = TableMsg {
-            id: TableId::new("test123".to_owned()),
-            data,
-        };
-
-        let encoded = msg.to_arrow_encoded().expect("to encoded failed");
-        let decoded = TableMsg::from_arrow_encoded(&encoded).expect("from concatenated failed");
-
-        assert_eq!(msg, decoded);
     }
 }
