@@ -607,31 +607,31 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 
 [patch.crates-io]
 # https://github.com/rerun-io/arrow-datafusion/pull/1 - workaround for https://github.com/rerun-io/rerun/issues/9440 :
-datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
