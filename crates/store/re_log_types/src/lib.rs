@@ -288,6 +288,10 @@ impl BlueprintActivationCommand {
 }
 
 /// The most general log message sent from the SDK to the server.
+///
+/// Note: this does not contain tables sent via [`TableMsg`], as these concepts are fundamentally
+/// different and should not be handled uniformly. For example, we don't want to store tables in
+/// `.rrd` files.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
 #[allow(clippy::large_enum_variant)]
@@ -645,6 +649,10 @@ impl std::fmt::Display for StoreSource {
 ///
 /// Tables have a [`TableId`], but don't belong to an application and therefore don't have an [`ApplicationId`].
 /// For now, the table is always sent as a whole, i.e. tables can't be streamed.
+///
+/// It's important to note that tables are not sent via the smart channel of [`LogMsg`], but use a seprate `crossbeam`
+/// channel. The reasoning behind this is that tables are fundamentally different from recordings. For example,
+/// we don't want to store tables in `.rrd` files, as there are much better formats out there.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)]
 pub struct TableMsg {
