@@ -54,3 +54,6 @@ pub use self::{
 pub mod external {
     pub use url;
 }
+
+/// The default port of a Rerun gRPC server.
+pub const DEFAULT_GRPC_SERVER_PORT: u16 = 9876;
