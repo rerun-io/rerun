@@ -326,7 +326,7 @@ pub fn dataset_and_its_recordings_ui(
             })
             .item_response
     } else {
-        dataset_list_item.show_flat(ui, dataset_list_item_content)
+        dataset_list_item.show_hierarchical(ui, dataset_list_item_content)
     };
 
     if let EntryKind::Local(app) = &kind {
