@@ -458,17 +458,32 @@ mod tests {
 
     #[test]
     fn test_default_everything() {
-        let url = "localhost";
+        let test_cases = [
+            (
+                "localhost",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: 51234,
+                    },
+                }),
+            ),
+            (
+                "localhost/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: 51234,
+                    },
+                }),
+            ),
+        ];
 
-        let expected = RedapUri::Catalog(CatalogUri {
-            origin: Origin {
-                scheme: Scheme::RerunHttp,
-                host: url::Host::Domain("localhost".to_owned()),
-                port: 51234,
-            },
-        });
-
-        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+        for (url, expected) in test_cases {
+            assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+        }
     }
 
     #[test]
