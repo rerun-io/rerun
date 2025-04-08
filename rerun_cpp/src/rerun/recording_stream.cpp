@@ -10,7 +10,7 @@
 #include <sys/types.h>
 
 #include <cassert>
-#include <string> // to_string
+#include <sstream>
 #include <vector>
 
 namespace rerun {
@@ -117,7 +117,7 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::serve_grpc(
+    Result<std::string> RecordingStream::serve_grpc(
         std::string_view bind_ip, uint16_t port, std::string_view server_memory_limit
     ) const {
         rr_error status = {};
@@ -128,7 +128,12 @@ namespace rerun {
             detail::to_rr_string(server_memory_limit),
             &status
         );
-        return status;
+        RR_RETURN_NOT_OK(status);
+
+        // Constructing the string from scratch is easier than passing it via the C FFI:
+        std::stringstream ss;
+        ss << "rerun+http://" << bind_ip << ":" << port << "/proxy";
+        return ss.str();
     }
 
     Error RecordingStream::spawn(const SpawnOptions& options, float flush_timeout_sec) const {
