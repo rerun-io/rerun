@@ -9,6 +9,7 @@ use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
+use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
     DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState, RecordingConfig,
@@ -126,6 +127,19 @@ impl AppState {
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
         &mut self.app_options
+    }
+
+    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
+        if !self.redap_servers.has_server(&origin) {
+            command_sender.send_system(SystemCommand::AddRedapServer(origin));
+        }
+    }
+
+    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
+        // make sure the server exists
+        self.add_redap_server(command_sender, uri.origin.clone());
+
+        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
     }
 
     /// Currently selected section of time, if any.
@@ -701,18 +715,20 @@ impl AppState {
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
-            selection_state.clear_selection();
+            self.selection_state.clear_selection();
         }
 
         // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
         if !LabelSelectionState::load(ui.ctx()).has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
-            selection_state.selected_items().copy_to_clipboard(ui.ctx());
+            self.selection_state
+                .selected_items()
+                .copy_to_clipboard(ui.ctx());
         }
 
         // Reset the focused item.
-        *focused_item = None;
+        self.focused_item = None;
     }
 
     #[cfg(target_arch = "wasm32")] // Only used in Wasm
@@ -892,14 +908,14 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
-                    let is_ctalog_uri = matches!(uri, re_uri::RedapUri::Catalog { .. });
+                    let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
 
                     ctx.command_sender()
                         .send_system(SystemCommand::LoadDataSource(
                             re_data_source::DataSource::RerunGrpcStream(uri),
                         ));
 
-                    if is_ctalog_uri && !open_url.new_tab {
+                    if is_dataset_uri && !open_url.new_tab {
                         ctx.command_sender()
                             .send_system(SystemCommand::ChangeDisplayMode(
                                 DisplayMode::LocalRecordings,

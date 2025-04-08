@@ -42,7 +42,7 @@ mod scheme;
 mod time_range;
 
 pub use self::{
-    endpoints::{catalog::CatalogUri, dataset::DatasetDataUri, proxy::ProxyUri},
+    endpoints::{catalog::CatalogUri, dataset::DatasetDataUri, entry::EntryUri, proxy::ProxyUri},
     error::Error,
     fragment::Fragment,
     origin::Origin,
