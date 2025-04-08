@@ -55,5 +55,5 @@ pub mod external {
     pub use url;
 }
 
-/// The default port of a Rerun gRPC server.
-pub const DEFAULT_GRPC_SERVER_PORT: u16 = 9876;
+/// The default port of a Rerun gRPC proxy server .
+pub const DEFAULT_PROXY_PORT: u16 = 9876;

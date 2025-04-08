@@ -85,10 +85,8 @@ impl Origin {
         }
 
         if !has_port {
-            // If no port is specified, we assume the default redap port:
-            http_url
-                .set_port(Some(crate::DEFAULT_GRPC_SERVER_PORT))
-                .ok();
+            // If no port is specified, we assume the default:
+            http_url.set_port(Some(crate::DEFAULT_PROXY_PORT)).ok();
         }
 
         let url::Origin::Tuple(_, host, port) = http_url.origin() else {
