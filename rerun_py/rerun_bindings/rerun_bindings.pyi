@@ -773,7 +773,7 @@ def serve_web(
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Serve a web-viewer."""
+    """Serve a web-viewer AND host a gRPC server."""
 
 def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
     """

@@ -1019,7 +1019,7 @@ fn serve_grpc(
     }
 }
 
-/// Serve a web-viewer.
+/// Serve a web-viewer AND host a gRPC server.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
