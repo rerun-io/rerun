@@ -6,8 +6,8 @@ use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
-use re_entity_db::entity_db::EntityDb;
-use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind, TableMsg};
+use re_entity_db::{entity_db::EntityDb, InstancePath};
+use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
@@ -15,8 +15,9 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
-    SystemCommandSender as _, TableStore, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
+    StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError,
 };
 
 use crate::{
@@ -480,7 +481,10 @@ impl App {
                         uri.origin.clone(),
                     )));
             }
+
+            self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
         }
+
         self.rx_log.add(rx);
     }
 
@@ -629,12 +633,14 @@ impl App {
                     }),
                 });
 
-                match data_source.stream(on_cmd, Some(waker)) {
+                match data_source.clone().stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
+
                     Ok(re_data_source::StreamSource::CatalogData(uri)) => {
                         self.command_sender
                             .send_system(SystemCommand::AddRedapServer(uri));
                     }
+
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
                     }
@@ -707,9 +713,25 @@ impl App {
                 self.state.selection_state.set_selection(item);
             }
 
-            SystemCommand::SetActiveTimeline { rec_id, timeline } => {
-                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
-                    rec_cfg.time_ctrl.write().set_timeline(timeline);
+            SystemCommand::SetActiveTime {
+                rec_id,
+                timeline,
+                time,
+            } => {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
+                    let mut time_ctrl = rec_cfg.time_ctrl.write();
+
+                    time_ctrl.set_timeline(timeline);
+
+                    if let Some(time) = time {
+                        time_ctrl.set_time(time);
+                    }
+
+                    time_ctrl.pause();
+                } else {
+                    re_log::debug!(
+                        "SystemCommand::SetActiveTime ignored: unknown recording ID '{rec_id}'"
+                    );
                 }
             }
 
@@ -718,11 +740,15 @@ impl App {
                 timeline,
                 time_range,
             } => {
-                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
                     let mut guard = rec_cfg.time_ctrl.write();
                     guard.set_timeline(timeline);
                     guard.set_loop_selection(time_range);
                     guard.set_looping(re_viewer_context::Looping::Selection);
+                } else {
+                    re_log::debug!(
+                        "SystemCommand::SetLoopSelection ignored: unknown recording ID '{rec_id}'"
+                    );
                 }
             }
 
@@ -736,6 +762,41 @@ impl App {
                     re_log::error!("Failed to save file: {err}");
                 }
             }
+        }
+    }
+
+    fn go_to_uri_fragment(&self, rec_id: re_log_types::StoreId, fragment: re_uri::Fragment) {
+        let re_uri::Fragment { focus, when } = fragment;
+
+        if let Some(focus) = focus {
+            let re_log_types::DataPath {
+                entity_path,
+                instance,
+                component_name,
+            } = focus;
+
+            let item = if let Some(component_name) = component_name {
+                Item::from(re_log_types::ComponentPath::new(
+                    entity_path,
+                    component_name,
+                ))
+            } else if let Some(instance) = instance {
+                Item::from(InstancePath::instance(entity_path, instance))
+            } else {
+                Item::from(entity_path)
+            };
+
+            self.command_sender
+                .send_system(SystemCommand::SetFocus(item));
+        }
+
+        if let Some((timeline, timecell)) = when {
+            self.command_sender
+                .send_system(SystemCommand::SetActiveTime {
+                    rec_id,
+                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
+                    time: Some(timecell.as_i64().into()),
+                });
         }
     }
 
@@ -1089,10 +1150,7 @@ impl App {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             return;
         };
-        let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
-            return;
-        };
+        let rec_cfg = self.state.recording_config_mut(entity_db);
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let times_per_timeline = entity_db.times_per_timeline();
@@ -1181,11 +1239,7 @@ impl App {
             return;
         };
 
-        let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
-            re_log::warn!("Could not copy time range link: Failed to get recording config");
-            return;
-        };
+        let rec_cfg = self.state.recording_config_mut(entity_db);
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let Some(range) = time_ctrl.loop_selection() else {
@@ -1198,7 +1252,8 @@ impl App {
 
         uri.time_range = Some(re_uri::TimeRange {
             timeline: *time_ctrl.timeline(),
-            range,
+            min: range.min.floor().into(),
+            max: range.max.ceil().into(),
         });
 
         // On web we can produce a link to the web viewer,
@@ -1470,12 +1525,13 @@ impl App {
             // everything and some of it is mutable and some not… it's really not pretty, but it
             // does the job for now.
 
-            {
+            let was_empty = {
                 let entity_db = store_hub.entity_db_mut(store_id);
                 if entity_db.data_source.is_none() {
                     entity_db.data_source = Some((*channel_source).clone());
                 }
-            }
+                entity_db.is_empty()
+            };
 
             match store_hub.entity_db_mut(store_id).add(&msg) {
                 Ok(store_events) => {
@@ -1492,6 +1548,14 @@ impl App {
             }
 
             let entity_db = store_hub.entity_db_mut(store_id);
+
+            if was_empty && !entity_db.is_empty() {
+                // Hack: we cannot go to a specific timeline or entity until we know about it.
+                // Now we _hopefully_ do.
+                if let SmartChannelSource::RedapGrpcStream(uri) = channel_source.as_ref() {
+                    self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
+                }
+            }
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
@@ -1696,6 +1760,19 @@ impl App {
         self.store_hub
             .as_ref()
             .and_then(|store_hub| store_hub.active_recording())
+    }
+
+    pub fn recording_config_mut(
+        &mut self,
+        store_hub: &StoreHub,
+        rec_id: &StoreId,
+    ) -> Option<&mut RecordingConfig> {
+        if let Some(entity_db) = store_hub.store_bundle().get(rec_id) {
+            Some(self.state.recording_config_mut(entity_db))
+        } else {
+            re_log::debug!("Failed to find recording '{rec_id}' in store hub");
+            None
+        }
     }
 
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
