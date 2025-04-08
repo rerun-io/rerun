@@ -758,8 +758,12 @@ def serve_grpc(
     server_memory_limit: str,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
-) -> None:
-    """Spawn a gRPC server which an SDK or Viewer can connect to."""
+) -> str:
+    """
+    Spawn a gRPC server which an SDK or Viewer can connect to.
+
+    Returns the URI of the server so you can connect the viewer to it.
+    """
 
 def serve_web(
     open_browser: bool,
@@ -769,7 +773,7 @@ def serve_web(
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Serve a web-viewer."""
+    """Serve a web-viewer AND host a gRPC server."""
 
 def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
     """

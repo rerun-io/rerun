@@ -737,7 +737,7 @@ fn run_impl(
                 WebViewerConfig {
                     bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
-                    source_url: Some(uri),
+                    source_url: Some(uri.to_string()),
                     force_wgpu_backend: args.renderer,
                     video_decoder: args.video_decoder,
                     open_browser: true,
@@ -910,15 +910,16 @@ fn run_impl(
                 format!("rerun+http://{server_addr}/proxy")
             };
 
-            let re_uri::RedapUri::Proxy(uri) = url.as_str().parse()? else {
-                anyhow::bail!("expected `/proxy` endpoint");
-            };
+            debug_assert!(
+                url.parse::<re_uri::ProxyUri>().is_ok(),
+                "Expected a proper proxy URI, but got {url:?}"
+            );
 
             // This is the server that serves the Wasm+HTML:
             WebViewerConfig {
                 bind_ip: args.bind.to_string(),
                 web_port: args.web_viewer_port,
-                source_url: Some(uri),
+                source_url: Some(url),
                 force_wgpu_backend: args.renderer,
                 video_decoder: args.video_decoder,
                 open_browser,

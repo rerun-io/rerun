@@ -605,7 +605,7 @@ class RecordingStream:
         grpc_port: int | None = None,
         default_blueprint: BlueprintLike | None = None,
         server_memory_limit: str = "75%",
-    ) -> None:
+    ) -> str:
         """
         Serve log-data over gRPC.
 
@@ -614,6 +614,8 @@ class RecordingStream:
         The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
+
+        Returns the URI of the server so you can connect the viewer to it.
 
         This function returns immediately.
 
@@ -634,7 +636,7 @@ class RecordingStream:
 
         from .sinks import serve_grpc
 
-        serve_grpc(
+        return serve_grpc(
             grpc_port=grpc_port,
             default_blueprint=default_blueprint,
             server_memory_limit=server_memory_limit,

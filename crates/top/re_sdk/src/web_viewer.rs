@@ -1,5 +1,4 @@
 use re_log_types::LogMsg;
-use re_uri::ProxyUri;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
 // ----------------------------------------------------------------------------
@@ -140,11 +139,11 @@ pub struct WebViewerConfig {
     /// Defaults to [`WebViewerServerPort::AUTO`].
     pub web_port: WebViewerServerPort,
 
-    /// The url from which a spawned webviewer should source
+    /// The url to which any spawned webviewer should connect.
     ///
     /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub source_url: Option<ProxyUri>,
+    pub source_url: Option<String>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
@@ -212,8 +211,7 @@ impl WebViewerConfig {
         };
 
         if let Some(source_url) = source_url {
-            // TODO(jan): remove after we change to `rerun-http`
-            let source_url = source_url.to_string();
+            // TODO(jan): remove after we change from `rerun+http` to `rerun-http`
             let source_url = percent_encoding::utf8_percent_encode(
                 &source_url,
                 percent_encoding::NON_ALPHANUMERIC,

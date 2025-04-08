@@ -967,6 +967,8 @@ impl PyBinarySinkStorage {
 }
 
 /// Spawn a gRPC server which an SDK or Viewer can connect to.
+///
+/// Returns the URI of the server so you can connect the viewer to it.
 #[pyfunction]
 #[pyo3(signature = (grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_grpc(
@@ -974,16 +976,16 @@ fn serve_grpc(
     server_memory_limit: String,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
+) -> PyResult<String> {
     #[cfg(feature = "server")]
     {
         let Some(recording) = get_data_recording(recording) else {
-            return Ok(());
+            return Ok("[no active recording]".to_owned());
         };
 
         if re_sdk::forced_sink_path().is_some() {
             re_log::debug!("Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
-            return Ok(());
+            return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
         }
 
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
@@ -1000,9 +1002,11 @@ fn serve_grpc(
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
         }
 
+        let uri = sink.uri().to_string();
+
         recording.set_sink(Box::new(sink));
 
-        Ok(())
+        Ok(uri)
     }
 
     #[cfg(not(feature = "server"))]
@@ -1015,7 +1019,7 @@ fn serve_grpc(
     }
 }
 
-/// Serve a web-viewer.
+/// Serve a web-viewer AND host a gRPC server.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]

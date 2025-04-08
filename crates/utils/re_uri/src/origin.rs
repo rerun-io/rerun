@@ -25,8 +25,11 @@ impl Origin {
     }
 
     /// Converts the [`Origin`] to a URL that starts with either `http` or `https`.
+    ///
+    /// This is the URL to connect to. An ip of "0.0.0.0" will be shown as "127.0.0.1".
     pub fn as_url(&self) -> String {
         let Self { scheme, host, port } = self;
+        let host = format_host(host);
         format!("{}://{host}:{port}", scheme.as_http_scheme())
     }
 
@@ -39,6 +42,7 @@ impl Origin {
             host,
             port,
         } = self;
+        let host = format_host(host);
         format!("http://{host}:{port}")
     }
 
@@ -82,6 +86,36 @@ impl std::str::FromStr for Origin {
 impl std::fmt::Display for Origin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { scheme, host, port } = self;
+        let host = format_host(host);
         write!(f, "{scheme}://{host}:{port}")
     }
+}
+
+fn format_host(host: &url::Host<String>) -> String {
+    let is_loopback_or_unspecified = match host {
+        url::Host::Domain(_domain) => false,
+        url::Host::Ipv4(ip) => ip.is_loopback() || ip.is_unspecified(),
+        url::Host::Ipv6(ip) => ip.is_loopback() || ip.is_unspecified(),
+    };
+    if is_loopback_or_unspecified {
+        // For instance: we cannot connect to "0.0.0.0",
+        // so we do this trick:
+        "127.0.0.1".to_owned()
+    } else {
+        host.to_string()
+    }
+}
+
+#[test]
+fn test_origin_format() {
+    assert_eq!(
+        Origin::from_scheme_and_socket_addr(Scheme::Rerun, "192.168.0.2:1234".parse().unwrap())
+            .to_string(),
+        "rerun://192.168.0.2:1234"
+    );
+    assert_eq!(
+        Origin::from_scheme_and_socket_addr(Scheme::Rerun, "0.0.0.0:1234".parse().unwrap())
+            .to_string(),
+        "rerun://127.0.0.1:1234"
+    );
 }
