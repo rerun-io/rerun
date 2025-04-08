@@ -1002,9 +1002,11 @@ fn serve_grpc(
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
         }
 
+        let uri = sink.uri().to_string();
+
         recording.set_sink(Box::new(sink));
 
-        Ok(sink.uri().to_string())
+        Ok(uri)
     }
 
     #[cfg(not(feature = "server"))]
