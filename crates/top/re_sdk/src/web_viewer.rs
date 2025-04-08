@@ -143,7 +143,7 @@ pub struct WebViewerConfig {
     ///
     /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub source_url: Option<String>,
+    pub connect_to: Option<String>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
@@ -167,7 +167,7 @@ impl Default for WebViewerConfig {
         Self {
             bind_ip: "0.0.0.0".to_owned(),
             web_port: WebViewerServerPort::AUTO,
-            source_url: None,
+            connect_to: None,
             force_wgpu_backend: None,
             video_decoder: None,
             open_browser: true,
@@ -187,7 +187,7 @@ impl WebViewerConfig {
     pub fn host_web_viewer(self) -> Result<WebViewerServer, WebViewerServerError> {
         let Self {
             bind_ip,
-            source_url,
+            connect_to,
             web_port,
             force_wgpu_backend,
             video_decoder,
@@ -210,7 +210,7 @@ impl WebViewerConfig {
             viewer_url = format!("{viewer_url}{arg_delimiter}{arg}");
         };
 
-        if let Some(source_url) = source_url {
+        if let Some(source_url) = connect_to {
             // TODO(jan): remove after we change from `rerun+http` to `rerun-http`
             let source_url = percent_encoding::utf8_percent_encode(
                 &source_url,
@@ -270,7 +270,7 @@ pub fn new_sink(
 ///
 /// Note: this does NOT start a gRPC server.
 /// To start a gRPC server, use [`crate::RecordingStreamBuilder::serve_grpc`] and connect to it
-/// by setting [`WebViewerConfig::source_url`] to `rerun+http://localhost/proxy`.
+/// by setting [`WebViewerConfig::connect_to`] to `rerun+http://localhost/proxy`.
 ///
 /// Note: this function just calls [`WebViewerConfig::host_web_viewer`] and is here only
 /// for convenience, visibility, and for symmetry with our Python SDK.

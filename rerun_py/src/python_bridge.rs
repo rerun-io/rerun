@@ -1035,7 +1035,7 @@ fn serve_web_viewer(
     {
         re_sdk::web_viewer::WebViewerConfig {
             open_browser,
-            source_url: connect_to,
+            connect_to,
             web_port: web_port.map(WebViewerServerPort).unwrap_or_default(),
             ..Default::default()
         }
