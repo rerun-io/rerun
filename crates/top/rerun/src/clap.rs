@@ -131,14 +131,15 @@ impl RerunArgs {
                 let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
                     .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
-                let open_browser = true;
-                let rec = RecordingStreamBuilder::new(application_id).serve_web(
-                    &self.bind,
-                    Default::default(),
-                    crate::DEFAULT_SERVER_PORT,
-                    server_memory_limit,
-                    open_browser,
-                )?;
+                let rec = RecordingStreamBuilder::new("rerun_example_minimal_serve")
+                    .serve_grpc_opts(&self.bind, crate::DEFAULT_SERVER_PORT, server_memory_limit)?;
+
+                crate::serve_web_viewer(crate::web_viewer::WebViewerConfig {
+                    open_browser: true,
+                    connect_to: Some("rerun+http://localhost:9876/proxy".to_owned()),
+                    ..Default::default()
+                })?
+                .detach();
 
                 // Ensure the server stays alive until the end of the program.
                 let sleep_guard = ServeGuard {
