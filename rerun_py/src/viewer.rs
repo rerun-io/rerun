@@ -33,6 +33,9 @@ impl PyViewerClient {
         Ok(Self { conn })
     }
 
+    /// Sends a table to the viewer.
+    ///
+    /// A table is represented as a dataframe defined by an Arrow record batch.
     fn send_table(
         self_: Py<Self>,
         id: String,
@@ -47,7 +50,7 @@ impl PyViewerClient {
 
 /// Connection handle to the message proxy service.
 ///
-/// This handle is modelled after [`crate::ConnectionHandle`] and only concerned with
+/// This handle is modelled after [`crate::catalog::ConnectionHandle`] and only concerned with
 /// table-related operations, most importantly `WriteTable`.
 // TODO(grtlr): In the future, we probably want to merge this with the other APIs.
 #[derive(Clone)]
