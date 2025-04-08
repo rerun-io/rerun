@@ -403,8 +403,7 @@ impl WebHandle {
         if !hub.store_bundle().contains(&store_id) {
             return None;
         };
-
-        let rec_cfg = state.recording_config_mut(&store_id)?;
+        let rec_cfg = state.recording_config(&store_id)?;
         let time_ctrl = rec_cfg.time_ctrl.read();
         Some(time_ctrl.timeline().name().as_str().to_owned())
     }
@@ -434,8 +433,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let rec_cfg =
-            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
 
         let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
             re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
@@ -485,8 +483,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let rec_cfg =
-            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
         let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
             re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
@@ -581,7 +578,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, store_id, recording);
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
 
         let play_state = if value {
             re_viewer_context::PlayState::Playing

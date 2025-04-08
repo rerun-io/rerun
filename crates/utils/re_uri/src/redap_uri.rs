@@ -1,3 +1,5 @@
+use re_log_types::StoreId;
+
 use crate::{CatalogUri, DatasetDataUri, Error, Fragment, Origin, ProxyUri};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
@@ -18,6 +20,19 @@ impl RedapUri {
             Self::Catalog(_) | Self::Proxy(_) => None,
             Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
         }
+    }
+
+    fn partition_id(&self) -> Option<&str> {
+        match self {
+            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.partition_id.as_str()),
+        }
+    }
+
+    pub fn recording_id(&self) -> Option<StoreId> {
+        self.partition_id().map(|partition_id| {
+            StoreId::from_string(re_log_types::StoreKind::Recording, partition_id.to_owned())
+        })
     }
 }
 
@@ -88,6 +103,7 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unnecessary_fallible_conversions)]
 
     use re_log_types::DataPath;
 
@@ -159,7 +175,7 @@ mod tests {
     #[test]
     fn test_dataset_data_url_with_fragment() {
         let url =
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#/some/entity[#42]";
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetDataUri {
@@ -185,11 +201,12 @@ mod tests {
         assert_eq!(
             fragment,
             Fragment {
-                data_path: Some(DataPath {
+                focus: Some(DataPath {
                     entity_path: "/some/entity".into(),
                     instance: Some(42.into()),
                     component_name: None,
-                })
+                }),
+                ..Default::default()
             }
         );
     }
@@ -222,10 +239,8 @@ mod tests {
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeReal::from(100.0),
-                    re_log_types::TimeReal::from(200.0)
-                )
+                min: 100.try_into().unwrap(),
+                max: 200.try_into().unwrap(),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -259,14 +274,8 @@ mod tests {
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_203_123_456_789.try_into().unwrap()
-                    ),
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_213_123_456_789.try_into().unwrap()
-                    ),
-                )
+                min: 1_640_995_203_123_456_789.try_into().unwrap(),
+                max: 1_640_995_213_123_456_789.try_into().unwrap(),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -303,10 +312,8 @@ mod tests {
                 time_range,
                 Some(TimeRange {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
-                    range: re_log_types::ResolvedTimeRangeF::new(
-                        re_log_types::TimeReal::from_secs(1.23),
-                        re_log_types::TimeReal::from_secs(72.0)
-                    )
+                    min: re_log_types::TimeInt::from_secs(1.23).try_into().unwrap(),
+                    max: re_log_types::TimeInt::from_secs(72.0).try_into().unwrap(),
                 })
             );
             assert_eq!(fragment, Default::default());
