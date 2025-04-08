@@ -968,7 +968,7 @@ impl PyBinarySinkStorage {
 
 /// Spawn a gRPC server which an SDK or Viewer can connect to.
 ///
-/// Return the URI of the server.
+/// Returns the URI of the server so you can connect the viewer to it.
 #[pyfunction]
 #[pyo3(signature = (grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_grpc(
