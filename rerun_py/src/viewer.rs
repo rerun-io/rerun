@@ -25,6 +25,7 @@ pub struct PyViewerClient {
 impl PyViewerClient {
     /// Create a new viewer client object.
     #[new]
+    #[pyo3(text_signature = "(self, addr)")]
     fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
