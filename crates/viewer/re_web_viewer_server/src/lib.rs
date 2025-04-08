@@ -81,6 +81,7 @@ impl FromStr for WebViewerServerPort {
 
 /// HTTP host for the Rerun Web Viewer application
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
+#[must_use = "Dropping this means stopping the server"]
 pub struct WebViewerServer {
     inner: Arc<WebViewerServerInner>,
     thread_handle: Option<std::thread::JoinHandle<()>>,
@@ -168,6 +169,12 @@ impl WebViewerServer {
         if let Some(thread_handle) = self.thread_handle.take() {
             thread_handle.join().ok();
         }
+    }
+
+    /// Keeps the web viewer running until the parent process shuts down.
+    pub fn detach(self) {
+        #[expect(clippy::mem_forget)]
+        std::mem::forget(self);
     }
 }
 
