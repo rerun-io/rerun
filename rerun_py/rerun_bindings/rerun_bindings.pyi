@@ -771,7 +771,7 @@ def serve_web_viewer(
     """
     Serve a web-viewer over HTTP.
 
-    This only serves HTML+JS+WASM, but does NOT host a gRPC server.
+    This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
     """
 
 def serve_web(

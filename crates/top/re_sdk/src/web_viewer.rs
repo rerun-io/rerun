@@ -263,7 +263,7 @@ pub fn new_sink(
     )?))
 }
 
-/// Serves the Rerun Web Viewer (HTML+JS+WASM) over http.
+/// Serves the Rerun Web Viewer (HTML+JS+Wasm) over http.
 ///
 /// The server will immediately start listening for incoming connections
 /// and stop doing so when the returned [`WebViewerServer`] is dropped.

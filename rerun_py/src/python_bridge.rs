@@ -1022,7 +1022,7 @@ fn serve_grpc(
 
 /// Serve a web-viewer over HTTP.
 ///
-/// This only serves HTML+JS+WASM, but does NOT host a gRPC server.
+/// This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
