@@ -656,7 +656,7 @@ impl RecordingStreamBuilder {
     /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
     ///
-    /// Calling `serve_web` is equivalent to calling [`Seldf::serve_grpc`] followed by [`rerun::serve_web_viewer`].
+    /// Calling `serve_web` is equivalent to calling [`Self::serve_grpc`] followed by [`crate::serve_web_viewer`].
     ///
     /// ## Example
     ///
