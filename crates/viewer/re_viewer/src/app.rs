@@ -766,14 +766,14 @@ impl App {
     }
 
     fn go_to_uri_fragment(&self, rec_id: re_log_types::StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment { data_path, when } = fragment;
+        let re_uri::Fragment { focus, when } = fragment;
 
-        if let Some(data_path) = data_path {
+        if let Some(focus) = focus {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
                 component_name,
-            } = data_path;
+            } = focus;
 
             let item = if let Some(component_name) = component_name {
                 Item::from(re_log_types::ComponentPath::new(

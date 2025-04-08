@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_dataset_data_url_with_fragment() {
         let url =
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#/some/entity[#42]";
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetDataUri {
@@ -201,7 +201,7 @@ mod tests {
         assert_eq!(
             fragment,
             Fragment {
-                data_path: Some(DataPath {
+                focus: Some(DataPath {
                     entity_path: "/some/entity".into(),
                     instance: Some(42.into()),
                     component_name: None,
