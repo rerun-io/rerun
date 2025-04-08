@@ -37,7 +37,8 @@ pub enum DataSource {
 // TODO(#9058): Temporary hack, see issue for how to fix this.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
-    CatalogData(re_uri::CatalogUri),
+    CatalogUri(re_uri::CatalogUri),
+    EntryUri(re_uri::EntryUri),
 }
 
 impl DataSource {
@@ -263,8 +264,10 @@ impl DataSource {
             }
 
             Self::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
-                Ok(StreamSource::CatalogData(uri))
+                Ok(StreamSource::CatalogUri(uri))
             }
+
+            Self::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => Ok(StreamSource::EntryUri(uri)),
 
             Self::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Ok(StreamSource::LogMessages(
                 message_proxy::stream(uri, on_msg),

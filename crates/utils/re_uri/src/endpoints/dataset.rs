@@ -2,8 +2,6 @@ use re_log_types::StoreId;
 
 use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
 
-//TODO(ab): add `DatasetTableUri`, the URI pointing at the "table view" of the dataset (aka. its partition table).
-
 /// URI pointing at the data underlying a dataset.
 ///
 /// Currently, the following format is supported:

@@ -14,6 +14,7 @@ use crate::{commands::RrdCommands, CallSource};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
+use re_uri::RedapUri;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -717,7 +718,7 @@ fn run_impl(
     let (command_sender, command_receiver) = re_viewer_context::command_channel();
 
     // Where do we get the data from?
-    let mut catalog_uris: Vec<_> = Vec::new();
+    let mut redap_uris: Vec<_> = Vec::new();
     let (rxs_log, rxs_table): (Vec<Receiver<LogMsg>>, Vec<CrossbeamReceiver<TableMsg>>) = {
         let data_sources = args
             .url_or_paths
@@ -771,8 +772,12 @@ fn run_impl(
             .filter_map(
                 |data_source| match data_source.stream(on_cmd.clone(), None) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
-                    Ok(re_data_source::StreamSource::CatalogData(uri)) => {
-                        catalog_uris.push(uri);
+                    Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
+                        redap_uris.push(RedapUri::Catalog(uri));
+                        None
+                    }
+                    Ok(re_data_source::StreamSource::EntryUri(uri)) => {
+                        redap_uris.push(RedapUri::Entry(uri));
                         None
                     }
                     Err(err) => Some(Err(err)),
@@ -822,21 +827,21 @@ fn run_impl(
     // Now what do we do with the data?
 
     if args.test_receive {
-        if !catalog_uris.is_empty() {
+        if !redap_uris.is_empty() {
             anyhow::bail!("`--test-receive` does not support catalogs");
         }
 
         let rx = ReceiveSet::new(rxs_log);
         assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
-        if !catalog_uris.is_empty() {
+        if !redap_uris.is_empty() {
             anyhow::bail!("`--save` does not support catalogs");
         }
 
         let rx = ReceiveSet::new(rxs_log);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
     } else if args.serve_grpc {
-        if !catalog_uris.is_empty() {
+        if !redap_uris.is_empty() {
             anyhow::bail!("`--serve` does not support catalogs");
         }
 
@@ -865,7 +870,7 @@ fn run_impl(
 
         Ok(())
     } else if args.serve || args.serve_web {
-        if !catalog_uris.is_empty() {
+        if !redap_uris.is_empty() {
             anyhow::bail!("`--serve` does not support catalogs");
         }
 
@@ -947,7 +952,7 @@ fn run_impl(
             }
         }
 
-        if !catalog_uris.is_empty() {
+        if !redap_uris.is_empty() {
             re_log::warn!("Catalogs can't be passed to already open viewers yet.");
         }
 
@@ -992,8 +997,18 @@ fn run_impl(
                     if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
                         app.set_examples_manifest_url(url);
                     }
-                    for uri in catalog_uris {
-                        app.add_redap_server(uri);
+                    for uri in redap_uris {
+                        match uri {
+                            RedapUri::Catalog(uri) => {
+                                app.add_redap_server(uri.origin.clone());
+                            }
+                            RedapUri::Entry(uri) => {
+                                app.select_redap_entry(&uri);
+                            }
+
+                            // these should not happen
+                            RedapUri::DatasetData(_) | RedapUri::Proxy(_) => {}
+                        }
                     }
                     Box::new(app)
                 }),

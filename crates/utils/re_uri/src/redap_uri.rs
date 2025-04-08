@@ -1,11 +1,13 @@
 use re_log_types::StoreId;
 
-use crate::{CatalogUri, DatasetDataUri, Error, Fragment, Origin, ProxyUri};
+use crate::{CatalogUri, DatasetDataUri, EntryUri, Error, Fragment, Origin, ProxyUri};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum RedapUri {
     Catalog(CatalogUri),
+
+    Entry(EntryUri),
 
     DatasetData(DatasetDataUri),
 
@@ -17,14 +19,14 @@ impl RedapUri {
     /// Return the parsed `#fragment` of the URI, if any.
     pub fn fragment(&self) -> Option<&Fragment> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
             Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
         }
     }
 
     fn partition_id(&self) -> Option<&str> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
             Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.partition_id.as_str()),
         }
     }
@@ -40,6 +42,7 @@ impl std::fmt::Display for RedapUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Catalog(uri) => write!(f, "{uri}",),
+            Self::Entry(uri) => write!(f, "{uri}",),
             Self::DatasetData(uri) => write!(f, "{uri}",),
             Self::Proxy(uri) => write!(f, "{uri}",),
         }
@@ -65,6 +68,12 @@ impl std::str::FromStr for RedapUri {
             ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
 
             ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
+
+            ["entry", entry_id] => {
+                let entry_id =
+                    re_log_types::EntryId::from_str(entry_id).map_err(Error::InvalidTuid)?;
+                Ok(Self::Entry(EntryUri::new(origin, entry_id)))
+            }
 
             ["dataset", dataset_id] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;

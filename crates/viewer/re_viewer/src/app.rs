@@ -11,6 +11,7 @@ use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableM
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
+use re_uri::Origin;
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
@@ -475,12 +476,7 @@ impl App {
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
         if let SmartChannelSource::RedapGrpcStream(uri) = rx.source() {
-            if !self.state.redap_servers.has_server(&uri.origin) {
-                self.command_sender
-                    .send_system(SystemCommand::AddRedapServer(re_uri::CatalogUri::new(
-                        uri.origin.clone(),
-                    )));
-            }
+            self.add_redap_server(uri.origin.clone());
 
             self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
         }
@@ -591,8 +587,7 @@ impl App {
             SystemCommand::ChangeDisplayMode(display_mode) => {
                 self.state.display_mode = display_mode;
             }
-            SystemCommand::AddRedapServer(uri) => {
-                let re_uri::CatalogUri { origin } = uri;
+            SystemCommand::AddRedapServer(origin) => {
                 self.state.redap_servers.add_server(origin.clone());
 
                 if self
@@ -636,9 +631,12 @@ impl App {
                 match data_source.clone().stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
 
-                    Ok(re_data_source::StreamSource::CatalogData(uri)) => {
-                        self.command_sender
-                            .send_system(SystemCommand::AddRedapServer(uri));
+                    Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
+                        self.add_redap_server(uri.origin.clone());
+                    }
+
+                    Ok(re_data_source::StreamSource::EntryUri(uri)) => {
+                        self.select_redap_entry(&uri);
                     }
 
                     Err(err) => {
@@ -710,6 +708,28 @@ impl App {
             }
 
             SystemCommand::SetSelection(item) => {
+                match &item {
+                    Item::RedapEntry(entry_id) => {
+                        self.state.display_mode = DisplayMode::RedapEntry(*entry_id);
+                    }
+
+                    Item::RedapServer(origin) => {
+                        self.state.display_mode = DisplayMode::RedapServer(origin.clone());
+                    }
+
+                    Item::AppId(_)
+                    | Item::DataSource(_)
+                    | Item::StoreId(_)
+                    | Item::TableId(_)
+                    | Item::InstancePath(_)
+                    | Item::ComponentPath(_)
+                    | Item::Container(_)
+                    | Item::View(_)
+                    | Item::DataResult(_, _) => {
+                        self.state.display_mode = DisplayMode::LocalRecordings;
+                    }
+                }
+
                 self.state.selection_state.set_selection(item);
             }
 
@@ -2004,9 +2024,12 @@ impl App {
         }
     }
 
-    pub fn add_redap_server(&self, uri: re_uri::CatalogUri) {
-        self.command_sender
-            .send_system(SystemCommand::AddRedapServer(uri));
+    pub fn add_redap_server(&self, origin: Origin) {
+        self.state.add_redap_server(&self.command_sender, origin);
+    }
+
+    pub fn select_redap_entry(&self, uri: &re_uri::EntryUri) {
+        self.state.select_redap_entry(&self.command_sender, uri);
     }
 }
 
