@@ -157,6 +157,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
     m.add_function(wrap_pyfunction!(serve_grpc, m)?)?;
+    m.add_function(wrap_pyfunction!(serve_web_viewer, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -1015,6 +1016,43 @@ fn serve_grpc(
 
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'server' feature",
+        ))
+    }
+}
+
+/// Serve a web-viewer over HTTP.
+///
+/// This only serves HTML+JS+WASM, but does NOT host a gRPC server.
+#[allow(clippy::unnecessary_wraps)] // False positive
+#[pyfunction]
+#[pyo3(signature = (web_port = None, open_browser = true, connect_to_url = None))]
+fn serve_web_viewer(
+    web_port: Option<u16>,
+    open_browser: bool,
+    connect_to_url: Option<String>,
+) -> PyResult<()> {
+    #[cfg(feature = "web_viewer")]
+    {
+        re_sdk::web_viewer::WebViewerConfig {
+            open_browser,
+            source_url: connect_to_url,
+            web_port: web_port.map(WebViewerServerPort).unwrap_or_default(),
+            ..Default::default()
+        }
+        .host_web_viewer()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .detach();
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "web_viewer"))]
+    {
+        _ = web_port;
+        _ = open_browser;
+        _ = connect_to_url;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
     }
 }

@@ -765,6 +765,15 @@ def serve_grpc(
     Returns the URI of the server so you can connect the viewer to it.
     """
 
+def serve_web_viewer(
+    *, web_port: Optional[int] = None, open_browser: bool = True, connect_to_url: Optional[str] = None
+) -> None:
+    """
+    Serve a web-viewer over HTTP.
+
+    This only serves HTML+JS+WASM, but does NOT host a gRPC server.
+    """
+
 def serve_web(
     open_browser: bool,
     web_port: Optional[int],

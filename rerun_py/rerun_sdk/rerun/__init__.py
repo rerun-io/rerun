@@ -196,6 +196,7 @@ from .time import (
     set_time_seconds as set_time_seconds,
     set_time_sequence as set_time_sequence,
 )
+from .web import serve_web_viewer as serve_web_viewer
 
 # =====================================
 # UTILITIES
