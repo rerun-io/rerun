@@ -262,3 +262,18 @@ pub fn new_sink(
         server_memory_limit,
     )?))
 }
+
+/// Serves the Rerun Web Viewer (HTML+JS+WASM) over http.
+///
+/// The server will immediately start listening for incoming connections
+/// and stop doing so when the returned [`WebViewerServer`] is dropped.
+///
+/// Note: this does NOT start a gRPC server.
+/// To start a gRPC server, use [`crate::RecordingStreamBuilder::serve_grpc`] and connect to it
+/// by setting [`WebViewerConfig::source_url`] to `rerun+http://localhost/proxy`.
+///
+/// Note: this function just calls [`WebViewerConfig::host_web_viewer`] and is here only
+/// for convenience, visibility, and for symmetry with our Python SDK.
+pub fn serve_web_viewer(config: WebViewerConfig) -> Result<WebViewerServer, WebViewerServerError> {
+    config.host_web_viewer()
+}

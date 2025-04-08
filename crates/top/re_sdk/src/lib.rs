@@ -143,6 +143,9 @@ pub mod external {
     pub use re_data_loader;
 }
 
+#[cfg(feature = "web_viewer")]
+pub use web_viewer::serve_web_viewer;
+
 // -----
 // Misc:
 
