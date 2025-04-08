@@ -6,3 +6,6 @@ pub mod write;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use write::Client;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod write_table;
