@@ -107,7 +107,8 @@ def script_setup(
     if args.stdout:
         rec.stdout(default_blueprint=default_blueprint)
     elif args.serve:
-        rec.serve_web(default_blueprint=default_blueprint)
+        connect_to = rec.serve_grpc(default_blueprint=default_blueprint)
+        rr.serve_web_viewer(open_browser=True, connect_to=connect_to)
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default URL.
