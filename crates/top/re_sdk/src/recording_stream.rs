@@ -619,7 +619,10 @@ impl RecordingStreamBuilder {
     //
     // # TODO(#5531): keep static data around.
     #[cfg(feature = "web_viewer")]
-    #[deprecated(since = "0.20.0", note = "use serve_web() instead")]
+    #[deprecated(
+        since = "0.20.0",
+        note = "use rec.serve_grpc() with rerun::serve_web_viewer() instead"
+    )]
     pub fn serve(
         self,
         bind_ip: &str,
@@ -652,6 +655,8 @@ impl RecordingStreamBuilder {
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+    ///
+    /// Calling `serve_web` is equivalent to calling [`Seldf::serve_grpc`] followed by [`rerun::serve_web_viewer`].
     ///
     /// ## Example
     ///
