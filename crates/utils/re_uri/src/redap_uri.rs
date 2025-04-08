@@ -474,4 +474,34 @@ mod tests {
 
         assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
     }
+
+    #[test]
+    fn test_default_localhost_scheme() {
+        let test_cases = [
+            (
+                "localhost:123",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: 123,
+                    },
+                }),
+            ),
+            (
+                "127.0.0.1:1234/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                        port: 1234,
+                    },
+                }),
+            ),
+        ];
+
+        for (url, expected) in test_cases {
+            assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+        }
+    }
 }

@@ -48,9 +48,18 @@ impl Origin {
 
     /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
     ///  starts with `http://` or `https://`).
-    pub(crate) fn replace_and_parse(value: &str) -> Result<(Self, url::Url), Error> {
-        let scheme: Scheme = value.parse()?;
-        let rewritten = scheme.canonical_url(value);
+    pub(crate) fn replace_and_parse(input: &str) -> Result<(Self, url::Url), Error> {
+        let scheme: Scheme;
+        let rewritten;
+
+        if !input.contains("://") && (input.contains("localhost") || input.contains("127.0.0.1")) {
+            // Assume `rerun+http://`, because that is the default for localhost
+            scheme = Scheme::RerunHttp;
+            rewritten = format!("http://{input}");
+        } else {
+            scheme = input.parse()?;
+            rewritten = scheme.canonical_url(input);
+        }
 
         // We have to first rewrite the endpoint, because `Url` does not allow
         // `.set_scheme()` for non-opaque origins, nor does it return a proper
@@ -66,7 +75,7 @@ impl Origin {
         }
 
         let url::Origin::Tuple(_, host, port) = http_url.origin() else {
-            return Err(Error::UnexpectedOpaqueOrigin(value.to_owned()));
+            return Err(Error::UnexpectedOpaqueOrigin(input.to_owned()));
         };
 
         let origin = Self { scheme, host, port };
