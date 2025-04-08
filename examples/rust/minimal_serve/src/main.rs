@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_serve").serve_web(
         "0.0.0.0",
         Default::default(),
-        Default::default(),
+        rerun::DEFAULT_SERVER_PORT,
         rerun::MemoryLimit::from_fraction_of_total(0.25),
         open_browser,
     )?;

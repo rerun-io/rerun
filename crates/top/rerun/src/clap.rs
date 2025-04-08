@@ -135,7 +135,7 @@ impl RerunArgs {
                 let rec = RecordingStreamBuilder::new(application_id).serve_web(
                     &self.bind,
                     Default::default(),
-                    Default::default(),
+                    crate::DEFAULT_SERVER_PORT,
                     server_memory_limit,
                     open_browser,
                 )?;
