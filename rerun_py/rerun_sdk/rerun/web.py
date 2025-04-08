@@ -3,9 +3,7 @@ from __future__ import annotations
 import rerun_bindings as bindings
 
 
-def serve_web_viewer(
-    *, web_port: int | None = None, open_browser: bool = True, connect_to_url: str | None = None
-) -> None:
+def serve_web_viewer(*, web_port: int | None = None, open_browser: bool = True, connect_to: str | None = None) -> None:
     """
     Host a web viewer over HTTP.
 
@@ -23,7 +21,7 @@ def serve_web_viewer(
         The port to serve the web viewer on (defaults to 9090).
     open_browser:
         Open the default browser to the viewer.
-    connect_to_url:
+    connect_to:
         If `open_browser` is true, then this is the URL the web viewer will connect to.
 
     """
@@ -31,5 +29,5 @@ def serve_web_viewer(
     bindings.serve_web_viewer(
         web_port=web_port,
         open_browser=open_browser,
-        connect_to_url=connect_to_url,
+        connect_to=connect_to,
     )

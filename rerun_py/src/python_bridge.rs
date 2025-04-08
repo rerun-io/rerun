@@ -1025,17 +1025,17 @@ fn serve_grpc(
 /// This only serves HTML+JS+WASM, but does NOT host a gRPC server.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (web_port = None, open_browser = true, connect_to_url = None))]
+#[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
 fn serve_web_viewer(
     web_port: Option<u16>,
     open_browser: bool,
-    connect_to_url: Option<String>,
+    connect_to: Option<String>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
         re_sdk::web_viewer::WebViewerConfig {
             open_browser,
-            source_url: connect_to_url,
+            source_url: connect_to,
             web_port: web_port.map(WebViewerServerPort).unwrap_or_default(),
             ..Default::default()
         }
@@ -1050,7 +1050,7 @@ fn serve_web_viewer(
     {
         _ = web_port;
         _ = open_browser;
-        _ = connect_to_url;
+        _ = connect_to;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))

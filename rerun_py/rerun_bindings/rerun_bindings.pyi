@@ -766,7 +766,7 @@ def serve_grpc(
     """
 
 def serve_web_viewer(
-    *, web_port: Optional[int] = None, open_browser: bool = True, connect_to_url: Optional[str] = None
+    *, web_port: Optional[int] = None, open_browser: bool = True, connect_to: Optional[str] = None
 ) -> None:
     """
     Serve a web-viewer over HTTP.
