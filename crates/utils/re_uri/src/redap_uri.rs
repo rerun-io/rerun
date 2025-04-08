@@ -442,16 +442,27 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    // TODO(lucasmerlin): This should ideally work but doesn't right now because of a issue in the `url` crate:
-    // https://github.com/servo/rust-url/issues/957
-    // See also `replace_and_parse` in `origin.rs`
     fn test_default_port() {
         let url = "rerun://localhost";
 
         let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
                 scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 51234,
+            },
+        });
+
+        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+    }
+
+    #[test]
+    fn test_default_everything() {
+        let url = "localhost";
+
+        let expected = RedapUri::Catalog(CatalogUri {
+            origin: Origin {
+                scheme: Scheme::RerunHttp,
                 host: url::Host::Domain("localhost".to_owned()),
                 port: 51234,
             },
