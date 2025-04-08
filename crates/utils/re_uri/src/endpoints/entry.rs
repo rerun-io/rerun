@@ -11,11 +11,8 @@ pub struct EntryUri {
 
 impl std::fmt::Display for EntryUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            origin,
-            entry_id: dataset_id,
-        } = self;
-        write!(f, "{origin}/entry/{dataset_id}")
+        let Self { origin, entry_id } = self;
+        write!(f, "{origin}/entry/{entry_id}")
     }
 }
 

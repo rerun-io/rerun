@@ -153,6 +153,24 @@ mod tests {
     }
 
     #[test]
+    fn test_entry_url_to_address() {
+        let url = "rerun://127.0.0.1:1234/entry/1830B33B45B963E7774455beb91701ae";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::Entry(EntryUri { origin, entry_id }) = address else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            entry_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+    }
+
+    #[test]
     fn test_dataset_data_url_to_address() {
         let url =
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
