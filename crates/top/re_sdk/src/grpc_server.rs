@@ -6,6 +6,8 @@ use re_log_types::LogMsg;
 ///
 /// All data sent through this sink is immediately redirected to the gRPC server.
 pub struct GrpcServerSink {
+    uri: re_uri::ProxyUri,
+
     /// Sender to send messages to the gRPC server.
     sender: re_smart_channel::Sender<LogMsg>,
 
@@ -32,7 +34,7 @@ impl GrpcServerSink {
             grpc_server_addr,
         ));
         let (channel_tx, channel_rx) = re_smart_channel::smart_channel::<re_log_types::LogMsg>(
-            re_smart_channel::SmartMessageSource::MessageProxy(uri),
+            re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
             re_smart_channel::SmartChannelSource::Sdk,
         );
         let server_handle = std::thread::Builder::new()
@@ -52,10 +54,16 @@ impl GrpcServerSink {
             .expect("failed to spawn thread for message proxy server");
 
         Ok(Self {
+            uri,
             sender: channel_tx,
             _server_handle: server_handle,
             server_shutdown_signal,
         })
+    }
+
+    /// What to connect the viewer to
+    pub fn uri(&self) -> re_uri::ProxyUri {
+        self.uri.clone()
     }
 }
 

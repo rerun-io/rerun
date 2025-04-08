@@ -967,6 +967,8 @@ impl PyBinarySinkStorage {
 }
 
 /// Spawn a gRPC server which an SDK or Viewer can connect to.
+///
+/// Return the URI of the server.
 #[pyfunction]
 #[pyo3(signature = (grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_grpc(
@@ -974,16 +976,16 @@ fn serve_grpc(
     server_memory_limit: String,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
+) -> PyResult<String> {
     #[cfg(feature = "server")]
     {
         let Some(recording) = get_data_recording(recording) else {
-            return Ok(());
+            return Ok("[no active recording]".to_owned());
         };
 
         if re_sdk::forced_sink_path().is_some() {
             re_log::debug!("Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
-            return Ok(());
+            return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
         }
 
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
@@ -1002,7 +1004,7 @@ fn serve_grpc(
 
         recording.set_sink(Box::new(sink));
 
-        Ok(())
+        Ok(sink.uri().to_string())
     }
 
     #[cfg(not(feature = "server"))]
