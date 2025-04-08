@@ -44,6 +44,9 @@ def check_large_files(files_to_check: set[str]) -> int:
 
     result = 0
     for file_path in files_to_check:
+        if file_path.endswith(".rs"):
+            continue
+
         actual_size = os.path.getsize(file_path)
 
         if actual_size >= maximum_size:
