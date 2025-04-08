@@ -1,20 +1,21 @@
 use std::net::IpAddr;
 
 use clap::{CommandFactory as _, Subcommand};
+use crossbeam::channel::Receiver as CrossbeamReceiver;
 use itertools::Itertools as _;
 use tokio::runtime::Runtime;
 
-use crossbeam::channel::Receiver as CrossbeamReceiver;
 use re_data_source::DataSource;
 use re_log_types::{LogMsg, TableMsg};
 use re_sdk::sink::LogSink as _;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
+use re_uri::RedapUri;
 
 use crate::{commands::RrdCommands, CallSource};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
-use re_uri::RedapUri;
+
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -772,14 +773,17 @@ fn run_impl(
             .filter_map(
                 |data_source| match data_source.stream(on_cmd.clone(), None) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
+
                     Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
                         redap_uris.push(RedapUri::Catalog(uri));
                         None
                     }
+
                     Ok(re_data_source::StreamSource::EntryUri(uri)) => {
                         redap_uris.push(RedapUri::Entry(uri));
                         None
                     }
+
                     Err(err) => Some(Err(err)),
                 },
             )
@@ -1002,6 +1006,7 @@ fn run_impl(
                             RedapUri::Catalog(uri) => {
                                 app.add_redap_server(uri.origin.clone());
                             }
+
                             RedapUri::Entry(uri) => {
                                 app.select_redap_entry(&uri);
                             }

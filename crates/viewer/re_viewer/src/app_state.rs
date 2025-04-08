@@ -908,10 +908,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
-                    let is_catalog_uri = matches!(
-                        uri,
-                        re_uri::RedapUri::Catalog { .. } | re_uri::RedapUri::Entry { .. }
-                    );
+                    let is_catalog_uri = matches!(uri, re_uri::RedapUri::Catalog { .. });
 
                     ctx.command_sender()
                         .send_system(SystemCommand::LoadDataSource(

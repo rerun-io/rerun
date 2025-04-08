@@ -2,6 +2,7 @@ use re_log_types::EntryId;
 
 use crate::{Error, Origin, RedapUri};
 
+/// URI for a remote entry.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EntryUri {
     pub origin: Origin,
