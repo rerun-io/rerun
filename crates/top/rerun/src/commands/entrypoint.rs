@@ -737,7 +737,7 @@ fn run_impl(
                 WebViewerConfig {
                     bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
-                    source_url: Some(uri.to_string()),
+                    connect_to: Some(uri.to_string()),
                     force_wgpu_backend: args.renderer,
                     video_decoder: args.video_decoder,
                     open_browser: true,
@@ -919,7 +919,7 @@ fn run_impl(
             WebViewerConfig {
                 bind_ip: args.bind.to_string(),
                 web_port: args.web_viewer_port,
-                source_url: Some(url),
+                connect_to: Some(url),
                 force_wgpu_backend: args.renderer,
                 video_decoder: args.video_decoder,
                 open_browser,

@@ -6,7 +6,7 @@ order: 0
 The Rerun distribution comes with numerous moving pieces:
 * The **SDKs** (Python, Rust & C++), for logging data and querying it back. These are libraries running directly in the end user's process.
 * The **Native Viewer**: the Rerun GUI application for native platforms (Linux, macOS, Windows).
-* The **Web Viewer**, which packs the **Native Viewer** into a WASM application that can run on the Web and its derivatives (notebooks, etc).
+* The **Web Viewer**, which packs the **Native Viewer** into a Wasm application that can run on the Web and its derivatives (notebooks, etc).
 * The **gRPC server**, which receives data from the **SDKs** and forwards it to the **Native Viewer** and/or **Web Viewer**. The communication is unidirectional: clients push data into the connection, never the other way around.
 * The **Web/HTTP Server**, for serving the web page that hosts the **Web Viewer**.
 * The **CLI**, which allows you to control all the pieces above as well as manipulate RRD files.
@@ -28,7 +28,7 @@ Keep in mind that even the **Native Viewer** can be disabled (headless mode).
 
 The **SDKs** are vanilla software libraries and therefore always executes in the same context as the end-user's code.
 
-Finally, the **Web Viewer** is a WASM application and therefore has its own dedicated `.wasm` artifact, and always runs in isolation in the end-user's web browser.
+Finally, the **Web Viewer** is a Wasm application and therefore has its own dedicated `.wasm` artifact, and always runs in isolation in the end-user's web browser.
 
 The best way to make sense of it all it to look at some of the most common scenarios when:
 * Logging and visualizing data on native.
