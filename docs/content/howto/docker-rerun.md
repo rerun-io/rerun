@@ -29,7 +29,7 @@ Build `rerun:VERSION`:
 Replace `VERSION` with one of the supported versions, such as 0.22.1 or 0.17.0.
 
 ## Run the application
-Run the application: `cargo run re_docker VERSION` where `VERSION` is one of the currently supported versions.
+Run the application: `cargo run --package re_docker VERSION` where `VERSION` is one of the currently supported versions.
 
 ## Adding a new Dockerfile
 When a new version of rerun is released, a new Dockerfile should be created. There may be changes to make in order for that version of rerun to run in Docker. 
