@@ -172,9 +172,11 @@ impl WebViewerServer {
     }
 
     /// Keeps the web viewer running until the parent process shuts down.
-    pub fn detach(self) {
-        #[expect(clippy::mem_forget)]
-        std::mem::forget(self);
+    pub fn detach(mut self) {
+        if let Some(thread_handle) = self.thread_handle.take() {
+            // dropping the thread handle detaches the thread.
+            drop(thread_handle);
+        }
     }
 }
 
