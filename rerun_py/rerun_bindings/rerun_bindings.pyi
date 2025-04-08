@@ -1270,6 +1270,17 @@ class DataFusionTable:
 class ViewerClient:
     """A connection to an instance of a Rerun viewer."""
 
+    def __init__(self, addr: str) -> None:
+        """
+        Create a new viewer client object.
+
+        Parameters
+        ----------
+        addr : str
+            The address of the viewer.
+
+        """
+
     def send_table(self, id: str, table: pa.RecordBatch) -> None:
         """
         Sends a table to the viewer.
