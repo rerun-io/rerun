@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
 use re_types::components::{Blob, MediaType, VideoTimestamp};
@@ -6,7 +8,6 @@ use re_ui::{
     UiExt as _,
 };
 use re_viewer_context::{UiLayout, ViewerContext};
-use std::sync::Arc;
 
 use crate::{
     image::image_preview_ui,
