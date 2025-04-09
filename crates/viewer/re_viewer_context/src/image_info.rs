@@ -1,6 +1,5 @@
 use std::{borrow::Cow, ops::RangeInclusive};
 
-use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_types::{
     components::Colormap,
@@ -390,7 +389,6 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::RowId;
     use re_log_types::hash::Hash64;
     use re_types::{datatypes::ColorModel, image::ImageChannelType};
 

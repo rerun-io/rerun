@@ -1,9 +1,6 @@
 use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
-use re_types::{
-    components::{Blob, MediaType, VideoTimestamp},
-    RowId,
-};
+use re_types::components::{Blob, MediaType, VideoTimestamp};
 use re_ui::{
     list_item::{self, PropertyContent},
     UiExt as _,
@@ -26,7 +23,7 @@ impl EntityDataUi for Blob {
         entity_path: &EntityPath,
         cache_key: Option<Hash64>,
         query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
+        _db: &re_entity_db::EntityDb,
     ) {
         let compact_size_string = re_format::format_bytes(self.len() as _);
 

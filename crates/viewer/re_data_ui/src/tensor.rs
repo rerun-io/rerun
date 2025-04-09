@@ -1,6 +1,5 @@
 use itertools::Itertools as _;
 
-use re_chunk_store::RowId;
 use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
 use re_types::datatypes::TensorData;

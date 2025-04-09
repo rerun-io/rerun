@@ -6,7 +6,6 @@ use std::sync::{
 use ahash::{HashMap, HashSet};
 use itertools::Either;
 
-use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};

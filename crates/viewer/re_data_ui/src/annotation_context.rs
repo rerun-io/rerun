@@ -18,9 +18,9 @@ impl crate::EntityDataUi for re_types::components::ClassId {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        cache_key: Option<Hash64>,
+        _cache_key: Option<Hash64>,
         query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
+        _db: &re_entity_db::EntityDb,
     ) {
         let annotations = crate::annotations(ctx, query, entity_path);
         let class = annotations
@@ -64,9 +64,9 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        cache_key: Option<Hash64>,
+        _cache_key: Option<Hash64>,
         query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
+        _db: &re_entity_db::EntityDb,
     ) {
         if let Some(info) = annotation_info(ctx, entity_path, query, self.0) {
             ui.horizontal(|ui| {
