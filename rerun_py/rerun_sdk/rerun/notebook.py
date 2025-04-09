@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import logging
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -267,6 +268,14 @@ class Viewer:
 
         if block_until_ready:
             self._viewer.block_until_ready()
+
+    def send_file(self, file_path: str | Path) -> None:
+        """
+        Send a file to the viewer.
+
+        TODO: describe
+        """
+        bindings.dataloader_bytes_from_path_to_callback(Path(file_path), self._flush_hook)
 
     def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)
