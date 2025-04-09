@@ -11,6 +11,7 @@ mod callback;
 pub mod env_vars;
 mod saving;
 mod screenshotter;
+mod startup_options;
 mod ui;
 mod viewer_analytics;
 
@@ -28,7 +29,8 @@ pub(crate) use {app_state::AppState, ui::memory_panel};
 
 pub use callback::{CallbackSelectionItem, Callbacks};
 
-pub use app::{App, StartupOptions};
+pub use app::App;
+pub use startup_options::StartupOptions;
 
 pub use re_capabilities::MainThreadToken;
 
