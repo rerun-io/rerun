@@ -304,7 +304,6 @@ impl AppState {
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
-            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -387,7 +386,6 @@ impl AppState {
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
-            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -573,7 +571,7 @@ impl AppState {
                 .show_inside(ui, |ui| {
                     match display_mode {
                         DisplayMode::LocalRecordings => {
-                            if let Some(table_id) = ctx.active_table.as_ref() {
+                            if let Some(table_id) = ctx.storage_context.hub.active_table_id() {
                                 if let Some(store) = ctx.storage_context.tables.get(table_id) {
                                     let context = TableContext {
                                         table_id: table_id.clone(),

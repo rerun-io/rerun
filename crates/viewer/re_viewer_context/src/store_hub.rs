@@ -141,6 +141,11 @@ impl StoreHub {
         "Welcome screen".into()
     }
 
+    /// App ID used as a marker to display the welcome screen.
+    pub fn table_app_id() -> ApplicationId {
+        "table".into()
+    }
+
     /// Blueprint ID used for the default welcome screen blueprint
     fn welcome_screen_blueprint_id() -> StoreId {
         StoreId::from_string(
@@ -412,7 +417,9 @@ impl StoreHub {
 
         self.table_stores.clear();
 
-        self.active_entry = None;
+        if self.active_table_id().is_none() {
+            self.active_entry = None;
+        }
         self.active_application_id = Some(Self::welcome_screen_app_id());
     }
 
@@ -440,7 +447,9 @@ impl StoreHub {
         // If this is the welcome screen, or we didn't have any app id at all so far,
         // we set the active application_id even if we don't find a matching recording.
         // (otherwise we don't, because we don't want to leave towards a state without any recording if we don't have to)
-        if Self::welcome_screen_app_id() == app_id || self.active_application_id.is_none() {
+        if Self::welcome_screen_app_id() == app_id
+            || (self.active_application_id.is_none() && self.active_table_id().is_none())
+        {
             self.active_application_id = Some(app_id.clone());
             self.active_entry = None;
         }
@@ -481,7 +490,9 @@ impl StoreHub {
 
         if self.active_application_id.as_ref() == Some(app_id) {
             self.active_application_id = None;
-            self.active_entry = None;
+            if self.active_table_id().is_none() {
+                self.active_entry = None;
+            }
         }
 
         self.default_blueprint_by_app_id.remove(app_id);
@@ -586,6 +597,7 @@ impl StoreHub {
     /// Activate a recording by its [`TableId`].
     fn set_activate_table(&mut self, table_id: TableId) {
         self.active_entry = Some(StoreHubEntry::Table { table_id });
+        self.active_application_id = Some(StoreHub::table_app_id());
     }
 
     // ---------------------

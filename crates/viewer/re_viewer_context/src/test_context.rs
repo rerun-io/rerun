@@ -350,7 +350,6 @@ impl TestContext {
                 bundle: &Default::default(),
                 tables: &Default::default(),
             },
-            active_table: None,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
