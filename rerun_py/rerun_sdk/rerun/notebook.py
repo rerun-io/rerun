@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
+from rerun import bindings
 from rerun_notebook import (
     ContainerSelection as ContainerSelection,
     EntitySelection as EntitySelection,
@@ -24,8 +25,6 @@ from rerun_notebook import (
     ViewerCallbacks as ViewerCallbacks,
     ViewSelection as ViewSelection,
 )
-
-from rerun import bindings
 
 from .recording_stream import RecordingStream, get_data_recording
 
@@ -381,5 +380,3 @@ class Viewer:
 
     def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
         self._viewer.register_callbacks(callbacks)
-
-
