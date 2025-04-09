@@ -454,12 +454,18 @@ def notebook_show(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    from .notebook import Viewer
+    try:
+        from .notebook import Viewer
 
-    viewer = Viewer(
-        width=width,
-        height=height,
-        blueprint=blueprint,
-        recording=recording,  # NOLINT
-    )
-    viewer.display()
+        Viewer(
+            width=width,
+            height=height,
+            blueprint=blueprint,
+            recording=recording,  # NOLINT
+        ).display()
+    except ImportError as e:
+        raise Exception("Could not import rerun_notebook. Please install `rerun-notebook`.") from e
+    except FileNotFoundError as e:
+        raise Exception(
+            "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
+        ) from e
