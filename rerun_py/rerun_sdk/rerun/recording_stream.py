@@ -592,7 +592,8 @@ class RecordingStream:
         Closes all gRPC connections, servers, and files.
 
         Closes all gRPC connections, servers, and files that have been opened with
-        [`rerun.connect_grpc`], [`rerun.serve`], [`rerun.save`] or [`rerun.spawn`].
+        [`rerun.RecordingStream.connect_grpc`], [`rerun.RecordingStream.serve`], [`rerun.RecordingStream.save`] or
+        [`rerun.RecordingStream.spawn`].
         """
 
         from .sinks import disconnect
@@ -627,7 +628,7 @@ class RecordingStream:
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
-            immediately, instead use the [`rerun.send_blueprint`][] API.
+            immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
         server_memory_limit:
             Maximum amount of memory to use for buffering log data for clients that connect late.
             This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
@@ -657,7 +658,7 @@ class RecordingStream:
 
         You can also connect to this server with the native viewer using `rerun localhost:9090`.
 
-        The gRPC server will buffer all log data in memorsy so that late connecting viewers will get all the data.
+        The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
         You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
@@ -675,7 +676,7 @@ class RecordingStream:
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
-            immediately, instead use the [`rerun.send_blueprint`][] API.
+            immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
         server_memory_limit:
             Maximum amount of memory to use for buffering log data for clients that connect late.
             This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
@@ -755,9 +756,6 @@ class RecordingStream:
         """
         Spawn a Rerun Viewer, listening on the given port.
 
-        This is often the easiest and best way to use Rerun.
-        Just call this once at the start of your program.
-
         You can also call [rerun.init][] with a `spawn=True` argument.
 
         Parameters
@@ -778,7 +776,7 @@ class RecordingStream:
             Optionally set a default blueprint to use for this application. If the application
             already has an active blueprint, the new blueprint won't become active until the user
             clicks the "reset blueprint" button. If you want to activate the new blueprint
-            immediately, instead use the [`rerun.send_blueprint`][] API.
+            immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
 
         """
 
@@ -820,7 +818,7 @@ class RecordingStream:
             A blueprint object to send to the viewer.
             It will be made active and set as the default blueprint in the recording.
 
-            Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+            Setting this is equivalent to calling [`rerun.RecordingStream.send_blueprint`][] before initializing the viewer.
 
         """
         try:
@@ -917,7 +915,8 @@ class RecordingStream:
         Set the current time of a timeline for this thread.
 
         Used for all subsequent logging on the same thread, until the next call to
-        [`rerun.set_time`][], [`rerun.reset_time`][] or [`rerun.disable_timeline`][].
+        [`rerun.RecordingStream.set_time`][], [`rerun.RecordingStream.reset_time`][] or
+        [`rerun.RecordingStream.disable_timeline`][].
 
         For example: `set_time("frame_nr", sequence=frame_nr)`.
 
@@ -959,7 +958,7 @@ class RecordingStream:
         )
 
     @deprecated(
-        """Use `set_time(sequence=…)` instead.
+        """Use `RecordingStream.set_time(sequence=…)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_sequence(self, timeline: str, sequence: int) -> None:
@@ -993,7 +992,7 @@ class RecordingStream:
         set_time_sequence(timeline=timeline, sequence=sequence, recording=self)
 
     @deprecated(
-        """Use `set_time(timestamp=seconds)` or set_time(duration=seconds)` instead.
+        """Use `RecordingStream.set_time(timestamp=seconds)` or `RecordingStream.set_time(duration=seconds)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
@@ -1034,7 +1033,7 @@ class RecordingStream:
         set_time_seconds(timeline=timeline, seconds=seconds, recording=self)
 
     @deprecated(
-        """Use `set_time(timestamp=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
+        """Use `RecordingStream.set_time(timestamp=1e-9 * nanos)` or `RecordingStream.set_time(duration=1e-9 * nanos)` instead.
         See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:
@@ -1158,8 +1157,7 @@ class RecordingStream:
             any temporal data of the same type.
 
             Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-            [`rerun.set_time_nanos`][] will also be included.
+            Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         strict:
             If True, raise exceptions on non-loggable data.
@@ -1208,8 +1206,7 @@ class RecordingStream:
             any temporal data of the same type.
 
             Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-            [`rerun.set_time_nanos`][] will also be included.
+            Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         """
 
@@ -1255,8 +1252,7 @@ class RecordingStream:
             any temporal data of the same type.
 
             Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-            Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
-            [`rerun.set_time_nanos`][] will also be included.
+            Additional timelines set by [`rerun.RecordingStream.set_time`][] will also be included.
 
         """
 
@@ -1285,7 +1281,7 @@ class RecordingStream:
         data that shares the same index across the different columns will act as a single logical row,
         equivalent to a single call to `rr.log()`.
 
-        Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+        Note that this API ignores any stateful time set on the log stream via [`rerun.RecordingStream.set_time`][].
         Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 
         Parameters
