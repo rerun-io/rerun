@@ -201,6 +201,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // catalog
     crate::catalog::register(py, m)?;
 
+    // viewer
+    crate::viewer::register(py, m)?;
+
     Ok(())
 }
 

@@ -52,6 +52,9 @@ enum ExternalError {
 
     #[error("{0}")]
     DatafusionError(#[from] datafusion::error::DataFusionError),
+
+    #[error(transparent)]
+    CodecError(#[from] re_log_encoding::codec::CodecError),
 }
 
 impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
@@ -107,6 +110,8 @@ impl From<ExternalError> for PyErr {
             ExternalError::DatafusionError(err) => {
                 PyValueError::new_err(format!("DataFusion error: {err}"))
             }
+
+            ExternalError::CodecError(err) => PyValueError::new_err(format!("Codec error: {err}")),
         }
     }
 }
