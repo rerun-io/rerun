@@ -824,14 +824,14 @@ class RecordingStream:
 
         """
 
-        from .notebook import notebook_show
+        from .notebook import Viewer
 
-        notebook_show(
+        Viewer(
             width=width,
             height=height,
             blueprint=blueprint,
             recording=self,
-        )
+        ).display()
 
     def send_property(
         self,

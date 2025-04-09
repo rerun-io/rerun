@@ -188,6 +188,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._height = height
         self._url = url
         self._data_queue = []
+        self._table_queue = []
 
         from ipywidgets import widgets
 
@@ -244,7 +245,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
         self.send({"type": "table"}, buffers=[data])
 
-    def block_until_ready(self, timeout: float = 5.0) -> None:
+    def block_until_ready(self, timeout: float = 10.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()

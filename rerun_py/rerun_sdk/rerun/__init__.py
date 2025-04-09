@@ -28,7 +28,6 @@ from . import (
     catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
-    notebook as notebook,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
@@ -152,9 +151,6 @@ from .logging_handler import (
 from .memory import (
     MemoryRecording as MemoryRecording,
     memory_recording as memory_recording,
-)
-from .notebook import (
-    notebook_show as notebook_show,
 )
 from .recording_stream import (
     BinaryStream as BinaryStream,
@@ -423,3 +419,47 @@ def start_web_viewer_server(port: int = 0) -> None:
     """
 
     bindings.start_web_viewer_server(port)
+
+
+def notebook_show(
+    *,
+    width: int | None = None,
+    height: int | None = None,
+    blueprint: BlueprintLike | None = None,  # noqa: F811
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
+
+    Any data logged to the recording after initialization will be sent directly to the viewer.
+
+    Note that this can be called at any point during cell execution. The call will block until the embedded
+    viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
+    to the viewer.
+
+    Parameters
+    ----------
+    width : int
+        The width of the viewer in pixels.
+    height : int
+        The height of the viewer in pixels.
+    blueprint : BlueprintLike
+        A blueprint object to send to the viewer.
+        It will be made active and set as the default blueprint in the recording.
+
+        Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+    from .notebook import Viewer
+
+    viewer = Viewer(
+        width=width,
+        height=height,
+        blueprint=blueprint,
+        recording=recording,  # NOLINT
+    )
+    viewer.display()

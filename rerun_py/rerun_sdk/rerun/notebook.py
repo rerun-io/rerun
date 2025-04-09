@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import importlib.util
-import logging
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pyarrow
@@ -19,25 +17,13 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
-# The notebook package is an optional dependency, so first check
-# if it is installed before importing it. If the user is trying
-# to use the notebook part of rerun, they'll be notified when
-# that it's not installed when they try to init a `Viewer` instance.
-if importlib.util.find_spec("rerun_notebook") is not None:
-    try:
-        from rerun_notebook import (
-            ContainerSelection as ContainerSelection,
-            EntitySelection as EntitySelection,
-            SelectionItem as SelectionItem,
-            ViewerCallbacks as ViewerCallbacks,
-            ViewSelection as ViewSelection,
-        )
-    except ImportError:
-        logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
-    except FileNotFoundError:
-        logging.error(
-            "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
-        )
+from rerun_notebook import (
+    ContainerSelection as ContainerSelection,
+    EntitySelection as EntitySelection,
+    SelectionItem as SelectionItem,
+    ViewerCallbacks as ViewerCallbacks,
+    ViewSelection as ViewSelection,
+)
 
 from rerun import bindings
 
@@ -126,28 +112,7 @@ class Viewer:
             Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
-
-        try:
-            global _version_mismatch_checked
-            if not _version_mismatch_checked:
-                import importlib.metadata
-                import warnings
-
-                rerun_notebook_version = importlib.metadata.version("rerun-notebook")
-                rerun_version = importlib.metadata.version("rerun-sdk")
-                if rerun_version != rerun_notebook_version:
-                    warnings.warn(
-                        f"rerun-notebook version mismatch: rerun-sdk {rerun_version}, rerun-notebook {rerun_notebook_version}",
-                        category=ImportWarning,
-                        stacklevel=2,
-                    )
-                _version_mismatch_checked = True
-
-            from rerun_notebook import Viewer as _Viewer  # type: ignore[attr-defined]
-        except ImportError:
-            logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
-            hack: Any = None
-            return hack  # type: ignore[no-any-return]
+        from rerun_notebook import Viewer as _Viewer
 
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
@@ -418,44 +383,3 @@ class Viewer:
         self._viewer.register_callbacks(callbacks)
 
 
-def notebook_show(
-    *,
-    width: int | None = None,
-    height: int | None = None,
-    blueprint: BlueprintLike | None = None,
-    recording: RecordingStream | None = None,
-) -> None:
-    """
-    Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
-
-    Any data logged to the recording after initialization will be sent directly to the viewer.
-
-    Note that this can be called at any point during cell execution. The call will block until the embedded
-    viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
-    to the viewer.
-
-    Parameters
-    ----------
-    width : int
-        The width of the viewer in pixels.
-    height : int
-        The height of the viewer in pixels.
-    blueprint : BlueprintLike
-        A blueprint object to send to the viewer.
-        It will be made active and set as the default blueprint in the recording.
-
-        Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    viewer = Viewer(
-        width=width,
-        height=height,
-        blueprint=blueprint,
-        recording=recording,  # NOLINT
-    )
-    viewer.display()
