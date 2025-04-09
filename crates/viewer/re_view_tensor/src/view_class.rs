@@ -2,6 +2,7 @@ use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
+use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
     blueprint::{
@@ -133,10 +134,9 @@ Set the displayed dimensions in a selection panel.",
                 ..
             }) = &state.tensor
             {
-                let tensor_stats = ctx
-                    .store_context
-                    .caches
-                    .entry(|c: &mut TensorStatsCache| c.entry(*tensor_row_id, tensor));
+                let tensor_stats = ctx.store_context.caches.entry(|c: &mut TensorStatsCache| {
+                    c.entry(Hash64::hash(*tensor_row_id), tensor)
+                });
 
                 tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
             }

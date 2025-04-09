@@ -3,6 +3,7 @@ use itertools::Either;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
+use re_log_types::hash::Hash64;
 use re_types::{datatypes::TensorData, Component as _};
 
 use crate::{Cache, TensorStats};
@@ -10,16 +11,16 @@ use crate::{Cache, TensorStats};
 /// Caches tensor stats using a [`RowId`], i.e. a specific instance of
 /// a `TensorData` component
 #[derive(Default)]
-pub struct TensorStatsCache(HashMap<RowId, TensorStats>);
+pub struct TensorStatsCache(HashMap<Hash64, TensorStats>);
 
 impl TensorStatsCache {
-    /// The key should be the `RowId` of the `TensorData`.
+    /// The `RowId` of the `TensorData` may be used as a cache key.
     /// NOTE: `TensorData` is never batched (they are mono-components),
     /// so we don't need the instance id here.
-    pub fn entry(&mut self, tensor_data_row_id: RowId, tensor: &TensorData) -> TensorStats {
+    pub fn entry(&mut self, tensor_cache_key: Hash64, tensor: &TensorData) -> TensorStats {
         *self
             .0
-            .entry(tensor_data_row_id)
+            .entry(tensor_cache_key)
             .or_insert_with(|| TensorStats::from_tensor(tensor))
     }
 }
@@ -32,7 +33,7 @@ impl Cache for TensorStatsCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let row_ids_removed: HashSet<RowId> = events
+        let cache_keys: HashSet<Hash64> = events
             .iter()
             .flat_map(|event| {
                 let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
@@ -44,7 +45,7 @@ impl Cache for TensorStatsCache {
                 };
 
                 if is_deletion() && contains_tensor_data() {
-                    Either::Left(event.chunk.row_ids())
+                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
                 } else {
                     Either::Right(std::iter::empty())
                 }
@@ -52,7 +53,7 @@ impl Cache for TensorStatsCache {
             .collect();
 
         self.0
-            .retain(|row_id, _per_key| !row_ids_removed.contains(row_id));
+            .retain(|cache_key, _per_key| !cache_keys.contains(cache_key));
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

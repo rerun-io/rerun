@@ -16,6 +16,7 @@ use thiserror::Error;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
+use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
 use re_types_core::{ComponentName, DeserializationError, Loggable as _, RowId};
@@ -152,18 +153,18 @@ impl ComponentData {
                 data
             };
 
-            let mut row_id = row_ids.and_then(|row_ids| row_ids.get(row_index)).copied();
+            let mut cache_key = row_ids
+                .and_then(|row_ids| row_ids.get(row_index))
+                .copied()
+                .map(Hash64::hash);
 
             // TODO(ab): we should find an alternative to using content-hashing to generate cache
             // keys.
             //
-            // Generate a content-based "fake" row id if we don't have one already.
-            //
-            // Background: the `row_id` passed to `ui_raw` is only ever used as a cache key for
-            // images, and we must provide one for images to be displayed. Since in general we don't
-            // have a row id available (e.g. for an arbitrary table entry, or for a dataframe query
-            // result), we just hash the data to get a deterministic row id.
-            if row_id.is_none() && (component_name.as_str() == "rerun.components.Blob") {
+            // Generate a content-based cache key if we don't have one already. This is needed
+            // because without cache key, the image thumbnail will no be displayed by the component
+            // ui.
+            if cache_key.is_none() && (component_name.as_str() == "rerun.components.Blob") {
                 re_tracing::profile_scope!("Blob hash");
 
                 if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
@@ -173,7 +174,7 @@ impl ComponentData {
                     // cap the max amount of data to hash to 9 KiB
                     const SECTION_LENGTH: usize = 3 * 1024;
 
-                    row_id = Some(RowId::from_u128(quick_partial_hash(buffer, SECTION_LENGTH)));
+                    cache_key = Some(quick_partial_hash(buffer, SECTION_LENGTH));
                 }
             }
 
@@ -185,7 +186,7 @@ impl ComponentData {
                 ctx.recording(),
                 entity_path,
                 component_name,
-                row_id,
+                cache_key,
                 data_to_display.as_ref(),
             );
         } else {
@@ -200,7 +201,7 @@ impl ComponentData {
 /// If the buffer is smaller or equal to than `3*section_length`, the entire buffer is hashed.
 /// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
 /// are hashed.
-fn quick_partial_hash(data: &[u8], section_length: usize) -> u128 {
+fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
     use ahash::AHasher;
     use std::hash::{Hash as _, Hasher as _};
 
@@ -223,8 +224,7 @@ fn quick_partial_hash(data: &[u8], section_length: usize) -> u128 {
         last_section.hash(&mut hasher);
     }
 
-    let hash = hasher.finish();
-    u128::from(hash) | (u128::from(hash) << 64)
+    Hash64::from_u64(hasher.finish())
 }
 
 /// A single column of data in a record batch.

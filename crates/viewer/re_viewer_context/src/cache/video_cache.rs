@@ -26,18 +26,18 @@ struct Entry {
 
 /// Caches meshes based on media type & row id.
 #[derive(Default)]
-pub struct VideoCache(HashMap<RowId, HashMap<Hash64, Entry>>);
+pub struct VideoCache(HashMap<Hash64, HashMap<Hash64, Entry>>);
 
 impl VideoCache {
     /// Read in some video data and cache the result.
     ///
-    /// The `row_id` should be the `RowId` of the blob.
+    /// You may use the `RowId` as cache key if any.
     /// NOTE: videos are never batched atm (they are mono-archetypes),
     /// so we don't need the instance id here.
     pub fn entry(
         &mut self,
         debug_name: String,
-        blob_row_id: RowId,
+        blob_cache_key: Hash64,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
@@ -58,7 +58,7 @@ impl VideoCache {
 
         let entry = self
             .0
-            .entry(blob_row_id)
+            .entry(blob_cache_key)
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
@@ -110,7 +110,7 @@ impl Cache for VideoCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let row_ids_removed: HashSet<RowId> = events
+        let cache_key_removed: HashSet<Hash64> = events
             .iter()
             .flat_map(|event| {
                 let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
@@ -122,7 +122,7 @@ impl Cache for VideoCache {
                 };
 
                 if is_deletion() && contains_video_blob() {
-                    Either::Left(event.chunk.row_ids())
+                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
                 } else {
                     Either::Right(std::iter::empty())
                 }
@@ -130,7 +130,7 @@ impl Cache for VideoCache {
             .collect();
 
         self.0
-            .retain(|row_id, _per_key| !row_ids_removed.contains(row_id));
+            .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

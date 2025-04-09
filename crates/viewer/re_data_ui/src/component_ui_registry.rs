@@ -1,3 +1,4 @@
+use re_log_types::hash::Hash64;
 use re_ui::{arrow_ui, UiExt as _};
 use re_viewer_context::ComponentUiRegistry;
 

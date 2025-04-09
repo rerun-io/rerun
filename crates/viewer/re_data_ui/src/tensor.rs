@@ -1,6 +1,7 @@
 use itertools::Itertools as _;
 
 use re_chunk_store::RowId;
+use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
 use re_types::datatypes::TensorData;
 use re_ui::UiExt as _;
@@ -39,14 +40,14 @@ impl EntityDataUi for re_types::components::TensorData {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _entity_path: &EntityPath,
-        row_id: Option<re_chunk_store::RowId>,
+        cache_key: Option<Hash64>,
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!();
 
-        let tensor_data_row_id = row_id.unwrap_or(RowId::ZERO);
-        tensor_ui(ctx, ui, ui_layout, tensor_data_row_id, &self.0);
+        let tensor_cache_key = cache_key.unwrap_or(Hash64::ZERO);
+        tensor_ui(ctx, ui, ui_layout, tensor_cache_key, &self.0);
     }
 }
 
@@ -54,7 +55,7 @@ pub fn tensor_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
-    tensor_data_row_id: RowId,
+    tensor_cache_key: Hash64,
     tensor: &TensorData,
 ) {
     // See if we can convert the tensor to a GPU texture.
@@ -62,7 +63,7 @@ pub fn tensor_ui(
     let tensor_stats = ctx
         .store_context
         .caches
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_cache_key, tensor));
 
     if ui_layout.is_single_line() {
         ui.horizontal(|ui| {

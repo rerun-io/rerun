@@ -1,3 +1,4 @@
+use re_log_types::hash::Hash64;
 use re_types_core::{
     reflection::ArchetypeFieldReflection, Archetype, ArchetypeReflectionMarker, ComponentName,
 };
@@ -90,7 +91,9 @@ pub fn view_property_component_ui(
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let component_array = property.component_raw(field.component_name);
-    let row_id = property.component_row_id(field.component_name);
+    let cache_key = property
+        .component_row_id(field.component_name)
+        .map(Hash64::hash);
 
     let ui_types = ctx
         .viewer_ctx
@@ -104,7 +107,7 @@ pub fn view_property_component_ui(
             ctx.viewer_ctx.blueprint_db(),
             ctx.target_entity_path,
             field.component_name,
-            row_id,
+            cache_key,
             component_array.as_deref(),
             fallback_provider,
         );
@@ -117,7 +120,7 @@ pub fn view_property_component_ui(
             ctx.viewer_ctx.blueprint_db(),
             ctx.target_entity_path,
             field.component_name,
-            row_id,
+            cache_key,
             component_array.as_deref(),
             fallback_provider,
         );
