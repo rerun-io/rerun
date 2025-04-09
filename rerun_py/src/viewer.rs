@@ -3,7 +3,7 @@
 use arrow::array::RecordBatch;
 use pyo3::{prelude::*, Bound, PyResult};
 
-use re_grpc_client::message_proxy::write_table::table_client;
+use re_grpc_client::message_proxy::write_table::viewer_client;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 
@@ -19,7 +19,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 /// A connection to an instance of a Rerun viewer.
 #[pyclass(name = "ViewerClient")]
 pub struct PyViewerClient {
-    conn: TableConnectionHandle,
+    conn: ViewerConnectionHandle,
 }
 #[pymethods]
 impl PyViewerClient {
@@ -29,7 +29,7 @@ impl PyViewerClient {
     fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        let conn = TableConnectionHandle::new(py, origin.clone())?;
+        let conn = ViewerConnectionHandle::new(py, origin.clone())?;
 
         Ok(Self { conn })
     }
@@ -55,19 +55,19 @@ impl PyViewerClient {
 /// table-related operations, most importantly `WriteTable`.
 // TODO(grtlr): In the future, we probably want to merge this with the other APIs.
 #[derive(Clone)]
-pub struct TableConnectionHandle {
+pub struct ViewerConnectionHandle {
     client: MessageProxyServiceClient<tonic::transport::Channel>,
 }
 
-impl TableConnectionHandle {
+impl ViewerConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, table_client(origin.clone())).map_err(to_py_err)?;
+        let client = wait_for_future(py, viewer_client(origin.clone())).map_err(to_py_err)?;
 
         Ok(Self { client })
     }
 }
 
-impl TableConnectionHandle {
+impl ViewerConnectionHandle {
     fn send_table(
         &mut self,
         py: Python<'_>,
