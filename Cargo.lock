@@ -8670,7 +8670,6 @@ dependencies = [
 name = "rerun_py"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
- "ahash",
  "arrow",
  "chrono",
  "crossbeam",
