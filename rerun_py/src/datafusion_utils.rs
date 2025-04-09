@@ -2,11 +2,11 @@ use arrow::datatypes::DataType;
 use datafusion::logical_expr::Volatility;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::PyModule;
-use pyo3::types::{PyAnyMethods, PyCFunction, PyDict, PyList, PyString, PyTuple};
+use pyo3::types::{PyAnyMethods as _, PyCFunction, PyDict, PyList, PyString, PyTuple};
 use pyo3::{Bound, IntoPyObject as _, Py, PyAny, PyResult, Python};
 
 /// This is a helper function to initialize the required pyarrow data
-/// types for passing into datafusion.udf()
+/// types for passing into `datafusion.udf()`
 fn data_type_to_pyarrow_obj<'py>(
     pa: &Bound<'py, PyModule>,
     data_type: &DataType,
@@ -57,10 +57,10 @@ fn data_type_to_pyarrow_obj<'py>(
     }
 }
 
-/// This helper function will take a closure and turn it into a datafusion scalar UDF.
-/// It calls the python datafusion.udf() function. These may get removed once
-/// https://github.com/apache/datafusion/issues/14562 and the associated support
-/// in datafusion-python are completed.
+/// This helper function will take a closure and turn it into a `DataFusion` scalar UDF.
+/// It calls the python `datafusion.udf()` function. These may get removed once
+/// <https://github.com/apache/datafusion/issues/14562> and the associated support
+/// in `datafusion-python` are completed.
 pub fn create_datafusion_scalar_udf<F>(
     py: Python<'_>,
     closure: F,
@@ -77,7 +77,7 @@ where
     let pyarrow_module = py.import("pyarrow")?;
     let arg_types = arg_types
         .iter()
-        .map(|arg_type| data_type_to_pyarrow_obj(&pyarrow_module, *arg_type))
+        .map(|arg_type| data_type_to_pyarrow_obj(&pyarrow_module, arg_type))
         .collect::<PyResult<Vec<_>>>()?;
 
     let arg_types = PyList::new(py, arg_types)?;

@@ -4,7 +4,7 @@ use arrow::array::{ArrayData, ArrayRef, RecordBatch, StringArray, StringViewArra
 use arrow::datatypes::{DataType, Field, Schema as ArrowSchema};
 use arrow::pyarrow::{FromPyArrow as _, PyArrowType, ToPyArrow as _};
 use datafusion::{common::exec_err, logical_expr_common::signature::Volatility};
-use pyo3::types::{PyDict, PyTuple, PyTupleMethods};
+use pyo3::types::{PyDict, PyTuple, PyTupleMethods as _};
 use pyo3::Bound;
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
 use tokio_stream::StreamExt as _;
@@ -62,7 +62,7 @@ impl PyDataset {
         Ok(schema.into())
     }
 
-    /// Return the partition table as a Datafusion table provider.
+    /// Return the partition table as a DataFusion table provider.
     fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
@@ -209,9 +209,7 @@ impl PyDataset {
 
             while let Some(chunk) = chunk_stream.next().await {
                 let chunk = chunk.map_err(to_py_err)?;
-                store
-                    .insert_chunk(&std::sync::Arc::new(chunk))
-                    .map_err(to_py_err)?;
+                store.insert_chunk(&Arc::new(chunk)).map_err(to_py_err)?;
             }
 
             Ok(store)
@@ -398,7 +396,7 @@ impl PyDataset {
         let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
 
         let schema = arrow::datatypes::Schema::new_with_metadata(
-            vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
+            vec![Field::new("items", DataType::Utf8, false)],
             Default::default(),
         );
 
@@ -415,11 +413,9 @@ impl PyDataset {
                 component: Some(component_descriptor.into()),
             }),
             properties: Some(IndexQueryProperties {
-                props: Some(
-                    re_protos::manifest_registry::v1alpha1::index_query_properties::Props::Inverted(
-                        InvertedIndexQuery {},
-                    ),
-                ),
+                props: Some(index_query_properties::Props::Inverted(
+                    InvertedIndexQuery {},
+                )),
             }),
             query: Some(
                 query
