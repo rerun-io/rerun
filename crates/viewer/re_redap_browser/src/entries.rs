@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use itertools::Itertools as _;
 use tokio_stream::StreamExt as _;
 
 use re_data_ui::item_ui::entity_db_button_ui;
@@ -116,7 +117,7 @@ impl Entries {
             }
 
             Some(Ok(datasets)) => {
-                for dataset in datasets.values() {
+                for dataset in datasets.values().sorted_by_key(|dataset| dataset.name()) {
                     let recordings = recordings
                         .as_mut()
                         .and_then(|r| r.remove(&dataset.id()))

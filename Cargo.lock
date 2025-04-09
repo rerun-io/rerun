@@ -7477,6 +7477,7 @@ dependencies = [
  "egui",
  "egui_dnd",
  "egui_table",
+ "itertools 0.14.0",
  "once_cell",
  "re_arrow_util",
  "re_data_ui",
