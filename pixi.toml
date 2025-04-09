@@ -578,6 +578,9 @@ ghp-import = "==2.1.0" # for CI documentation handling
 [feature.python-dev]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 
+[feature.python-dev.activation.env]
+RERUN_DEV_ENVIRONMENT = "true"
+
 [feature.python-dev.dependencies]
 # We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)
 # and other common examples/snippets.

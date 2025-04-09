@@ -37,7 +37,12 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
-ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js")
+ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
+if ASSET_ENV is None:
+    if "RERUN_DEV_ENVIRONMENT" in os.environ:
+        ASSET_ENV = "serve-local"
+    else:
+        ASSET_ENV = "https://app.rerun.io/version/{__version__}/widget.js"
 
 if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
@@ -188,6 +193,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._height = height
         self._url = url
         self._data_queue = []
+        self._table_queue = []
 
         from ipywidgets import widgets
 
@@ -244,7 +250,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
         self.send({"type": "table"}, buffers=[data])
 
-    def block_until_ready(self, timeout: float = 5.0) -> None:
+    def block_until_ready(self, timeout: float = 10.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()
