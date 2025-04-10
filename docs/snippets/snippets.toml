@@ -99,8 +99,10 @@ features = [
   "cpp",
   "rust",
 ]
-"concepts/send_recording" = [ # Not implemented for C++
-  "cpp",
+"concepts/send_recording" = [
+  "py",   # Requires context (an RRD file to be exported by the user)
+  "cpp",  # Not implemented for C++
+  "rust", # Requires context (an RRD file to be exported by the user)
 ]
 "concepts/static/log_static" = [ # pseudo-code
   "py",
