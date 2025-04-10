@@ -7003,7 +7003,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.65",
- "uuid",
  "walkdir",
 ]
 
@@ -8242,7 +8241,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror 1.0.65",
- "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

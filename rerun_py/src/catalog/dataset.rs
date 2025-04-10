@@ -368,7 +368,7 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        let uuid = uuid::Uuid::new_v4();
+        let uuid = uuid::Uuid::new_v4().simple();
         let name = format!("{}_search_fts_{uuid}", super_.name());
 
         Ok(PyDataFusionTable {
@@ -421,7 +421,7 @@ impl PyDataset {
                 .map_err(to_py_err)
         })?;
 
-        let uuid = uuid::Uuid::new_v4();
+        let uuid = uuid::Uuid::new_v4().simple();
         let name = format!("{}_search_vector_{uuid}", super_.name());
 
         Ok(PyDataFusionTable {

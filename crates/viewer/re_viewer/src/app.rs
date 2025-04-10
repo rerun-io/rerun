@@ -719,7 +719,7 @@ impl App {
             .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
-            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
+            .or_else(|| Some(ApplicationId::random()));
         let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
             // When we're on the welcome screen, there is no recording ID to recommend.
             // But we want one, otherwise multiple things being dropped simultaneously on the
@@ -1701,7 +1701,7 @@ impl App {
             .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
-            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
+            .or_else(|| Some(ApplicationId::random()));
         let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
             // When we're on the welcome screen, there is no recording ID to recommend.
             // But we want one, otherwise multiple things being dropped simultaneously on the
