@@ -30,7 +30,7 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
 
     fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
         self.downcast_array_ref::<T>().ok_or_else(|| {
-            ArrowError::InvalidArgumentError(format!(
+            ArrowError::CastError(format!(
                 "Failed to downcast array of type {} to {}",
                 self.data_type(),
                 std::any::type_name::<T>(),
@@ -46,7 +46,7 @@ impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
 
     fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
         self.downcast_array_ref::<T>().ok_or_else(|| {
-            ArrowError::InvalidArgumentError(format!(
+            ArrowError::CastError(format!(
                 "Failed to downcast array of type {} to {}",
                 self.data_type(),
                 std::any::type_name::<T>(),
