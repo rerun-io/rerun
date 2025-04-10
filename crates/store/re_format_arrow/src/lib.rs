@@ -31,9 +31,21 @@ fn custom_array_formatter<'a>(field: &Field, array: &'a dyn Array) -> CustomArra
     if let Some(extension_name) = field.metadata().get("ARROW:extension:name") {
         // TODO(#1775): This should be registered dynamically.
         if extension_name.as_str() == Tuid::ARROW_EXTENSION_NAME {
-            return Box::new(|index| {
+            // For example: `RowId` is a TUID that should be formatted with a `row_` prefix:
+            let prefix = field
+                .metadata()
+                .get("ARROW:extension:metadata")
+                .and_then(|metadata| serde_json::from_str::<Metadata>(metadata).ok())
+                .and_then(|metadata| {
+                    metadata
+                        .get("namespace")
+                        .map(|namespace| format!("{namespace}_"))
+                })
+                .unwrap_or_default();
+
+            return Box::new(move |index| {
                 if let Some(tuid) = parse_tuid(array, index) {
-                    Ok(format!("{tuid}"))
+                    Ok(format!("{prefix}{tuid}"))
                 } else {
                     Err("Invalid RowId".to_owned())
                 }

@@ -7188,6 +7188,7 @@ dependencies = [
  "re_arrow_util",
  "re_tuid",
  "re_types_core",
+ "serde_json",
 ]
 
 [[package]]
