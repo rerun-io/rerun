@@ -1,6 +1,9 @@
 //! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
 
-use std::{collections::BTreeMap, fmt::Write as _};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Write as _,
+};
 
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
@@ -554,49 +557,44 @@ fn write_archetype_fields(
         return;
     }
 
-    // collect names of field _components_ by their `FieldKind`
-    let (mut required, mut recommended, mut optional) = (Vec::new(), Vec::new(), Vec::new());
-    for field in &object.fields {
-        let Some(fqname) = field.typ.fqname() else {
+    putln!(page, "## Fields");
+    let grouped_by_kind: HashMap<FieldKind, Vec<&ObjectField>> =
+        object.fields.iter().into_group_map_by(|field| {
+            field
+                .kind()
+                .expect("All archetype fields must have a 'kind'")
+        });
+
+    for kind in FieldKind::ALL {
+        let Some(fields) = grouped_by_kind.get(&kind) else {
             continue;
         };
-        let Some(ty) = objects.get(fqname) else {
-            continue;
-        };
-        let target = match field.kind() {
-            Some(FieldKind::Required) => &mut required,
-            Some(FieldKind::Recommended) => &mut recommended,
-            Some(FieldKind::Optional) => &mut optional,
-            _ => continue,
-        };
-        target.push(format!(
-            "[`{}`](../{}/{}.md)",
-            ty.name,
-            ty.kind.plural_snake_case(),
-            ty.snake_case_name()
-        ));
-    }
 
-    if required.is_empty() && recommended.is_empty() && optional.is_empty() {
-        return;
-    }
+        putln!(page, "### {kind}");
 
-    putln!(page, "## Components");
-    if !required.is_empty() {
+        for field in fields {
+            let Some(fqname) = field.typ.fqname() else {
+                panic!("Archetype field should be object: {:?}", field.name);
+            };
+            let Some(ty) = objects.get(fqname) else {
+                panic!("Archetype field should be object: {:?}", field.name);
+            };
+
+            putln!(
+                page,
+                "* `{}`: [`{}`](../{}/{}.md)",
+                field.name,
+                ty.name,
+                ty.kind.plural_snake_case(),
+                ty.snake_case_name(),
+            );
+        }
+
         putln!(page);
-        putln!(page, "**Required**: {}", required.join(", "));
-    }
-    if !recommended.is_empty() {
-        putln!(page);
-        putln!(page, "**Recommended**: {}", recommended.join(", "));
-    }
-    if !optional.is_empty() {
-        putln!(page);
-        putln!(page, "**Optional**: {}", optional.join(", "));
     }
 
     putln!(page);
-    putln!(page, "## Shown in");
+    putln!(page, "## Can be shown in");
 
     if let Some(view_types) = view_per_archetype.get(&object.fqname) {
         for ViewReference {
