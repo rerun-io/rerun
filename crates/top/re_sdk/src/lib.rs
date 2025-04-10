@@ -33,10 +33,10 @@ pub use self::recording_stream::{
     RecordingStreamResult,
 };
 
-/// The default port of a Rerun gRPC server.
+/// The default port of a Rerun gRPC /proxy server.
 pub const DEFAULT_SERVER_PORT: u16 = re_uri::DEFAULT_PROXY_PORT;
 
-/// The default URL of a Rerun gRPC server.
+/// The default URL of a Rerun gRPC /proxy server.
 ///
 /// This isn't used to _host_ the server, only to _connect_ to it.
 pub const DEFAULT_CONNECT_URL: &str =
