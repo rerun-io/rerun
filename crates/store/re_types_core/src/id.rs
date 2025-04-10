@@ -306,3 +306,31 @@ impl std::ops::DerefMut for RowId {
 }
 
 crate::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
+
+#[test]
+fn test_row_id_parse() {
+    let tuid: re_tuid::Tuid = "182342300C5F8C327a7b4a6e5a379ac4".parse().unwrap();
+
+    assert_eq!(
+        RowId(tuid).to_string(),
+        "row_182342300C5F8C327a7b4a6e5a379ac4"
+    );
+
+    assert_eq!(
+        "182342300C5F8C327a7b4a6e5a379ac4"
+            .parse::<RowId>()
+            .unwrap()
+            .0,
+        tuid
+    );
+    assert_eq!(
+        "row_182342300C5F8C327a7b4a6e5a379ac4"
+            .parse::<RowId>()
+            .unwrap()
+            .0,
+        tuid
+    );
+    assert!("chunk_182342300C5F8C327a7b4a6e5a379ac4"
+        .parse::<RowId>()
+        .is_err());
+}
