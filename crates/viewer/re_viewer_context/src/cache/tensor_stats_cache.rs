@@ -7,8 +7,9 @@ use re_types::{datatypes::TensorData, Component as _};
 
 use crate::{Cache, TensorStats};
 
-/// Caches tensor stats using a [`RowId`], i.e. a specific instance of
-/// a `TensorData` component
+/// Caches tensor stats.
+///
+/// Use [`re_types_core::RowId`] as cache key when available.
 #[derive(Default)]
 pub struct TensorStatsCache(HashMap<Hash64, TensorStats>);
 
