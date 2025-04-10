@@ -44,15 +44,21 @@ impl std::fmt::Display for ChunkId {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid ChunkId: {0}")]
+pub struct InvalidChunkIdError(String);
+
 impl std::str::FromStr for ChunkId {
-    type Err = String;
+    type Err = InvalidChunkIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let tuid_str = if let Some((namespace, tuid_str)) = s.split_once('_') {
             if namespace == "chunk" {
                 tuid_str
             } else {
-                return Err(format!("Invalid ChunkId: expected chunk_ prefix, got {s}"));
+                return Err(InvalidChunkIdError(format!(
+                    "Expected chunk_ prefix, got {s:?}"
+                )));
             }
         } else {
             s
@@ -60,7 +66,7 @@ impl std::str::FromStr for ChunkId {
 
         re_tuid::Tuid::from_str(tuid_str)
             .map(Self)
-            .map_err(|err| format!("Invalid TUID: {err}"))
+            .map_err(|err| InvalidChunkIdError(format!("Invalid TUID: {err}")))
     }
 }
 
@@ -202,15 +208,21 @@ impl std::fmt::Display for RowId {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid RowId: {0}")]
+pub struct InvalidRowIdError(String);
+
 impl std::str::FromStr for RowId {
-    type Err = String;
+    type Err = InvalidRowIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let tuid_str = if let Some((namespace, tuid_str)) = s.split_once('_') {
             if namespace == "row" {
                 tuid_str
             } else {
-                return Err(format!("Invalid RowId: expected row_ prefix, got {s}"));
+                return Err(InvalidRowIdError(format!(
+                    "Expected row_ prefix, got {s:?}"
+                )));
             }
         } else {
             s
@@ -218,7 +230,7 @@ impl std::str::FromStr for RowId {
 
         re_tuid::Tuid::from_str(tuid_str)
             .map(Self)
-            .map_err(|err| format!("Invalid TUID: {err}"))
+            .map_err(|err| InvalidRowIdError(format!("Invalid TUID: {err}")))
     }
 }
 
