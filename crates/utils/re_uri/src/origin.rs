@@ -50,7 +50,7 @@ impl Origin {
     ///  starts with `http://` or `https://`).
     pub(crate) fn replace_and_parse(
         input: &str,
-        default_port: Option<u16>,
+        default_localhost_port: Option<u16>,
     ) -> Result<(Self, url::Url), Error> {
         let scheme: Scheme;
         let rewritten;
@@ -68,6 +68,16 @@ impl Origin {
         // `.set_scheme()` for non-opaque origins, nor does it return a proper
         // `Origin` in that case.
         let mut http_url = url::Url::parse(&rewritten)?;
+
+        let default_port = if is_origin_localhost(&http_url.origin()) {
+            default_localhost_port
+        } else if rewritten.starts_with("https://") {
+            Some(443)
+        } else if rewritten.starts_with("http://") {
+            Some(80)
+        } else {
+            None
+        };
 
         if let Some(default_port) = default_port {
             // Parsing with a non-standard scheme
@@ -117,17 +127,30 @@ impl std::fmt::Display for Origin {
 }
 
 fn format_host(host: &url::Host<String>) -> String {
-    let is_loopback_or_unspecified = match host {
-        url::Host::Domain(_domain) => false,
-        url::Host::Ipv4(ip) => ip.is_loopback() || ip.is_unspecified(),
-        url::Host::Ipv6(ip) => ip.is_loopback() || ip.is_unspecified(),
-    };
-    if is_loopback_or_unspecified {
-        // For instance: we cannot connect to "0.0.0.0",
-        // so we do this trick:
+    if is_host_unspecified(host) {
+        // We usually cannot connect to "0.0.0.0" so we swap it for:
         "127.0.0.1".to_owned()
     } else {
         host.to_string()
+    }
+}
+
+fn is_host_unspecified(host: &url::Host) -> bool {
+    match host {
+        url::Host::Domain(_domain) => false,
+        url::Host::Ipv4(ip) => ip.is_unspecified(),
+        url::Host::Ipv6(ip) => ip.is_unspecified(),
+    }
+}
+
+fn is_origin_localhost(origin: &url::Origin) -> bool {
+    match origin {
+        url::Origin::Opaque(_) => false,
+        url::Origin::Tuple(_, host, _) => match host {
+            url::Host::Domain(domain) => domain == "localhost",
+            url::Host::Ipv4(ip) => ip.is_loopback() || ip.is_unspecified(),
+            url::Host::Ipv6(ip) => ip.is_loopback() || ip.is_unspecified(),
+        },
     }
 }
 

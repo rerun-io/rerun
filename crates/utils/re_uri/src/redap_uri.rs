@@ -60,13 +60,13 @@ impl std::str::FromStr for RedapUri {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         // Hacky, but I don't want to have to memorize ports.
-        let default_port = if value.contains("/proxy") {
+        let default_localhost_port = if value.contains("/proxy") {
             DEFAULT_PROXY_PORT
         } else {
             DEFAULT_REDAP_PORT
         };
 
-        let (origin, http_url) = Origin::replace_and_parse(value, Some(default_port))?;
+        let (origin, http_url) = Origin::replace_and_parse(value, Some(default_localhost_port))?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
@@ -461,7 +461,7 @@ mod tests {
     }
 
     #[test]
-    fn test_defaults() {
+    fn test_parsing() {
         let test_cases = [
             (
                 "rerun://localhost/catalog",
@@ -503,10 +503,55 @@ mod tests {
                     },
                 }),
             ),
+            (
+                "rerun+http://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 80,
+                    },
+                }),
+            ),
+            (
+                "rerun+https://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttps,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 443,
+                    },
+                }),
+            ),
+            (
+                "rerun://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 443,
+                    },
+                }),
+            ),
+            (
+                "rerun://example.com:420/catalog",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 420,
+                    },
+                }),
+            ),
         ];
 
         for (url, expected) in test_cases {
-            assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+            assert_eq!(
+                url.parse::<RedapUri>()
+                    .unwrap_or_else(|err| panic!("Failed to parse url {url:}: {err}")),
+                expected,
+                "Url: {url:?}"
+            );
         }
     }
 
@@ -529,25 +574,6 @@ mod tests {
         let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
-    }
-
-    #[test]
-    #[ignore]
-    // TODO(lucasmerlin): This should ideally work but doesn't right now because of a issue in the `url` crate:
-    // https://github.com/servo/rust-url/issues/957
-    // See also `replace_and_parse` in `origin.rs`
-    fn test_default_port() {
-        let url = "rerun://localhost";
-
-        let expected = RedapUri::Catalog(CatalogUri {
-            origin: Origin {
-                scheme: Scheme::Rerun,
-                host: url::Host::Domain("localhost".to_owned()),
-                port: 51234,
-            },
-        });
-
-        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
     }
 
     #[test]
