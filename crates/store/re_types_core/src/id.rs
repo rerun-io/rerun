@@ -81,6 +81,16 @@ impl ChunkId {
         Self(re_tuid::Tuid::new())
     }
 
+    #[inline]
+    pub fn from_tuid(tuid: re_tuid::Tuid) -> Self {
+        Self(tuid)
+    }
+
+    #[inline]
+    pub fn as_tuid(&self) -> re_tuid::Tuid {
+        self.0
+    }
+
     /// Returns the next logical [`ChunkId`].
     ///
     /// Beware: wrong usage can easily lead to conflicts.
@@ -248,6 +258,11 @@ impl RowId {
     #[inline]
     pub fn from_tuid(tuid: re_tuid::Tuid) -> Self {
         Self(tuid)
+    }
+
+    #[inline]
+    pub fn as_tuid(&self) -> re_tuid::Tuid {
+        self.0
     }
 
     /// Returns the next logical [`RowId`].
