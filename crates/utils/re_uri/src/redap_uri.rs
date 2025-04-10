@@ -1,12 +1,15 @@
 use re_log_types::StoreId;
 
-use crate::{CatalogUri, DatasetDataUri, Error, Fragment, Origin, ProxyUri};
+use crate::{CatalogUri, DatasetDataUri, EntryUri, Error, Fragment, Origin, ProxyUri};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum RedapUri {
     /// `/catalog` - also the default if there is no /endpoint
     Catalog(CatalogUri),
+
+    /// `/entry`
+    Entry(EntryUri),
 
     /// `/dataset`
     DatasetData(DatasetDataUri),
@@ -19,14 +22,14 @@ impl RedapUri {
     /// Return the parsed `#fragment` of the URI, if any.
     pub fn fragment(&self) -> Option<&Fragment> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
             Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
         }
     }
 
     fn partition_id(&self) -> Option<&str> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
             Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.partition_id.as_str()),
         }
     }
@@ -42,6 +45,7 @@ impl std::fmt::Display for RedapUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Catalog(uri) => write!(f, "{uri}",),
+            Self::Entry(uri) => write!(f, "{uri}",),
             Self::DatasetData(uri) => write!(f, "{uri}",),
             Self::Proxy(uri) => write!(f, "{uri}",),
         }
@@ -67,6 +71,12 @@ impl std::str::FromStr for RedapUri {
             ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
 
             ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
+
+            ["entry", entry_id] => {
+                let entry_id =
+                    re_log_types::EntryId::from_str(entry_id).map_err(Error::InvalidTuid)?;
+                Ok(Self::Entry(EntryUri::new(origin, entry_id)))
+            }
 
             ["dataset", dataset_id] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
@@ -109,7 +119,7 @@ mod tests {
 
     use re_log_types::DataPath;
 
-    use crate::{Fragment, Scheme, TimeRange, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT};
+    use crate::{Fragment, Scheme, TimeRange};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -143,6 +153,24 @@ mod tests {
             port: 1234,
         };
         assert_eq!(origin.as_url(), "https://127.0.0.1:1234");
+    }
+
+    #[test]
+    fn test_entry_url_to_address() {
+        let url = "rerun://127.0.0.1:1234/entry/1830B33B45B963E7774455beb91701ae";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::Entry(EntryUri { origin, entry_id }) = address else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            entry_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
     }
 
     #[test]

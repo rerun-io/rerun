@@ -9,6 +9,7 @@ use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
+use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
     DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState, RecordingConfig,
@@ -98,7 +99,7 @@ impl Default for AppState {
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
-            display_mode: DisplayMode::LocalRecordings,
+            display_mode: DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone()),
             show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -126,6 +127,19 @@ impl AppState {
 
     pub fn app_options_mut(&mut self) -> &mut AppOptions {
         &mut self.app_options
+    }
+
+    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
+        if !self.redap_servers.has_server(&origin) {
+            command_sender.send_system(SystemCommand::AddRedapServer(origin));
+        }
+    }
+
+    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
+        // make sure the server exists
+        self.add_redap_server(command_sender, uri.origin.clone());
+
+        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
     }
 
     /// Currently selected section of time, if any.
@@ -384,90 +398,6 @@ impl AppState {
 
         if *show_settings_ui {
             // nothing: this is already handled above
-        } else if storage_context.hub.active_table_id().is_some()
-            && *display_mode == DisplayMode::LocalRecordings
-        {
-            // TODO(grtlr): This is almost a verbatim copy of the code below. Once the dust has settled around the
-            // catalog, we should strive to unify both draw calls.
-            let left_panel = egui::SidePanel::left("left_panel_table")
-                .resizable(true)
-                .frame(egui::Frame {
-                    fill: ui.visuals().panel_fill,
-                    ..Default::default()
-                })
-                .min_width(120.0)
-                .default_width(default_blueprint_panel_width(
-                    ui.ctx().screen_rect().width(),
-                ));
-
-            left_panel.show_animated_inside(
-                ui,
-                app_blueprint.blueprint_panel_state().is_expanded(),
-                |ui: &mut egui::Ui| {
-                    // ListItem don't need vertical spacing so we disable it, but restore it
-                    // before drawing the blueprint panel.
-                    ui.spacing_mut().item_spacing.y = 0.0;
-
-                    if display_mode == &DisplayMode::LocalRecordings {
-                        let resizable = ctx.storage_context.bundle.recordings().count() > 3;
-
-                        if resizable {
-                            // Don't shrink either recordings panel or blueprint panel below this height
-                            let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
-
-                            egui::TopBottomPanel::top("recording_panel")
-                                .frame(egui::Frame::new())
-                                .resizable(resizable)
-                                .show_separator_line(false)
-                                .min_height(min_height_each)
-                                .default_height(210.0)
-                                .max_height(ui.available_height() - min_height_each)
-                                .show_inside(ui, |ui| {
-                                    recordings_panel_ui(
-                                        &ctx,
-                                        rx_log,
-                                        ui,
-                                        welcome_screen_state,
-                                        redap_servers,
-                                    );
-                                });
-                        } else {
-                            recordings_panel_ui(
-                                &ctx,
-                                rx_log,
-                                ui,
-                                welcome_screen_state,
-                                redap_servers,
-                            );
-                        }
-
-                        ui.add_space(4.0);
-                    }
-                },
-            );
-
-            let viewport_frame = egui::Frame {
-                fill: ui.style().visuals.panel_fill,
-                ..Default::default()
-            };
-
-            egui::CentralPanel::default()
-                .frame(viewport_frame)
-                .show_inside(ui, |ui| {
-                    let table_id = ctx
-                        .active_table
-                        .as_ref()
-                        .expect("if we're here, we need to have a table id");
-                    if let Some(store) = ctx.storage_context.tables.get(table_id) {
-                        let context = TableContext {
-                            table_id: table_id.clone(),
-                            store,
-                        };
-                        crate::ui::table_ui(&ctx, ui, &context);
-                    } else {
-                        re_log::error_once!("Could not find batch store for table id {}", table_id);
-                    }
-                });
         } else if *display_mode == DisplayMode::ChunkStoreBrowser {
             let should_datastore_ui_remain_active =
                 datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
@@ -560,8 +490,6 @@ impl AppState {
             // Left panel (recordings and blueprint)
             //
 
-            // TODO(grtlr): This is almost a verbatim copy of the code above for tables. Once the dust has settled
-            // around the catalog, we should strive to unify both draw calls.
             let left_panel = egui::SidePanel::left("blueprint_panel")
                 .resizable(true)
                 .frame(egui::Frame {
@@ -572,10 +500,6 @@ impl AppState {
                 .default_width(default_blueprint_panel_width(
                     ui.ctx().screen_rect().width(),
                 ));
-
-            //TODO(ab): this should better be handled as a specific `DisplayMode`
-            let show_welcome =
-                store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
             left_panel.show_animated_inside(
                 ui,
@@ -589,7 +513,9 @@ impl AppState {
                         DisplayMode::LocalRecordings
                         | DisplayMode::RedapEntry(..)
                         | DisplayMode::RedapServer(..) => {
-                            let resizable = ctx.storage_context.bundle.recordings().count() > 3;
+                            let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
+                            let resizable = ctx.storage_context.bundle.recordings().count() > 3
+                                && show_blueprints;
 
                             if resizable {
                                 // Don't shrink either recordings panel or blueprint panel below this height
@@ -623,7 +549,7 @@ impl AppState {
 
                             ui.add_space(4.0);
 
-                            if !show_welcome {
+                            if show_blueprints {
                                 blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
                             }
                         }
@@ -647,14 +573,29 @@ impl AppState {
                 .show_inside(ui, |ui| {
                     match display_mode {
                         DisplayMode::LocalRecordings => {
-                            if show_welcome {
-                                welcome_screen.ui(
-                                    ui,
-                                    command_sender,
-                                    welcome_screen_state,
-                                    is_history_enabled,
-                                );
+                            if let Some(table_id) = ctx.active_table.as_ref() {
+                                if let Some(store) = ctx.storage_context.tables.get(table_id) {
+                                    let context = TableContext {
+                                        table_id: table_id.clone(),
+                                        store,
+                                    };
+                                    crate::ui::table_ui(&ctx, ui, &context);
+                                } else {
+                                    re_log::error_once!(
+                                        "Could not find batch store for table id {}",
+                                        table_id
+                                    );
+                                }
                             } else {
+                                // If we are here and the "default" app id is selected,
+                                // we should instead switch to the welcome screen.
+                                if ctx.store_context.app_id == StoreHub::welcome_screen_app_id() {
+                                    ctx.command_sender().send_system(
+                                        SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                                            re_redap_browser::EXAMPLES_ORIGIN.clone(),
+                                        )),
+                                    );
+                                }
                                 viewport_ui.viewport_ui(ui, &ctx, view_states);
                             }
                         }
@@ -701,18 +642,20 @@ impl AppState {
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
-            selection_state.clear_selection();
+            self.selection_state.clear_selection();
         }
 
         // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
         if !LabelSelectionState::load(ui.ctx()).has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
-            selection_state.selected_items().copy_to_clipboard(ui.ctx());
+            self.selection_state
+                .selected_items()
+                .copy_to_clipboard(ui.ctx());
         }
 
         // Reset the focused item.
-        *focused_item = None;
+        self.focused_item = None;
     }
 
     #[cfg(target_arch = "wasm32")] // Only used in Wasm
@@ -892,14 +835,14 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
-                    let is_ctalog_uri = matches!(uri, re_uri::RedapUri::Catalog { .. });
+                    let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
 
                     ctx.command_sender()
                         .send_system(SystemCommand::LoadDataSource(
                             re_data_source::DataSource::RerunGrpcStream(uri),
                         ));
 
-                    if is_ctalog_uri && !open_url.new_tab {
+                    if is_dataset_uri && !open_url.new_tab {
                         ctx.command_sender()
                             .send_system(SystemCommand::ChangeDisplayMode(
                                 DisplayMode::LocalRecordings,

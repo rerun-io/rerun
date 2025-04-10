@@ -43,6 +43,7 @@ crossbeam-channel.workspace = true
 egui.workspace = true
 egui_dnd.workspace = true
 egui_table.workspace = true
+itertools.workspace = true
 once_cell.workspace = true
 serde.workspace = true
 thiserror.workspace = true

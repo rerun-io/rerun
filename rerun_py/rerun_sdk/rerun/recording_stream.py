@@ -825,15 +825,21 @@ class RecordingStream:
             Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
 
         """
+        try:
+            from .notebook import Viewer
 
-        from .notebook import notebook_show
-
-        notebook_show(
-            width=width,
-            height=height,
-            blueprint=blueprint,
-            recording=self,
-        )
+            Viewer(
+                width=width,
+                height=height,
+                blueprint=blueprint,
+                recording=self,
+            ).display()
+        except ImportError as e:
+            raise Exception("Could not import rerun_notebook. Please install `rerun-notebook`.") from e
+        except FileNotFoundError as e:
+            raise Exception(
+                "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
+            ) from e
 
     def send_property(
         self,
