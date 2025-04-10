@@ -64,7 +64,7 @@ impl RowIdColumnDescriptor {
             (
                 // Storing the metadata as JSON as is the convention…
                 "ARROW:extension:metadata".to_owned(),
-                r#"{ "namespace": "row" }"#.to_owned(), // for row_ prefix
+                r#"{"namespace":"row"}"#.to_owned(), // for row_ prefix
             ),
         ]);
         if *is_sorted {

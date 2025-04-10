@@ -204,7 +204,7 @@ impl std::fmt::Display for DisplayMetadata {
         f.write_str(
             &metadata
                 .iter()
-                .map(|(key, value)| format!("{prefix}{}: {:?}", trim_name(key), trim_name(value)))
+                .map(|(key, value)| format!("{prefix}{}: {}", trim_name(key), trim_name(value)))
                 .collect_vec()
                 .join("\n"),
         )
@@ -212,7 +212,8 @@ impl std::fmt::Display for DisplayMetadata {
 }
 
 fn trim_name(name: &str) -> &str {
-    name.trim_start_matches("rerun.archetypes.")
+    name.trim()
+        .trim_start_matches("rerun.archetypes.")
         .trim_start_matches("rerun.components.")
         .trim_start_matches("rerun.datatypes.")
         .trim_start_matches("rerun.controls.")
@@ -434,13 +435,13 @@ fn format_dataframe_without_metadata(
             Either::Left(fields.iter().map(|field| {
                 if field.metadata().is_empty() {
                     Cell::new(format!(
-                        "{}\n---\ntype: \"{}\"", // NOLINT
+                        "{}\n---\ntype: {}",
                         trim_name(field.name()),
                         DisplayDatatype(field.data_type()),
                     ))
                 } else {
                     Cell::new(format!(
-                        "{}\n---\ntype: \"{}\"\n{}", // NOLINT
+                        "{}\n---\ntype: {}\n{}",
                         trim_name(field.name()),
                         DisplayDatatype(field.data_type()),
                         DisplayMetadata {
