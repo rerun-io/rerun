@@ -113,7 +113,7 @@ impl StoreId {
     pub fn random(kind: StoreKind) -> Self {
         Self {
             kind,
-            id: Arc::new(uuid::Uuid::new_v4().to_string()),
+            id: Arc::new(uuid::Uuid::new_v4().simple().to_string()),
         }
     }
 
@@ -126,7 +126,7 @@ impl StoreId {
     pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
             kind,
-            id: Arc::new(uuid.to_string()),
+            id: Arc::new(uuid.simple().to_string()),
         }
     }
 
@@ -189,6 +189,11 @@ impl ApplicationId {
 
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    /// A randomly generated app id
+    pub fn random() -> Self {
+        Self(format!("app_{}", uuid::Uuid::new_v4().simple()))
     }
 }
 
