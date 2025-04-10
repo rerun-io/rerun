@@ -12,11 +12,16 @@ it's generally recommended to log this type as static.
 The underlying data needs to be logged to the same entity-path using [`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-link).
 Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 
-## Components
+## Fields
+### Optional
+* `colors`: [`Color`](../components/color.md)
+* `markers`: [`MarkerShape`](../components/marker_shape.md)
+* `names`: [`Name`](../components/name.md)
+* `visible_series`: [`SeriesVisible`](../components/series_visible.md)
+* `marker_sizes`: [`MarkerSize`](../components/marker_size.md)
 
-**Optional**: [`Color`](../components/color.md), [`MarkerShape`](../components/marker_shape.md), [`Name`](../components/name.md), [`SeriesVisible`](../components/series_visible.md), [`MarkerSize`](../components/marker_size.md)
 
-## Shown in
+## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

@@ -14,11 +14,12 @@ path.
 
 See also [`datatypes.ClassDescription`](https://rerun.io/docs/reference/types/datatypes/class_description).
 
-## Components
+## Fields
+### Required
+* `context`: [`AnnotationContext`](../components/annotation_context.md)
 
-**Required**: [`AnnotationContext`](../components/annotation_context.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md)
 * [DataframeView](../views/dataframe_view.md)

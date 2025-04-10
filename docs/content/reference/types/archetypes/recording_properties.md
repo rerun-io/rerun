@@ -5,11 +5,13 @@ title: "RecordingProperties"
 
 A list of properties associated with a recording.
 
-## Components
+## Fields
+### Optional
+* `start_time`: [`Timestamp`](../components/timestamp.md)
+* `name`: [`Name`](../components/name.md)
 
-**Optional**: [`Timestamp`](../components/timestamp.md), [`Name`](../components/name.md)
 
-## Shown in
+## Can be shown in
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links

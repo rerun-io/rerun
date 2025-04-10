@@ -5,15 +5,23 @@ title: "Boxes2D"
 
 2D boxes with half-extents and optional center, colors etc.
 
-## Components
+## Fields
+### Required
+* `half_sizes`: [`HalfSize2D`](../components/half_size2d.md)
 
-**Required**: [`HalfSize2D`](../components/half_size2d.md)
+### Recommended
+* `centers`: [`Position2D`](../components/position2d.md)
+* `colors`: [`Color`](../components/color.md)
 
-**Recommended**: [`Position2D`](../components/position2d.md), [`Color`](../components/color.md)
+### Optional
+* `radii`: [`Radius`](../components/radius.md)
+* `labels`: [`Text`](../components/text.md)
+* `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `draw_order`: [`DrawOrder`](../components/draw_order.md)
+* `class_ids`: [`ClassId`](../components/class_id.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)
