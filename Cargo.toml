@@ -330,7 +330,7 @@ url = "2.3"
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
-walkers = "0.34.0"
+walkers = "0.36.0"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
