@@ -147,6 +147,11 @@ features = [
   "cpp",
   "rust",
 ]
+"howto/send_table" = [
+  "py",   # Requires a server to connect to
+  "cpp",  # Doesn't exist
+  "rust", # Doesn't exist
+]
 "views" = [
   "cpp",  # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented
