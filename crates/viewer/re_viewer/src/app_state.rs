@@ -671,8 +671,9 @@ impl AppState {
                                     welcome_screen_state,
                                     is_history_enabled,
                                 );
+                            } else {
+                                redap_servers.server_central_panel_ui(&ctx, ui, origin);
                             }
-                            // Servers have no ui yet
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above
