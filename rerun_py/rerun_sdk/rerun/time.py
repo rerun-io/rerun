@@ -195,7 +195,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_time(timestamp=seconds)` or set_time(duration=seconds)` instead.
+    """Use `set_time(timestamp=seconds)` or `set_time(duration=seconds)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
@@ -243,7 +243,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
 
 @deprecated(
-    """Use `set_time(timestamp=1e-9 * nanos)` or set_time(duration=1e-9 * nanos)` instead.
+    """Use `set_time(timestamp=1e-9 * nanos)` or `set_time(duration=1e-9 * nanos)` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
@@ -320,7 +320,7 @@ def reset_time(recording: RecordingStream | None = None) -> None:
     This is the same as calling `disable_timeline` for all of the active timelines.
 
     Used for all subsequent logging on the same thread,
-    until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
+    until the next call to [`rerun.set_time`][].
 
     Parameters
     ----------
