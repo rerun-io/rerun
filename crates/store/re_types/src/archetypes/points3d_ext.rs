@@ -1,6 +1,21 @@
 use std::collections::BTreeSet;
+use std::path::PathBuf;
+use thiserror::Error;
 
 use super::Points3D;
+
+#[derive(Debug, Error)]
+pub enum Points3DResult {
+    #[error("failed to open file {filepath:?}")]
+    ReadError {
+        filepath: PathBuf,
+        //#[source]
+        //source: std::io::Error,
+    },
+
+    #[error("failed to parse .ply data")]
+    ParseError,
+}
 
 impl Points3D {
     /// Creates a new [`Points3D`] from a `.ply` file.
@@ -15,18 +30,21 @@ impl Points3D {
     ///
     /// The media type will be inferred from the path (extension), or the contents if that fails.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn from_file_path(filepath: &std::path::Path) -> anyhow::Result<Self> {
+    pub fn from_file_path(filepath: &std::path::Path) -> Result<Self, Points3DResult> {
         re_tracing::profile_function!(filepath.to_string_lossy());
-        use anyhow::Context as _;
 
-        let file = std::fs::File::open(filepath)
-            .with_context(|| format!("Failed to open file {filepath:?}"))?;
+        let file = std::fs::File::open(filepath).map_err(|_err| Points3DResult::ReadError {
+            filepath: filepath.to_owned(),
+        })?;
+
         let mut file = std::io::BufReader::new(file);
 
         let parser = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new();
         let ply = {
             re_tracing::profile_scope!("read_ply");
-            parser.read_ply(&mut file)?
+            parser
+                .read_ply(&mut file)
+                .map_err(|_err| Points3DResult::ParseError)?
         };
 
         Ok(from_ply(ply))
@@ -35,13 +53,15 @@ impl Points3D {
     /// Creates a new [`Points3D`] from the contents of a `.ply` file.
     ///
     /// If unspecified, he media type will be inferred from the contents.
-    pub fn from_file_contents(contents: &[u8]) -> anyhow::Result<Self> {
+    pub fn from_file_contents(contents: &[u8]) -> Result<Self, Points3DResult> {
         re_tracing::profile_function!();
         let parser = ply_rs::parser::Parser::<ply_rs::ply::DefaultElement>::new();
         let mut contents = std::io::Cursor::new(contents);
         let ply = {
             re_tracing::profile_scope!("read_ply");
-            parser.read_ply(&mut contents)?
+            parser
+                .read_ply(&mut contents)
+                .map_err(|_| Points3DResult::ParseError)?
         };
         Ok(from_ply(ply))
     }

@@ -276,9 +276,9 @@ pub use re_types_core::*;
 pub mod external {
     pub use re_types_core;
 
-    pub use anyhow;
     pub use arrow;
     pub use ndarray;
+    pub use thiserror;
     pub use uuid;
 
     #[cfg(feature = "ecolor")]
