@@ -112,7 +112,7 @@ fn recording_list_ui(
         local_recordings,
     } = re_redap_browser::sort_datasets(ctx);
 
-    servers.server_list_ui(ui, ctx, remote_recordings);
+    servers.server_list_ui(ctx, ui, remote_recordings);
 
     // Show placeholder message if there's absolutely nothing else to show.
     if ctx.storage_context.tables.is_empty()

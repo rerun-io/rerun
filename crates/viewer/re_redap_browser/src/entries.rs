@@ -101,6 +101,18 @@ impl Entries {
         self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
+    pub fn dataset_count(&self) -> Option<Result<usize, &EntryError>> {
+        self.datasets
+            .try_as_ref()
+            .map(|r| r.as_ref().map(|datasets| datasets.len()))
+    }
+
+    #[expect(clippy::unused_self)]
+    pub fn table_count(&self) -> usize {
+        //TODO(ab): hopefully we have tables there soon!
+        0
+    }
+
     /// [`list_item::ListItem`]-based UI for the datasets.
     pub fn panel_ui(
         &self,
