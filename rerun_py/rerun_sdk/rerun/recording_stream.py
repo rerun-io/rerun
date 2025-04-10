@@ -16,7 +16,6 @@ from typing_extensions import deprecated
 import rerun as rr
 from rerun import bindings
 from rerun.memory import MemoryRecording
-from rerun.time import reset_time
 
 if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch
