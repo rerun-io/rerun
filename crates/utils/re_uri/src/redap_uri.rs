@@ -364,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_localhost_url() {
-        let url = "rerun+http://localhost:50051/catalog";
+        let url = "rerun+http://localhost:51234/catalog";
         let address: RedapUri = url.parse().unwrap();
 
         assert_eq!(
@@ -373,7 +373,7 @@ mod tests {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::<String>::Domain("localhost".to_owned()),
-                    port: 50051
+                    port: 51234
                 }
             })
         );
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_invalid_path() {
-        let url = "rerun://0.0.0.0:50051/redap/recordings/12345";
+        let url = "rerun://0.0.0.0:51234/redap/recordings/12345";
         let address: Result<RedapUri, _> = url.parse();
 
         assert!(matches!(
@@ -424,20 +424,20 @@ mod tests {
 
     #[test]
     fn test_catalog_default() {
-        let url = "rerun://localhost:50051";
+        let url = "rerun://localhost:51234";
         let address: Result<RedapUri, _> = url.parse();
 
         let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
-                port: 50051,
+                port: 51234,
             },
         });
 
         assert_eq!(address.unwrap(), expected);
 
-        let url = "rerun://localhost:50051/";
+        let url = "rerun://localhost:51234/";
         let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
