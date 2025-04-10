@@ -320,7 +320,7 @@ def reset_time(recording: RecordingStream | None = None) -> None:
     This is the same as calling `disable_timeline` for all of the active timelines.
 
     Used for all subsequent logging on the same thread,
-    until the next call to [`rerun.set_time_nanos`][] or [`rerun.set_time_seconds`][].
+    until the next call to [`rerun.set_time`][].
 
     Parameters
     ----------

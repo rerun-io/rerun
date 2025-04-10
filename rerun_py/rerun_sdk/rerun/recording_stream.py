@@ -1088,7 +1088,18 @@ class RecordingStream:
 
         disable_timeline(timeline=timeline, recording=self)
 
-    reset_time = reset_time
+    # TODO(emilk): rename to something with the word `index`, and maybe unify with `disable_timeline`?
+    def reset_time(self) -> None:
+        """
+        Clear all timeline information on this thread.
+
+        This is the same as calling `disable_timeline` for all of the active timelines.
+
+        Used for all subsequent logging on the same thread,
+        until the next call to [`rerun.RecordingStream.set_time`][].
+        """
+
+        bindings.reset_time(recording=self.to_native())
 
     def log(
         self,
