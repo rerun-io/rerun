@@ -48,7 +48,10 @@ impl Origin {
 
     /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
     ///  starts with `http://` or `https://`).
-    pub(crate) fn replace_and_parse(input: &str) -> Result<(Self, url::Url), Error> {
+    pub(crate) fn replace_and_parse(
+        input: &str,
+        default_port: Option<u16>,
+    ) -> Result<(Self, url::Url), Error> {
         let scheme: Scheme;
         let rewritten;
 
@@ -66,27 +69,25 @@ impl Origin {
         // `Origin` in that case.
         let mut http_url = url::Url::parse(&rewritten)?;
 
-        let mut has_port = true;
-        {
+        if let Some(default_port) = default_port {
             // Parsing with a non-standard scheme
             // is a hack to work around the `url` crate bug
             // <https://github.com/servo/rust-url/issues/957>.
-            if let Some(rest) = http_url.to_string().strip_prefix("http://") {
-                has_port = url::Url::parse(&format!("foobarbaz://{rest}"))?
+            let has_port = if let Some(rest) = http_url.to_string().strip_prefix("http://") {
+                url::Url::parse(&format!("foobarbaz://{rest}"))?
                     .port()
-                    .is_some();
+                    .is_some()
             } else if let Some(rest) = http_url.to_string().strip_prefix("https://") {
-                has_port = url::Url::parse(&format!("foobarbaz://{rest}"))?
+                url::Url::parse(&format!("foobarbaz://{rest}"))?
                     .port()
-                    .is_some();
+                    .is_some()
             } else {
-                // Should not happen.
+                true // Should not happen.
             };
-        }
 
-        if !has_port {
-            // If no port is specified, we assume the default:
-            http_url.set_port(Some(crate::DEFAULT_PROXY_PORT)).ok();
+            if !has_port {
+                http_url.set_port(Some(default_port)).ok();
+            }
         }
 
         let url::Origin::Tuple(_, host, port) = http_url.origin() else {
@@ -103,7 +104,7 @@ impl std::str::FromStr for Origin {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        Self::replace_and_parse(value).map(|(origin, _)| origin)
+        Self::replace_and_parse(value, None).map(|(origin, _)| origin)
     }
 }
 

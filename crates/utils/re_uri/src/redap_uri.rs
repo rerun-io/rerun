@@ -1,6 +1,9 @@
 use re_log_types::StoreId;
 
-use crate::{CatalogUri, DatasetDataUri, EntryUri, Error, Fragment, Origin, ProxyUri};
+use crate::{
+    CatalogUri, DatasetDataUri, EntryUri, Error, Fragment, Origin, ProxyUri, DEFAULT_PROXY_PORT,
+    DEFAULT_REDAP_PORT,
+};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -56,7 +59,14 @@ impl std::str::FromStr for RedapUri {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let (origin, http_url) = Origin::replace_and_parse(value)?;
+        // Hacky, but I don't want to have to memorize ports.
+        let default_port = if value.contains("/proxy") {
+            DEFAULT_PROXY_PORT
+        } else {
+            DEFAULT_REDAP_PORT
+        };
+
+        let (origin, http_url) = Origin::replace_and_parse(value, Some(default_port))?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
@@ -431,23 +441,73 @@ mod tests {
 
     #[test]
     fn test_proxy_endpoint() {
-        let url = "rerun://localhost:9876/proxy";
+        let url = "rerun://localhost:51234/proxy";
         let address: Result<RedapUri, _> = url.parse();
 
         let expected = RedapUri::Proxy(ProxyUri {
             origin: Origin {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
-                port: 9876,
+                port: 51234,
             },
         });
 
         assert_eq!(address.unwrap(), expected);
 
-        let url = "rerun://localhost:9876/proxy/";
+        let url = "rerun://localhost:51234/proxy/";
         let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
+    }
+
+    #[test]
+    fn test_defaults() {
+        let test_cases = [
+            (
+                "rerun://localhost/catalog",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_REDAP_PORT,
+                    },
+                }),
+            ),
+            (
+                "localhost",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_REDAP_PORT,
+                    },
+                }),
+            ),
+            (
+                "localhost/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_PROXY_PORT,
+                    },
+                }),
+            ),
+            (
+                "127.0.0.1/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                        port: DEFAULT_PROXY_PORT,
+                    },
+                }),
+            ),
+        ];
+
+        for (url, expected) in test_cases {
+            assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+        }
     }
 
     #[test]
@@ -472,6 +532,25 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
+    // TODO(lucasmerlin): This should ideally work but doesn't right now because of a issue in the `url` crate:
+    // https://github.com/servo/rust-url/issues/957
+    // See also `replace_and_parse` in `origin.rs`
+    fn test_default_port() {
+        let url = "rerun://localhost";
+
+        let expected = RedapUri::Catalog(CatalogUri {
+            origin: Origin {
+                scheme: Scheme::Rerun,
+                host: url::Host::Domain("localhost".to_owned()),
+                port: 51234,
+            },
+        });
+
+        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
+    }
+
+    #[test]
     fn test_custom_port() {
         let url = "rerun://localhost:123";
 
@@ -484,35 +563,5 @@ mod tests {
         });
 
         assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
-    }
-
-    #[test]
-    fn test_default_localhost_scheme() {
-        let test_cases = [
-            (
-                "localhost:123",
-                RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: 123,
-                    },
-                }),
-            ),
-            (
-                "127.0.0.1:1234/proxy",
-                RedapUri::Proxy(ProxyUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
-                        port: 1234,
-                    },
-                }),
-            ),
-        ];
-
-        for (url, expected) in test_cases {
-            assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
-        }
     }
 }
