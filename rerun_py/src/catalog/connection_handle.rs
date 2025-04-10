@@ -1,13 +1,11 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
 use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
-use tokio::sync::Mutex;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{LatestAtQuery, RangeQuery};
@@ -40,19 +38,13 @@ pub struct ConnectionHandle {
 
     /// The actual tonic connection.
     client: FrontendServiceClient<tonic::transport::Channel>,
-
-    schema_cache: std::sync::Arc<Mutex<HashMap<EntryId, ArrowSchema>>>,
 }
 
 impl ConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
         let client = wait_for_future(py, client(origin.clone())).map_err(to_py_err)?;
 
-        Ok(Self {
-            origin,
-            client,
-            schema_cache: Default::default(),
-        })
+        Ok(Self { origin, client })
     }
 
     pub fn client(&self) -> FrontendServiceClient<tonic::transport::Channel> {
@@ -156,14 +148,7 @@ impl ConnectionHandle {
         entry_id: EntryId,
     ) -> PyResult<ArrowSchema> {
         wait_for_future(py, async {
-            let mut cache = self.schema_cache.lock().await;
-
-            // TODO(rerun-io/dataplatform#521): Remove this cache once the response is faster
-            if let Some(schema) = cache.get(&entry_id) {
-                return Ok(schema.clone());
-            }
-            let schema = self
-                .client
+            self.client
                 .get_dataset_schema(GetDatasetSchemaRequest {
                     dataset_id: Some(entry_id.into()),
                 })
@@ -171,11 +156,7 @@ impl ConnectionHandle {
                 .map_err(to_py_err)?
                 .into_inner()
                 .schema()
-                .map_err(to_py_err)?;
-
-            cache.insert(entry_id, schema.clone());
-
-            Ok(schema)
+                .map_err(to_py_err)
         })
     }
 
