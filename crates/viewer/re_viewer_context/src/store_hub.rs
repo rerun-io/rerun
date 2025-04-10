@@ -597,7 +597,7 @@ impl StoreHub {
     /// Activate a recording by its [`TableId`].
     fn set_activate_table(&mut self, table_id: TableId) {
         self.active_entry = Some(StoreHubEntry::Table { table_id });
-        self.active_application_id = Some(StoreHub::table_app_id());
+        self.active_application_id = Some(Self::table_app_id());
     }
 
     // ---------------------
