@@ -54,6 +54,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.release-commit }}
+          lfs: true
 
       - id: "auth"
         uses: google-github-actions/auth@v2

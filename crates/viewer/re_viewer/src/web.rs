@@ -3,12 +3,15 @@
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
 use ahash::HashMap;
+use arrow::array::RecordBatch;
 use serde::Deserialize;
 use std::rc::Rc;
 use std::str::FromStr as _;
+use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
+use re_log_types::{TableId, TableMsg};
 use re_memory::AccountingAllocator;
 use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
 
@@ -22,6 +25,11 @@ use crate::web_tools::{
 static GLOBAL: AccountingAllocator<std::alloc::System> =
     AccountingAllocator::new(std::alloc::System);
 
+struct Channel {
+    log_tx: re_smart_channel::Sender<re_log_types::LogMsg>,
+    table_tx: crossbeam::channel::Sender<re_log_types::TableMsg>,
+}
+
 #[wasm_bindgen]
 pub struct WebHandle {
     runner: eframe::WebRunner,
@@ -30,7 +38,7 @@ pub struct WebHandle {
     ///
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
-    tx_channels: HashMap<String, re_smart_channel::Sender<re_log_types::LogMsg>>,
+    tx_channels: HashMap<String, Channel>,
 
     app_options: AppOptions,
 }
@@ -187,7 +195,7 @@ impl WebHandle {
             url.to_owned(),
             app.command_sender.clone(),
         ) {
-            app.add_receiver(rx);
+            app.add_log_receiver(rx);
         }
     }
 
@@ -216,15 +224,18 @@ impl WebHandle {
             return;
         }
 
-        let (tx, rx) = re_smart_channel::smart_channel(
+        let (log_tx, log_rx) = re_smart_channel::smart_channel(
             re_smart_channel::SmartMessageSource::JsChannelPush,
             re_smart_channel::SmartChannelSource::JsChannel {
                 channel_name: channel_name.to_owned(),
             },
         );
+        let (table_tx, table_rx) = crossbeam::channel::unbounded();
 
-        app.add_receiver(rx);
-        self.tx_channels.insert(id.to_owned(), tx);
+        app.add_log_receiver(log_rx);
+        app.add_table_receiver(table_rx);
+        self.tx_channels
+            .insert(id.to_owned(), Channel { log_tx, table_tx });
     }
 
     /// Close an existing channel for streaming data.
@@ -236,8 +247,11 @@ impl WebHandle {
             return;
         };
 
-        if let Some(tx) = self.tx_channels.remove(id) {
-            tx.quit(None).warn_on_err_once("Failed to send quit marker");
+        if let Some(Channel { log_tx, table_tx }) = self.tx_channels.remove(id) {
+            log_tx
+                .quit(None)
+                .warn_on_err_once("Failed to send quit marker");
+            drop(table_tx);
         }
 
         // Request a repaint since closing the channel may update the top bar.
@@ -253,7 +267,8 @@ impl WebHandle {
             return;
         };
 
-        if let Some(tx) = self.tx_channels.get(id).cloned() {
+        if let Some(channel) = self.tx_channels.get(id) {
+            let tx = channel.log_tx.clone();
             let data: Vec<u8> = data.to_vec();
 
             let egui_ctx = app.egui_ctx.clone();
@@ -290,6 +305,51 @@ impl WebHandle {
                     }
                 }),
             );
+        }
+    }
+
+    #[wasm_bindgen]
+    pub fn send_table_to_channel(&self, id: &str, data: &[u8]) {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if let Some(channel) = self.tx_channels.get(id) {
+            let tx = channel.table_tx.clone();
+
+            let cursor = std::io::Cursor::new(data);
+            let stream_reader = match arrow::ipc::reader::StreamReader::try_new(cursor, None) {
+                Ok(stream_reader) => stream_reader,
+                Err(err) => {
+                    re_log::error_once!("Failed to interpret data as IPC-encoded arrow: {err}");
+                    return;
+                }
+            };
+
+            let encoded = match stream_reader.collect::<Result<Vec<_>, _>>() {
+                Ok(encoded) => encoded,
+                Err(err) => {
+                    re_log::error_once!("Could not read from IPC stream: {err}");
+                    return;
+                }
+            };
+
+            let msg = match from_arrow_encoded(&encoded[0]) {
+                Ok(msg) => msg,
+                Err(err) => {
+                    re_log::error_once!("Failed to decode Arrow message: {err}");
+                    return;
+                }
+            };
+
+            let egui_ctx = app.egui_ctx.clone();
+
+            match tx.send(msg) {
+                Ok(_) => egui_ctx.request_repaint_after(std::time::Duration::from_millis(10)),
+                Err(err) => {
+                    re_log::info_once!("Failed to dispatch log message to viewer: {err}");
+                }
+            };
         }
     }
 
@@ -343,8 +403,7 @@ impl WebHandle {
         if !hub.store_bundle().contains(&store_id) {
             return None;
         };
-
-        let rec_cfg = state.recording_config_mut(&store_id)?;
+        let rec_cfg = state.recording_config(&store_id)?;
         let time_ctrl = rec_cfg.time_ctrl.read();
         Some(time_ctrl.timeline().name().as_str().to_owned())
     }
@@ -374,8 +433,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let rec_cfg =
-            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
 
         let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
             re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
@@ -425,8 +483,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let rec_cfg =
-            recording_config_entry(&mut state.recording_configs, store_id.clone(), recording);
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
         let Some(timeline) = recording.timelines().get(&timeline_name.into()).copied() else {
             re_log::warn!("Failed to find timeline '{timeline_name}' in {store_id}");
             return;
@@ -521,7 +578,7 @@ impl WebHandle {
         let Some(recording) = hub.store_bundle().get(&store_id) else {
             return;
         };
-        let rec_cfg = recording_config_entry(&mut state.recording_configs, store_id, recording);
+        let rec_cfg = recording_config_entry(&mut state.recording_configs, recording);
 
         let play_state = if value {
             re_viewer_context::PlayState::Playing
@@ -843,4 +900,100 @@ pub fn set_email(email: String) {
     let mut config = re_analytics::Config::load().unwrap().unwrap_or_default();
     config.opt_in_metadata.insert("email".into(), email.into());
     config.save().unwrap();
+}
+
+/// Returns the [`TableMsg`] back from a encoded record batch.
+// This is required to send bytes around in the notebook.
+// If you ever change this, you also need to adapt `notebook.py` too.
+pub fn from_arrow_encoded(data: &RecordBatch) -> Result<TableMsg, Box<dyn std::error::Error>> {
+    let mut metadata = data.schema().metadata().clone();
+    let id = metadata
+        .remove("__table_id")
+        .ok_or("encoded record batch is missing `__table_id` metadata.")?;
+
+    let data = RecordBatch::try_new(
+        Arc::new(arrow::datatypes::Schema::new_with_metadata(
+            data.schema().fields().clone(),
+            metadata,
+        )),
+        data.columns().to_vec(),
+    )?;
+
+    Ok(TableMsg {
+        id: TableId::new(id),
+        data,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arrow::ArrowError;
+
+    /// Returns the [`TableMsg`] encoded as a record batch.
+    // This is required to send bytes to a viewer running in a notebook.
+    // If you ever change this, you also need to adapt `notebook.py` too.
+    pub fn to_arrow_encoded(table: &TableMsg) -> Result<RecordBatch, ArrowError> {
+        let current_schema = table.data.schema();
+        let mut metadata = current_schema.metadata().clone();
+        metadata.insert("__table_id".to_owned(), table.id.as_str().to_owned());
+
+        // Create a new schema with the updated metadata
+        let new_schema = Arc::new(arrow::datatypes::Schema::new_with_metadata(
+            current_schema.fields().clone(),
+            metadata,
+        ));
+
+        // Create a new record batch with the same data but updated schema
+        RecordBatch::try_new(new_schema, table.data.columns().to_vec())
+    }
+
+    #[test]
+    fn table_msg_encoded_roundtrip() {
+        use arrow::{
+            array::{ArrayRef, StringArray, UInt64Array},
+            datatypes::{DataType, Field, Schema},
+        };
+
+        let data = {
+            let schema = Arc::new(Schema::new_with_metadata(
+                vec![
+                    Field::new("id", DataType::UInt64, false),
+                    Field::new("name", DataType::Utf8, false),
+                ],
+                Default::default(),
+            ));
+
+            // Create a UInt64 array
+            let id_array = UInt64Array::from(vec![1, 2, 3, 4, 5]);
+
+            // Create a String array
+            let name_array = StringArray::from(vec![
+                "Alice",
+                "Bob",
+                "Charlie",
+                "Dave",
+                "http://www.rerun.io",
+            ]);
+
+            // Convert arrays to ArrayRef (trait objects)
+            let arrays: Vec<ArrayRef> = vec![
+                Arc::new(id_array) as ArrayRef,
+                Arc::new(name_array) as ArrayRef,
+            ];
+
+            // Create a RecordBatch
+            ArrowRecordBatch::try_new(schema, arrays).unwrap()
+        };
+
+        let msg = TableMsg {
+            id: TableId::new("test123".to_owned()),
+            data,
+        };
+
+        let encoded = to_arrow_encoded(&msg).expect("to encoded failed");
+        let decoded = from_arrow_encoded(&encoded).expect("from concatenated failed");
+
+        assert_eq!(msg, decoded);
+    }
 }

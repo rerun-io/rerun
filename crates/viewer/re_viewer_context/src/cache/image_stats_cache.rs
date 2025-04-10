@@ -1,23 +1,22 @@
 use ahash::{HashMap, HashSet};
 use itertools::Either;
 
-use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::Component as _;
 
 use crate::{Cache, ImageInfo, ImageStats};
 
-// Caches image stats using a [`RowId`]
+// Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]
-pub struct ImageStatsCache(HashMap<RowId, HashMap<Hash64, ImageStats>>);
+pub struct ImageStatsCache(HashMap<Hash64, HashMap<Hash64, ImageStats>>);
 
 impl ImageStatsCache {
     pub fn entry(&mut self, image: &ImageInfo) -> ImageStats {
         let inner_key = Hash64::hash(image.format);
         *self
             .0
-            .entry(image.buffer_row_id)
+            .entry(image.buffer_cache_key)
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| ImageStats::from_image(image))
@@ -32,7 +31,7 @@ impl Cache for ImageStatsCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let row_ids_removed: HashSet<RowId> = events
+        let cache_key_removed: HashSet<Hash64> = events
             .iter()
             .flat_map(|event| {
                 let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
@@ -44,7 +43,7 @@ impl Cache for ImageStatsCache {
                 };
 
                 if is_deletion() && contains_image_blob() {
-                    Either::Left(event.chunk.row_ids())
+                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
                 } else {
                     Either::Right(std::iter::empty())
                 }
@@ -52,7 +51,7 @@ impl Cache for ImageStatsCache {
             .collect();
 
         self.0
-            .retain(|row_id, _per_key| !row_ids_removed.contains(row_id));
+            .retain(|cache_key, _per_key| !cache_key_removed.contains(cache_key));
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

@@ -14,11 +14,12 @@ is referenced by [`archetypes.SeriesLines`](https://rerun.io/docs/reference/type
 this by logging both archetypes to the same path, or alternatively configuring
 the plot-specific archetypes through the blueprint.
 
-## Components
+## Fields
+### Required
+* `scalars`: [`Scalar`](../components/scalar.md)
 
-**Required**: [`Scalar`](../components/scalar.md)
 
-## Shown in
+## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

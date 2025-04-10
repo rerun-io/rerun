@@ -352,7 +352,10 @@ SCENARIO("RecordingStream can serve grpc", TEST_TAG) {
     GIVEN("a new serving RecordingStream") {
         rerun::RecordingStream stream("test-local");
         THEN("serve_grpc call succeeds") {
-            CHECK(stream.serve_grpc("0.0.0.0", 21521).code == rerun::ErrorCode::Ok);
+            CHECK(
+                stream.serve_grpc("0.0.0.0", 21521).value_or_throw() ==
+                "rerun+http://0.0.0.0:21521/proxy"
+            );
         }
     }
 }

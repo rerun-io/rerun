@@ -1109,11 +1109,25 @@ impl ObjectField {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FieldKind {
     Required,
     Recommended,
     Optional,
+}
+
+impl FieldKind {
+    pub const ALL: [Self; 3] = [Self::Required, Self::Recommended, Self::Optional];
+}
+
+impl std::fmt::Display for FieldKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Required => "Required".fmt(f),
+            Self::Recommended => "Recommended".fmt(f),
+            Self::Optional => "Optional".fmt(f),
+        }
+    }
 }
 
 /// The underlying type of an [`ObjectField`].

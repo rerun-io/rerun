@@ -1,8 +1,6 @@
 //! Send a `.rrd` to a new recording stream.
 
 use rerun::external::re_chunk_store::{ChunkStore, ChunkStoreConfig};
-use rerun::external::re_log_types::{LogMsg, SetStoreInfo};
-use rerun::external::re_tuid::Tuid;
 use rerun::VersionPolicy;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,16 +17,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use the same app and recording IDs as the original.
     if let Some(info) = store.info().cloned() {
         let new_recording = rerun::RecordingStreamBuilder::new(info.application_id.clone())
-            .recording_id(store_id.to_string())
+            .store_id(store_id)
             .spawn()?;
 
-        new_recording.record_msg(LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: Tuid::new(),
-            info,
-        }));
-
         // Forward all chunks to the new recording stream.
-        new_recording.send_chunks(store.iter_chunks().map(|chunk| (**chunk).clone()));
+        for chunk in store.iter_chunks() {
+            new_recording.send_chunk((**chunk).clone());
+        }
     }
 
     Ok(())

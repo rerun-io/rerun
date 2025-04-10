@@ -1,3 +1,4 @@
+use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::EncodedImage,
     components::{Blob, DrawOrder, MediaType, Opacity},
@@ -160,7 +161,7 @@ impl EncodedImageVisualizer {
                 .store_context
                 .caches
                 .entry(|c: &mut ImageDecodeCache| {
-                    c.entry(tensor_data_row_id, blob, media_type.as_ref())
+                    c.entry(Hash64::hash(tensor_data_row_id), blob, media_type.as_ref())
                 });
 
             let image = match image {

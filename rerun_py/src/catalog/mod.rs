@@ -17,11 +17,13 @@ use arrow::{
 use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
+
 pub use catalog_client::PyCatalogClient;
 pub use connection_handle::ConnectionHandle;
 pub use dataset::PyDataset;
 pub use entry::{PyEntry, PyEntryId, PyEntryKind};
 pub use errors::to_py_err;
+pub use table::PyTable;
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -30,8 +32,8 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntryId>()?;
     m.add_class::<PyEntryKind>()?;
     m.add_class::<PyEntry>()?;
-
     m.add_class::<PyDataset>()?;
+    m.add_class::<PyTable>()?;
 
     m.add_class::<PyDataframeQueryView>()?;
 
@@ -43,6 +45,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 // TODO(ab): when the new query APIs are implemented, move these type next to it (they were salvaged
 // from the legacy server API)
 
+/// The type of distance metric to use for vector index and search.
 #[pyclass(name = "VectorDistanceMetric", eq, eq_int)]
 #[derive(Clone, Debug, PartialEq)]
 enum PyVectorDistanceMetric {

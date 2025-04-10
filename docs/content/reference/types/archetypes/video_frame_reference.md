@@ -10,13 +10,15 @@ To show an entire video, a video frame reference for each frame of the video sho
 
 See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 
-## Components
+## Fields
+### Required
+* `timestamp`: [`VideoTimestamp`](../components/video_timestamp.md)
 
-**Required**: [`VideoTimestamp`](../components/video_timestamp.md)
+### Optional
+* `video_reference`: [`EntityPath`](../components/entity_path.md)
 
-**Optional**: [`EntityPath`](../components/entity_path.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)

@@ -38,6 +38,22 @@ impl ::prost::Name for RecordingId {
         "/rerun.common.v1alpha1.RecordingId".into()
     }
 }
+/// uniquely identifies a table
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TableId {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TableId {
+    const NAME: &'static str = "TableId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TableId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TableId".into()
+    }
+}
 /// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Timeline {
@@ -616,6 +632,23 @@ impl ::prost::Name for ComponentDescriptor {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.ComponentDescriptor".into()
+    }
+}
+/// Unique identifier of a task submitted in the redap
+/// tasks subsystem
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TaskId {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TaskId {
+    const NAME: &'static str = "TaskId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TaskId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TaskId".into()
     }
 }
 /// supported encoder versions for encoding data

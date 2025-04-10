@@ -88,8 +88,8 @@ impl TimeInt {
 
     /// For time timelines.
     #[inline]
-    pub fn from_secs(seconds: NonMinI64) -> Self {
-        Self::new_temporal(seconds.get().saturating_mul(1_000_000_000))
+    pub fn from_secs(seconds: f64) -> Self {
+        Self::new_temporal((seconds * 1e9).round() as _)
     }
 
     /// For sequence timelines.
@@ -168,14 +168,24 @@ impl From<NonMinI64> for TimeInt {
     }
 }
 
-impl TryFrom<TimeInt> for NonMinI64 {
-    type Error = TryFromIntError;
-
-    #[inline]
-    fn try_from(t: TimeInt) -> Result<Self, Self::Error> {
-        Self::new(t.as_i64()).ok_or(TryFromIntError)
+impl From<TimeInt> for NonMinI64 {
+    fn from(value: TimeInt) -> Self {
+        match value.0 {
+            Some(value) => value,
+            None => Self::MIN,
+        }
     }
 }
+
+// TODO(#9534): refactor this mess
+// impl TryFrom<TimeInt> for NonMinI64 {
+//     type Error = TryFromIntError;
+
+//     #[inline]
+//     fn try_from(t: TimeInt) -> Result<Self, Self::Error> {
+//         Self::new(t.as_i64()).ok_or(TryFromIntError)
+//     }
+// }
 
 impl From<TimeInt> for Duration {
     #[inline]

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-import importlib.util
-import logging
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+import pyarrow
+import pyarrow.ipc as ipc
+from pyarrow import RecordBatch
 
 from .error_utils import deprecated_param
 from .time import to_nanos, to_nanos_since_epoch
@@ -16,27 +17,14 @@ if TYPE_CHECKING:
     from .blueprint import BlueprintLike
 
 
-# The notebook package is an optional dependency, so first check
-# if it is installed before importing it. If the user is trying
-# to use the notebook part of rerun, they'll be notified when
-# that it's not installed when they try to init a `Viewer` instance.
-if importlib.util.find_spec("rerun_notebook") is not None:
-    try:
-        from rerun_notebook import (
-            ContainerSelection as ContainerSelection,
-            EntitySelection as EntitySelection,
-            SelectionItem as SelectionItem,
-            ViewerCallbacks as ViewerCallbacks,
-            ViewSelection as ViewSelection,
-        )
-    except ImportError:
-        logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
-    except FileNotFoundError:
-        logging.error(
-            "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
-        )
-
 from rerun import bindings
+from rerun_notebook import (
+    ContainerSelection as ContainerSelection,
+    EntitySelection as EntitySelection,
+    SelectionItem as SelectionItem,
+    ViewerCallbacks as ViewerCallbacks,
+    ViewSelection as ViewSelection,
+)
 
 from .recording_stream import RecordingStream, get_data_recording
 
@@ -123,28 +111,7 @@ class Viewer:
             Defaults to `False` if `url` is provided, and `True` otherwise.
 
         """
-
-        try:
-            global _version_mismatch_checked
-            if not _version_mismatch_checked:
-                import importlib.metadata
-                import warnings
-
-                rerun_notebook_version = importlib.metadata.version("rerun-notebook")
-                rerun_version = importlib.metadata.version("rerun-sdk")
-                if rerun_version != rerun_notebook_version:
-                    warnings.warn(
-                        f"rerun-notebook version mismatch: rerun-sdk {rerun_version}, rerun-notebook {rerun_notebook_version}",
-                        category=ImportWarning,
-                        stacklevel=2,
-                    )
-                _version_mismatch_checked = True
-
-            from rerun_notebook import Viewer as _Viewer  # type: ignore[attr-defined]
-        except ImportError:
-            logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
-            hack: Any = None
-            return hack  # type: ignore[no-any-return]
+        from rerun_notebook import Viewer as _Viewer
 
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
@@ -211,6 +178,39 @@ class Viewer:
 
         if blueprint is not None:
             recording.send_blueprint(blueprint)
+
+    def _add_table_id(self, record_batch: RecordBatch, table_id: str) -> RecordBatch:
+        # Get current schema
+        schema = record_batch.schema
+        schema = schema.with_metadata({b"__table_id": table_id})
+
+        # Create new record batch with updated schema
+        return RecordBatch.from_arrays(record_batch.columns, schema=schema)
+
+    def send_table(
+        self,
+        id: str,
+        table: RecordBatch,
+    ) -> None:
+        """
+        Sends a table in the form of a dataframe to the viewer.
+
+        Parameters
+        ----------
+        id:
+            The name that uniquely identifies the table in the viewer.
+            This name will also be shown in the recording panel.
+        table:
+            The table as a single Arrow record batch.
+
+        """
+        new_table = self._add_table_id(table, id)
+        sink = pyarrow.BufferOutputStream()
+        writer = ipc.new_stream(sink, new_table.schema)
+        writer.write_batch(new_table)
+        writer.close()
+        table_as_bytes = sink.getvalue().to_pybytes()
+        self._viewer.send_table(table_as_bytes)
 
     def display(self, block_until_ready: bool = True) -> None:
         """
@@ -380,46 +380,3 @@ class Viewer:
 
     def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
         self._viewer.register_callbacks(callbacks)
-
-
-def notebook_show(
-    *,
-    width: int | None = None,
-    height: int | None = None,
-    blueprint: BlueprintLike | None = None,
-    recording: RecordingStream | None = None,
-) -> None:
-    """
-    Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
-
-    Any data logged to the recording after initialization will be sent directly to the viewer.
-
-    Note that this can be called at any point during cell execution. The call will block until the embedded
-    viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
-    to the viewer.
-
-    Parameters
-    ----------
-    width : int
-        The width of the viewer in pixels.
-    height : int
-        The height of the viewer in pixels.
-    blueprint : BlueprintLike
-        A blueprint object to send to the viewer.
-        It will be made active and set as the default blueprint in the recording.
-
-        Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    viewer = Viewer(
-        width=width,
-        height=height,
-        blueprint=blueprint,
-        recording=recording,  # NOLINT
-    )
-    viewer.display()

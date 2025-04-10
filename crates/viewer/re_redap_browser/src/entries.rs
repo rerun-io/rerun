@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use itertools::Itertools as _;
 use tokio_stream::StreamExt as _;
 
 use re_data_ui::item_ui::entity_db_button_ui;
@@ -100,6 +101,18 @@ impl Entries {
         self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
+    pub fn dataset_count(&self) -> Option<Result<usize, &EntryError>> {
+        self.datasets
+            .try_as_ref()
+            .map(|r| r.as_ref().map(|datasets| datasets.len()))
+    }
+
+    #[expect(clippy::unused_self)]
+    pub fn table_count(&self) -> usize {
+        //TODO(ab): hopefully we have tables there soon!
+        0
+    }
+
     /// [`list_item::ListItem`]-based UI for the datasets.
     pub fn panel_ui(
         &self,
@@ -116,7 +129,7 @@ impl Entries {
             }
 
             Some(Ok(datasets)) => {
-                for dataset in datasets.values() {
+                for dataset in datasets.values().sorted_by_key(|dataset| dataset.name()) {
                     let recordings = recordings
                         .as_mut()
                         .and_then(|r| r.remove(&dataset.id()))
@@ -173,14 +186,12 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
         let Some(app_id) = entity_db.app_id().cloned() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
         };
-        if let Some(SmartChannelSource::RedapGrpcStream(endpoint)) = &entity_db.data_source {
-            let origin_recordings = remote_recordings
-                .entry(endpoint.origin.clone())
-                .or_default();
+        if let Some(SmartChannelSource::RedapGrpcStream(uri)) = &entity_db.data_source {
+            let origin_recordings = remote_recordings.entry(uri.origin.clone()).or_default();
 
             let dataset_recordings = origin_recordings
                 // Currently a origin only has a single dataset, this should change soon
-                .entry(EntryId::from(endpoint.dataset_id))
+                .entry(EntryId::from(uri.dataset_id))
                 .or_default();
 
             dataset_recordings.push(entity_db);
@@ -328,7 +339,7 @@ pub fn dataset_and_its_recordings_ui(
             })
             .item_response
     } else {
-        dataset_list_item.show_flat(ui, dataset_list_item_content)
+        dataset_list_item.show_hierarchical(ui, dataset_list_item_content)
     };
 
     if let EntryKind::Local(app) = &kind {

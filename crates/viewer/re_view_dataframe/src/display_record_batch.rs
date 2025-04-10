@@ -10,15 +10,16 @@ use arrow::{
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
+use std::sync::Arc;
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::LatestAtQuery;
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
-use re_log_types::external::re_tuid::Tuid;
+use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
-use re_types_core::{ComponentName, DeserializationError, Loggable as _};
+use re_types_core::{ComponentName, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -123,6 +124,7 @@ impl ComponentData {
         latest_at_query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
+        row_ids: Option<&[RowId]>,
         row_index: usize,
         instance_index: Option<u64>,
     ) {
@@ -151,6 +153,31 @@ impl ComponentData {
                 data
             };
 
+            let mut cache_key = row_ids
+                .and_then(|row_ids| row_ids.get(row_index))
+                .copied()
+                .map(Hash64::hash);
+
+            // TODO(ab): we should find an alternative to using content-hashing to generate cache
+            // keys.
+            //
+            // Generate a content-based cache key if we don't have one already. This is needed
+            // because without cache key, the image thumbnail will no be displayed by the component
+            // ui.
+            if cache_key.is_none() && (component_name.as_str() == "rerun.components.Blob") {
+                re_tracing::profile_scope!("Blob hash");
+
+                if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
+                    .as_ref()
+                    .map(|blob| blob.first().map(|blob| blob.as_slice()))
+                {
+                    // cap the max amount of data to hash to 9 KiB
+                    const SECTION_LENGTH: usize = 3 * 1024;
+
+                    cache_key = Some(quick_partial_hash(buffer, SECTION_LENGTH));
+                }
+            }
+
             ctx.component_ui_registry().ui_raw(
                 ctx,
                 ui,
@@ -159,7 +186,7 @@ impl ComponentData {
                 ctx.recording(),
                 entity_path,
                 component_name,
-                None,
+                cache_key,
                 data_to_display.as_ref(),
             );
         } else {
@@ -168,11 +195,43 @@ impl ComponentData {
     }
 }
 
+/// Compute a quick partial hash of an image data buffer, capping the max amount of hashed data to
+/// `3*section_length`.
+///
+/// If the buffer is smaller or equal to than `3*section_length`, the entire buffer is hashed.
+/// If the buffer is larger, the first, middle, and last sections, each of size `section_length`,
+/// are hashed.
+fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
+    use ahash::AHasher;
+    use std::hash::{Hash as _, Hasher as _};
+
+    re_tracing::profile_function!();
+
+    let mut hasher = AHasher::default();
+    data.len().hash(&mut hasher);
+
+    if data.len() <= 3 * section_length {
+        data.hash(&mut hasher);
+    } else {
+        let first_section = &data[..section_length];
+        let last_section = &data[data.len() - section_length..];
+
+        let middle_offset = (data.len() - section_length) / 2;
+        let middle_section = &data[middle_offset..middle_offset + section_length];
+
+        first_section.hash(&mut hasher);
+        middle_section.hash(&mut hasher);
+        last_section.hash(&mut hasher);
+    }
+
+    Hash64::from_u64(hasher.finish())
+}
+
 /// A single column of data in a record batch.
 #[derive(Debug)]
 pub enum DisplayColumn {
     RowId {
-        row_ids: Vec<Tuid>,
+        row_ids: Arc<Vec<RowId>>,
     },
     Timeline {
         timeline: Timeline,
@@ -183,6 +242,9 @@ pub enum DisplayColumn {
         entity_path: EntityPath,
         component_name: ComponentName,
         component_data: ComponentData,
+
+        // if available, used to pass a row id to the component UI (e.g. to cache image)
+        row_ids: Option<Arc<Vec<RowId>>>,
     },
 }
 
@@ -193,7 +255,7 @@ impl DisplayColumn {
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
             ColumnDescriptorRef::RowId(_desc) => Ok(Self::RowId {
-                row_ids: Tuid::from_arrow(column_data)?,
+                row_ids: Arc::new(RowId::from_arrow(column_data)?),
             }),
 
             ColumnDescriptorRef::Time(desc) => {
@@ -215,6 +277,7 @@ impl DisplayColumn {
                 entity_path: desc.entity_path.clone(),
                 component_name: desc.component_name,
                 component_data: ComponentData::try_new(desc, column_data)?,
+                row_ids: None,
             }),
         }
     }
@@ -292,6 +355,7 @@ impl DisplayColumn {
                 entity_path,
                 component_name,
                 component_data,
+                row_ids,
             } => {
                 component_data.data_ui(
                     ctx,
@@ -299,6 +363,7 @@ impl DisplayColumn {
                     latest_at_query,
                     entity_path,
                     *component_name,
+                    row_ids.as_deref().map(|row_ids| row_ids.as_slice()),
                     row_index,
                     instance_index,
                 );
@@ -335,19 +400,39 @@ impl DisplayRecordBatch {
         data: impl Iterator<Item = (ColumnDescriptorRef<'a>, ArrowArrayRef)>,
     ) -> Result<Self, DisplayRecordBatchError> {
         let mut num_rows = None;
+        let mut batch_row_ids = None;
 
-        let columns: Result<Vec<_>, _> = data
+        let mut columns = data
             .map(|(column_descriptor, column_data)| {
                 if num_rows.is_none() {
                     num_rows = Some(column_data.len());
                 }
-                DisplayColumn::try_new(&column_descriptor, &column_data)
+
+                let column = DisplayColumn::try_new(&column_descriptor, &column_data);
+
+                // find the batch row ids, if any
+                if batch_row_ids.is_none() {
+                    if let Ok(DisplayColumn::RowId { row_ids }) = &column {
+                        batch_row_ids = Some(Arc::clone(row_ids));
+                    }
+                }
+
+                column
             })
-            .collect();
+            .collect::<Result<Vec<DisplayColumn>, _>>()?;
+
+        // If we have row_ids, give a reference to all component columns.
+        if let Some(batch_row_ids) = batch_row_ids {
+            for column in &mut columns {
+                if let DisplayColumn::Component { row_ids, .. } = column {
+                    *row_ids = Some(Arc::clone(&batch_row_ids));
+                }
+            }
+        }
 
         Ok(Self {
             num_rows: num_rows.unwrap_or(0),
-            columns: columns?,
+            columns,
         })
     }
 

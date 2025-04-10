@@ -50,18 +50,19 @@ pub enum SmartChannelSource {
     Stdin,
 
     /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
-    RedapGrpcStream(re_uri::DatasetDataEndpoint),
+    RedapGrpcStream(re_uri::DatasetDataUri),
 
     /// The data is streaming in via a message proxy.
-    MessageProxy { url: String },
+    MessageProxy(re_uri::ProxyUri),
 }
 
 impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ } | Self::MessageProxy { url } => url.fmt(f),
-            Self::RedapGrpcStream(endpoint) => endpoint.fmt(f),
+            Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
+            Self::MessageProxy(uri) => uri.fmt(f),
+            Self::RedapGrpcStream(uri) => uri.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
@@ -120,10 +121,10 @@ pub enum SmartMessageSource {
     Stdin,
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    RedapGrpcStream(re_uri::DatasetDataEndpoint),
+    RedapGrpcStream(re_uri::DatasetDataUri),
 
     /// A stream of messages over message proxy gRPC interface.
-    MessageProxy { url: String },
+    MessageProxy(re_uri::ProxyUri),
 }
 
 impl std::fmt::Display for SmartMessageSource {
@@ -131,8 +132,9 @@ impl std::fmt::Display for SmartMessageSource {
         f.write_str(&match self {
             Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url } | Self::MessageProxy { url } => url.clone(),
-            Self::RedapGrpcStream(endpoint) => endpoint.to_string(),
+            Self::RrdHttpStream { url } => url.clone(),
+            Self::MessageProxy(uri) => uri.to_string(),
+            Self::RedapGrpcStream(uri) => uri.to_string(),
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),
             Self::Sdk => "sdk".into(),

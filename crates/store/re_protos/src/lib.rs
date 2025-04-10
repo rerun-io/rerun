@@ -76,13 +76,11 @@ pub mod manifest_registry {
 
         /// `DatasetManifest` mandatory field names. All mandatory metadata fields are prefixed
         /// with "rerun_" to avoid conflicts with user-defined fields.
-        pub const DATASET_MANIFEST_APP_ID_FIELD_NAME: &str = "rerun_application_id";
         pub const DATASET_MANIFEST_ID_FIELD_NAME: &str = "rerun_partition_id";
         pub const DATASET_MANIFEST_PARTITION_MANIFEST_UPDATED_AT_FIELD_NAME: &str = "rerun_partition_manifest_updated_at";
         pub const DATASET_MANIFEST_PARTITION_MANIFEST_URL_FIELD_NAME: &str = "rerun_partition_manifest_url";
         pub const DATASET_MANIFEST_RECORDING_TYPE_FIELD_NAME: &str = "rerun_partition_type";
         pub const DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME: &str = "rerun_registration_time";
-        pub const DATASET_MANIFEST_ROW_ID_FIELD_NAME: &str = "rerun_row_id";
         pub const DATASET_MANIFEST_START_TIME_FIELD_NAME: &str = "rerun_start_time";
         pub const DATASET_MANIFEST_STORAGE_URL_FIELD_NAME: &str = "rerun_storage_url";
     }
@@ -288,6 +286,15 @@ mod sizes {
         }
     }
 
+    impl SizeBytes for crate::common::v1alpha1::TableId {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self { id } = self;
+
+            id.heap_size_bytes()
+        }
+    }
+
     impl SizeBytes for crate::log_msg::v1alpha1::StoreSource {
         #[inline]
         fn heap_size_bytes(&self) -> u64 {
@@ -346,6 +353,18 @@ mod sizes {
             blueprint_id.heap_size_bytes()
                 + make_active.heap_size_bytes()
                 + make_default.heap_size_bytes()
+        }
+    }
+
+    impl SizeBytes for crate::common::v1alpha1::DataframePart {
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            let Self {
+                encoder_version,
+                payload,
+            } = self;
+
+            encoder_version.heap_size_bytes() + payload.heap_size_bytes()
         }
     }
 }

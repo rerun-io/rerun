@@ -9,15 +9,25 @@ Note that orienting and placing the box is handled via `[archetypes.InstancePose
 Some of its component are repeated here for convenience.
 If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
 
-## Components
+## Fields
+### Required
+* `half_sizes`: [`HalfSize3D`](../components/half_size3d.md)
 
-**Required**: [`HalfSize3D`](../components/half_size3d.md)
+### Recommended
+* `centers`: [`PoseTranslation3D`](../components/pose_translation3d.md)
+* `colors`: [`Color`](../components/color.md)
 
-**Recommended**: [`PoseTranslation3D`](../components/pose_translation3d.md), [`Color`](../components/color.md)
+### Optional
+* `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
+* `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `radii`: [`Radius`](../components/radius.md)
+* `fill_mode`: [`FillMode`](../components/fill_mode.md)
+* `labels`: [`Text`](../components/text.md)
+* `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `class_ids`: [`ClassId`](../components/class_id.md)
 
-**Optional**: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`Radius`](../components/radius.md), [`FillMode`](../components/fill_mode.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`ClassId`](../components/class_id.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

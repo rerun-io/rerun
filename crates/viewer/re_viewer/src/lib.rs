@@ -11,6 +11,7 @@ mod callback;
 pub mod env_vars;
 mod saving;
 mod screenshotter;
+mod startup_options;
 mod ui;
 mod viewer_analytics;
 
@@ -28,7 +29,8 @@ pub(crate) use {app_state::AppState, ui::memory_panel};
 
 pub use callback::{CallbackSelectionItem, Callbacks};
 
-pub use app::{App, StartupOptions};
+pub use app::App;
+pub use startup_options::StartupOptions;
 
 pub use re_capabilities::MainThreadToken;
 
@@ -242,6 +244,31 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
         .spawn(move || {
             while let Ok(msg) = rx.recv_with_send_time() {
                 if tx.send_at(msg.time, msg.source, msg.payload).is_ok() {
+                    ctx.request_repaint();
+                } else {
+                    break;
+                }
+            }
+            re_log::trace!("Shutting down ui_waker thread");
+        })
+        .expect("Failed to spawn UI waker thread");
+    new_rx
+}
+
+/// This wakes up the ui thread each time we receive a new message.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn wake_up_ui_thread_on_each_msg_crossbeam<T: Send + 'static>(
+    rx: crossbeam::channel::Receiver<T>,
+    ctx: egui::Context,
+) -> crossbeam::channel::Receiver<T> {
+    // We need to intercept messages to wake up the ui thread.
+    // For that, we need a new channel.
+    let (tx, new_rx) = crossbeam::channel::unbounded();
+    std::thread::Builder::new()
+        .name("ui_waker".to_owned())
+        .spawn(move || {
+            while let Ok(msg) = rx.recv() {
+                if tx.send(msg).is_ok() {
                     ctx.request_repaint();
                 } else {
                     break;

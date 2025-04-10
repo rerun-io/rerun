@@ -138,11 +138,13 @@ pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
 pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.png");
 pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.png");
 pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.png");
+pub const DND_HANDLE: Icon = icon_from_path!("../data/icons/dnd_handle.png");
 
 /// `>`
 pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrumbs_separator.png");
 
 pub const SEARCH: Icon = icon_from_path!("../data/icons/search.png");
+pub const SETTINGS: Icon = icon_from_path!("../data/icons/settings.png");
 
 /// Shortcut icons
 pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.png");

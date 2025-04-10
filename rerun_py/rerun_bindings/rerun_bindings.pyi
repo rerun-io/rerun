@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import os
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Self
 
 import pyarrow as pa
 
@@ -254,7 +257,7 @@ class RecordingView:
 
     def filter_range_nanos(self, start: int, end: int) -> RecordingView:
         """
-        Filter the view to only include data between the given index values expressed as seconds.
+        Filter the view to only include data between the given index values expressed as nanoseconds.
 
         This range is inclusive and will contain both the value at the start and the value at the end.
 
@@ -755,8 +758,21 @@ def serve_grpc(
     server_memory_limit: str,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
+) -> str:
+    """
+    Spawn a gRPC server which an SDK or Viewer can connect to.
+
+    Returns the URI of the server so you can connect the viewer to it.
+    """
+
+def serve_web_viewer(
+    web_port: Optional[int] = None, open_browser: bool = True, connect_to: Optional[str] = None
 ) -> None:
-    """Spawn a gRPC server which an SDK or Viewer can connect to."""
+    """
+    Serve a web-viewer over HTTP.
+
+    This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
+    """
 
 def serve_web(
     open_browser: bool,
@@ -766,7 +782,7 @@ def serve_web(
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Serve a web-viewer."""
+    """Serve a web-viewer AND host a gRPC server."""
 
 def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
     """
@@ -927,3 +943,360 @@ def asset_video_read_frame_timestamps_nanos(
     Python `bytes` can be done with `to_pybytes` but this requires copying the data.
     So instead, we pass the arrow array directly.
     """
+
+#####################################################################################################################
+## CATALOG                                                                                                         ##
+#####################################################################################################################
+
+class EntryId:
+    """A unique identifier for an entry in the catalog."""
+
+    def __str__(self) -> str:
+        """Return str(self)."""
+
+class EntryKind:
+    """The kinds of entries that can be stored in the catalog."""
+
+    DATASET: EntryKind
+    DATASET_VIEW: EntryKind
+    TABLE: EntryKind
+    TABLE_VIEW: EntryKind
+
+    def __str__(self, /) -> str:
+        """Return str(self)."""
+
+class Entry:
+    """An entry in the catalog."""
+
+    @property
+    def id(self) -> EntryId:
+        """The entry's id."""
+
+    @property
+    def name(self) -> str:
+        """The entry's name."""
+
+    @property
+    def catalog(self) -> CatalogClient:
+        """The catalog client that this entry belongs to."""
+
+    @property
+    def kind(self) -> EntryKind:
+        """The entry's kind."""
+
+    @property
+    def created_at(self) -> datetime:
+        """The entry's creation date and time."""
+
+    @property
+    def updated_at(self) -> datetime:
+        """The entry's last updated date and time."""
+
+    def delete(self) -> None:
+        """Delete this entry from the catalog."""
+
+class Dataset(Entry):
+    @property
+    def manifest_url(self) -> str:
+        """Return the dataset manifest URL."""
+
+    def arrow_schema(self) -> pa.Schema:
+        """Return the Arrow schema of the data contained in the dataset."""
+
+    def partition_table(self) -> DataFusionTable:
+        """Return the partition table as a Datafusion table provider."""
+
+    def partition_url(self, partition_id: str) -> str:
+        """Return the URL for the given partition."""
+
+    def register(self, recording_uri: str) -> None:
+        """Register a RRD URI to the dataset."""
+
+    def download_partition(self, partition_id: str) -> Recording:
+        """Download a partition from the dataset."""
+
+    def dataframe_query_view(
+        self,
+        *,
+        index: str,
+        contents: Any,
+        include_semantically_empty_columns: bool = False,
+        include_indicator_columns: bool = False,
+        include_tombstone_columns: bool = False,
+    ) -> DataframeQueryView:
+        """Create a view to run a dataframe query on the dataset."""
+
+    def create_fts_index(
+        self,
+        *,
+        column: ComponentColumnSelector,
+        time_index: IndexColumnSelector,
+        store_position: bool = False,
+        base_tokenizer: str = "simple",
+    ) -> None:
+        """Create a full-text search index on the given column."""
+
+    def create_vector_index(
+        self,
+        *,
+        column: ComponentColumnSelector,
+        time_index: IndexColumnSelector,
+        num_partitions: int = 5,
+        num_sub_vectors: int = 16,
+        distance_metric: VectorDistanceMetric | str = ...,
+    ) -> None:
+        """Create a vector index on the given column."""
+
+    def search_fts(
+        self,
+        query: str,
+        column: ComponentColumnSelector,
+    ) -> DataFusionTable:
+        """Search the dataset using a full-text search query."""
+
+    def search_vector(
+        self,
+        query: Any,  # VectorLike
+        column: ComponentColumnSelector,
+        top_k: int,
+    ) -> DataFusionTable:
+        """Search the dataset using a vector search query."""
+
+class Table(Entry):
+    """
+    A table entry in the catalog.
+
+    Note: this object acts as a table provider for DataFusion.
+    """
+
+    def __datafusion_table_provider__(self) -> Any:
+        """Returns a DataFusion table provider capsule."""
+
+    def df(self) -> Any:
+        """Registers the table with the DataFusion context and return a DataFrame."""
+
+class DataframeQueryView:
+    def filter_partition_id(self, partition_id: str, *args: Iterable[str]) -> Self:
+        """Filter by one or more partition ids. All partition ids are included if not specified."""
+
+    def filter_range_sequence(self, start: int, end: int) -> Self:
+        """
+        Filter the view to only include data between the given index sequence numbers.
+
+        This range is inclusive and will contain both the value at the start and the value at the end.
+
+        The view must be of a sequential index type to use this method.
+
+        Parameters
+        ----------
+        start : int
+            The inclusive start of the range.
+        end : int
+            The inclusive end of the range.
+
+        Returns
+        -------
+        RecordingView
+            A new view containing only the data within the specified range.
+
+            The original view will not be modified.
+
+        """
+
+    def filter_range_secs(self, start: float, end: float) -> Self:
+        """
+        Filter the view to only include data between the given index values expressed as seconds.
+
+        This range is inclusive and will contain both the value at the start and the value at the end.
+
+        The view must be of a temporal index type to use this method.
+
+        Parameters
+        ----------
+        start : int
+            The inclusive start of the range.
+        end : int
+            The inclusive end of the range.
+
+        Returns
+        -------
+        RecordingView
+            A new view containing only the data within the specified range.
+
+            The original view will not be modified.
+
+        """
+
+    def filter_range_nanos(self, start: int, end: int) -> Self:
+        """
+        Filter the view to only include data between the given index values expressed as nanoseconds.
+
+        This range is inclusive and will contain both the value at the start and the value at the end.
+
+        The view must be of a temporal index type to use this method.
+
+        Parameters
+        ----------
+        start : int
+            The inclusive start of the range.
+        end : int
+            The inclusive end of the range.
+
+        Returns
+        -------
+        RecordingView
+            A new view containing only the data within the specified range.
+
+            The original view will not be modified.
+
+        """
+
+    def filter_index_values(self, values: IndexValuesLike) -> Self:
+        """
+        Filter the view to only include data at the provided index values.
+
+        The index values returned will be the intersection between the provided values and the
+        original index values.
+
+        This requires index values to be a precise match. Index values in Rerun are
+        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
+        in floating point seconds, as the numerical conversion would risk false mismatches.
+
+        Parameters
+        ----------
+        values : IndexValuesLike
+            The index values to filter by.
+
+        Returns
+        -------
+        RecordingView
+            A new view containing only the data at the specified index values.
+
+            The original view will not be modified.
+
+        """
+
+    def filter_is_not_null(self, column: AnyComponentColumn) -> Self:
+        """
+        Filter the view to only include rows where the given component column is not null.
+
+        This corresponds to rows for index values where this component was provided to Rerun explicitly
+        via `.log()` or `.send_columns()`.
+
+        Parameters
+        ----------
+        column : AnyComponentColumn
+            The component column to filter by.
+
+        Returns
+        -------
+        RecordingView
+            A new view containing only the data where the specified component column is not null.
+
+            The original view will not be modified.
+
+        """
+
+    def using_index_values(self, values: IndexValuesLike) -> Self:
+        """
+        Replace the index in the view with the provided values.
+
+        The output view will always have the same number of rows as the provided values, even if
+        those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
+        to populate these rows with the most recent data.
+
+        This requires index values to be a precise match. Index values in Rerun are
+        represented as i64 sequence counts or nanoseconds. This API does not expose an interface
+        in floating point seconds, as the numerical conversion would risk false mismatches.
+
+        Parameters
+        ----------
+        values : IndexValuesLike
+            The index values to use.
+
+        Returns
+        -------
+        RecordingView
+            A new view containing the provided index values.
+
+            The original view will not be modified.
+
+        """
+
+    def fill_latest_at(self) -> Self:
+        """
+        Populate any null values in a row with the latest valid data according to the index.
+
+        Returns
+        -------
+        RecordingView
+            A new view with the null values filled in.
+
+            The original view will not be modified.
+
+        """
+
+    def df(self) -> Any:
+        """Register this view to the global DataFusion context and return a DataFrame."""
+
+class CatalogClient:
+    """Client for a remote Rerun catalog server."""
+
+    def entries(self) -> list[Entry]:
+        """Get a list of all entries in the catalog."""
+
+    def get_dataset(self, name_or_id: str | EntryId) -> Dataset:
+        """Get a dataset by name or id."""
+
+    def create_dataset(self, name: str) -> Dataset:
+        """Create a new dataset with the provided name."""
+
+    def get_table(self, name_or_id: str | EntryId) -> Table:
+        """
+        Get a table by name or id.
+
+        Note: the entry table is named `__entries`.
+        """
+
+    def entries_table(self) -> Table:
+        """Get the entries table."""
+
+    @property
+    def ctx(self) -> Any:
+        """The DataFusion context (if available)."""
+
+class DataFusionTable:
+    def __datafusion_table_provider__(self) -> Any:
+        """Returns a DataFusion table provider capsule."""
+
+    def df(self) -> Any:
+        """Register this view to the global DataFusion context and return a DataFrame."""
+
+    @property
+    def name(self) -> str:
+        """Name of this table."""
+
+#####################################################################################################################
+## SEND_TABLE                                                                                                      ##
+#####################################################################################################################
+
+class ViewerClient:
+    """A connection to an instance of a Rerun viewer."""
+
+    def __init__(self, addr: str) -> None:
+        """
+        Create a new viewer client object.
+
+        Parameters
+        ----------
+        addr : str
+            The address of the viewer.
+
+        """
+
+    def send_table(self, id: str, table: pa.RecordBatch) -> None:
+        """
+        Sends a table to the viewer.
+
+        A table is represented as a dataframe defined by an Arrow record batch.
+        """

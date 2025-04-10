@@ -7,13 +7,20 @@ A depth image, i.e. as captured by a depth camera.
 
 Each pixel corresponds to a depth value in units specified by [`components.DepthMeter`](https://rerun.io/docs/reference/types/components/depth_meter).
 
-## Components
+## Fields
+### Required
+* `buffer`: [`ImageBuffer`](../components/image_buffer.md)
+* `format`: [`ImageFormat`](../components/image_format.md)
 
-**Required**: [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
+### Optional
+* `meter`: [`DepthMeter`](../components/depth_meter.md)
+* `colormap`: [`Colormap`](../components/colormap.md)
+* `depth_range`: [`ValueRange`](../components/value_range.md)
+* `point_fill_ratio`: [`FillRatio`](../components/fill_ratio.md)
+* `draw_order`: [`DrawOrder`](../components/draw_order.md)
 
-**Optional**: [`DepthMeter`](../components/depth_meter.md), [`Colormap`](../components/colormap.md), [`ValueRange`](../components/value_range.md), [`FillRatio`](../components/fill_ratio.md), [`DrawOrder`](../components/draw_order.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)

@@ -8,7 +8,7 @@ use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::frontend::v1alpha1::FetchPartitionRequest;
 use re_protos::manifest_registry::v1alpha1::FetchPartitionResponse;
-use re_uri::{DatasetDataEndpoint, Origin};
+use re_uri::{DatasetDataUri, Origin};
 
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
 
@@ -24,21 +24,21 @@ pub enum Command {
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_dataset_from_redap(
-    endpoint: DatasetDataEndpoint,
+    uri: DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
-    re_log::debug!("Loading {endpoint}…");
+    re_log::debug!("Loading {uri}…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
-        re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
+        re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
+        re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_partition_async(tx, endpoint.clone(), on_cmd, on_msg).await {
+        if let Err(err) = stream_partition_async(tx, uri.clone(), on_cmd, on_msg).await {
             re_log::error!(
-                "Error while streaming {endpoint}: {}",
+                "Error while streaming {uri}: {}",
                 re_error::format_ref(&err)
             );
         }
@@ -189,22 +189,26 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 
 pub async fn stream_partition_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    endpoint: re_uri::DatasetDataEndpoint,
+    uri: re_uri::DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    re_log::debug!("Connecting to {}…", endpoint.origin);
-    let mut client = client(endpoint.origin).await?;
+    let re_uri::DatasetDataUri {
+        origin,
+        dataset_id,
+        partition_id,
+        time_range,
+        fragment: _, // Only affects the viewer
+    } = uri;
 
-    re_log::debug!(
-        "Fetching catalog data for partition {} of dataset {}…",
-        endpoint.partition_id,
-        endpoint.dataset_id
-    );
+    re_log::debug!("Connecting to {}…", origin);
+    let mut client = client(origin).await?;
+
+    re_log::debug!("Fetching catalog data for partition {partition_id} of dataset {dataset_id}…");
 
     let read_dataset_response: ReadDatasetEntryResponse = client
         .read_dataset_entry(ReadDatasetEntryRequest {
-            id: Some(endpoint.dataset_id.into()),
+            id: Some(dataset_id.into()),
         })
         .await?
         .into_inner()
@@ -215,15 +219,15 @@ pub async fn stream_partition_async(
     let catalog_chunk_stream = client
         //TODO(rerun-io/dataplatform#474): filter chunks by time range
         .fetch_partition(FetchPartitionRequest {
-            dataset_id: Some(endpoint.dataset_id.into()),
-            partition_id: Some(endpoint.partition_id.clone().into()),
+            dataset_id: Some(dataset_id.into()),
+            partition_id: Some(partition_id.clone().into()),
         })
         .await?
         .into_inner();
 
     drop(client);
 
-    let store_id = StoreId::from_string(StoreKind::Recording, endpoint.partition_id.clone());
+    let store_id = StoreId::from_string(StoreKind::Recording, partition_id.clone());
     let store_info = StoreInfo {
         application_id: dataset_name.into(),
         store_id: store_id.clone(),
@@ -232,11 +236,11 @@ pub async fn stream_partition_async(
         store_version: None,
     };
 
-    if let Some(time_range) = endpoint.time_range {
+    if let Some(time_range) = time_range {
         on_cmd(Command::SetLoopSelection {
             recording_id: store_id.clone(),
             timeline: time_range.timeline,
-            time_range: time_range.range,
+            time_range: time_range.into(),
         });
     }
 

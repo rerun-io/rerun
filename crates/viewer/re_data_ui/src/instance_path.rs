@@ -3,6 +3,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
+use re_log_types::hash::Hash64;
 use re_log_types::{debug_assert_archetype_has_components, ComponentPath};
 use re_types::{
     archetypes, components,
@@ -293,7 +294,7 @@ fn preview_if_image_ui(
     );
 
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;
-    let buffer_row_id = image_buffer.row_id()?;
+    let buffer_cache_key = Hash64::hash(image_buffer.row_id()?);
     let image_buffer = image_buffer
         .component_mono::<components::ImageBuffer>()?
         .ok()?;
@@ -317,7 +318,7 @@ fn preview_if_image_ui(
     };
 
     let image = ImageInfo {
-        buffer_row_id,
+        buffer_cache_key,
         buffer: image_buffer.0,
         format: image_format.0,
         kind,
@@ -509,7 +510,7 @@ fn preview_if_blob_ui(
         ui_layout,
         query,
         entity_path,
-        blob_row_id,
+        blob_row_id.map(Hash64::hash),
         &blob,
         media_type.as_ref(),
         video_timestamp,

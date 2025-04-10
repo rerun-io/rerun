@@ -2,16 +2,12 @@
 
 use std::{ops::ControlFlow, sync::Arc};
 
-use re_log::ResultExt as _;
-use re_viewer_context::CommandSender;
-use re_viewer_context::SystemCommand;
-use re_viewer_context::SystemCommandSender as _;
-
 use serde::Deserialize;
-use wasm_bindgen::JsCast as _;
-use wasm_bindgen::JsError;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::Window;
+
+use re_log::ResultExt as _;
+use re_viewer_context::{CommandSender, Item, SystemCommand, SystemCommandSender as _};
 
 pub trait JsResultExt<T> {
     /// Logs an error if the result is an error and returns the result.
@@ -133,7 +129,7 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(endpoint)) => {
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::redap::Command::SetLoopSelection {
                     recording_id,
@@ -146,19 +142,25 @@ pub fn url_to_receiver(
                 }),
             });
             Some(re_grpc_client::redap::stream_dataset_from_redap(
-                endpoint,
+                uri,
                 on_cmd,
                 Some(ui_waker),
             ))
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
-            command_sender.send_system(SystemCommand::AddRedapServer { endpoint });
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
             None
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Some(
-            re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+            command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
+            None
+        }
+
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Some(
+            re_grpc_client::message_proxy::read::stream(uri, Some(ui_waker)),
         ),
 
         EndpointCategory::WebEventListener(url) => {

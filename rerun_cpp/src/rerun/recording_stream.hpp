@@ -159,8 +159,10 @@ namespace rerun {
         /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
         /// Once reached, the earliest logged data will be dropped. Static data is never dropped.
         ///
+        /// Returns the URI of the gRPC server so you can connect to it from a viewer.
+        ///
         /// This function returns immediately.
-        Error serve_grpc(
+        Result<std::string> serve_grpc(
             std::string_view bind_ip = "0.0.0.0", uint16_t port = 9876,
             std::string_view server_memory_limit = "75%"
         ) const;
