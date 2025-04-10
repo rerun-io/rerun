@@ -11,6 +11,11 @@ use crate::Loggable as _;
 ///
 /// There is no relationship whatsoever between a [`ChunkId`] and the [`RowId`]s within that chunk.
 ///
+/// ### String format
+/// Example: `chunk_182342300C5F8C327a7b4a6e5a379ac4`.
+/// The "chunk_" prefix is optional when parsing.
+/// See [`re_tuid`] docs for explanations of TUID namespaces.
+///
 /// ### Uniqueness
 ///
 /// [`ChunkId`] are assumed unique within a single Recording.
@@ -35,15 +40,27 @@ pub struct ChunkId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for ChunkId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        write!(f, "chunk_{}", self.0)
     }
 }
 
 impl std::str::FromStr for ChunkId {
-    type Err = std::num::ParseIntError;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        re_tuid::Tuid::from_str(s).map(Self)
+        let tuid_str = if let Some((namespace, tuid_str)) = s.split_once('_') {
+            if namespace == "chunk" {
+                tuid_str
+            } else {
+                return Err(format!("Invalid ChunkId: expected chunk_ prefix, got {s}"));
+            }
+        } else {
+            s
+        };
+
+        re_tuid::Tuid::from_str(tuid_str)
+            .map(Self)
+            .map_err(|err| format!("Invalid TUID: {err}"))
     }
 }
 
@@ -123,6 +140,11 @@ crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the
 ///
 /// There is no relationship whatsoever between a [`ChunkId`] and the [`RowId`]s within that chunk.
 ///
+/// ### String format
+/// Example: `row_182342300C5F8C327a7b4a6e5a379ac4`.
+/// The "row_" prefix is optional when parsing.
+/// See [`re_tuid`] docs for explanations of TUID namespaces.
+///
 /// ### Uniqueness
 ///
 /// Duplicated [`RowId`]s within a single recording is considered undefined behavior.
@@ -176,15 +198,27 @@ pub struct RowId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for RowId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        write!(f, "row_{}", self.0)
     }
 }
 
 impl std::str::FromStr for RowId {
-    type Err = std::num::ParseIntError;
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        re_tuid::Tuid::from_str(s).map(Self)
+        let tuid_str = if let Some((namespace, tuid_str)) = s.split_once('_') {
+            if namespace == "row" {
+                tuid_str
+            } else {
+                return Err(format!("Invalid RowId: expected row_ prefix, got {s}"));
+            }
+        } else {
+            s
+        };
+
+        re_tuid::Tuid::from_str(tuid_str)
+            .map(Self)
+            .map_err(|err| format!("Invalid TUID: {err}"))
     }
 }
 
