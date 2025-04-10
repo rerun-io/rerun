@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use egui::NumExt as _;
 pub use re_log::Level;
-// use time::OffsetDateTime;
 use jiff::Timestamp;
 
 use crate::design_tokens;
@@ -10,10 +9,6 @@ use crate::icons;
 use crate::ColorToken;
 use crate::Scale;
 use crate::UiExt as _;
-
-// fn now() -> OffsetDateTime {
-//     OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc())
-// }
 
 fn now() -> Timestamp {
     Timestamp::now()

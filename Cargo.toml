@@ -270,6 +270,7 @@ quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
+regex-lite = "0.1.6"
 rexif = "0.7.5"
 rfd = { version = "0.15", default-features = false, features = [
   "async-std",

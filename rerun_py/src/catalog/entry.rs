@@ -1,6 +1,6 @@
 use std::str::FromStr as _;
 
-use pyo3::{exceptions::PyTypeError, pyclass, pymethods, Py, PyErr, PyResult, PyObject, Python, types::{PyModule, PyAnyMethods}};
+use pyo3::{exceptions::PyTypeError, pyclass, pymethods, Py, PyErr, PyResult, Python};
 
 use re_protos::catalog::v1alpha1::{ext::EntryDetails, EntryKind};
 use re_protos::common::v1alpha1::ext::EntryId;
@@ -114,50 +114,24 @@ impl PyEntry {
         self.details.kind.try_into()
     }
 
+    /// The entry's creation date and time.
     #[getter]
-    pub fn created_at(&self, py: Python<'_>) -> PyResult<PyObject> {
+    //TODO(ab): use jiff when updating to pyo3 0.24.0
+    pub fn created_at(&self) -> chrono::DateTime<chrono::Utc> {
         let ts = self.details.created_at;
         // If the `prost::Timestamp` was legal, then this is also legal.
         #[allow(clippy::unwrap_used)]
-        let timestamp = jiff::Timestamp::new(ts.as_second(), ts.subsec_nanosecond()).unwrap();
-
-        // Get the Python timestamp value (seconds + fractional part)
-        let unix_timestamp = timestamp.as_second() as f64
-                           + timestamp.subsec_nanosecond() as f64 * 1e-9;
-
-        // Create the UTC timezone object
-        let datetime_module = PyModule::import(py, "datetime")?;
-        let timezone = datetime_module.getattr("timezone")?;
-        let utc = timezone.getattr("utc")?;
-
-        // Create the datetime object with the UTC timezone
-        let datetime_class = datetime_module.getattr("datetime")?;
-        let datetime = datetime_class.call_method1("fromtimestamp", (unix_timestamp, utc))?;
-
-        Ok(datetime.into())
+        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
     }
 
+    /// The entry's last updated date and time.
     #[getter]
-    pub fn updated_at(&self, py: Python<'_>) -> PyResult<PyObject> {
+    //TODO(ab): use jiff when updating to pyo3 0.24.0
+    pub fn updated_at(&self) -> chrono::DateTime<chrono::Utc> {
         let ts = self.details.updated_at;
         // If the `prost::Timestamp` was legal, then this is also legal.
         #[allow(clippy::unwrap_used)]
-        let timestamp = jiff::Timestamp::new(ts.as_second(), ts.subsec_nanosecond()).unwrap();
-
-        // Get the Python timestamp value (seconds + fractional part)
-        let unix_timestamp = timestamp.as_second() as f64
-                           + timestamp.subsec_nanosecond() as f64 * 1e-9;
-
-        // Create the UTC timezone object
-        let datetime_module = PyModule::import(py, "datetime")?;
-        let timezone = datetime_module.getattr("timezone")?;
-        let utc = timezone.getattr("utc")?;
-
-        // Create the datetime object with the UTC timezone
-        let datetime_class = datetime_module.getattr("datetime")?;
-        let datetime = datetime_class.call_method1("fromtimestamp", (unix_timestamp, utc))?;
-
-        Ok(datetime.into())
+        chrono::DateTime::from_timestamp(ts.as_second(), ts.subsec_nanosecond() as u32).unwrap()
     }
 
     // ---

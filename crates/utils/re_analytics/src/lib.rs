@@ -60,9 +60,6 @@ pub enum EventKind {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AnalyticsEvent {
-    // NOTE: serialized in a human-readable format as we want end users to be able to inspect the
-    // data we send out.
-    // #[serde(with = "jiff::serde::timestamp")]
     time_utc: Timestamp,
     kind: EventKind,
     name: Cow<'static, str>,
@@ -380,47 +377,47 @@ mod tests {
         // Create an event using the new jiff implementation
         let mut event = AnalyticsEvent::new("test_event", EventKind::Append);
         event.insert("test_property", "test_value");
-        
+
         // Serialize to JSON
         let serialized = serde_json::to_string(&event).expect("Failed to serialize event");
         let parsed: Value = serde_json::from_str(&serialized).expect("Failed to parse JSON");
-        
+
         // Verify the timestamp format is correct (RFC3339)
         let time_str = parsed["time_utc"].as_str().expect("time_utc should be a string");
-        
+
         // The format should be like: "2025-04-03T01:20:10.557958200Z"
         // RFC3339 regex pattern
         let re = regex::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
             .expect("Failed to compile regex");
-        
-        assert!(re.is_match(time_str), 
+
+        assert!(re.is_match(time_str),
                 "Timestamp '{}' does not match expected RFC3339 format", time_str);
-                
+
         // Verify other fields
         assert_eq!(parsed["kind"], "Append");
         assert_eq!(parsed["name"], "test_event");
-        
+
         // Check the property structure - it's an object with "String" field
         let property = &parsed["props"]["test_property"];
         assert!(property.is_object(), "Property should be an object");
         assert_eq!(property["String"], "test_value");
     }
-    
+
     #[test]
     fn test_timestamp_now_behavior() {
         // Create an event
         let event = AnalyticsEvent::new("test_event", EventKind::Append);
-        
+
         // Verify the timestamp is close to now
         // This ensures jiff::Timestamp::now() behavior matches time::OffsetDateTime::now_utc()
         let now = jiff::Timestamp::now();
         let event_time = event.time_utc;
-        
+
         // The timestamps should be within a few seconds of each other
         let diff = (now.as_nanosecond() - event_time.as_nanosecond()).abs();
         let five_seconds_ns = 5_000_000_000;
-        
-        assert!(diff < five_seconds_ns, 
+
+        assert!(diff < five_seconds_ns,
                 "Timestamp difference is too large: {} nanoseconds", diff);
     }
 }

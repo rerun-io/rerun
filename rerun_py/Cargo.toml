@@ -66,6 +66,7 @@ re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 
 arrow = { workspace = true, features = ["pyarrow"] }
+chrono.workspace = true
 jiff.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
@@ -76,7 +77,8 @@ numpy.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = [
-  "abi3-py38"
+  "abi3-py38",
+  "chrono",
 ] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true

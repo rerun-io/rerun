@@ -5525,6 +5525,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7778bffd85cf38175ac1f545509665d0b9b92a198ca7941f131f85f7a4f9a872"
 dependencies = [
  "cfg-if",
+ "chrono",
  "indoc",
  "libc",
  "memoffset",
@@ -5916,7 +5917,7 @@ dependencies = [
  "cargo_metadata 0.18.1",
  "glob",
  "jiff",
- "regex",
+ "regex-lite",
  "sha2",
  "unindent",
  "walkdir",
@@ -7508,6 +7509,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-lite"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53a49587ad06b26609c52e423de037e7f57f20d53535d66e08c695f347df952a"
+
+[[package]]
 name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7713,6 +7720,7 @@ name = "rerun_py"
 version = "0.23.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "chrono",
  "crossbeam",
  "document-features",
  "infer",

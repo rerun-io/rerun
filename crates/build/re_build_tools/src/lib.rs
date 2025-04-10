@@ -334,10 +334,10 @@ mod tests {
     fn test_date_time_format() {
         // Get a timestamp string
         let timestamp = date_time();
-        
+
         // Check it matches the expected format: YYYY-MM-DDThh:mm:ssZ
         // This regex checks for the ISO 8601 / RFC 3339 format
-        let regex = regex::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$").unwrap();
+        let regex = regex_lite::Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$").unwrap();
         assert!(regex.is_match(&timestamp), "Timestamp format is incorrect: {}", timestamp);
     }
 }
