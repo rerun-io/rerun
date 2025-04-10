@@ -48,7 +48,7 @@ You will need to start a stand-alone Viewer first by typing `rerun` in your term
 
 ### `serve_grpc`
 Calling `serve_grpc` will start a Rerun gRPC server in your process, and stream logged data to it.
-This gRPC server can then be connected to from the Rerun Viewer, e.g. by running `rerun --connect localhost/proxy`.
+This gRPC server can then be connected to from the Rerun Viewer, e.g. by running `rerun --connect`.
 The gRPC server acts as a proxy, buffering and forwarding log data to the Rerun Viewer.
 
 You can also connect to the gRPC server from a Rerun Web Viewer.

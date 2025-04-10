@@ -409,7 +409,7 @@ impl RecordingStreamBuilder {
     /// locally hosted gRPC server.
     ///
     /// The server is hosted on the default IP and port, and may be connected to by any SDK or Viewer
-    /// at `rerun+http://127.0.0.1:9876/proxy`.
+    /// at `rerun+http://127.0.0.1:9876/proxy` or by just running `rerun --connect`.
     ///
     /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
     ///
@@ -1909,6 +1909,8 @@ impl RecordingStream {
     /// `rerun+http://127.0.0.1:9876/proxy`.
     ///
     /// To configure the gRPC server's IP and port, use [`Self::serve_grpc_opts`] instead.
+    ///
+    /// You can connect a viewer to it with `rerun --connect`.
     ///
     /// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
