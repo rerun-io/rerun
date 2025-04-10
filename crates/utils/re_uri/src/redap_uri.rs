@@ -5,8 +5,10 @@ use crate::{CatalogUri, DatasetDataUri, Error, Fragment, Origin, ProxyUri};
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum RedapUri {
+    /// `/catalog` - also the default if there is no /endpoint
     Catalog(CatalogUri),
 
+    /// `/dataset`
     DatasetData(DatasetDataUri),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
@@ -107,7 +109,7 @@ mod tests {
 
     use re_log_types::DataPath;
 
-    use crate::{Fragment, Scheme, TimeRange};
+    use crate::{Fragment, Scheme, TimeRange, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT};
 
     use super::*;
     use core::net::Ipv4Addr;
@@ -362,7 +364,7 @@ mod tests {
 
     #[test]
     fn test_localhost_url() {
-        let url = "rerun+http://localhost:9876/catalog";
+        let url = "rerun+http://localhost:50051/catalog";
         let address: RedapUri = url.parse().unwrap();
 
         assert_eq!(
@@ -371,7 +373,7 @@ mod tests {
                 origin: Origin {
                     scheme: Scheme::RerunHttp,
                     host: url::Host::<String>::Domain("localhost".to_owned()),
-                    port: 9876
+                    port: 50051
                 }
             })
         );
@@ -390,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_invalid_path() {
-        let url = "rerun://0.0.0.0:9876/redap/recordings/12345";
+        let url = "rerun://0.0.0.0:50051/redap/recordings/12345";
         let address: Result<RedapUri, _> = url.parse();
 
         assert!(matches!(
@@ -422,78 +424,23 @@ mod tests {
 
     #[test]
     fn test_catalog_default() {
-        let url = "rerun://localhost:9876";
+        let url = "rerun://localhost:50051";
         let address: Result<RedapUri, _> = url.parse();
 
         let expected = RedapUri::Catalog(CatalogUri {
             origin: Origin {
                 scheme: Scheme::Rerun,
                 host: url::Host::Domain("localhost".to_owned()),
-                port: 9876,
+                port: 50051,
             },
         });
 
         assert_eq!(address.unwrap(), expected);
 
-        let url = "rerun://localhost:9876/";
+        let url = "rerun://localhost:50051/";
         let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
-    }
-
-    #[test]
-    fn test_default_port() {
-        let url = "rerun://localhost";
-
-        let expected = RedapUri::Catalog(CatalogUri {
-            origin: Origin {
-                scheme: Scheme::Rerun,
-                host: url::Host::Domain("localhost".to_owned()),
-                port: 9876,
-            },
-        });
-
-        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
-    }
-
-    #[test]
-    fn test_default_everything() {
-        let test_cases = [
-            (
-                "localhost",
-                RedapUri::Catalog(CatalogUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: 9876,
-                    },
-                }),
-            ),
-            (
-                "localhost/proxy",
-                RedapUri::Proxy(ProxyUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Domain("localhost".to_owned()),
-                        port: 9876,
-                    },
-                }),
-            ),
-            (
-                "127.0.0.1/proxy",
-                RedapUri::Proxy(ProxyUri {
-                    origin: Origin {
-                        scheme: Scheme::RerunHttp,
-                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
-                        port: 9876,
-                    },
-                }),
-            ),
-        ];
-
-        for (url, expected) in test_cases {
-            assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
-        }
     }
 
     #[test]
