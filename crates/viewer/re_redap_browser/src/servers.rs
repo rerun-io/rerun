@@ -190,7 +190,7 @@ impl RedapServers {
                     );
                 } else {
                     // Since we persist the server list on disk this happens quite often.
-                    // E.g. run `pixi run rerun "rerun+http://localhost:51234"` more than once.
+                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
                     re_log::debug!(
                         "Tried to add pre-existing server at {:?}",
                         origin.to_string()

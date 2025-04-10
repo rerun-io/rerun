@@ -663,6 +663,8 @@ class RecordingStream:
 
         This function returns immediately.
 
+        Calling `serve_web` is equivalent to calling [`rerun.RecordingStream.serve_grpc`][] followed by [`rerun.serve_web_viewer`][].
+
         Parameters
         ----------
         open_browser:
