@@ -1,3 +1,4 @@
+use re_log_types::hash::Hash64;
 use re_types::{
     blueprint::components::Enabled, Archetype, ArchetypeReflectionMarker, Component as _,
 };
@@ -71,7 +72,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
                 ctx.blueprint_db(),
                 query_ctx.target_entity_path,
                 field.component_name,
-                row_id,
+                row_id.map(Hash64::hash),
                 component_array.as_deref(),
                 fallback_provider,
             );

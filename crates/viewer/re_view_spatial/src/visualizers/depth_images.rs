@@ -1,6 +1,7 @@
 use nohash_hasher::IntMap;
 
 use re_entity_db::EntityPath;
+use re_log_types::hash::Hash64;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_types::{
@@ -296,7 +297,7 @@ impl VisualizerSystem for DepthImageVisualizer {
 
                         Some(DepthImageComponentData {
                             image: ImageInfo {
-                                buffer_row_id: index.1,
+                                buffer_cache_key: Hash64::hash(index.1),
                                 buffer: buffer.clone().into(),
                                 format: first_copied(format.as_deref())?.0,
                                 kind: ImageKind::Depth,
@@ -377,7 +378,7 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
                 .latest_at_component::<ImageFormat>(ctx.target_entity_path, ctx.query)
             {
                 let image = ImageInfo {
-                    buffer_row_id,
+                    buffer_cache_key: Hash64::hash(buffer_row_id),
                     buffer: image_buffer.0,
                     format: format.0,
                     kind: ImageKind::Depth,

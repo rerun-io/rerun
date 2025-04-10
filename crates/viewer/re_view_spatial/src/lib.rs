@@ -42,6 +42,7 @@ pub(crate) use pinhole::Pinhole;
 use re_viewer_context::{ImageDecodeCache, ViewerContext};
 
 use re_log_types::debug_assert_archetype_has_components;
+use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
 use re_types::{
     blueprint::components::BackgroundKind,
@@ -83,10 +84,9 @@ fn resolution_of_image_at(
             .latest_at_component::<MediaType>(entity_path, query)
             .map(|(_, c)| c);
 
-        let image = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut ImageDecodeCache| c.entry(row_id, &blob, media_type.as_ref()));
+        let image = ctx.store_context.caches.entry(|c: &mut ImageDecodeCache| {
+            c.entry(Hash64::hash(row_id), &blob, media_type.as_ref())
+        });
 
         if let Ok(image) = image {
             return Some(Resolution::from([

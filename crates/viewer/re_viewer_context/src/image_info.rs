@@ -1,6 +1,6 @@
 use std::{borrow::Cow, ops::RangeInclusive};
 
-use re_chunk::RowId;
+use re_log_types::hash::Hash64;
 use re_types::{
     components::Colormap,
     datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
@@ -41,7 +41,7 @@ pub struct ImageInfo {
     /// The row id that contained the blob.
     ///
     /// Can be used instead of hashing [`Self::buffer`].
-    pub buffer_row_id: RowId,
+    pub buffer_cache_key: Hash64,
 
     /// The image data, row-wise, with stride=width.
     pub buffer: Blob,
@@ -389,7 +389,7 @@ fn get<T: bytemuck::Pod>(blob: &[u8], element_offset: usize) -> Option<T> {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::RowId;
+    use re_log_types::hash::Hash64;
     use re_types::{datatypes::ColorModel, image::ImageChannelType};
 
     use super::ImageInfo;
@@ -400,7 +400,7 @@ mod tests {
     ) -> ImageInfo {
         assert_eq!(elements.len(), 2 * 2);
         ImageInfo {
-            buffer_row_id: RowId::ZERO, // unused
+            buffer_cache_key: Hash64::ZERO, // unused
             buffer: re_types::datatypes::Blob(bytemuck::cast_slice::<_, u8>(elements).into()),
             format: re_types::datatypes::ImageFormat::from_color_model(
                 [2, 2],
