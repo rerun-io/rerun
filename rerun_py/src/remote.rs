@@ -81,8 +81,8 @@ async fn connect_async(
 /// addresses:
 ///
 /// * `rerun://<addr>:<port>` Defaults to a secure TLS connection.
-/// * `rerun+http://localhost:9876` Falls back to using HTTP only.
-/// * `rerun+https://localhost:9876` Same as `rerun://` but explicit.
+/// * `rerun+http://localhost:51234` Falls back to using HTTP only.
+/// * `rerun+https://localhost:51234` Same as `rerun://` but explicit.
 ///
 /// Parameters
 /// ----------
