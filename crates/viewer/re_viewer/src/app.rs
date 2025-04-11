@@ -433,6 +433,7 @@ impl App {
             }
 
             SystemCommand::CloseEntry(entry) => {
+                // TODO(#9464): Find a better successor here.
                 store_hub.remove(&entry);
             }
 
