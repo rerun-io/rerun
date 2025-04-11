@@ -419,7 +419,7 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateApp(app_id) => {
-                self.state.display_mode = DisplayMode::LocalRecordings;
+                self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
             }
 
@@ -428,7 +428,7 @@ impl App {
             }
 
             SystemCommand::ActivateEntry(entry) => {
-                self.state.display_mode = DisplayMode::LocalRecordings;
+                self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_entry(entry);
             }
 
@@ -468,7 +468,7 @@ impl App {
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
-                self.state.display_mode = display_mode;
+                self.state.navigation.replace(display_mode);
             }
             SystemCommand::AddRedapServer(origin) => {
                 self.state.redap_servers.add_server(origin.clone());
@@ -478,7 +478,9 @@ impl App {
                     .as_ref()
                     .is_none_or(|store_hub| store_hub.active_entry().is_none())
                 {
-                    self.state.display_mode = DisplayMode::RedapServer(origin);
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::RedapServer(origin));
                 }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
@@ -593,11 +595,15 @@ impl App {
             SystemCommand::SetSelection(item) => {
                 match &item {
                     Item::RedapEntry(entry_id) => {
-                        self.state.display_mode = DisplayMode::RedapEntry(*entry_id);
+                        self.state
+                            .navigation
+                            .replace(DisplayMode::RedapEntry(*entry_id));
                     }
 
                     Item::RedapServer(origin) => {
-                        self.state.display_mode = DisplayMode::RedapServer(origin.clone());
+                        self.state
+                            .navigation
+                            .replace(DisplayMode::RedapServer(origin.clone()));
                     }
 
                     Item::AppId(_)
@@ -609,7 +615,7 @@ impl App {
                     | Item::Container(_)
                     | Item::View(_)
                     | Item::DataResult(_, _) => {
-                        self.state.display_mode = DisplayMode::LocalRecordings;
+                        self.state.navigation.replace(DisplayMode::LocalRecordings);
                     }
                 }
 
@@ -905,14 +911,17 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
+            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.peek() {
                 DisplayMode::LocalRecordings
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
-                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
+                    self.state.navigation.push(DisplayMode::ChunkStoreBrowser);
                 }
                 DisplayMode::ChunkStoreBrowser => {
-                    self.state.display_mode = DisplayMode::LocalRecordings;
+                    self.state.navigation.pop();
+                }
+                DisplayMode::WelcomeScreen => {
+                    re_log::debug!("Cannot toggle chunk store browser from welcome screen");
                 }
             },
 

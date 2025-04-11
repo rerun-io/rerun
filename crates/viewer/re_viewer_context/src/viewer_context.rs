@@ -20,7 +20,10 @@ pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
 
+    // TODO(grtlr): Once we untangled the welcome screen, combine these into an `active_context`.
+    pub active_entry_id: Option<&'a re_log_types::EntryId>,
     pub store_context: &'a StoreContext<'a>,
+
     pub storage_context: &'a StorageContext<'a>,
 
     /// Mapping from class and system to entities for the store

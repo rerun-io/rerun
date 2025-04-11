@@ -23,6 +23,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
     app_blueprint::AppBlueprint,
+    navigation::Navigation,
     ui::{recordings_panel_ui, settings_screen_ui},
 };
 
@@ -56,9 +57,11 @@ pub struct AppState {
     /// Redap server catalogs and browser UI
     pub(crate) redap_servers: RedapServers,
 
-    /// The current display mode.
+    /// A stack of display modes that represents tab-like navigation of the user.
+    ///
+    /// For now an empty stack signals that we are on the welcome screen.
     #[serde(skip)]
-    pub(crate) display_mode: DisplayMode,
+    pub(crate) navigation: Navigation,
 
     /// Display the settings UI.
     ///
@@ -99,7 +102,7 @@ impl Default for AppState {
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
-            display_mode: DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone()),
+            navigation: Default::default(),
             show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -190,8 +193,8 @@ impl AppState {
             blueprint_tree,
             welcome_screen,
             datastore_ui,
+            navigation,
             redap_servers,
-            display_mode,
             show_settings_ui,
             view_states,
             selection_state,
@@ -297,10 +300,13 @@ impl AppState {
                 egui_ctx: &egui_ctx,
                 render_ctx,
                 command_sender,
-                display_mode,
             },
             store_context,
             storage_context,
+            active_entry_id: match navigation.peek() {
+                DisplayMode::RedapEntry(id) => Some(id),
+                _ => None,
+            },
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
@@ -379,10 +385,13 @@ impl AppState {
                 egui_ctx: &egui_ctx,
                 render_ctx,
                 command_sender,
-                display_mode: &display_mode.clone(),
             },
             store_context,
             storage_context,
+            active_entry_id: match navigation.peek() {
+                DisplayMode::RedapEntry(id) => Some(id),
+                _ => None,
+            },
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
@@ -394,13 +403,24 @@ impl AppState {
             drag_and_drop_manager: &drag_and_drop_manager,
         };
 
+        let display_mode = navigation.peek();
+
+        if display_mode == &DisplayMode::WelcomeScreen {
+            welcome_screen.ui(ui, command_sender, welcome_screen_state, is_history_enabled);
+            return;
+        };
+
         if *show_settings_ui {
             // nothing: this is already handled above
-        } else if *display_mode == DisplayMode::ChunkStoreBrowser {
+        } else if navigation.peek() == &DisplayMode::ChunkStoreBrowser {
             let should_datastore_ui_remain_active =
                 datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
             if !should_datastore_ui_remain_active {
-                *display_mode = DisplayMode::LocalRecordings;
+                // TODO(grtlr): This will change, when datastore will become its own display mode.
+                command_sender.send_system(SystemCommand::ChangeDisplayMode(
+                    DisplayMode::LocalRecordings,
+                ));
+                return;
             }
         } else {
             //
@@ -552,7 +572,7 @@ impl AppState {
                             }
                         }
 
-                        DisplayMode::ChunkStoreBrowser => {} // handled above
+                        DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // handled above
                     };
                 },
             );
@@ -585,15 +605,6 @@ impl AppState {
                                     );
                                 }
                             } else {
-                                // If we are here and the "default" app id is selected,
-                                // we should instead switch to the welcome screen.
-                                if ctx.store_context.app_id == StoreHub::welcome_screen_app_id() {
-                                    ctx.command_sender().send_system(
-                                        SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                                            re_redap_browser::EXAMPLES_ORIGIN.clone(),
-                                        )),
-                                    );
-                                }
                                 viewport_ui.viewport_ui(ui, &ctx, view_states);
                             }
                         }
@@ -603,19 +614,10 @@ impl AppState {
                         }
 
                         DisplayMode::RedapServer(origin) => {
-                            if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
-                                welcome_screen.ui(
-                                    ui,
-                                    command_sender,
-                                    welcome_screen_state,
-                                    is_history_enabled,
-                                );
-                            } else {
-                                redap_servers.server_central_panel_ui(&ctx, ui, origin);
-                            }
+                            redap_servers.server_central_panel_ui(&ctx, ui, origin);
                         }
 
-                        DisplayMode::ChunkStoreBrowser => {} // Handled above
+                        DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // Handled above
                     }
                 });
         }
