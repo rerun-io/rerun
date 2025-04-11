@@ -1,8 +1,5 @@
-use std::sync::Arc;
-
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{blueprint::components::PanelState, ComponentBatch};
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender as _};

@@ -203,7 +203,6 @@ impl AppState {
                     time_panel,
                     blueprint_time_panel,
                     blueprint_tree,
-                    welcome_screen,
                     datastore_ui,
                     redap_servers,
                     show_settings_ui,
@@ -315,7 +314,7 @@ impl AppState {
                     store_context,
                     storage_context,
                     active_entry_id: match self.navigation.peek() {
-                        DisplayMode::RedapEntry(id) => Some(&id),
+                        DisplayMode::RedapEntry(id) => Some(id),
                         _ => None,
                     },
                     maybe_visualizable_entities_per_visualizer:
@@ -402,7 +401,7 @@ impl AppState {
                     store_context,
                     storage_context,
                     active_entry_id: match self.navigation.peek() {
-                        DisplayMode::RedapEntry(id) => Some(&id),
+                        DisplayMode::RedapEntry(id) => Some(id),
                         _ => None,
                     },
                     maybe_visualizable_entities_per_visualizer:
