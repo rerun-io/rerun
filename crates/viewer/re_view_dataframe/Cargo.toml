@@ -26,6 +26,7 @@ testing = ["re_viewer_context/testing", "re_viewport_blueprint/testing"]
 re_arrow_util.workspace = true
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
+re_data_ui.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
