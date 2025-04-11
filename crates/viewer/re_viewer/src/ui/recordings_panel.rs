@@ -1,14 +1,10 @@
 use re_data_ui::item_ui::table_id_button_ui;
 use re_log_types::LogMsg;
-use re_redap_browser::{
-    dataset_and_its_recordings_ui, EntryKind, RedapServers, EXAMPLES_ORIGIN, LOCAL_ORIGIN,
-};
+use re_redap_browser::{dataset_and_its_recordings_ui, EntryKind, RedapServers, LOCAL_ORIGIN};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::list_item::ItemMenuButton;
 use re_ui::{list_item, UiExt as _, UiLayout};
-use re_viewer_context::{
-    DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
-};
+use re_viewer_context::{DisplayMode, SystemCommand, SystemCommandSender as _, ViewerContext};
 
 use crate::app_state::WelcomeScreenState;
 
@@ -167,9 +163,7 @@ fn recording_list_ui(
         && !welcome_screen_state.hide)
         || !example_recordings.is_empty()
     {
-        let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
-        let selected = ctx.selection().contains_item(&item);
-        let list_item = ui.list_item().header().selected(selected);
+        let list_item = ui.list_item().header();
         let title = list_item::LabelContent::header("Rerun examples");
         let response = if example_recordings.is_empty() {
             list_item.show_flat(ui, title)
@@ -196,13 +190,7 @@ fn recording_list_ui(
 
         if response.clicked() {
             ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                    EXAMPLES_ORIGIN.clone(),
-                )));
-            ctx.command_sender()
-                .send_system(SystemCommand::SetSelection(Item::RedapServer(
-                    EXAMPLES_ORIGIN.clone(),
-                )));
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::WelcomeScreen));
         }
     }
 }

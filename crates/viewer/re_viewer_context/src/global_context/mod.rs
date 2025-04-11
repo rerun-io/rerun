@@ -7,6 +7,7 @@
 mod app_options;
 mod command_sender;
 mod component_ui_registry;
+mod display_mode;
 mod item;
 
 pub use self::{
@@ -15,6 +16,7 @@ pub use self::{
         command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes},
+    display_mode::DisplayMode,
     item::Item,
 };
 
@@ -50,20 +52,4 @@ pub struct GlobalContext<'a> {
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
-
-    pub display_mode: &'a DisplayMode,
-}
-
-/// Which display mode are we currently in?
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DisplayMode {
-    /// Regular view of the local recordings, including the current recording's viewport.
-    LocalRecordings,
-
-    /// The Redap server/catalog/collection browser.
-    RedapEntry(re_log_types::EntryId),
-    RedapServer(re_uri::Origin),
-
-    /// The current recording's data store browser.
-    ChunkStoreBrowser,
 }
