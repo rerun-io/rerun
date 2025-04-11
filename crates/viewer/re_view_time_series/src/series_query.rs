@@ -34,14 +34,24 @@ pub fn collect_series_visibility(
     results: &HybridRangeResults<'_>,
     num_series: usize,
 ) -> Vec<bool> {
-    let mut series_visibility_flags: Vec<bool> = results
+    results
         .iter_as(*query.timeline(), components::SeriesVisible::name())
         .slice::<bool>()
         .next()
-        .map_or(Vec::new(), |(_, visible)| visible.iter().collect_vec());
-    series_visibility_flags.resize(num_series, true);
-
-    series_visibility_flags
+        .map_or_else(
+            || vec![true; num_series], // By default all series are visible.
+            |(_, visible)| {
+                let mut flags = visible.iter().collect_vec();
+                if flags.len() < num_series {
+                    // If there are less flags than series, repeat the last flag (or true if there are no flags).
+                    flags.extend(
+                        std::iter::repeat(*flags.last().unwrap_or(&true))
+                            .take(num_series - flags.len()),
+                    );
+                }
+                flags
+            },
+        )
 }
 
 /// Allocates all points for the series.
