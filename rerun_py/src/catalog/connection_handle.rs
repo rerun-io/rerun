@@ -6,6 +6,7 @@ use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{LatestAtQuery, RangeQuery};
@@ -165,9 +166,10 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uri: String,
-    ) -> PyResult<()> {
+    ) -> PyResult<String> {
         wait_for_future(py, async {
-            self.client
+            let response = self
+                .client
                 .register_with_dataset(RegisterWithDatasetRequest {
                     dataset_id: Some(dataset_id.into()),
                     data_sources: vec![DataSource::new_rrd(recording_uri)
@@ -177,9 +179,74 @@ impl ConnectionHandle {
                     on_duplicate: IfDuplicateBehavior::Error as i32,
                 })
                 .await
-                .map_err(to_py_err)?;
+                .map_err(to_py_err)?
+                .into_inner();
 
-            Ok(())
+            let task_id = response
+                .id
+                .ok_or_else(|| PyValueError::new_err("received response without task id"))?;
+
+            Ok(task_id.id)
+        })
+    }
+
+    pub fn wait_for_task(
+        &mut self,
+        py: Python<'_>,
+        task_id: &str,
+        timeout: std::time::Duration,
+    ) -> PyResult<()> {
+        wait_for_future(py, async {
+            let timeout: prost_types::Duration = timeout.try_into().map_err(|e| {
+                PyValueError::new_err(format!(
+                    "failed to convert timeout to serialized duration: {e}"
+                ))
+            })?;
+            let request = re_protos::redap_tasks::v1alpha1::QueryOnCompletionRequest {
+                ids: vec![re_protos::common::v1alpha1::TaskId {
+                    id: task_id.to_owned(),
+                }],
+                timeout: Some(timeout),
+            };
+            let mut response_stream = self
+                .client
+                .query_on_completion(request)
+                .await
+                .map_err(to_py_err)?
+                .into_inner();
+
+            // we know there is only one item in the stream
+            let task_status = if let Some(response) = response_stream.next().await {
+                response
+                    .map_err(to_py_err)?
+                    .data
+                    .ok_or_else(|| PyValueError::new_err("received response without data"))?
+                    .decode()
+                    .map_err(to_py_err)?
+            } else {
+                return Err(PyValueError::new_err("no response from task"));
+            };
+
+            // TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather
+            // than a nicely typed object should be revisited.
+
+            let exec_status = task_status
+                .column_by_name("exec_status")
+                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
+                .and_then(|arr| arr.value(0).into())
+                .ok_or_else(|| PyValueError::new_err("couldn't read exec_status column"))?;
+
+            let msgs = task_status
+                .column_by_name("msgs")
+                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
+                .and_then(|arr| arr.value(0).into())
+                .ok_or_else(|| PyValueError::new_err("couldn't read msgs column"))?;
+
+            if exec_status == "success" {
+                Ok(())
+            } else {
+                Err(PyValueError::new_err(format!("task failed: {msgs}",)))
+            }
         })
     }
 

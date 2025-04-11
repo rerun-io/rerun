@@ -7,10 +7,11 @@ import "rerun/v1alpha1/common.proto";
 service ManifestRegistryService {
   // --- Write data ---
 
-  // Register new partitions with the Dataset
+  // Register new partitions with the Dataset (asynchronously)
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
 
-  rpc RegisterWithDatasetAsync(RegisterWithDatasetAsyncRequest) returns (RegisterWithDatasetAsyncResponse) {}
+  // Register new partitions with the Dataset (blocking)
+  rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
 
   // Unimplemented.
   rpc WriteChunks(stream WriteChunksRequest) returns (stream WriteChunksResponse) {}
@@ -135,17 +136,20 @@ message RegisterWithDatasetRequest {
 }
 
 message RegisterWithDatasetResponse {
-  rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message RegisterWithDatasetAsyncRequest {
-  // today this just wraps the sync request. This at least avoids
-  // repetition and the two messages going out of sync.
-  RegisterWithDatasetRequest request = 1;
-}
-
-message RegisterWithDatasetAsyncResponse {
   rerun.common.v1alpha1.TaskId id = 1;
+}
+
+// TODO(andrea): This is a copy of RegisterWithDatasetRequest.
+// Eventually we _may_ get rid of the sync version; until then,
+// we should make sure that the two objects are in sync.
+message RegisterWithDatasetBlockingRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  repeated DataSource data_sources = 2;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+}
+
+message RegisterWithDatasetBlockingResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 message WriteChunksRequest {
