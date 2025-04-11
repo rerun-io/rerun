@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, StringArray};
-use arrow::datatypes::{Field, Schema as ArrowSchema};
-use arrow::pyarrow::PyArrowType;
+use arrow::array::{ArrayData, ArrayRef, RecordBatch, StringArray, StringViewArray};
+use arrow::datatypes::{DataType, Field, Schema as ArrowSchema};
+use arrow::pyarrow::{FromPyArrow as _, PyArrowType, ToPyArrow as _};
+use datafusion::{common::exec_err, logical_expr_common::signature::Volatility};
+use pyo3::types::{PyDict, PyTuple, PyTupleMethods as _};
+use pyo3::Bound;
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
 use tokio_stream::StreamExt as _;
 
@@ -30,6 +33,7 @@ use crate::catalog::{
 use crate::dataframe::{
     PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording,
 };
+use crate::datafusion_utils::create_datafusion_scalar_udf;
 use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
@@ -58,7 +62,7 @@ impl PyDataset {
         Ok(schema.into())
     }
 
-    /// Return the partition table as a Datafusion table provider.
+    /// Return the partition table as a DataFusion table provider.
     fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
@@ -94,6 +98,71 @@ impl PyDataset {
             fragment: Default::default(),
         }
         .to_string()
+    }
+
+    #[getter]
+    fn partition_url_udf(self_: PyRef<'_, Self>) -> PyResult<Py<PyAny>> {
+        let super_ = self_.as_super();
+        let connection = super_.client.borrow(self_.py()).connection().clone();
+
+        let origin = connection.origin().clone();
+        let dataset_id = super_.details.id.id;
+
+        let partition_url_inner = move |args: &Bound<'_, PyTuple>,
+                                        _kwargs: Option<&Bound<'_, PyDict>>|
+              -> PyResult<Py<PyAny>> {
+            let py = args.py();
+            let partition_id_expr = args.get_borrowed_item(0)?;
+            let mut url = re_uri::DatasetDataUri {
+                origin: origin.clone(),
+                dataset_id,
+                partition_id: "default".to_owned(), // to be replaced during loop
+
+                //TODO(ab): add support for these two
+                time_range: None,
+                fragment: Default::default(),
+            };
+
+            let array_data = ArrayData::from_pyarrow_bound(partition_id_expr.as_ref())?;
+
+            match array_data.data_type() {
+                DataType::Utf8 => {
+                    let str_array = StringArray::from(array_data);
+                    let str_iter = str_array.iter().map(|maybe_id| {
+                        maybe_id.map(|id| {
+                            url.partition_id = id.to_owned();
+                            url.to_string()
+                        })
+                    });
+                    let output_array: ArrayRef = Arc::new(str_iter.collect::<StringArray>());
+                    output_array.to_data().to_pyarrow(py)
+                }
+                DataType::Utf8View => {
+                    let str_array = StringViewArray::from(array_data);
+                    let str_iter = str_array.iter().map(|maybe_id| {
+                        maybe_id.map(|id| {
+                            url.partition_id = id.to_owned();
+                            url.to_string()
+                        })
+                    });
+                    let output_array: ArrayRef = Arc::new(str_iter.collect::<StringViewArray>());
+                    output_array.to_data().to_pyarrow(py)
+                }
+                _ => exec_err!(
+                    "Incorrect data type for partition_url_udf. Expected utf8 or utf8view. Received {}",
+                    array_data.data_type()
+                )
+                .map_err(to_py_err),
+            }
+        };
+
+        create_datafusion_scalar_udf(
+            self_.py(),
+            partition_url_inner,
+            &[&DataType::Utf8],
+            &DataType::Utf8,
+            Volatility::Stable,
+        )
     }
 
     /// Register a RRD URI to the dataset.
@@ -140,9 +209,7 @@ impl PyDataset {
 
             while let Some(chunk) = chunk_stream.next().await {
                 let chunk = chunk.map_err(to_py_err)?;
-                store
-                    .insert_chunk(&std::sync::Arc::new(chunk))
-                    .map_err(to_py_err)?;
+                store.insert_chunk(&Arc::new(chunk)).map_err(to_py_err)?;
             }
 
             Ok(store)
@@ -329,7 +396,7 @@ impl PyDataset {
         let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
 
         let schema = arrow::datatypes::Schema::new_with_metadata(
-            vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
+            vec![Field::new("items", DataType::Utf8, false)],
             Default::default(),
         );
 
@@ -346,11 +413,9 @@ impl PyDataset {
                 component: Some(component_descriptor.into()),
             }),
             properties: Some(IndexQueryProperties {
-                props: Some(
-                    re_protos::manifest_registry::v1alpha1::index_query_properties::Props::Inverted(
-                        InvertedIndexQuery {},
-                    ),
-                ),
+                props: Some(index_query_properties::Props::Inverted(
+                    InvertedIndexQuery {},
+                )),
             }),
             query: Some(
                 query
