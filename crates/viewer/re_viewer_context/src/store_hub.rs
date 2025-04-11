@@ -141,7 +141,7 @@ impl StoreHub {
         "Welcome screen".into()
     }
 
-    /// App ID used as a marker to display the welcome screen.
+    /// App ID used as a marker to display tables.
     pub fn table_app_id() -> ApplicationId {
         "table".into()
     }
