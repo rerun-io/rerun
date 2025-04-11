@@ -1,5 +1,6 @@
 use egui::ahash::{HashMap, HashSet};
 use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
+use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
@@ -243,16 +244,21 @@ impl ViewClass for TimeSeriesView {
             return ViewSpawnHeuristics::default();
         }
 
-        // Spawn time series data at the root if there's time series data either
-        // directly at the root or one of its children.
+        // Spawn time series data at the root if theres 'either:
+        // * time series data directly at the root
+        // * all time series data are direct children of the root
         //
         // This is the last hold out of "child of root" spawning, which we removed otherwise
         // (see https://github.com/rerun-io/rerun/issues/4926)
-        let subtree_of_root_entity = &ctx.recording().tree().children;
+        let root_entities: IntSet<EntityPath> = ctx
+            .recording()
+            .tree()
+            .children
+            .values()
+            .map(|subtree| subtree.path.clone())
+            .collect();
         if indicated_entities.contains(&EntityPath::root())
-            || subtree_of_root_entity
-                .iter()
-                .any(|(_, subtree)| indicated_entities.contains(&subtree.path))
+            || indicated_entities.is_subset(&root_entities)
         {
             return ViewSpawnHeuristics::root();
         }
