@@ -248,6 +248,12 @@ impl ViewClass for TimeSeriesView {
         // * time series data directly at the root
         // * all time series data are direct children of the root
         //
+        // This heuristic was last edited in 2015-04-11 by @emilk,
+        // because it was triggering too often (https://github.com/rerun-io/rerun/pull/9587).
+        // Maybe we should remove it completely?
+        // I have a feeling it was added to handle the case many scalars of the form `/x`, `/y`, `/z` etc,
+        // but we now support logging multiple scalars in one entity.
+        //
         // This is the last hold out of "child of root" spawning, which we removed otherwise
         // (see https://github.com/rerun-io/rerun/issues/4926)
         let root_entities: IntSet<EntityPath> = ctx
