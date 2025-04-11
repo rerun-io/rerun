@@ -1,6 +1,5 @@
 ---
 source: crates/store/re_chunk_store/tests/memory_test.rs
-assertion_line: 133
 expression: "[format!(\"{NUM_SCALARS} scalars\"),\nformat!(\"{} MiB in total\",\n(total_mem_use_global as f64 / 1024.0 / 1024.0).round()),\nformat!(\"{} per row\",\nre_format::format_bytes(total_mem_use_global as f64 / NUM_SCALARS as f64)),]"
 snapshot_kind: text
 ---
