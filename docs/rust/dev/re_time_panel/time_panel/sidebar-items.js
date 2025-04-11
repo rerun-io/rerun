@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TimePanelSource"],"fn":["copy_time_properties_context_menu","help","help_button","highlight_timeline_row","initialize_time_ranges_ui","interact_with_streams_rect","paint_range_highlight","paint_time_ranges_gaps","time_marker_ui","view_everything"],"struct":["TimePanel","TimePanelItem"]};

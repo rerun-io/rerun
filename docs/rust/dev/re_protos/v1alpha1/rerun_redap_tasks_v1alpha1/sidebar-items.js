@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["tasks_service_client","tasks_service_server"],"struct":["FetchOutputRequest","FetchOutputResponse","QueryRequest","QueryResponse","SubmitTasksRequest","SubmitTasksResponse","Task"]};

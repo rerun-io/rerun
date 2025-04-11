@@ -1,0 +1,2290 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ref.rerun.io/docs/python/0.15.1/common/blueprint_datatypes/">
+      
+      
+        <link rel="prev" href="../blueprint_components/">
+      
+      
+        <link rel="next" href="../script_helpers/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.7">
+    
+    
+      
+        <title>Datatypes - Rerun Python APIs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4b4a2bd9.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rerun.blueprint.components" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Rerun Python APIs" class="md-header__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Rerun Python APIs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Datatypes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Common APIs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../writing_docs/" class="md-tabs__link">
+        
+  
+    
+  
+  Writing Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Rerun Python APIs" class="md-nav__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Rerun Python APIs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Common APIs
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Common APIs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Initialization functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Logging functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timeline_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Timeline functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../datatypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_data/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom Data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Image Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enums/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Enums
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interfaces/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interfaces
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1_12" id="__nav_1_12_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Blueprint
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1_12">
+            <span class="md-nav__icon md-icon"></span>
+            Blueprint
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_apis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    APIs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../blueprint_components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.blueprint.components" class="md-nav__link">
+    components
+  </a>
+  
+    <nav class="md-nav" aria-label="components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ActiveTab" class="md-nav__link">
+    ActiveTab
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.AutoLayout" class="md-nav__link">
+    AutoLayout
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.AutoSpaceViews" class="md-nav__link">
+    AutoSpaceViews
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.Background3DKind" class="md-nav__link">
+    Background3DKind
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ColumnShare" class="md-nav__link">
+    ColumnShare
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ContainerKind" class="md-nav__link">
+    ContainerKind
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.Corner2D" class="md-nav__link">
+    Corner2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.EntityPropertiesComponent" class="md-nav__link">
+    EntityPropertiesComponent
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.GridColumns" class="md-nav__link">
+    GridColumns
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.IncludedContent" class="md-nav__link">
+    IncludedContent
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.IncludedSpaceView" class="md-nav__link">
+    IncludedSpaceView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.LockRangeDuringZoom" class="md-nav__link">
+    LockRangeDuringZoom
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.PanelExpanded" class="md-nav__link">
+    PanelExpanded
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.QueryExpression" class="md-nav__link">
+    QueryExpression
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.RootContainer" class="md-nav__link">
+    RootContainer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.RowShare" class="md-nav__link">
+    RowShare
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.SpaceViewClass" class="md-nav__link">
+    SpaceViewClass
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.SpaceViewMaximized" class="md-nav__link">
+    SpaceViewMaximized
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.SpaceViewOrigin" class="md-nav__link">
+    SpaceViewOrigin
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ViewerRecommendationHash" class="md-nav__link">
+    ViewerRecommendationHash
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.Visible" class="md-nav__link">
+    Visible
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.VisibleTimeRange" class="md-nav__link">
+    VisibleTimeRange
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../script_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Script Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other_classes_and_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Other classes and functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utilities/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utilities
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experimental/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Experimental
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../writing_docs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Writing Docs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.blueprint.components" class="md-nav__link">
+    components
+  </a>
+  
+    <nav class="md-nav" aria-label="components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ActiveTab" class="md-nav__link">
+    ActiveTab
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.AutoLayout" class="md-nav__link">
+    AutoLayout
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.AutoSpaceViews" class="md-nav__link">
+    AutoSpaceViews
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.Background3DKind" class="md-nav__link">
+    Background3DKind
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ColumnShare" class="md-nav__link">
+    ColumnShare
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ContainerKind" class="md-nav__link">
+    ContainerKind
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.Corner2D" class="md-nav__link">
+    Corner2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.EntityPropertiesComponent" class="md-nav__link">
+    EntityPropertiesComponent
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.GridColumns" class="md-nav__link">
+    GridColumns
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.IncludedContent" class="md-nav__link">
+    IncludedContent
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.IncludedSpaceView" class="md-nav__link">
+    IncludedSpaceView
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.LockRangeDuringZoom" class="md-nav__link">
+    LockRangeDuringZoom
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.PanelExpanded" class="md-nav__link">
+    PanelExpanded
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.QueryExpression" class="md-nav__link">
+    QueryExpression
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.RootContainer" class="md-nav__link">
+    RootContainer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.RowShare" class="md-nav__link">
+    RowShare
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.SpaceViewClass" class="md-nav__link">
+    SpaceViewClass
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.SpaceViewMaximized" class="md-nav__link">
+    SpaceViewMaximized
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.SpaceViewOrigin" class="md-nav__link">
+    SpaceViewOrigin
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.ViewerRecommendationHash" class="md-nav__link">
+    ViewerRecommendationHash
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.Visible" class="md-nav__link">
+    Visible
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.blueprint.components.VisibleTimeRange" class="md-nav__link">
+    VisibleTimeRange
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>Datatypes</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+<h3 id="rerun.blueprint.components" class="doc doc-heading">
+          <code>rerun.blueprint.components</code>
+
+
+</h3>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.ActiveTab" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ActiveTab</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.EntityPath" href="../datatypes/#rerun.datatypes.EntityPath">EntityPath</a></code></p>
+
+  
+      <p><strong>Component</strong>: The active tab in a tabbed container.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.AutoLayout" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">AutoLayout</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.components.auto_layout_ext.AutoLayoutExt">AutoLayoutExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: Whether the viewport layout is determined automatically.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.AutoLayout.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">auto_layout</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the AutoLayout component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.AutoSpaceViews" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">AutoSpaceViews</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.components.auto_space_views_ext.AutoSpaceViewsExt">AutoSpaceViewsExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: Whether or not space views should be created automatically.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.AutoSpaceViews.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">auto_space_views</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the AutoSpaceViews component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.Background3DKind" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Background3DKind</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-external" title="enum.Enum" href="https://docs.python.org/3/library/enum.html#enum.Enum">Enum</a></code></p>
+
+  
+      <p><strong>Component</strong>: The type of the background in 3D space views.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.blueprint.components.Background3DKind.GradientBright" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">GradientBright</span> <span class="o">=</span> <span class="mi">2</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Gradient depending on the direction of the view, bright theme.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.blueprint.components.Background3DKind.GradientDark" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">GradientDark</span> <span class="o">=</span> <span class="mi">1</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Gradient depending on the direction of the view, dark theme.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.blueprint.components.Background3DKind.SolidColor" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">SolidColor</span> <span class="o">=</span> <span class="mi">3</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Simple uniform color.</p>
+  </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.ColumnShare" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ColumnShare</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.components.column_share_ext.ColumnShareExt">ColumnShareExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: The layout share of a column in the container.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.ColumnShare.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">share</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the ColumnShare component.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>share</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout shares of a column in the container.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.column_share.ColumnShareLike">ColumnShareLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.ContainerKind" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ContainerKind</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-external" title="enum.Enum" href="https://docs.python.org/3/library/enum.html#enum.Enum">Enum</a></code></p>
+
+  
+      <p><strong>Component</strong>: The kind of a blueprint container (tabs, grid, …).</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.Corner2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Corner2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-external" title="enum.Enum" href="https://docs.python.org/3/library/enum.html#enum.Enum">Enum</a></code></p>
+
+  
+      <p><strong>Component</strong>: One of four 2D corners, typically used to align objects.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.EntityPropertiesComponent" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">EntityPropertiesComponent</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Component</strong>: The configurable set of overridable properties.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.EntityPropertiesComponent.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">props</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the EntityPropertiesComponent component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.GridColumns" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">GridColumns</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.components.grid_columns_ext.GridColumnsExt">GridColumnsExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: How many columns a grid container should have.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.GridColumns.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the GridColumns component.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>columns</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The number of columns.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.grid_columns.GridColumnsLike">GridColumnsLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.IncludedContent" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">IncludedContent</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.EntityPath" href="../datatypes/#rerun.datatypes.EntityPath">EntityPath</a></code></p>
+
+  
+      <p><strong>Component</strong>: All the contents in the container.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.IncludedSpaceView" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">IncludedSpaceView</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Uuid" href="../datatypes/#rerun.datatypes.Uuid">Uuid</a></code></p>
+
+  
+      <p><strong>Component</strong>: The unique id of a space view, used to refer to views in containers.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.LockRangeDuringZoom" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">LockRangeDuringZoom</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Component</strong>: Indicate whether the range should be locked when zooming in on the data.</p>
+<p>Default is <code>false</code>, i.e. zoom will change the visualized range.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.LockRangeDuringZoom.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">lock_range</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the LockRangeDuringZoom component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.PanelExpanded" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">PanelExpanded</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Bool" href="../datatypes/#rerun.datatypes.Bool">Bool</a></code></p>
+
+  
+      <p><strong>Component</strong>: Whether an application panel is expanded or not.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.QueryExpression" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">QueryExpression</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Utf8" href="../datatypes/#rerun.datatypes.Utf8">Utf8</a></code></p>
+
+  
+      <p><strong>Component</strong>: An individual <code>QueryExpression</code> used to filter a set of <code>EntityPath</code>s.</p>
+<p>Each expression is either an inclusion or an exclusion expression.
+Inclusions start with an optional <code>+</code> and exclusions must start with a <code>-</code>.</p>
+<p>Multiple expressions are combined together as part of <code>SpaceViewContents</code>.</p>
+<p>The <code>/**</code> suffix matches the whole subtree, i.e. self and any child, recursively
+(<code>/world/**</code> matches both <code>/world</code> and <code>/world/car/driver</code>).
+Other uses of <code>*</code> are not (yet) supported.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.RootContainer" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">RootContainer</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Uuid" href="../datatypes/#rerun.datatypes.Uuid">Uuid</a></code></p>
+
+  
+      <p><strong>Component</strong>: The container that sits at the root of a viewport.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.RowShare" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">RowShare</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.components.row_share_ext.RowShareExt">RowShareExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: The layout share of a row in the container.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.RowShare.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">share</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the RowShare component.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>share</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The layout share of a row in the container.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.blueprint.components.row_share.RowShareLike">RowShareLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.SpaceViewClass" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">SpaceViewClass</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Utf8" href="../datatypes/#rerun.datatypes.Utf8">Utf8</a></code></p>
+
+  
+      <p><strong>Component</strong>: The class of a <code>SpaceView</code>.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.SpaceViewMaximized" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">SpaceViewMaximized</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.Uuid" href="../datatypes/#rerun.datatypes.Uuid">Uuid</a></code></p>
+
+  
+      <p><strong>Component</strong>: Whether a space view is maximized.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.SpaceViewOrigin" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">SpaceViewOrigin</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.EntityPath" href="../datatypes/#rerun.datatypes.EntityPath">EntityPath</a></code></p>
+
+  
+      <p><strong>Component</strong>: The origin of a <code>SpaceView</code>.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.ViewerRecommendationHash" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ViewerRecommendationHash</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.datatypes.UInt64" href="../datatypes/#rerun.datatypes.UInt64">UInt64</a></code></p>
+
+  
+      <p><strong>Component</strong>: Hash of a viewer recommendation.</p>
+<p>The formation of this hash is considered an internal implementation detail of the viewer.</p>
+
+
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.Visible" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Visible</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.blueprint.components.visible_ext.VisibleExt">VisibleExt</span></code></p>
+
+  
+      <p><strong>Component</strong>: Whether the container, space view, entity or instance is currently visible.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.blueprint.components.Visible.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">visible</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Visible component.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.blueprint.components.VisibleTimeRange" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">VisibleTimeRange</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><a class="autorefs autorefs-internal" title="rerun.blueprint.datatypes.VisibleTimeRange" href="../blueprint_components/#rerun.blueprint.datatypes.VisibleTimeRange">VisibleTimeRange</a></code></p>
+
+  
+      <p><strong>Component</strong>: The range of values that will be included in a space view query.</p>
+
+
+
+  </div>
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs", "navigation.tabs.sticky", "navigation.tracking"], "search": "../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

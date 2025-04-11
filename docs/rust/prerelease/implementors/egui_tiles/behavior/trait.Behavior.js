@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"re_viewport":[["impl&lt;'a, 'b&gt; Behavior&lt;<a class=\"struct\" href=\"re_viewport/blueprint_components/viewport/struct.SpaceViewId.html\" title=\"struct re_viewport::blueprint_components::viewport::SpaceViewId\">SpaceViewId</a>&gt; for <a class=\"struct\" href=\"re_viewport/viewport/struct.TabViewer.html\" title=\"struct re_viewport::viewport::TabViewer\">TabViewer</a>&lt;'a, 'b&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

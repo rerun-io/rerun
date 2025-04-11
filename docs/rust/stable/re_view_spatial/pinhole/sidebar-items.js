@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["query_pinhole_and_view_coordinates_from_store_without_blueprint"],"struct":["Pinhole"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CELL_MARGIN"],"fn":["apply_table_style_fixes","cell_ui","header_title","header_ui"],"struct":["ColumnConfig","TableConfig"]};

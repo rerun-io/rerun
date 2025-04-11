@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["FixedSizeBinary","FixedSizeVec","I128","LargeBinary","LargeString","LargeVec"],"trait":["ArrowField"]};

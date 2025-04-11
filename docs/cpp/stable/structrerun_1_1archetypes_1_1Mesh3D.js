@@ -1,0 +1,27 @@
+var structrerun_1_1archetypes_1_1Mesh3D =
+[
+    [ "IndicatorComponent", "structrerun_1_1archetypes_1_1Mesh3D.html#a7a8b0ccc43c35ca0b38ad02447e87e79", null ],
+    [ "with_vertex_positions", "structrerun_1_1archetypes_1_1Mesh3D.html#acfbf766efc9a12b5553781b1a63af05d", null ],
+    [ "with_triangle_indices", "structrerun_1_1archetypes_1_1Mesh3D.html#a1c782dae5630c9ace311734b6f340611", null ],
+    [ "with_vertex_normals", "structrerun_1_1archetypes_1_1Mesh3D.html#a8f2683f3c3e0ebbb582a63d51a3c1c6a", null ],
+    [ "with_vertex_colors", "structrerun_1_1archetypes_1_1Mesh3D.html#ac067f0713f59915d04d9272bf19f59b0", null ],
+    [ "with_vertex_texcoords", "structrerun_1_1archetypes_1_1Mesh3D.html#a759b7e803df24f6578b822d8d04ce261", null ],
+    [ "with_albedo_factor", "structrerun_1_1archetypes_1_1Mesh3D.html#aa51ecdc38837e992f91c06997ecfcbf9", null ],
+    [ "with_many_albedo_factor", "structrerun_1_1archetypes_1_1Mesh3D.html#aaf2c31a9b413670ae1ffbe46eb50b9ad", null ],
+    [ "with_albedo_texture_buffer", "structrerun_1_1archetypes_1_1Mesh3D.html#afd6edcaa81d5997eef8273cc9621b3ce", null ],
+    [ "with_many_albedo_texture_buffer", "structrerun_1_1archetypes_1_1Mesh3D.html#a92c1250d59deabfc1066b305d87aa9b1", null ],
+    [ "with_albedo_texture_format", "structrerun_1_1archetypes_1_1Mesh3D.html#a13d18ab25288d5283d33da29f0804791", null ],
+    [ "with_many_albedo_texture_format", "structrerun_1_1archetypes_1_1Mesh3D.html#a32124435a70db56c03f8390e51041d7b", null ],
+    [ "with_class_ids", "structrerun_1_1archetypes_1_1Mesh3D.html#ac971747a75b03fe102f2cade3c86ff82", null ],
+    [ "columns", "structrerun_1_1archetypes_1_1Mesh3D.html#a5877ec507a405f6fd64aa551ee0a0bd0", null ],
+    [ "columns", "structrerun_1_1archetypes_1_1Mesh3D.html#a83a8d3ebc6e627346fdfb3d5eaca2d0f", null ],
+    [ "vertex_positions", "structrerun_1_1archetypes_1_1Mesh3D.html#a9d4db6aaf83665c3d10dcda4deedbe6d", null ],
+    [ "triangle_indices", "structrerun_1_1archetypes_1_1Mesh3D.html#af7ac1aa83877b774b154b19859d0e4c0", null ],
+    [ "vertex_normals", "structrerun_1_1archetypes_1_1Mesh3D.html#ad249e4c72deceb2c96d976acab056c02", null ],
+    [ "vertex_colors", "structrerun_1_1archetypes_1_1Mesh3D.html#abb7ae6da02dd32860a37315646170e6a", null ],
+    [ "vertex_texcoords", "structrerun_1_1archetypes_1_1Mesh3D.html#a9c124a0f37122c15296c604a632fe52d", null ],
+    [ "albedo_factor", "structrerun_1_1archetypes_1_1Mesh3D.html#a5b7970bf6d54f072279a2099597a59d3", null ],
+    [ "albedo_texture_buffer", "structrerun_1_1archetypes_1_1Mesh3D.html#ab716339314d15f4a6b4e7011e71cc848", null ],
+    [ "albedo_texture_format", "structrerun_1_1archetypes_1_1Mesh3D.html#afd807215548ffbd59a1f8c19634462d8", null ],
+    [ "class_ids", "structrerun_1_1archetypes_1_1Mesh3D.html#ab351718b4a21cf5b0c58e0f99867635e", null ]
+];

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["clamped_or","clamped_vec_or","clamped_vec_or_empty","iter_component","iter_slices","process_archetype"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["TABLE_SCROLL_AREA_HEIGHT"],"fn":["annotation_info","annotation_info_table_ui","class_description_ui","color_ui","small_color_ui"]};

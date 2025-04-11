@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["entity_path_breadcrumbs","item_bread_crumbs_ui","item_heading_with_breadcrumbs","last_part_of_item_heading","separator_icon_ui","viewport_breadcrumbs"]};

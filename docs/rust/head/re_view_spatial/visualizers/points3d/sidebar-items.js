@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Points3DComponentData","Points3DVisualizer"]};
