@@ -10,7 +10,7 @@ use re_viewer_context::{
 /// to spawn a view for every single entity that is visualizable with a given visualizer.
 pub fn suggest_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
-    view: &impl ViewClass,
+    view: &dyn ViewClass,
     suggested_filter: &ResolvedEntityPathFilter,
 ) -> ViewSpawnHeuristics
 where
