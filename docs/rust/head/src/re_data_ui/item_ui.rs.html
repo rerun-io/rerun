@@ -1773,7 +1773,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>list_item = ui
         .list_item()
         .selected(ctx.selection().contains_item(<span class="kw-2">&amp;</span>item))
-        .active(ctx.active_table.as_ref() == <span class="prelude-val">Some</span>(table_id));
+        .active(ctx.storage_context.hub.active_table_id() == <span class="prelude-val">Some</span>(table_id));
 
     <span class="kw">if </span>ctx.hovered().contains_item(<span class="kw-2">&amp;</span>item) {
         list_item = list_item.force_hovered(<span class="bool-val">true</span>);

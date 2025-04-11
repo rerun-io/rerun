@@ -875,9 +875,7 @@
 <a href="#874" id="874">874</a>
 <a href="#875" id="875">875</a>
 <a href="#876" id="876">876</a>
-<a href="#877" id="877">877</a>
-<a href="#878" id="878">878</a>
-<a href="#879" id="879">879</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
+<a href="#877" id="877">877</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
 <span class="kw">use </span>egui::{text_selection::LabelSelectionState, NumExt <span class="kw">as _</span>};
 
 <span class="kw">use </span>re_chunk::TimelineName;
@@ -1183,7 +1181,6 @@
             maybe_visualizable_entities_per_visualizer: <span class="kw-2">&amp;</span>maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: <span class="kw-2">&amp;</span>indicated_entities_per_visualizer,
             query_results: <span class="kw-2">&amp;</span>query_results,
-            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -1266,7 +1263,6 @@
             maybe_visualizable_entities_per_visualizer: <span class="kw-2">&amp;</span>maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: <span class="kw-2">&amp;</span>indicated_entities_per_visualizer,
             query_results: <span class="kw-2">&amp;</span>query_results,
-            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -1452,7 +1448,7 @@
                 .show_inside(ui, |ui| {
                     <span class="kw">match </span>display_mode {
                         DisplayMode::LocalRecordings =&gt; {
-                            <span class="kw">if let </span><span class="prelude-val">Some</span>(table_id) = ctx.active_table.as_ref() {
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>(table_id) = ctx.storage_context.hub.active_table_id() {
                                 <span class="kw">if let </span><span class="prelude-val">Some</span>(store) = ctx.storage_context.tables.get(table_id) {
                                     <span class="kw">let </span>context = TableContext {
                                         table_id: table_id.clone(),

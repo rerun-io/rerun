@@ -2552,7 +2552,8 @@
 <a href="#2551" id="2551">2551</a>
 <a href="#2552" id="2552">2552</a>
 <a href="#2553" id="2553">2553</a>
-<a href="#2554" id="2554">2554</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
@@ -2987,7 +2988,8 @@
             }
 
             SystemCommand::CloseEntry(entry) =&gt; {
-                store_hub.remove(<span class="kw-2">&amp;</span>entry);
+                <span class="comment">// TODO(#9464): Find a better successor here.
+                </span>store_hub.remove(<span class="kw-2">&amp;</span>entry);
             }
 
             SystemCommand::CloseAllEntries =&gt; {

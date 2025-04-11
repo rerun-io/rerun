@@ -312,16 +312,12 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
+<a href="#314" id="314">314</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
 <span class="kw">use </span>arrow::array::ArrayRef;
 <span class="kw">use </span>parking_lot::RwLock;
 
 <span class="kw">use </span>re_chunk_store::LatestAtQuery;
 <span class="kw">use </span>re_entity_db::entity_db::EntityDb;
-<span class="kw">use </span>re_log_types::TableId;
 <span class="kw">use </span>re_query::StorageEngineReadGuard;
 
 <span class="kw">use </span><span class="kw">crate</span>::drag_and_drop::DragAndDropPayload;
@@ -340,9 +336,6 @@
 
     <span class="kw">pub </span>store_context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>StoreContext&lt;<span class="lifetime">'a</span>&gt;,
     <span class="kw">pub </span>storage_context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>StorageContext&lt;<span class="lifetime">'a</span>&gt;,
-
-    <span class="doccomment">/// If `active_table` is `Some(...)`, we have a table in the context, otherwise it's a regular store.
-    </span><span class="kw">pub </span>active_table: <span class="prelude-ty">Option</span>&lt;TableId&gt;,
 
     <span class="doccomment">/// Mapping from class and system to entities for the store
     ///
@@ -617,9 +610,10 @@
     ///
     /// It excludes the globally hardcoded welcome screen app ID.
     </span><span class="kw">pub fn </span>has_active_recording(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.recording()
-            .app_id()
-            .is_some_and(|active_app_id| active_app_id != <span class="kw-2">&amp;</span>StoreHub::welcome_screen_app_id())
+        <span class="self">self</span>.recording().app_id().is_some_and(|active_app_id| {
+            active_app_id != <span class="kw-2">&amp;</span>StoreHub::welcome_screen_app_id()
+                &amp;&amp; active_app_id != <span class="kw-2">&amp;</span>StoreHub::table_app_id()
+        })
     }
 }
 
