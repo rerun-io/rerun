@@ -167,7 +167,7 @@ impl AppState {
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
-        store_context: &StoreContext<'_>,
+        store_context: Option<&StoreContext<'_>>,
         storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
@@ -180,373 +180,396 @@ impl AppState {
     ) {
         re_tracing::profile_function!();
 
-        let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
-
-        let Self {
-            app_options,
-            recording_configs,
-            blueprint_undo_state,
-            blueprint_cfg,
-            selection_panel,
-            time_panel,
-            blueprint_time_panel,
-            blueprint_tree,
-            welcome_screen,
-            datastore_ui,
-            navigation,
-            redap_servers,
-            show_settings_ui,
-            view_states,
-            selection_state,
-            focused_item,
-        } = self;
-
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
-        blueprint_undo_state
-            .entry(store_context.blueprint.store_id().clone())
-            .or_default()
-            .update(ui.ctx(), store_context.blueprint);
-
-        let viewport_blueprint =
-            ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
-        let viewport_ui = ViewportUi::new(viewport_blueprint);
-
-        // If the blueprint is invalid, reset it.
-        if viewport_ui.blueprint.is_invalid() {
-            re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            command_sender.send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
-
-            // The blueprint isn't valid so nothing past this is going to work properly.
-            // we might as well return and it will get fixed on the next frame.
-
-            // TODO(jleibs): If we move viewport loading up to a context where the EntityDb is mutable
-            // we can run the clear and re-load.
-            return;
-        }
-
-        let selection_change = selection_state.on_frame_start(
-            |item| {
-                if let Item::StoreId(store_id) = item {
-                    if store_id.is_empty_recording() {
-                        return false;
-                    }
-                }
-
-                viewport_ui.blueprint.is_item_valid(storage_context, item)
-            },
-            Some(Item::StoreId(store_context.recording.store_id().clone())),
-        );
-
-        if let SelectionChange::SelectionChanged(selection) = selection_change {
-            if let Some(callbacks) = callbacks {
-                callbacks.on_selection_change(selection, &viewport_ui.blueprint);
+        match (self.navigation.peek(), store_context) {
+            (DisplayMode::WelcomeScreen, _) | (_, None) => {
+                self.welcome_screen.ui(
+                    ui,
+                    command_sender,
+                    welcome_screen_state,
+                    is_history_enabled,
+                );
             }
-        }
-
-        // The root container cannot be dragged.
-        let drag_and_drop_manager =
-            DragAndDropManager::new(Item::Container(viewport_ui.blueprint.root_container));
-
-        let recording = store_context.recording;
-
-        let maybe_visualizable_entities_per_visualizer = view_class_registry
-            .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
-        let indicated_entities_per_visualizer =
-            view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
-
-        // Execute the queries for every `View`
-        let mut query_results = {
-            re_tracing::profile_scope!("query_results");
-            viewport_ui
-                .blueprint
-                .views
-                .values()
-                .map(|view| {
-                    // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                    // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                    // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = view
-                        .class(view_class_registry)
-                        .determine_visualizable_entities(
-                            &maybe_visualizable_entities_per_visualizer,
-                            recording,
-                            &view_class_registry.new_visualizer_collection(view.class_identifier()),
-                            &view.space_origin,
-                        );
-
-                    (
-                        view.id,
-                        view.contents.execute_query(
-                            store_context,
-                            view_class_registry,
-                            &blueprint_query,
-                            &visualizable_entities,
-                        ),
-                    )
-                })
-                .collect::<_>()
-        };
-
-        let rec_cfg = recording_config_entry(recording_configs, recording);
-        let egui_ctx = ui.ctx().clone();
-        let ctx = ViewerContext {
-            global_context: GlobalContext {
-                app_options,
-                reflection,
-                component_ui_registry,
-                view_class_registry,
-                egui_ctx: &egui_ctx,
-                render_ctx,
-                command_sender,
-            },
-            store_context,
-            storage_context,
-            active_entry_id: match navigation.peek() {
-                DisplayMode::RedapEntry(id) => Some(id),
-                _ => None,
-            },
-            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
-            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
-            query_results: &query_results,
-            rec_cfg,
-            blueprint_cfg,
-            selection_state,
-            blueprint_query: &blueprint_query,
-            focused_item,
-            drag_and_drop_manager: &drag_and_drop_manager,
-        };
-
-        // enable the heuristics if we must this frame
-        if store_context.should_enable_heuristics {
-            viewport_ui.blueprint.set_auto_layout(true, &ctx);
-            viewport_ui.blueprint.set_auto_views(true, &ctx);
-            egui_ctx.request_repaint();
-        }
-
-        // We move the time at the very start of the frame,
-        // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx_log, callbacks);
-
-        // Update the viewport. May spawn new views and handle queued requests (like screenshots).
-        viewport_ui.on_frame_start(&ctx);
-
-        {
-            re_tracing::profile_scope!("updated_query_results");
-
-            for view in viewport_ui.blueprint.views.values() {
-                if let Some(query_result) = query_results.get_mut(&view.id) {
-                    // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                    // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                    // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                    let visualizable_entities = view
-                        .class(view_class_registry)
-                        .determine_visualizable_entities(
-                            &maybe_visualizable_entities_per_visualizer,
-                            recording,
-                            &view_class_registry.new_visualizer_collection(view.class_identifier()),
-                            &view.space_origin,
-                        );
-
-                    let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
-                        view,
-                        view_class_registry,
-                        &maybe_visualizable_entities_per_visualizer,
-                        &visualizable_entities,
-                        &indicated_entities_per_visualizer,
-                    );
-
-                    resolver.update_overrides(
-                        store_context.blueprint,
-                        &blueprint_query,
-                        rec_cfg.time_ctrl.read().timeline(),
-                        view_class_registry,
-                        query_result,
-                        view_states,
-                    );
-                }
-            }
-        };
-
-        // must happen before we recreate the view context as we mutably borrow the app options
-        if *show_settings_ui {
-            settings_screen_ui(ui, app_options, show_settings_ui);
-        }
-
-        // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
-        // it's just a bunch of refs so not really that big of a deal in practice.
-        let ctx = ViewerContext {
-            global_context: GlobalContext {
-                app_options,
-                reflection,
-                component_ui_registry,
-                view_class_registry,
-                egui_ctx: &egui_ctx,
-                render_ctx,
-                command_sender,
-            },
-            store_context,
-            storage_context,
-            active_entry_id: match navigation.peek() {
-                DisplayMode::RedapEntry(id) => Some(id),
-                _ => None,
-            },
-            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
-            indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
-            query_results: &query_results,
-            rec_cfg,
-            blueprint_cfg,
-            selection_state,
-            blueprint_query: &blueprint_query,
-            focused_item,
-            drag_and_drop_manager: &drag_and_drop_manager,
-        };
-
-        let display_mode = navigation.peek();
-
-        if display_mode == &DisplayMode::WelcomeScreen {
-            welcome_screen.ui(ui, command_sender, welcome_screen_state, is_history_enabled);
-            return;
-        };
-
-        if *show_settings_ui {
-            // nothing: this is already handled above
-        } else if navigation.peek() == &DisplayMode::ChunkStoreBrowser {
-            let should_datastore_ui_remain_active =
-                datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
-            if !should_datastore_ui_remain_active {
-                // TODO(grtlr): This will change, when datastore will become its own display mode.
-                command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                    DisplayMode::LocalRecordings,
-                ));
-                return;
-            }
-        } else {
-            //
-            // Blueprint time panel
-            //
-
-            if app_options.inspect_blueprint_timeline
-                && *display_mode == DisplayMode::LocalRecordings
-            {
-                let blueprint_db = ctx.store_context.blueprint;
-
-                let undo_state = self
-                    .blueprint_undo_state
-                    .entry(ctx.store_context.blueprint.store_id().clone())
-                    .or_default();
-
-                {
-                    // Copy time from undo-state to the blueprint time control struct:
-                    let mut time_ctrl = blueprint_cfg.time_ctrl.write();
-                    if let Some(redo_time) = undo_state.redo_time() {
-                        time_ctrl
-                            .set_play_state(blueprint_db.times_per_timeline(), PlayState::Paused);
-                        time_ctrl.set_time(redo_time);
-                    } else {
-                        time_ctrl.set_play_state(
-                            blueprint_db.times_per_timeline(),
-                            PlayState::Following,
-                        );
-                    }
-                }
-
-                blueprint_time_panel.show_panel(
-                    &ctx,
-                    &viewport_ui.blueprint,
-                    blueprint_db,
+            (_, Some(store_context)) => {
+                let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
+                let Self {
+                    app_options,
+                    recording_configs,
+                    blueprint_undo_state,
                     blueprint_cfg,
-                    ui,
-                    PanelState::Expanded,
-                    // Give the blueprint time panel a distinct color from the normal time panel:
-                    DesignTokens::bottom_panel_frame().fill(egui::hex_color!("#141326")),
+                    selection_panel,
+                    time_panel,
+                    blueprint_time_panel,
+                    blueprint_tree,
+                    welcome_screen,
+                    datastore_ui,
+                    redap_servers,
+                    show_settings_ui,
+                    view_states,
+                    selection_state,
+                    focused_item,
+                    ..
+                } = self;
+
+                blueprint_undo_state
+                    .entry(store_context.blueprint.store_id().clone())
+                    .or_default()
+                    .update(ui.ctx(), store_context.blueprint);
+
+                let viewport_blueprint =
+                    ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
+                let viewport_ui = ViewportUi::new(viewport_blueprint);
+
+                // If the blueprint is invalid, reset it.
+                if viewport_ui.blueprint.is_invalid() {
+                    re_log::warn!("Incompatible blueprint detected. Resetting to default.");
+                    command_sender
+                        .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
+
+                    // The blueprint isn't valid so nothing past this is going to work properly.
+                    // we might as well return and it will get fixed on the next frame.
+
+                    // TODO(jleibs): If we move viewport loading up to a context where the EntityDb is mutable
+                    // we can run the clear and re-load.
+                    return;
+                }
+
+                let selection_change = selection_state.on_frame_start(
+                    |item| {
+                        if let Item::StoreId(store_id) = item {
+                            if store_id.is_empty_recording() {
+                                return false;
+                            }
+                        }
+
+                        viewport_ui.blueprint.is_item_valid(storage_context, item)
+                    },
+                    Some(Item::StoreId(store_context.recording.store_id().clone())),
                 );
 
-                {
-                    // Apply changes to the blueprint time to the undo-state:
-                    let time_ctrl = blueprint_cfg.time_ctrl.read();
-                    if time_ctrl.play_state() == PlayState::Following {
-                        undo_state.redo_all();
-                    } else if let Some(time) = time_ctrl.time_int() {
-                        undo_state.set_redo_time(time);
+                if let SelectionChange::SelectionChanged(selection) = selection_change {
+                    if let Some(callbacks) = callbacks {
+                        callbacks.on_selection_change(selection, &viewport_ui.blueprint);
                     }
                 }
-            }
 
-            //
-            // Time panel
-            //
+                // The root container cannot be dragged.
+                let drag_and_drop_manager =
+                    DragAndDropManager::new(Item::Container(viewport_ui.blueprint.root_container));
 
-            if *display_mode == DisplayMode::LocalRecordings {
-                time_panel.show_panel(
-                    &ctx,
-                    &viewport_ui.blueprint,
-                    ctx.recording(),
-                    ctx.rec_cfg,
-                    ui,
-                    app_blueprint.time_panel_state(),
-                    DesignTokens::bottom_panel_frame(),
-                );
-            }
+                let recording = store_context.recording;
 
-            //
-            // Selection Panel
-            //
+                let maybe_visualizable_entities_per_visualizer = view_class_registry
+                    .maybe_visualizable_entities_for_visualizer_systems(&recording.store_id());
+                let indicated_entities_per_visualizer =
+                    view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
 
-            if *display_mode == DisplayMode::LocalRecordings {
-                selection_panel.show_panel(
-                    &ctx,
-                    &viewport_ui.blueprint,
-                    view_states,
-                    ui,
-                    app_blueprint.selection_panel_state().is_expanded(),
-                );
-            }
+                // Execute the queries for every `View`
+                let mut query_results = {
+                    re_tracing::profile_scope!("query_results");
+                    viewport_ui
+                        .blueprint
+                        .views
+                        .values()
+                        .map(|view| {
+                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
+                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                            let visualizable_entities = view
+                                .class(view_class_registry)
+                                .determine_visualizable_entities(
+                                    &maybe_visualizable_entities_per_visualizer,
+                                    recording,
+                                    &view_class_registry
+                                        .new_visualizer_collection(view.class_identifier()),
+                                    &view.space_origin,
+                                );
 
-            //
-            // Left panel (recordings and blueprint)
-            //
+                            (
+                                view.id,
+                                view.contents.execute_query(
+                                    store_context,
+                                    view_class_registry,
+                                    &blueprint_query,
+                                    &visualizable_entities,
+                                ),
+                            )
+                        })
+                        .collect::<_>()
+                };
 
-            let left_panel = egui::SidePanel::left("blueprint_panel")
-                .resizable(true)
-                .frame(egui::Frame {
-                    fill: ui.visuals().panel_fill,
-                    ..Default::default()
-                })
-                .min_width(120.0)
-                .default_width(default_blueprint_panel_width(
-                    ui.ctx().screen_rect().width(),
-                ));
+                let rec_cfg = recording_config_entry(recording_configs, recording);
+                let egui_ctx = ui.ctx().clone();
+                let ctx = ViewerContext {
+                    global_context: GlobalContext {
+                        app_options,
+                        reflection,
+                        component_ui_registry,
+                        view_class_registry,
+                        egui_ctx: &egui_ctx,
+                        render_ctx,
+                        command_sender,
+                    },
+                    store_context,
+                    storage_context,
+                    active_entry_id: match self.navigation.peek() {
+                        DisplayMode::RedapEntry(id) => Some(&id),
+                        _ => None,
+                    },
+                    maybe_visualizable_entities_per_visualizer:
+                        &maybe_visualizable_entities_per_visualizer,
+                    indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
+                    query_results: &query_results,
+                    rec_cfg,
+                    blueprint_cfg,
+                    selection_state,
+                    blueprint_query: &blueprint_query,
+                    focused_item,
+                    drag_and_drop_manager: &drag_and_drop_manager,
+                };
 
-            left_panel.show_animated_inside(
-                ui,
-                app_blueprint.blueprint_panel_state().is_expanded(),
-                |ui: &mut egui::Ui| {
-                    // ListItem don't need vertical spacing so we disable it, but restore it
-                    // before drawing the blueprint panel.
-                    ui.spacing_mut().item_spacing.y = 0.0;
+                // enable the heuristics if we must this frame
+                if store_context.should_enable_heuristics {
+                    viewport_ui.blueprint.set_auto_layout(true, &ctx);
+                    viewport_ui.blueprint.set_auto_views(true, &ctx);
+                    egui_ctx.request_repaint();
+                }
 
-                    match display_mode {
-                        DisplayMode::LocalRecordings
-                        | DisplayMode::RedapEntry(..)
-                        | DisplayMode::RedapServer(..) => {
-                            let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
-                            let resizable = ctx.storage_context.bundle.recordings().count() > 3
-                                && show_blueprints;
+                // We move the time at the very start of the frame,
+                // so that we always show the latest data when we're in "follow" mode.
+                move_time(&ctx, recording, rx_log, callbacks);
 
-                            if resizable {
-                                // Don't shrink either recordings panel or blueprint panel below this height
-                                let min_height_each = 90.0_f32.at_most(ui.available_height() / 2.0);
+                // Update the viewport. May spawn new views and handle queued requests (like screenshots).
+                viewport_ui.on_frame_start(&ctx);
 
-                                egui::TopBottomPanel::top("recording_panel")
-                                    .frame(egui::Frame::new())
-                                    .resizable(resizable)
-                                    .show_separator_line(false)
-                                    .min_height(min_height_each)
-                                    .default_height(210.0)
-                                    .max_height(ui.available_height() - min_height_each)
-                                    .show_inside(ui, |ui| {
+                {
+                    re_tracing::profile_scope!("updated_query_results");
+
+                    for view in viewport_ui.blueprint.views.values() {
+                        if let Some(query_result) = query_results.get_mut(&view.id) {
+                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
+                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                            let visualizable_entities = view
+                                .class(view_class_registry)
+                                .determine_visualizable_entities(
+                                    &maybe_visualizable_entities_per_visualizer,
+                                    recording,
+                                    &view_class_registry
+                                        .new_visualizer_collection(view.class_identifier()),
+                                    &view.space_origin,
+                                );
+
+                            let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+                                view,
+                                view_class_registry,
+                                &maybe_visualizable_entities_per_visualizer,
+                                &visualizable_entities,
+                                &indicated_entities_per_visualizer,
+                            );
+
+                            resolver.update_overrides(
+                                store_context.blueprint,
+                                &blueprint_query,
+                                rec_cfg.time_ctrl.read().timeline(),
+                                view_class_registry,
+                                query_result,
+                                view_states,
+                            );
+                        }
+                    }
+                };
+
+                // must happen before we recreate the view context as we mutably borrow the app options
+                if *show_settings_ui {
+                    settings_screen_ui(ui, app_options, show_settings_ui);
+                }
+
+                // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
+                // it's just a bunch of refs so not really that big of a deal in practice.
+                let ctx = ViewerContext {
+                    global_context: GlobalContext {
+                        app_options,
+                        reflection,
+                        component_ui_registry,
+                        view_class_registry,
+                        egui_ctx: &egui_ctx,
+                        render_ctx,
+                        command_sender,
+                    },
+                    store_context,
+                    storage_context,
+                    active_entry_id: match self.navigation.peek() {
+                        DisplayMode::RedapEntry(id) => Some(&id),
+                        _ => None,
+                    },
+                    maybe_visualizable_entities_per_visualizer:
+                        &maybe_visualizable_entities_per_visualizer,
+                    indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
+                    query_results: &query_results,
+                    rec_cfg,
+                    blueprint_cfg,
+                    selection_state,
+                    blueprint_query: &blueprint_query,
+                    focused_item,
+                    drag_and_drop_manager: &drag_and_drop_manager,
+                };
+
+                if *show_settings_ui {
+                    // nothing: this is already handled above
+                } else if self.navigation.peek() == &DisplayMode::ChunkStoreBrowser {
+                    let should_datastore_ui_remain_active =
+                        datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
+                    if !should_datastore_ui_remain_active {
+                        // TODO(grtlr): This will change, when datastore will become its own display mode.
+                        command_sender.send_system(SystemCommand::ChangeDisplayMode(
+                            DisplayMode::LocalRecordings,
+                        ));
+                        return;
+                    }
+                } else {
+                    //
+                    // Blueprint time panel
+                    //
+
+                    let display_mode = self.navigation.peek();
+
+                    if app_options.inspect_blueprint_timeline
+                        && *display_mode == DisplayMode::LocalRecordings
+                    {
+                        let blueprint_db = ctx.store_context.blueprint;
+
+                        let undo_state = self
+                            .blueprint_undo_state
+                            .entry(ctx.store_context.blueprint.store_id().clone())
+                            .or_default();
+
+                        {
+                            // Copy time from undo-state to the blueprint time control struct:
+                            let mut time_ctrl = blueprint_cfg.time_ctrl.write();
+                            if let Some(redo_time) = undo_state.redo_time() {
+                                time_ctrl.set_play_state(
+                                    blueprint_db.times_per_timeline(),
+                                    PlayState::Paused,
+                                );
+                                time_ctrl.set_time(redo_time);
+                            } else {
+                                time_ctrl.set_play_state(
+                                    blueprint_db.times_per_timeline(),
+                                    PlayState::Following,
+                                );
+                            }
+                        }
+
+                        blueprint_time_panel.show_panel(
+                            &ctx,
+                            &viewport_ui.blueprint,
+                            blueprint_db,
+                            blueprint_cfg,
+                            ui,
+                            PanelState::Expanded,
+                            // Give the blueprint time panel a distinct color from the normal time panel:
+                            DesignTokens::bottom_panel_frame().fill(egui::hex_color!("#141326")),
+                        );
+
+                        {
+                            // Apply changes to the blueprint time to the undo-state:
+                            let time_ctrl = blueprint_cfg.time_ctrl.read();
+                            if time_ctrl.play_state() == PlayState::Following {
+                                undo_state.redo_all();
+                            } else if let Some(time) = time_ctrl.time_int() {
+                                undo_state.set_redo_time(time);
+                            }
+                        }
+                    }
+
+                    //
+                    // Time panel
+                    //
+
+                    if self.navigation.peek() == &DisplayMode::LocalRecordings {
+                        time_panel.show_panel(
+                            &ctx,
+                            &viewport_ui.blueprint,
+                            ctx.recording(),
+                            ctx.rec_cfg,
+                            ui,
+                            app_blueprint.time_panel_state(),
+                            DesignTokens::bottom_panel_frame(),
+                        );
+                    }
+
+                    //
+                    // Selection Panel
+                    //
+
+                    if self.navigation.peek() == &DisplayMode::LocalRecordings {
+                        selection_panel.show_panel(
+                            &ctx,
+                            &viewport_ui.blueprint,
+                            view_states,
+                            ui,
+                            app_blueprint.selection_panel_state().is_expanded(),
+                        );
+                    }
+
+                    //
+                    // Left panel (recordings and blueprint)
+                    //
+
+                    let left_panel = egui::SidePanel::left("blueprint_panel")
+                        .resizable(true)
+                        .frame(egui::Frame {
+                            fill: ui.visuals().panel_fill,
+                            ..Default::default()
+                        })
+                        .min_width(120.0)
+                        .default_width(default_blueprint_panel_width(
+                            ui.ctx().screen_rect().width(),
+                        ));
+
+                    left_panel.show_animated_inside(
+                        ui,
+                        app_blueprint.blueprint_panel_state().is_expanded(),
+                        |ui: &mut egui::Ui| {
+                            // ListItem don't need vertical spacing so we disable it, but restore it
+                            // before drawing the blueprint panel.
+                            ui.spacing_mut().item_spacing.y = 0.0;
+
+                            match display_mode {
+                                DisplayMode::LocalRecordings
+                                | DisplayMode::RedapEntry(..)
+                                | DisplayMode::RedapServer(..) => {
+                                    let show_blueprints =
+                                        *display_mode == DisplayMode::LocalRecordings;
+                                    let resizable = ctx.storage_context.bundle.recordings().count()
+                                        > 3
+                                        && show_blueprints;
+
+                                    if resizable {
+                                        // Don't shrink either recordings panel or blueprint panel below this height
+                                        let min_height_each =
+                                            90.0_f32.at_most(ui.available_height() / 2.0);
+
+                                        egui::TopBottomPanel::top("recording_panel")
+                                            .frame(egui::Frame::new())
+                                            .resizable(resizable)
+                                            .show_separator_line(false)
+                                            .min_height(min_height_each)
+                                            .default_height(210.0)
+                                            .max_height(ui.available_height() - min_height_each)
+                                            .show_inside(ui, |ui| {
+                                                recordings_panel_ui(
+                                                    &ctx,
+                                                    rx_log,
+                                                    ui,
+                                                    welcome_screen_state,
+                                                    redap_servers,
+                                                );
+                                            });
+                                    } else {
                                         recordings_panel_ui(
                                             &ctx,
                                             rx_log,
@@ -554,92 +577,88 @@ impl AppState {
                                             welcome_screen_state,
                                             redap_servers,
                                         );
-                                    });
-                            } else {
-                                recordings_panel_ui(
-                                    &ctx,
-                                    rx_log,
-                                    ui,
-                                    welcome_screen_state,
-                                    redap_servers,
-                                );
-                            }
+                                    }
 
-                            ui.add_space(4.0);
+                                    ui.add_space(4.0);
 
-                            if show_blueprints {
-                                blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
-                            }
-                        }
-
-                        DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // handled above
-                    };
-                },
-            );
-
-            //
-            // Viewport
-            //
-
-            let viewport_frame = egui::Frame {
-                fill: ui.style().visuals.panel_fill,
-                ..Default::default()
-            };
-
-            egui::CentralPanel::default()
-                .frame(viewport_frame)
-                .show_inside(ui, |ui| {
-                    match display_mode {
-                        DisplayMode::LocalRecordings => {
-                            if let Some(table_id) = ctx.storage_context.hub.active_table_id() {
-                                if let Some(store) = ctx.storage_context.tables.get(table_id) {
-                                    let context = TableContext {
-                                        table_id: table_id.clone(),
-                                        store,
-                                    };
-                                    crate::ui::table_ui(&ctx, ui, &context);
-                                } else {
-                                    re_log::error_once!(
-                                        "Could not find batch store for table id {}",
-                                        table_id
-                                    );
+                                    if show_blueprints {
+                                        blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
+                                    }
                                 }
-                            } else {
-                                viewport_ui.viewport_ui(ui, &ctx, view_states);
+
+                                DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // handled above
+                            };
+                        },
+                    );
+
+                    //
+                    // Viewport
+                    //
+
+                    let viewport_frame = egui::Frame {
+                        fill: ui.style().visuals.panel_fill,
+                        ..Default::default()
+                    };
+
+                    egui::CentralPanel::default()
+                        .frame(viewport_frame)
+                        .show_inside(ui, |ui| {
+                            match display_mode {
+                                DisplayMode::LocalRecordings => {
+                                    if let Some(table_id) =
+                                        ctx.storage_context.hub.active_table_id()
+                                    {
+                                        if let Some(store) =
+                                            ctx.storage_context.tables.get(table_id)
+                                        {
+                                            let context = TableContext {
+                                                table_id: table_id.clone(),
+                                                store,
+                                            };
+                                            crate::ui::table_ui(&ctx, ui, &context);
+                                        } else {
+                                            re_log::error_once!(
+                                                "Could not find batch store for table id {}",
+                                                table_id
+                                            );
+                                        }
+                                    } else {
+                                        viewport_ui.viewport_ui(ui, &ctx, view_states);
+                                    }
+                                }
+
+                                DisplayMode::RedapEntry(entry) => {
+                                    redap_servers.entry_ui(&ctx, ui, *entry);
+                                }
+
+                                DisplayMode::RedapServer(origin) => {
+                                    redap_servers.server_central_panel_ui(&ctx, ui, origin);
+                                }
+
+                                DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // Handled above
                             }
-                        }
+                        });
+                }
+                add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
+                drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
 
-                        DisplayMode::RedapEntry(entry) => {
-                            redap_servers.entry_ui(&ctx, ui, *entry);
-                        }
-
-                        DisplayMode::RedapServer(origin) => {
-                            redap_servers.server_central_panel_ui(&ctx, ui, origin);
-                        }
-
-                        DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // Handled above
-                    }
-                });
+                // Process deferred layout operations and apply updates back to blueprint:
+                viewport_ui.save_to_blueprint_store(&ctx);
+            }
         }
 
         //
         // Other UI things
         //
 
-        redap_servers.modals_ui(ui);
-
-        add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
-        drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
-
-        // Process deferred layout operations and apply updates back to blueprint:
-        viewport_ui.save_to_blueprint_store(&ctx);
+        self.redap_servers.modals_ui(ui);
 
         if WATERMARK {
             ui.ctx().paint_watermark();
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&ctx);
+        check_for_clicked_hyperlinks(ui.ctx(), command_sender, &self.selection_state);
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
@@ -827,27 +846,29 @@ pub(crate) fn recording_config_entry<'cfgs>(
 /// Must run after any ui code, or other code that tells egui to open an url.
 ///
 /// See [`re_ui::UiExt::re_hyperlink`] for displaying hyperlinks in the UI.
-fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
+fn check_for_clicked_hyperlinks(
+    egui_ctx: &egui::Context,
+    command_sender: &CommandSender,
+    selection_state: &ApplicationSelectionState,
+) {
     let recording_scheme = "recording://";
 
     let mut recording_path = None;
 
-    ctx.egui_ctx().output_mut(|o| {
+    egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
                     let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
 
-                    ctx.command_sender()
-                        .send_system(SystemCommand::LoadDataSource(
-                            re_data_source::DataSource::RerunGrpcStream(uri),
-                        ));
+                    command_sender.send_system(SystemCommand::LoadDataSource(
+                        re_data_source::DataSource::RerunGrpcStream(uri),
+                    ));
 
                     if is_dataset_uri && !open_url.new_tab {
-                        ctx.command_sender()
-                            .send_system(SystemCommand::ChangeDisplayMode(
-                                DisplayMode::LocalRecordings,
-                            ));
+                        command_sender.send_system(SystemCommand::ChangeDisplayMode(
+                            DisplayMode::LocalRecordings,
+                        ));
                     }
                     return false;
                 } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
@@ -865,7 +886,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     if let Some(path) = recording_path {
         match path.parse::<Item>() {
             Ok(item) => {
-                ctx.selection_state.set_selection(item);
+                selection_state.set_selection(item);
             }
             Err(err) => {
                 re_log::warn!("Failed to parse entity path {path:?}: {err}");

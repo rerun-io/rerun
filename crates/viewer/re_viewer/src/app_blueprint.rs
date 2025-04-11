@@ -182,29 +182,6 @@ pub struct PanelStateOverrides {
     pub time: Option<PanelState>,
 }
 
-pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
-    // Most things are hidden in the welcome screen:
-    for (panel_name, value) in [
-        (TOP_PANEL_PATH, PanelState::Expanded),
-        (BLUEPRINT_PANEL_PATH, PanelState::Hidden),
-        (SELECTION_PANEL_PATH, PanelState::Hidden),
-        (TIME_PANEL_PATH, PanelState::Hidden),
-    ] {
-        let entity_path = EntityPath::from(panel_name);
-
-        let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
-
-        let chunk = Chunk::builder(entity_path)
-            .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
-            .build()
-            .expect("Failed to build chunk - incorrect number of instances for the component");
-
-        welcome_screen_blueprint
-            .add_chunk(&Arc::new(chunk))
-            .expect("Failed to add new chunk for welcome screen");
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 impl AppBlueprint<'_> {
