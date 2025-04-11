@@ -90,7 +90,7 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            analytics_id: Uuid::new_v4().to_string(),
+            analytics_id: Uuid::new_v4().simple().to_string(),
             session_id: Uuid::new_v4(),
             opt_in_metadata: HashMap::new(),
         }

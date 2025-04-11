@@ -18,13 +18,17 @@ and the pixel format (e.g. RGB, RGBA, …).
 The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical
 row-major, interleaved-pixel image format.
 
-## Components
+## Fields
+### Required
+* `buffer`: [`ImageBuffer`](../components/image_buffer.md)
+* `format`: [`ImageFormat`](../components/image_format.md)
 
-**Required**: [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
+### Optional
+* `opacity`: [`Opacity`](../components/opacity.md)
+* `draw_order`: [`DrawOrder`](../components/draw_order.md)
 
-**Optional**: [`Opacity`](../components/opacity.md), [`DrawOrder`](../components/draw_order.md)
 
-## Shown in
+## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)

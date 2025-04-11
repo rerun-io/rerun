@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
+use itertools::Itertools as _;
 use tokio_stream::StreamExt as _;
 
 use re_data_ui::item_ui::entity_db_button_ui;
@@ -100,6 +101,18 @@ impl Entries {
         self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
+    pub fn dataset_count(&self) -> Option<Result<usize, &EntryError>> {
+        self.datasets
+            .try_as_ref()
+            .map(|r| r.as_ref().map(|datasets| datasets.len()))
+    }
+
+    #[expect(clippy::unused_self)]
+    pub fn table_count(&self) -> usize {
+        //TODO(ab): hopefully we have tables there soon!
+        0
+    }
+
     /// [`list_item::ListItem`]-based UI for the datasets.
     pub fn panel_ui(
         &self,
@@ -116,7 +129,7 @@ impl Entries {
             }
 
             Some(Ok(datasets)) => {
-                for dataset in datasets.values() {
+                for dataset in datasets.values().sorted_by_key(|dataset| dataset.name()) {
                     let recordings = recordings
                         .as_mut()
                         .and_then(|r| r.remove(&dataset.id()))
@@ -326,7 +339,7 @@ pub fn dataset_and_its_recordings_ui(
             })
             .item_response
     } else {
-        dataset_list_item.show_flat(ui, dataset_list_item_content)
+        dataset_list_item.show_hierarchical(ui, dataset_list_item_content)
     };
 
     if let EntryKind::Local(app) = &kind {

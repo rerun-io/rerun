@@ -219,7 +219,7 @@ def serve_grpc(
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
     server_memory_limit: str = "25%",
-) -> None:
+) -> str:
     """
     Serve log-data over gRPC.
 
@@ -228,6 +228,8 @@ def serve_grpc(
     The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
     You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped. Static data is never dropped.
+
+    Returns the URI of the server so you can connect the viewer to it.
 
     This function returns immediately. In order to keep the server running, you must keep the Python process running
     as well.
@@ -252,7 +254,7 @@ def serve_grpc(
     """
     if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - serve_grpc() call ignored")
-        return
+        return "[rerun is disabled]"
 
     from rerun.recording_stream import get_application_id
 
@@ -270,7 +272,7 @@ def serve_grpc(
             blueprint=default_blueprint,
         ).storage
 
-    bindings.serve_grpc(
+    return bindings.serve_grpc(
         grpc_port,
         server_memory_limit=server_memory_limit,
         default_blueprint=blueprint_storage,
@@ -297,6 +299,8 @@ def serve_web(
     Once reached, the earliest logged data will be dropped. Static data is never dropped.
 
     This function returns immediately.
+
+    Calling `serve_web` is equivalent to calling [`rerun.serve_grpc`][] followed by [`rerun.serve_web_viewer`][].
 
     Parameters
     ----------

@@ -1,9 +1,11 @@
+use egui::{Frame, Margin, RichText};
+use re_log_types::EntryId;
+use re_ui::{icons, list_item, UiExt as _};
+use re_viewer_context::{
+    AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
+};
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
-
-use re_log_types::EntryId;
-use re_ui::{list_item, UiExt as _};
-use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
@@ -34,13 +36,68 @@ impl Server {
         self.entries.find_dataset(entry_id)
     }
 
+    /// Central panel UI for when a server is selected.
+    fn server_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        Frame::new()
+            .inner_margin(Margin {
+                top: 16,
+                bottom: 12,
+                left: 16,
+                right: 16,
+            })
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.heading(RichText::new("Catalog").strong());
+                    if ui.small_icon_button(&icons::RESET).clicked() {
+                        let _ = ctx
+                            .command_sender
+                            .send(Command::RefreshCollection(self.origin.clone()));
+                    }
+                });
+
+                ui.add_space(12.0);
+
+                ui.list_item_scope(
+                    egui::Id::new(&self.origin).with("catalog server ui"),
+                    |ui| {
+                        ui.list_item_flat_noninteractive(
+                            list_item::PropertyContent::new("Address").value_fn(|ui, _| {
+                                ui.strong(self.origin.to_string());
+                            }),
+                        );
+
+                        ui.list_item_flat_noninteractive(
+                            list_item::PropertyContent::new("Datasets").value_fn(|ui, _| {
+                                match self.entries.dataset_count() {
+                                    None => ui.label("loading…"),
+                                    Some(Ok(count)) => ui.strong(format!("{count}")),
+                                    Some(Err(err)) => ui
+                                        .error_label("could not load entries")
+                                        .on_hover_text(err.to_string()),
+                                };
+                            }),
+                        );
+
+                        ui.list_item_flat_noninteractive(
+                            list_item::PropertyContent::new("Tables").value_fn(|ui, _| {
+                                ui.strong(format!("{}", self.entries.table_count()));
+                            }),
+                        );
+                    },
+                );
+            });
+    }
+
     fn panel_ui(
         &self,
-        viewer_context: &ViewerContext<'_>,
+        viewer_ctx: &ViewerContext<'_>,
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
         recordings: Option<DatasetRecordings<'_>>,
     ) {
+        let item = Item::RedapServer(self.origin.clone());
+        let is_selected = viewer_ctx.selection().contains_item(&item);
+
         let content =
             list_item::LabelContent::header(self.origin.host.to_string()).with_buttons(|ui| {
                 let response = ui
@@ -56,19 +113,31 @@ impl Server {
                 response
             });
 
-        ui.list_item()
+        let item_response = ui
+            .list_item()
             .header()
+            .selected(is_selected)
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),
                 true,
                 content,
                 |ui| {
-                    self.entries.panel_ui(viewer_context, ctx, ui, recordings);
+                    self.entries.panel_ui(viewer_ctx, ctx, ui, recordings);
                 },
             )
             .item_response
             .on_hover_text(self.origin.to_string());
+
+        viewer_ctx.handle_select_hover_drag_interactions(&item_response, item, false);
+
+        if item_response.clicked() {
+            viewer_ctx
+                .command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                    self.origin.clone(),
+                )));
+        }
     }
 }
 
@@ -190,7 +259,7 @@ impl RedapServers {
                     );
                 } else {
                     // Since we persist the server list on disk this happens quite often.
-                    // E.g. run `pixi run rerun "rerun+http://localhost:51234"` more than once.
+                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
                     re_log::debug!(
                         "Tried to add pre-existing server at {:?}",
                         origin.to_string()
@@ -210,10 +279,29 @@ impl RedapServers {
         }
     }
 
+    pub fn server_central_panel_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
+    ) {
+        if let Some(server) = self.servers.get(origin) {
+            self.with_ctx(|ctx| {
+                server.server_ui(ctx, ui);
+            });
+        } else {
+            viewer_ctx
+                .command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(
+                    DisplayMode::LocalRecordings,
+                ));
+        }
+    }
+
     pub fn server_list_ui(
         &self,
-        ui: &mut egui::Ui,
         viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
         mut remote_recordings: RemoteRecordings<'_>,
     ) {
         self.with_ctx(|ctx| {

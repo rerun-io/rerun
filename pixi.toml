@@ -296,7 +296,7 @@ meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisea
 download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens | jq > crates/viewer/re_ui/data/design_tokens.json"
 
 # Update the results of `insta` snapshot regression tests
-rs-update-insta-tests = "cargo test ; cargo insta review"
+rs-update-insta-tests = "INSTA_FORCE_UPDATE=1 cargo nextest run --all-targets --all-features --cargo-quiet"
 
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"
@@ -577,6 +577,9 @@ ghp-import = "==2.1.0" # for CI documentation handling
 # PYTHON DEV ENVIRONMENT
 [feature.python-dev]
 platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.python-dev.activation.env]
+RERUN_DEV_ENVIRONMENT = "true"
 
 [feature.python-dev.dependencies]
 # We need opencv for `compare_snippet_output.py` (needed by both C++ and Python)

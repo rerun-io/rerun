@@ -28,7 +28,7 @@ pub enum SystemCommand {
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Add a new server to the redap browser.
-    AddRedapServer(re_uri::CatalogUri),
+    AddRedapServer(re_uri::Origin),
 
     ChangeDisplayMode(crate::DisplayMode),
 
@@ -95,10 +95,11 @@ pub enum SystemCommand {
     /// Set the item selection.
     SetSelection(crate::Item),
 
-    /// Set the active timeline for the given recording.
-    SetActiveTimeline {
+    /// Set the active timeline and time for the given recording.
+    SetActiveTime {
         rec_id: StoreId,
         timeline: re_chunk::Timeline,
+        time: Option<re_log_types::TimeReal>,
     },
 
     /// Set the loop selection for the given timeline.

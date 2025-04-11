@@ -17,17 +17,41 @@ use itertools::Itertools as _;
 pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Downcast an arrow array to another array, without having to go via `Any`.
     fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T>;
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError>;
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
     fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
     }
+
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
+        self.downcast_array_ref::<T>().ok_or_else(|| {
+            ArrowError::CastError(format!(
+                "Failed to downcast array of type {} to {}",
+                self.data_type(),
+                std::any::type_name::<T>(),
+            ))
+        })
+    }
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
     fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
+    }
+
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
+        self.downcast_array_ref::<T>().ok_or_else(|| {
+            ArrowError::CastError(format!(
+                "Failed to downcast array of type {} to {}",
+                self.data_type(),
+                std::any::type_name::<T>(),
+            ))
+        })
     }
 }
 

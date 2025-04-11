@@ -37,6 +37,7 @@ use re_protos::{
     },
 };
 
+/// Default port of the OSS /proxy server.
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 

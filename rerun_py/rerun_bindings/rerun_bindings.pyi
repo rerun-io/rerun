@@ -758,8 +758,21 @@ def serve_grpc(
     server_memory_limit: str,
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
+) -> str:
+    """
+    Spawn a gRPC server which an SDK or Viewer can connect to.
+
+    Returns the URI of the server so you can connect the viewer to it.
+    """
+
+def serve_web_viewer(
+    web_port: Optional[int] = None, open_browser: bool = True, connect_to: Optional[str] = None
 ) -> None:
-    """Spawn a gRPC server which an SDK or Viewer can connect to."""
+    """
+    Serve a web-viewer over HTTP.
+
+    This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
+    """
 
 def serve_web(
     open_browser: bool,
@@ -769,7 +782,7 @@ def serve_web(
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Serve a web-viewer."""
+    """Serve a web-viewer AND host a gRPC server."""
 
 def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
     """
@@ -1262,3 +1275,28 @@ class DataFusionTable:
     @property
     def name(self) -> str:
         """Name of this table."""
+
+#####################################################################################################################
+## SEND_TABLE                                                                                                      ##
+#####################################################################################################################
+
+class ViewerClient:
+    """A connection to an instance of a Rerun viewer."""
+
+    def __init__(self, addr: str) -> None:
+        """
+        Create a new viewer client object.
+
+        Parameters
+        ----------
+        addr : str
+            The address of the viewer.
+
+        """
+
+    def send_table(self, id: str, table: pa.RecordBatch) -> None:
+        """
+        Sends a table to the viewer.
+
+        A table is represented as a dataframe defined by an Arrow record batch.
+        """

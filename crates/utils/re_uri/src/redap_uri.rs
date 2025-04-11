@@ -1,10 +1,20 @@
-use crate::{CatalogUri, DatasetDataUri, Error, Fragment, Origin, ProxyUri};
+use re_log_types::StoreId;
+
+use crate::{
+    CatalogUri, DatasetDataUri, EntryUri, Error, Fragment, Origin, ProxyUri, DEFAULT_PROXY_PORT,
+    DEFAULT_REDAP_PORT,
+};
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum RedapUri {
+    /// `/catalog` - also the default if there is no /endpoint
     Catalog(CatalogUri),
 
+    /// `/entry`
+    Entry(EntryUri),
+
+    /// `/dataset`
     DatasetData(DatasetDataUri),
 
     /// We use the `/proxy` endpoint to access another _local_ viewer.
@@ -15,9 +25,22 @@ impl RedapUri {
     /// Return the parsed `#fragment` of the URI, if any.
     pub fn fragment(&self) -> Option<&Fragment> {
         match self {
-            Self::Catalog(_) | Self::Proxy(_) => None,
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
             Self::DatasetData(dataset_data_endpoint) => Some(&dataset_data_endpoint.fragment),
         }
+    }
+
+    fn partition_id(&self) -> Option<&str> {
+        match self {
+            Self::Catalog(_) | Self::Proxy(_) | Self::Entry(_) => None,
+            Self::DatasetData(dataset_data_uri) => Some(dataset_data_uri.partition_id.as_str()),
+        }
+    }
+
+    pub fn recording_id(&self) -> Option<StoreId> {
+        self.partition_id().map(|partition_id| {
+            StoreId::from_string(re_log_types::StoreKind::Recording, partition_id.to_owned())
+        })
     }
 }
 
@@ -25,6 +48,7 @@ impl std::fmt::Display for RedapUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Catalog(uri) => write!(f, "{uri}",),
+            Self::Entry(uri) => write!(f, "{uri}",),
             Self::DatasetData(uri) => write!(f, "{uri}",),
             Self::Proxy(uri) => write!(f, "{uri}",),
         }
@@ -35,7 +59,14 @@ impl std::str::FromStr for RedapUri {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let (origin, http_url) = Origin::replace_and_parse(value)?;
+        // Hacky, but I don't want to have to memorize ports.
+        let default_localhost_port = if value.contains("/proxy") {
+            DEFAULT_PROXY_PORT
+        } else {
+            DEFAULT_REDAP_PORT
+        };
+
+        let (origin, http_url) = Origin::replace_and_parse(value, Some(default_localhost_port))?;
 
         // :warning: We limit the amount of segments, which might need to be
         // adjusted when adding additional resources.
@@ -50,6 +81,12 @@ impl std::str::FromStr for RedapUri {
             ["proxy"] => Ok(Self::Proxy(ProxyUri::new(origin))),
 
             ["catalog"] | [] => Ok(Self::Catalog(CatalogUri::new(origin))),
+
+            ["entry", entry_id] => {
+                let entry_id =
+                    re_log_types::EntryId::from_str(entry_id).map_err(Error::InvalidTuid)?;
+                Ok(Self::Entry(EntryUri::new(origin, entry_id)))
+            }
 
             ["dataset", dataset_id] => {
                 let dataset_id = re_tuid::Tuid::from_str(dataset_id).map_err(Error::InvalidTuid)?;
@@ -88,6 +125,7 @@ impl<'de> serde::Deserialize<'de> for RedapUri {
 
 #[cfg(test)]
 mod tests {
+    #![expect(clippy::unnecessary_fallible_conversions)]
 
     use re_log_types::DataPath;
 
@@ -128,6 +166,24 @@ mod tests {
     }
 
     #[test]
+    fn test_entry_url_to_address() {
+        let url = "rerun://127.0.0.1:1234/entry/1830B33B45B963E7774455beb91701ae";
+        let address: RedapUri = url.parse().unwrap();
+
+        let RedapUri::Entry(EntryUri { origin, entry_id }) = address else {
+            panic!("Expected recording");
+        };
+
+        assert_eq!(origin.scheme, Scheme::Rerun);
+        assert_eq!(origin.host, url::Host::<String>::Ipv4(Ipv4Addr::LOCALHOST));
+        assert_eq!(origin.port, 1234);
+        assert_eq!(
+            entry_id,
+            "1830B33B45B963E7774455beb91701ae".parse().unwrap(),
+        );
+    }
+
+    #[test]
     fn test_dataset_data_url_to_address() {
         let url =
             "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid";
@@ -159,7 +215,7 @@ mod tests {
     #[test]
     fn test_dataset_data_url_with_fragment() {
         let url =
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#/some/entity[#42]";
+            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetDataUri {
@@ -185,11 +241,12 @@ mod tests {
         assert_eq!(
             fragment,
             Fragment {
-                data_path: Some(DataPath {
+                focus: Some(DataPath {
                     entity_path: "/some/entity".into(),
                     instance: Some(42.into()),
                     component_name: None,
-                })
+                }),
+                ..Default::default()
             }
         );
     }
@@ -222,10 +279,8 @@ mod tests {
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_sequence("timeline"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeReal::from(100.0),
-                    re_log_types::TimeReal::from(200.0)
-                )
+                min: 100.try_into().unwrap(),
+                max: 200.try_into().unwrap(),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -259,14 +314,8 @@ mod tests {
             time_range,
             Some(TimeRange {
                 timeline: re_log_types::Timeline::new_timestamp("log_time"),
-                range: re_log_types::ResolvedTimeRangeF::new(
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_203_123_456_789.try_into().unwrap()
-                    ),
-                    re_log_types::TimeInt::from_nanos(
-                        1_640_995_213_123_456_789.try_into().unwrap()
-                    ),
-                )
+                min: 1_640_995_203_123_456_789.try_into().unwrap(),
+                max: 1_640_995_213_123_456_789.try_into().unwrap(),
             })
         );
         assert_eq!(fragment, Default::default());
@@ -303,10 +352,8 @@ mod tests {
                 time_range,
                 Some(TimeRange {
                     timeline: re_log_types::Timeline::new_duration("timeline"),
-                    range: re_log_types::ResolvedTimeRangeF::new(
-                        re_log_types::TimeReal::from_secs(1.23),
-                        re_log_types::TimeReal::from_secs(72.0)
-                    )
+                    min: re_log_types::TimeInt::from_secs(1.23).try_into().unwrap(),
+                    max: re_log_types::TimeInt::from_secs(72.0).try_into().unwrap(),
                 })
             );
             assert_eq!(fragment, Default::default());
@@ -414,6 +461,101 @@ mod tests {
     }
 
     #[test]
+    fn test_parsing() {
+        let test_cases = [
+            (
+                "rerun://localhost/catalog",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_REDAP_PORT,
+                    },
+                }),
+            ),
+            (
+                "localhost",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_REDAP_PORT,
+                    },
+                }),
+            ),
+            (
+                "localhost/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("localhost".to_owned()),
+                        port: DEFAULT_PROXY_PORT,
+                    },
+                }),
+            ),
+            (
+                "127.0.0.1/proxy",
+                RedapUri::Proxy(ProxyUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Ipv4(Ipv4Addr::new(127, 0, 0, 1)),
+                        port: DEFAULT_PROXY_PORT,
+                    },
+                }),
+            ),
+            (
+                "rerun+http://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttp,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 80,
+                    },
+                }),
+            ),
+            (
+                "rerun+https://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::RerunHttps,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 443,
+                    },
+                }),
+            ),
+            (
+                "rerun://example.com",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 443,
+                    },
+                }),
+            ),
+            (
+                "rerun://example.com:420/catalog",
+                RedapUri::Catalog(CatalogUri {
+                    origin: Origin {
+                        scheme: Scheme::Rerun,
+                        host: url::Host::Domain("example.com".to_owned()),
+                        port: 420,
+                    },
+                }),
+            ),
+        ];
+
+        for (url, expected) in test_cases {
+            assert_eq!(
+                url.parse::<RedapUri>()
+                    .unwrap_or_else(|err| panic!("Failed to parse url {url:}: {err}")),
+                expected,
+                "Url: {url:?}"
+            );
+        }
+    }
+
+    #[test]
     fn test_catalog_default() {
         let url = "rerun://localhost:51234";
         let address: Result<RedapUri, _> = url.parse();
@@ -432,25 +574,6 @@ mod tests {
         let address: Result<RedapUri, _> = url.parse();
 
         assert_eq!(address.unwrap(), expected);
-    }
-
-    #[test]
-    #[ignore]
-    // TODO(lucasmerlin): This should ideally work but doesn't right now because of a issue in the `url` crate:
-    // https://github.com/servo/rust-url/issues/957
-    // See also `replace_and_parse` in `origin.rs`
-    fn test_default_port() {
-        let url = "rerun://localhost";
-
-        let expected = RedapUri::Catalog(CatalogUri {
-            origin: Origin {
-                scheme: Scheme::Rerun,
-                host: url::Host::Domain("localhost".to_owned()),
-                port: 51234,
-            },
-        });
-
-        assert_eq!(url.parse::<RedapUri>().unwrap(), expected);
     }
 
     #[test]

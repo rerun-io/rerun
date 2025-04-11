@@ -8,8 +8,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.23.0-alpha.1+dev"
-__version_info__ = (0, 23, 0, "alpha.1")
+__version__ = "0.23.0-alpha.3+dev"
+__version_info__ = (0, 23, 0, "alpha.3")
 
 
 if sys.version_info < (3, 9):  # noqa: UP036
@@ -28,7 +28,6 @@ from . import (
     catalog as catalog,
     dataframe as dataframe,
     experimental as experimental,
-    notebook as notebook,
 )
 from ._baseclasses import (
     ComponentBatchLike as ComponentBatchLike,
@@ -153,9 +152,6 @@ from .memory import (
     MemoryRecording as MemoryRecording,
     memory_recording as memory_recording,
 )
-from .notebook import (
-    notebook_show as notebook_show,
-)
 from .recording_stream import (
     BinaryStream as BinaryStream,
     RecordingStream as RecordingStream,
@@ -196,6 +192,7 @@ from .time import (
     set_time_seconds as set_time_seconds,
     set_time_sequence as set_time_sequence,
 )
+from .web import serve_web_viewer as serve_web_viewer
 
 # =====================================
 # UTILITIES
@@ -422,3 +419,53 @@ def start_web_viewer_server(port: int = 0) -> None:
     """
 
     bindings.start_web_viewer_server(port)
+
+
+def notebook_show(
+    *,
+    width: int | None = None,
+    height: int | None = None,
+    blueprint: BlueprintLike | None = None,  # noqa: F811
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
+
+    Any data logged to the recording after initialization will be sent directly to the viewer.
+
+    Note that this can be called at any point during cell execution. The call will block until the embedded
+    viewer is initialized and ready to receive data. Thereafter any log calls will immediately send data
+    to the viewer.
+
+    Parameters
+    ----------
+    width : int
+        The width of the viewer in pixels.
+    height : int
+        The height of the viewer in pixels.
+    blueprint : BlueprintLike
+        A blueprint object to send to the viewer.
+        It will be made active and set as the default blueprint in the recording.
+
+        Setting this is equivalent to calling [`rerun.send_blueprint`][] before initializing the viewer.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+    try:
+        from .notebook import Viewer
+
+        Viewer(
+            width=width,
+            height=height,
+            blueprint=blueprint,
+            recording=recording,  # NOLINT
+        ).display()
+    except ImportError as e:
+        raise Exception("Could not import rerun_notebook. Please install `rerun-notebook`.") from e
+    except FileNotFoundError as e:
+        raise Exception(
+            "rerun_notebook package is missing widget assets. Please run `py-build-notebook` in your pixi env."
+        ) from e

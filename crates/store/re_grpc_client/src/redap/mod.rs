@@ -240,7 +240,7 @@ pub async fn stream_partition_async(
         on_cmd(Command::SetLoopSelection {
             recording_id: store_id.clone(),
             timeline: time_range.timeline,
-            time_range: time_range.range,
+            time_range: time_range.into(),
         });
     }
 

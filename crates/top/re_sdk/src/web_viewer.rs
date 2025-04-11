@@ -1,5 +1,4 @@
 use re_log_types::LogMsg;
-use re_uri::ProxyUri;
 use re_web_viewer_server::{WebViewerServer, WebViewerServerError, WebViewerServerPort};
 
 // ----------------------------------------------------------------------------
@@ -140,11 +139,11 @@ pub struct WebViewerConfig {
     /// Defaults to [`WebViewerServerPort::AUTO`].
     pub web_port: WebViewerServerPort,
 
-    /// The url from which a spawned webviewer should source
+    /// The url to which any spawned webviewer should connect.
     ///
     /// This url is a hosted RRD file that we retrieve via the message proxy.
     /// Has no effect if [`Self::open_browser`] is false.
-    pub source_url: Option<ProxyUri>,
+    pub connect_to: Option<String>,
 
     /// If set, adjusts the browser url to force a specific backend, either `webgl` or `webgpu`.
     ///
@@ -168,7 +167,7 @@ impl Default for WebViewerConfig {
         Self {
             bind_ip: "0.0.0.0".to_owned(),
             web_port: WebViewerServerPort::AUTO,
-            source_url: None,
+            connect_to: None,
             force_wgpu_backend: None,
             video_decoder: None,
             open_browser: true,
@@ -188,7 +187,7 @@ impl WebViewerConfig {
     pub fn host_web_viewer(self) -> Result<WebViewerServer, WebViewerServerError> {
         let Self {
             bind_ip,
-            source_url,
+            connect_to,
             web_port,
             force_wgpu_backend,
             video_decoder,
@@ -211,9 +210,8 @@ impl WebViewerConfig {
             viewer_url = format!("{viewer_url}{arg_delimiter}{arg}");
         };
 
-        if let Some(source_url) = source_url {
-            // TODO(jan): remove after we change to `rerun-http`
-            let source_url = source_url.to_string();
+        if let Some(source_url) = connect_to {
+            // TODO(jan): remove after we change from `rerun+http` to `rerun-http`
             let source_url = percent_encoding::utf8_percent_encode(
                 &source_url,
                 percent_encoding::NON_ALPHANUMERIC,
@@ -263,4 +261,19 @@ pub fn new_sink(
         grpc_port,
         server_memory_limit,
     )?))
+}
+
+/// Serves the Rerun Web Viewer (HTML+JS+Wasm) over http.
+///
+/// The server will immediately start listening for incoming connections
+/// and stop doing so when the returned [`WebViewerServer`] is dropped.
+///
+/// Note: this does NOT start a gRPC server.
+/// To start a gRPC server, use [`crate::RecordingStreamBuilder::serve_grpc`] and connect to it
+/// by setting [`WebViewerConfig::connect_to`] to `rerun+http://localhost/proxy`.
+///
+/// Note: this function just calls [`WebViewerConfig::host_web_viewer`] and is here only
+/// for convenience, visibility, and for symmetry with our Python SDK.
+pub fn serve_web_viewer(config: WebViewerConfig) -> Result<WebViewerServer, WebViewerServerError> {
+    config.host_web_viewer()
 }

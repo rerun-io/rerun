@@ -455,7 +455,7 @@ impl PyDataframeQueryView {
         let ctx = client.ctx(py)?;
         let ctx = ctx.bind(py);
 
-        let uuid = uuid::Uuid::new_v4();
+        let uuid = uuid::Uuid::new_v4().simple();
         let name = format!("{}_dataframe_query_{uuid}", super_.name());
 
         drop(client);

@@ -157,6 +157,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
     m.add_function(wrap_pyfunction!(serve_grpc, m)?)?;
+    m.add_function(wrap_pyfunction!(serve_web_viewer, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
@@ -199,6 +200,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // catalog
     crate::catalog::register(py, m)?;
+
+    // viewer
+    crate::viewer::register(py, m)?;
 
     Ok(())
 }
@@ -967,6 +971,8 @@ impl PyBinarySinkStorage {
 }
 
 /// Spawn a gRPC server which an SDK or Viewer can connect to.
+///
+/// Returns the URI of the server so you can connect the viewer to it.
 #[pyfunction]
 #[pyo3(signature = (grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve_grpc(
@@ -974,16 +980,16 @@ fn serve_grpc(
     server_memory_limit: String,
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
-) -> PyResult<()> {
+) -> PyResult<String> {
     #[cfg(feature = "server")]
     {
         let Some(recording) = get_data_recording(recording) else {
-            return Ok(());
+            return Ok("[no active recording]".to_owned());
         };
 
         if re_sdk::forced_sink_path().is_some() {
             re_log::debug!("Ignored call to `serve_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
-            return Ok(());
+            return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
         }
 
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
@@ -1000,9 +1006,11 @@ fn serve_grpc(
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
         }
 
+        let uri = sink.uri().to_string();
+
         recording.set_sink(Box::new(sink));
 
-        Ok(())
+        Ok(uri)
     }
 
     #[cfg(not(feature = "server"))]
@@ -1015,7 +1023,44 @@ fn serve_grpc(
     }
 }
 
-/// Serve a web-viewer.
+/// Serve a web-viewer over HTTP.
+///
+/// This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
+#[allow(clippy::unnecessary_wraps)] // False positive
+#[pyfunction]
+#[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
+fn serve_web_viewer(
+    web_port: Option<u16>,
+    open_browser: bool,
+    connect_to: Option<String>,
+) -> PyResult<()> {
+    #[cfg(feature = "web_viewer")]
+    {
+        re_sdk::web_viewer::WebViewerConfig {
+            open_browser,
+            connect_to,
+            web_port: web_port.map(WebViewerServerPort).unwrap_or_default(),
+            ..Default::default()
+        }
+        .host_web_viewer()
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .detach();
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "web_viewer"))]
+    {
+        _ = web_port;
+        _ = open_browser;
+        _ = connect_to;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'web_viewer' feature",
+        ))
+    }
+}
+
+/// Serve a web-viewer AND host a gRPC server.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None))]
