@@ -5,6 +5,7 @@ package rerun.frontend.v1alpha1;
 import "rerun/v1alpha1/catalog.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/manifest_registry.proto";
+import "rerun/v1alpha1/tasks.proto";
 
 // TODO(cmc): I've decided to re-use the underlying response types for now, in the name of expediency.
 // This is bad in the long term (breaking changes to the internal APIs should not result in breaking
@@ -105,6 +106,16 @@ service FrontendService {
 
   rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
+
+  // --- Tasks service ---
+  // Query the status of submitted tasks
+  rpc Query(rerun.redap_tasks.v1alpha1.QueryRequest) returns (rerun.redap_tasks.v1alpha1.QueryResponse) {}
+
+  // Fetch the output of a completed task
+  rpc FetchOutput(rerun.redap_tasks.v1alpha1.FetchOutputRequest) returns (rerun.redap_tasks.v1alpha1.FetchOutputResponse) {}
+
+  // Query the status of submitted tasks as soon as they are no longer pending
+  rpc QueryOnCompletion(rerun.redap_tasks.v1alpha1.QueryOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryOnCompletionResponse) {}
 }
 
 // --- Manifest Registry ---
