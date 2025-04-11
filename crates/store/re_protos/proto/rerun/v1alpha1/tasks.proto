@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package rerun.redap_tasks.v1alpha1;
 
+import "google/protobuf/duration.proto";
 import "rerun/v1alpha1/common.proto";
 
 // `TasksService` is the service for submitting and querying persistent redap tasks.
@@ -14,6 +15,14 @@ service TasksService {
 
   // Fetch the output of a completed task
   rpc FetchOutput(FetchOutputRequest) returns (FetchOutputResponse);
+
+  // Query the status of submitted tasks, waiting for their completion.
+  //
+  // The method returns a stream of QueryResult. Each item in the stream contains
+  // the status of a subset of the tasks, as they complete.
+  // The server does not guarantee to immediately send one stream item as soon as a task
+  // completes, but may decide to arbitrarily aggregate results into larger batches.
+  rpc QueryOnCompletion(QueryOnCompletionRequest) returns (stream QueryOnCompletionResponse);
 }
 
 // A task is a unit of work that can be submitted to the system
@@ -46,6 +55,22 @@ message QueryRequest {
 // `QueryResponse` is the response message for querying tasks status
 // encoded as a record batch
 message QueryResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+// `QueryOnCompletionRequest` is the request message for querying tasks status.
+// This is close-to-a-copy of `QueryRequest`, with the addition of a timeout.
+message QueryOnCompletionRequest {
+  // Empty queries for all tasks if the server allows it.
+  repeated rerun.common.v1alpha1.TaskId ids = 1;
+  // Time limit for the server to wait for task completion.
+  // The actual maximum time may be arbitrarily capped by the server.
+  google.protobuf.Duration timeout = 2;
+}
+
+// `QueryOnCompletionResponse` is the response message for querying tasks status
+// encoded as a record batch. This is a copy of `QueryResponse`.
+message QueryOnCompletionResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
