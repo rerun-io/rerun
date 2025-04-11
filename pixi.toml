@@ -296,7 +296,7 @@ meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisea
 download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens | jq > crates/viewer/re_ui/data/design_tokens.json"
 
 # Update the results of `insta` snapshot regression tests
-rs-update-insta-tests = "cargo test --all-features ; cargo insta review"
+rs-update-insta-tests = "INSTA_FORCE_UPDATE=1 cargo nextest run --all-targets --all-features --cargo-quiet"
 
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"

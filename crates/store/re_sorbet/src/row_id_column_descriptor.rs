@@ -61,6 +61,11 @@ impl RowIdColumnDescriptor {
                 "ARROW:extension:name".to_owned(),
                 re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
             ),
+            (
+                // Storing the metadata as JSON as is the convention…
+                "ARROW:extension:metadata".to_owned(),
+                r#"{"namespace":"row"}"#.to_owned(), // for row_ prefix
+            ),
         ]);
         if *is_sorted {
             metadata.insert("rerun.is_sorted".to_owned(), "true".to_owned());
