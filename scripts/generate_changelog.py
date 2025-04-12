@@ -36,6 +36,7 @@ OFFICIAL_RERUN_DEVS = [
     "nikolausWest",
     "oxkitsune",
     "teh-cmc",
+    "timsaucer",
     "Wumpf",
     "zehiko",
 ]
