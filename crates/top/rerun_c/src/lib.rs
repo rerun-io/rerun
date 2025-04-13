@@ -403,7 +403,7 @@ fn rr_register_component_type_impl(
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_register_component_type(
-    // Note that since this is passed by value, Arrow2 will release the schema on drop!
+    // Note that since this is passed by value, arrow will release the schema on drop!
     component_type: CComponentType,
     error: *mut CError,
 ) -> u32 {
