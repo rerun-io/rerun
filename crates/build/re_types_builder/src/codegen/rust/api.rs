@@ -882,7 +882,10 @@ fn quote_trait_impls_for_datatype_or_component(
             }
         }
     } else {
-        let datatype = ArrowDataTypeTokenizer(&datatype, false);
+        let datatype = ArrowDataTypeTokenizer {
+            datatype: &datatype,
+            recursive: false,
+        };
         quote! {
             #[inline]
             fn arrow_datatype() -> arrow::datatypes::DataType {

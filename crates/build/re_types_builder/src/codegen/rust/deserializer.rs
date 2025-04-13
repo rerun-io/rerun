@@ -842,8 +842,10 @@ fn quote_arrow_field_deserializer(
 }
 
 fn quote_datatype(datatype: &DataType) -> TokenStream {
-    let is_recursive = false;
-    let expected = ArrowDataTypeTokenizer(datatype, is_recursive);
+    let expected = ArrowDataTypeTokenizer {
+        datatype,
+        recursive: false,
+    };
     quote! { #expected }
 }
 
