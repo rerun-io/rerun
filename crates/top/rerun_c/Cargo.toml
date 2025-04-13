@@ -42,7 +42,6 @@ re_video.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
-arrow2.workspace = true
 infer.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
