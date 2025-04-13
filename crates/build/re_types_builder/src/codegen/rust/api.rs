@@ -784,7 +784,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
                     quote!(Vec<#elem_type>)
                 }
             }
-            Type::Object(fqname) => quote_fqname_as_type_path(fqname),
+            Type::Object { fqname } => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
     }
@@ -806,7 +806,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
             ElementType::String => quote!(::re_types_core::ArrowString),
-            ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
+            ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
     }
@@ -870,7 +870,7 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let is_forwarded_type = obj.is_arrow_transparent()
         && !obj.fields[0].is_nullable
-        && matches!(obj.fields[0].typ, Type::Object(_));
+        && matches!(obj.fields[0].typ, Type::Object { .. });
     let forwarded_type =
         is_forwarded_type.then(|| quote_field_type_from_typ(&obj.fields[0].typ, true).0);
 

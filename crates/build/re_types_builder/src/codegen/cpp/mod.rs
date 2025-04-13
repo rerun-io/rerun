@@ -924,7 +924,10 @@ impl QuotedObject {
             && obj.fields.len() == 1
             && matches!(obj.fields[0].typ, Type::Object { .. })
         {
-            if let Type::Object(datatype_fqname) = &obj.fields[0].typ {
+            if let Type::Object {
+                fqname: datatype_fqname,
+            } = &obj.fields[0].typ
+            {
                 let data_type = quote_field_type(&mut hpp_includes, &obj.fields[0]);
                 let type_name = datatype_fqname.split('.').last().unwrap();
                 let field_name = format_ident!("{}", obj.fields[0].name);
@@ -1549,7 +1552,10 @@ fn single_field_constructor_methods(
     //
     // Note that we previously we tried to do a general forwarding constructor via variadic templates,
     // but ran into some issues when init archetypes with initializer lists.
-    if let Type::Object(field_type_fqname) = &field.typ {
+    if let Type::Object {
+        fqname: field_type_fqname,
+    } = &field.typ
+    {
         let field_type_obj = &objects[field_type_fqname];
         if field_type_obj.fields.len() == 1 && !field_type_obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
         {
@@ -1627,7 +1633,7 @@ fn add_copy_assignment_and_constructor(
 /// If the type forwards to another rerun defined type, returns the fully qualified name of that type.
 fn transparent_forwarded_fqname(obj: &Object) -> Option<&str> {
     if obj.is_arrow_transparent() && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
-        if let Type::Object(fqname) = &obj.fields[0].typ {
+        if let Type::Object { fqname } = &obj.fields[0].typ {
             return Some(fqname);
         }
     }
@@ -1657,7 +1663,9 @@ fn arrow_data_type_method(
             hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
 
             let quoted_datatype = quote_arrow_datatype(
-                &Type::Object(obj.fqname.clone()),
+                &Type::Object {
+                    fqname: obj.fqname.clone(),
+                },
                 objects,
                 cpp_includes,
                 true,
@@ -1892,7 +1900,7 @@ fn quote_fill_arrow_array_builder(
 
     if obj.is_arrow_transparent() {
         let field = &obj.fields[0];
-        if let Type::Object(fqname) = &field.typ {
+        if let Type::Object { fqname } = &field.typ {
             if field.is_nullable {
                 quote! {
                     (void)builder;
@@ -2005,7 +2013,7 @@ fn quote_fill_arrow_array_builder(
                                     ElementType::Float32 => Some("FloatBuilder"),
                                     ElementType::Float64 => Some("DoubleBuilder"),
                                     ElementType::String => Some("StringBuilder"),
-                                    ElementType::Object(_) => None,
+                                    ElementType::Object{..} => None,
                                 };
 
                                 if let Some(type_builder_name) = type_builder_name {
@@ -2298,7 +2306,7 @@ fn quote_append_single_value_to_builder(
                         }
                     }
                 }
-                ElementType::Object(fqname) => {
+                ElementType::Object { fqname } => {
                     let fqname = quote_fqname_as_type_path(includes, fqname);
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
@@ -2309,7 +2317,7 @@ fn quote_append_single_value_to_builder(
                 }
             }
         }
-        Type::Object(fqname) => {
+        Type::Object { fqname } => {
             let fqname = quote_fqname_as_type_path(includes, fqname);
             quote!(RR_RETURN_NOT_OK(Loggable<#fqname>::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
         }
@@ -2404,7 +2412,7 @@ fn quote_archetype_unserialized_type(
             let elem_type = quote_element_type(hpp_includes, elem_type);
             quote! { Collection<#elem_type> }
         }
-        Type::Object(fqname) => quote_fqname_as_type_path(hpp_includes, fqname),
+        Type::Object { fqname } => quote_fqname_as_type_path(hpp_includes, fqname),
         _ => panic!("Only vectors and objects are allowed in archetypes."),
     }
 }
@@ -2463,7 +2471,7 @@ fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenSt
             includes.insert_rerun("collection.hpp");
             quote! { rerun::Collection<#elem_type>  }
         }
-        Type::Object(fqname) => {
+        Type::Object { fqname } => {
             let type_name = quote_fqname_as_type_path(includes, fqname);
             quote! { #type_name  }
         }
@@ -2512,7 +2520,7 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
             includes.insert_system("string");
             quote! { std::string }
         }
-        ElementType::Object(fqname) => quote_fqname_as_type_path(includes, fqname),
+        ElementType::Object { fqname } => quote_fqname_as_type_path(includes, fqname),
     }
 }
 
@@ -2654,7 +2662,7 @@ fn quote_arrow_datatype(
             quote!(arrow::fixed_size_list(#quoted_field, #quoted_length))
         }
 
-        Type::Object(fqname) => {
+        Type::Object { fqname } => {
             // TODO(andreas): We're no`t emitting the actual extension types here yet which is why we're skipping the extension type at top level.
             // Currently, we wrap only Components in extension types but this is done in `rerun_c`.
             // In the future we'll add the extension type here to the schema.
