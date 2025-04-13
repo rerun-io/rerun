@@ -147,6 +147,7 @@ mod format;
 #[allow(clippy::unimplemented)]
 mod objects;
 
+mod data_type;
 mod docs;
 
 pub mod report;
@@ -158,7 +159,7 @@ pub mod report;
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
 pub use self::{
-    arrow_registry::{ArrowRegistry, LazyDatatype, LazyField},
+    arrow_registry::ArrowRegistry,
     codegen::{
         CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
         SnippetsRefCodeGenerator,

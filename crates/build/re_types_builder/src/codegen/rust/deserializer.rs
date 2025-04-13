@@ -1,4 +1,3 @@
-use arrow2::datatypes::DataType;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
@@ -7,6 +6,7 @@ use crate::{
         arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
         util::{is_tuple_struct_from_obj, quote_comment},
     },
+    data_type::{AtomicDataType, DataType, UnionMode},
     ArrowRegistry, Object, Objects,
 };
 
@@ -270,7 +270,7 @@ pub fn quote_arrow_deserializer(
                 }}
             }
 
-            DataType::Union(_, _, arrow2::datatypes::UnionMode::Sparse) => {
+            DataType::Union(_, UnionMode::Sparse) => {
                 // We use sparse arrow unions for c-style enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
 
@@ -315,7 +315,7 @@ pub fn quote_arrow_deserializer(
                 }}
             }
 
-            DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
+            DataType::Union(_, UnionMode::Dense) => {
                 // We use dense arrow unions for proper sum-type unions.
                 // Nulls are encoded with a special 0-index `_null_markers` variant.
 
@@ -506,7 +506,7 @@ fn quote_arrow_field_deserializer(
     _ = is_nullable; // not yet used, will be needed very soon
 
     // If the inner object is an enum, then dispatch to its deserializer.
-    if let DataType::Extension(fqname, _, _) = datatype {
+    if let DataType::Object { fqname, .. } = datatype {
         if objects.get(fqname).is_some_and(|obj| obj.is_enum()) {
             let fqname_use = quote_fqname_as_type_path(fqname);
             return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
@@ -514,24 +514,12 @@ fn quote_arrow_field_deserializer(
     }
 
     match datatype.to_logical_type() {
-        DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64
-        | DataType::Boolean
-        | DataType::Null => {
+        DataType::Atomic(atomic) => {
             let quoted_iter_transparency =
                 quote_iterator_transparency(objects, datatype, IteratorKind::OptionValue, None);
 
             let quoted_downcast = {
-                let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
+                let cast_as = atomic.to_string();
                 let cast_as = format_ident!("{cast_as}Array");
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
@@ -829,8 +817,8 @@ fn quote_arrow_field_deserializer(
             }}
         }
 
-        DataType::Struct(_) | DataType::Union(_, _, _) => {
-            let DataType::Extension(fqname, _, _) = datatype else {
+        DataType::Struct(_) | DataType::Union(_, _) => {
+            let DataType::Object { fqname, .. } = datatype else {
                 unreachable!()
             };
             let fqname_use = quote_fqname_as_type_path(fqname);
@@ -909,7 +897,7 @@ fn quote_iterator_transparency(
 ) -> TokenStream {
     #![allow(clippy::collapsible_else_if)]
 
-    let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+    let inner_obj = if let DataType::Object { fqname, .. } = datatype {
         Some(&objects[fqname])
     } else {
         None
@@ -1068,19 +1056,9 @@ fn quote_arrow_field_deserializer_buffer_slice(
     _ = is_nullable; // not yet used, will be needed very soon
 
     match datatype.to_logical_type() {
-        DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64 => {
+        DataType::Atomic(atomic) => {
             let quoted_downcast = {
-                let cast_as = format!("{:?}", datatype.to_logical_type()).replace("DataType::", "");
+                let cast_as = atomic.to_string();
                 let cast_as = format_ident!("{cast_as}Array"); // e.g. `Uint32Array`
                 quote_array_downcast(
                     obj_field_fqname,
@@ -1156,18 +1134,12 @@ pub fn should_optimize_buffer_slice_deserialize(
 /// Whether or not this datatype allows for the buffer slice optimizations.
 fn should_optimize_buffer_slice_deserialize_datatype(typ: &DataType) -> bool {
     match typ {
-        DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64 => true,
-        DataType::Extension(_, typ, _) => should_optimize_buffer_slice_deserialize_datatype(typ),
+        DataType::Atomic(atomic) => {
+            !matches!(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
+        }
+        DataType::Object { datatype, .. } => {
+            should_optimize_buffer_slice_deserialize_datatype(datatype)
+        }
         DataType::FixedSizeList(field, _) => {
             should_optimize_buffer_slice_deserialize_datatype(field.data_type())
         }

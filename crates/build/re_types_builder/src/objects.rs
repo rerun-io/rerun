@@ -10,10 +10,10 @@ use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 
 use crate::{
-    root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE,
-    ATTR_RERUN_OVERRIDE_TYPE, ATTR_RERUN_STATE,
+    data_type::LazyDatatype, root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField,
+    FbsKeyValue, FbsObject, FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL,
+    ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_DEPRECATED_NOTICE,
+    ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE, ATTR_RERUN_STATE,
 };
 
 // ---
@@ -423,7 +423,7 @@ pub struct Object {
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    pub datatype: Option<crate::LazyDatatype>,
+    pub datatype: Option<LazyDatatype>,
 }
 
 impl PartialEq for Object {
@@ -897,7 +897,7 @@ pub struct ObjectField {
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    pub datatype: Option<crate::LazyDatatype>,
+    pub datatype: Option<LazyDatatype>,
 }
 
 impl ObjectField {

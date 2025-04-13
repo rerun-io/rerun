@@ -7689,7 +7689,6 @@ name = "re_types_builder"
 version = "0.23.0-alpha.3+dev"
 dependencies = [
  "anyhow",
- "arrow",
  "camino",
  "clang-format",
  "colored",
@@ -7700,7 +7699,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rayon",
- "re_arrow2",
  "re_build_tools",
  "re_case",
  "re_error",

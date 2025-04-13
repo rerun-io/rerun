@@ -1,11 +1,12 @@
-use arrow2::datatypes::DataType;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
+
+use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
 
 // ---
 
 pub struct ArrowDataTypeTokenizer<'a> {
-    pub datatype: &'a ::arrow2::datatypes::DataType,
+    pub datatype: &'a DataType,
 
     /// If `true`,
     /// then the generated code will often be shorter, as it will
@@ -15,29 +16,28 @@ pub struct ArrowDataTypeTokenizer<'a> {
 
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        use arrow2::datatypes::UnionMode;
         let Self {
             datatype,
             recursive,
         } = self;
         match datatype {
-            DataType::Null => quote!(DataType::Null),
-            DataType::Boolean => quote!(DataType::Boolean),
-            DataType::Int8 => quote!(DataType::Int8),
-            DataType::Int16 => quote!(DataType::Int16),
-            DataType::Int32 => quote!(DataType::Int32),
-            DataType::Int64 => quote!(DataType::Int64),
-            DataType::UInt8 => quote!(DataType::UInt8),
-            DataType::UInt16 => quote!(DataType::UInt16),
-            DataType::UInt32 => quote!(DataType::UInt32),
-            DataType::UInt64 => quote!(DataType::UInt64),
-            DataType::Float16 => quote!(DataType::Float16),
-            DataType::Float32 => quote!(DataType::Float32),
-            DataType::Float64 => quote!(DataType::Float64),
+            DataType::Atomic(AtomicDataType::Null) => quote!(DataType::Null),
+            DataType::Atomic(AtomicDataType::Boolean) => quote!(DataType::Boolean),
+            DataType::Atomic(AtomicDataType::Int8) => quote!(DataType::Int8),
+            DataType::Atomic(AtomicDataType::Int16) => quote!(DataType::Int16),
+            DataType::Atomic(AtomicDataType::Int32) => quote!(DataType::Int32),
+            DataType::Atomic(AtomicDataType::Int64) => quote!(DataType::Int64),
+            DataType::Atomic(AtomicDataType::UInt8) => quote!(DataType::UInt8),
+            DataType::Atomic(AtomicDataType::UInt16) => quote!(DataType::UInt16),
+            DataType::Atomic(AtomicDataType::UInt32) => quote!(DataType::UInt32),
+            DataType::Atomic(AtomicDataType::UInt64) => quote!(DataType::UInt64),
+            DataType::Atomic(AtomicDataType::Float16) => quote!(DataType::Float16),
+            DataType::Atomic(AtomicDataType::Float32) => quote!(DataType::Float32),
+            DataType::Atomic(AtomicDataType::Float64) => quote!(DataType::Float64),
+
             DataType::Binary => quote!(DataType::Binary),
-            DataType::LargeBinary => quote!(DataType::LargeBinary),
+
             DataType::Utf8 => quote!(DataType::Utf8),
-            DataType::LargeUtf8 => quote!(DataType::LargeUtf8),
 
             DataType::List(field) => {
                 let field = ArrowFieldTokenizer::new(field);
@@ -50,28 +50,25 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 quote!(DataType::FixedSizeList(std::sync::Arc::new(#field), #length))
             }
 
-            DataType::Union(fields, types, mode) => {
+            DataType::Union(fields, mode) => {
                 let fields = fields.iter().map(ArrowFieldTokenizer::new);
                 let mode = match mode {
                     UnionMode::Dense => quote!(UnionMode::Dense),
                     UnionMode::Sparse => quote!(UnionMode::Sparse),
                 };
-                if let Some(types) = types {
-                    let types = types.iter().map(|&t| {
-                        Literal::i8_unsuffixed(i8::try_from(t).unwrap_or_else(|_| {
-                            panic!("Expect union type tag to be in 0-127; got {t}")
-                        }))
-                    });
-                    quote!(DataType::Union(
-                        UnionFields::new(
-                            vec![ #(#types,)* ],
-                            vec![ #(#fields,)* ],
-                        ),
-                        #mode,
-                    ))
-                } else {
-                    quote!(DataType::Union(UnionFields::from(vec![ #(#fields,)* ]), #mode))
-                }
+
+                let types = (0..fields.len()).map(|t| {
+                    Literal::i8_unsuffixed(i8::try_from(t).unwrap_or_else(|_| {
+                        panic!("Expect union type tag to be in 0-127; got {t}")
+                    }))
+                });
+                quote!(DataType::Union(
+                    UnionFields::new(
+                        vec![ #(#types,)* ],
+                        vec![ #(#fields,)* ],
+                    ),
+                    #mode,
+                ))
             }
 
             DataType::Struct(fields) => {
@@ -79,9 +76,9 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 quote!(DataType::Struct(Fields::from(vec![ #(#fields,)* ])))
             }
 
-            DataType::Extension(fqname, datatype, _metadata) => {
+            DataType::Object { fqname, datatype } => {
                 if *recursive {
-                    // TODO(emilk): if the logical datatype is a primitive, then we can just use it directly
+                    // TODO(emilk): if the datatype is a primitive, then we can just use it directly
                     // so we get shorter generated code.
                     let fqname_use = quote_fqname_as_type_path(fqname);
                     quote!(<#fqname_use>::arrow_datatype())
@@ -97,19 +94,17 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     // quote!(DataType::Extension(#fqname.to_owned(), Box::new(#datatype), #metadata))
                 }
             }
-
-            _ => unimplemented!("{:#?}", self.datatype),
         }
         .to_tokens(tokens);
     }
 }
 
 pub struct ArrowFieldTokenizer<'a> {
-    field: &'a ::arrow2::datatypes::Field,
+    field: &'a Field,
 }
 
 impl<'a> ArrowFieldTokenizer<'a> {
-    pub fn new(field: &'a ::arrow2::datatypes::Field) -> Self {
+    pub fn new(field: &'a Field) -> Self {
         Self { field }
     }
 }
@@ -117,7 +112,7 @@ impl<'a> ArrowFieldTokenizer<'a> {
 impl quote::ToTokens for ArrowFieldTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { field } = self;
-        let arrow2::datatypes::Field {
+        let Field {
             name,
             data_type,
             is_nullable,
@@ -180,37 +175,28 @@ pub fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
 }
 
 pub fn is_backed_by_arrow_buffer(typ: &DataType) -> bool {
-    matches!(
-        typ,
-        DataType::Int8
-            | DataType::Int16
-            | DataType::Int32
-            | DataType::Int64
-            | DataType::UInt8
-            | DataType::UInt16
-            | DataType::UInt32
-            | DataType::UInt64
-            | DataType::Float16
-            | DataType::Float32
-            | DataType::Float64
-    )
+    if let DataType::Atomic(atomic) = typ {
+        !matches!(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
+    } else {
+        false
+    }
 }
 
 pub fn quoted_arrow_primitive_type(datatype: &DataType) -> TokenStream {
     match datatype {
-        DataType::Null => quote!(NullType),
-        DataType::Boolean => quote!(BooleanType),
-        DataType::Int8 => quote!(Int8Type),
-        DataType::Int16 => quote!(Int16Type),
-        DataType::Int32 => quote!(Int32Type),
-        DataType::Int64 => quote!(Int64Type),
-        DataType::UInt8 => quote!(UInt8Type),
-        DataType::UInt16 => quote!(UInt16Type),
-        DataType::UInt32 => quote!(UInt32Type),
-        DataType::UInt64 => quote!(UInt64Type),
-        DataType::Float16 => quote!(Float16Type),
-        DataType::Float32 => quote!(Float32Type),
-        DataType::Float64 => quote!(Float64Type),
+        DataType::Atomic(AtomicDataType::Null) => quote!(NullType),
+        DataType::Atomic(AtomicDataType::Boolean) => quote!(BooleanType),
+        DataType::Atomic(AtomicDataType::Int8) => quote!(Int8Type),
+        DataType::Atomic(AtomicDataType::Int16) => quote!(Int16Type),
+        DataType::Atomic(AtomicDataType::Int32) => quote!(Int32Type),
+        DataType::Atomic(AtomicDataType::Int64) => quote!(Int64Type),
+        DataType::Atomic(AtomicDataType::UInt8) => quote!(UInt8Type),
+        DataType::Atomic(AtomicDataType::UInt16) => quote!(UInt16Type),
+        DataType::Atomic(AtomicDataType::UInt32) => quote!(UInt32Type),
+        DataType::Atomic(AtomicDataType::UInt64) => quote!(UInt64Type),
+        DataType::Atomic(AtomicDataType::Float16) => quote!(Float16Type),
+        DataType::Atomic(AtomicDataType::Float32) => quote!(Float32Type),
+        DataType::Atomic(AtomicDataType::Float64) => quote!(Float64Type),
         _ => unimplemented!("Not a primitive type: {datatype:#?}"),
     }
 }
