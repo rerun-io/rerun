@@ -71,7 +71,7 @@ trait PythonObjectExt {
 
 impl PythonObjectExt for Object {
     fn is_delegating_component(&self) -> bool {
-        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object(_))
+        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object { .. })
     }
 
     fn is_non_delegating_component(&self) -> bool {
@@ -81,8 +81,8 @@ impl PythonObjectExt for Object {
     fn delegate_datatype<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
         self.is_delegating_component()
             .then(|| {
-                if let Type::Object(name) = &self.fields[0].typ {
-                    Some(&objects[name])
+                if let Type::Object { fqname } = &self.fields[0].typ {
+                    Some(&objects[fqname])
                 } else {
                     None
                 }
@@ -1543,10 +1543,10 @@ fn quote_import_clauses_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
-            ElementType::Object(fqname) => Some(fqname),
+            ElementType::Object { fqname } => Some(fqname),
             _ => None,
         },
-        Type::Object(fqname) => Some(fqname),
+        Type::Object { fqname } => Some(fqname),
         _ => None,
     };
 
@@ -1642,7 +1642,7 @@ fn quote_field_type_from_field(
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
             ElementType::String => "list[str]".to_owned(),
-            ElementType::Object(_) => {
+            ElementType::Object { .. } => {
                 let typ = quote_type_from_element_type(elem_type);
                 if unwrap {
                     unwrapped = true;
@@ -1652,7 +1652,9 @@ fn quote_field_type_from_field(
                 }
             }
         },
-        Type::Object(fqname) => quote_type_from_element_type(&ElementType::Object(fqname.clone())),
+        Type::Object { fqname } => quote_type_from_element_type(&ElementType::Object {
+            fqname: fqname.clone(),
+        }),
     };
 
     (typ, unwrapped)
@@ -1726,8 +1728,10 @@ fn quote_field_converter_from_field(
             ElementType::Float64 => "to_np_float64".to_owned(),
             _ => String::new(),
         },
-        Type::Object(fqname) => {
-            let typ = quote_type_from_element_type(&ElementType::Object(fqname.clone()));
+        Type::Object { fqname } => {
+            let typ = quote_type_from_element_type(&ElementType::Object {
+                fqname: fqname.clone(),
+            });
             let field_obj = &objects[fqname];
 
             // we generate a default converter only if the field's type can be constructed with a
@@ -1815,7 +1819,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
         Type::String => "str".to_owned(),
-        Type::Object(fqname) => fqname_to_type(fqname),
+        Type::Object { fqname } => fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             format!(
                 "list[{}]",
@@ -1971,9 +1975,11 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
         Type::Float16 => Some("np.float16"),
         Type::Float32 => Some("np.float32"),
         Type::Float64 => Some("np.float64"),
-        Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(_) => {
-            None
-        }
+        Type::Unit
+        | Type::String
+        | Type::Array { .. }
+        | Type::Vector { .. }
+        | Type::Object { .. } => None,
     }
 }
 
@@ -2067,7 +2073,9 @@ fn quote_arrow_serialization(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
                     }
-                    Type::Object(field_fqname) => {
+                    Type::Object {
+                        fqname: field_fqname,
+                    } => {
                         let field_obj = &objects[field_fqname];
                         let field_type_name = &field_obj.name;
 
@@ -2168,7 +2176,7 @@ return pa.array(pa_data, type=data_type)
 
                 // Converting the variant list to a pa array.
                 let variant_list_to_pa_array = match &field.typ {
-                    Type::Object(fqname) => {
+                    Type::Object { fqname } => {
                         let field_type_name = &objects[fqname].name;
                         format!("{field_type_name}Batch({variant_kind_list}).as_arrow_array()")
                     }
@@ -2269,7 +2277,10 @@ fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
     let mut code = String::new();
 
     for field in fields {
-        let Type::Object(field_fqname) = &field.typ else {
+        let Type::Object {
+            fqname: field_fqname,
+        } = &field.typ
+        else {
             continue;
         };
         if let Some(last_dot) = field_fqname.rfind('.') {

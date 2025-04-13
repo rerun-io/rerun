@@ -1160,7 +1160,9 @@ pub enum Type {
     Vector {
         elem_type: ElementType,
     },
-    Object(String), // fqname
+    Object {
+        fqname: String,
+    },
 }
 
 impl From<ElementType> for Type {
@@ -1179,7 +1181,7 @@ impl From<ElementType> for Type {
             ElementType::Float32 => Self::Float32,
             ElementType::Float64 => Self::Float64,
             ElementType::String => Self::String,
-            ElementType::Object(fqname) => Self::Object(fqname),
+            ElementType::Object { fqname } => Self::Object { fqname },
         }
     }
 }
@@ -1208,7 +1210,9 @@ impl Type {
         }
 
         if let Some(enum_fqname) = try_get_enum_fqname(enums, field_type, typ, virtpath) {
-            return Self::Object(enum_fqname);
+            return Self::Object {
+                fqname: enum_fqname,
+            };
         }
 
         match typ {
@@ -1231,12 +1235,16 @@ impl Type {
                 if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
                     Self::Unit
                 } else {
-                    Self::Object(obj.name().to_owned())
+                    Self::Object {
+                        fqname: obj.name().to_owned(),
+                    }
                 }
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];
-                Self::Object(union.name().to_owned())
+                Self::Object {
+                    fqname: union.name().to_owned(),
+                }
             }
             FbsBaseType::Array => Self::Array {
                 elem_type: ElementType::from_raw_base_type(
@@ -1315,8 +1323,10 @@ impl Type {
             Self::String => Some(Self::Vector {
                 elem_type: ElementType::String,
             }),
-            Self::Object(obj) => Some(Self::Vector {
-                elem_type: ElementType::Object(obj.clone()),
+            Self::Object { fqname } => Some(Self::Vector {
+                elem_type: ElementType::Object {
+                    fqname: fqname.clone(),
+                },
             }),
 
             Self::Unit => None,
@@ -1351,7 +1361,7 @@ impl Type {
             | Self::Float32
             | Self::Float64
             | Self::String
-            | Self::Object(_) => None,
+            | Self::Object { .. } => None,
         }
     }
 
@@ -1363,7 +1373,7 @@ impl Type {
     /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Object { fqname } => Some(fqname.as_str()),
             Self::Array {
                 elem_type,
                 length: _,
@@ -1394,12 +1404,12 @@ impl Type {
 
             Self::Array { elem_type, .. } => elem_type.has_default_destructor(objects),
 
-            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
+            Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
         }
     }
 
     pub fn is_union(&self, objects: &Objects) -> bool {
-        if let Self::Object(fqname) = self {
+        if let Self::Object { fqname } = self {
             let obj = &objects[fqname];
             if obj.is_arrow_transparent() {
                 obj.fields[0].typ.is_union(objects)
@@ -1469,7 +1479,7 @@ pub enum ElementType {
     Float32,
     Float64,
     String,
-    Object(String), // fqname
+    Object { fqname: String },
 }
 
 impl ElementType {
@@ -1482,7 +1492,9 @@ impl ElementType {
         virtpath: &str,
     ) -> Self {
         if let Some(enum_fqname) = try_get_enum_fqname(enums, outer_type, inner_type, virtpath) {
-            return Self::Object(enum_fqname);
+            return Self::Object {
+                fqname: enum_fqname,
+            };
         }
 
         // TODO(jleibs): Clean up fqname plumbing
@@ -1514,11 +1526,15 @@ impl ElementType {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[outer_type.index() as usize];
-                Self::Object(obj.name().to_owned())
+                Self::Object {
+                    fqname: obj.name().to_owned(),
+                }
             }
             FbsBaseType::Union => {
                 let enm = &enums[outer_type.index() as usize];
-                Self::Object(enm.name().to_owned())
+                Self::Object {
+                    fqname: enm.name().to_owned(),
+                }
             }
             FbsBaseType::None
             | FbsBaseType::UType
@@ -1533,7 +1549,7 @@ impl ElementType {
     /// `Some(fqname)` if this is an `Object`.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Object { fqname } => Some(fqname.as_str()),
             _ => None,
         }
     }
@@ -1556,7 +1572,7 @@ impl ElementType {
 
             Self::String => false,
 
-            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
+            Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
         }
     }
 
@@ -1576,12 +1592,12 @@ impl ElementType {
             | Self::Float16
             | Self::Float32
             | Self::Float64 => true,
-            Self::Bool | Self::Object(_) | Self::String => false,
+            Self::Bool | Self::Object { .. } | Self::String => false,
         }
     }
 
     pub fn is_union(&self, objects: &Objects) -> bool {
-        if let Self::Object(fqname) = self {
+        if let Self::Object { fqname } = self {
             let obj = &objects[fqname];
             if obj.is_arrow_transparent() {
                 obj.fields[0].typ.is_union(objects)

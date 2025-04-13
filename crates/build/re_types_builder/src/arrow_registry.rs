@@ -187,7 +187,7 @@ impl ArrowRegistry {
                 is_nullable: false,
                 metadata: Default::default(),
             })),
-            Type::Object(fqname) => LazyDatatype::Unresolved(fqname),
+            Type::Object { fqname } => LazyDatatype::Unresolved { fqname },
         };
 
         field.datatype = datatype.clone().into();
@@ -212,7 +212,7 @@ impl ArrowRegistry {
             ElementType::Float32 => LazyDatatype::Float32,
             ElementType::Float64 => LazyDatatype::Float64,
             ElementType::String => LazyDatatype::Utf8,
-            ElementType::Object(fqname) => LazyDatatype::Unresolved(fqname),
+            ElementType::Object { fqname } => LazyDatatype::Unresolved { fqname },
         }
     }
 }
@@ -300,7 +300,7 @@ pub enum LazyDatatype {
     Struct(Vec<LazyField>),
     Union(Vec<LazyField>, Option<Vec<i32>>, UnionMode),
     Extension(String, Box<LazyDatatype>, Option<String>),
-    Unresolved(String), // fqname
+    Unresolved { fqname: String },
 }
 
 impl From<DataType> for LazyDatatype {
@@ -387,7 +387,7 @@ impl LazyDatatype {
                 Arc::new(datatype.resolve(registry)),
                 metadata.as_ref().map(|s| Arc::new(s.clone())),
             ),
-            Self::Unresolved(fqname) => registry.get(fqname),
+            Self::Unresolved { fqname } => registry.get(fqname),
         }
     }
 }

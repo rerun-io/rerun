@@ -430,7 +430,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
                     type_info(objects, &Type::from(elem_type.clone()))
                 )
             }
-            Type::Object(fqname) => {
+            Type::Object { fqname } => {
                 let ty = objects.get(fqname).unwrap();
                 format!(
                     "[`{}`](../{}/{}.md)",
@@ -446,7 +446,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
         assert!(object.is_struct());
         assert_eq!(object.fields.len(), 1);
         let field_type = &object.fields[0].typ;
-        if object.kind == ObjectKind::Component && matches!(field_type, Type::Object(_)) {
+        if object.kind == ObjectKind::Component && matches!(field_type, Type::Object { .. }) {
             putln!(o, "## Rerun datatype");
             putln!(o, "{}", type_info(objects, field_type));
             putln!(o);
