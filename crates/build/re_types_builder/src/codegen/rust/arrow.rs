@@ -4,17 +4,22 @@ use quote::quote;
 
 // ---
 
-/// `(Datatype, is_recursive)`
-///
-/// If `is_recursive` is set to `true`,
-/// then the generated code will often be shorter, as it will
-/// defer to calling `arrow_datatype()` on the inner type.
-pub struct ArrowDataTypeTokenizer<'a>(pub &'a ::arrow2::datatypes::DataType, pub bool);
+pub struct ArrowDataTypeTokenizer<'a> {
+    pub datatype: &'a ::arrow2::datatypes::DataType,
+
+    /// If `true`,
+    /// then the generated code will often be shorter, as it will
+    /// defer to calling `arrow_datatype()` on the inner type.
+    pub recursive: bool,
+}
 
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use arrow2::datatypes::UnionMode;
-        let Self(datatype, recursive) = self;
+        let Self {
+            datatype,
+            recursive,
+        } = self;
         match datatype {
             DataType::Null => quote!(DataType::Null),
             DataType::Boolean => quote!(DataType::Boolean),
@@ -81,7 +86,10 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     let fqname_use = quote_fqname_as_type_path(fqname);
                     quote!(<#fqname_use>::arrow_datatype())
                 } else {
-                    let datatype = ArrowDataTypeTokenizer(datatype.to_logical_type(), false);
+                    let datatype = ArrowDataTypeTokenizer {
+                        datatype: datatype.to_logical_type(),
+                        recursive: false,
+                    };
                     quote!(#datatype)
                     // TODO(#3741): Bring back extensions once we've fully replaced `arrow2-convert`!
                     // let datatype = ArrowDataTypeTokenizer(datatype, false);
@@ -90,7 +98,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 }
             }
 
-            _ => unimplemented!("{:#?}", self.0),
+            _ => unimplemented!("{:#?}", self.datatype),
         }
         .to_tokens(tokens);
     }
@@ -121,7 +129,10 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
         let is_nullable =
             *is_nullable || matches!(field.data_type.to_logical_type(), DataType::Union { .. });
 
-        let datatype = ArrowDataTypeTokenizer(data_type, true);
+        let datatype = ArrowDataTypeTokenizer {
+            datatype: data_type,
+            recursive: true,
+        };
 
         let maybe_with_metadata = if metadata.is_empty() {
             quote!()
