@@ -72,17 +72,17 @@ impl ArrowRegistry {
         }
 
         let datatype = if is_arrow_transparent {
-            LazyDatatype::Extension(
-                obj.fqname.clone(),
-                Box::new(
+            LazyDatatype::Object {
+                fqname: obj.fqname.clone(),
+                datatype: Box::new(
                     self.arrow_datatype_from_type(obj.fields[0].typ.clone(), &mut obj.fields[0]),
                 ),
-                None,
-            )
+                metadata: None,
+            }
         } else if is_struct {
-            LazyDatatype::Extension(
-                obj.fqname.clone(),
-                Box::new(LazyDatatype::Struct(
+            LazyDatatype::Object {
+                fqname: obj.fqname.clone(),
+                datatype: Box::new(LazyDatatype::Struct(
                     obj.fields
                         .iter_mut()
                         .map(|obj_field| LazyField {
@@ -94,12 +94,16 @@ impl ArrowRegistry {
                         })
                         .collect(),
                 )),
-                None,
-            )
+                metadata: None,
+            }
         } else if is_enum {
             // TODO(jleibs): The underlying type is encoded in the FBS and could be used
             // here instead if we want non-u8 enums.
-            LazyDatatype::Extension(obj.fqname.clone(), Box::new(LazyDatatype::UInt8), None)
+            LazyDatatype::Object {
+                fqname: obj.fqname.clone(),
+                datatype: Box::new(LazyDatatype::UInt8),
+                metadata: None,
+            }
         } else {
             let is_sparse = obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
             let union_mode = if is_sparse {
@@ -128,16 +132,16 @@ impl ArrowRegistry {
             }))
             .collect();
 
-            LazyDatatype::Extension(
-                obj.fqname.clone(),
-                Box::new(LazyDatatype::Union(
+            LazyDatatype::Object {
+                fqname: obj.fqname.clone(),
+                datatype: Box::new(LazyDatatype::Union(
                     fields,
                     // NOTE: +1 to account for virtual nullability arm
                     Some((0..(obj.fields.len() + 1) as i32).collect()),
                     union_mode,
                 )),
-                None,
-            )
+                metadata: None,
+            }
         };
 
         // NOTE: Arrow-transparent objects by definition don't have a datatype of their own.
@@ -299,8 +303,14 @@ pub enum LazyDatatype {
     LargeList(Box<LazyField>),
     Struct(Vec<LazyField>),
     Union(Vec<LazyField>, Option<Vec<i32>>, UnionMode),
-    Extension(String, Box<LazyDatatype>, Option<String>),
-    Unresolved { fqname: String },
+    Object {
+        fqname: String,
+        datatype: Box<LazyDatatype>,
+        metadata: Option<String>,
+    },
+    Unresolved {
+        fqname: String,
+    },
 }
 
 impl From<DataType> for LazyDatatype {
@@ -337,11 +347,11 @@ impl From<DataType> for LazyDatatype {
                 x.map(|arc| arc.to_vec()),
                 mode,
             ),
-            DataType::Extension(name, datatype, metadata) => Self::Extension(
-                name,
-                Box::new((*datatype).clone().into()),
-                metadata.map(|arc| arc.to_string()),
-            ),
+            DataType::Extension(fqname, datatype, metadata) => Self::Object {
+                fqname,
+                datatype: Box::new((*datatype).clone().into()),
+                metadata: metadata.map(|arc| arc.to_string()),
+            },
             _ => unimplemented!("{datatype:#?}"),
         }
     }
@@ -382,8 +392,12 @@ impl LazyDatatype {
                 x.as_ref().map(|x| Arc::new(x.clone())),
                 *mode,
             ),
-            Self::Extension(name, datatype, metadata) => DataType::Extension(
-                name.clone(),
+            Self::Object {
+                fqname,
+                datatype,
+                metadata,
+            } => DataType::Extension(
+                fqname.clone(),
                 Arc::new(datatype.resolve(registry)),
                 metadata.as_ref().map(|s| Arc::new(s.clone())),
             ),
