@@ -47,7 +47,7 @@ impl<DT> GenericField<DT> {
 
 /// A named datatype, e.g. for a struct or a union.
 ///
-/// Corresponds to a [`arrow::datatypes::Field`].
+/// Corresponds to an arrow field.
 pub type Field = GenericField<DataType>;
 
 /// A yet-to-be-resolved [`Field`].

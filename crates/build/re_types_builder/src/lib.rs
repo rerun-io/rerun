@@ -147,7 +147,7 @@ mod format;
 #[allow(clippy::unimplemented)]
 mod objects;
 
-mod data_type;
+pub mod data_type;
 mod docs;
 
 pub mod report;
