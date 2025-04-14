@@ -170,3 +170,10 @@ def test_transform3d_rotation() -> None:
     assert rr.Transform3D(rotation=Quaternion(xyzw=[1, 2, 3, 4])) == rr.Transform3D(
         quaternion=Quaternion(xyzw=[1, 2, 3, 4]),
     )
+
+
+def test_transform3d_columns() -> None:
+    transform = rr.Transform3D.columns(translation=np.ones((10, 3)), mat3x3=np.ones((10, 3, 3)))
+    transform = rr.Transform3D.columns(translation=np.ones((10, 1, 3)), mat3x3=np.ones((10, 9)))
+
+    # print([b.as_arrow_array() for b in transform])
