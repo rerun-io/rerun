@@ -44,8 +44,12 @@ impl TableEntryTableProvider {
     }
 
     async fn table_id(&mut self) -> Result<EntryId, DataFusionError> {
-        match &self.table {
-            EntryIdOrName::Id(entry_id) => Ok(*entry_id),
+        if let Some(table_id) = self.table_id {
+            return Ok(table_id);
+        }
+
+        let table_id = match &self.table {
+            EntryIdOrName::Id(entry_id) => *entry_id,
 
             EntryIdOrName::Name(table_name) => {
                 let entry_details: EntryDetails = self
@@ -71,9 +75,12 @@ impl TableEntryTableProvider {
                     .try_into()
                     .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
-                Ok(entry_details.id)
+                entry_details.id
             }
-        }
+        };
+
+        self.table_id = Some(table_id);
+        Ok(table_id)
     }
 }
 
