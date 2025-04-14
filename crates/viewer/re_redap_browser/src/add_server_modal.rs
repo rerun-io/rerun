@@ -40,7 +40,7 @@ impl AddServerModal {
             || ModalWrapper::new("Add Server"),
             |ui, keep_open| {
                 ui.warning_label(
-                    "The dataplatform is very experimentaland not generally \
+                    "The dataplatform is very experimental and not generally \
                 available yet. Proceed with caution!",
                 );
 
