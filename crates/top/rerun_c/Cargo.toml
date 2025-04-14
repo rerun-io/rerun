@@ -41,8 +41,7 @@ re_sdk = { workspace = true, features = ["data_loaders", "server"] }
 re_video.workspace = true
 
 ahash.workspace = true
-arrow.workspace = true
-arrow2.workspace = true
+arrow = { workspace = true, features = ["ffi"] }
 infer.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true

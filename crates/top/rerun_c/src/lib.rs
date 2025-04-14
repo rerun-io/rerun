@@ -14,7 +14,10 @@ mod video;
 
 use std::ffi::{c_char, c_uchar, CString};
 
-use arrow::array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray};
+use arrow::{
+    array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
+    ffi::{FFI_ArrowArray, FFI_ArrowSchema},
+};
 use arrow_utils::arrow_array_from_c_ffi;
 use once_cell::sync::Lazy;
 
@@ -178,14 +181,14 @@ pub struct CComponentDescriptor {
 #[repr(C)]
 pub struct CComponentType {
     pub descriptor: CComponentDescriptor,
-    pub schema: arrow2::ffi::ArrowSchema,
+    pub schema: FFI_ArrowSchema,
 }
 
 /// See `rr_component_batch` in the C header.
 #[repr(C)]
 pub struct CComponentBatch {
     pub component_type: CComponentTypeHandle,
-    pub array: arrow2::ffi::ArrowArray,
+    pub array: FFI_ArrowArray,
 }
 
 #[repr(C)]
@@ -201,7 +204,7 @@ pub struct CComponentColumns {
     pub component_type: CComponentTypeHandle,
 
     /// A `ListArray` with the datatype `List(component_type)`.
-    pub array: arrow2::ffi::ArrowArray,
+    pub array: FFI_ArrowArray,
 }
 
 /// See `rr_sorting_status` in the C header.
@@ -271,7 +274,7 @@ pub struct CTimeColumn {
     pub timeline: CTimeline,
 
     /// Times, a primitive array of i64.
-    pub times: arrow2::ffi::ArrowArray,
+    pub times: FFI_ArrowArray,
 
     /// The sorting order of the times array.
     pub sorting_status: CSortingStatus,
@@ -385,23 +388,22 @@ fn rr_register_component_type_impl(
         component_name: component_name.into(),
     };
 
-    let schema =
-        unsafe { arrow2::ffi::import_field_from_c(&component_type.schema) }.map_err(|err| {
-            CError::new(
-                CErrorCode::ArrowFfiSchemaImportError,
-                &format!("Failed to import ffi schema: {err}"),
-            )
-        })?;
+    let field = arrow::datatypes::Field::try_from(&component_type.schema).map_err(|err| {
+        CError::new(
+            CErrorCode::ArrowFfiSchemaImportError,
+            &format!("Failed to import ffi schema: {err}"),
+        )
+    })?;
 
     Ok(COMPONENT_TYPES
         .write()
-        .register(component_descr, schema.data_type))
+        .register(component_descr, field.data_type().clone()))
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_register_component_type(
-    // Note that since this is passed by value, Arrow2 will release the schema on drop!
+    // Note that since this is passed by value, arrow will release the schema on drop!
     component_type: CComponentType,
     error: *mut CError,
 ) -> u32 {
@@ -824,9 +826,10 @@ fn rr_recording_stream_log_impl(
             let CComponentBatch {
                 component_type,
                 array,
-            } = &batch;
+            } = batch;
             let component_type = component_type_registry.get(*component_type)?;
             let datatype = component_type.datatype.clone();
+            let array = unsafe { FFI_ArrowArray::from_raw(array) }; // Move out from `batches`
             let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
             components.insert(component_type.descriptor.clone(), values);
         }
@@ -955,8 +958,8 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
 fn rr_recording_stream_send_columns_impl(
     stream: CRecordingStream,
     entity_path: CStringView,
-    time_columns: &[CTimeColumn],
-    component_columns: &[CComponentColumns],
+    time_columns: &mut [CTimeColumn],
+    component_columns: &mut [CComponentColumns],
 ) -> Result<(), CError> {
     // Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     let id = ChunkId::new();
@@ -965,11 +968,12 @@ fn rr_recording_stream_send_columns_impl(
     let entity_path = entity_path.as_str("entity_path")?;
 
     let time_columns: IntMap<TimelineName, TimeColumn> = time_columns
-        .iter()
+        .iter_mut()
         .map(|time_column| {
             let timeline: Timeline = time_column.timeline.clone().try_into()?;
-            let datatype = arrow2::datatypes::DataType::Int64;
-            let time_values_untyped = unsafe { arrow_array_from_c_ffi(&time_column.times, datatype) }?;
+            let datatype = arrow::datatypes::DataType::Int64;
+            let array = unsafe { FFI_ArrowArray::from_raw(&mut time_column.times) } ; // Move out of the array
+            let time_values_untyped = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
             let time_values = TimeColumn::read_array(&ArrowArrayRef::from(time_values_untyped)).map_err(|err| {
                 CError::new(
                     CErrorCode::ArrowFfiArrayImportError,
@@ -991,18 +995,19 @@ fn rr_recording_stream_send_columns_impl(
     let components: IntMap<ComponentDescriptor, ArrowListArray> = {
         let component_type_registry = COMPONENT_TYPES.read();
         component_columns
-            .iter()
+            .iter_mut()
             .map(|batch| {
                 let CComponentColumns {
                     component_type,
                     array,
-                } = &batch;
+                } = batch;
                 let component_type = component_type_registry.get(*component_type)?;
-                let datatype = arrow2::array::ListArray::<i32>::default_datatype(
-                    component_type.datatype.clone(),
-                );
 
-                let component_values_untyped = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
+                let nullable = true;
+                let list_datatype = arrow::datatypes::DataType::List(arrow::datatypes::Field::new_list_field(component_type.datatype.clone(), nullable).into());
+
+                let array = unsafe { FFI_ArrowArray::from_raw(array) }; // Move out of the array
+                let component_values_untyped = unsafe { arrow_array_from_c_ffi(array, list_datatype) }?;
                 let component_values = component_values_untyped
                     .downcast_array_ref::<ArrowListArray>()
                     .ok_or_else(|| {
@@ -1040,16 +1045,17 @@ fn rr_recording_stream_send_columns_impl(
 pub unsafe extern "C" fn rr_recording_stream_send_columns(
     stream: CRecordingStream,
     entity_path: CStringView,
-    time_columns: *const CTimeColumn,
+    time_columns: *mut CTimeColumn,
     num_time_columns: u32,
-    component_batches: *const CComponentColumns,
+    component_batches: *mut CComponentColumns,
     num_component_batches: u32,
     error: *mut CError,
 ) {
     let time_columns =
-        unsafe { std::slice::from_raw_parts(time_columns, num_time_columns as usize) };
-    let component_batches =
-        unsafe { std::slice::from_raw_parts(component_batches, num_component_batches as usize) };
+        unsafe { std::slice::from_raw_parts_mut(time_columns, num_time_columns as usize) };
+    let component_batches = unsafe {
+        std::slice::from_raw_parts_mut(component_batches, num_component_batches as usize)
+    };
 
     if let Err(err) =
         rr_recording_stream_send_columns_impl(stream, entity_path, time_columns, component_batches)

@@ -566,10 +566,12 @@ extern void rr_recording_stream_log_file_from_contents(
 /// Note that this API ignores any stateful time set on the log stream via the
 /// `rr_recording_stream_set_time_sequence`/`rr_recording_stream_set_time_nanos`/etc. APIs.
 /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+///
+/// The contents of `time_columns` and `component_columns` AFTER this call is undefined.
 extern void rr_recording_stream_send_columns(
-    rr_recording_stream stream, rr_string entity_path,                            //
-    const rr_time_column* time_columns, uint32_t num_time_columns,                //
-    const rr_component_column* component_columns, uint32_t num_component_columns, //
+    rr_recording_stream stream, rr_string entity_path,                      //
+    rr_time_column* time_columns, uint32_t num_time_columns,                //
+    rr_component_column* component_columns, uint32_t num_component_columns, //
     rr_error* error
 );
 
