@@ -448,7 +448,7 @@ fn open_example_url(
     command_sender.send_system(SystemCommand::LoadDataSource(data_source));
 
     // The welcome screen might be rendered from the redap browser ui
-    command_sender.send_system(SystemCommand::NavigationReplace(
+    command_sender.send_system(SystemCommand::ChangeDisplayMode(
         DisplayMode::LocalRecordings,
     ));
 
