@@ -50,31 +50,7 @@ class ViewerWidget {
     );
     model.on("change:_recording_id", this.on_set_recording_id);
 
-    // The entire object passed to `model.send` must be JSON-serializable.
-    // The shape is:
-    //   {
-    //     event: string;
-    //     payload: any;
-    //   }
-
-    this.viewer.on("selectionchange", (items) => {
-      model.send({
-        event: "selectionchange",
-        payload: items,
-      });
-    });
-    this.viewer.on("timelinechange", (timeline, time) => {
-      model.send({
-        event: "timelinechange",
-        payload: { timeline, time },
-      });
-    });
-    this.viewer.on("timeupdate", (time) => {
-      model.send({
-        event: "timeupdate",
-        payload: time,
-      });
-    });
+    (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 
     this.viewer.on("ready", () => {
       this.channel = this.viewer.open_channel("temp");

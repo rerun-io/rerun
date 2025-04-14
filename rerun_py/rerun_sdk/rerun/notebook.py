@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 import pyarrow
@@ -18,14 +18,11 @@ if TYPE_CHECKING:
 
 
 from rerun import bindings
-from rerun_notebook import (
-    ContainerSelection as ContainerSelection,
-    EntitySelection as EntitySelection,
-    SelectionItem as SelectionItem,
-    ViewerCallbacks as ViewerCallbacks,
-    ViewSelection as ViewSelection,
-)
 
+from .event import (
+    ViewerEvent as ViewerEvent,
+    _viewer_event_from_json_str,
+)
 from .recording_stream import RecordingStream, get_data_recording
 
 _default_width = 640
@@ -55,9 +52,6 @@ def set_default_size(*, width: int | None, height: int | None) -> None:
         _default_width = width
     if height is not None:
         _default_height = height
-
-
-_version_mismatch_checked = False
 
 
 class Viewer:
@@ -118,6 +112,16 @@ class Viewer:
             height=height if height is not None else _default_height,
             url=url,
         )
+
+        # Viewer event handling
+        self._event_callbacks: list[Callable[[ViewerEvent], None]] = []
+
+        def on_raw_event(json_str: str) -> None:
+            evt = _viewer_event_from_json_str(json_str)
+            for callback in self._event_callbacks:
+                callback(evt)
+
+        self._viewer._on_raw_event(on_raw_event)
 
         # By default, we use the global recording only if no `url` is provided.
         if use_global_recording is None:
@@ -232,14 +236,11 @@ class Viewer:
         if block_until_ready:
             self._viewer.block_until_ready()
 
+    def _ipython_display_(self) -> None:
+        self.display(block_until_ready=True)
+
     def _flush_hook(self, data: bytes) -> None:
         self._viewer.send_rrd(data)
-
-    def _repr_mimebundle_(self, **kwargs: dict) -> tuple[dict, dict] | None:  # type: ignore[type-arg]
-        return self._viewer._repr_mimebundle_(**kwargs)  # type: ignore[no-any-return]
-
-    def _repr_keys(self):  # type: ignore[no-untyped-def]
-        return self._viewer._repr_keys()
 
     def update_panels(
         self,
@@ -378,5 +379,5 @@ class Viewer:
 
         self._viewer.set_time_ctrl(timeline, time, play)
 
-    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
-        self._viewer.register_callbacks(callbacks)
+    def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
+        self._event_callbacks.append(callback)
