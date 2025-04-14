@@ -169,7 +169,7 @@ impl ComponentData {
 
                 if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
                     .as_ref()
-                    .map(|blob| blob.first().map(|blob| blob.as_slice()))
+                    .map(|blob| blob.first().map(|blob| blob as &[u8]))
                 {
                     // cap the max amount of data to hash to 9 KiB
                     const SECTION_LENGTH: usize = 3 * 1024;

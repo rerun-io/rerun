@@ -827,11 +827,13 @@ pub mod frontend_service_client {
         }
         /// --- Tasks service ---
         /// Query the status of submitted tasks
-        pub async fn query(
+        pub async fn query_tasks(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::super::redap_tasks::v1alpha1::QueryRequest>,
+            request: impl tonic::IntoRequest<
+                super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
+            >,
         ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryResponse>,
+            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryTasksResponse>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -839,23 +841,23 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/Query",
+                "/rerun.frontend.v1alpha1.FrontendService/QueryTasks",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.frontend.v1alpha1.FrontendService",
-                "Query",
+                "QueryTasks",
             ));
             self.inner.unary(req, path, codec).await
         }
         /// Fetch the output of a completed task
-        pub async fn fetch_output(
+        pub async fn fetch_task_output(
             &mut self,
             request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::FetchOutputRequest,
+                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
             >,
         ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchOutputResponse>,
+            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -863,25 +865,25 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/FetchOutput",
+                "/rerun.frontend.v1alpha1.FrontendService/FetchTaskOutput",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.frontend.v1alpha1.FrontendService",
-                "FetchOutput",
+                "FetchTaskOutput",
             ));
             self.inner.unary(req, path, codec).await
         }
         /// Query the status of submitted tasks as soon as they are no longer pending
-        pub async fn query_on_completion(
+        pub async fn query_tasks_on_completion(
             &mut self,
             request: impl tonic::IntoRequest<
-                super::super::super::redap_tasks::v1alpha1::QueryOnCompletionRequest,
+                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
             >,
         ) -> std::result::Result<
             tonic::Response<
                 tonic::codec::Streaming<
-                    super::super::super::redap_tasks::v1alpha1::QueryOnCompletionResponse,
+                    super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse,
                 >,
             >,
             tonic::Status,
@@ -891,12 +893,12 @@ pub mod frontend_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.frontend.v1alpha1.FrontendService/QueryOnCompletion",
+                "/rerun.frontend.v1alpha1.FrontendService/QueryTasksOnCompletion",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.frontend.v1alpha1.FrontendService",
-                "QueryOnCompletion",
+                "QueryTasksOnCompletion",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -1119,36 +1121,38 @@ pub mod frontend_service_server {
         ) -> std::result::Result<tonic::Response<Self::ScanTableStream>, tonic::Status>;
         /// --- Tasks service ---
         /// Query the status of submitted tasks
-        async fn query(
+        async fn query_tasks(
             &self,
-            request: tonic::Request<super::super::super::redap_tasks::v1alpha1::QueryRequest>,
+            request: tonic::Request<super::super::super::redap_tasks::v1alpha1::QueryTasksRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryResponse>,
+            tonic::Response<super::super::super::redap_tasks::v1alpha1::QueryTasksResponse>,
             tonic::Status,
         >;
         /// Fetch the output of a completed task
-        async fn fetch_output(
+        async fn fetch_task_output(
             &self,
-            request: tonic::Request<super::super::super::redap_tasks::v1alpha1::FetchOutputRequest>,
+            request: tonic::Request<
+                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
+            >,
         ) -> std::result::Result<
-            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchOutputResponse>,
+            tonic::Response<super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse>,
             tonic::Status,
         >;
-        /// Server streaming response type for the QueryOnCompletion method.
-        type QueryOnCompletionStream: tonic::codegen::tokio_stream::Stream<
+        /// Server streaming response type for the QueryTasksOnCompletion method.
+        type QueryTasksOnCompletionStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<
-                    super::super::super::redap_tasks::v1alpha1::QueryOnCompletionResponse,
+                    super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse,
                     tonic::Status,
                 >,
             > + std::marker::Send
             + 'static;
         /// Query the status of submitted tasks as soon as they are no longer pending
-        async fn query_on_completion(
+        async fn query_tasks_on_completion(
             &self,
             request: tonic::Request<
-                super::super::super::redap_tasks::v1alpha1::QueryOnCompletionRequest,
+                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
             >,
-        ) -> std::result::Result<tonic::Response<Self::QueryOnCompletionStream>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
     }
     /// Redap's public API.
     #[derive(Debug)]
@@ -2015,25 +2019,27 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/Query" => {
+                "/rerun.frontend.v1alpha1.FrontendService/QueryTasks" => {
                     #[allow(non_camel_case_types)]
-                    struct QuerySvc<T: FrontendService>(pub Arc<T>);
+                    struct QueryTasksSvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
                         tonic::server::UnaryService<
-                            super::super::super::redap_tasks::v1alpha1::QueryRequest,
-                        > for QuerySvc<T>
+                            super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
+                        > for QueryTasksSvc<T>
                     {
-                        type Response = super::super::super::redap_tasks::v1alpha1::QueryResponse;
+                        type Response =
+                            super::super::super::redap_tasks::v1alpha1::QueryTasksResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::QueryRequest,
+                                super::super::super::redap_tasks::v1alpha1::QueryTasksRequest,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as FrontendService>::query(&inner, request).await };
+                            let fut = async move {
+                                <T as FrontendService>::query_tasks(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
@@ -2043,7 +2049,7 @@ pub mod frontend_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = QuerySvc(inner);
+                        let method = QueryTasksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2059,26 +2065,26 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/FetchOutput" => {
+                "/rerun.frontend.v1alpha1.FrontendService/FetchTaskOutput" => {
                     #[allow(non_camel_case_types)]
-                    struct FetchOutputSvc<T: FrontendService>(pub Arc<T>);
+                    struct FetchTaskOutputSvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
                         tonic::server::UnaryService<
-                            super::super::super::redap_tasks::v1alpha1::FetchOutputRequest,
-                        > for FetchOutputSvc<T>
+                            super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
+                        > for FetchTaskOutputSvc<T>
                     {
                         type Response =
-                            super::super::super::redap_tasks::v1alpha1::FetchOutputResponse;
+                            super::super::super::redap_tasks::v1alpha1::FetchTaskOutputResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::FetchOutputRequest,
+                                super::super::super::redap_tasks::v1alpha1::FetchTaskOutputRequest,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::fetch_output(&inner, request).await
+                                <T as FrontendService>::fetch_task_output(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2089,7 +2095,7 @@ pub mod frontend_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = FetchOutputSvc(inner);
+                        let method = FetchTaskOutputSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -2105,28 +2111,33 @@ pub mod frontend_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.frontend.v1alpha1.FrontendService/QueryOnCompletion" => {
+                "/rerun.frontend.v1alpha1.FrontendService/QueryTasksOnCompletion" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryOnCompletionSvc<T: FrontendService>(pub Arc<T>);
-                    impl<T: FrontendService>
-                        tonic::server::ServerStreamingService<
-                            super::super::super::redap_tasks::v1alpha1::QueryOnCompletionRequest,
-                        > for QueryOnCompletionSvc<T>
-                    {
-                        type Response =
-                            super::super::super::redap_tasks::v1alpha1::QueryOnCompletionResponse;
-                        type ResponseStream = T::QueryOnCompletionStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                    struct QueryTasksOnCompletionSvc<T: FrontendService>(pub Arc<T>);
+                    impl<
+                        T: FrontendService,
+                    > tonic::server::ServerStreamingService<
+                        super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
+                    > for QueryTasksOnCompletionSvc<T> {
+                        type Response = super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionResponse;
+                        type ResponseStream = T::QueryTasksOnCompletionStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                super::super::super::redap_tasks::v1alpha1::QueryOnCompletionRequest,
+                                super::super::super::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest,
                             >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as FrontendService>::query_on_completion(&inner, request).await
+                                <T as FrontendService>::query_tasks_on_completion(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -2137,7 +2148,7 @@ pub mod frontend_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = QueryOnCompletionSvc(inner);
+                        let method = QueryTasksOnCompletionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

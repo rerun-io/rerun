@@ -249,7 +249,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
     // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
-        let data = cast_slice_to_cow(image.buffer.as_slice());
+        let data = cast_slice_to_cow(&image.buffer);
         let coefficients = match pixel_format.yuv_matrix_coefficients() {
             re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
             re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,

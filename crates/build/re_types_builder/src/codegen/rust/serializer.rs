@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     arrow::{
-        is_backed_by_arrow_buffer, quote_fqname_as_type_path, quoted_arrow_primitive_type,
+        is_backed_by_scalar_buffer, quote_fqname_as_type_path, quoted_arrow_primitive_type,
         ArrowFieldTokenizer,
     },
     util::{is_tuple_struct_from_obj, quote_comment},
@@ -449,9 +449,9 @@ pub fn quote_arrow_serializer(
 
 #[derive(Copy, Clone)]
 enum InnerRepr {
-    /// The inner elements of the field will come from an `ArrowBuffer<T>`
-    /// This is only applicable when T is an arrow primitive
-    ArrowBuffer,
+    /// The inner elements of the field will come from an `ScalarBuffer<T>`
+    /// This is only applicable when T implements [`ArrowNativeType`](https://docs.rs/arrow/latest/arrow/datatypes/trait.ArrowNativeType.html).
+    ScalarBuffer,
 
     /// The inner elements of the field will come from an iterable of T
     NativeIterable,
@@ -559,7 +559,7 @@ fn quote_arrow_field_serializer(
                 match inner_repr {
                     // A primitive that's an inner element of a list will already have been mapped
                     // to a buffer type.
-                    InnerRepr::ArrowBuffer => quote! {
+                    InnerRepr::ScalarBuffer => quote! {
                         as_array_ref(PrimitiveArray::<#arrow_primitive_type>::new(
                             #data_src,
                             #validity_src,
@@ -666,16 +666,16 @@ fn quote_arrow_field_serializer(
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
             let inner_datatype = inner_field.data_type();
 
-            // Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
-            // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
+            // Note: We only use the ScalarBuffer optimization for `Lists` but not `FixedSizeList`.
+            // This is because the `ScalarBuffer` has a dynamic length, which would add more overhead
             // to simple fixed-sized types like `Position2D`.
             //
-            // TODO(jleibs): If we need to support large FixedSizeList types where the `ArrowBuffer`
+            // TODO(jleibs): If we need to support large FixedSizeList types where the `ScalarBuffer`
             // optimization would be significant, we can introduce a new attribute to force this.
-            let inner_repr = if is_backed_by_arrow_buffer(inner_field.data_type())
+            let inner_repr = if is_backed_by_scalar_buffer(inner_field.data_type())
                 && matches!(datatype, DataType::List(_))
             {
-                InnerRepr::ArrowBuffer
+                InnerRepr::ScalarBuffer
             } else {
                 InnerRepr::NativeIterable
             };
@@ -743,13 +743,13 @@ fn quote_arrow_field_serializer(
                 };
 
                 match inner_repr {
-                    InnerRepr::ArrowBuffer => {
+                    InnerRepr::ScalarBuffer => {
                         // TODO(emilk): this can probably be optimized
                         quote! {
                             #data_src
                                 .iter()
                                 #flatten_if_needed
-                                .map(|b| b.as_slice())
+                                .map(|b| b as &[_])
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into()
@@ -788,16 +788,11 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            let quoted_num_instances = match inner_repr {
-                InnerRepr::ArrowBuffer => quote!(num_instances()),
-                InnerRepr::NativeIterable => quote!(len()),
-            };
-
             let quoted_declare_offsets = if let DataType::List(_) = datatype {
                 let map_to_length = if elements_are_nullable {
-                    quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum. #quoted_num_instances)) }
+                    quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum.len())) }
                 } else {
-                    quote! { map(|datum| datum. #quoted_num_instances) }
+                    quote! { map(|datum| datum.len()) }
                 };
 
                 quote! {
@@ -870,7 +865,7 @@ fn quote_arrow_field_serializer(
             };
 
             match inner_repr {
-                InnerRepr::ArrowBuffer => {
+                InnerRepr::ScalarBuffer => {
                     quote! {{
                         #quoted_declare_offsets
 

@@ -6,6 +6,7 @@ use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{LatestAtQuery, RangeQuery};
@@ -13,17 +14,18 @@ use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
 use re_grpc_client::redap::{client, get_chunks_response_to_chunk_and_partition_id};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::common::v1alpha1::IfDuplicateBehavior;
-use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-use re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
-use re_protos::manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange};
 use re_protos::{
     catalog::v1alpha1::{
         ext::{DatasetEntry, EntryDetails, TableEntry},
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
         ReadTableEntryRequest,
     },
-    frontend::v1alpha1::GetChunksRequest,
+    common::v1alpha1::{IfDuplicateBehavior, TaskId},
+    frontend::v1alpha1::{
+        frontend_service_client::FrontendServiceClient, GetChunksRequest, GetDatasetSchemaRequest,
+        RegisterWithDatasetRequest,
+    },
+    manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
 };
 
 use crate::catalog::to_py_err;
@@ -165,9 +167,10 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uri: String,
-    ) -> PyResult<()> {
+    ) -> PyResult<TaskId> {
         wait_for_future(py, async {
-            self.client
+            let response = self
+                .client
                 .register_with_dataset(RegisterWithDatasetRequest {
                     dataset_id: Some(dataset_id.into()),
                     data_sources: vec![DataSource::new_rrd(recording_uri)
@@ -177,9 +180,70 @@ impl ConnectionHandle {
                     on_duplicate: IfDuplicateBehavior::Error as i32,
                 })
                 .await
-                .map_err(to_py_err)?;
+                .map_err(to_py_err)?
+                .into_inner();
 
-            Ok(())
+            response
+                .id
+                .ok_or_else(|| PyValueError::new_err("received response without task id"))
+        })
+    }
+
+    pub fn wait_for_task(
+        &mut self,
+        py: Python<'_>,
+        task_id: &TaskId,
+        timeout: std::time::Duration,
+    ) -> PyResult<()> {
+        wait_for_future(py, async {
+            let timeout: prost_types::Duration = timeout.try_into().map_err(|err| {
+                PyValueError::new_err(format!(
+                    "failed to convert timeout to serialized duration: {err}"
+                ))
+            })?;
+            let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
+                ids: vec![task_id.clone()],
+                timeout: Some(timeout),
+            };
+            let mut response_stream = self
+                .client
+                .query_tasks_on_completion(request)
+                .await
+                .map_err(to_py_err)?
+                .into_inner();
+
+            // we know there is only one item in the stream
+            let task_status = if let Some(response) = response_stream.next().await {
+                response
+                    .map_err(to_py_err)?
+                    .data
+                    .ok_or_else(|| PyValueError::new_err("received response without data"))?
+                    .decode()
+                    .map_err(to_py_err)?
+            } else {
+                return Err(PyValueError::new_err("no response from task"));
+            };
+
+            // TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather
+            // than a nicely typed object should be revisited.
+
+            let exec_status = task_status
+                .column_by_name("exec_status")
+                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
+                .and_then(|arr| arr.value(0).into())
+                .ok_or_else(|| PyValueError::new_err("couldn't read exec_status column"))?;
+
+            let msgs = task_status
+                .column_by_name("msgs")
+                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
+                .and_then(|arr| arr.value(0).into())
+                .ok_or_else(|| PyValueError::new_err("couldn't read msgs column"))?;
+
+            if exec_status == "success" {
+                Ok(())
+            } else {
+                Err(PyValueError::new_err(format!("task failed: {msgs}",)))
+            }
         })
     }
 

@@ -109,13 +109,13 @@ service FrontendService {
 
   // --- Tasks service ---
   // Query the status of submitted tasks
-  rpc Query(rerun.redap_tasks.v1alpha1.QueryRequest) returns (rerun.redap_tasks.v1alpha1.QueryResponse) {}
+  rpc QueryTasks(rerun.redap_tasks.v1alpha1.QueryTasksRequest) returns (rerun.redap_tasks.v1alpha1.QueryTasksResponse) {}
 
   // Fetch the output of a completed task
-  rpc FetchOutput(rerun.redap_tasks.v1alpha1.FetchOutputRequest) returns (rerun.redap_tasks.v1alpha1.FetchOutputResponse) {}
+  rpc FetchTaskOutput(rerun.redap_tasks.v1alpha1.FetchTaskOutputRequest) returns (rerun.redap_tasks.v1alpha1.FetchTaskOutputResponse) {}
 
   // Query the status of submitted tasks as soon as they are no longer pending
-  rpc QueryOnCompletion(rerun.redap_tasks.v1alpha1.QueryOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryOnCompletionResponse) {}
+  rpc QueryTasksOnCompletion(rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse) {}
 }
 
 // --- Manifest Registry ---

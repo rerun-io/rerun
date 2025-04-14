@@ -25,17 +25,17 @@ impl TensorBuffer {
     #[allow(clippy::match_same_arms)]
     pub fn size_in_bytes(&self) -> usize {
         match self {
-            Self::U8(buf) => buf.size_in_bytes(),
-            Self::U16(buf) => buf.size_in_bytes(),
-            Self::U32(buf) => buf.size_in_bytes(),
-            Self::U64(buf) => buf.size_in_bytes(),
-            Self::I8(buf) => buf.size_in_bytes(),
-            Self::I16(buf) => buf.size_in_bytes(),
-            Self::I32(buf) => buf.size_in_bytes(),
-            Self::I64(buf) => buf.size_in_bytes(),
-            Self::F16(buf) => buf.size_in_bytes(),
-            Self::F32(buf) => buf.size_in_bytes(),
-            Self::F64(buf) => buf.size_in_bytes(),
+            Self::U8(buf) => buf.inner().len(),
+            Self::U16(buf) => buf.inner().len(),
+            Self::U32(buf) => buf.inner().len(),
+            Self::U64(buf) => buf.inner().len(),
+            Self::I8(buf) => buf.inner().len(),
+            Self::I16(buf) => buf.inner().len(),
+            Self::I32(buf) => buf.inner().len(),
+            Self::I64(buf) => buf.inner().len(),
+            Self::F16(buf) => buf.inner().len(),
+            Self::F32(buf) => buf.inner().len(),
+            Self::F64(buf) => buf.inner().len(),
         }
     }
 

@@ -778,8 +778,8 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Vector { elem_type } => {
                 if *unwrap {
                     quote!(#elem_type)
-                } else if elem_type.backed_by_arrow_buffer() {
-                    quote!(::re_types_core::ArrowBuffer<#elem_type>)
+                } else if elem_type.backed_by_scalar_buffer() {
+                    quote!(::arrow::buffer::ScalarBuffer<#elem_type>)
                 } else {
                     quote!(Vec<#elem_type>)
                 }

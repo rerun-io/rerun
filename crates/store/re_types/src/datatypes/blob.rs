@@ -21,9 +21,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: A binary blob of data.
 ///
 /// Ref-counted internally and therefore cheap to clone.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 #[repr(transparent)]
-pub struct Blob(pub ::re_types_core::ArrowBuffer<u8>);
+pub struct Blob(pub ::arrow::buffer::ScalarBuffer<u8>);
 
 ::re_types_core::macros::impl_into_cow!(Blob);
 
@@ -66,12 +66,12 @@ impl ::re_types_core::Loggable for Blob {
                 let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 );
                 let data0_inner_data: ScalarBuffer<_> = data0
                     .iter()
                     .flatten()
-                    .map(|b| b.as_slice())
+                    .map(|b| b as &[_])
                     .collect::<Vec<_>>()
                     .concat()
                     .into();
@@ -139,7 +139,6 @@ impl ::re_types_core::Loggable for Blob {
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             let data = arrow_data_inner.clone().slice(start, end - start);
-                            let data = ::re_types_core::ArrowBuffer::from(data);
                             Ok(data)
                         })
                         .transpose()
@@ -156,14 +155,14 @@ impl ::re_types_core::Loggable for Blob {
     }
 }
 
-impl From<::re_types_core::ArrowBuffer<u8>> for Blob {
+impl From<::arrow::buffer::ScalarBuffer<u8>> for Blob {
     #[inline]
-    fn from(data: ::re_types_core::ArrowBuffer<u8>) -> Self {
+    fn from(data: ::arrow::buffer::ScalarBuffer<u8>) -> Self {
         Self(data)
     }
 }
 
-impl From<Blob> for ::re_types_core::ArrowBuffer<u8> {
+impl From<Blob> for ::arrow::buffer::ScalarBuffer<u8> {
     #[inline]
     fn from(value: Blob) -> Self {
         value.0
@@ -178,6 +177,6 @@ impl ::re_byte_size::SizeBytes for Blob {
 
     #[inline]
     fn is_pod() -> bool {
-        <::re_types_core::ArrowBuffer<u8>>::is_pod()
+        <::arrow::buffer::ScalarBuffer<u8>>::is_pod()
     }
 }

@@ -98,11 +98,20 @@ impl PyDataset {
 
     /// Register a RRD URI to the dataset.
     fn register(self_: PyRef<'_, Self>, recording_uri: String) -> PyResult<()> {
+        // TODO(#9731): In order to make the `register` method to appear synchronous,
+        // we need to hard-code a max timeout for waiting for the task.
+        // 60 seconds is totally arbitrary but should work for now.
+        //
+        // A more permanent solution is to expose an asynchronous register method, and/or
+        // the timeout directly to the caller.
+        // See also issue #9731
+        const MAX_REGISTER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
         let super_ = self_.as_super();
         let mut connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        connection.register_with_dataset(self_.py(), dataset_id, recording_uri)
+        let task_id = connection.register_with_dataset(self_.py(), dataset_id, recording_uri)?;
+        connection.wait_for_task(self_.py(), &task_id, MAX_REGISTER_TIMEOUT)
     }
 
     /// Download a partition from the dataset.

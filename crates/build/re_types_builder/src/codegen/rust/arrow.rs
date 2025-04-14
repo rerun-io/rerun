@@ -88,10 +88,6 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                         recursive: false,
                     };
                     quote!(#datatype)
-                    // TODO(#3741): Bring back extensions once we've fully replaced `arrow2-convert`!
-                    // let datatype = ArrowDataTypeTokenizer(datatype, false);
-                    // let metadata = OptionTokenizer(metadata.as_ref());
-                    // quote!(DataType::Extension(#fqname.to_owned(), Box::new(#datatype), #metadata))
                 }
             }
         }
@@ -174,7 +170,8 @@ pub fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
     quote!(#expr)
 }
 
-pub fn is_backed_by_arrow_buffer(typ: &DataType) -> bool {
+/// Can this type be used with `arrow::ScalarBuffer`?
+pub fn is_backed_by_scalar_buffer(typ: &DataType) -> bool {
     if let DataType::Atomic(atomic) = typ {
         !matches!(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
     } else {
