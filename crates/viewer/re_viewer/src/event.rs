@@ -56,36 +56,25 @@ pub enum ViewerEventKind {
     /// Fired when the timepoint changes.
     ///
     /// Does not fire when `on_seek` is called.
-    TimeUpdate(TimeUpdate),
+    TimeUpdate {
+        #[serde(with = "serde::time_real")]
+        time: TimeReal,
+    },
 
     /// Fired when a different timeline is selected.
-    TimelineChange(TimelineChange),
+    TimelineChange {
+        timeline: TimelineName,
+
+        #[serde(with = "serde::time_real")]
+        time: TimeReal,
+    },
 
     /// Fired when the selection changes.
     ///
     /// This event is fired each time any part of the event payload changes,
     /// this includes for example clicking on different parts of the same
     /// entity in a 2D or 3D view.
-    SelectionChange(SelectionChange),
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TimeUpdate {
-    #[serde(with = "serde::time_real")]
-    pub time: TimeReal,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TimelineChange {
-    pub timeline: TimelineName,
-
-    #[serde(with = "serde::time_real")]
-    pub time: TimeReal,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct SelectionChange {
-    pub items: Vec<SelectionChangeItem>,
+    SelectionChange { items: Vec<SelectionChangeItem> },
 }
 
 /// A single item in a selection.
