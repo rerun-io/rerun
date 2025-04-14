@@ -337,11 +337,6 @@ impl EntityPickerEntryData {
         hierarchy: &mut Vec<String>,
         hierarchy_highlights: &mut PathRanges,
     ) -> Option<Self> {
-        // Early out
-        if filter_matcher.matches_nothing() {
-            return None;
-        }
-
         let entity_part_ui_string = entity_tree
             .path
             .last()
