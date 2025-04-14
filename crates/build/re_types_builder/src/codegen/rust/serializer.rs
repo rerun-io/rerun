@@ -788,16 +788,11 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            let quoted_num_instances = match inner_repr {
-                InnerRepr::ArrowBuffer => quote!(num_instances()),
-                InnerRepr::NativeIterable => quote!(len()),
-            };
-
             let quoted_declare_offsets = if let DataType::List(_) = datatype {
                 let map_to_length = if elements_are_nullable {
-                    quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum. #quoted_num_instances)) }
+                    quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum.len())) }
                 } else {
-                    quote! { map(|datum| datum. #quoted_num_instances) }
+                    quote! { map(|datum| datum.len()) }
                 };
 
                 quote! {

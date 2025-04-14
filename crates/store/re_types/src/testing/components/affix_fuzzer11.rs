@@ -69,7 +69,7 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                 let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 );
                 let data0_inner_data: ScalarBuffer<_> = data0
                     .iter()

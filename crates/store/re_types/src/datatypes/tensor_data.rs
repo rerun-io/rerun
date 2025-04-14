@@ -141,10 +141,11 @@ impl ::re_types_core::Loggable for TensorData {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets =
-                                arrow::buffer::OffsetBuffer::<i32>::from_lengths(shape.iter().map(
-                                    |opt| opt.as_ref().map_or(0, |datum| datum.num_instances()),
-                                ));
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                shape
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                            );
                             let shape_inner_data: ScalarBuffer<_> = shape
                                 .iter()
                                 .flatten()

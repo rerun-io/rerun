@@ -266,9 +266,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                                many_floats_optional.iter().map(|opt| {
-                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
-                                }),
+                                many_floats_optional
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             );
                             let many_floats_optional_inner_data: ScalarBuffer<_> =
                                 many_floats_optional

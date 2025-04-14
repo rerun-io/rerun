@@ -404,7 +404,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u8_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            u8.iter().map(|datum| datum.num_instances()),
+                            u8.iter().map(|datum| datum.len()),
                         );
                         let u8_inner_data: ScalarBuffer<_> = u8
                             .iter()
@@ -435,7 +435,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u16_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            u16.iter().map(|datum| datum.num_instances()),
+                            u16.iter().map(|datum| datum.len()),
                         );
                         let u16_inner_data: ScalarBuffer<_> = u16
                             .iter()
@@ -466,7 +466,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u32_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            u32.iter().map(|datum| datum.num_instances()),
+                            u32.iter().map(|datum| datum.len()),
                         );
                         let u32_inner_data: ScalarBuffer<_> = u32
                             .iter()
@@ -497,7 +497,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u64_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            u64.iter().map(|datum| datum.num_instances()),
+                            u64.iter().map(|datum| datum.len()),
                         );
                         let u64_inner_data: ScalarBuffer<_> = u64
                             .iter()
@@ -528,7 +528,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i8_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            i8.iter().map(|datum| datum.num_instances()),
+                            i8.iter().map(|datum| datum.len()),
                         );
                         let i8_inner_data: ScalarBuffer<_> = i8
                             .iter()
@@ -559,7 +559,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i16_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            i16.iter().map(|datum| datum.num_instances()),
+                            i16.iter().map(|datum| datum.len()),
                         );
                         let i16_inner_data: ScalarBuffer<_> = i16
                             .iter()
@@ -590,7 +590,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i32_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            i32.iter().map(|datum| datum.num_instances()),
+                            i32.iter().map(|datum| datum.len()),
                         );
                         let i32_inner_data: ScalarBuffer<_> = i32
                             .iter()
@@ -621,7 +621,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i64_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            i64.iter().map(|datum| datum.num_instances()),
+                            i64.iter().map(|datum| datum.len()),
                         );
                         let i64_inner_data: ScalarBuffer<_> = i64
                             .iter()
@@ -652,7 +652,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f16_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            f16.iter().map(|datum| datum.num_instances()),
+                            f16.iter().map(|datum| datum.len()),
                         );
                         let f16_inner_data: ScalarBuffer<_> = f16
                             .iter()
@@ -683,7 +683,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f32_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            f32.iter().map(|datum| datum.num_instances()),
+                            f32.iter().map(|datum| datum.len()),
                         );
                         let f32_inner_data: ScalarBuffer<_> = f32
                             .iter()
@@ -714,7 +714,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f64_validity: Option<arrow::buffer::NullBuffer> = None;
                     {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                            f64.iter().map(|datum| datum.num_instances()),
+                            f64.iter().map(|datum| datum.len()),
                         );
                         let f64_inner_data: ScalarBuffer<_> = f64
                             .iter()

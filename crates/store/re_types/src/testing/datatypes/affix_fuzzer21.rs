@@ -118,9 +118,9 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                         };
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
-                                many_halves.iter().map(|opt| {
-                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
-                                }),
+                                many_halves
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             );
                             let many_halves_inner_data: ScalarBuffer<_> = many_halves
                                 .iter()

@@ -27,12 +27,6 @@ impl<T: SizeBytes + ArrowNativeType> SizeBytes for ArrowBuffer<T> {
 }
 
 impl<T: ArrowNativeType> ArrowBuffer<T> {
-    /// The number of instances of T stored in this buffer.
-    #[inline]
-    pub fn num_instances(&self) -> usize {
-        self.as_slice().len()
-    }
-
     /// The number of bytes stored in this buffer
     #[inline]
     pub fn size_in_bytes(&self) -> usize {
