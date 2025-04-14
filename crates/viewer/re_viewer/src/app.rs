@@ -17,7 +17,7 @@ use re_viewer_context::{
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
-    StoreContext, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError,
 };
 
@@ -2151,6 +2151,22 @@ impl eframe::App for App {
                 .collect();
             if let Some(app_id) = apps.first().copied() {
                 store_hub.set_active_app(app_id.clone());
+                // set_active_app will also activate a new entry.
+                // Select this entry so it's more obvious to the user which recording
+                // is now active.
+                match store_hub.active_entry() {
+                    Some(StoreHubEntry::Recording { store_id }) => {
+                        self.state
+                            .selection_state
+                            .set_selection(Item::StoreId(store_id.clone()));
+                    }
+                    Some(StoreHubEntry::Table { table_id }) => {
+                        self.state
+                            .selection_state
+                            .set_selection(Item::TableId(table_id.clone()));
+                    }
+                    None => {}
+                }
             } else {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }
