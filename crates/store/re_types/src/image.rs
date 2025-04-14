@@ -126,17 +126,25 @@ where
 pub fn blob_and_datatype_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, ChannelDatatype) {
     match tensor_buffer {
         TensorBuffer::U8(buffer) => (Blob(buffer), ChannelDatatype::U8),
-        TensorBuffer::U16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U16),
-        TensorBuffer::U32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U32),
-        TensorBuffer::U64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::U64),
-        TensorBuffer::I8(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I8),
-        TensorBuffer::I16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I16),
-        TensorBuffer::I32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I32),
-        TensorBuffer::I64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::I64),
-        TensorBuffer::F16(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F16),
-        TensorBuffer::F32(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F32),
-        TensorBuffer::F64(buffer) => (Blob(buffer.cast_to_u8()), ChannelDatatype::F64),
+        TensorBuffer::U16(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::U16),
+        TensorBuffer::U32(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::U32),
+        TensorBuffer::U64(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::U64),
+        TensorBuffer::I8(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I8),
+        TensorBuffer::I16(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I16),
+        TensorBuffer::I32(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I32),
+        TensorBuffer::I64(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::I64),
+        TensorBuffer::F16(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::F16),
+        TensorBuffer::F32(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::F32),
+        TensorBuffer::F64(buffer) => (Blob(cast_to_u8(&buffer)), ChannelDatatype::F64),
     }
+}
+
+/// Reinterpret POD (plain-old-data) types to `u8`.
+#[inline]
+pub fn cast_to_u8<T: arrow::datatypes::ArrowNativeType>(
+    buffer: &arrow::buffer::ScalarBuffer<T>,
+) -> ArrowBuffer<u8> {
+    arrow::buffer::ScalarBuffer::new(buffer.inner().clone(), 0, buffer.inner().len()).into()
 }
 
 // ----------------------------------------------------------------------------

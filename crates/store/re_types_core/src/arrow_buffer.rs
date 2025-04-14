@@ -40,18 +40,6 @@ impl<T: ArrowNativeType> ArrowBuffer<T> {
     }
 }
 
-impl<T: bytemuck::Pod + ArrowNativeType> ArrowBuffer<T> {
-    /// Reinterpret POD (plain-old-data) types to `u8`.
-    #[inline]
-    pub fn cast_to_u8(&self) -> ArrowBuffer<u8> {
-        ArrowBuffer::<u8>(arrow::buffer::ScalarBuffer::new(
-            self.inner().clone(),
-            0,
-            self.inner().len(),
-        ))
-    }
-}
-
 impl<T: Eq + ArrowNativeType> Eq for ArrowBuffer<T> {}
 
 impl<T: ArrowNativeType> From<arrow::buffer::ScalarBuffer<T>> for ArrowBuffer<T> {
