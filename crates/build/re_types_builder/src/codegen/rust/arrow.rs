@@ -88,10 +88,6 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                         recursive: false,
                     };
                     quote!(#datatype)
-                    // TODO(#3741): Bring back extensions once we've fully replaced `arrow2-convert`!
-                    // let datatype = ArrowDataTypeTokenizer(datatype, false);
-                    // let metadata = OptionTokenizer(metadata.as_ref());
-                    // quote!(DataType::Extension(#fqname.to_owned(), Box::new(#datatype), #metadata))
                 }
             }
         }
