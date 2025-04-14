@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use re_viewer::external::{eframe, egui, egui::mutex::Mutex, re_log, re_memory};
-use re_viewer::{AsyncRuntimeHandle, ViewerEvent, ViewerEventDetail};
+use re_viewer::{AsyncRuntimeHandle, ViewerEvent, ViewerEventKind};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -41,17 +41,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let startup_options = re_viewer::StartupOptions {
         on_event: Some({
             let shared_state = shared_state.clone();
-            Arc::new(move |event: ViewerEvent| match event.detail {
-                ViewerEventDetail::PlayStateChange(_) => {}
-                ViewerEventDetail::TimeUpdate(detail) => {
+            Arc::new(move |event: ViewerEvent| match event.kind {
+                ViewerEventKind::PlayStateChange(_) => {}
+                ViewerEventKind::TimeUpdate(detail) => {
                     shared_state.lock().current_time = detail.time.as_f64();
                 }
-                ViewerEventDetail::TimelineChange(detail) => {
+                ViewerEventKind::TimelineChange(detail) => {
                     let mut shared_state = shared_state.lock();
                     shared_state.current_timeline = detail.timeline.name().as_str().to_owned();
                     shared_state.current_time = detail.time.as_f64();
                 }
-                ViewerEventDetail::SelectionChange(detail) => {
+                ViewerEventKind::SelectionChange(detail) => {
                     shared_state.lock().current_selection = detail.items;
                 }
             })

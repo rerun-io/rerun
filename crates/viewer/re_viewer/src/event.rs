@@ -29,24 +29,24 @@ pub struct ViewerEvent {
     pub recording_id: StoreId,
 
     #[serde(flatten)]
-    pub detail: ViewerEventDetail,
+    pub kind: ViewerEventKind,
 }
 
 impl ViewerEvent {
     #[inline]
-    fn from_db_and_detail(db: &EntityDb, detail: ViewerEventDetail) -> Option<Self> {
+    fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Option<Self> {
         Some(Self {
             application_id: db.app_id()?.clone(),
             recording_id: db.store_id(),
-            detail,
+            kind,
         })
     }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type", content = "detail")]
+#[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum ViewerEventDetail {
+pub enum ViewerEventKind {
     /// Fired when the timeline starts playing.
     Play,
 
@@ -214,29 +214,29 @@ impl ViewerEventDispatcher {
 
     #[inline]
     pub fn on_play_state_change(&self, db: &EntityDb, playing: bool) {
-        self.dispatch(ViewerEvent::from_db_and_detail(
+        self.dispatch(ViewerEvent::from_db_and_kind(
             db,
             if playing {
-                ViewerEventDetail::Play
+                ViewerEventKind::Play
             } else {
-                ViewerEventDetail::Pause
+                ViewerEventKind::Pause
             },
         ));
     }
 
     #[inline]
     pub fn on_time_update(&self, db: &EntityDb, time: TimeReal) {
-        self.dispatch(ViewerEvent::from_db_and_detail(
+        self.dispatch(ViewerEvent::from_db_and_kind(
             db,
-            ViewerEventDetail::TimeUpdate(TimeUpdate { time }),
+            ViewerEventKind::TimeUpdate(TimeUpdate { time }),
         ));
     }
 
     #[inline]
     pub fn on_timeline_change(&self, db: &EntityDb, timeline: Timeline, time: TimeReal) {
-        self.dispatch(ViewerEvent::from_db_and_detail(
+        self.dispatch(ViewerEvent::from_db_and_kind(
             db,
-            ViewerEventDetail::TimelineChange(TimelineChange {
+            ViewerEventKind::TimelineChange(TimelineChange {
                 timeline: timeline.name().clone(),
                 time,
             }),
@@ -250,9 +250,9 @@ impl ViewerEventDispatcher {
         items: &ItemCollection,
         viewport_blueprint: &ViewportBlueprint,
     ) {
-        self.dispatch(ViewerEvent::from_db_and_detail(
+        self.dispatch(ViewerEvent::from_db_and_kind(
             db,
-            ViewerEventDetail::SelectionChange(SelectionChange {
+            ViewerEventKind::SelectionChange(SelectionChange {
                 items: items
                     .iter()
                     .filter_map(|(item, ctx)| {

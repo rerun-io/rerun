@@ -134,32 +134,19 @@ export type PauseEvent = ViewerEventBase & {
   type: "pause";
 }
 
-export type TimeUpdateEvent = {
+export type TimeUpdateEvent = ViewerEventBase & {
   type: "time_update";
-
-  detail: TimeUpdateDetail;
-}
-
-type TimeUpdateDetail = ViewerEventBase & {
   time: number;
 }
 
 export type TimelineChangeEvent = ViewerEventBase & {
   type: "timeline_change";
-  detail: TimelineChangeDetail;
-}
-
-type TimelineChangeDetail = {
   timeline: string;
   time: number;
 }
 
 export type SelectionChangeEvent = ViewerEventBase & {
   type: "selection_change";
-  detail: SelectionChangeDetail;
-}
-
-type SelectionChangeDetail = {
   items: SelectionChangeItem[];
 }
 
@@ -171,20 +158,13 @@ type SelectionChangeDetail = {
 type _GetViewerEvent<K> =
   Extract<ViewerEvent, { type: K }>;
 
-// If `ViewerEvent` with type `K` has a `detail` field,
-// yield its type. Otherwise, yield `void`.
-type _GetViewerEventDetail<K> =
-  _GetViewerEvent<K> extends { detail: infer Detail }
-  ? Detail
-  : void;
-
 // `ViewerEvent` is a union of all events, so its `type` field
 // is a union of all `type` fields.
 type _ViewerEventNames = ViewerEvent["type"];
 
 // For every event, get its payload type.
 type ViewerEventMap = {
-  [K in _ViewerEventNames]: _GetViewerEventDetail<K>
+  [K in _ViewerEventNames]: _GetViewerEvent<K>
 }
 
 /**
@@ -316,7 +296,7 @@ export class WebViewer {
       let event: ViewerEvent = JSON.parse(event_json);
       this.#dispatch_event(
         event.type as any,
-        "detail" in event ? event.detail : undefined,
+        event,
       );
     }
 

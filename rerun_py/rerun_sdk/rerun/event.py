@@ -52,23 +52,6 @@ class ContainerSelectionItem:
 SelectionItem = Union[EntitySelectionItem, ViewSelectionItem, ContainerSelectionItem]
 
 
-# Event-specific detail classes
-@dataclass
-class TimeUpdateDetail:
-    time: float
-
-
-@dataclass
-class TimelineChangeDetail:
-    timeline: str
-    time: float
-
-
-@dataclass
-class SelectionChangeDetail:
-    items: list[SelectionItem]
-
-
 # Concrete event classes
 @dataclass
 class PlayEvent(ViewerEventBase):
@@ -90,7 +73,7 @@ class TimeUpdateEvent(ViewerEventBase):
     def type(self) -> Literal["time_update"]:
         return "time_update"
 
-    detail: TimeUpdateDetail
+    time: float
 
 
 @dataclass
@@ -99,7 +82,8 @@ class TimelineChangeEvent(ViewerEventBase):
     def type(self) -> Literal["timeline_change"]:
         return "timeline_change"
 
-    detail: TimelineChangeDetail
+    timeline: str
+    time: float
 
 
 @dataclass
@@ -108,7 +92,7 @@ class SelectionChangeEvent(ViewerEventBase):
     def type(self) -> Literal["selection_change"]:
         return "selection_change"
 
-    detail: SelectionChangeDetail
+    items: list[SelectionItem]
 
 
 # Union type for all possible event types
@@ -130,19 +114,22 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
 
     elif event_type == "time_update":
         return TimeUpdateEvent(
-            application_id=app_id, recording_id=recording_id, detail=TimeUpdateDetail(time=data["detail"]["time"])
+            application_id=app_id,
+            recording_id=recording_id,
+            time=data["time"],
         )
 
     elif event_type == "timeline_change":
         return TimelineChangeEvent(
             application_id=app_id,
             recording_id=recording_id,
-            detail=TimelineChangeDetail(timeline=data["detail"]["timeline"], time=data["detail"]["time"]),
+            timeline=data["timeline"],
+            time=data["time"],
         )
 
     elif event_type == "selection_change":
         items = []
-        for item in data["detail"]["items"]:
+        for item in data["items"]:
             if item["type"] == "entity":
                 items.append(
                     EntitySelectionItem(
@@ -153,14 +140,23 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
                     )
                 )
             elif item["type"] == "view":
-                items.append(ViewSelectionItem(view_id=item["view_id"], view_name=item["view_name"]))
+                items.append(
+                    ViewSelectionItem(
+                        view_id=item["view_id"],
+                        view_name=item["view_name"],
+                    )
+                )
             elif item["type"] == "container":
                 items.append(
-                    ContainerSelectionItem(container_id=item["container_id"], container_name=item["container_name"])
+                    ContainerSelectionItem(
+                        container_id=item["container_id"], container_name=item["container_name"],
+                    )
                 )
 
         return SelectionChangeEvent(
-            application_id=app_id, recording_id=recording_id, detail=SelectionChangeDetail(items=items)
+            application_id=app_id,
+            recording_id=recording_id,
+            items=items,
         )
 
     else:

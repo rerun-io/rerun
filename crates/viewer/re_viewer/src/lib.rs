@@ -27,7 +27,7 @@ pub mod blueprint;
 
 pub(crate) use {app_state::AppState, ui::memory_panel};
 
-pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventDetail};
+pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 
 pub use app::App;
 pub use startup_options::StartupOptions;
