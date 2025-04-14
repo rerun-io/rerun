@@ -8492,6 +8492,7 @@ dependencies = [
  "object_store",
  "once_cell",
  "parking_lot",
+ "prost-types",
  "pyo3",
  "pyo3-build-config",
  "rand",
