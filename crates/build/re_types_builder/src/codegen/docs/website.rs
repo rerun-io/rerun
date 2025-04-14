@@ -274,7 +274,7 @@ fn object_page(
         putln!(page);
         putln!(page, "## Arrow datatype");
         putln!(page, "```");
-        super::arrow_datatype::datatype_docs(&mut page, datatype);
+        super::datatype_docs(&mut page, datatype);
         putln!(page);
         putln!(page, "```");
     }
