@@ -256,10 +256,7 @@ mod tests {
     use tokio_stream::StreamExt as _;
 
     use crate::{
-        decoder::{
-            streaming::StreamingDecoder,
-            tests::{fake_log_messages, strip_arrow_extensions_from_log_messages},
-        },
+        decoder::{streaming::StreamingDecoder, tests::fake_log_messages},
         Compression, EncodingOptions, Serializer, VersionPolicy,
     };
 
@@ -295,13 +292,11 @@ mod tests {
                 .await
                 .unwrap();
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder
-                    .map(|res| res.map(|msg| msg.inner))
-                    .collect::<Result<Vec<_>, _>>()
-                    .await
-                    .unwrap(),
-            );
+            let decoded_messages = decoder
+                .map(|res| res.map(|msg| msg.inner))
+                .collect::<Result<Vec<_>, _>>()
+                .await
+                .unwrap();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -335,13 +330,11 @@ mod tests {
                 .await
                 .unwrap();
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder
-                    .map(|res| res.map(|msg| msg.inner))
-                    .collect::<Result<Vec<_>, _>>()
-                    .await
-                    .unwrap(),
-            );
+            let decoded_messages = decoder
+                .map(|res| res.map(|msg| msg.inner))
+                .collect::<Result<Vec<_>, _>>()
+                .await
+                .unwrap();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -400,13 +393,11 @@ mod tests {
                 }
             }
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoded_messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| msg.inner)
-                    .collect::<Vec<_>>(),
-            );
+            let decoded_messages = decoded_messages
+                .clone()
+                .into_iter()
+                .map(|msg| msg.inner)
+                .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
