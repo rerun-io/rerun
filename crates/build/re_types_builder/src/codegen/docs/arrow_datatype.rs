@@ -27,11 +27,11 @@ fn atomic_datatype_docs(page: &mut String, datatype: &AtomicDataType) {
 }
 
 pub fn datatype_docs(page: &mut String, datatype: &DataType) {
-    datatype_docs_impl(page, 0, datatype.to_logical_type());
+    datatype_docs_impl(page, 0, datatype);
 }
 
 fn datatype_docs_impl(page: &mut String, indent: usize, datatype: &DataType) {
-    match datatype.to_logical_type() {
+    match datatype {
         DataType::Atomic(atomic) => {
             atomic_datatype_docs(page, atomic);
         }
@@ -75,8 +75,8 @@ fn datatype_docs_impl(page: &mut String, indent: usize, datatype: &DataType) {
             }
             page.push_indented(indent, "}", 0);
         }
-        DataType::Object { fqname, .. } => {
-            unreachable!("We need the type registry to show the docs for an Object ({fqname})");
+        DataType::Object { datatype, .. } => {
+            datatype_docs_impl(page, indent, datatype);
         }
     }
 }
