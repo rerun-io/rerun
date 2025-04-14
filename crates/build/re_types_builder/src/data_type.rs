@@ -2,7 +2,7 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::ArrowRegistry;
+use crate::TypeRegistry;
 
 /// Mode of [`DataType::Union`]
 ///
@@ -57,7 +57,7 @@ impl<DT> GenericField<DT> {
 }
 
 impl LazyField {
-    pub fn resolve(&self, registry: &ArrowRegistry) -> Field {
+    pub fn resolve(&self, registry: &TypeRegistry) -> Field {
         Field {
             name: self.name.clone(),
             data_type: self.data_type.resolve(registry),
@@ -186,7 +186,7 @@ impl From<AtomicDataType> for LazyDatatype {
 
 impl LazyDatatype {
     /// Recursively resolves the datatype using the specified `registry`.
-    pub fn resolve(&self, registry: &ArrowRegistry) -> DataType {
+    pub fn resolve(&self, registry: &TypeRegistry) -> DataType {
         match self {
             Self::Atomic(atomic) => DataType::Atomic(*atomic),
             Self::Binary => DataType::Binary,

@@ -1,7 +1,8 @@
 //! The Arrow registry keeps track of all type definitions and maps them to Arrow datatypes.
 
-use anyhow::Context as _;
 use std::collections::HashMap;
+
+use anyhow::Context as _;
 
 use crate::{
     data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode},
@@ -13,11 +14,11 @@ use crate::{
 /// Computes and maintains a registry of [`DataType`]s for specified flatbuffers
 /// definitions.
 #[derive(Debug, Default)]
-pub struct ArrowRegistry {
+pub struct TypeRegistry {
     registry: HashMap<String, LazyDatatype>,
 }
 
-impl ArrowRegistry {
+impl TypeRegistry {
     /// Computes the Arrow datatype for the specified object and stores it in the registry, to be
     /// resolved later on.
     pub fn register(&mut self, obj: &mut Object) {

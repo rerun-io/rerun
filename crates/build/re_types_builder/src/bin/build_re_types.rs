@@ -127,7 +127,7 @@ fn main() {
     re_log::info!("Generating flatbuffers code…");
     re_types_builder::generate_fbs(&reporter, &definitions_dir_path, check);
 
-    let (objects, arrow_registry) =
+    let (objects, type_registry) =
         re_types_builder::generate_lang_agnostic(&reporter, definitions_dir_path, entrypoint_path);
 
     re_tracing::profile_scope!("Language-specific code-gen");
@@ -136,14 +136,14 @@ fn main() {
             &reporter,
             cpp_output_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_rust_code(
             &reporter,
             workspace_dir,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_python_code(
@@ -151,21 +151,21 @@ fn main() {
             python_output_dir_path,
             python_testing_output_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_docs(
             &reporter,
             docs_content_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
         || re_types_builder::generate_snippets_ref(
             &reporter,
             snippets_ref_dir_path,
             &objects,
-            &arrow_registry,
+            &type_registry,
             check,
         ),
     );

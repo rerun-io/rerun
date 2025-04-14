@@ -3,7 +3,7 @@ use quote::{format_ident, quote};
 
 use crate::{
     data_type::{AtomicDataType, DataType, UnionMode},
-    ArrowRegistry, Object, Objects,
+    Object, Objects, TypeRegistry,
 };
 
 use super::{
@@ -17,12 +17,12 @@ use super::{
 // ---
 
 pub fn quote_arrow_serializer(
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
-    let datatype = &arrow_registry.get(&obj.fqname);
+    let datatype = &type_registry.get(&obj.fqname);
 
     let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
@@ -112,7 +112,7 @@ pub fn quote_arrow_serializer(
             quote!(#quoted_data_dst)
         };
 
-        let datatype = &arrow_registry.get(&obj_field.fqname);
+        let datatype = &type_registry.get(&obj_field.fqname);
         let elements_are_nullable = true;
 
         let quoted_serializer = quote_arrow_field_serializer(
@@ -159,7 +159,7 @@ pub fn quote_arrow_serializer(
                     let data_dst = format_ident!("{}", obj_field.name);
                     let validity_dst = format_ident!("{data_dst}_validity");
 
-                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let inner_datatype = &type_registry.get(&obj_field.fqname);
                     let elements_are_nullable = true;
 
                     let quoted_serializer = quote_arrow_field_serializer(
@@ -310,7 +310,7 @@ pub fn quote_arrow_serializer(
                     let elements_are_nullable = false;
                     let validity_dst = format_ident!("{}_validity", data_dst);
 
-                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let inner_datatype = &type_registry.get(&obj_field.fqname);
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,

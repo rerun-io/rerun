@@ -41,7 +41,7 @@ impl CodeGenerator for DocsCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &crate::ArrowRegistry,
+        type_registry: &crate::TypeRegistry,
     ) -> GeneratedFiles {
         re_tracing::profile_function!();
 
@@ -75,7 +75,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 reporter,
                 objects,
                 object,
-                arrow_registry,
+                type_registry,
                 &views_per_archetype,
             );
             let path = self.docs_dir.join(format!(
@@ -219,7 +219,7 @@ fn object_page(
     reporter: &Reporter,
     objects: &Objects,
     object: &Object,
-    arrow_registry: &crate::ArrowRegistry,
+    type_registry: &crate::TypeRegistry,
     views_per_archetype: &ViewsPerArchetype,
 ) -> String {
     let top_level_docs = object
@@ -270,7 +270,7 @@ fn object_page(
     }
 
     if matches!(object.kind, ObjectKind::Datatype | ObjectKind::Component) {
-        let datatype = &arrow_registry.get(&object.fqname);
+        let datatype = &type_registry.get(&object.fqname);
         putln!(page);
         putln!(page, "## Arrow datatype");
         putln!(page, "```");

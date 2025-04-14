@@ -7,7 +7,7 @@ use crate::{
         util::{is_tuple_struct_from_obj, quote_comment},
     },
     data_type::{AtomicDataType, DataType, UnionMode},
-    ArrowRegistry, Object, Objects,
+    Object, Objects, TypeRegistry,
 };
 
 // ---
@@ -52,14 +52,14 @@ use crate::{
 /// with a runtime error) while in other it might be more relaxed for performance reasons
 /// (e.g. ignore the fact that the data has a bitmap altogether).
 pub fn quote_arrow_deserializer(
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
     // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow::array::Array`).
     let data_src = format_ident!("arrow_data");
 
-    let datatype = &arrow_registry.get(&obj.fqname);
+    let datatype = &type_registry.get(&obj.fqname);
     let quoted_self_datatype = quote! { Self::arrow_datatype() };
 
     let obj_fqname = obj.fqname.as_str();
@@ -137,7 +137,7 @@ pub fn quote_arrow_deserializer(
             }
         );
 
-        let field_datatype = arrow_registry.get(&obj_field.fqname);
+        let field_datatype = type_registry.get(&obj_field.fqname);
 
         let quoted_deserializer = quote_arrow_field_deserializer(
             objects,
@@ -183,7 +183,7 @@ pub fn quote_arrow_deserializer(
                 let quoted_field_deserializers = obj.fields.iter().map(|obj_field| {
                     let field_name = &obj_field.name;
                     let data_dst = format_ident!("{}", obj_field.name);
-                    let field_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let field_datatype = &type_registry.get(&obj_field.fqname);
 
                     let quoted_deserializer = quote_arrow_field_deserializer(
                         objects,
@@ -333,7 +333,7 @@ pub fn quote_arrow_deserializer(
                     .map(|(type_id, obj_field)| {
                         let data_dst = format_ident!("{}", obj_field.snake_case_name());
 
-                        let field_datatype = &arrow_registry.get(&obj_field.fqname);
+                        let field_datatype = &type_registry.get(&obj_field.fqname);
                         let quoted_deserializer = quote_arrow_field_deserializer(
                             objects,
                             field_datatype,
@@ -975,14 +975,14 @@ fn quote_iterator_transparency(
 ///
 /// See [`quote_arrow_deserializer_buffer_slice`] for additional information.
 pub fn quote_arrow_deserializer_buffer_slice(
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
     // Runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow::array::Array`).
     let data_src = format_ident!("arrow_data");
 
-    let datatype = &arrow_registry.get(&obj.fqname);
+    let datatype = &type_registry.get(&obj.fqname);
 
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
@@ -1003,7 +1003,7 @@ pub fn quote_arrow_deserializer_buffer_slice(
             }
         );
 
-        let datatype = arrow_registry.get(&obj_field.fqname);
+        let datatype = type_registry.get(&obj_field.fqname);
         let deserizlized_as_slice = quote_arrow_field_deserializer_buffer_slice(
             &datatype,
             obj_field.is_nullable,
@@ -1119,11 +1119,11 @@ fn quote_arrow_field_deserializer_buffer_slice(
 /// This should always be checked before using [`quote_arrow_deserializer_buffer_slice`].
 pub fn should_optimize_buffer_slice_deserialize(
     obj: &Object,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
 ) -> bool {
     let is_arrow_transparent = obj.datatype.is_none();
     if is_arrow_transparent {
-        let typ = arrow_registry.get(&obj.fqname);
+        let typ = type_registry.get(&obj.fqname);
         let obj_field = &obj.fields[0];
         !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(&typ)
     } else {

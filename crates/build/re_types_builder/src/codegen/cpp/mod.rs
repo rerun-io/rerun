@@ -15,8 +15,8 @@ use crate::{
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
+    Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    TypeRegistry, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -124,7 +124,7 @@ impl crate::CodeGenerator for CppCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        _arrow_registry: &ArrowRegistry,
+        _type_registry: &TypeRegistry,
     ) -> GeneratedFiles {
         re_tracing::profile_wait!("generate_folder");
 

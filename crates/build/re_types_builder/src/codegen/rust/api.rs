@@ -22,8 +22,8 @@ use crate::{
     },
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    TypeRegistry, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
     ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
     ATTR_RUST_REPR,
@@ -54,7 +54,7 @@ impl CodeGenerator for RustCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
     ) -> BTreeMap<Utf8PathBuf, String> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
         let mut extension_contents_for_fqname: HashMap<String, String> = Default::default();
@@ -63,7 +63,7 @@ impl CodeGenerator for RustCodeGenerator {
             self.generate_folder(
                 reporter,
                 objects,
-                arrow_registry,
+                type_registry,
                 object_kind,
                 &mut files_to_write,
                 &mut extension_contents_for_fqname,
@@ -87,7 +87,7 @@ impl RustCodeGenerator {
         &self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
         extension_contents_for_fqname: &mut HashMap<String, String>,
@@ -112,7 +112,7 @@ impl RustCodeGenerator {
             let filename = format!("{filename_stem}.rs");
 
             let filepath = module_path.join(filename);
-            let mut code = generate_object_file(reporter, objects, arrow_registry, obj, &filepath);
+            let mut code = generate_object_file(reporter, objects, type_registry, obj, &filepath);
 
             if let Ok(extension_contents) =
                 std::fs::read_to_string(module_path.join(format!("{filename_stem}_ext.rs")))
@@ -150,7 +150,7 @@ impl RustCodeGenerator {
 fn generate_object_file(
     reporter: &Reporter,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     obj: &Object,
     target_file: &Utf8Path,
 ) -> String {
@@ -192,9 +192,9 @@ fn generate_object_file(
     // random spacing into doc comments that look like code!
 
     let quoted_obj = match obj.class {
-        crate::objects::ObjectClass::Struct => quote_struct(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectClass::Union => quote_union(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectClass::Struct => quote_struct(reporter, type_registry, objects, obj),
+        crate::objects::ObjectClass::Union => quote_union(reporter, type_registry, objects, obj),
+        crate::objects::ObjectClass::Enum => quote_enum(reporter, type_registry, objects, obj),
     };
 
     append_tokens(reporter, code, &quoted_obj, target_file)
@@ -255,7 +255,7 @@ fn generate_mod_file(
 
 fn quote_struct(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
@@ -308,7 +308,7 @@ fn quote_struct(
 
     let quoted_from_impl = quote_from_impl_from_obj(obj);
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     let quoted_builder = quote_builder_from_obj(reporter, objects, obj);
 
@@ -378,7 +378,7 @@ fn quote_struct(
 
 fn quote_union(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
@@ -422,7 +422,7 @@ fn quote_union(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     let quoted_heap_size_bytes = {
         let quoted_matches = fields.iter().map(|obj_field| {
@@ -491,7 +491,7 @@ fn quote_union(
 // Pure C-style enum
 fn quote_enum(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
@@ -570,7 +570,7 @@ fn quote_enum(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     let all = fields.iter().map(|field| {
         let name = format_ident!("{}", field.name);
@@ -836,13 +836,13 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
 
 fn quote_trait_impls_from_obj(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
     match obj.kind {
         ObjectKind::Datatype | ObjectKind::Component => {
-            quote_trait_impls_for_datatype_or_component(objects, arrow_registry, obj)
+            quote_trait_impls_for_datatype_or_component(objects, type_registry, obj)
         }
 
         ObjectKind::Archetype => quote_trait_impls_for_archetype(reporter, obj),
@@ -853,7 +853,7 @@ fn quote_trait_impls_from_obj(
 
 fn quote_trait_impls_for_datatype_or_component(
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     obj: &Object,
 ) -> TokenStream {
     let Object {
@@ -864,9 +864,9 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let name = format_ident!("{name}");
 
-    let datatype = arrow_registry.get(fqname);
+    let datatype = type_registry.get(fqname);
 
-    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, arrow_registry);
+    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, type_registry);
 
     let is_forwarded_type = obj.is_arrow_transparent()
         && !obj.fields[0].is_nullable
@@ -915,7 +915,7 @@ fn quote_trait_impls_for_datatype_or_component(
             }
         } else {
             let quoted_deserializer =
-                quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+                quote_arrow_deserializer_buffer_slice(type_registry, objects, obj);
 
             quote! {
                 // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
@@ -958,7 +958,7 @@ fn quote_trait_impls_for_datatype_or_component(
             #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
         }
     } else {
-        let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
+        let quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
         quote! {
             // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
             // re_tracing::profile_function!();
@@ -989,7 +989,7 @@ fn quote_trait_impls_for_datatype_or_component(
         }
     } else {
         let quoted_serializer =
-            quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
+            quote_arrow_serializer(type_registry, objects, obj, &format_ident!("data"));
 
         quote! {
             // NOTE: Don't inline this, this gets _huge_.
