@@ -75,13 +75,6 @@ impl<T: bytemuck::Pod + ArrowNativeType> ArrowBuffer<T> {
 
 impl<T: Eq + ArrowNativeType> Eq for ArrowBuffer<T> {}
 
-impl<T: ArrowNativeType> ArrowBuffer<T> {
-    #[inline]
-    pub fn to_vec(&self) -> Vec<T> {
-        self.as_slice().to_vec()
-    }
-}
-
 impl<T: ArrowNativeType> From<arrow::buffer::ScalarBuffer<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: arrow::buffer::ScalarBuffer<T>) -> Self {
@@ -115,15 +108,15 @@ impl<'a, T: ArrowNativeType> IntoIterator for &'a ArrowBuffer<T> {
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.as_slice().iter()
+        self.0.into_iter()
     }
 }
 
 impl<T: ArrowNativeType> std::ops::Deref for ArrowBuffer<T> {
-    type Target = [T];
+    type Target = arrow::buffer::ScalarBuffer<T>;
 
     #[inline]
-    fn deref(&self) -> &[T] {
-        self.as_slice()
+    fn deref(&self) -> &arrow::buffer::ScalarBuffer<T> {
+        &self.0
     }
 }
