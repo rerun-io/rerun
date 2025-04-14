@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Literal, Sequence, Union
+from typing import Literal, Union
 
 # Type definitions based on `crates/viewer/re_viewer/src/event.rs`
 # NOTE: In Python, we need to update both the type definitions
@@ -149,7 +149,8 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
             elif item["type"] == "container":
                 items.append(
                     ContainerSelectionItem(
-                        container_id=item["container_id"], container_name=item["container_name"],
+                        container_id=item["container_id"],
+                        container_name=item["container_name"],
                     )
                 )
 
