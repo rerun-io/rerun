@@ -16,6 +16,7 @@ pub mod modal;
 pub mod notifications;
 mod section_collapsing_header;
 pub mod syntax_highlighting;
+mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
@@ -34,6 +35,7 @@ pub use self::{
     markdown_utils::*,
     section_collapsing_header::SectionCollapsingHeader,
     syntax_highlighting::SyntaxHighlighting,
+    time_drag_value::TimeDragValue,
     ui_ext::UiExt,
     ui_layout::UiLayout,
 };

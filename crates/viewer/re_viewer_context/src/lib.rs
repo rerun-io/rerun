@@ -26,7 +26,6 @@ mod table_context;
 mod tables;
 mod tensor;
 mod time_control;
-mod time_drag_value;
 mod typed_entity_collections;
 mod undo;
 mod utils;
@@ -76,7 +75,6 @@ pub use self::{
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
-    time_drag_value::TimeDragValue,
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },
