@@ -63,13 +63,6 @@ pub struct AppState {
     #[serde(skip)]
     pub(crate) navigation: Navigation,
 
-    /// Display the settings UI.
-    ///
-    /// If both `show_datastore_ui` and `show_settings_ui` are true, the settings UI takes
-    /// precedence.
-    #[serde(skip)]
-    pub(crate) show_settings_ui: bool,
-
     /// Storage for the state of each `View`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
@@ -103,7 +96,6 @@ impl Default for AppState {
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
             navigation: Default::default(),
-            show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -184,13 +176,16 @@ impl AppState {
         let is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
         match (self.navigation.peek(), store_context) {
-            (DisplayMode::WelcomeScreen, _) | (_, None) => {
+            (DisplayMode::WelcomeScreen, _) => {
                 self.welcome_screen.ui(
                     ui,
                     command_sender,
                     welcome_screen_state,
                     is_history_enabled,
                 );
+            }
+            (DisplayMode::Settings, _) => {
+                settings_screen_ui(ui, &mut self.app_options, command_sender);
             }
             (_, Some(store_context)) => {
                 let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
@@ -205,7 +200,6 @@ impl AppState {
                     blueprint_tree,
                     datastore_ui,
                     redap_servers,
-                    show_settings_ui,
                     view_states,
                     selection_state,
                     focused_item,
@@ -381,11 +375,6 @@ impl AppState {
                     }
                 };
 
-                // must happen before we recreate the view context as we mutably borrow the app options
-                if *show_settings_ui {
-                    settings_screen_ui(ui, app_options, show_settings_ui);
-                }
-
                 // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
                 // it's just a bunch of refs so not really that big of a deal in practice.
                 let ctx = ViewerContext {
@@ -416,14 +405,12 @@ impl AppState {
                     drag_and_drop_manager: &drag_and_drop_manager,
                 };
 
-                if *show_settings_ui {
-                    // nothing: this is already handled above
-                } else if self.navigation.peek() == &DisplayMode::ChunkStoreBrowser {
+                if self.navigation.peek() == &DisplayMode::ChunkStoreBrowser {
                     let should_datastore_ui_remain_active =
                         datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
                     if !should_datastore_ui_remain_active {
                         // TODO(grtlr): This will change, when datastore will become its own display mode.
-                        command_sender.send_system(SystemCommand::ChangeDisplayMode(
+                        command_sender.send_system(SystemCommand::NavigationReplace(
                             DisplayMode::LocalRecordings,
                         ));
                         return;
@@ -585,7 +572,9 @@ impl AppState {
                                     }
                                 }
 
-                                DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // handled above
+                                DisplayMode::ChunkStoreBrowser
+                                | DisplayMode::WelcomeScreen
+                                | DisplayMode::Settings => {} // handled above
                             };
                         },
                     );
@@ -634,7 +623,9 @@ impl AppState {
                                     redap_servers.server_central_panel_ui(&ctx, ui, origin);
                                 }
 
-                                DisplayMode::ChunkStoreBrowser | DisplayMode::WelcomeScreen => {} // Handled above
+                                DisplayMode::ChunkStoreBrowser
+                                | DisplayMode::Settings
+                                | DisplayMode::WelcomeScreen => {} // Handled above
                             }
                         });
                 }
@@ -643,6 +634,16 @@ impl AppState {
 
                 // Process deferred layout operations and apply updates back to blueprint:
                 viewport_ui.save_to_blueprint_store(&ctx);
+            }
+            // TODO(grtlr): If all fails we display the welcome screen. We will get rid of this in the future,
+            // as `store_context` will move into the routes that requires it.
+            (_, None) => {
+                self.welcome_screen.ui(
+                    ui,
+                    command_sender,
+                    welcome_screen_state,
+                    is_history_enabled,
+                );
             }
         }
 
@@ -865,7 +866,7 @@ fn check_for_clicked_hyperlinks(
                     ));
 
                     if is_dataset_uri && !open_url.new_tab {
-                        command_sender.send_system(SystemCommand::ChangeDisplayMode(
+                        command_sender.send_system(SystemCommand::NavigationReplace(
                             DisplayMode::LocalRecordings,
                         ));
                     }

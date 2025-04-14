@@ -1,7 +1,13 @@
+// TODO(grtlr): It would be nice, if we could store the welcome screen state within its variant here too.
+
 /// Which display mode are we currently in?
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DisplayMode {
+    /// The welcome screen with example recordings.
     WelcomeScreen,
+
+    /// The settings dialog for application-wide configuration.
+    Settings,
 
     /// Regular view of the local recordings, including the current recording's viewport.
     LocalRecordings,

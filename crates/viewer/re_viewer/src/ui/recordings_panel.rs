@@ -151,7 +151,7 @@ fn recording_list_ui(
             .clicked()
     {
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+            .send_system(SystemCommand::NavigationReplace(DisplayMode::RedapServer(
                 LOCAL_ORIGIN.clone(),
             )));
     }
@@ -190,7 +190,7 @@ fn recording_list_ui(
 
         if response.clicked() {
             ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::WelcomeScreen));
+                .send_system(SystemCommand::NavigationReplace(DisplayMode::WelcomeScreen));
         }
     }
 }

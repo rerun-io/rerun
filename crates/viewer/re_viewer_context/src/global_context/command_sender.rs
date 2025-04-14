@@ -30,7 +30,11 @@ pub enum SystemCommand {
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
 
-    ChangeDisplayMode(crate::DisplayMode),
+    /// Replaces the topmost element from the navigation stack.
+    NavigationReplace(crate::DisplayMode),
+
+    /// Pops the topmost element from the navigation stack.
+    NavigationPop,
 
     /// Reset the `Viewer` to the default state
     ResetViewer,

@@ -240,7 +240,7 @@ impl EntryKind {
         match self {
             Self::Remote { entry_id, .. } => {
                 ctx.command_sender()
-                    .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
+                    .send_system(SystemCommand::NavigationReplace(DisplayMode::RedapEntry(
                         *entry_id,
                     )));
             }

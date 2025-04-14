@@ -464,9 +464,14 @@ impl App {
                 self.add_log_receiver(rx);
             }
 
-            SystemCommand::ChangeDisplayMode(display_mode) => {
+            SystemCommand::NavigationReplace(display_mode) => {
                 self.state.navigation.replace(display_mode);
             }
+
+            SystemCommand::NavigationPop => {
+                self.state.navigation.pop();
+            }
+
             SystemCommand::AddRedapServer(origin) => {
                 self.state.redap_servers.add_server(origin.clone());
 
@@ -915,8 +920,12 @@ impl App {
                 DisplayMode::ChunkStoreBrowser => {
                     self.state.navigation.pop();
                 }
-                DisplayMode::WelcomeScreen => {
-                    re_log::debug!("Cannot toggle chunk store browser from welcome screen");
+
+                DisplayMode::Settings | DisplayMode::WelcomeScreen => {
+                    re_log::debug!(
+                        "Cannot toggle chunk store browser from current display mode: {:?}",
+                        self.state.navigation.peek()
+                    );
                 }
             },
 
@@ -935,7 +944,7 @@ impl App {
             }
 
             UICommand::Settings => {
-                self.state.show_settings_ui = true;
+                self.state.navigation.push(DisplayMode::Settings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]

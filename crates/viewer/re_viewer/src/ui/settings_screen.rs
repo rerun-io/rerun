@@ -2,9 +2,13 @@ use egui::{NumExt as _, Ui};
 
 use re_log_types::TimestampFormat;
 use re_ui::UiExt as _;
-use re_viewer_context::AppOptions;
+use re_viewer_context::{AppOptions, CommandSender, SystemCommandSender as _};
 
-pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+pub fn settings_screen_ui(
+    ui: &mut egui::Ui,
+    app_options: &mut AppOptions,
+    command_sender: &CommandSender,
+) {
     egui::Frame {
         inner_margin: egui::Margin::same(5),
         ..Default::default()
@@ -17,15 +21,17 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
         let max_rect = ui.max_rect().expand2(-centering_margin * egui::Vec2::X);
         let mut child_ui = ui.new_child(egui::UiBuilder::new().max_rect(max_rect));
 
+        let mut keep_open = true;
         egui::ScrollArea::both()
             .auto_shrink(false)
             .show(&mut child_ui, |ui| {
                 ui.set_min_width(MIN_WIDTH);
-                settings_screen_ui_impl(ui, app_options, keep_open);
+                settings_screen_ui_impl(ui, app_options, &mut keep_open);
             });
 
-        if ui.input_mut(|ui| ui.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            *keep_open = false;
+        if !keep_open || ui.input_mut(|ui| ui.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+        {
+            command_sender.send_system(re_viewer_context::SystemCommand::NavigationPop);
         }
     });
 }

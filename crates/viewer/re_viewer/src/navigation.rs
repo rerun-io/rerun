@@ -9,24 +9,26 @@ use re_viewer_context::DisplayMode;
 #[derive(Default)]
 pub(crate) struct Navigation(Vec<DisplayMode>);
 
-// TODO(grtlr): Make the welcome screen a display mode too, and store its state.
-
 impl Navigation {
     pub fn push(&mut self, display_mode: DisplayMode) {
+        re_log::debug!("Pushed display mode `{:?}`", display_mode);
         self.0.push(display_mode);
     }
 
     pub fn replace(&mut self, display_mode: DisplayMode) -> Option<DisplayMode> {
         let previous = self.0.pop();
+        re_log::debug!("Replaced `{:?}` with `{:?}`", previous, display_mode);
         self.0.push(display_mode);
         previous
     }
 
     pub fn pop(&mut self) -> Option<DisplayMode> {
-        self.0.pop()
+        let previous = self.0.pop();
+        re_log::debug!("Popped display mode `{:?}`", previous);
+        previous
     }
 
     pub fn peek(&self) -> &DisplayMode {
-        self.0.first().unwrap_or(&DisplayMode::WelcomeScreen)
+        self.0.last().unwrap_or(&DisplayMode::WelcomeScreen)
     }
 }
