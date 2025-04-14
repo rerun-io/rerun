@@ -34,8 +34,6 @@ re_tracing.workspace = true
 
 # External
 anyhow.workspace = true
-arrow.workspace = true
-arrow2 = { workspace = true, features = ["arrow"] }
 camino.workspace = true
 clang-format.workspace = true
 colored.workspace = true

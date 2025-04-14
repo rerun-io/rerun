@@ -41,7 +41,7 @@ impl CodeGenerator for DocsCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &crate::ArrowRegistry,
+        type_registry: &crate::TypeRegistry,
     ) -> GeneratedFiles {
         re_tracing::profile_function!();
 
@@ -75,7 +75,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 reporter,
                 objects,
                 object,
-                arrow_registry,
+                type_registry,
                 &views_per_archetype,
             );
             let path = self.docs_dir.join(format!(
@@ -219,7 +219,7 @@ fn object_page(
     reporter: &Reporter,
     objects: &Objects,
     object: &Object,
-    arrow_registry: &crate::ArrowRegistry,
+    type_registry: &crate::TypeRegistry,
     views_per_archetype: &ViewsPerArchetype,
 ) -> String {
     let top_level_docs = object
@@ -270,11 +270,11 @@ fn object_page(
     }
 
     if matches!(object.kind, ObjectKind::Datatype | ObjectKind::Component) {
-        let datatype = &arrow_registry.get(&object.fqname);
+        let datatype = &type_registry.get(&object.fqname);
         putln!(page);
         putln!(page, "## Arrow datatype");
         putln!(page, "```");
-        super::arrow_datatype::arrow2_datatype_docs(&mut page, datatype);
+        super::datatype_docs(&mut page, datatype);
         putln!(page);
         putln!(page, "```");
     }
@@ -430,7 +430,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
                     type_info(objects, &Type::from(elem_type.clone()))
                 )
             }
-            Type::Object(fqname) => {
+            Type::Object { fqname } => {
                 let ty = objects.get(fqname).unwrap();
                 format!(
                     "[`{}`](../{}/{}.md)",
@@ -446,7 +446,7 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
         assert!(object.is_struct());
         assert_eq!(object.fields.len(), 1);
         let field_type = &object.fields[0].typ;
-        if object.kind == ObjectKind::Component && matches!(field_type, Type::Object(_)) {
+        if object.kind == ObjectKind::Component && matches!(field_type, Type::Object { .. }) {
             putln!(o, "## Rerun datatype");
             putln!(o, "{}", type_info(objects, field_type));
             putln!(o);

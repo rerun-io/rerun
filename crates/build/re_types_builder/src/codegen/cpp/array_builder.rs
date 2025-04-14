@@ -86,7 +86,7 @@ fn arrow_array_builder_type_and_declaration(
             declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
             ident
         }
-        Type::Object(fqname) => {
+        Type::Object { fqname } => {
             arrow_array_builder_type_object(&objects[fqname], objects, declarations)
         }
     }

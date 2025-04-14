@@ -95,7 +95,7 @@ namespace rerun {
                     (void)variant_builder;
                     return rerun::Error(
                         ErrorCode::NotImplemented,
-                        "Failed to serialize AffixFuzzer3::craziness: objects (Object(\"rerun.testing.datatypes.AffixFuzzer1\")) in unions not yet implemented"
+                        "Failed to serialize AffixFuzzer3::craziness: objects (Object { fqname: \"rerun.testing.datatypes.AffixFuzzer1\" }) in unions not yet implemented"
                     );
                 } break;
                 case TagType::fixed_size_shenanigans: {

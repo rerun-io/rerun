@@ -26,6 +26,7 @@ lint:
       - crates/store/re_protos/proto/rerun/v1alpha1/frontend.proto
       - crates/store/re_protos/proto/rerun/v1alpha1/manifest_registry.proto
       - crates/store/re_protos/proto/rerun/v1alpha1/catalog.proto
+      - crates/store/re_protos/proto/rerun/v1alpha1/tasks.proto
   enum_zero_value_suffix: _UNSPECIFIED # see <https://buf.build/docs/lint/rules/?h=enum_zero_value#enum_zero_value_suffix>
 breaking:
   use:
