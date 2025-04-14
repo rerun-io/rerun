@@ -1,6 +1,8 @@
 //! Intermediate data structures to make `re_datastore`'s row data more amenable to displaying in a
 //! table.
 
+use std::sync::Arc;
+
 use arrow::{
     array::{
         Array as _, ArrayRef as ArrowArrayRef, Int32DictionaryArray as ArrowInt32DictionaryArray,
@@ -10,7 +12,6 @@ use arrow::{
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
-use std::sync::Arc;
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
