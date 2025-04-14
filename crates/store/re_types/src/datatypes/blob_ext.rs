@@ -10,7 +10,7 @@ impl Blob {
     /// Panics iff `offset + length` is larger than `len`.
     #[inline]
     pub fn sliced(self, range: std::ops::Range<usize>) -> Self {
-        self.0.sliced(range).into()
+        self.0.slice(range.start, range.len()).into()
     }
 }
 

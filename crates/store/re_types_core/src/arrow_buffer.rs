@@ -35,8 +35,8 @@ impl<T: ArrowNativeType> ArrowBuffer<T> {
     /// # Panics
     /// Panics iff `offset + length` is larger than `len`.
     #[inline]
-    pub fn sliced(self, range: std::ops::Range<usize>) -> Self {
-        Self(self.0.slice(range.start, range.len()))
+    pub fn slice(self, offset: usize, len: usize) -> Self {
+        Self(self.0.slice(offset, len))
     }
 }
 
