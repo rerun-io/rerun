@@ -16,6 +16,17 @@ pub enum UnionMode {
     Sparse,
 }
 
+/// A named datatype, e.g. for a struct or a union.
+///
+/// Corresponds to an arrow field.
+pub type Field = GenericField<DataType>;
+
+/// A yet-to-be-resolved [`Field`].
+///
+/// Type resolution is a two-pass process as we first need to register all existing types before we
+/// can denormalize their definitions into their parents.
+pub type LazyField = GenericField<LazyDatatype>;
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GenericField<DT> {
     /// Its name
@@ -44,17 +55,6 @@ impl<DT> GenericField<DT> {
         &self.data_type
     }
 }
-
-/// A named datatype, e.g. for a struct or a union.
-///
-/// Corresponds to an arrow field.
-pub type Field = GenericField<DataType>;
-
-/// A yet-to-be-resolved [`Field`].
-///
-/// Type resolution is a two-pass process as we first need to register all existing types before we
-/// can denormalize their definitions into their parents.
-pub type LazyField = GenericField<LazyDatatype>;
 
 impl LazyField {
     pub fn resolve(&self, registry: &ArrowRegistry) -> Field {
@@ -105,6 +105,9 @@ impl std::fmt::Display for AtomicDataType {
     }
 }
 
+/// The datatypes we support.
+///
+/// Maps directly to arrow datatypes.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum DataType {
     Atomic(AtomicDataType),
@@ -122,9 +125,12 @@ pub enum DataType {
     /// The placement in the list is also its identifier.
     Union(Vec<Field>, UnionMode),
 
-    /// A named object
+    /// A named type.
     Object {
+        //// It's fully qualified name
         fqname: String,
+
+        /// It's type (e.g. a [`DataType::Struct`].
         datatype: Arc<Self>,
     },
 }
@@ -141,6 +147,8 @@ impl DataType {
     }
 }
 
+/// Like [`DataType`], but with an extra [`Self::Unresolved`] variant
+/// which need to be resolved to a concrete type.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum LazyDatatype {
     Atomic(AtomicDataType),
