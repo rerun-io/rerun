@@ -37,3 +37,29 @@ impl FromStr for EntryId {
         re_tuid::Tuid::from_str(s).map(|id| Self { id })
     }
 }
+
+// ---
+
+#[derive(Debug, Clone)]
+pub enum EntryIdOrName {
+    Id(EntryId),
+    Name(String),
+}
+
+impl From<EntryId> for EntryIdOrName {
+    fn from(id: EntryId) -> Self {
+        Self::Id(id)
+    }
+}
+
+impl From<&str> for EntryIdOrName {
+    fn from(name: &str) -> Self {
+        Self::Name(name.to_owned())
+    }
+}
+
+impl From<String> for EntryIdOrName {
+    fn from(name: String) -> Self {
+        Self::Name(name)
+    }
+}
