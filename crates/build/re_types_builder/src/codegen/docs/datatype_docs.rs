@@ -1,7 +1,4 @@
-//! Document an Arrow datatype as human-readable markdown.
-//!
-//! Note that we use the `arrow` library in this module,
-//! with just a thin `arrow2` wrapper around it.
+//! Document a datatype as human-readable markdown.
 
 use crate::{
     codegen::StringExt as _,
