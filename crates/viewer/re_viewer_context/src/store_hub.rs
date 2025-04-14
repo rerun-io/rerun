@@ -1,4 +1,4 @@
-use ahash::{HashMap, HashMapExt as _, HashSet};
+use ahash::{HashMap, HashSet};
 
 use anyhow::Context as _;
 use itertools::Itertools as _;
@@ -13,9 +13,7 @@ use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId
 use re_query::CachesStats;
 use re_types::components::Timestamp;
 
-use crate::{
-    BlueprintUndoState, Caches, StorageContext, StoreBundle, StoreContext, TableStore, TableStores,
-};
+use crate::{BlueprintUndoState, Caches, StorageContext, StoreBundle, StoreContext, TableStore};
 
 #[derive(Clone)]
 pub enum StoreHubEntry {
@@ -136,34 +134,18 @@ pub struct StoreHubStats {
 }
 
 impl StoreHub {
-    /// App ID used as a marker to display the welcome screen.
-    pub fn welcome_screen_app_id() -> ApplicationId {
-        "Welcome screen".into()
-    }
-
     /// App ID used as a marker to display tables.
     pub fn table_app_id() -> ApplicationId {
         "table".into()
     }
 
-    /// Blueprint ID used for the default welcome screen blueprint
-    fn welcome_screen_blueprint_id() -> StoreId {
-        StoreId::from_string(
-            StoreKind::Blueprint,
-            Self::welcome_screen_app_id().to_string(),
-        )
-    }
-
     /// Used only for tests
     pub fn test_hub() -> Self {
-        Self::new(
-            BlueprintPersistence {
-                loader: None,
-                saver: None,
-                validator: None,
-            },
-            &|_| {},
-        )
+        Self::new(BlueprintPersistence {
+            loader: None,
+            saver: None,
+            validator: None,
+        })
     }
 
     /// Create a new [`StoreHub`].
@@ -171,38 +153,17 @@ impl StoreHub {
     /// The [`StoreHub`] will contain a single empty blueprint associated with the app ID returned
     /// by `[StoreHub::welcome_screen_app_id]`. It should be used as a marker to display the welcome
     /// screen.
-    pub fn new(
-        persistence: BlueprintPersistence,
-        setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
-    ) -> Self {
+    pub fn new(persistence: BlueprintPersistence) -> Self {
         re_tracing::profile_function!();
-        let mut default_blueprint_by_app_id = HashMap::new();
-        let mut store_bundle = StoreBundle::default();
-
-        default_blueprint_by_app_id.insert(
-            Self::welcome_screen_app_id(),
-            Self::welcome_screen_blueprint_id(),
-        );
-
-        let welcome_screen_blueprint =
-            store_bundle.blueprint_entry(&Self::welcome_screen_blueprint_id());
-        (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
-
-        let table_stores = if std::env::var("RERUN_EXPERIMENTAL_TABLE").is_ok() {
-            let table_id = TableId::new("test123".to_owned());
-            std::iter::once((table_id, TableStore::dummy())).collect()
-        } else {
-            TableStores::default()
-        };
 
         Self {
             persistence,
-            active_entry: None,
+            active_entry: Default::default(),
             active_application_id: None,
 
-            default_blueprint_by_app_id,
+            default_blueprint_by_app_id: Default::default(),
             active_blueprint_by_app_id: Default::default(),
-            store_bundle,
+            store_bundle: Default::default(),
 
             should_enable_heuristics_by_app_id: Default::default(),
 
@@ -210,7 +171,7 @@ impl StoreHub {
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
 
-            table_stores,
+            table_stores: Default::default(),
         }
     }
 
@@ -400,27 +361,10 @@ impl StoreHub {
         }
     }
 
-    /// Remove all open recordings and applications, and go to the welcome page.
+    /// Remove all open recordings, applications, and tables.
     pub fn clear_entries(&mut self) {
-        // Keep only the welcome screen:
-        let mut store_ids_retained = HashSet::default();
-        self.store_bundle.retain(|db| {
-            if db.app_id() == Some(&Self::welcome_screen_app_id()) {
-                store_ids_retained.insert(db.store_id().clone());
-                true
-            } else {
-                false
-            }
-        });
-        self.caches_per_recording
-            .retain(|store_id, _| store_ids_retained.contains(store_id));
-
-        self.table_stores.clear();
-
-        if self.active_table_id().is_none() {
-            self.active_entry = None;
-        }
-        self.active_application_id = Some(Self::welcome_screen_app_id());
+        let previous = std::mem::take(self);
+        *self = Self::new(previous.persistence);
     }
 
     // ---------------------
@@ -442,16 +386,6 @@ impl StoreHub {
 
         if self.active_application_id.as_ref() == Some(&app_id) {
             return;
-        }
-
-        // If this is the welcome screen, or we didn't have any app id at all so far,
-        // we set the active application_id even if we don't find a matching recording.
-        // (otherwise we don't, because we don't want to leave towards a state without any recording if we don't have to)
-        if Self::welcome_screen_app_id() == app_id
-            || (self.active_application_id.is_none() && self.active_table_id().is_none())
-        {
-            self.active_application_id = Some(app_id.clone());
-            self.active_entry = None;
         }
 
         // Find any matching recording and activate it
@@ -900,10 +834,6 @@ impl StoreHub {
         // there may be other Blueprints in the Hub.
 
         for (app_id, blueprint_id) in &self.active_blueprint_by_app_id {
-            if app_id == &Self::welcome_screen_app_id() {
-                continue; // Don't save changes to the welcome screen
-            }
-
             let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
                 re_log::debug!("Failed to find blueprint {blueprint_id}.");
                 continue;

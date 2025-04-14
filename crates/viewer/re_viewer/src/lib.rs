@@ -9,6 +9,7 @@ mod app_state;
 mod background_tasks;
 mod callback;
 pub mod env_vars;
+mod navigation;
 mod saving;
 mod screenshotter;
 mod startup_options;
@@ -27,10 +28,11 @@ pub mod blueprint;
 
 pub(crate) use {app_state::AppState, ui::memory_panel};
 
-pub use callback::{CallbackSelectionItem, Callbacks};
-
-pub use app::App;
-pub use startup_options::StartupOptions;
+pub use self::{
+    app::App,
+    callback::{CallbackSelectionItem, Callbacks},
+    startup_options::StartupOptions,
+};
 
 pub use re_capabilities::MainThreadToken;
 

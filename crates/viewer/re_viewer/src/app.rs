@@ -288,10 +288,7 @@ impl App {
             open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::new(
-                blueprint_loader(),
-                &crate::app_blueprint::setup_welcome_screen_blueprint,
-            )),
+            store_hub: Some(StoreHub::new(blueprint_loader())),
             notifications: notifications::NotificationUi::new(),
 
             memory_panel: Default::default(),
@@ -419,7 +416,9 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateApp(app_id) => {
-                self.state.display_mode = DisplayMode::LocalRecordings;
+                self.state
+                    .navigation
+                    .push_unique(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
             }
 
@@ -428,7 +427,9 @@ impl App {
             }
 
             SystemCommand::ActivateEntry(entry) => {
-                self.state.display_mode = DisplayMode::LocalRecordings;
+                self.state
+                    .navigation
+                    .push_unique(DisplayMode::LocalRecordings);
                 store_hub.set_active_entry(entry);
             }
 
@@ -467,9 +468,14 @@ impl App {
                 self.add_log_receiver(rx);
             }
 
-            SystemCommand::ChangeDisplayMode(display_mode) => {
-                self.state.display_mode = display_mode;
+            SystemCommand::NavigationReplace(display_mode) => {
+                self.state.navigation.push_unique(display_mode);
             }
+
+            SystemCommand::NavigationPop => {
+                self.state.navigation.pop();
+            }
+
             SystemCommand::AddRedapServer(origin) => {
                 self.state.redap_servers.add_server(origin.clone());
 
@@ -478,7 +484,9 @@ impl App {
                     .as_ref()
                     .is_none_or(|store_hub| store_hub.active_entry().is_none())
                 {
-                    self.state.display_mode = DisplayMode::RedapServer(origin);
+                    self.state
+                        .navigation
+                        .push_unique(DisplayMode::RedapServer(origin));
                 }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
@@ -593,11 +601,15 @@ impl App {
             SystemCommand::SetSelection(item) => {
                 match &item {
                     Item::RedapEntry(entry_id) => {
-                        self.state.display_mode = DisplayMode::RedapEntry(*entry_id);
+                        self.state
+                            .navigation
+                            .push_unique(DisplayMode::RedapEntry(*entry_id));
                     }
 
                     Item::RedapServer(origin) => {
-                        self.state.display_mode = DisplayMode::RedapServer(origin.clone());
+                        self.state
+                            .navigation
+                            .push_unique(DisplayMode::RedapServer(origin.clone()));
                     }
 
                     Item::AppId(_)
@@ -609,7 +621,9 @@ impl App {
                     | Item::Container(_)
                     | Item::View(_)
                     | Item::DataResult(_, _) => {
-                        self.state.display_mode = DisplayMode::LocalRecordings;
+                        self.state
+                            .navigation
+                            .push_unique(DisplayMode::LocalRecordings);
                     }
                 }
 
@@ -715,8 +729,6 @@ impl App {
         let active_application_id = storage_ctx
             .hub
             .active_app()
-            // Don't redirect data to the welcome screen.
-            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
             .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
@@ -905,14 +917,24 @@ impl App {
             }
             UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
 
-            UICommand::ToggleChunkStoreBrowser => match self.state.display_mode {
+            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.peek() {
                 DisplayMode::LocalRecordings
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
-                    self.state.display_mode = DisplayMode::ChunkStoreBrowser;
+                    self.state
+                        .navigation
+                        .push_unique(DisplayMode::ChunkStoreBrowser);
                 }
+
                 DisplayMode::ChunkStoreBrowser => {
-                    self.state.display_mode = DisplayMode::LocalRecordings;
+                    self.state.navigation.pop();
+                }
+
+                DisplayMode::Settings | DisplayMode::WelcomeScreen => {
+                    re_log::debug!(
+                        "Cannot toggle chunk store browser from current display mode: {:?}",
+                        self.state.navigation.peek()
+                    );
                 }
             },
 
@@ -931,7 +953,7 @@ impl App {
             }
 
             UICommand::Settings => {
-                self.state.show_settings_ui = true;
+                self.state.navigation.push_unique(DisplayMode::Settings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1302,37 +1324,35 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    if let Some(store_context) = store_context {
-                        #[cfg(target_arch = "wasm32")]
-                        let is_history_enabled = self.startup_options.enable_history;
-                        #[cfg(not(target_arch = "wasm32"))]
-                        let is_history_enabled = false;
+                    #[cfg(target_arch = "wasm32")]
+                    let is_history_enabled = self.startup_options.enable_history;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let is_history_enabled = false;
 
-                        self.state
-                            .redap_servers
-                            .on_frame_start(&self.async_runtime, &self.egui_ctx);
+                    self.state
+                        .redap_servers
+                        .on_frame_start(&self.async_runtime, &self.egui_ctx);
 
-                        render_ctx.begin_frame();
-                        self.state.show(
-                            app_blueprint,
-                            ui,
-                            render_ctx,
-                            store_context,
-                            storage_context,
-                            &self.reflection,
-                            &self.component_ui_registry,
-                            &self.view_class_registry,
-                            &self.rx_log,
-                            &self.command_sender,
-                            &WelcomeScreenState {
-                                hide: self.startup_options.hide_welcome_screen,
-                                opacity: self.welcome_screen_opacity(egui_ctx),
-                            },
-                            is_history_enabled,
-                            self.callbacks.as_ref(),
-                        );
-                        render_ctx.before_submit();
-                    }
+                    render_ctx.begin_frame();
+                    self.state.show(
+                        app_blueprint,
+                        ui,
+                        render_ctx,
+                        store_context,
+                        storage_context,
+                        &self.reflection,
+                        &self.component_ui_registry,
+                        &self.view_class_registry,
+                        &self.rx_log,
+                        &self.command_sender,
+                        &WelcomeScreenState {
+                            hide: self.startup_options.hide_welcome_screen,
+                            opacity: self.welcome_screen_opacity(egui_ctx),
+                        },
+                        is_history_enabled,
+                        self.callbacks.as_ref(),
+                    );
+                    render_ctx.before_submit();
 
                     self.show_text_logs_as_notifications();
                 }
@@ -1697,8 +1717,6 @@ impl App {
         let active_application_id = storage_ctx
             .hub
             .active_app()
-            // Don't redirect data to the welcome screen.
-            .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
             .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
@@ -2139,22 +2157,6 @@ impl eframe::App for App {
         self.state.cleanup(&store_hub);
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
-
-        // Make sure some app is active
-        // Must be called before `read_context` below.
-        if store_hub.active_app().is_none() {
-            let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
-                .store_bundle()
-                .entity_dbs()
-                .filter_map(|db| db.app_id())
-                .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-                .collect();
-            if let Some(app_id) = apps.first().copied() {
-                store_hub.set_active_app(app_id.clone());
-            } else {
-                store_hub.set_active_app(StoreHub::welcome_screen_app_id());
-            }
-        }
 
         {
             let (storage_context, store_context) = store_hub.read_context();
