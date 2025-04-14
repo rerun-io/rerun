@@ -191,7 +191,7 @@ impl Chunk {
     /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
     //
-    // TODO(#3741): Since we don't have access to arrow's ListView yet, we must actually clone the
+    // TODO(https://github.com/apache/arrow-rs/issues/5375): Since we don't have access to arrow's ListView yet, we must actually clone the
     // data if the chunk requires sorting.
     pub fn range(&self, query: &RangeQuery, component_name: ComponentName) -> Self {
         if self.is_empty() {
