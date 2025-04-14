@@ -6,7 +6,7 @@ use crate::{CComponentTypeHandle, CError, CErrorCode};
 
 pub struct ComponentType {
     pub descriptor: ComponentDescriptor,
-    pub datatype: arrow2::datatypes::DataType,
+    pub datatype: arrow::datatypes::DataType,
 }
 
 #[derive(Default)]
@@ -19,7 +19,7 @@ impl ComponentTypeRegistry {
     pub fn register(
         &mut self,
         descriptor: ComponentDescriptor,
-        datatype: arrow2::datatypes::DataType,
+        datatype: arrow::datatypes::DataType,
     ) -> CComponentTypeHandle {
         #[cfg(debug_assertions)]
         {

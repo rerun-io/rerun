@@ -8521,7 +8521,6 @@ dependencies = [
  "infer",
  "once_cell",
  "parking_lot",
- "re_arrow2",
  "re_arrow_util",
  "re_log",
  "re_sdk",
