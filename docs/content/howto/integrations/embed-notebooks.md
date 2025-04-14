@@ -86,11 +86,11 @@ selected_entities = []
 def on_event(event: ViewerEvent):
   global selected_entities
   selected_entities = [] # clear the list
-  
+
   if event.type == "selection_change":
     for item in event.items:
       if item.type == "entity":
-        selected_entities.append(item.entity_path)      
+        selected_entities.append(item.entity_path)
 
 viewer = Viewer()
 viewer.on_event(on_event)
