@@ -68,7 +68,7 @@ impl<T: bytemuck::Pod + ArrowNativeType> ArrowBuffer<T> {
         ArrowBuffer::<u8>(arrow::buffer::ScalarBuffer::new(
             self.0.inner().clone(),
             0,
-            self.num_instances(),
+            self.size_in_bytes(),
         ))
     }
 }
