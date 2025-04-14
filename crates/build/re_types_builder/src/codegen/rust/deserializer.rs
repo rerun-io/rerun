@@ -3,7 +3,7 @@ use quote::{format_ident, quote};
 
 use crate::{
     codegen::rust::{
-        arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+        arrow::{is_backed_by_scalar_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
         util::{is_tuple_struct_from_obj, quote_comment},
     },
     data_type::{AtomicDataType, DataType, UnionMode},
@@ -474,9 +474,9 @@ pub fn quote_arrow_deserializer(
 
 #[derive(Copy, Clone, PartialEq)]
 enum InnerRepr {
-    /// The inner elements of the field should be exposed as `Buffer<T>`
-    /// This is only applicable when T is an arrow primitive
-    BufferT,
+    /// The inner elements of the field should be exposed as `ScalarBuffer<T>`
+    /// This is only applicable when T implements [`ArrowNativeType`](https://docs.rs/arrow/latest/arrow/datatypes/trait.ArrowNativeType.html).
+    ScalarBuffer,
 
     /// The inner elements of the field should be exposed as an iterable of T
     NativeIterable,
@@ -525,7 +525,7 @@ fn quote_arrow_field_deserializer(
             };
 
             match inner_repr {
-                InnerRepr::BufferT => quote! {
+                InnerRepr::ScalarBuffer => quote! {
                     #quoted_downcast?
                     .values()
                 },
@@ -701,8 +701,8 @@ fn quote_arrow_field_deserializer(
         DataType::List(inner) => {
             let data_src_inner = format_ident!("{data_src}_inner");
 
-            let inner_repr = if is_backed_by_arrow_buffer(inner.data_type()) {
-                InnerRepr::BufferT
+            let inner_repr = if is_backed_by_scalar_buffer(inner.data_type()) {
+                InnerRepr::ScalarBuffer
             } else {
                 InnerRepr::NativeIterable
             };
@@ -722,12 +722,12 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
             let quoted_collect_inner = match inner_repr {
-                InnerRepr::BufferT => quote!(),
+                InnerRepr::ScalarBuffer => quote!(),
                 InnerRepr::NativeIterable => quote!(.collect::<Vec<_>>()),
             };
 
             let quoted_inner_data_range = match inner_repr {
-                InnerRepr::BufferT => {
+                InnerRepr::ScalarBuffer => {
                     quote! {
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): unsafe slice_unchecked when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_inner.clone().slice(start,  end - start);
