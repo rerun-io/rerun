@@ -44,11 +44,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arc::new(move |event: ViewerEvent| match event.kind {
                 ViewerEventKind::Play | ViewerEventKind::Pause => {}
                 ViewerEventKind::TimeUpdate { time } => {
-                    shared_state.lock().current_time = event.time.as_f64();
+                    shared_state.lock().current_time = time.as_f64();
                 }
-                ViewerEventKind::TimelineChange { timeline, time } => {
+                ViewerEventKind::TimelineChange {
+                    timeline_name,
+                    time,
+                } => {
                     let mut shared_state = shared_state.lock();
-                    shared_state.current_timeline = timeline.name().as_str().to_owned();
+                    shared_state.current_timeline = timeline_name.as_str().to_owned();
                     shared_state.current_time = time.as_f64();
                 }
                 ViewerEventKind::SelectionChange { items } => {

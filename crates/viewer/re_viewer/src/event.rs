@@ -63,7 +63,8 @@ pub enum ViewerEventKind {
 
     /// Fired when a different timeline is selected.
     TimelineChange {
-        timeline: TimelineName,
+        #[serde(rename = "timeline")]
+        timeline_name: TimelineName,
 
         #[serde(with = "serde::time_real")]
         time: TimeReal,
@@ -217,7 +218,7 @@ impl ViewerEventDispatcher {
     pub fn on_time_update(&self, db: &EntityDb, time: TimeReal) {
         self.dispatch(ViewerEvent::from_db_and_kind(
             db,
-            ViewerEventKind::TimeUpdate(TimeUpdate { time }),
+            ViewerEventKind::TimeUpdate { time },
         ));
     }
 
@@ -225,10 +226,10 @@ impl ViewerEventDispatcher {
     pub fn on_timeline_change(&self, db: &EntityDb, timeline: Timeline, time: TimeReal) {
         self.dispatch(ViewerEvent::from_db_and_kind(
             db,
-            ViewerEventKind::TimelineChange(TimelineChange {
-                timeline: timeline.name().clone(),
+            ViewerEventKind::TimelineChange {
+                timeline_name: timeline.name().clone(),
                 time,
-            }),
+            },
         ))
     }
 
@@ -241,14 +242,14 @@ impl ViewerEventDispatcher {
     ) {
         self.dispatch(ViewerEvent::from_db_and_kind(
             db,
-            ViewerEventKind::SelectionChange(SelectionChange {
+            ViewerEventKind::SelectionChange {
                 items: items
                     .iter()
                     .filter_map(|(item, ctx)| {
                         SelectionChangeItem::new(item, ctx, viewport_blueprint)
                     })
                     .collect(),
-            }),
+            },
         ))
     }
 
