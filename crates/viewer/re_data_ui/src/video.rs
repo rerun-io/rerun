@@ -380,7 +380,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     fn value_fn_for_time(
         time: re_video::Time,
         video_data: &re_video::VideoData,
-    ) -> impl FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + '_ {
+    ) -> impl FnOnce(&mut egui::Ui, list_item::ListVisuals) + '_ {
         move |ui, _| {
             timestamp_ui(ui, video_data, time);
         }
