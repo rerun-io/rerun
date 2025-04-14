@@ -9,7 +9,7 @@ use re_byte_size::SizeBytes;
 /// This avoids some of the lifetime complexities that would otherwise
 /// arise from returning a `&[T]` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `Vec<T>`.
-// TODO(#3741): remove. This is just a `ArrowScalarBuffer` anyway
+// TODO(#9725): remove. This is just a `ArrowScalarBuffer` anyway
 #[derive(Clone, Debug, PartialEq)]
 pub struct ArrowBuffer<T: ArrowNativeType>(arrow::buffer::ScalarBuffer<T>);
 
