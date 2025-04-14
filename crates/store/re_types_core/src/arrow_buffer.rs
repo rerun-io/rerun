@@ -28,17 +28,6 @@ impl<T: SizeBytes + ArrowNativeType> SizeBytes for ArrowBuffer<T> {
 }
 
 impl<T: ArrowNativeType> ArrowBuffer<T> {
-    /// The number of bytes stored in this buffer
-    #[inline]
-    pub fn size_in_bytes(&self) -> usize {
-        self.0.len() * std::mem::size_of::<T>()
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
     /// Returns a new [`ArrowBuffer`] that is a slice of this buffer starting at `offset`.
     ///
     /// Doing so allows the same memory region to be shared between buffers.
@@ -56,9 +45,9 @@ impl<T: bytemuck::Pod + ArrowNativeType> ArrowBuffer<T> {
     #[inline]
     pub fn cast_to_u8(&self) -> ArrowBuffer<u8> {
         ArrowBuffer::<u8>(arrow::buffer::ScalarBuffer::new(
-            self.0.inner().clone(),
+            self.inner().clone(),
             0,
-            self.size_in_bytes(),
+            self.inner().len(),
         ))
     }
 }
