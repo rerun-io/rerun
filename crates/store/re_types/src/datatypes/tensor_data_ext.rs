@@ -1,4 +1,6 @@
-use re_types_core::{ArrowBuffer, ArrowString};
+use arrow::buffer::ScalarBuffer;
+
+use re_types_core::ArrowString;
 
 use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 
@@ -15,7 +17,7 @@ use super::{TensorBuffer, TensorData};
 impl TensorData {
     /// Create a new tensor.
     #[inline]
-    pub fn new(shape: impl Into<ArrowBuffer<u64>>, buffer: TensorBuffer) -> Self {
+    pub fn new(shape: impl Into<ScalarBuffer<u64>>, buffer: TensorBuffer) -> Self {
         Self {
             shape: shape.into(),
             names: None,
@@ -51,7 +53,7 @@ impl TensorData {
     /// The shape of the tensor.
     #[inline]
     pub fn shape(&self) -> &[u64] {
-        self.shape.as_slice()
+        &self.shape
     }
 
     /// Get the name of a specific dimension.
@@ -141,7 +143,7 @@ impl Default for TensorData {
     #[inline]
     fn default() -> Self {
         Self {
-            shape: Default::default(),
+            shape: vec![].into(),
             names: None,
             buffer: TensorBuffer::U8(Vec::new().into()),
         }
@@ -159,7 +161,7 @@ macro_rules! ndarray_from_tensor {
                 let shape: Vec<usize> = value.shape.iter().map(|&d| d as usize).collect();
 
                 if let TensorBuffer::$variant(data) = &value.buffer {
-                    ndarray::ArrayViewD::from_shape(shape, data.as_slice())
+                    ndarray::ArrayViewD::from_shape(shape, data)
                         .map_err(|err| TensorCastError::BadTensorShape { source: err })
                 } else {
                     Err(TensorCastError::TypeMismatch)
@@ -177,7 +179,7 @@ macro_rules! tensor_from_ndarray {
             type Error = TensorCastError;
 
             fn try_from(view: ::ndarray::ArrayView<'a, $type, D>) -> Result<Self, Self::Error> {
-                let shape = ArrowBuffer::from_iter(view.shape().iter().map(|&dim| dim as u64));
+                let shape = ScalarBuffer::from_iter(view.shape().iter().map(|&dim| dim as u64));
 
                 match view.to_slice() {
                     Some(slice) => Ok(TensorData::new(
@@ -196,7 +198,7 @@ macro_rules! tensor_from_ndarray {
             type Error = TensorCastError;
 
             fn try_from(value: ndarray::Array<$type, D>) -> Result<Self, Self::Error> {
-                let shape = ArrowBuffer::from_iter(value.shape().iter().map(|&dim| dim as u64));
+                let shape = ScalarBuffer::from_iter(value.shape().iter().map(|&dim| dim as u64));
 
                 let vec = if value.is_standard_layout() {
                     let (mut vec, offset) = value.into_raw_vec_and_offset();
@@ -227,7 +229,7 @@ macro_rules! tensor_from_ndarray {
             fn from(slice: &[$type]) -> Self {
                 Self::new(
                     vec![slice.len() as u64],
-                    TensorBuffer::$variant(slice.into()),
+                    TensorBuffer::$variant(slice.to_vec().into()),
                 )
             }
         }
@@ -265,7 +267,7 @@ impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, u8> {
         match &value.buffer {
             TensorBuffer::U8(data) => {
                 let shape: Vec<usize> = value.shape.iter().map(|&d| d as usize).collect();
-                ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
+                ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data))
                     .map_err(|err| TensorCastError::BadTensorShape { source: err })
             }
             _ => Err(TensorCastError::TypeMismatch),

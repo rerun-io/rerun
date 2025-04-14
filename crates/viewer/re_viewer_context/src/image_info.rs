@@ -401,7 +401,7 @@ mod tests {
         assert_eq!(elements.len(), 2 * 2);
         ImageInfo {
             buffer_cache_key: Hash64::ZERO, // unused
-            buffer: re_types::datatypes::Blob(bytemuck::cast_slice::<_, u8>(elements).into()),
+            buffer: re_types::datatypes::Blob::from(bytemuck::cast_slice::<_, u8>(elements)),
             format: re_types::datatypes::ImageFormat::from_color_model(
                 [2, 2],
                 color_model,

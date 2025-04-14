@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct AffixFuzzer11(pub Option<::re_types_core::ArrowBuffer<f32>>);
+pub struct AffixFuzzer11(pub Option<::arrow::buffer::ScalarBuffer<f32>>);
 
 impl ::re_types_core::Component for AffixFuzzer11 {
     #[inline]
@@ -69,12 +69,12 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                 let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 );
                 let data0_inner_data: ScalarBuffer<_> = data0
                     .iter()
                     .flatten()
-                    .map(|b| b.as_slice())
+                    .map(|b| b as &[_])
                     .collect::<Vec<_>>()
                     .concat()
                     .into();
@@ -144,7 +144,6 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             let data = arrow_data_inner.clone().slice(start, end - start);
-                            let data = ::re_types_core::ArrowBuffer::from(data);
                             Ok(data)
                         })
                         .transpose()
@@ -161,14 +160,14 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
     }
 }
 
-impl From<Option<::re_types_core::ArrowBuffer<f32>>> for AffixFuzzer11 {
+impl From<Option<::arrow::buffer::ScalarBuffer<f32>>> for AffixFuzzer11 {
     #[inline]
-    fn from(many_floats_optional: Option<::re_types_core::ArrowBuffer<f32>>) -> Self {
+    fn from(many_floats_optional: Option<::arrow::buffer::ScalarBuffer<f32>>) -> Self {
         Self(many_floats_optional)
     }
 }
 
-impl From<AffixFuzzer11> for Option<::re_types_core::ArrowBuffer<f32>> {
+impl From<AffixFuzzer11> for Option<::arrow::buffer::ScalarBuffer<f32>> {
     #[inline]
     fn from(value: AffixFuzzer11) -> Self {
         value.0
@@ -176,17 +175,17 @@ impl From<AffixFuzzer11> for Option<::re_types_core::ArrowBuffer<f32>> {
 }
 
 impl std::ops::Deref for AffixFuzzer11 {
-    type Target = Option<::re_types_core::ArrowBuffer<f32>>;
+    type Target = Option<::arrow::buffer::ScalarBuffer<f32>>;
 
     #[inline]
-    fn deref(&self) -> &Option<::re_types_core::ArrowBuffer<f32>> {
+    fn deref(&self) -> &Option<::arrow::buffer::ScalarBuffer<f32>> {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for AffixFuzzer11 {
     #[inline]
-    fn deref_mut(&mut self) -> &mut Option<::re_types_core::ArrowBuffer<f32>> {
+    fn deref_mut(&mut self) -> &mut Option<::arrow::buffer::ScalarBuffer<f32>> {
         &mut self.0
     }
 }
@@ -199,6 +198,6 @@ impl ::re_byte_size::SizeBytes for AffixFuzzer11 {
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<::re_types_core::ArrowBuffer<f32>>>::is_pod()
+        <Option<::arrow::buffer::ScalarBuffer<f32>>>::is_pod()
     }
 }

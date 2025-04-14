@@ -170,7 +170,8 @@ pub fn quote_fqname_as_type_path(fqname: impl AsRef<str>) -> TokenStream {
     quote!(#expr)
 }
 
-pub fn is_backed_by_arrow_buffer(typ: &DataType) -> bool {
+/// Can this type be used with `arrow::ScalarBuffer`?
+pub fn is_backed_by_scalar_buffer(typ: &DataType) -> bool {
     if let DataType::Atomic(atomic) = typ {
         !matches!(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
     } else {
