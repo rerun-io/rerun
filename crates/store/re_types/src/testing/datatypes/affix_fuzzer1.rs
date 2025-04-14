@@ -23,7 +23,7 @@ pub struct AffixFuzzer1 {
     pub single_float_optional: Option<f32>,
     pub single_string_required: ::re_types_core::ArrowString,
     pub single_string_optional: Option<::re_types_core::ArrowString>,
-    pub many_floats_optional: Option<::re_types_core::ArrowBuffer<f32>>,
+    pub many_floats_optional: Option<::arrow::buffer::ScalarBuffer<f32>>,
     pub many_strings_required: Vec<::re_types_core::ArrowString>,
     pub many_strings_optional: Option<Vec<::re_types_core::ArrowString>>,
     pub flattened_scalar: f32,
@@ -702,7 +702,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1087,7 +1086,7 @@ impl ::re_byte_size::SizeBytes for AffixFuzzer1 {
         <Option<f32>>::is_pod()
             && <::re_types_core::ArrowString>::is_pod()
             && <Option<::re_types_core::ArrowString>>::is_pod()
-            && <Option<::re_types_core::ArrowBuffer<f32>>>::is_pod()
+            && <Option<::arrow::buffer::ScalarBuffer<f32>>>::is_pod()
             && <Vec<::re_types_core::ArrowString>>::is_pod()
             && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
             && <f32>::is_pod()

@@ -18,10 +18,10 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer21 {
     pub single_half: half::f16,
-    pub many_halves: ::re_types_core::ArrowBuffer<half::f16>,
+    pub many_halves: ::arrow::buffer::ScalarBuffer<half::f16>,
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
@@ -254,7 +254,6 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -300,6 +299,6 @@ impl ::re_byte_size::SizeBytes for AffixFuzzer21 {
 
     #[inline]
     fn is_pod() -> bool {
-        <half::f16>::is_pod() && <::re_types_core::ArrowBuffer<half::f16>>::is_pod()
+        <half::f16>::is_pod() && <::arrow::buffer::ScalarBuffer<half::f16>>::is_pod()
     }
 }

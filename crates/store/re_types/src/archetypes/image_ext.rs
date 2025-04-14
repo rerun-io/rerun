@@ -116,12 +116,7 @@ impl Image {
     ) -> Self {
         let datatype = T::CHANNEL_TYPE;
         let bytes: &[u8] = bytemuck::cast_slice(elements);
-        Self::from_color_model_and_bytes(
-            re_types_core::ArrowBuffer::<u8>::from(bytes),
-            [width, height],
-            color_model,
-            datatype,
-        )
+        Self::from_color_model_and_bytes(bytes, [width, height], color_model, datatype)
     }
 
     /// From an 8-bit grayscale image.

@@ -4,6 +4,7 @@ mod affix_fuzzer1;
 mod affix_fuzzer2;
 mod affix_fuzzer20;
 mod affix_fuzzer21;
+mod affix_fuzzer21_ext;
 mod affix_fuzzer22;
 mod affix_fuzzer3;
 mod affix_fuzzer3_ext;

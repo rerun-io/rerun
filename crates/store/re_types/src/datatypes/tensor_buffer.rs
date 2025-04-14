@@ -24,37 +24,37 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, PartialEq)]
 pub enum TensorBuffer {
     /// 8bit unsigned integer.
-    U8(::re_types_core::ArrowBuffer<u8>),
+    U8(::arrow::buffer::ScalarBuffer<u8>),
 
     /// 16bit unsigned integer.
-    U16(::re_types_core::ArrowBuffer<u16>),
+    U16(::arrow::buffer::ScalarBuffer<u16>),
 
     /// 32bit unsigned integer.
-    U32(::re_types_core::ArrowBuffer<u32>),
+    U32(::arrow::buffer::ScalarBuffer<u32>),
 
     /// 64bit unsigned integer.
-    U64(::re_types_core::ArrowBuffer<u64>),
+    U64(::arrow::buffer::ScalarBuffer<u64>),
 
     /// 8bit signed integer.
-    I8(::re_types_core::ArrowBuffer<i8>),
+    I8(::arrow::buffer::ScalarBuffer<i8>),
 
     /// 16bit signed integer.
-    I16(::re_types_core::ArrowBuffer<i16>),
+    I16(::arrow::buffer::ScalarBuffer<i16>),
 
     /// 32bit signed integer.
-    I32(::re_types_core::ArrowBuffer<i32>),
+    I32(::arrow::buffer::ScalarBuffer<i32>),
 
     /// 64bit signed integer.
-    I64(::re_types_core::ArrowBuffer<i64>),
+    I64(::arrow::buffer::ScalarBuffer<i64>),
 
     /// 16bit IEEE-754 floating point, also known as `half`.
-    F16(::re_types_core::ArrowBuffer<half::f16>),
+    F16(::arrow::buffer::ScalarBuffer<half::f16>),
 
     /// 32bit IEEE-754 floating point, also known as `float` or `single`.
-    F32(::re_types_core::ArrowBuffer<f32>),
+    F32(::arrow::buffer::ScalarBuffer<f32>),
 
     /// 64bit IEEE-754 floating point, also known as `double`.
-    F64(::re_types_core::ArrowBuffer<f64>),
+    F64(::arrow::buffer::ScalarBuffer<f64>),
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorBuffer);
@@ -832,7 +832,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -891,7 +890,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -950,7 +948,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1009,7 +1006,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1068,7 +1064,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1127,7 +1122,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1186,7 +1180,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1245,7 +1238,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1304,7 +1296,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1363,7 +1354,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1422,7 +1412,6 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -1645,16 +1634,16 @@ impl ::re_byte_size::SizeBytes for TensorBuffer {
 
     #[inline]
     fn is_pod() -> bool {
-        <::re_types_core::ArrowBuffer<u8>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<u64>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i8>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<i64>>::is_pod()
-            && <::re_types_core::ArrowBuffer<half::f16>>::is_pod()
-            && <::re_types_core::ArrowBuffer<f32>>::is_pod()
-            && <::re_types_core::ArrowBuffer<f64>>::is_pod()
+        <::arrow::buffer::ScalarBuffer<u8>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<u16>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<u32>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<u64>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<i8>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<i16>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<i32>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<i64>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<half::f16>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<f32>>::is_pod()
+            && <::arrow::buffer::ScalarBuffer<f64>>::is_pod()
     }
 }

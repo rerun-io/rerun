@@ -731,7 +731,6 @@ fn quote_arrow_field_deserializer(
                     quote! {
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] // TODO(apache/arrow-rs#6900): unsafe slice_unchecked when https://github.com/apache/arrow-rs/pull/6901 is merged and released
                         let data = #data_src_inner.clone().slice(start,  end - start);
-                        let data = ::re_types_core::ArrowBuffer::from(data);
                     }
                 }
                 InnerRepr::NativeIterable => quote! {

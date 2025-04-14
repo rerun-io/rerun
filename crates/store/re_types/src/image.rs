@@ -1,6 +1,6 @@
 //! Image-related utilities.
 
-use re_types_core::ArrowBuffer;
+use arrow::buffer::ScalarBuffer;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
@@ -113,7 +113,7 @@ where
 
     /// The tensor did not have the right shape for an image (e.g. had too many dimensions).
     #[error("Could not create Image from TensorData with shape {0:?}")]
-    BadImageShape(ArrowBuffer<u64>),
+    BadImageShape(ScalarBuffer<u64>),
 
     /// Happens if you try to cast `NV12` or `YUY2` to a depth image or segmentation image.
     #[error(
@@ -143,8 +143,8 @@ pub fn blob_and_datatype_from_tensor(tensor_buffer: TensorBuffer) -> (Blob, Chan
 #[inline]
 pub fn cast_to_u8<T: arrow::datatypes::ArrowNativeType>(
     buffer: &arrow::buffer::ScalarBuffer<T>,
-) -> ArrowBuffer<u8> {
-    arrow::buffer::ScalarBuffer::new(buffer.inner().clone(), 0, buffer.inner().len()).into()
+) -> ScalarBuffer<u8> {
+    arrow::buffer::ScalarBuffer::new(buffer.inner().clone(), 0, buffer.inner().len())
 }
 
 // ----------------------------------------------------------------------------
