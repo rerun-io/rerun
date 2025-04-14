@@ -37,16 +37,16 @@ impl Instance {
     ///
     /// The opposite of [`Self::is_specific`].
     #[inline]
-    pub fn is_all(self) -> bool {
-        self == Self::ALL
+    pub fn is_all(&self) -> bool {
+        *self == Self::ALL
     }
 
     /// Are we referring to a specific instance of the entity (e.g. a specific point in a point cloud)?
     ///
     /// The opposite of [`Self::is_all`].
     #[inline]
-    pub fn is_specific(self) -> bool {
-        self != Self::ALL
+    pub fn is_specific(&self) -> bool {
+        *self != Self::ALL
     }
 
     /// Returns `None` if `ALL`, otherwise the index.
