@@ -26,7 +26,7 @@ use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
-    callback::Callbacks,
+    event::ViewerEventDispatcher,
     AppState,
 };
 // ----------------------------------------------------------------------------
@@ -123,7 +123,7 @@ pub struct App {
     reflection: re_types_core::reflection::Reflection,
 
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
-    pub callbacks: Option<Callbacks>,
+    pub event_dispatcher: Option<ViewerEventDispatcher>,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
@@ -259,7 +259,10 @@ impl App {
             Default::default()
         });
 
-        let callbacks = startup_options.callbacks.clone();
+        let event_dispatcher = startup_options
+            .on_event
+            .clone()
+            .map(ViewerEventDispatcher::new);
 
         if !state.redap_servers.is_empty() {
             command_sender.send_ui(UICommand::ExpandBlueprintPanel);
@@ -316,7 +319,7 @@ impl App {
 
             reflection,
 
-            callbacks,
+            event_dispatcher,
             async_runtime: tokio_runtime,
         }
     }
@@ -1329,7 +1332,7 @@ impl App {
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
-                            self.callbacks.as_ref(),
+                            self.event_dispatcher.as_ref(),
                         );
                         render_ctx.before_submit();
                     }

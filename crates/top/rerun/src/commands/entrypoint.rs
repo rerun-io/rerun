@@ -700,7 +700,7 @@ fn run_impl(
             force_wgpu_backend: args.renderer.clone(),
             video_decoder_hw_acceleration,
 
-            callbacks: None,
+            on_event: None,
 
             panel_state_overrides: Default::default(),
         }

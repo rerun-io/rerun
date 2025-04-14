@@ -7,8 +7,8 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
-mod callback;
 pub mod env_vars;
+pub mod event;
 mod saving;
 mod screenshotter;
 mod startup_options;
@@ -27,7 +27,7 @@ pub mod blueprint;
 
 pub(crate) use {app_state::AppState, ui::memory_panel};
 
-pub use callback::{CallbackSelectionItem, Callbacks};
+pub use event::{SelectionChangeItem, ViewerEvent, ViewerEventDetail};
 
 pub use app::App;
 pub use startup_options::StartupOptions;

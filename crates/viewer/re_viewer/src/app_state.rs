@@ -23,6 +23,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
     app_blueprint::AppBlueprint,
+    event::ViewerEventDispatcher,
     ui::{recordings_panel_ui, settings_screen_ui},
 };
 
@@ -173,7 +174,7 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        callbacks: Option<&crate::callback::Callbacks>,
+        event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
     ) {
         re_tracing::profile_function!();
 
@@ -237,8 +238,12 @@ impl AppState {
         );
 
         if let SelectionChange::SelectionChanged(selection) = selection_change {
-            if let Some(callbacks) = callbacks {
-                callbacks.on_selection_change(selection, &viewport_ui.blueprint);
+            if let Some(event_dispatcher) = event_dispatcher {
+                event_dispatcher.on_selection_change(
+                    &store_context.recording,
+                    selection,
+                    &viewport_ui.blueprint,
+                );
             }
         }
 
@@ -321,7 +326,7 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx_log, callbacks);
+        move_time(&ctx, recording, rx_log, event_dispatcher);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport_ui.on_frame_start(&ctx);
@@ -704,7 +709,7 @@ fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
     rx: &ReceiveSet<LogMsg>,
-    callbacks: Option<&crate::callback::Callbacks>,
+    events: Option<&ViewerEventDispatcher>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -725,7 +730,7 @@ fn move_time(
         should_diff_time_ctrl,
     );
 
-    handle_time_ctrl_callbacks(callbacks, &recording_time_ctrl_response);
+    handle_time_ctrl_event(recording, events, &recording_time_ctrl_response);
 
     let recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
 
@@ -752,28 +757,25 @@ fn move_time(
     }
 }
 
-fn handle_time_ctrl_callbacks(
-    callbacks: Option<&crate::callback::Callbacks>,
+fn handle_time_ctrl_event(
+    recording: &EntityDb,
+    events: Option<&ViewerEventDispatcher>,
     response: &re_viewer_context::TimeControlResponse,
 ) {
-    let Some(callbacks) = callbacks else {
+    let Some(events) = events else {
         return;
     };
 
     if let Some(playing) = response.playing_change {
-        if playing {
-            callbacks.on_play();
-        } else {
-            callbacks.on_pause();
-        }
+        events.on_play_state_change(recording, playing);
     }
 
     if let Some((timeline, time)) = response.timeline_change {
-        callbacks.on_timeline_change(timeline, time);
+        events.on_timeline_change(recording, timeline, time);
     }
 
     if let Some(time) = response.time_change {
-        callbacks.on_time_update(time);
+        events.on_time_update(recording, time);
     }
 }
 
