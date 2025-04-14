@@ -55,44 +55,44 @@ impl ::prost::Name for SubmitTasksResponse {
         "/rerun.redap_tasks.v1alpha1.SubmitTasksResponse".into()
     }
 }
-/// `QueryRequest` is the request message for querying tasks status
+/// `QueryTasksRequest` is the request message for querying tasks status
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryRequest {
+pub struct QueryTasksRequest {
     /// Empty queries for all tasks if the server allows it.
     #[prost(message, repeated, tag = "1")]
     pub ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
 }
-impl ::prost::Name for QueryRequest {
-    const NAME: &'static str = "QueryRequest";
+impl ::prost::Name for QueryTasksRequest {
+    const NAME: &'static str = "QueryTasksRequest";
     const PACKAGE: &'static str = "rerun.redap_tasks.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.redap_tasks.v1alpha1.QueryRequest".into()
+        "rerun.redap_tasks.v1alpha1.QueryTasksRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.redap_tasks.v1alpha1.QueryRequest".into()
+        "/rerun.redap_tasks.v1alpha1.QueryTasksRequest".into()
     }
 }
-/// `QueryResponse` is the response message for querying tasks status
+/// `QueryTasksResponse` is the response message for querying tasks status
 /// encoded as a record batch
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryResponse {
+pub struct QueryTasksResponse {
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
-impl ::prost::Name for QueryResponse {
-    const NAME: &'static str = "QueryResponse";
+impl ::prost::Name for QueryTasksResponse {
+    const NAME: &'static str = "QueryTasksResponse";
     const PACKAGE: &'static str = "rerun.redap_tasks.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.redap_tasks.v1alpha1.QueryResponse".into()
+        "rerun.redap_tasks.v1alpha1.QueryTasksResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.redap_tasks.v1alpha1.QueryResponse".into()
+        "/rerun.redap_tasks.v1alpha1.QueryTasksResponse".into()
     }
 }
-/// `QueryOnCompletionRequest` is the request message for querying tasks status.
-/// This is close-to-a-copy of `QueryRequest`, with the addition of a timeout.
+/// `QueryTasksOnCompletionRequest` is the request message for querying tasks status.
+/// This is close-to-a-copy of `QueryTasksRequest`, with the addition of a timeout.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryOnCompletionRequest {
+pub struct QueryTasksOnCompletionRequest {
     /// Empty queries for all tasks if the server allows it.
     #[prost(message, repeated, tag = "1")]
     pub ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
@@ -101,65 +101,65 @@ pub struct QueryOnCompletionRequest {
     #[prost(message, optional, tag = "2")]
     pub timeout: ::core::option::Option<::prost_types::Duration>,
 }
-impl ::prost::Name for QueryOnCompletionRequest {
-    const NAME: &'static str = "QueryOnCompletionRequest";
+impl ::prost::Name for QueryTasksOnCompletionRequest {
+    const NAME: &'static str = "QueryTasksOnCompletionRequest";
     const PACKAGE: &'static str = "rerun.redap_tasks.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.redap_tasks.v1alpha1.QueryOnCompletionRequest".into()
+        "rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.redap_tasks.v1alpha1.QueryOnCompletionRequest".into()
+        "/rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest".into()
     }
 }
-/// `QueryOnCompletionResponse` is the response message for querying tasks status
-/// encoded as a record batch. This is a copy of `QueryResponse`.
+/// `QueryTaskOnCompletionResponse` is the response message for querying tasks status
+/// encoded as a record batch. This is a copy of `QueryTasksResponse`.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct QueryOnCompletionResponse {
+pub struct QueryTasksOnCompletionResponse {
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
-impl ::prost::Name for QueryOnCompletionResponse {
-    const NAME: &'static str = "QueryOnCompletionResponse";
+impl ::prost::Name for QueryTasksOnCompletionResponse {
+    const NAME: &'static str = "QueryTasksOnCompletionResponse";
     const PACKAGE: &'static str = "rerun.redap_tasks.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.redap_tasks.v1alpha1.QueryOnCompletionResponse".into()
+        "rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.redap_tasks.v1alpha1.QueryOnCompletionResponse".into()
+        "/rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse".into()
     }
 }
-/// `FetchOutputRequest` is the request message for fetching task output
+/// `FetchTaskOutputRequest` is the request message for fetching task output
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FetchOutputRequest {
+pub struct FetchTaskOutputRequest {
     /// Unique identifier for the task
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
 }
-impl ::prost::Name for FetchOutputRequest {
-    const NAME: &'static str = "FetchOutputRequest";
+impl ::prost::Name for FetchTaskOutputRequest {
+    const NAME: &'static str = "FetchTaskOutputRequest";
     const PACKAGE: &'static str = "rerun.redap_tasks.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.redap_tasks.v1alpha1.FetchOutputRequest".into()
+        "rerun.redap_tasks.v1alpha1.FetchTaskOutputRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.redap_tasks.v1alpha1.FetchOutputRequest".into()
+        "/rerun.redap_tasks.v1alpha1.FetchTaskOutputRequest".into()
     }
 }
-/// / `FetchOutputResponse` is the response message for fetching task output
+/// / `FetchTaskOutputResponse` is the response message for fetching task output
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FetchOutputResponse {
+pub struct FetchTaskOutputResponse {
     /// The output of the task, encoded as a record batch
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
-impl ::prost::Name for FetchOutputResponse {
-    const NAME: &'static str = "FetchOutputResponse";
+impl ::prost::Name for FetchTaskOutputResponse {
+    const NAME: &'static str = "FetchTaskOutputResponse";
     const PACKAGE: &'static str = "rerun.redap_tasks.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.redap_tasks.v1alpha1.FetchOutputResponse".into()
+        "rerun.redap_tasks.v1alpha1.FetchTaskOutputResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.redap_tasks.v1alpha1.FetchOutputResponse".into()
+        "/rerun.redap_tasks.v1alpha1.FetchTaskOutputResponse".into()
     }
 }
 /// Generated client implementations.
@@ -263,41 +263,42 @@ pub mod tasks_service_client {
             self.inner.unary(req, path, codec).await
         }
         /// Query the status of submitted tasks
-        pub async fn query(
+        pub async fn query_tasks(
             &mut self,
-            request: impl tonic::IntoRequest<super::QueryRequest>,
-        ) -> std::result::Result<tonic::Response<super::QueryResponse>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.redap_tasks.v1alpha1.TasksService/Query",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.redap_tasks.v1alpha1.TasksService",
-                "Query",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Fetch the output of a completed task
-        pub async fn fetch_output(
-            &mut self,
-            request: impl tonic::IntoRequest<super::FetchOutputRequest>,
-        ) -> std::result::Result<tonic::Response<super::FetchOutputResponse>, tonic::Status>
+            request: impl tonic::IntoRequest<super::QueryTasksRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryTasksResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.redap_tasks.v1alpha1.TasksService/FetchOutput",
+                "/rerun.redap_tasks.v1alpha1.TasksService/QueryTasks",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.redap_tasks.v1alpha1.TasksService",
-                "FetchOutput",
+                "QueryTasks",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Fetch the output of a completed task
+        pub async fn fetch_task_output(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FetchTaskOutputRequest>,
+        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.redap_tasks.v1alpha1.TasksService/FetchTaskOutput",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.redap_tasks.v1alpha1.TasksService",
+                "FetchTaskOutput",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -307,11 +308,11 @@ pub mod tasks_service_client {
         /// the status of a subset of the tasks, as they complete.
         /// The server does not guarantee to immediately send one stream item as soon as a task
         /// completes, but may decide to arbitrarily aggregate results into larger batches.
-        pub async fn query_on_completion(
+        pub async fn query_tasks_on_completion(
             &mut self,
-            request: impl tonic::IntoRequest<super::QueryOnCompletionRequest>,
+            request: impl tonic::IntoRequest<super::QueryTasksOnCompletionRequest>,
         ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::QueryOnCompletionResponse>>,
+            tonic::Response<tonic::codec::Streaming<super::QueryTasksOnCompletionResponse>>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -319,12 +320,12 @@ pub mod tasks_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.redap_tasks.v1alpha1.TasksService/QueryOnCompletion",
+                "/rerun.redap_tasks.v1alpha1.TasksService/QueryTasksOnCompletion",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.redap_tasks.v1alpha1.TasksService",
-                "QueryOnCompletion",
+                "QueryTasksOnCompletion",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -349,18 +350,18 @@ pub mod tasks_service_server {
             request: tonic::Request<super::SubmitTasksRequest>,
         ) -> std::result::Result<tonic::Response<super::SubmitTasksResponse>, tonic::Status>;
         /// Query the status of submitted tasks
-        async fn query(
+        async fn query_tasks(
             &self,
-            request: tonic::Request<super::QueryRequest>,
-        ) -> std::result::Result<tonic::Response<super::QueryResponse>, tonic::Status>;
+            request: tonic::Request<super::QueryTasksRequest>,
+        ) -> std::result::Result<tonic::Response<super::QueryTasksResponse>, tonic::Status>;
         /// Fetch the output of a completed task
-        async fn fetch_output(
+        async fn fetch_task_output(
             &self,
-            request: tonic::Request<super::FetchOutputRequest>,
-        ) -> std::result::Result<tonic::Response<super::FetchOutputResponse>, tonic::Status>;
-        /// Server streaming response type for the QueryOnCompletion method.
-        type QueryOnCompletionStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::QueryOnCompletionResponse, tonic::Status>,
+            request: tonic::Request<super::FetchTaskOutputRequest>,
+        ) -> std::result::Result<tonic::Response<super::FetchTaskOutputResponse>, tonic::Status>;
+        /// Server streaming response type for the QueryTasksOnCompletion method.
+        type QueryTasksOnCompletionStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::QueryTasksOnCompletionResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
         /// Query the status of submitted tasks, waiting for their completion.
@@ -369,10 +370,10 @@ pub mod tasks_service_server {
         /// the status of a subset of the tasks, as they complete.
         /// The server does not guarantee to immediately send one stream item as soon as a task
         /// completes, but may decide to arbitrarily aggregate results into larger batches.
-        async fn query_on_completion(
+        async fn query_tasks_on_completion(
             &self,
-            request: tonic::Request<super::QueryOnCompletionRequest>,
-        ) -> std::result::Result<tonic::Response<Self::QueryOnCompletionStream>, tonic::Status>;
+            request: tonic::Request<super::QueryTasksOnCompletionRequest>,
+        ) -> std::result::Result<tonic::Response<Self::QueryTasksOnCompletionStream>, tonic::Status>;
     }
     /// `TasksService` is the service for submitting and querying persistent redap tasks.
     #[derive(Debug)]
@@ -487,57 +488,19 @@ pub mod tasks_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.redap_tasks.v1alpha1.TasksService/Query" => {
+                "/rerun.redap_tasks.v1alpha1.TasksService/QueryTasks" => {
                     #[allow(non_camel_case_types)]
-                    struct QuerySvc<T: TasksService>(pub Arc<T>);
-                    impl<T: TasksService> tonic::server::UnaryService<super::QueryRequest> for QuerySvc<T> {
-                        type Response = super::QueryResponse;
+                    struct QueryTasksSvc<T: TasksService>(pub Arc<T>);
+                    impl<T: TasksService> tonic::server::UnaryService<super::QueryTasksRequest> for QueryTasksSvc<T> {
+                        type Response = super::QueryTasksResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::QueryRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut =
-                                async move { <T as TasksService>::query(&inner, request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = QuerySvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.redap_tasks.v1alpha1.TasksService/FetchOutput" => {
-                    #[allow(non_camel_case_types)]
-                    struct FetchOutputSvc<T: TasksService>(pub Arc<T>);
-                    impl<T: TasksService> tonic::server::UnaryService<super::FetchOutputRequest> for FetchOutputSvc<T> {
-                        type Response = super::FetchOutputResponse;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::FetchOutputRequest>,
+                            request: tonic::Request<super::QueryTasksRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as TasksService>::fetch_output(&inner, request).await
+                                <T as TasksService>::query_tasks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -548,7 +511,7 @@ pub mod tasks_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = FetchOutputSvc(inner);
+                        let method = QueryTasksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -564,24 +527,66 @@ pub mod tasks_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.redap_tasks.v1alpha1.TasksService/QueryOnCompletion" => {
+                "/rerun.redap_tasks.v1alpha1.TasksService/FetchTaskOutput" => {
                     #[allow(non_camel_case_types)]
-                    struct QueryOnCompletionSvc<T: TasksService>(pub Arc<T>);
-                    impl<T: TasksService>
-                        tonic::server::ServerStreamingService<super::QueryOnCompletionRequest>
-                        for QueryOnCompletionSvc<T>
+                    struct FetchTaskOutputSvc<T: TasksService>(pub Arc<T>);
+                    impl<T: TasksService> tonic::server::UnaryService<super::FetchTaskOutputRequest>
+                        for FetchTaskOutputSvc<T>
                     {
-                        type Response = super::QueryOnCompletionResponse;
-                        type ResponseStream = T::QueryOnCompletionStream;
+                        type Response = super::FetchTaskOutputResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FetchTaskOutputRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as TasksService>::fetch_task_output(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = FetchTaskOutputSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.redap_tasks.v1alpha1.TasksService/QueryTasksOnCompletion" => {
+                    #[allow(non_camel_case_types)]
+                    struct QueryTasksOnCompletionSvc<T: TasksService>(pub Arc<T>);
+                    impl<T: TasksService>
+                        tonic::server::ServerStreamingService<super::QueryTasksOnCompletionRequest>
+                        for QueryTasksOnCompletionSvc<T>
+                    {
+                        type Response = super::QueryTasksOnCompletionResponse;
+                        type ResponseStream = T::QueryTasksOnCompletionStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::QueryOnCompletionRequest>,
+                            request: tonic::Request<super::QueryTasksOnCompletionRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as TasksService>::query_on_completion(&inner, request).await
+                                <T as TasksService>::query_tasks_on_completion(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
@@ -592,7 +597,7 @@ pub mod tasks_service_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = QueryOnCompletionSvc(inner);
+                        let method = QueryTasksOnCompletionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

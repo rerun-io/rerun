@@ -11,10 +11,10 @@ service TasksService {
   rpc SubmitTasks(SubmitTasksRequest) returns (SubmitTasksResponse);
 
   // Query the status of submitted tasks
-  rpc Query(QueryRequest) returns (QueryResponse);
+  rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse);
 
   // Fetch the output of a completed task
-  rpc FetchOutput(FetchOutputRequest) returns (FetchOutputResponse);
+  rpc FetchTaskOutput(FetchTaskOutputRequest) returns (FetchTaskOutputResponse);
 
   // Query the status of submitted tasks, waiting for their completion.
   //
@@ -22,7 +22,7 @@ service TasksService {
   // the status of a subset of the tasks, as they complete.
   // The server does not guarantee to immediately send one stream item as soon as a task
   // completes, but may decide to arbitrarily aggregate results into larger batches.
-  rpc QueryOnCompletion(QueryOnCompletionRequest) returns (stream QueryOnCompletionResponse);
+  rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse);
 }
 
 // A task is a unit of work that can be submitted to the system
@@ -46,21 +46,21 @@ message SubmitTasksResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-// `QueryRequest` is the request message for querying tasks status
-message QueryRequest {
+// `QueryTasksRequest` is the request message for querying tasks status
+message QueryTasksRequest {
   // Empty queries for all tasks if the server allows it.
   repeated rerun.common.v1alpha1.TaskId ids = 1;
 }
 
-// `QueryResponse` is the response message for querying tasks status
+// `QueryTasksResponse` is the response message for querying tasks status
 // encoded as a record batch
-message QueryResponse {
+message QueryTasksResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-// `QueryOnCompletionRequest` is the request message for querying tasks status.
-// This is close-to-a-copy of `QueryRequest`, with the addition of a timeout.
-message QueryOnCompletionRequest {
+// `QueryTasksOnCompletionRequest` is the request message for querying tasks status.
+// This is close-to-a-copy of `QueryTasksRequest`, with the addition of a timeout.
+message QueryTasksOnCompletionRequest {
   // Empty queries for all tasks if the server allows it.
   repeated rerun.common.v1alpha1.TaskId ids = 1;
   // Time limit for the server to wait for task completion.
@@ -68,20 +68,20 @@ message QueryOnCompletionRequest {
   google.protobuf.Duration timeout = 2;
 }
 
-// `QueryOnCompletionResponse` is the response message for querying tasks status
-// encoded as a record batch. This is a copy of `QueryResponse`.
-message QueryOnCompletionResponse {
+// `QueryTaskOnCompletionResponse` is the response message for querying tasks status
+// encoded as a record batch. This is a copy of `QueryTasksResponse`.
+message QueryTasksOnCompletionResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
-// `FetchOutputRequest` is the request message for fetching task output
-message FetchOutputRequest {
+// `FetchTaskOutputRequest` is the request message for fetching task output
+message FetchTaskOutputRequest {
   // Unique identifier for the task
   rerun.common.v1alpha1.TaskId id = 1;
 }
 
-/// `FetchOutputResponse` is the response message for fetching task output
-message FetchOutputResponse {
+/// `FetchTaskOutputResponse` is the response message for fetching task output
+message FetchTaskOutputResponse {
   // The output of the task, encoded as a record batch
   rerun.common.v1alpha1.DataframePart data = 1;
 }
