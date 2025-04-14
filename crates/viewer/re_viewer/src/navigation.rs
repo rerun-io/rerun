@@ -10,16 +10,17 @@ use re_viewer_context::DisplayMode;
 pub(crate) struct Navigation(Vec<DisplayMode>);
 
 impl Navigation {
-    pub fn push(&mut self, display_mode: DisplayMode) {
-        re_log::debug!("Pushed display mode `{:?}`", display_mode);
-        self.0.push(display_mode);
-    }
+    pub fn push_unique(&mut self, display_mode: DisplayMode) {
+        let before = self.0.len();
+        self.0.retain(|d| d != &display_mode);
+        let after = self.0.len();
 
-    pub fn replace(&mut self, display_mode: DisplayMode) -> Option<DisplayMode> {
-        let previous = self.0.pop();
-        re_log::debug!("Replaced `{:?}` with `{:?}`", previous, display_mode);
+        if before == after {
+            re_log::debug!("Pushed new display mode `{:?}`", display_mode);
+        } else {
+            re_log::debug!("Reusing existing display mode `{:?}`", display_mode);
+        }
         self.0.push(display_mode);
-        previous
     }
 
     pub fn pop(&mut self) -> Option<DisplayMode> {

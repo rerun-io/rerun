@@ -184,9 +184,11 @@ impl AppState {
                     is_history_enabled,
                 );
             }
+
             (DisplayMode::Settings, _) => {
                 settings_screen_ui(ui, &mut self.app_options, command_sender);
             }
+
             (_, Some(store_context)) => {
                 let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
                 let Self {
@@ -635,6 +637,7 @@ impl AppState {
                 // Process deferred layout operations and apply updates back to blueprint:
                 viewport_ui.save_to_blueprint_store(&ctx);
             }
+
             // TODO(grtlr): If all fails we display the welcome screen. We will get rid of this in the future,
             // as `store_context` will move into the routes that requires it.
             (_, None) => {
