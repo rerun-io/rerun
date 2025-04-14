@@ -134,7 +134,7 @@ impl Server {
         if item_response.clicked() {
             viewer_ctx
                 .command_sender()
-                .send_system(SystemCommand::NavigationReplace(DisplayMode::RedapServer(
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
                     self.origin.clone(),
                 )));
         }
@@ -292,7 +292,7 @@ impl RedapServers {
         } else {
             viewer_ctx
                 .command_sender()
-                .send_system(SystemCommand::NavigationReplace(
+                .send_system(SystemCommand::ChangeDisplayMode(
                     DisplayMode::LocalRecordings,
                 ));
         }
