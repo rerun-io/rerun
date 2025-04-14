@@ -22,7 +22,6 @@ all-features = true
 re_arrow_util.workspace = true
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
-re_log.workspace = true
 re_log_types.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
