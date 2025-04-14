@@ -416,9 +416,7 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateApp(app_id) => {
-                self.state
-                    .navigation
-                    .push_unique(DisplayMode::LocalRecordings);
+                self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_app(app_id);
             }
 
@@ -427,9 +425,7 @@ impl App {
             }
 
             SystemCommand::ActivateEntry(entry) => {
-                self.state
-                    .navigation
-                    .push_unique(DisplayMode::LocalRecordings);
+                self.state.navigation.replace(DisplayMode::LocalRecordings);
                 store_hub.set_active_entry(entry);
             }
 
@@ -469,7 +465,7 @@ impl App {
             }
 
             SystemCommand::NavigationReplace(display_mode) => {
-                self.state.navigation.push_unique(display_mode);
+                self.state.navigation.replace(display_mode);
             }
 
             SystemCommand::NavigationPop => {
@@ -486,7 +482,7 @@ impl App {
                 {
                     self.state
                         .navigation
-                        .push_unique(DisplayMode::RedapServer(origin));
+                        .replace(DisplayMode::RedapServer(origin));
                 }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
@@ -603,13 +599,13 @@ impl App {
                     Item::RedapEntry(entry_id) => {
                         self.state
                             .navigation
-                            .push_unique(DisplayMode::RedapEntry(*entry_id));
+                            .replace(DisplayMode::RedapEntry(*entry_id));
                     }
 
                     Item::RedapServer(origin) => {
                         self.state
                             .navigation
-                            .push_unique(DisplayMode::RedapServer(origin.clone()));
+                            .replace(DisplayMode::RedapServer(origin.clone()));
                     }
 
                     Item::AppId(_)
@@ -621,9 +617,7 @@ impl App {
                     | Item::Container(_)
                     | Item::View(_)
                     | Item::DataResult(_, _) => {
-                        self.state
-                            .navigation
-                            .push_unique(DisplayMode::LocalRecordings);
+                        self.state.navigation.replace(DisplayMode::LocalRecordings);
                     }
                 }
 
@@ -921,9 +915,7 @@ impl App {
                 DisplayMode::LocalRecordings
                 | DisplayMode::RedapEntry(_)
                 | DisplayMode::RedapServer(_) => {
-                    self.state
-                        .navigation
-                        .push_unique(DisplayMode::ChunkStoreBrowser);
+                    self.state.navigation.push(DisplayMode::ChunkStoreBrowser);
                 }
 
                 DisplayMode::ChunkStoreBrowser => {
@@ -953,7 +945,7 @@ impl App {
             }
 
             UICommand::Settings => {
-                self.state.navigation.push_unique(DisplayMode::Settings);
+                self.state.navigation.push(DisplayMode::Settings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]

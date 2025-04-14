@@ -10,6 +10,22 @@ use re_viewer_context::DisplayMode;
 pub(crate) struct Navigation(Vec<DisplayMode>);
 
 impl Navigation {
+    pub fn push(&mut self, display_mode: DisplayMode) {
+        re_log::debug!("Pushed display mode `{:?}`", display_mode);
+        self.0.push(display_mode);
+    }
+
+    pub fn replace(&mut self, display_mode: DisplayMode) -> Option<DisplayMode> {
+        let previous = self.0.pop();
+        re_log::debug!("Replaced `{:?}` with `{:?}`", previous, display_mode);
+        self.0.push(display_mode);
+        previous
+    }
+
+    #[expect(unused)]
+    // TODO(grtlr): This method should eventually replace `push` and `replace`,
+    // but for this we first need to have proper unique entries in `DisplayMode`.
+    // (Right now `LocalRecordings` is missing `StoreId`).
     pub fn push_unique(&mut self, display_mode: DisplayMode) {
         let before = self.0.len();
         self.0.retain(|d| d != &display_mode);
