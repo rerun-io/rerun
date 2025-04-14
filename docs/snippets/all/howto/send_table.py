@@ -3,7 +3,7 @@
 import pyarrow as pa
 from rerun_bindings import ViewerClient
 
-client = ViewerClient(addr="rerun+http://0.0.0.0:9876")
+client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")
 client.send_table(
     "Hello from Python",
     pa.RecordBatch.from_pydict({
