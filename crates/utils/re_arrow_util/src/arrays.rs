@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-        PrimitiveArray, UInt32Array,
+        new_empty_array, Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray,
+        ListArray, PrimitiveArray, UInt32Array,
     },
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},
@@ -117,13 +117,6 @@ pub fn arrays_to_list_array_opt(arrays: &[Option<&dyn Array>]) -> Option<ListArr
         .map(|array| array.data_type().clone())
         .next()?;
     arrays_to_list_array(datatype, arrays)
-}
-
-/// An empty array of the given datatype.
-// TODO(#3741): replace with `arrow::array::new_empty_array`
-pub fn new_empty_array(datatype: &DataType) -> ArrayRef {
-    let capacity = 0;
-    arrow::array::make_builder(datatype, capacity).finish()
 }
 
 /// Create a sparse list-array out of an array of arrays.
