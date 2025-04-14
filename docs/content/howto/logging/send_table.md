@@ -36,7 +36,7 @@ Which can be installed via:
 pip install rerun-sdk[notebook] pyarrow pandas numpy
 ```
 
-## Basic Usage
+## Basic usage
 
 ### Connecting to the Viewer
 
@@ -47,7 +47,7 @@ from rerun_bindings import ViewerClient
 client = ViewerClient(addr="rerun+http://0.0.0.0:9876")
 ```
 
-### Sending a Simple Table
+### Sending a simple table
 
 ```python
 import pyarrow as pa
@@ -62,7 +62,7 @@ record_batch = pa.RecordBatch.from_pydict({
 client.send_table("My Table", record_batch)
 ```
 
-### Using with Pandas DataFrames
+### Using with Pandas dataframes
 
 You can also send Pandas dataframes by converting them to a record batch:
 
@@ -79,7 +79,7 @@ df = pd.DataFrame(np.random.randn(6, 4), index=dates, columns=list("ABCD"))
 client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
 ```
 
-## Using in Jupyter Notebooks
+## Using in Jupyter notebooks
 
 Rerun provides special support for Jupyter notebooks, you can find more information here: [https://rerun.io/docs/howto/integrations/embed-notebooks]
 Note that this API makes use of `rr.notebook.Viewer`:
@@ -111,7 +111,7 @@ os.environ["RERUN_NOTEBOOK_ASSET"] = "serve-local"
 client = ViewerClient(addr="rerun+http://0.0.0.0:9876")
 ```
 
-## Current Limitations
+## Current limitations
 
 As this is an experimental API, there are several limitations to be aware of:
 
@@ -121,7 +121,7 @@ As this is an experimental API, there are several limitations to be aware of:
 - Rust and C++ support will be added after the API stabilizes
 - The API may undergo significant changes as we iterate based on user feedback
 
-## What's Next
+## What's next
 
 The `send_table` API is still evolving and we plan to tackle all of the limitations mentioned above.
 
