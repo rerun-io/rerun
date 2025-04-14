@@ -97,7 +97,7 @@ viewer.display()
 
 # Send table directly to the inline viewer
 viewer.send_table("My Table", pa.RecordBatch.from_pydict({
-    "Column A": [1, 2, 3], 
+    "Column A": [1, 2, 3],
     "Column B": ["https://www.rerun.io", "Hello", "World"]
 }))
 ```
