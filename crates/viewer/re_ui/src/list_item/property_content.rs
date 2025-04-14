@@ -1,13 +1,13 @@
 use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
 
-use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
+use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent, ListVisuals};
 use crate::{DesignTokens, Icon, UiExt as _};
 
 /// Closure to draw an icon left of the label.
-type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a;
+type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
 
 /// Closure to draw the right column of the property.
-type PropertyValueFn<'a> = dyn FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + 'a;
+type PropertyValueFn<'a> = dyn FnOnce(&mut egui::Ui, ListVisuals) + 'a;
 
 /// [`ListItemContent`] to display property-like, two-column content.
 ///
@@ -55,8 +55,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|ui, rect, visuals| {
-            let tint = visuals.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, rect);
+            icon.as_image().tint(visuals.icon_tint()).paint_at(ui, rect);
         })
     }
 
@@ -64,7 +63,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn with_icon_fn<F>(mut self, icon_fn: F) -> Self
     where
-        F: FnOnce(&mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+        F: FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a,
     {
         self.icon_fn = Some(Box::new(icon_fn));
         self
@@ -140,7 +139,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_fn<F>(mut self, value_fn: F) -> Self
     where
-        F: FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + 'a,
+        F: FnOnce(&mut egui::Ui, ListVisuals) + 'a,
     {
         self.value_fn = Some(Box::new(value_fn));
         self
@@ -276,9 +275,7 @@ impl ListItemContent for PropertyContent<'_> {
             context.rect.y_range(),
         );
 
-        let visuals = ui
-            .style()
-            .interact_selectable(context.response, context.list_item.selected);
+        let visuals = context.visuals;
 
         // Draw icon
         if let Some(icon_fn) = icon_fn {
