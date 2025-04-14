@@ -28,7 +28,7 @@
 //!
 //! The Arrow registry keeps track of all type definitions and maps them to Arrow datatypes.
 //!
-//! Look for `arrow_registry.rs`.
+//! Look for `type_registry.rs`.
 //!
 //! #### 4. Run the actual codegen pass for a given language.
 //!
@@ -139,14 +139,15 @@ pub use self::reflection::reflection::{
 // NOTE: This crate isn't only okay with `unimplemented`, it actively encourages it.
 
 #[allow(clippy::unimplemented)]
-mod arrow_registry;
-#[allow(clippy::unimplemented)]
 mod codegen;
 #[allow(clippy::unimplemented)]
 mod format;
 #[allow(clippy::unimplemented)]
 mod objects;
+#[allow(clippy::unimplemented)]
+mod type_registry;
 
+pub mod data_type;
 mod docs;
 
 pub mod report;
@@ -158,7 +159,6 @@ pub mod report;
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
 pub use self::{
-    arrow_registry::{ArrowRegistry, LazyDatatype, LazyField},
     codegen::{
         CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
         SnippetsRefCodeGenerator,
@@ -169,6 +169,7 @@ pub use self::{
         Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
     },
     report::{Report, Reporter},
+    type_registry::TypeRegistry,
 };
 
 // --- Attributes ---
@@ -260,7 +261,7 @@ pub fn generate_lang_agnostic(
     reporter: &Reporter,
     include_dir_path: impl AsRef<Utf8Path>,
     entrypoint_path: impl AsRef<Utf8Path>,
-) -> (Objects, ArrowRegistry) {
+) -> (Objects, TypeRegistry) {
     re_tracing::profile_function!();
 
     use xshell::Shell;
@@ -294,12 +295,12 @@ pub fn generate_lang_agnostic(
     );
 
     // create and fill out arrow registry
-    let mut arrow_registry = ArrowRegistry::default();
+    let mut type_registry = TypeRegistry::default();
     for obj in objects.objects.values_mut() {
-        arrow_registry.register(obj);
+        type_registry.register(obj);
     }
 
-    (objects, arrow_registry)
+    (objects, type_registry)
 }
 
 /// Generates .gitattributes files that mark up all generated files as generated.
@@ -404,7 +405,7 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
 fn generate_code(
     reporter: &Reporter,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     generator: &mut dyn CodeGenerator,
     formatter: &mut dyn CodeFormatter,
     orphan_paths_opt_out: &BTreeSet<Utf8PathBuf>,
@@ -413,7 +414,7 @@ fn generate_code(
     use rayon::prelude::*;
 
     // Generate in-memory code files:
-    let mut files = generator.generate(reporter, objects, arrow_registry);
+    let mut files = generator.generate(reporter, objects, type_registry);
 
     for (filepath, contents) in &files {
         if !contents.contains("DO NOT EDIT") {
@@ -467,7 +468,7 @@ pub fn generate_cpp_code(
     reporter: &Reporter,
     output_path: impl AsRef<Utf8Path>,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     check: bool,
 ) {
     re_tracing::profile_function!();
@@ -483,7 +484,7 @@ pub fn generate_cpp_code(
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         &mut generator,
         &mut formatter,
         &std::iter::once(orphan_path_opt_out).collect(),
@@ -500,7 +501,7 @@ pub fn generate_rust_code(
     reporter: &Reporter,
     workspace_path: impl Into<Utf8PathBuf>,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     check: bool,
 ) {
     re_tracing::profile_function!();
@@ -511,7 +512,7 @@ pub fn generate_rust_code(
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         &mut generator,
         &mut formatter,
         &Default::default(),
@@ -531,7 +532,7 @@ pub fn generate_python_code(
     output_pkg_path: impl AsRef<Utf8Path>,
     testing_output_pkg_path: impl AsRef<Utf8Path>,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     check: bool,
 ) {
     re_tracing::profile_function!();
@@ -544,7 +545,7 @@ pub fn generate_python_code(
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         &mut generator,
         &mut formatter,
         &Default::default(),
@@ -556,7 +557,7 @@ pub fn generate_docs(
     reporter: &Reporter,
     output_docs_dir: impl AsRef<Utf8Path>,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     check: bool,
 ) {
     re_tracing::profile_function!();
@@ -569,7 +570,7 @@ pub fn generate_docs(
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         &mut generator,
         &mut formatter,
         &Default::default(),
@@ -581,7 +582,7 @@ pub fn generate_snippets_ref(
     reporter: &Reporter,
     output_snippets_ref_dir: impl AsRef<Utf8Path>,
     objects: &Objects,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     check: bool,
 ) {
     re_tracing::profile_function!();
@@ -600,7 +601,7 @@ pub fn generate_snippets_ref(
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         &mut generator,
         &mut formatter,
         &std::iter::once(orphan_path_opt_out).collect(),
@@ -619,7 +620,7 @@ pub fn generate_fbs(reporter: &Reporter, definition_dir: impl AsRef<Utf8Path>, c
 
     // We don't have arrow registry & objects yet!
     let objects = Objects::default();
-    let arrow_registry = ArrowRegistry::default();
+    let type_registry = TypeRegistry::default();
 
     let orphan_path_opt_outs = [
         definition_dir.as_ref().to_path_buf(),
@@ -631,7 +632,7 @@ pub fn generate_fbs(reporter: &Reporter, definition_dir: impl AsRef<Utf8Path>, c
     generate_code(
         reporter,
         &objects,
-        &arrow_registry,
+        &type_registry,
         &mut generator,
         &mut formatter,
         &orphan_path_opt_outs,

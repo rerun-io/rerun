@@ -173,7 +173,6 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "54.3.1", default-features = false }
-arrow2 = { package = "re_arrow2", version = "0.19.0", features = ["arrow"] }
 async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"
@@ -672,5 +671,3 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
-
-# re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "main" }

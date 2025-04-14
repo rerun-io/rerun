@@ -15,10 +15,11 @@ use crate::{
         common::{collect_snippets_for_api_docs, Example},
         StringExt as _,
     },
+    data_type::{AtomicDataType, DataType, Field, UnionMode},
     format_path,
     objects::{ObjectClass, State},
-    ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
-    ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, TypeRegistry, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use self::views::code_for_view;
@@ -110,7 +111,7 @@ impl CodeGenerator for PythonCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
     ) -> GeneratedFiles {
         let mut files_to_write = GeneratedFiles::default();
 
@@ -118,7 +119,7 @@ impl CodeGenerator for PythonCodeGenerator {
             self.generate_folder(
                 reporter,
                 objects,
-                arrow_registry,
+                type_registry,
                 object_kind,
                 &mut files_to_write,
             );
@@ -308,7 +309,7 @@ impl PythonCodeGenerator {
         &self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
@@ -480,14 +481,14 @@ impl PythonCodeGenerator {
                     if obj.kind == ObjectKind::View {
                         code_for_view(reporter, objects, &ext_class, obj)
                     } else {
-                        code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                        code_for_struct(reporter, type_registry, &ext_class, objects, obj)
                     }
                 }
                 crate::objects::ObjectClass::Enum => {
-                    code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
+                    code_for_enum(reporter, type_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
-                    code_for_union(reporter, arrow_registry, &ext_class, objects, obj)
+                    code_for_union(reporter, type_registry, &ext_class, objects, obj)
                 }
             };
 
@@ -573,7 +574,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
 fn code_for_struct(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -816,7 +817,7 @@ fn code_for_struct(
         ObjectKind::Component => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
 
@@ -832,7 +833,7 @@ fn code_for_struct(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -846,7 +847,7 @@ fn code_for_struct(
 
 fn code_for_enum(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -990,7 +991,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
         ObjectKind::Component | ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -1004,7 +1005,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
 
 fn code_for_union(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -1156,7 +1157,7 @@ fn code_for_union(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -1839,7 +1840,7 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -1877,14 +1878,14 @@ fn quote_arrow_support_from_obj(
         batch_superclasses.push("ComponentBatchMixin".to_owned());
     }
 
-    let datatype = quote_arrow_datatype(&arrow_registry.get(fqname));
+    let datatype = quote_arrow_datatype(&type_registry.get(fqname));
     let extension_batch = format!("{name}Batch");
 
     let native_to_pa_array_impl = match quote_arrow_serialization(
         reporter,
         objects,
         obj,
-        arrow_registry,
+        type_registry,
     ) {
         Ok(automatic_arrow_serialization) => {
             if ext_class.has_native_to_pa_array {
@@ -1988,7 +1989,7 @@ fn quote_arrow_serialization(
     reporter: &Reporter,
     objects: &Objects,
     obj: &Object,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
 
@@ -2196,7 +2197,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float32
                     | Type::Float64
                     | Type::String => {
-                        let datatype = quote_arrow_datatype(&arrow_registry.get(&field.fqname));
+                        let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")
                     }
                     Type::Array { .. } | Type::Vector { .. } => {
@@ -2707,29 +2708,26 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 }
 
 // --- Arrow registry code generators ---
-use arrow2::datatypes::{DataType, Field, UnionMode};
 
 fn quote_arrow_datatype(datatype: &DataType) -> String {
     match datatype {
-        DataType::Null => "pa.null()".to_owned(),
-        DataType::Boolean => "pa.bool_()".to_owned(),
-        DataType::Int8 => "pa.int8()".to_owned(),
-        DataType::Int16 => "pa.int16()".to_owned(),
-        DataType::Int32 => "pa.int32()".to_owned(),
-        DataType::Int64 => "pa.int64()".to_owned(),
-        DataType::UInt8 => "pa.uint8()".to_owned(),
-        DataType::UInt16 => "pa.uint16()".to_owned(),
-        DataType::UInt32 => "pa.uint32()".to_owned(),
-        DataType::UInt64 => "pa.uint64()".to_owned(),
-        DataType::Float16 => "pa.float16()".to_owned(),
-        DataType::Float32 => "pa.float32()".to_owned(),
-        DataType::Float64 => "pa.float64()".to_owned(),
-        DataType::Date32 => "pa.date32()".to_owned(),
-        DataType::Date64 => "pa.date64()".to_owned(),
+        DataType::Atomic(AtomicDataType::Null) => "pa.null()".to_owned(),
+        DataType::Atomic(AtomicDataType::Boolean) => "pa.bool_()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int8) => "pa.int8()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int16) => "pa.int16()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int32) => "pa.int32()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int64) => "pa.int64()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt8) => "pa.uint8()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt16) => "pa.uint16()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt32) => "pa.uint32()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt64) => "pa.uint64()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float16) => "pa.float16()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float32) => "pa.float32()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float64) => "pa.float64()".to_owned(),
+
         DataType::Binary => "pa.binary()".to_owned(),
-        DataType::LargeBinary => "pa.large_binary()".to_owned(),
+
         DataType::Utf8 => "pa.utf8()".to_owned(),
-        DataType::LargeUtf8 => "pa.large_utf8()".to_owned(),
 
         DataType::List(field) => {
             let field = quote_arrow_field(field);
@@ -2741,7 +2739,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
             format!("pa.list_({field}, {length})")
         }
 
-        DataType::Union(fields, _, mode) => {
+        DataType::Union(fields, mode) => {
             let fields = fields
                 .iter()
                 .map(quote_arrow_field)
@@ -2762,9 +2760,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
             format!("pa.struct([{fields}])")
         }
 
-        DataType::Extension(_, datatype, _) => quote_arrow_datatype(datatype),
-
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { datatype, .. } => quote_arrow_datatype(datatype),
     }
 }
 
