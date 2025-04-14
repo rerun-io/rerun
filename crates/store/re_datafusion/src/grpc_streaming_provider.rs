@@ -22,14 +22,14 @@ pub trait GrpcStreamToTable:
 {
     type GrpcStreamData;
 
-    async fn fetch_schema(&mut self) -> Result<SchemaRef, DataFusionError>;
+    async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef>;
 
     fn process_response(&mut self, response: Self::GrpcStreamData)
         -> DataFusionResult<RecordBatch>;
 
     async fn send_streaming_request(
         &mut self,
-    ) -> Result<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>, tonic::Status>;
+    ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>>;
 }
 
 #[derive(Debug)]
