@@ -42,17 +42,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         on_event: Some({
             let shared_state = shared_state.clone();
             Arc::new(move |event: ViewerEvent| match event.kind {
-                ViewerEventKind::PlayStateChange(_) => {}
-                ViewerEventKind::TimeUpdate(detail) => {
-                    shared_state.lock().current_time = detail.time.as_f64();
+                ViewerEventKind::Play | ViewerEventKind::Pause => {}
+                ViewerEventKind::TimeUpdate { time } => {
+                    shared_state.lock().current_time = event.time.as_f64();
                 }
-                ViewerEventKind::TimelineChange(detail) => {
+                ViewerEventKind::TimelineChange { timeline, time } => {
                     let mut shared_state = shared_state.lock();
-                    shared_state.current_timeline = detail.timeline.name().as_str().to_owned();
-                    shared_state.current_time = detail.time.as_f64();
+                    shared_state.current_timeline = timeline.name().as_str().to_owned();
+                    shared_state.current_time = time.as_f64();
                 }
-                ViewerEventKind::SelectionChange(detail) => {
-                    shared_state.lock().current_selection = detail.items;
+                ViewerEventKind::SelectionChange { items } => {
+                    shared_state.lock().current_selection = items;
                 }
             })
         }),
