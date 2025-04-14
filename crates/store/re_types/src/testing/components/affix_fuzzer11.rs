@@ -74,7 +74,7 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                 let data0_inner_data: ScalarBuffer<_> = data0
                     .iter()
                     .flatten()
-                    .map(|b| b.as_slice())
+                    .map(|b| b as &[_])
                     .collect::<Vec<_>>()
                     .concat()
                     .into();

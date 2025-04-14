@@ -192,7 +192,7 @@ impl VideoFrameReferenceVisualizer {
                         ctx.viewer_ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_secs(),
-                        video_data.as_slice(),
+                        &video_data,
                     ) {
                         Ok(VideoFrameTexture {
                             texture,

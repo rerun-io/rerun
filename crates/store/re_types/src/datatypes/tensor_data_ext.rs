@@ -51,7 +51,7 @@ impl TensorData {
     /// The shape of the tensor.
     #[inline]
     pub fn shape(&self) -> &[u64] {
-        self.shape.as_slice()
+        &self.shape
     }
 
     /// Get the name of a specific dimension.
@@ -159,7 +159,7 @@ macro_rules! ndarray_from_tensor {
                 let shape: Vec<usize> = value.shape.iter().map(|&d| d as usize).collect();
 
                 if let TensorBuffer::$variant(data) = &value.buffer {
-                    ndarray::ArrayViewD::from_shape(shape, data.as_slice())
+                    ndarray::ArrayViewD::from_shape(shape, data)
                         .map_err(|err| TensorCastError::BadTensorShape { source: err })
                 } else {
                     Err(TensorCastError::TypeMismatch)
@@ -265,7 +265,7 @@ impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, u8> {
         match &value.buffer {
             TensorBuffer::U8(data) => {
                 let shape: Vec<usize> = value.shape.iter().map(|&d| d as usize).collect();
-                ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
+                ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data))
                     .map_err(|err| TensorCastError::BadTensorShape { source: err })
             }
             _ => Err(TensorCastError::TypeMismatch),

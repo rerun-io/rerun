@@ -274,7 +274,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 many_floats_optional
                                     .iter()
                                     .flatten()
-                                    .map(|b| b.as_slice())
+                                    .map(|b| b as &[_])
                                     .collect::<Vec<_>>()
                                     .concat()
                                     .into();

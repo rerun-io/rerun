@@ -262,12 +262,7 @@ pub fn show_decoded_frame_info(
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(
-        render_ctx,
-        player_stream_id,
-        timestamp_in_secs,
-        blob.as_slice(),
-    ) {
+    match video.frame_at(render_ctx, player_stream_id, timestamp_in_secs, blob) {
         Ok(VideoFrameTexture {
             texture,
             is_pending,

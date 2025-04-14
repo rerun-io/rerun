@@ -408,7 +408,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let u8_inner_data: ScalarBuffer<_> = u8
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -439,7 +439,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let u16_inner_data: ScalarBuffer<_> = u16
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -470,7 +470,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let u32_inner_data: ScalarBuffer<_> = u32
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -501,7 +501,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let u64_inner_data: ScalarBuffer<_> = u64
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -532,7 +532,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let i8_inner_data: ScalarBuffer<_> = i8
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -563,7 +563,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let i16_inner_data: ScalarBuffer<_> = i16
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -594,7 +594,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let i32_inner_data: ScalarBuffer<_> = i32
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -625,7 +625,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let i64_inner_data: ScalarBuffer<_> = i64
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -656,7 +656,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let f16_inner_data: ScalarBuffer<_> = f16
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -687,7 +687,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let f32_inner_data: ScalarBuffer<_> = f32
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -718,7 +718,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         );
                         let f64_inner_data: ScalarBuffer<_> = f64
                             .iter()
-                            .map(|b| b.as_slice())
+                            .map(|b| b as &[_])
                             .collect::<Vec<_>>()
                             .concat()
                             .into();

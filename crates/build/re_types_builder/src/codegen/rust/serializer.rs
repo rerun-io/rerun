@@ -749,7 +749,7 @@ fn quote_arrow_field_serializer(
                             #data_src
                                 .iter()
                                 #flatten_if_needed
-                                .map(|b| b.as_slice())
+                                .map(|b| b as &[_])
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into()

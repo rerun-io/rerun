@@ -22,7 +22,8 @@ impl<T: ArrowNativeType> Default for ArrowBuffer<T> {
 impl<T: SizeBytes + ArrowNativeType> SizeBytes for ArrowBuffer<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        std::mem::size_of_val(self.as_slice()) as _
+        let slice: &[T] = self;
+        std::mem::size_of_val(slice) as _
     }
 }
 
@@ -36,11 +37,6 @@ impl<T: ArrowNativeType> ArrowBuffer<T> {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
-    }
-
-    #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        self.0.as_ref()
     }
 
     /// Returns a new [`ArrowBuffer`] that is a slice of this buffer starting at `offset`.
