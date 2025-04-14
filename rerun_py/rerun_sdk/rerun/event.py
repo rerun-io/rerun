@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Literal, Union
+from typing import Literal, Sequence, Union
 
 # Type definitions based on `crates/viewer/re_viewer/src/event.rs`
 # NOTE: In Python, we need to update both the type definitions
@@ -128,7 +128,7 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
         )
 
     elif event_type == "selection_change":
-        items = []
+        items: list[SelectionItem] = []
         for item in data["items"]:
             if item["type"] == "entity":
                 items.append(
