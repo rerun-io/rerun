@@ -5,6 +5,7 @@
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use serde::Deserialize;
+use std::rc::Rc;
 use std::str::FromStr as _;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
@@ -717,7 +718,7 @@ fn create_app(
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
 
         on_event: on_viewer_event.clone().map(|on_event| {
-            Arc::new(move |event: crate::ViewerEvent| {
+            Rc::new(move |event: crate::ViewerEvent| {
                 let Some(event) = serde_json::to_string(&event).ok_or_log_error() else {
                     return;
                 };

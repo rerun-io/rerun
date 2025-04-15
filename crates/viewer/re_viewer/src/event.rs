@@ -7,7 +7,7 @@
 // - rerun_js/web-viewer/index.ts (ViewerEvent)
 // - rerun_py/rerun_sdk/rerun/event.py (ViewerEvent)
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
@@ -189,7 +189,7 @@ impl SelectionChangeItem {
     }
 }
 
-pub type ViewerEventCallback = Arc<dyn Fn(ViewerEvent)>;
+pub type ViewerEventCallback = Rc<dyn Fn(ViewerEvent)>;
 
 #[derive(Clone)]
 pub struct ViewerEventDispatcher {

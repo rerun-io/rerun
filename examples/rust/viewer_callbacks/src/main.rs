@@ -1,6 +1,6 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
-use std::sync::Arc;
+use std::rc::Rc;
 
 use re_viewer::external::{eframe, egui, egui::mutex::Mutex, re_log, re_memory};
 use re_viewer::{AsyncRuntimeHandle, ViewerEvent, ViewerEventKind};
@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let startup_options = re_viewer::StartupOptions {
         on_event: Some({
             let shared_state = shared_state.clone();
-            Arc::new(move |event: ViewerEvent| {
+            Rc::new(move |event: ViewerEvent| {
                 let mut shared_state = shared_state.lock();
                 match event.kind {
                     ViewerEventKind::Play | ViewerEventKind::Pause => {}
