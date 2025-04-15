@@ -2691,7 +2691,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
                         # (This should have been already validated by conversion to the arrow_array)
                         batch_length = 1
                     else:
-                        batch_length = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
                     num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
                     sizes = batch_length * np.ones(num_rows)
