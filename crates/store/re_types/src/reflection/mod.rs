@@ -552,7 +552,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <GammaCorrection as Component>::name(),
             ComponentReflection {
-                docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nValid range is from 0 (excluding) to max float.\nDefaults to 1.0 unless otherwise specified.",
+                docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nMust be a positive number.\nDefaults to 1.0 unless otherwise specified.",
                 deprecation_summary: None,
                 custom_placeholder: Some(GammaCorrection::default().to_arrow()?),
                 datatype: GammaCorrection::arrow_datatype(),
