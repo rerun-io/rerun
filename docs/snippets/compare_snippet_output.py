@@ -8,6 +8,7 @@ import argparse
 import glob
 import multiprocessing
 import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -53,8 +54,17 @@ class Example:
                 ]
         return []
 
-    def output_path(self, language: str) -> str:
-        return f"docs/snippets/all/{self.subdir}/{self.name}_{language}.rrd"
+    def output_path(self, language: str) -> Path:
+        return Path(f"docs/snippets/all/{self.subdir}/{self.name}_{language}.rrd")
+
+    def backwards_compatibility_path(self) -> Path:
+        """
+        Files checked in to CI that tests backwards compatibility.
+
+        We use this path as a source for comparison ("are old files correctly migrated?")
+        and as a destination when these files need updating using --write-missing-backward-assets.
+        """
+        return Path(f"tests/assets/rrd/snippets/{self.subdir}/{self.name}.rrd")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Example):
@@ -89,6 +99,11 @@ def main() -> None:
     parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
+    parser.add_argument(
+        "--write-missing-backward-assets",
+        action="store_true",
+        help="Add any missing asset files to tests/assets/rrd/snippets",
+    )
     parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified example(s)")
 
     args = parser.parse_args()
@@ -176,9 +191,15 @@ def main() -> None:
             print("SKIPPED: Missing Rust baseline to compare against")
             continue
 
+        backwards_path = example.backwards_compatibility_path()
         cpp_output_path = example.output_path("cpp")
         python_output_path = example.output_path("python")
         rust_output_path = example.output_path("rust")
+
+        if args.write_missing_backward_assets:
+            if not backwards_path.exists():
+                backwards_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(rust_output_path, backwards_path)
 
         if "cpp" in active_languages:
             if "cpp" in example_opt_out_entirely:
