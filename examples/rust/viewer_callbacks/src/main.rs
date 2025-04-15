@@ -1,6 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use std::rc::Rc;
+use std::sync::Arc;
 
 use re_viewer::external::{eframe, egui, egui::mutex::Mutex, re_log, re_memory};
 use re_viewer::{AsyncRuntimeHandle, ViewerEvent, ViewerEventKind};
