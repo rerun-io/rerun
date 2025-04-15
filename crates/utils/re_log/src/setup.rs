@@ -3,6 +3,7 @@
 use std::sync::atomic::AtomicIsize;
 
 // This can be useful to enable to figure out what is causing a log message.
+#[cfg(not(target_arch = "wasm32"))]
 const LOG_FILE_LINE: bool = false;
 
 /// Sets up logging for the current process using default log filter as defined in `crate::default_log_filter`.
