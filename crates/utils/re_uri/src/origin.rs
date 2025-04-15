@@ -80,9 +80,8 @@ impl Origin {
         };
 
         if let Some(default_port) = default_port {
-            // Parsing with a non-standard scheme
-            // is a hack to work around the `url` crate bug
-            // <https://github.com/servo/rust-url/issues/957>.
+            // Parsing with a non-standard scheme is a hack to work around the `url` crate bug.
+            // TODO(servo/rust-url#706): stop doing this when the bug is fixed.
             let has_port = if let Some(rest) = http_url.to_string().strip_prefix("http://") {
                 url::Url::parse(&format!("foobarbaz://{rest}"))?
                     .port()
