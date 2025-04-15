@@ -121,9 +121,9 @@ The Viewer API also allows registering callbacks for certain events.
 
 For example, here is how you would react to entities being selected in the Viewer:
 ```js
-viewer.on("selectionchange", (items) => {
-  for (const item of items) {
-    if (item.kind === "entity") {
+viewer.on("selection_change", (event) => {
+  for (const item of event.items) {
+    if (item.type === "entity") {
       console.log(item.entity_path);
     }
   }

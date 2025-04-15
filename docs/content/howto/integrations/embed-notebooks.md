@@ -74,26 +74,26 @@ rr.notebook_show(width=400, height=400)
 
 ## Reacting to events in the Viewer
 
-It is possible to register callbacks for some Viewer events.
+It is possible to register a callback to be triggered when certain Viewer events happen.
 
-For example, here is how you can track currently selected entities:
+For example, here is how you can track which entities are currently selected in the Viewer:
 
 ```python
-from rerun.notebook import Viewer, ViewerCallbacks
+from rerun.notebook import Viewer, ViewerEvent
 
-class SelectedEntities(ViewerCallbacks):
-  value = []
+selected_entities = []
 
-  def on_selection_change(self, items):
-    self.value = []
-    for item in items:
-      if item.kind == "entity":
-        self.value.append(item.entity_path)
+def on_event(event: ViewerEvent):
+  global selected_entities
+  selected_entities = [] # clear the list
 
-selected_entities = SelectedEntities()
+  if event.type == "selection_change":
+    for item in event.items:
+      if item.type == "entity":
+        selected_entities.append(item.entity_path)
 
 viewer = Viewer()
-viewer.register_callbacks(selected_entities)
+viewer.on_event(on_event)
 
 display(viewer)
 ```

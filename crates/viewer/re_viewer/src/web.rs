@@ -17,9 +17,7 @@ use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender a
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::web_tools::{
-    string_from_js_value, url_to_receiver, Callback, JsResultExt as _, StringOrStringArray,
-};
+use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -634,37 +632,12 @@ pub struct AppOptions {
     video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
-    callbacks: Option<Callbacks>,
+    on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
     enable_history: Option<bool>,
 
     notebook: Option<bool>,
     persist: Option<bool>,
-}
-
-// Keep in sync with `index.ts`.
-#[derive(Clone, Deserialize)]
-pub struct Callbacks {
-    /// Fired when the selection changes.
-    ///
-    /// This event is fired each time any part of the event payload changes,
-    /// this includes for example clicking on different parts of the same
-    /// entity in a 2D or 3D view.
-    pub on_selectionchange: Callback,
-
-    /// Fired when the a different timeline is selected.
-    pub on_timelinechange: Callback,
-
-    /// Fired when the timepoint changes.
-    ///
-    /// Does not fire when `on_seek` is called.
-    pub on_timeupdate: Callback,
-
-    /// Fired when the timeline is paused.
-    pub on_pause: Callback,
-
-    /// Fired when the timeline is played.
-    pub on_play: Callback,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -696,66 +669,6 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
     }
 }
 
-/// Callback selection item meant for serialization into JS.
-///
-/// We do this because the selection item we expose from the Rust API
-/// is not as nice to work with from JS when serialized into JSON.
-///
-/// One example of that is `EntityPath` being serialized as an array of
-/// path parts, instead of a single string, and we don't want the joining
-/// logic to live in multiple places.
-#[derive(Debug, serde::Serialize)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
-enum JsCallbackSelectionItem {
-    Entity {
-        entity_path: String,
-        instance_id: Option<u64>,
-        view_name: Option<String>,
-        position: Option<glam::Vec3>,
-    },
-
-    View {
-        view_id: String,
-        view_name: String,
-    },
-
-    Container {
-        container_id: String,
-        container_name: String,
-    },
-}
-
-impl From<crate::callback::CallbackSelectionItem> for JsCallbackSelectionItem {
-    fn from(v: crate::callback::CallbackSelectionItem) -> Self {
-        use crate::callback::CallbackSelectionItem as Item;
-        match v {
-            Item::Entity {
-                entity_path,
-                instance_id,
-                view_name,
-                position,
-            } => Self::Entity {
-                entity_path: entity_path.to_string(),
-                instance_id: instance_id.specific_index().map(|id| id.get()),
-                view_name,
-                position,
-            },
-            Item::View { view_id, view_name } => Self::View {
-                view_id: view_id.uuid().to_string(),
-                view_name,
-            },
-            Item::Container {
-                container_id,
-                container_name,
-            } => Self::Container {
-                container_id: container_id.uuid().to_string(),
-                container_name,
-            },
-        }
-    }
-}
-
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
@@ -773,7 +686,7 @@ fn create_app(
         video_decoder,
         hide_welcome_screen,
         panel_state_overrides,
-        callbacks,
+        on_viewer_event,
         fullscreen,
         enable_history,
 
@@ -804,46 +717,15 @@ fn create_app(
         video_decoder_hw_acceleration,
         hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
 
-        callbacks: callbacks.clone().map(|opts| crate::Callbacks {
-            on_selection_change: Rc::new(move |selection| {
-                // Express the collection as a flat list of items.
-                let array = js_sys::Array::new_with_length(selection.len() as u32);
-                for (i, item) in selection.into_iter().enumerate() {
-                    let Some(value) =
-                        serde_wasm_bindgen::to_value(&JsCallbackSelectionItem::from(item))
-                            .map_err(|v| v.into())
-                            .ok_or_log_js_error()
-                    else {
-                        continue;
-                    };
-                    array.set(i as u32, value);
-                }
-                opts.on_selectionchange.call1(&array).ok_or_log_js_error();
-            }),
-
-            on_timeline_change: Rc::new(move |timeline, time| {
-                if let Err(err) = opts.on_timelinechange.call2(
-                    &JsValue::from_str(timeline.name().as_str()),
-                    &JsValue::from_f64(time.as_f64()),
-                ) {
-                    re_log::error!("{}", string_from_js_value(err));
+        on_event: on_viewer_event.clone().map(|on_event| {
+            Rc::new(move |event: crate::ViewerEvent| {
+                let Some(event) = serde_json::to_string(&event).ok_or_log_error() else {
+                    return;
                 };
-            }),
-            on_time_update: Rc::new(move |time| {
-                if let Err(err) = opts.on_timeupdate.call1(&JsValue::from_f64(time.as_f64())) {
-                    re_log::error!("{}", string_from_js_value(err));
-                }
-            }),
-            on_play: Rc::new(move || {
-                if let Err(err) = opts.on_play.call0() {
-                    re_log::error!("{}", string_from_js_value(err));
-                }
-            }),
-            on_pause: Rc::new(move || {
-                if let Err(err) = opts.on_pause.call0() {
-                    re_log::error!("{}", string_from_js_value(err));
-                }
-            }),
+                on_event
+                    .call1(&JsValue::from_str(&event))
+                    .ok_or_log_js_error();
+            }) as crate::event::ViewerEventCallback
         }),
 
         fullscreen_options: fullscreen.clone(),
