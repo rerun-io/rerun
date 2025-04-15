@@ -11,6 +11,7 @@ import os
 import shutil
 import sys
 import time
+import subprocess
 from pathlib import Path
 from typing import Any, cast
 
@@ -198,8 +199,10 @@ def main() -> None:
 
         if args.write_missing_backward_assets:
             if not backwards_path.exists():
+                print(f"Writing new backwards-compatibility file to {backwards_path}…")
                 backwards_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(rust_output_path, backwards_path)
+                subprocess.call(["git", "add", "-f", backwards_path])
         else:
             try:
                 # Compare old snippet files checked in to git lfs, to the newly generated ones.
