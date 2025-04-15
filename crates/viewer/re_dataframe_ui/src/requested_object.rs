@@ -3,6 +3,9 @@ use std::sync::mpsc::{sync_channel, Receiver};
 use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 
 /// A handle to an object that is requested asynchronously.
+///
+/// Note: this object cannot be [`Clone`] because it uses a one-shot channel to track completion of
+/// the async operation.
 #[derive(Debug)]
 pub enum RequestedObject<T: Send + 'static> {
     Pending(Receiver<T>),
