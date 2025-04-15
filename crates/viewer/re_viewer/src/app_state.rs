@@ -240,7 +240,7 @@ impl AppState {
         if let SelectionChange::SelectionChanged(selection) = selection_change {
             if let Some(event_dispatcher) = event_dispatcher {
                 event_dispatcher.on_selection_change(
-                    &store_context.recording,
+                    store_context.recording,
                     selection,
                     &viewport_ui.blueprint,
                 );

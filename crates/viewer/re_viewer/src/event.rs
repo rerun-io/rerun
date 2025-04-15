@@ -227,10 +227,10 @@ impl ViewerEventDispatcher {
         self.dispatch(ViewerEvent::from_db_and_kind(
             db,
             ViewerEventKind::TimelineChange {
-                timeline_name: timeline.name().clone(),
+                timeline_name: *timeline.name(),
                 time,
             },
-        ))
+        ));
     }
 
     #[inline]
@@ -250,7 +250,7 @@ impl ViewerEventDispatcher {
                     })
                     .collect(),
             },
-        ))
+        ));
     }
 
     #[inline]
@@ -270,7 +270,7 @@ mod serde {
     pub use ::serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     pub mod entity_path {
-        use super::*;
+        use super::{Deserialize, Deserializer, Serializer};
 
         pub fn serialize<S>(v: &re_log_types::EntityPath, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -284,12 +284,12 @@ mod serde {
             D: Deserializer<'de>,
         {
             let s: String = Deserialize::deserialize(deserializer)?;
-            re_log_types::EntityPath::parse_strict(&s).map_err(|err| serde::de::Error::custom(err))
+            re_log_types::EntityPath::parse_strict(&s).map_err(serde::de::Error::custom)
         }
     }
 
     pub mod instance_id {
-        use super::*;
+        use super::{Deserialize, Deserializer, Serialize, Serializer};
 
         pub fn serialize<S>(v: &re_log_types::Instance, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -311,7 +311,7 @@ mod serde {
     }
 
     pub mod blueprint_id {
-        use super::*;
+        use super::{Deserialize, Deserializer, Serializer};
 
         pub fn serialize<S, T>(
             v: &re_viewer_context::BlueprintId<T>,
@@ -333,13 +333,13 @@ mod serde {
         {
             let s: String = Deserialize::deserialize(deserializer)?;
             re_types::external::uuid::Uuid::try_parse(&s)
-                .map_err(|err| serde::de::Error::custom(err))
-                .map(|uuid| re_viewer_context::BlueprintId::from(uuid))
+                .map_err(serde::de::Error::custom)
+                .map(re_viewer_context::BlueprintId::from)
         }
     }
 
     pub mod recording_id {
-        use super::*;
+        use super::{Deserialize, Deserializer, Serializer};
 
         pub fn serialize<S>(v: &re_log_types::StoreId, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -361,7 +361,7 @@ mod serde {
     }
 
     pub mod time_real {
-        use super::*;
+        use super::{Deserialize, Deserializer, Serializer};
 
         pub fn serialize<S>(v: &re_log_types::TimeReal, serializer: S) -> Result<S::Ok, S::Error>
         where
