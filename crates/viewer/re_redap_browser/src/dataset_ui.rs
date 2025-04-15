@@ -8,6 +8,9 @@ use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_dataframe_ui::table_utils::{
+    apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
+};
 use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, EntryId, TimelineName};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
@@ -19,9 +22,6 @@ use re_viewer_context::ViewerContext;
 use super::servers::Command;
 use crate::context::Context;
 use crate::entries::Dataset;
-use crate::table_utils::{
-    apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
-};
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
