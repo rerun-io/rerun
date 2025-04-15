@@ -189,6 +189,43 @@ fn test_line_properties_impl(multiple_properties: bool, multiple_scalars: bool) 
     );
 }
 
+/// Test the per series visibility setting
+#[test]
+fn test_per_series_visibility() {
+    for (name, visibility) in [
+        ("per_series_visibility_show_second_only", vec![false, true]),
+        ("per_series_visibility_splat_false", vec![false]),
+        ("per_series_visibility_splat_true", vec![true]),
+    ] {
+        let mut test_context = get_test_context();
+
+        test_context.log_entity("plots".into(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &re_types::archetypes::SeriesLine::new().with_visible_series(visibility),
+            )
+        });
+
+        for step in 0..32 {
+            let timepoint = TimePoint::from([(test_context.active_timeline(), step)]);
+            let (scalars, _) = scalars_for_properties_test(step, true);
+            test_context.log_entity("plots".into(), |builder| {
+                builder.with_archetype(RowId::new(), timepoint.clone(), &scalars)
+            });
+        }
+
+        let view_id = setup_blueprint(&mut test_context);
+        run_view_ui_and_save_snapshot(
+            &mut test_context,
+            view_id,
+            name,
+            egui::vec2(300.0, 300.0),
+            0.0,
+        );
+    }
+}
+
 const MARKER_LIST: [re_types::components::MarkerShape; 10] = [
     re_types::components::MarkerShape::Circle,
     re_types::components::MarkerShape::Diamond,
