@@ -200,6 +200,13 @@ def main() -> None:
             if not backwards_path.exists():
                 backwards_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(rust_output_path, backwards_path)
+        else:
+            try:
+                # Compare old snippet files checked in to git lfs, to the newly generated ones.
+                # They should be the same!
+                run_comparison(backwards_path, rust_output_path, args.full_dump)
+            except Exception as e:
+                errors.append((example, e))
 
         if "cpp" in active_languages:
             if "cpp" in example_opt_out_entirely:
