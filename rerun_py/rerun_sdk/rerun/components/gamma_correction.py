@@ -22,7 +22,7 @@ class GammaCorrection(datatypes.Float32, ComponentMixin):
     Used to adjust the gamma of a color or scalar value between 0 and 1 before rendering.
     `new_value = old_value ^ gamma`
 
-    Valid range is from 0 (excluding) to max float.
+    Must be a positive number.
     Defaults to 1.0 unless otherwise specified.
     """
 
