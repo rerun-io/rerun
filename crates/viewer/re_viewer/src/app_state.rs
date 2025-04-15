@@ -173,12 +173,20 @@ impl AppState {
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
-        #[expect(clippy::single_match_else)]
         match self.navigation.peek() {
             DisplayMode::Settings => {
                 let mut show_settings_ui = true;
                 settings_screen_ui(ui, &mut self.app_options, &mut show_settings_ui);
                 if !show_settings_ui {
+                    self.navigation.pop();
+                }
+            }
+
+            DisplayMode::ChunkStoreBrowser => {
+                let should_datastore_ui_remain_active =
+                    self.datastore_ui
+                        .ui(store_context, ui, self.app_options.timestamp_format);
+                if !should_datastore_ui_remain_active {
                     self.navigation.pop();
                 }
             }
@@ -196,12 +204,12 @@ impl AppState {
                     blueprint_time_panel,
                     blueprint_tree,
                     welcome_screen,
-                    datastore_ui,
                     redap_servers,
                     navigation,
                     view_states,
                     selection_state,
                     focused_item,
+                    ..
                 } = self;
 
                 blueprint_undo_state
@@ -403,253 +411,235 @@ impl AppState {
                     },
                 };
 
-                if self.navigation.peek() == &DisplayMode::ChunkStoreBrowser {
-                    let should_datastore_ui_remain_active =
-                        datastore_ui.ui(&ctx, ui, app_options.timestamp_format);
-                    if !should_datastore_ui_remain_active {
-                        // TODO(grtlr): This will change, when datastore will become its own display mode.            }
-                        command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                            DisplayMode::LocalRecordings,
-                        ));
-                    }
-                } else {
-                    //
-                    // Blueprint time panel
-                    //
+                //
+                // Blueprint time panel
+                //
 
-                    let display_mode = self.navigation.peek();
+                let display_mode = self.navigation.peek();
 
-                    if app_options.inspect_blueprint_timeline
-                        && *display_mode == DisplayMode::LocalRecordings
+                if app_options.inspect_blueprint_timeline
+                    && *display_mode == DisplayMode::LocalRecordings
+                {
+                    let blueprint_db = ctx.store_context.blueprint;
+
+                    let undo_state = self
+                        .blueprint_undo_state
+                        .entry(ctx.store_context.blueprint.store_id().clone())
+                        .or_default();
+
                     {
-                        let blueprint_db = ctx.store_context.blueprint;
-
-                        let undo_state = self
-                            .blueprint_undo_state
-                            .entry(ctx.store_context.blueprint.store_id().clone())
-                            .or_default();
-
-                        {
-                            // Copy time from undo-state to the blueprint time control struct:
-                            let mut time_ctrl = blueprint_cfg.time_ctrl.write();
-                            if let Some(redo_time) = undo_state.redo_time() {
-                                time_ctrl.set_play_state(
-                                    blueprint_db.times_per_timeline(),
-                                    PlayState::Paused,
-                                );
-                                time_ctrl.set_time(redo_time);
-                            } else {
-                                time_ctrl.set_play_state(
-                                    blueprint_db.times_per_timeline(),
-                                    PlayState::Following,
-                                );
-                            }
-                        }
-
-                        blueprint_time_panel.show_panel(
-                            &ctx,
-                            &viewport_ui.blueprint,
-                            blueprint_db,
-                            blueprint_cfg,
-                            ui,
-                            PanelState::Expanded,
-                            // Give the blueprint time panel a distinct color from the normal time panel:
-                            DesignTokens::bottom_panel_frame().fill(egui::hex_color!("#141326")),
-                        );
-
-                        {
-                            // Apply changes to the blueprint time to the undo-state:
-                            let time_ctrl = blueprint_cfg.time_ctrl.read();
-                            if time_ctrl.play_state() == PlayState::Following {
-                                undo_state.redo_all();
-                            } else if let Some(time) = time_ctrl.time_int() {
-                                undo_state.set_redo_time(time);
-                            }
+                        // Copy time from undo-state to the blueprint time control struct:
+                        let mut time_ctrl = blueprint_cfg.time_ctrl.write();
+                        if let Some(redo_time) = undo_state.redo_time() {
+                            time_ctrl.set_play_state(
+                                blueprint_db.times_per_timeline(),
+                                PlayState::Paused,
+                            );
+                            time_ctrl.set_time(redo_time);
+                        } else {
+                            time_ctrl.set_play_state(
+                                blueprint_db.times_per_timeline(),
+                                PlayState::Following,
+                            );
                         }
                     }
 
-                    //
-                    // Time panel
-                    //
-
-                    if *display_mode == DisplayMode::LocalRecordings {
-                        time_panel.show_panel(
-                            &ctx,
-                            &viewport_ui.blueprint,
-                            ctx.recording(),
-                            ctx.rec_cfg,
-                            ui,
-                            app_blueprint.time_panel_state(),
-                            DesignTokens::bottom_panel_frame(),
-                        );
-                    }
-
-                    //
-                    // Selection Panel
-                    //
-
-                    if *display_mode == DisplayMode::LocalRecordings {
-                        selection_panel.show_panel(
-                            &ctx,
-                            &viewport_ui.blueprint,
-                            view_states,
-                            ui,
-                            app_blueprint.selection_panel_state().is_expanded(),
-                        );
-                    }
-
-                    //
-                    // Left panel (recordings and blueprint)
-                    //
-
-                    let left_panel = egui::SidePanel::left("blueprint_panel")
-                        .resizable(true)
-                        .frame(egui::Frame {
-                            fill: ui.visuals().panel_fill,
-                            ..Default::default()
-                        })
-                        .min_width(120.0)
-                        .default_width(default_blueprint_panel_width(
-                            ui.ctx().screen_rect().width(),
-                        ));
-
-                    left_panel.show_animated_inside(
+                    blueprint_time_panel.show_panel(
+                        &ctx,
+                        &viewport_ui.blueprint,
+                        blueprint_db,
+                        blueprint_cfg,
                         ui,
-                        app_blueprint.blueprint_panel_state().is_expanded(),
-                        |ui: &mut egui::Ui| {
-                            // ListItem don't need vertical spacing so we disable it, but restore it
-                            // before drawing the blueprint panel.
-                            ui.spacing_mut().item_spacing.y = 0.0;
-
-                            match display_mode {
-                                DisplayMode::LocalRecordings
-                                | DisplayMode::RedapEntry(..)
-                                | DisplayMode::RedapServer(..) => {
-                                    let show_blueprints =
-                                        *display_mode == DisplayMode::LocalRecordings;
-                                    let resizable = ctx.storage_context.bundle.recordings().count()
-                                        > 3
-                                        && show_blueprints;
-
-                                    if resizable {
-                                        // Don't shrink either recordings panel or blueprint panel below this height
-                                        let min_height_each =
-                                            90.0_f32.at_most(ui.available_height() / 2.0);
-
-                                        egui::TopBottomPanel::top("recording_panel")
-                                            .frame(egui::Frame::new())
-                                            .resizable(resizable)
-                                            .show_separator_line(false)
-                                            .min_height(min_height_each)
-                                            .default_height(210.0)
-                                            .max_height(ui.available_height() - min_height_each)
-                                            .show_inside(ui, |ui| {
-                                                recordings_panel_ui(
-                                                    &ctx,
-                                                    rx_log,
-                                                    ui,
-                                                    welcome_screen_state,
-                                                    redap_servers,
-                                                );
-                                            });
-                                    } else {
-                                        recordings_panel_ui(
-                                            &ctx,
-                                            rx_log,
-                                            ui,
-                                            welcome_screen_state,
-                                            redap_servers,
-                                        );
-                                    }
-
-                                    ui.add_space(4.0);
-
-                                    if show_blueprints {
-                                        blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
-                                    }
-                                }
-
-                                DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
-                            };
-                        },
+                        PanelState::Expanded,
+                        // Give the blueprint time panel a distinct color from the normal time panel:
+                        DesignTokens::bottom_panel_frame().fill(egui::hex_color!("#141326")),
                     );
 
-                    //
-                    // Viewport
-                    //
-
-                    let viewport_frame = egui::Frame {
-                        fill: ui.style().visuals.panel_fill,
-                        ..Default::default()
-                    };
-
-                    egui::CentralPanel::default()
-                        .frame(viewport_frame)
-                        .show_inside(ui, |ui| {
-                            match display_mode {
-                                DisplayMode::LocalRecordings => {
-                                    if let Some(table_id) =
-                                        ctx.storage_context.hub.active_table_id()
-                                    {
-                                        if let Some(store) =
-                                            ctx.storage_context.tables.get(table_id)
-                                        {
-                                            let context = TableContext {
-                                                table_id: table_id.clone(),
-                                                store,
-                                            };
-                                            crate::ui::table_ui(&ctx, ui, &context);
-                                        } else {
-                                            re_log::error_once!(
-                                                "Could not find batch store for table id {}",
-                                                table_id
-                                            );
-                                        }
-                                    } else {
-                                        // If we are here and the "default" app id is selected,
-                                        // we should instead switch to the welcome screen.
-                                        if ctx.store_context.app_id
-                                            == StoreHub::welcome_screen_app_id()
-                                        {
-                                            ctx.command_sender().send_system(
-                                                SystemCommand::ChangeDisplayMode(
-                                                    DisplayMode::RedapServer(
-                                                        re_redap_browser::EXAMPLES_ORIGIN.clone(),
-                                                    ),
-                                                ),
-                                            );
-                                        }
-                                        viewport_ui.viewport_ui(ui, &ctx, view_states);
-                                    }
-                                }
-
-                                DisplayMode::RedapEntry(entry) => {
-                                    redap_servers.entry_ui(&ctx, ui, *entry);
-                                }
-
-                                DisplayMode::RedapServer(origin) => {
-                                    if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
-                                        welcome_screen.ui(
-                                            ui,
-                                            command_sender,
-                                            welcome_screen_state,
-                                            is_history_enabled,
-                                        );
-                                    } else {
-                                        redap_servers.server_central_panel_ui(&ctx, ui, origin);
-                                    }
-                                }
-
-                                DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
-                            }
-                        });
-
-                    add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
-                    drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
-
-                    // Process deferred layout operations and apply updates back to blueprint:
-                    viewport_ui.save_to_blueprint_store(&ctx);
+                    {
+                        // Apply changes to the blueprint time to the undo-state:
+                        let time_ctrl = blueprint_cfg.time_ctrl.read();
+                        if time_ctrl.play_state() == PlayState::Following {
+                            undo_state.redo_all();
+                        } else if let Some(time) = time_ctrl.time_int() {
+                            undo_state.set_redo_time(time);
+                        }
+                    }
                 }
+
+                //
+                // Time panel
+                //
+
+                if *display_mode == DisplayMode::LocalRecordings {
+                    time_panel.show_panel(
+                        &ctx,
+                        &viewport_ui.blueprint,
+                        ctx.recording(),
+                        ctx.rec_cfg,
+                        ui,
+                        app_blueprint.time_panel_state(),
+                        DesignTokens::bottom_panel_frame(),
+                    );
+                }
+
+                //
+                // Selection Panel
+                //
+
+                if *display_mode == DisplayMode::LocalRecordings {
+                    selection_panel.show_panel(
+                        &ctx,
+                        &viewport_ui.blueprint,
+                        view_states,
+                        ui,
+                        app_blueprint.selection_panel_state().is_expanded(),
+                    );
+                }
+
+                //
+                // Left panel (recordings and blueprint)
+                //
+
+                let left_panel = egui::SidePanel::left("blueprint_panel")
+                    .resizable(true)
+                    .frame(egui::Frame {
+                        fill: ui.visuals().panel_fill,
+                        ..Default::default()
+                    })
+                    .min_width(120.0)
+                    .default_width(default_blueprint_panel_width(
+                        ui.ctx().screen_rect().width(),
+                    ));
+
+                left_panel.show_animated_inside(
+                    ui,
+                    app_blueprint.blueprint_panel_state().is_expanded(),
+                    |ui: &mut egui::Ui| {
+                        // ListItem don't need vertical spacing so we disable it, but restore it
+                        // before drawing the blueprint panel.
+                        ui.spacing_mut().item_spacing.y = 0.0;
+
+                        match display_mode {
+                            DisplayMode::LocalRecordings
+                            | DisplayMode::RedapEntry(..)
+                            | DisplayMode::RedapServer(..) => {
+                                let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
+                                let resizable = ctx.storage_context.bundle.recordings().count() > 3
+                                    && show_blueprints;
+
+                                if resizable {
+                                    // Don't shrink either recordings panel or blueprint panel below this height
+                                    let min_height_each =
+                                        90.0_f32.at_most(ui.available_height() / 2.0);
+
+                                    egui::TopBottomPanel::top("recording_panel")
+                                        .frame(egui::Frame::new())
+                                        .resizable(resizable)
+                                        .show_separator_line(false)
+                                        .min_height(min_height_each)
+                                        .default_height(210.0)
+                                        .max_height(ui.available_height() - min_height_each)
+                                        .show_inside(ui, |ui| {
+                                            recordings_panel_ui(
+                                                &ctx,
+                                                rx_log,
+                                                ui,
+                                                welcome_screen_state,
+                                                redap_servers,
+                                            );
+                                        });
+                                } else {
+                                    recordings_panel_ui(
+                                        &ctx,
+                                        rx_log,
+                                        ui,
+                                        welcome_screen_state,
+                                        redap_servers,
+                                    );
+                                }
+
+                                ui.add_space(4.0);
+
+                                if show_blueprints {
+                                    blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
+                                }
+                            }
+
+                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // handled above
+                        };
+                    },
+                );
+
+                //
+                // Viewport
+                //
+
+                let viewport_frame = egui::Frame {
+                    fill: ui.style().visuals.panel_fill,
+                    ..Default::default()
+                };
+
+                egui::CentralPanel::default()
+                    .frame(viewport_frame)
+                    .show_inside(ui, |ui| {
+                        match display_mode {
+                            DisplayMode::LocalRecordings => {
+                                if let Some(table_id) = ctx.storage_context.hub.active_table_id() {
+                                    if let Some(store) = ctx.storage_context.tables.get(table_id) {
+                                        let context = TableContext {
+                                            table_id: table_id.clone(),
+                                            store,
+                                        };
+                                        crate::ui::table_ui(&ctx, ui, &context);
+                                    } else {
+                                        re_log::error_once!(
+                                            "Could not find batch store for table id {}",
+                                            table_id
+                                        );
+                                    }
+                                } else {
+                                    // If we are here and the "default" app id is selected,
+                                    // we should instead switch to the welcome screen.
+                                    if ctx.store_context.app_id == StoreHub::welcome_screen_app_id()
+                                    {
+                                        ctx.command_sender().send_system(
+                                            SystemCommand::ChangeDisplayMode(
+                                                DisplayMode::RedapServer(
+                                                    re_redap_browser::EXAMPLES_ORIGIN.clone(),
+                                                ),
+                                            ),
+                                        );
+                                    }
+                                    viewport_ui.viewport_ui(ui, &ctx, view_states);
+                                }
+                            }
+
+                            DisplayMode::RedapEntry(entry) => {
+                                redap_servers.entry_ui(&ctx, ui, *entry);
+                            }
+
+                            DisplayMode::RedapServer(origin) => {
+                                if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
+                                    welcome_screen.ui(
+                                        ui,
+                                        command_sender,
+                                        welcome_screen_state,
+                                        is_history_enabled,
+                                    );
+                                } else {
+                                    redap_servers.server_central_panel_ui(&ctx, ui, origin);
+                                }
+                            }
+
+                            DisplayMode::ChunkStoreBrowser | DisplayMode::Settings => {} // Handled above
+                        }
+                    });
+
+                add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
+                drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
+
+                // Process deferred layout operations and apply updates back to blueprint:
+                viewport_ui.save_to_blueprint_store(&ctx);
             }
         }
 
