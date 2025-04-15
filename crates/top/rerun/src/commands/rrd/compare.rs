@@ -93,14 +93,27 @@ impl CompareCommand {
             }
         }
 
+        fn format_chunk(chunk: &Chunk) -> String {
+            re_format_arrow::format_record_batch_opts(
+                &chunk.to_record_batch().unwrap(),
+                &re_format_arrow::RecordBatchFormatOpts {
+                    transposed: true,
+                    width: None,
+                    include_metadata: true,
+                    include_column_metadata: false,
+                },
+            )
+            .to_string()
+        }
+
         if !*unordered || unordered_failed {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
                 anyhow::ensure!(
                     re_chunk::Chunk::are_similar(&chunk1, &chunk2),
                     "Chunks do not match:\n{}",
                     similar_asserts::SimpleDiff::from_str(
-                        &format!("{chunk1}"),
-                        &format!("{chunk2}"),
+                        &format_chunk(&chunk1),
+                        &format_chunk(&chunk2),
                         "got",
                         "expected",
                     ),

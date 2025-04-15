@@ -286,11 +286,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
-"archetypes/capsules3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
-  "cpp",
-  "py",
-  "rust",
-]
 "archetypes/ellipsoids3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -327,19 +322,10 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/transform3d_axes" = [ # TODO(#3235): Degree to radian conversion is slightly different.
-  "cpp",
-  "py",
-  "rust",
-]
 "archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
   "py",
 ]
-"archetypes/instance_poses3d_combined" = [ # TODO(#3235): Slight floating point differences in point grid.
-  "cpp",
-  "py",
-  "rust",
-]
+
 "archetypes/mesh3d_instancing" = [ # Python uses doubles
   "py",
 ]
@@ -348,22 +334,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/series_point_style" = [
   "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
-]
-
-"archetypes/scalars_multiple_plots" = [ # TODO(#3235): Slight floating point differences
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/series_lines_style" = [ # TODO(#3235): Slight floating point differences
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/series_points_style" = [ # TODO(#3235): Slight floating point differences
-  "cpp",
-  "py",
-  "rust",
 ]
 
 
