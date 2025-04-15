@@ -161,4 +161,4 @@ def _viewer_event_from_json_str(json_str: str) -> ViewerEvent:
         )
 
     else:
-        raise ValueError(f"Unknown event type: {event_type}")
+        raise ValueError(f"Unknown event type: '{event_type}'")
