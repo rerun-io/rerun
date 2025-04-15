@@ -203,7 +203,7 @@ fn test_per_series_visibility() {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),
-                &re_types::archetypes::SeriesLine::new().with_visible_series(visibility),
+                &re_types::archetypes::SeriesLines::new().with_visible_series(visibility),
             )
         });
 
