@@ -8,12 +8,12 @@ use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, EntryId, TimelineName};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;
 use re_ui::{icons, UiExt as _};
-use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
 use super::servers::Command;
