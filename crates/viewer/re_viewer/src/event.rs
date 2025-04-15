@@ -20,7 +20,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 /// An event produced in the Viewer.
 ///
-/// See [`ViewerEventDetail`] for information about specific events.
+/// See [`ViewerEventKind`] for information about specific events.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ViewerEvent {
     pub application_id: ApplicationId,
