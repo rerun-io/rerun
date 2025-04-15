@@ -16,7 +16,7 @@ import rerun.blueprint as rrb
 
 
 @rr.thread_local_stream("rerun_example_binary_stream")
-def job(name: str) -> Iterator[tuple[str, bytes]]:
+def job(name: str) -> Iterator[tuple[str, bytes | None]]:
     stream = rr.binary_stream()
 
     blueprint = rrb.Blueprint(rrb.TextLogView(name="My Logs", origin="test"))
@@ -40,7 +40,7 @@ def test_binary_stream() -> None:
     prev_flush_num_rows = os.environ.get("RERUN_FLUSH_NUM_ROWS")
     os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
 
-    results_queue: queue.Queue[tuple[str, bytes]] = queue.Queue()
+    results_queue: queue.Queue[tuple[str, bytes | None]] = queue.Queue()
 
     threads = [
         threading.Thread(target=queue_results, args=(job("A"), results_queue)),
