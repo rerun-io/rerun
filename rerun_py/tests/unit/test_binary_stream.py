@@ -55,6 +55,8 @@ def test_binary_stream() -> None:
         while not results_queue.empty():
             name, data = results_queue.get()
 
+            assert data is not None
+
             # Bump this value down when we have less overhead.
             assert len(data) > 1000
 
