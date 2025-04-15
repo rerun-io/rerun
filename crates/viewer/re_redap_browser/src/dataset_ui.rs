@@ -89,7 +89,7 @@ pub fn dataset_ui(
             let name = c.name();
             let name = name
                 .strip_prefix("rerun_")
-                .unwrap_or(name.as_str())
+                .unwrap_or(name)
                 .replace('_', " ");
             ColumnConfig::new(Id::new(c), name)
         }),
