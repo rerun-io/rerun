@@ -4,6 +4,7 @@ use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
+use re_log_types::EntryId;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
@@ -20,7 +21,6 @@ pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
 
-    pub store_context: &'a StoreContext<'a>,
     pub storage_context: &'a StorageContext<'a>,
 
     /// Mapping from class and system to entities for the store
@@ -57,6 +57,12 @@ pub struct ViewerContext<'a> {
 
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
+
+    // --
+    /// The current active Redap entry id, if any.
+    pub active_redap_entry: Option<&'a EntryId>,
+
+    pub store_context: &'a StoreContext<'a>,
 }
 
 // Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a

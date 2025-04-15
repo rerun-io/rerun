@@ -9,6 +9,7 @@ mod app_state;
 mod background_tasks;
 mod callback;
 pub mod env_vars;
+mod navigation;
 mod saving;
 mod screenshotter;
 mod startup_options;
