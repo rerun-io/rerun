@@ -1329,7 +1329,7 @@ class BinaryStream:
     def __init__(self, storage: bindings.PyBinarySinkStorage) -> None:
         self.storage = storage
 
-    def read(self, *, flush: bool = True) -> bytes:
+    def read(self, *, flush: bool = True) -> bytes | None:
         """
         Reads the available bytes from the stream.
 

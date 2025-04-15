@@ -595,7 +595,7 @@ class PyMemorySinkStorage:
         """
 
 class PyBinarySinkStorage:
-    def read(self, *, flush: bool = True) -> bytes:
+    def read(self, *, flush: bool = True) -> bytes | None:
         """
         Read the bytes from the binary sink.
 
