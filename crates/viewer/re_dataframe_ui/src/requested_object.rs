@@ -3,7 +3,7 @@ use crossbeam_channel::{bounded, Receiver};
 use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 
 /// A handle to an object that is requested asynchronously.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum RequestedObject<T: Send + 'static> {
     Pending(Receiver<T>),
     Completed(T),
