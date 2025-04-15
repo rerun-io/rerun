@@ -1,4 +1,4 @@
-use crossbeam_channel::{bounded, Receiver};
+use std::sync::mpsc::{sync_channel, Receiver};
 
 use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 
@@ -15,7 +15,7 @@ impl<T: Send + 'static> RequestedObject<T> {
     where
         F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
-        let (tx, rx) = bounded(1);
+        let (tx, rx) = sync_channel(1);
         let handle = Self::Pending(rx);
 
         runtime.spawn_future(async move {

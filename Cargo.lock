@@ -6943,7 +6943,6 @@ version = "0.23.0-alpha.3+dev"
 dependencies = [
  "ahash",
  "arrow",
- "crossbeam-channel",
  "egui",
  "egui_dnd",
  "re_arrow_util",
