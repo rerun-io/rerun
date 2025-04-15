@@ -40,6 +40,10 @@ impl FromStr for EntryId {
 
 // ---
 
+/// Either an id or a name for an entry.
+///
+/// This helper type should only be used for APIs to offer the convenience to refer to entries by
+/// either name or id. For storage/indexing purposes, use [`EntryId`].
 #[derive(Debug, Clone)]
 pub enum EntryIdOrName {
     Id(EntryId),
