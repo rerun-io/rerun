@@ -95,7 +95,7 @@ pub enum SelectionChangeItem {
         entity_path: re_log_types::EntityPath,
 
         #[serde(with = "serde::instance_id")]
-        #[serde(skip_serializing_if = "re_log_types::Instance::is_all")]
+        #[serde(skip_serializing_if = "instance_is_all")]
         instance_id: re_log_types::Instance,
 
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -259,6 +259,10 @@ impl ViewerEventDispatcher {
             (self.f)(event);
         }
     }
+}
+
+fn instance_is_all(v: &re_log_types::Instance) -> bool {
+    v.is_all()
 }
 
 /// Customs serialization for event payloads.
