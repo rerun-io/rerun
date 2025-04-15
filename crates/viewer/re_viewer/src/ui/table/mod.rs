@@ -157,7 +157,7 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
                     for display_record_batch in self.display_record_batches {
                         let row_count = display_record_batch.num_rows();
                         if row_index < row_count {
-                            // this is the onre
+                            // this is the one
                             let column = &display_record_batch.columns()[col_idx];
 
                             // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
