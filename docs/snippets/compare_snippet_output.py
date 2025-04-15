@@ -206,7 +206,7 @@ def main() -> None:
                 # They should be the same!
                 run_comparison(backwards_path, rust_output_path, args.full_dump)
             except Exception as e:
-                errors.append((example, e))
+                errors.append((example, "old-rrd-files", e))
 
         if "cpp" in active_languages:
             if "cpp" in example_opt_out_entirely:
@@ -217,7 +217,7 @@ def main() -> None:
                 try:
                     run_comparison(cpp_output_path, rust_output_path, args.full_dump)
                 except Exception as e:
-                    errors.append((example, e))
+                    errors.append((example, "C++", e))
 
         if "py" in active_languages:
             if "py" in example_opt_out_entirely:
@@ -228,18 +228,19 @@ def main() -> None:
                 try:
                     run_comparison(python_output_path, rust_output_path, args.full_dump)
                 except Exception as e:
-                    errors.append((example, e))
+                    errors.append((example, "Python", e))
 
     if len(errors) == 0:
         print("All tests passed!")
     else:
         print(f"{len(errors)} errors found:")
 
-        for example, _error in errors:
-            print(f"❌ {example}")
+        for example, comparison, _error in errors:
+            print(f"❌ {example} - {comparison} differs from Rust baseline")
 
-        for _example, error in errors:
+        for example, comparison, error in errors:
             print()
+            print(f"❌ {example} - {comparison} differs from Rust baseline:")
             print(error)
             print("--------------------------------------")
 
@@ -247,8 +248,8 @@ def main() -> None:
         print("----------------------------------------------------------")
         print()
 
-        for example, _error in errors:
-            print(f"❌ {example}")
+        for example, comparison, _error in errors:
+            print(f"❌ {example} - {comparison} differs from Rust baseline")
 
         sys.exit(1)
 
