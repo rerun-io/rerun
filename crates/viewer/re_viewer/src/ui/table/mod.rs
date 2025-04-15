@@ -2,11 +2,11 @@ use eframe::epaint::Margin;
 use egui::{Frame, Id, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 
-use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
-use re_log_types::TimelineName;
-use re_redap_browser::table_utils::{
+use re_dataframe_ui::table_utils::{
     apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
 };
+use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
+use re_log_types::TimelineName;
 use re_sorbet::{ColumnDescriptorRef, SorbetBatch};
 use re_ui::UiExt as _;
 use re_viewer_context::{TableContext, ViewerContext};
@@ -157,7 +157,7 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
                     for display_record_batch in self.display_record_batches {
                         let row_count = display_record_batch.num_rows();
                         if row_index < row_count {
-                            // this is the one
+                            // this is the onre
                             let column = &display_record_batch.columns()[col_idx];
 
                             // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but

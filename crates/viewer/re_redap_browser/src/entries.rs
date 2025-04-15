@@ -6,6 +6,7 @@ use tokio_stream::StreamExt as _;
 
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_data_ui::DataUi as _;
+use re_dataframe_ui::RequestedObject;
 use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{redap, StreamError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -27,7 +28,6 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::requested_object::RequestedObject;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EntryError {
