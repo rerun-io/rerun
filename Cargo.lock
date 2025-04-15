@@ -6943,7 +6943,11 @@ version = "0.23.0-alpha.3+dev"
 dependencies = [
  "ahash",
  "arrow",
+ "crossbeam-channel",
+ "datafusion",
  "egui",
+ "egui_dnd",
+ "egui_table",
  "re_arrow_util",
  "re_chunk_store",
  "re_dataframe",
@@ -6953,7 +6957,9 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_viewer_context",
+ "serde",
  "thiserror 1.0.65",
 ]
 
@@ -7345,9 +7351,7 @@ version = "0.23.0-alpha.3+dev"
 dependencies = [
  "ahash",
  "arrow",
- "crossbeam-channel",
  "egui",
- "egui_dnd",
  "egui_table",
  "itertools 0.14.0",
  "once_cell",
