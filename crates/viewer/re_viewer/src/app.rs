@@ -2205,7 +2205,7 @@ impl eframe::App for App {
             );
 
             let app_blueprint = AppBlueprint::new(
-                store_context.as_ref(),
+                store_context.as_ref().map(|ctx| ctx.blueprint),
                 &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active

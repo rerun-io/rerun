@@ -5,7 +5,10 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{blueprint::components::PanelState, ComponentBatch};
-use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    blueprint_timepoint_for_writes, CommandSender, StoreContext, SystemCommand,
+    SystemCommandSender as _,
+};
 
 const TOP_PANEL_PATH: &str = "top_panel";
 const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
@@ -14,7 +17,7 @@ const TIME_PANEL_PATH: &str = "time_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
-    store_ctx: Option<&'a StoreContext<'a>>,
+    blueprint_db: Option<&'a EntityDb>,
     is_narrow_screen: bool,
     panel_states: PanelStates,
     overrides: Option<PanelStateOverrides>,
@@ -30,15 +33,14 @@ pub struct PanelStates {
 
 impl<'a> AppBlueprint<'a> {
     pub fn new(
-        store_ctx: Option<&'a StoreContext<'_>>,
+        blueprint_db: Option<&'a EntityDb>,
         query: &LatestAtQuery,
         egui_ctx: &egui::Context,
         overrides: Option<PanelStateOverrides>,
     ) -> Self {
-        let blueprint_db = store_ctx.map(|ctx| ctx.blueprint);
         let screen_size = egui_ctx.screen_rect().size();
         let mut ret = Self {
-            store_ctx,
+            blueprint_db,
             is_narrow_screen: screen_size.x < 600.0,
             panel_states: PanelStates {
                 top: PanelState::Expanded,
@@ -62,6 +64,12 @@ impl<'a> AppBlueprint<'a> {
         };
 
         if let Some(blueprint_db) = blueprint_db {
+            debug_assert_eq!(
+                blueprint_db.store_kind(),
+                re_log_types::StoreKind::Blueprint,
+                "the entity db backing an app blueprint has to be a blueprint store."
+            );
+
             if let Some(state) = load_panel_state(&TOP_PANEL_PATH.into(), blueprint_db, query) {
                 ret.panel_states.top = state;
             }
@@ -214,10 +222,10 @@ impl AppBlueprint<'_> {
         value: PanelState,
         command_sender: &CommandSender,
     ) {
-        if let Some(store_ctx) = self.store_ctx {
+        if let Some(blueprint_db) = self.blueprint_db {
             let entity_path = EntityPath::from(panel_name);
 
-            let timepoint = store_ctx.blueprint_timepoint_for_writes();
+            let timepoint = blueprint_timepoint_for_writes(blueprint_db);
 
             let chunk = Chunk::builder(entity_path)
                 .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
@@ -225,7 +233,7 @@ impl AppBlueprint<'_> {
                 .expect("Failed to build chunk - incorrect number of instances for the component");
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
-                store_ctx.blueprint.store_id().clone(),
+                blueprint_db.store_id().clone(),
                 vec![chunk],
             ));
         }
