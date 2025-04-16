@@ -206,7 +206,7 @@ rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/c
 
 # Check that old .rrd files can still be read and understood.
 # See tests/assets/rrd/README.md for more.
-check-backwards-compatibility = { cmd = "cargo run --package rerun-cli --no-default-features --quiet rrd verify tests/assets/rrd/*.rrd" }
+check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features --quiet rrd verify" }
 
 rs-fmt = "cargo fmt --all"
 

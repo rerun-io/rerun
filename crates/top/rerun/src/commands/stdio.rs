@@ -44,7 +44,11 @@ pub fn read_rrd_streams_from_file_or_stdin(
     channel::Receiver<(InputSource, anyhow::Result<LogMsg>)>,
     channel::Receiver<u64>,
 ) {
-    let path_to_input_rrds = paths.iter().map(PathBuf::from).collect_vec();
+    let path_to_input_rrds = paths
+        .iter()
+        .filter(|s| !s.is_empty()) // Avoid a problem with `pixi run check-backwards-compatibility`
+        .map(PathBuf::from)
+        .collect_vec();
 
     // TODO(cmc): might want to make this configurable at some point.
     let (tx, rx) = crossbeam::channel::bounded(100);
