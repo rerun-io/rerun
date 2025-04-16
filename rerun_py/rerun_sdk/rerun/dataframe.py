@@ -105,7 +105,7 @@ def send_record_batch(batch: pa.RecordBatch, rec: Optional[RecordingStream] = No
                 archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
     for entity_path, archetype_set in archetypes.items():
         for archetype in archetype_set:
-            data[entity_path].append(IndicatorComponentBatch(archetype))
+            data[entity_path].append(IndicatorComponentBatch(archetype, length=batch.num_rows))
 
     for entity_path, columns in data.items():
         send_columns(

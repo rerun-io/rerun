@@ -181,6 +181,7 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "55.1", default-features = false }
+arrow-array = "55.1"
 async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"
@@ -220,7 +221,7 @@ fjadra = "0.2.1"
 flatbuffers = "25.2.10"
 futures = "0.3"
 futures-util = "0.3"
-getrandom = "0.2"
+getrandom = "0.3"
 glam = { version = "0.30.3", features = ["debug-glam-assert"] }
 glob = "0.3"
 gltf = "1.1"

@@ -96,7 +96,7 @@ notify.workspace = true
 # web
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = [
-  "js",
+  "wasm_js",
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
 js-sys.workspace = true
 wasm-bindgen-futures.workspace = true

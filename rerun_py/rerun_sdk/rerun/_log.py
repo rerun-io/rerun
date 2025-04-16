@@ -25,7 +25,7 @@ class IndicatorComponentBatch:
 
     data: pa.Array
 
-    def __init__(self, archetype_name: str) -> None:
+    def __init__(self, archetype_name: str, length: int | None) -> None:
         """
         Creates a new indicator component based on a given `archetype_name`.
 
@@ -33,9 +33,12 @@ class IndicatorComponentBatch:
         ----------
         archetype_name:
             The fully qualified name of the Archetype.
+        length:
+            The number of rows to create for the column.
 
         """
-        self.data = pa.nulls(1, type=pa.null())
+        length = length if length is not None else 1
+        self.data = pa.nulls(length, type=pa.null())
         assert not archetype_name.startswith("rerun.archetypes.rerun.archetypes."), (
             f"Bad archetype name '{archetype_name}' in IndicatorComponentBatch"
         )
