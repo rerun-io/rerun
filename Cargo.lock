@@ -6956,6 +6956,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "serde",
+ "static_assertions",
  "thiserror 1.0.65",
 ]
 

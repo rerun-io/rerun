@@ -37,3 +37,7 @@ egui.workspace = true
 egui_dnd.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+
+
+[dev-dependencies]
+static_assertions.workspace = true
