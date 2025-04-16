@@ -33,8 +33,11 @@ re_viewer_context.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
-crossbeam-channel.workspace = true
 egui.workspace = true
 egui_dnd.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+
+
+[dev-dependencies]
+static_assertions.workspace = true
