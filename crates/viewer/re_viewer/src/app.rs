@@ -402,11 +402,10 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
-        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
+            self.run_ui_command(egui_ctx, app_blueprint, store_context, cmd);
         }
     }
 
@@ -427,10 +426,17 @@ impl App {
                 store_hub.close_app(&app_id);
             }
 
-            SystemCommand::ActivateEntry(entry) => {
-                self.state.navigation.replace(DisplayMode::LocalRecordings);
-                store_hub.set_active_entry(entry);
-            }
+            SystemCommand::ActivateEntry(entry) => match &entry {
+                StoreHubEntry::Recording { store_id } => {
+                    self.state.navigation.replace(DisplayMode::LocalRecordings);
+                    store_hub.set_active_recording_id(store_id.clone());
+                }
+                StoreHubEntry::Table { table_id } => {
+                    self.state
+                        .navigation
+                        .replace(DisplayMode::LocalTable(table_id.clone()));
+                }
+            },
 
             SystemCommand::CloseEntry(entry) => {
                 // TODO(#9464): Find a better successor here.
@@ -606,10 +612,15 @@ impl App {
                             .replace(DisplayMode::RedapServer(origin.clone()));
                     }
 
+                    Item::TableId(table_id) => {
+                        self.state
+                            .navigation
+                            .replace(DisplayMode::LocalTable(table_id.clone()));
+                    }
+
                     Item::AppId(_)
                     | Item::DataSource(_)
                     | Item::StoreId(_)
-                    | Item::TableId(_)
                     | Item::InstancePath(_)
                     | Item::ComponentPath(_)
                     | Item::Container(_)
@@ -713,33 +724,33 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
-        storage_ctx: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
         let mut force_store_info = false;
-        let active_application_id = storage_ctx
-            .hub
-            .active_app()
+        let active_application_id = store_context
+            .map(|ctx| &ctx.app_id)
             // Don't redirect data to the welcome screen.
             .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
             .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
             .or_else(|| Some(ApplicationId::random()));
-        let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
-            // When we're on the welcome screen, there is no recording ID to recommend.
-            // But we want one, otherwise multiple things being dropped simultaneously on the
-            // welcome screen would end up in different recordings!
+        let active_recording_id = store_context
+            .map(|ctx| ctx.recording.store_id().clone())
+            .or_else(|| {
+                // When we're on the welcome screen, there is no recording ID to recommend.
+                // But we want one, otherwise multiple things being dropped simultaneously on the
+                // welcome screen would end up in different recordings!
 
-            // We're creating a recording just-in-time, directly from the viewer.
-            // We need those store infos or the data will just be silently ignored.
-            force_store_info = true;
+                // We're creating a recording just-in-time, directly from the viewer.
+                // We need those store infos or the data will just be silently ignored.
+                force_store_info = true;
 
-            // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
-            // this can only be a recording.
-            Some(re_log_types::StoreId::random(StoreKind::Recording))
-        });
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                Some(re_log_types::StoreId::random(StoreKind::Recording))
+            });
 
         match cmd {
             UICommand::SaveRecording => {
@@ -922,7 +933,7 @@ impl App {
                     self.state.navigation.pop();
                 }
 
-                DisplayMode::Settings => {
+                DisplayMode::Settings | DisplayMode::LocalTable(_) => {
                     re_log::debug!(
                         "Cannot toggle chunk store browser from current display mode: {:?}",
                         self.state.navigation.peek()
@@ -1380,10 +1391,6 @@ impl App {
                         } else {
                             re_log::debug!("Inserted table store with id: `{}`", table.id);
                         };
-                        store_hub.set_active_entry(table.id.clone().into());
-
-
-                        // Also select the new recording:
                         self.command_sender.send_system(SystemCommand::SetSelection(
                             re_viewer_context::Item::TableId(table.id.clone()),
                         ));
@@ -2227,12 +2234,7 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            self.run_pending_ui_commands(
-                egui_ctx,
-                &app_blueprint,
-                &storage_context,
-                store_context.as_ref(),
-            );
+            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

@@ -345,6 +345,7 @@ impl TestContext {
             },
             store_context: &store_context,
             active_redap_entry: None,
+            active_table_id: None,
             storage_context: &StorageContext {
                 hub: &Default::default(),
                 bundle: &Default::default(),

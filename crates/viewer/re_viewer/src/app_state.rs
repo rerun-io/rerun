@@ -11,9 +11,9 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_uri::Origin;
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState, RecordingConfig,
-    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender,
+    ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
+    RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
     SystemCommandSender as _, TableContext, ViewClassExt as _, ViewClassRegistry, ViewStates,
     ViewerContext,
 };
@@ -323,6 +323,10 @@ impl AppState {
                     blueprint_query: &blueprint_query,
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
+                    active_table_id: match navigation.peek() {
+                        DisplayMode::LocalTable(name) => Some(name),
+                        _ => None,
+                    },
                     active_redap_entry: match navigation.peek() {
                         DisplayMode::RedapEntry(id) => Some(id),
                         _ => None,
@@ -405,6 +409,10 @@ impl AppState {
                     blueprint_query: &blueprint_query,
                     focused_item,
                     drag_and_drop_manager: &drag_and_drop_manager,
+                    active_table_id: match self.navigation.peek() {
+                        DisplayMode::LocalTable(name) => Some(name),
+                        _ => None,
+                    },
                     active_redap_entry: match self.navigation.peek() {
                         DisplayMode::RedapEntry(id) => Some(id),
                         _ => None,
@@ -466,6 +474,18 @@ impl AppState {
                     }
                 }
 
+                // TODO(grtlr): We override the app blueprint, until we have proper blueprint support for tables.
+                let app_blueprint = if matches!(display_mode, DisplayMode::LocalTable(..)) {
+                    &AppBlueprint::new(
+                        None,
+                        &LatestAtQuery::latest(blueprint_timeline()),
+                        &egui_ctx,
+                        None,
+                    )
+                } else {
+                    app_blueprint
+                };
+
                 //
                 // Time panel
                 //
@@ -521,6 +541,7 @@ impl AppState {
 
                         match display_mode {
                             DisplayMode::LocalRecordings
+                            | DisplayMode::LocalTable(..)
                             | DisplayMode::RedapEntry(..)
                             | DisplayMode::RedapServer(..) => {
                                 let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
@@ -583,35 +604,32 @@ impl AppState {
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
                         match display_mode {
-                            DisplayMode::LocalRecordings => {
-                                if let Some(table_id) = ctx.storage_context.hub.active_table_id() {
-                                    if let Some(store) = ctx.storage_context.tables.get(table_id) {
-                                        let context = TableContext {
-                                            table_id: table_id.clone(),
-                                            store,
-                                        };
-                                        crate::ui::table_ui(&ctx, ui, &context);
-                                    } else {
-                                        re_log::error_once!(
-                                            "Could not find batch store for table id {}",
-                                            table_id
-                                        );
-                                    }
+                            DisplayMode::LocalTable(table_id) => {
+                                if let Some(store) = ctx.storage_context.tables.get(table_id) {
+                                    let context = TableContext {
+                                        table_id: table_id.clone(),
+                                        store,
+                                    };
+                                    crate::ui::table_ui(&ctx, ui, &context);
                                 } else {
-                                    // If we are here and the "default" app id is selected,
-                                    // we should instead switch to the welcome screen.
-                                    if ctx.store_context.app_id == StoreHub::welcome_screen_app_id()
-                                    {
-                                        ctx.command_sender().send_system(
-                                            SystemCommand::ChangeDisplayMode(
-                                                DisplayMode::RedapServer(
-                                                    re_redap_browser::EXAMPLES_ORIGIN.clone(),
-                                                ),
-                                            ),
-                                        );
-                                    }
-                                    viewport_ui.viewport_ui(ui, &ctx, view_states);
+                                    re_log::error_once!(
+                                        "Could not find batch store for table id {}",
+                                        table_id
+                                    );
                                 }
+                            }
+
+                            DisplayMode::LocalRecordings => {
+                                // If we are here and the "default" app id is selected,
+                                // we should instead switch to the welcome screen.
+                                if ctx.store_context.app_id == StoreHub::welcome_screen_app_id() {
+                                    ctx.command_sender().send_system(
+                                        SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                                            re_redap_browser::EXAMPLES_ORIGIN.clone(),
+                                        )),
+                                    );
+                                }
+                                viewport_ui.viewport_ui(ui, &ctx, view_states);
                             }
 
                             DisplayMode::RedapEntry(entry) => {
