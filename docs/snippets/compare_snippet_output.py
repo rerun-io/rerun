@@ -55,8 +55,8 @@ class Example:
                 ]
         return []
 
-    def output_path(self, language: str) -> Path:
-        return Path(f"docs/snippets/all/{self.subdir}/{self.name}_{language}.rrd")
+    def output_path(self, language: str) -> str:
+        return f"docs/snippets/all/{self.subdir}/{self.name}_{language}.rrd"
 
     def backwards_compatibility_path(self) -> Path:
         """
