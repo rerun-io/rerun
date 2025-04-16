@@ -1,0 +1,1 @@
+pub mod bounded_image_extraction;

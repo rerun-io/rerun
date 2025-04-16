@@ -2,6 +2,7 @@
 
 mod dataframe_query_provider;
 mod datafusion_connector;
+pub mod functions;
 mod grpc_streaming_provider;
 mod partition_table;
 mod search_provider;

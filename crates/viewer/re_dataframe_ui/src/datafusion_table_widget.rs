@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use datafusion::catalog::TableReference;
+use datafusion::sql::TableReference;
 use datafusion::prelude::SessionContext;
 use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
