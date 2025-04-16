@@ -9,9 +9,9 @@ import glob
 import multiprocessing
 import os
 import shutil
+import subprocess
 import sys
 import time
-import subprocess
 from pathlib import Path
 from typing import Any, cast
 
