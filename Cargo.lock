@@ -6601,6 +6601,7 @@ dependencies = [
 name = "re_arrow_util"
 version = "0.23.0-alpha.3+dev"
 dependencies = [
+ "anyhow",
  "arrow",
  "half",
  "insta",

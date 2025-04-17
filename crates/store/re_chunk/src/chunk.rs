@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
+use anyhow::Context as _;
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
@@ -148,10 +149,8 @@ impl ChunkComponents {
                 let Some(right_array) = right_map.get(descr) else {
                     anyhow::bail!("rhs {comp_name:?} is missing {descr:?}");
                 };
-                if !re_arrow_util::approximate_equals(&left_array.to_data(), &right_array.to_data())
-                {
-                    anyhow::bail!("Difference in {comp_name:?} {descr:?}");
-                }
+                re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
+                    .with_context(|| format!("Component {comp_name:?}"))?;
             }
         }
         Ok(())

@@ -26,6 +26,7 @@ all-features = true
 re_log.workspace = true
 re_tracing.workspace = true
 
+anyhow.workspace = true
 arrow.workspace = true
 half.workspace = true
 itertools.workspace = true

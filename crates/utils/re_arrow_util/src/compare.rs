@@ -1,72 +1,38 @@
+use anyhow::{bail, ensure, Context as _};
 use half::f16;
 use itertools::izip;
 
+use crate::format_data_type;
+
 /// Are two arrays equal, ignoring small numeric differences?
-pub fn approximate_equals(left: &arrow::array::ArrayData, right: &arrow::array::ArrayData) -> bool {
-    if left.data_type() != right.data_type()
-        || left.len() != right.len()
-        || left.offset() != right.offset()
-    {
-        return false;
-    }
+///
+/// Returns `Ok` if similar.
+/// If there is a difference, a description of that difference is returned in `Err`.
+/// We use [`anyhow`] to provide context.
+pub fn ensure_similar(
+    left: &arrow::array::ArrayData,
+    right: &arrow::array::ArrayData,
+) -> anyhow::Result<()> {
+    ensure!(left.data_type() == right.data_type());
 
     let data_type = left.data_type();
 
-    if left.null_count() != right.null_count() {
-        return false;
-    }
-    if left.nulls() != right.nulls() {
-        return false;
-    }
+    ensure!(left.len() == right.len());
+    ensure!(left.offset() == right.offset());
+    ensure!(left.null_count() == right.null_count());
+    ensure!(left.nulls() == right.nulls());
 
     {
         // Compare buffers:
         let left_buffers = left.buffers();
         let right_buffers = right.buffers();
 
-        if left_buffers.len() != right_buffers.len() {
-            return false;
-        }
+        ensure!(left_buffers.len() == right_buffers.len());
 
         for (i, (left_buff, right_buff)) in izip!(left_buffers, right_buffers).enumerate() {
-            if left_buff.len() != right_buff.len() {
-                return false;
-            }
-
-            if data_type == &arrow::datatypes::DataType::Float16 {
-                // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
-                let left_floats = left_buff.typed_data::<f16>();
-                let right_floats = right_buff.typed_data::<f16>();
-                for (&l, &r) in izip!(left_floats, right_floats) {
-                    if !almost_equal_f64(l.to_f64(), r.to_f64(), 1e-3) {
-                        re_log::debug!("Significant f16 difference: {l} vs {r}");
-                        return false;
-                    }
-                }
-            } else if data_type == &arrow::datatypes::DataType::Float32 {
-                // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
-                let left_floats = left_buff.typed_data::<f32>();
-                let right_floats = right_buff.typed_data::<f32>();
-                for (&l, &r) in izip!(left_floats, right_floats) {
-                    if !almost_equal_f64(l as f64, r as f64, 1e-3) {
-                        re_log::debug!("Significant f32 difference: {l} vs {r}");
-                        return false;
-                    }
-                }
-            } else if data_type == &arrow::datatypes::DataType::Float64 {
-                // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
-                let left_floats = left_buff.typed_data::<f64>();
-                let right_floats = right_buff.typed_data::<f64>();
-                for (&l, &r) in izip!(left_floats, right_floats) {
-                    if !almost_equal_f64(l, r, 1e-8) {
-                        re_log::debug!("Significant f64 difference: {l} vs {r}");
-                        return false;
-                    }
-                }
-            } else if left_buff != right_buff {
-                re_log::debug!("Difference in buffer {i} of array of datatype {data_type:?}");
-                return false;
-            }
+            ensure_buffers_equal(left_buff, right_buff, data_type)
+                .with_context(|| format!("Datatype {}", format_data_type(data_type)))
+                .with_context(|| format!("Buffer {i}"))?;
         }
     }
 
@@ -75,18 +41,57 @@ pub fn approximate_equals(left: &arrow::array::ArrayData, right: &arrow::array::
         let left_children = left.child_data();
         let right_children = right.child_data();
 
-        if left_children.len() != right_children.len() {
-            return false;
-        }
+        ensure!(left_children.len() == right_children.len());
 
-        for (left_child, right_child) in izip!(left_children, right_children) {
-            if !approximate_equals(left_child, right_child) {
-                return false;
-            }
+        for (i, (left_child, right_child)) in izip!(left_children, right_children).enumerate() {
+            ensure_similar(left_child, right_child)
+                .with_context(|| format!("Datatype {}", format_data_type(data_type)))
+                .with_context(|| format!("Child {i}"))?;
         }
     }
 
-    true
+    Ok(())
+}
+
+fn ensure_buffers_equal(
+    left_buff: &arrow::buffer::Buffer,
+    right_buff: &arrow::buffer::Buffer,
+    data_type: &arrow::datatypes::DataType,
+) -> anyhow::Result<()> {
+    ensure!(left_buff.len() == right_buff.len());
+
+    if data_type == &arrow::datatypes::DataType::Float16 {
+        // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
+        let left_floats = left_buff.typed_data::<f16>();
+        let right_floats = right_buff.typed_data::<f16>();
+        for (&l, &r) in izip!(left_floats, right_floats) {
+            if !almost_equal_f64(l.to_f64(), r.to_f64(), 1e-3) {
+                bail!("Significant f16 difference: {l} vs {r}");
+            }
+        }
+    } else if data_type == &arrow::datatypes::DataType::Float32 {
+        // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
+        let left_floats = left_buff.typed_data::<f32>();
+        let right_floats = right_buff.typed_data::<f32>();
+        for (&l, &r) in izip!(left_floats, right_floats) {
+            if !almost_equal_f64(l as f64, r as f64, 1e-3) {
+                bail!("Significant f32 difference: {l} vs {r}");
+            }
+        }
+    } else if data_type == &arrow::datatypes::DataType::Float64 {
+        // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
+        let left_floats = left_buff.typed_data::<f64>();
+        let right_floats = right_buff.typed_data::<f64>();
+        for (&l, &r) in izip!(left_floats, right_floats) {
+            if !almost_equal_f64(l, r, 1e-8) {
+                bail!("Significant f64 difference: {l} vs {r}");
+            }
+        }
+    } else {
+        ensure!(left_buff == right_buff);
+    }
+
+    Ok(())
 }
 
 /// Return true when arguments are the same within some rounding error.
