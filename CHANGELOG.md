@@ -2,11 +2,29 @@
 
 ## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0)
 
+📖 Release blogpost: TODO: add link
+🧳 Migration guide: TODO: add link
+
+Logging multiple scalars under a single entity:
+
+```py
+rr.log("gyroscope", rr.Scalars(measurement))
+```
+<img width="70%" src="https://github.com/user-attachments/assets/26a23ae1-6bd9-4531-91b0-8221b622c3d0">
+
+Added support for callbacks:
+
 https://github.com/user-attachments/assets/f064403f-5d34-4b55-83f9-12db518f7ddd
 
-📖 Release blogpost: TODO: add link
+Attaching properties (metadata) to recordings (and setting the name of a recording):
 
-🧳 Migration guide: TODO: add link
+<img width="284" alt="Image" src="https://github.com/user-attachments/assets/1d67cb7f-76ac-4cb3-8e1d-84fc570a9442" />
+<img width="315" alt="Image" src="https://github.com/user-attachments/assets/3a57dc1f-e8fe-470e-b95a-4e0f6ee0b817" />
+<img width="173" alt="Image" src="https://github.com/user-attachments/assets/bc6326c2-226e-4835-91d5-416045b6c5b1" />
+
+Sending tables (dataframes to the viewer):
+
+<img width="721" alt="Image" src="https://github.com/user-attachments/assets/eb80f506-ab36-4e64-ae17-0ad9b2cd7ab4" />
 
 ### ✨ Overview & highlights
  
@@ -31,7 +49,7 @@ TODO: Add link to BW-compat blog post
 - `.rrd` files from previous releases cannot be loaded anymore.
 - Removed unsupported connection methods from the SDKs.
 - The connection URLs have changed and now require a `rerun://` (TLS) or `rerun+http://` (unencrypted) prefix.
-- Several changes to our logging SDKs (timelines, time units, ...)
+- Several changes to our logging SDKs (timelines, time units, …)
 
 You can find more information in our migration guide.
 
