@@ -1,7 +1,161 @@
 # Rerun changelog
 
-<!-- Can't compare 0.21.1 with HEAD -->
-## [Unreleased](https://github.com/rerun-io/rerun/compare/0.21.0...HEAD)
+## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0)
+
+TODO: add link to release video
+
+📖 Release blogpost: TODO: add link
+
+🧳 Migration guide: TODO: add link
+
+### ✨ Overview & highlights
+TODO: fill in
+
+### ⚠️ Breaking changes
+TODO: fill in
+🧳 Migration guide: TODO: add link (yes, again)
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Migrate file format to protobuf [#8995](https://github.com/rerun-io/rerun/pull/8995)
+- Move `rerun.components.blueprint.Visible` to `rerun.components.Visible` [#9067](https://github.com/rerun-io/rerun/pull/9067)
+- Infer column partition size from shape in `Scalar.columns()` [#9068](https://github.com/rerun-io/rerun/pull/9068)
+- Infer partition size for FixedSizeList-backed components [#9210](https://github.com/rerun-io/rerun/pull/9210)
+- Recording properties for naming recordings and adding information [#9249](https://github.com/rerun-io/rerun/pull/9249)
+- Provide APIs to log arbitrary data to recording properties [#9316](https://github.com/rerun-io/rerun/pull/9316)
+- Deprecate `SeriesLine`/`SeriesPoint`/`Scalar` in favor of `SeriesLines`/`SeriesPoints`/`Scalars` [#9338](https://github.com/rerun-io/rerun/pull/9338)
+- Add `serve_grpc` API [#9447](https://github.com/rerun-io/rerun/pull/9447)
+- Add experimental `send_recording` python api [#9148](https://github.com/rerun-io/rerun/pull/9148)
+- Implement `send_table` in `re_grpc_server` and `re_viewer` [#9510](https://github.com/rerun-io/rerun/pull/9510)
+- Example showcasing `send_table` from notebooks [#9522](https://github.com/rerun-io/rerun/pull/9522)
+- Add `rr.serve_web_viewer` [#9540](https://github.com/rerun-io/rerun/pull/9540)
+- Add experimental `send_table` to Python SDK [#9538](https://github.com/rerun-io/rerun/pull/9538)
+- Document `send_table` in the Python SDK [#9589](https://github.com/rerun-io/rerun/pull/9589)
+- Fix handling of custom indicator components [#9755](https://github.com/rerun-io/rerun/pull/9755)
+
+#### 🌊 C++ API
+- Migrate SDK comms to gRPC [#8838](https://github.com/rerun-io/rerun/pull/8838)
+- New C++ API for timestamp/duration indices [#9200](https://github.com/rerun-io/rerun/pull/9200)
+- Remove deprecated C++ `connect` APIs [#9212](https://github.com/rerun-io/rerun/pull/9212)
+- Add `detach_process` option to `spawn` [#9400](https://github.com/rerun-io/rerun/pull/9400) (thanks [@imstevenpmwork](https://github.com/imstevenpmwork)!)
+- Consistent constructor naming of `Asset3D` across C++ and Rust [#9239](https://github.com/rerun-io/rerun/pull/9239) (thanks [@abhishek47kashyap](https://github.com/abhishek47kashyap)!)
+- Use consistent time unit names for our API [#9343](https://github.com/rerun-io/rerun/pull/9343)
+- CMake: Use `find_dependency` for Arrow [#9548](https://github.com/rerun-io/rerun/pull/9548) (thanks [@BillyONeal](https://github.com/BillyONeal)!)
+- Set `RERUN_ARROW_LINK_SHARED_DEFAULT` based on found Arrow build [#9550](https://github.com/rerun-io/rerun/pull/9550) (thanks [@BillyONeal](https://github.com/BillyONeal)!)
+
+#### 🐍 Python API
+- Migrate SDK comms to gRPC [#8838](https://github.com/rerun-io/rerun/pull/8838)
+- Update maturin to 1.8.1 and fix `pyproject.toml` [#9104](https://github.com/rerun-io/rerun/pull/9104)
+- Add `rr.set_index` to replace `rr.set_time_*` [#9166](https://github.com/rerun-io/rerun/pull/9166)
+- Fix support for numpy-2 [#9109](https://github.com/rerun-io/rerun/pull/9109)
+- Add `rr.IndexColumn` [#9179](https://github.com/rerun-io/rerun/pull/9179)
+- Python SDK spring cleaning: 3.9, no more monkey patching, more lints [#9182](https://github.com/rerun-io/rerun/pull/9182)
+- Enable a bunch of `ruff` lints [#9201](https://github.com/rerun-io/rerun/pull/9201)
+- Remove deprecated Python APIs: `log_components`, `connect`, `connect_tcp` [#9197](https://github.com/rerun-io/rerun/pull/9197)
+- Remove deprecated `rr.serve()` [#9207](https://github.com/rerun-io/rerun/pull/9207)
+- Deprecate `rr.new_recording()` in favour of `rr.RecordingStream()` and improve type checking of the Rust bindings [#9206](https://github.com/rerun-io/rerun/pull/9206)
+- Archetype based overrides & defaults [#9209](https://github.com/rerun-io/rerun/pull/9209)
+- Fix several typing annotations in the SDK and run mypy on snippets [#9260](https://github.com/rerun-io/rerun/pull/9260)
+- Correct truncation of AnyValues when using strings or bytes [#9269](https://github.com/rerun-io/rerun/pull/9269)
+- New `EntityBehavior` archetype for easy `visible`/`interactive` blueprint overrides [#9281](https://github.com/rerun-io/rerun/pull/9281)
+- Fix the string representation of archetypes [#9297](https://github.com/rerun-io/rerun/pull/9297)
+- Initial python wrapper for the new catalog API [#9301](https://github.com/rerun-io/rerun/pull/9301)
+- Change signature of `set_time_ctrl` to match `set_time` [#9342](https://github.com/rerun-io/rerun/pull/9342)
+- Add `detach_process` option to `spawn` [#9400](https://github.com/rerun-io/rerun/pull/9400) (thanks [@imstevenpmwork](https://github.com/imstevenpmwork)!)
+- Use consistent time unit names for our API [#9343](https://github.com/rerun-io/rerun/pull/9343)
+- Allow passing url to notebook viewer [#9493](https://github.com/rerun-io/rerun/pull/9493)
+- Import `rerun.notebook` lazily [#9557](https://github.com/rerun-io/rerun/pull/9557)
+- Fix `Mat3x3` shape inference in `.columns` api [#9569](https://github.com/rerun-io/rerun/pull/9569)
+- Cleanup `rerun.utilities` and remove unused utilities [#9759](https://github.com/rerun-io/rerun/pull/9759)
+
+#### 🦀 Rust API
+- Migrate SDK comms to gRPC [#8838](https://github.com/rerun-io/rerun/pull/8838)
+- Document default-log level change [#8988](https://github.com/rerun-io/rerun/pull/8988)
+- Transposed `RecordBatch` formatter and other niceties [#9056](https://github.com/rerun-io/rerun/pull/9056)
+- Fix `insta` crate leaking into regular (non-testing) builds [#9092](https://github.com/rerun-io/rerun/pull/9092)
+- Update MSRV to 1.84 [#9216](https://github.com/rerun-io/rerun/pull/9216)
+- Remove deprecated Rust `connect` APIs [#9219](https://github.com/rerun-io/rerun/pull/9219)
+- Introduce `IndexCell` [#9226](https://github.com/rerun-io/rerun/pull/9226)
+- Add `RecordingStream::set_index` [#9236](https://github.com/rerun-io/rerun/pull/9236)
+- Add Rust Viewer Callbacks example [#9346](https://github.com/rerun-io/rerun/pull/9346)
+- Make `BinaryStream::read` produce full RRD files [#9352](https://github.com/rerun-io/rerun/pull/9352)
+- Add `detach_process` option to `spawn` [#9400](https://github.com/rerun-io/rerun/pull/9400) (thanks [@imstevenpmwork](https://github.com/imstevenpmwork)!)
+- Consistent constructor naming of `Asset3D` across C++ and Rust [#9239](https://github.com/rerun-io/rerun/pull/9239) (thanks [@abhishek47kashyap](https://github.com/abhishek47kashyap)!)
+- Use consistent time unit names for our API [#9343](https://github.com/rerun-io/rerun/pull/9343)
+
+#### 🪳 Bug fixes
+- Fix time series marker sizes not being able to vary over time [#9035](https://github.com/rerun-io/rerun/pull/9035)
+- Fix shader compilation failure in Chrome 131 [#9152](https://github.com/rerun-io/rerun/pull/9152) (thanks [@yakunouyang](https://github.com/yakunouyang)!)
+- Fix setting visible time range from overrides [#9151](https://github.com/rerun-io/rerun/pull/9151)
+- Speed up 2d spawn heuristic for many entities & fix heuristic creating overlapping views for `EncodedImage` [#9308](https://github.com/rerun-io/rerun/pull/9308)
+- Fix time series display range being affected by invisible plots [#9353](https://github.com/rerun-io/rerun/pull/9353)
+- Improve `rerun.notebook.Viewer` constructor [#9495](https://github.com/rerun-io/rerun/pull/9495)
+
+#### 🌁 Viewer improvements
+- Make `SeriesLine` visualizer work with several scalars per time [#9033](https://github.com/rerun-io/rerun/pull/9033)
+- Load depth images from Le Robot datasets [#9049](https://github.com/rerun-io/rerun/pull/9049)
+- Fix inconsistencies in plot highlights [#9061](https://github.com/rerun-io/rerun/pull/9061)
+- Add command palette action for resetting to the default blueprint [#9088](https://github.com/rerun-io/rerun/pull/9088)
+- Plot series visibility separarate from entity visibility, handle multi-series visibility [#9079](https://github.com/rerun-io/rerun/pull/9079)
+- Support Unitree LeRobot dataset naming format [#9100](https://github.com/rerun-io/rerun/pull/9100)
+- Add context menu action to copy entity paths to clipboard [#9137](https://github.com/rerun-io/rerun/pull/9137)
+- Copy description of selection (entity path, store id, etc.) via `cmd/ctrl + c` [#9172](https://github.com/rerun-io/rerun/pull/9172)
+- Editable time control & time context menus [#9174](https://github.com/rerun-io/rerun/pull/9174)
+- Check dataset version when loading LeRobot dataset [#9233](https://github.com/rerun-io/rerun/pull/9233)
+- Enable scalar arrays per time point for scatter plots [#9327](https://github.com/rerun-io/rerun/pull/9327)
+- Double clicking plots focuses them now in other panels [#9333](https://github.com/rerun-io/rerun/pull/9333)
+- Use multi-dimensional scalar values when loading LeRobot dataset [#9402](https://github.com/rerun-io/rerun/pull/9402)
+- Infer image/video channel index from LeRobot metadata [#9435](https://github.com/rerun-io/rerun/pull/9435)
+- Improve view heuristics for time series plot [#9587](https://github.com/rerun-io/rerun/pull/9587)
+
+#### 🧑‍🏫 Examples
+- Add example for python notebook with partial & columnar updates [#8956](https://github.com/rerun-io/rerun/pull/8956)
+- IMU data example [#9102](https://github.com/rerun-io/rerun/pull/9102)
+- Add Mast3r_slam Example [#9242](https://github.com/rerun-io/rerun/pull/9242) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+
+#### 📚 Docs
+- Add link to Snap Store in Gettting Started [#8972](https://github.com/rerun-io/rerun/pull/8972) (thanks [@artivis](https://github.com/artivis)!)
+- Document testing in Rerun [#8989](https://github.com/rerun-io/rerun/pull/8989)
+- Fix rustdocs for `re_video` [#9295](https://github.com/rerun-io/rerun/pull/9295)
+- Callbacks: Update APIs, improve docs [#9312](https://github.com/rerun-io/rerun/pull/9312)
+- Update `__` as reserved entity path in docs [#9387](https://github.com/rerun-io/rerun/pull/9387)
+- Update cpp/eigen_opencv README snippets [#9463](https://github.com/rerun-io/rerun/pull/9463) (thanks [@ExpertOfNil](https://github.com/ExpertOfNil)!)
+- Include field names in Archetype docs [#9563](https://github.com/rerun-io/rerun/pull/9563)
+- Unify viewer callbacks into a single `Event` interface [#9739](https://github.com/rerun-io/rerun/pull/9739)
+
+#### 🖼 UI improvements
+- Improve `redap://` connection UX and error messages [#9045](https://github.com/rerun-io/rerun/pull/9045)
+- First iteration of a dedicated UI and communication for the Redap server/catalog/collection browser [#9018](https://github.com/rerun-io/rerun/pull/9018)
+- Persist servers and allow adding/removing them from the UI [#9086](https://github.com/rerun-io/rerun/pull/9086)
+- Show EXIF data for JPEG/TIFF images [#9153](https://github.com/rerun-io/rerun/pull/9153)
+- Add entity search to the add/remove entity modal [#9120](https://github.com/rerun-io/rerun/pull/9120)
+- Streamline the help view shortcuts with the shortcuts in the menu [#9268](https://github.com/rerun-io/rerun/pull/9268)
+- Group open recordings by origin, dataset/appid and examples [#9377](https://github.com/rerun-io/rerun/pull/9377)
+- Implement basic UI to display recording properties [#9381](https://github.com/rerun-io/rerun/pull/9381)
+- Better distinction and explanation of reserved namespaces in the UI [#9390](https://github.com/rerun-io/rerun/pull/9390)
+- Add `TableStore` for table/dataframe entries + basic UI [#9437](https://github.com/rerun-io/rerun/pull/9437)
+- Display thumbnail in tables by generating content-based hash for `Blob` components [#9500](https://github.com/rerun-io/rerun/pull/9500)
+- Do not hide all entities when the search is active but empty [#9734](https://github.com/rerun-io/rerun/pull/9734)
+
+#### 🕸️ Web
+- Add selection change and time(line) change callbacks to Jupyter Notebook and JS APIs [#9147](https://github.com/rerun-io/rerun/pull/9147)
+
+#### 🧑‍💻 Dev-experience
+- Run `mypy` on the contents of `scripts/` [#9214](https://github.com/rerun-io/rerun/pull/9214)
+- Fix Bazel build: shader reloading only on in Rerun workspace [#9414](https://github.com/rerun-io/rerun/pull/9414)
+
+#### 📦 Dependencies
+- Update egui to 0.31.1 [#9186](https://github.com/rerun-io/rerun/pull/9186)
+- feat: update arrow to 54 [#9259](https://github.com/rerun-io/rerun/pull/9259)
+
+#### 🤷‍ Other
+- Identify timelines uniquely by name (ignore type) [#9097](https://github.com/rerun-io/rerun/pull/9097)
+- Revert log level to `info` for everything except Python sdk [#9231](https://github.com/rerun-io/rerun/pull/9231)
+- Split `TimeType::Time`; changing dataloader API [#9292](https://github.com/rerun-io/rerun/pull/9292)
+- Remove unreleased attribute [0ec699aef5a08695e337a581ee6a2a1ccd2d01a3](https://github.com/rerun-io/rerun/commit/0ec699aef5a08695e337a581ee6a2a1ccd2d01a3)
+- Remove speculative-links [b0ea95e9d09dd14ff70264afb4027d6b33cc14af](https://github.com/rerun-io/rerun/commit/b0ea95e9d09dd14ff70264afb4027d6b33cc14af)
+- Fix scalars docs [6b7bf5f98527cb9622759a2dbb64e247d55deeca](https://github.com/rerun-io/rerun/commit/6b7bf5f98527cb9622759a2dbb64e247d55deeca)
 
 ## [0.22.1](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Bugfixes - 2025-02-20
 
