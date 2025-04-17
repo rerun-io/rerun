@@ -13,7 +13,7 @@ use crate::{
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
-use crate::{GlobalContext, StorageContext, StoreHub};
+use crate::{GlobalContext, Item, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -179,7 +179,18 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        let interacted_items = interacted_items.into().into_mono_instance_path_items(self);
+        let mut interacted_items = interacted_items.into().into_mono_instance_path_items(self);
+
+        // Double click always selects the entire entity.
+        if response.double_clicked() && interacted_items.len() == 1 {
+            if let Some(Item::DataResult(view_id, instance_path)) = interacted_items.first_item() {
+                interacted_items = ItemCollection::from(Item::DataResult(
+                    view_id.clone(),
+                    instance_path.entity_path.clone().into(),
+                ));
+            }
+        }
+
         let selection_state = self.selection_state();
 
         if response.hovered() {
