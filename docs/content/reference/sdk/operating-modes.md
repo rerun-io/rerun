@@ -59,12 +59,12 @@ To host a Rerun Web Viewer, you can use the `serve_web_viewer` function.
 * `serve_web_viewer` is not available.
 
 #### Python
-* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc?speculative-link)
-* [`rr.serve_web_viewer`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_web_viewer?speculative-link)
+* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc)
+* [`rr.serve_web_viewer`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_web_viewer)
 
 #### Rust
-* [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc?speculative-link)
-* [`RecordingStream::serve_web_viewer`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web_viewer?speculative-link)
+* [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc)
+* [`RecordingStream::serve_web_viewer`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web_viewer)
 
 
 ### `save`

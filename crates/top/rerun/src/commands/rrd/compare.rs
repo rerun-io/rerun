@@ -48,9 +48,9 @@ impl CompareCommand {
         let path_to_rrd2 = PathBuf::from(path_to_rrd2);
 
         let (app_id1, chunks1) =
-            compute_uber_table(&path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
+            load_chunks(&path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
         let (app_id2, chunks2) =
-            compute_uber_table(&path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
+            load_chunks(&path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
         if *full_dump {
             println!("{app_id1}");
@@ -132,7 +132,7 @@ impl CompareCommand {
 /// `Chunk`s.
 ///
 /// Fails if there are more than one data recordings present in the rrd file.
-fn compute_uber_table(
+fn load_chunks(
     path_to_rrd: &Path,
 ) -> anyhow::Result<(re_log_types::ApplicationId, Vec<Arc<re_chunk::Chunk>>)> {
     use re_entity_db::EntityDb;

@@ -15,9 +15,9 @@ A list of properties associated with a recording.
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `RecordingProperties`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1RecordingProperties.html?speculative-link)
- * 🐍 [Python API docs for `RecordingProperties`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.RecordingProperties)
- * 🦀 [Rust API docs for `RecordingProperties`](https://docs.rs/rerun/latest/rerun/archetypes/struct.RecordingProperties.html?speculative-link)
+ * 🌊 [C++ API docs for `RecordingProperties`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1RecordingProperties.html)
+ * 🐍 [Python API docs for `RecordingProperties`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.RecordingProperties)
+ * 🦀 [Rust API docs for `RecordingProperties`](https://docs.rs/rerun/latest/rerun/archetypes/struct.RecordingProperties.html)
 
 ## Example
 

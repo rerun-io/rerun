@@ -18,7 +18,7 @@ This is an example that shows how to use Rerun's C++ API to log and view [VRS](h
 
 # Used Rerun types
 
-[`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 # Background
 This C++ example demonstrates how to visualize VRS files with Rerun.

@@ -51,4 +51,4 @@ uint8
 ## Used by
 
 * [`SeriesPoint`](../archetypes/series_point.md)
-* [`SeriesPoints`](../archetypes/series_points.md?speculative-link)
+* [`SeriesPoints`](../archetypes/series_points.md)

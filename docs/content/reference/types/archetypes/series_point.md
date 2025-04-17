@@ -8,7 +8,7 @@ Define the style properties for a point series in a chart.
 
 This archetype only provides styling information and should be logged as static
 when possible. The underlying data needs to be logged to the same entity-path using
-[`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-link).
+[`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars).
 
 ## Fields
 ### Optional
