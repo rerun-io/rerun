@@ -1,23 +1,24 @@
 use arrow::array::{
-    ArrayRef, FixedSizeListArray, Float64Array, GenericListBuilder, ListArray,
-    NullBuilder, StructArray, UInt16Array,
+    ArrayRef, FixedSizeListArray, Float64Array, GenericListBuilder, Int64Array, ListArray,
+    NullBuilder, StringArray, StructArray, UInt16Array, UInt8Array,
 };
-use arrow::buffer::OffsetBuffer;
+use arrow::buffer::{NullBuffer, OffsetBuffer};
 use arrow::datatypes::{DataType, Field, Fields};
 use datafusion::common::{exec_datafusion_err, exec_err, Result as DataFusionResult};
 use datafusion::error::DataFusionError;
-use datafusion::logical_expr::{
-    ColumnarValue, ReturnFieldArgs, ScalarFunctionArgs, ScalarUDFImpl, Signature, TypeSignature,
-    Volatility,
-};
+use datafusion::logical_expr::{ColumnarValue, ReturnFieldArgs, ScalarFunctionArgs, ScalarUDFImpl, Signature, TypeSignature, Volatility};
 use itertools::multizip;
 use re_dataframe::external::re_chunk::ArrowArray as _;
 use re_types::components::ImageBuffer;
 use re_types::components::ImageFormat;
 use re_types_core::Loggable as _;
+use re_video::decode::FrameContent;
+use re_video::Frame;
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::thread::sleep;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct BoundedImageExtractionUdf {
@@ -41,15 +42,24 @@ impl BoundedImageExtractionUdf {
 
 fn create_input_datatypes() -> Vec<DataType> {
     vec![
+        // Frame ID
+        DataType::Int64,
+        // ClassId
         DataType::new_list(DataType::UInt16, true),
+        // Position2D
         DataType::new_list(
             DataType::FixedSizeList(Arc::new(Field::new("item", DataType::Float64, false)), 2),
             true,
         ),
+        // HalfSize2D
         DataType::new_list(
             DataType::FixedSizeList(Arc::new(Field::new("item", DataType::Float64, false)), 2),
             true,
         ),
+        // Video Blob
+        DataType::new_list(DataType::new_list(DataType::UInt8, false), true),
+        // MediaType
+        DataType::new_list(DataType::Utf8, true),
     ]
 }
 
@@ -101,7 +111,7 @@ fn create_output_fields(output_entity_path: &str) -> Vec<Field> {
         output_entity_path,
         "ImageFormat",
         Some("Image"),
-        None,
+        Some("format"),
         "data",
         false,
     ));
@@ -153,7 +163,7 @@ fn find_largest_detection(
     class_ids: &UInt16Array,
     centers: &FixedSizeListArray,
     half_sizes: &FixedSizeListArray,
-) -> Option<[u32; 4]> {
+) -> Option<[usize; 4]> {
     let result = multizip((class_ids.iter(), centers.iter(), half_sizes.iter()))
         .filter_map(|combined_iter| match combined_iter {
             (Some(class_id), Some(center), Some(half_size)) => {
@@ -167,6 +177,7 @@ fn find_largest_detection(
         })
         .max_by_key(|(_center, half_sizes)| {
             let Some(area_array) = half_sizes.as_any().downcast_ref::<Float64Array>() else {
+                println!("wrong type {}", half_sizes.data_type());
                 return 0;
             };
             // Since we can't find max of a float, this is good enough for what we're doing here
@@ -176,11 +187,150 @@ fn find_largest_detection(
     let best_center = result.0.as_any().downcast_ref::<Float64Array>()?;
     let best_half_size = result.1.as_any().downcast_ref::<Float64Array>()?;
     Some([
-        (best_center.value(0) - best_half_size.value(0)) as u32,
-        (best_center.value(1) - best_half_size.value(1)) as u32,
-        (best_center.value(0) + best_half_size.value(0)) as u32,
-        (best_center.value(1) + best_half_size.value(1)) as u32,
+        (best_center.value(0) - best_half_size.value(0)) as usize,
+        (best_center.value(1) - best_half_size.value(1)) as usize,
+        (best_center.value(0) + best_half_size.value(0)) as usize,
+        (best_center.value(1) + best_half_size.value(1)) as usize,
     ])
+}
+
+fn columnar_value_to_array_of_array<'a>(
+    columnar: &'a ColumnarValue,
+    name: &str,
+) -> DataFusionResult<&'a ListArray> {
+    let ColumnarValue::Array(array_ref) = columnar else {
+        exec_err!("Unexpect scalar columnar value for {name}")?
+    };
+    array_ref
+        .as_any()
+        .downcast_ref::<ListArray>()
+        .ok_or(exec_datafusion_err!("Incorrect array type for {name}"))
+}
+
+fn blob_to_frames(blob: &UInt8Array) -> DataFusionResult<Vec<Frame>> {
+    let buffer = blob.values().inner().as_ref();
+
+    let video = re_video::VideoData::load_mp4(buffer)
+        .map_err(|err| exec_datafusion_err!("Error loading mp4 from blob: {err}"))?;
+
+    let frames = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    let on_output = {
+        let frames = frames.clone();
+        move |frame| {
+            frames.lock().push(frame);
+        }
+    };
+
+    let mut decoder = re_video::decode::new_decoder(
+        "bounded_image_extraction_udf",
+        &video,
+        &re_video::decode::DecodeSettings::default(),
+        on_output,
+    )
+    .map_err(|err| exec_datafusion_err!("Error when creating decoder: {err}"))?;
+
+    for sample in &video.samples {
+        let chunk = sample
+            .get(buffer)
+            .ok_or(exec_datafusion_err!("Unable to get chunk to decode"))?;
+        decoder
+            .submit_chunk(chunk)
+            .map_err(|err| exec_datafusion_err!("Failed to submit chunk: {err}"))?;
+    }
+    decoder
+        .end_of_video()
+        .map_err(|err| exec_datafusion_err!("Failed to finish video: {err}"))?;
+
+    let mut has_all_samples = false;
+    while !has_all_samples {
+        let frames = frames.lock();
+        has_all_samples = frames.len() >= video.samples.len();
+        if !has_all_samples {
+            sleep(Duration::from_millis(100));
+        }
+    }
+
+    let mut frames = frames.lock();
+
+    // This will silently discard any frames that ffmpeg could not decode, so maybe not ideal
+    // but also probably shouldn't stop the whole UDF
+    Ok(frames.drain(..).filter_map(|f| f.ok()).collect())
+}
+
+fn create_image_chip(
+    class_of_interest: u16,
+    class_ids: &UInt16Array,
+    centers: &FixedSizeListArray,
+    half_sizes: &FixedSizeListArray,
+    frame: &Frame,
+) -> Option<image::ImageBuffer<image::Rgb<u8>, Vec<u8>>> {
+    let detection = find_largest_detection(class_of_interest, class_ids, centers, half_sizes)?;
+
+    if detection[2] > frame.content.width as usize || detection[3] > frame.content.height as usize {
+        return None;
+    }
+
+    let width = detection[2] - detection[0];
+    let height = detection[3] - detection[1];
+    let mut data = Vec::with_capacity(width * height);
+    for i in detection[0]..detection[2] {
+        for j in detection[1]..detection[3] {
+            let val = frame.content.data.get(i + (j * width))?;
+            data.push(*val);
+        }
+    }
+
+    Some(extract_rgb_image(detection, &frame.content))
+}
+
+fn extract_rgb_image(
+    detection: [usize; 4],
+    frame_content: &FrameContent,
+) -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+    let width = detection[2] - detection[0];
+    let height = detection[3] - detection[1];
+
+    // Create a new RGB image buffer
+    let mut img = image::ImageBuffer::new(width as u32, height as u32);
+
+    let image_area = frame_content.width as usize * frame_content.height as usize;
+    let u_start = image_area;
+    let v_start = u_start + image_area / 4;
+
+    let stride = frame_content.width as usize;
+    let y_data = &frame_content.data[0..u_start];
+    let u_data = &frame_content.data[u_start..v_start];
+    let v_data = &frame_content.data[v_start..];
+
+    for y in 0..height {
+        for x in 0..width {
+            let image_x = x + detection[0];
+            let image_y = y + detection[1];
+            let y_index = image_y * stride + image_x;
+
+            // For YUV420, U and V have half the resolution of Y
+            // Adjust indices according to your specific YUV format
+            let uv_index = (image_y / 2) * (stride / 2) + (image_x / 2);
+
+            let y_value = y_data[y_index] as f32;
+            let u_value = u_data[uv_index] as f32 - 128.0;
+            let v_value = v_data[uv_index] as f32 - 128.0;
+
+            // YUV to RGB conversion
+            let r = y_value + 1.5748 * v_value;
+            let g = y_value - 0.1873 * u_value - 0.4681 * v_value;
+            let b = y_value + 1.8556 * u_value;
+
+            // Clamp values to 0-255 range and convert to u8
+            let r = r.clamp(0.0, 255.0) as u8;
+            let g = g.clamp(0.0, 255.0) as u8;
+            let b = b.clamp(0.0, 255.0) as u8;
+
+            img.put_pixel(x as u32, y as u32, image::Rgb([r, g, b]));
+        }
+    }
+
+    img
 }
 
 impl ScalarUDFImpl for BoundedImageExtractionUdf {
@@ -197,13 +347,12 @@ impl ScalarUDFImpl for BoundedImageExtractionUdf {
     }
 
     fn return_type(&self, _arg_types: &[DataType]) -> DataFusionResult<DataType> {
-        exec_err!("use return_field_from_args instead of return_type")
+        exec_err!("use return_field_from_args instead")
     }
-
     fn return_field_from_args(&self, args: ReturnFieldArgs<'_>) -> DataFusionResult<Field> {
-        if args.arg_fields.len() != 3 {
+        if args.arg_fields.len() != 6 {
             exec_err!(
-                "UDF expects 3 arguments for components ClassId, Position2D, and HalfSize2D"
+                "UDF expects 6 arguments for Frame ID, ClassID, Position2D, HalfSize2D, Video Blob, and Video MediaType"
             )?;
         }
 
@@ -221,35 +370,61 @@ impl ScalarUDFImpl for BoundedImageExtractionUdf {
         // Rerun only contains these values as arrays, but if optimizations
         // could reduce the columns value to scalar we would need to expand
         // the logic here to account for that additional complexity.
-        let ColumnarValue::Array(class_ids_arr) = &args.args[0] else {
-            exec_err!("Unexpect scalar columnar value for ClassID")?
+        let ColumnarValue::Array(frame_id_arr) = &args.args[0] else {
+            exec_err!("Unexpect scalar columnar value for frame ID")?
         };
-        let ColumnarValue::Array(centers_arr) = &args.args[1] else {
-            exec_err!("Unexpect scalar columnar value for Position2D")?
-        };
-        let ColumnarValue::Array(half_sizes_arr) = &args.args[2] else {
-            exec_err!("Unexpect scalar columnar value for HalfSize2D")?
-        };
-        let class_ids_arr = class_ids_arr
+        let frame_id_arr =
+            frame_id_arr
+                .as_any()
+                .downcast_ref::<Int64Array>()
+                .ok_or(exec_datafusion_err!(
+                    "Incorrect data type for Frame ID. Expected Int64, found {}",
+                    frame_id_arr.data_type()
+                ))?;
+
+        let class_ids_arr = columnar_value_to_array_of_array(&args.args[1], "ClassID")?;
+        let centers_arr = columnar_value_to_array_of_array(&args.args[2], "Position2D")?;
+        let half_sizes_arr = columnar_value_to_array_of_array(&args.args[3], "HalfSize2D")?;
+        let blob_arr = columnar_value_to_array_of_array(&args.args[4], "Blob")?.value(0);
+        let media_type_arr = columnar_value_to_array_of_array(&args.args[5], "MediaType")?.value(0);
+
+        let media_type = media_type_arr
+            .as_any()
+            .downcast_ref::<StringArray>()
+            .ok_or(exec_datafusion_err!(
+                "Unable to cast string array {}",
+                media_type_arr.data_type()
+            ))?
+            .value(0);
+
+        if media_type != "video/mp4" {
+            exec_err!("Unsupported media type: {media_type}")?;
+        }
+
+        let video_blob_arr = blob_arr
             .as_any()
             .downcast_ref::<ListArray>()
-            .ok_or(exec_datafusion_err!("Incorrect array type for ClassID"))?;
-        let centers_arr = centers_arr
+            .ok_or(exec_datafusion_err!(
+                "Unable to cast blob array from {}",
+                blob_arr.data_type()
+            ))?
+            .value(0);
+
+        let blob = video_blob_arr
             .as_any()
-            .downcast_ref::<ListArray>()
-            .ok_or(exec_datafusion_err!("Incorrect array type for ClassID"))?;
-        let half_sizes_arr = half_sizes_arr
-            .as_any()
-            .downcast_ref::<ListArray>()
-            .ok_or(exec_datafusion_err!("Incorrect array type for ClassID"))?;
+            .downcast_ref::<UInt8Array>()
+            .ok_or(exec_datafusion_err!("Trying to get lower level blob"))?;
+
+        let video_frames = blob_to_frames(blob)?;
 
         let result = multizip((
+            frame_id_arr.iter(),
             class_ids_arr.iter(),
             centers_arr.iter(),
             half_sizes_arr.iter(),
         ))
         .map(|entry| {
-            let (Some(class_ids), Some(centers), Some(half_sizes)) = entry else {
+            let (Some(frame_id), Some(class_ids), Some(centers), Some(half_sizes)) = entry else {
                 return Ok(None);
             };
             let class_ids = class_ids
@@ -264,89 +439,87 @@ impl ScalarUDFImpl for BoundedImageExtractionUdf {
                 .as_any()
                 .downcast_ref::<FixedSizeListArray>()
                 .ok_or(exec_datafusion_err!("Incorrect data type for Position2D"))?;
+            Ok(if frame_id > 0 {
+                if let Some(frame) = video_frames
+                    .iter()
+                    .find(|frame| frame.info.frame_nr == Some(frame_id as usize))
+                {
+                    create_image_chip(
+                        self.class_of_interest,
+                        class_ids,
+                        centers,
+                        half_sizes,
+                        frame,
+                    )
+                } else {
+                    None
+                }
+            } else {
+                None
+            })
 
-            Ok(find_largest_detection(
-                self.class_of_interest,
-                class_ids,
-                centers,
-                half_sizes,
-            ))
+            // Ok(find_largest_detection(
+            //     self.class_of_interest,
+            //     class_ids,
+            //     centers,
+            //     half_sizes,
+            // ))
         })
         .collect::<DataFusionResult<Vec<_>>>()?;
 
-        let num_rows = result.len();
         let fields = create_output_fields(self.output_entity_path.as_str());
-
-        // let image_indicator_value_builder: arrow::array::GenericListBuilder<i32, arrow::array::NullBuilder> = GenericListBuilder::with_capacity(NullBuilder::new(), 0);
-        // let mut image_indicator_array_builder: arrow::array::GenericListBuilder<i32, arrow::array::GenericListBuilder<i32, arrow::array::NullBuilder>> = GenericListBuilder::with_capacity(image_indicator_value_builder, num_rows);
-        let mut image_indicator_array_builder: arrow::array::GenericListBuilder<
-            i32,
-            arrow::array::NullBuilder,
-        > = GenericListBuilder::with_capacity(NullBuilder::new(), 0);
-        for _ in 0..num_rows {
-            // image_indicator_array_builder.values().append(true);
-            image_indicator_array_builder.append(true);
-        }
-        let image_indicator_array = Arc::new(image_indicator_array_builder.finish()) as ArrayRef;
-        // let image_indicator_array =
-        //     ListArray::new_null(Arc::new(Field::new("item", DataType::Null, true)), num_rows);
-        // let image_indicator_array = Arc::new(image_indicator_array) as ArrayRef;
-
-        let result = result
-            .into_iter()
-            .map(|maybe_tuple| {
-                maybe_tuple.map(|bounds| {
-                    // TODO grab these from the actual image not just create a pattern below
-
-                    let width = bounds[2] - bounds[0];
-                    let height = bounds[3] - bounds[1];
-                    let mut img_buf = image::ImageBuffer::new(width, height);
-
-                    // Iterate over the coordinates and pixels of the image
-                    for (x, y, pixel) in img_buf.enumerate_pixels_mut() {
-                        let r = (0.3 * x as f32) as u8;
-                        let b = (0.3 * y as f32) as u8;
-                        *pixel = image::Rgb([r, 0, b]);
-                    }
-
-                    let buffer_and_format = ImageBuffer::from_image(img_buf)
-                        .map_err(|err| exec_datafusion_err!("{err}"))?;
-
-                    Ok(buffer_and_format)
-                })
-            })
-            .map(|v| v.transpose())
-            .collect::<DataFusionResult<Vec<_>>>()?;
 
         let (buffer, format): (Vec<Option<ImageBuffer>>, Vec<Option<ImageFormat>>) = result
             .into_iter()
-            .map(|opt_bv| match opt_bv {
+            .map(|maybe_image| maybe_image.and_then(|image| ImageBuffer::from_image(image).ok()))
+            .map(|buffer_and_format| match buffer_and_format {
                 Some((buffer, format)) => (Some(buffer), Some(format)),
                 None => (None, None),
             })
             .unzip();
 
+        let validity = buffer.iter().map(|b| b.is_some()).collect::<Vec<_>>();
+
+        let mut image_indicator_array_builder: GenericListBuilder<
+            i32,
+            NullBuilder,
+        > = GenericListBuilder::with_capacity(NullBuilder::new(), 0);
+        for is_valid in &validity {
+            // image_indicator_array_builder.values().append(true);
+            image_indicator_array_builder.append(*is_valid);
+        }
+        let image_indicator_array = Arc::new(image_indicator_array_builder.finish()) as ArrayRef;
+
+        // let lengths = nulls
+        //     .iter()
+        //     .map(|b| match b {
+        //         true => 1,
+        //         false => 0,
+        //     })
+        //     .collect::<Vec<_>>();
+        let lengths = vec![1; validity.len()];
+        let null_buffer = NullBuffer::from(validity);
         let buffer_array_inner =
             ImageBuffer::to_arrow_opt(buffer).map_err(|err| exec_datafusion_err!("{err}"))?;
-        let lengths = vec![1; buffer_array_inner.len()];
+
         let buffer_array = Arc::new(ListArray::try_new(
             Arc::new(Field::new_list_field(
                 DataType::List(Arc::new(Field::new_list_field(DataType::UInt8, false))),
                 true,
             )),
-            OffsetBuffer::<i32>::from_lengths(lengths),
+            OffsetBuffer::<i32>::from_lengths(lengths.clone()),
             buffer_array_inner,
-            None,
+            Some(null_buffer.clone()),
         )?) as ArrayRef;
 
         let format_array_inner =
             ImageFormat::to_arrow_opt(format).map_err(|err| exec_datafusion_err!("{err}"))?;
-        let lengths = vec![1; format_array_inner.len()];
+        // let lengths = vec![1; format_array_inner.len()];
         let format_array = Arc::new(ListArray::try_new(
             Arc::new(Field::new_list_field(format_field_data_type(), true)),
             OffsetBuffer::<i32>::from_lengths(lengths),
             format_array_inner,
-            None,
+            Some(null_buffer.clone()),
         )?) as ArrayRef;
 
         let fields = Fields::from(fields);
@@ -363,6 +536,7 @@ impl ScalarUDFImpl for BoundedImageExtractionUdf {
         .map(|arr| ColumnarValue::Array(Arc::new(arr)))
         .map_err(DataFusionError::from)
     }
+
 }
 
 #[cfg(test)]
@@ -388,9 +562,12 @@ mod tests {
 
         df = df.select(vec![extraction_udf
             .call(vec![
+                col("frame"),
                 col("/segmentation/detections/things:ClassId"),
                 col("/segmentation/detections/things:Position2D"),
                 col("/segmentation/detections/things:HalfSize2D"),
+                col("/video:Blob"),
+                col("/video:MediaType"),
             ])
             .alias("image_archetype")])?;
 

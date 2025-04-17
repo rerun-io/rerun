@@ -8,7 +8,7 @@ use super::{ImageBuffer, ImageFormat};
 impl ImageBuffer {
     /// Utility method for constructing an image & format
     /// from a byte buffer given its resolution and using the data type of the given vector.
-    fn from_elements<T: ImageChannelType>(
+    pub fn from_elements<T: ImageChannelType>(
         elements: &[T],
         [width, height]: [u32; 2],
         color_model: ColorModel,

@@ -37,6 +37,7 @@ re_log_types.workspace = true
 re_protos.workspace = true
 re_types = { workspace = true, features = ["image"] }
 re_types_core.workspace = true
+re_video = { workspace = true, features = ["av1", "ffmpeg"] }
 
 # External dependencies:
 anyhow.workspace = true
@@ -47,6 +48,7 @@ datafusion.workspace = true
 futures-util.workspace = true
 image.workspace = true
 itertools.workspace = true
+parking_lot.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
 
