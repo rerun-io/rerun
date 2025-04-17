@@ -142,8 +142,7 @@ fn compute_uber_table(
     let rrd_file = std::io::BufReader::new(rrd_file);
 
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let version_policy = re_log_encoding::VersionPolicy::Error;
-    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
     for msg in decoder {
         let msg = msg.context("decode rrd message")?;
         stores

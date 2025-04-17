@@ -132,8 +132,6 @@ pub use log_integration::Logger;
 #[cfg(feature = "run")]
 pub use commands::{run, CallSource};
 
-pub use re_log_encoding::VersionPolicy;
-
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 

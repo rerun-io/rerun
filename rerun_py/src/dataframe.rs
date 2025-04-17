@@ -30,7 +30,6 @@ use re_chunk_store::{
     SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
-use re_log_encoding::VersionPolicy;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
@@ -1458,12 +1457,11 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
 ///     The loaded archive.
 #[pyfunction]
 pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
-    let stores =
-        ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .into_iter()
-            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-            .collect();
+    let stores = ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .into_iter()
+        .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+        .collect();
 
     let archive = PyRRDArchive { datasets: stores };
 

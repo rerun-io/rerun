@@ -49,10 +49,9 @@ impl QueryEngine<StorageEngine> {
     pub fn from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
         Ok(
-            ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd, version_policy)?
+            ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd)?
                 .into_iter()
                 .map(|(store_id, store)| (store_id, Self::from_store(store)))
                 .collect(),

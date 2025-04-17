@@ -23,8 +23,8 @@ impl VerifyCommand {
         let Self { path_to_input_rrds } = self;
 
         // TODO(cmc): might want to make this configurable at some point.
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
-        let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+
+        let (rx, _) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         let mut seen_files = std::collections::HashSet::new();
 
