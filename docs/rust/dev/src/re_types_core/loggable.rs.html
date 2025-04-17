@@ -295,14 +295,7 @@
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
+<a href="#297" id="297">297</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 
 <span class="kw">use </span>nohash_hasher::IntSet;
 
@@ -465,8 +458,7 @@
     </span><span class="kw">pub fn </span>sanity_check(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">let </span>full_name = <span class="self">self</span>.<span class="number">0</span>.as_str();
         <span class="macro">debug_assert!</span>(
-            !full_name.starts_with(<span class="string">"rerun.components.rerun.components."</span>)
-                &amp;&amp; !full_name.contains(<span class="string">':'</span>),
+            !full_name.starts_with(<span class="string">"rerun.components.rerun.components."</span>),
             <span class="string">"DEBUG ASSERT: Found component with full name {full_name:?}. Maybe some bad round-tripping?"
         </span>);
     }
@@ -507,19 +499,13 @@
 
     <span class="doccomment">/// Is this an indicator component for an archetype?
     </span><span class="kw">pub fn </span>is_indicator_component(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        (<span class="self">self</span>.starts_with(<span class="string">"rerun.components."</span>) || <span class="self">self</span>.starts_with(<span class="string">"rerun.blueprint.components."</span>))
-            &amp;&amp; <span class="self">self</span>.ends_with(<span class="string">"Indicator"</span>)
+        <span class="self">self</span>.ends_with(<span class="string">"Indicator"</span>)
     }
 
     <span class="doccomment">/// If this is an indicator component, for which archetype?
     </span><span class="kw">pub fn </span>indicator_component_archetype(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = <span class="self">self</span>.strip_prefix(<span class="string">"rerun.components."</span>) {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = name.strip_suffix(<span class="string">"Indicator"</span>) {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(name.to_owned());
-            }
-        }
-        <span class="prelude-val">None
-    </span>}
+        <span class="self">self</span>.strip_suffix(<span class="string">"Indicator"</span>).map(|name| name.to_owned())
+    }
 
     <span class="doccomment">/// Web URL to the Rerun documentation for this component.
     </span><span class="kw">pub fn </span>doc_url(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {

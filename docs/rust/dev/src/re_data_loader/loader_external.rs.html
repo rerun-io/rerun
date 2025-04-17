@@ -511,9 +511,9 @@
                 // streaming data to stdout.
                 </span><span class="kw">let </span>is_sending_data = Arc::new(AtomicBool::new(<span class="bool-val">false</span>));
 
-                <span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Warn;
+
                 <span class="kw">let </span>stdout = std::io::BufReader::new(stdout);
-                <span class="kw">match </span>re_log_encoding::decoder::Decoder::new(version_policy, stdout) {
+                <span class="kw">match </span>re_log_encoding::decoder::Decoder::new(stdout) {
                     <span class="prelude-val">Ok</span>(decoder) =&gt; {
                         <span class="kw">let </span>filepath = filepath.clone();
                         <span class="kw">let </span>tx = tx.clone();

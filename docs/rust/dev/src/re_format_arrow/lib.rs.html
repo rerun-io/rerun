@@ -375,133 +375,19 @@
 <a href="#374" id="374">374</a>
 <a href="#375" id="375">375</a>
 <a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a></pre></div><pre class="rust"><code><span class="doccomment">//! Formatting for tables of Arrow arrays
+<a href="#377" id="377">377</a></pre></div><pre class="rust"><code><span class="doccomment">//! Formatting for tables of Arrow arrays
 
 </span><span class="kw">use </span>std::fmt::Formatter;
 
 <span class="kw">use </span>arrow::{
     array::{Array, ArrayRef, ListArray},
-    datatypes::{DataType, Field, Fields, IntervalUnit, TimeUnit},
+    datatypes::{DataType, Field, Fields},
     util::display::{ArrayFormatter, FormatOptions},
 };
 <span class="kw">use </span>comfy_table::{presets, Cell, Row, Table};
 <span class="kw">use </span>itertools::{Either, Itertools <span class="kw">as _</span>};
 
-<span class="kw">use </span>re_arrow_util::ArrowArrayDowncastRef <span class="kw">as _</span>;
+<span class="kw">use </span>re_arrow_util::{format_data_type, ArrowArrayDowncastRef <span class="kw">as _</span>};
 <span class="kw">use </span>re_tuid::Tuid;
 <span class="kw">use </span>re_types_core::Loggable <span class="kw">as _</span>;
 
@@ -522,9 +408,21 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>(extension_name) = field.metadata().get(<span class="string">"ARROW:extension:name"</span>) {
         <span class="comment">// TODO(#1775): This should be registered dynamically.
         </span><span class="kw">if </span>extension_name.as_str() == Tuid::ARROW_EXTENSION_NAME {
-            <span class="kw">return </span>Box::new(|index| {
+            <span class="comment">// For example: `RowId` is a TUID that should be formatted with a `row_` prefix:
+            </span><span class="kw">let </span>prefix = field
+                .metadata()
+                .get(<span class="string">"ARROW:extension:metadata"</span>)
+                .and_then(|metadata| serde_json::from_str::&lt;Metadata&gt;(metadata).ok())
+                .and_then(|metadata| {
+                    metadata
+                        .get(<span class="string">"namespace"</span>)
+                        .map(|namespace| <span class="macro">format!</span>(<span class="string">"{namespace}_"</span>))
+                })
+                .unwrap_or_default();
+
+            <span class="kw">return </span>Box::new(<span class="kw">move </span>|index| {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(tuid) = parse_tuid(array, index) {
-                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">"{tuid}"</span>))
+                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">"{prefix}{tuid}"</span>))
                 } <span class="kw">else </span>{
                     <span class="prelude-val">Err</span>(<span class="string">"Invalid RowId"</span>.to_owned())
                 }
@@ -555,123 +453,7 @@
 
 <span class="comment">// ---
 
-// arrow has `ToString` implemented, but it is way too verbose.
-</span><span class="attr">#[repr(transparent)]
-</span><span class="kw">struct </span>DisplayTimeUnit(TimeUnit);
-
-<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>DisplayTimeUnit {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="kw">let </span>s = <span class="kw">match </span><span class="self">self</span>.<span class="number">0 </span>{
-            TimeUnit::Second =&gt; <span class="string">"s"</span>,
-            TimeUnit::Millisecond =&gt; <span class="string">"ms"</span>,
-            TimeUnit::Microsecond =&gt; <span class="string">"us"</span>,
-            TimeUnit::Nanosecond =&gt; <span class="string">"ns"</span>,
-        };
-        f.write_str(s)
-    }
-}
-
-<span class="comment">// arrow has `ToString` implemented, but it is way too verbose.
-</span><span class="attr">#[repr(transparent)]
-</span><span class="kw">struct </span>DisplayIntervalUnit(IntervalUnit);
-
-<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>DisplayIntervalUnit {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="kw">let </span>s = <span class="kw">match </span><span class="self">self</span>.<span class="number">0 </span>{
-            IntervalUnit::YearMonth =&gt; <span class="string">"year/month"</span>,
-            IntervalUnit::DayTime =&gt; <span class="string">"day/time"</span>,
-            IntervalUnit::MonthDayNano =&gt; <span class="string">"month/day/nano"</span>,
-        };
-        f.write_str(s)
-    }
-}
-
-<span class="comment">// arrow has `ToString` implemented, but it is way too verbose.
-</span><span class="attr">#[repr(transparent)]
-</span><span class="kw">struct </span>DisplayDatatype&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>DataType);
-
-<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>DisplayDatatype&lt;<span class="lifetime">'_</span>&gt; {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="kw">let </span>s = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0 </span>{
-            DataType::Null =&gt; <span class="string">"null"</span>,
-            DataType::Boolean =&gt; <span class="string">"bool"</span>,
-            DataType::Int8 =&gt; <span class="string">"i8"</span>,
-            DataType::Int16 =&gt; <span class="string">"i16"</span>,
-            DataType::Int32 =&gt; <span class="string">"i32"</span>,
-            DataType::Int64 =&gt; <span class="string">"i64"</span>,
-            DataType::UInt8 =&gt; <span class="string">"u8"</span>,
-            DataType::UInt16 =&gt; <span class="string">"u16"</span>,
-            DataType::UInt32 =&gt; <span class="string">"u32"</span>,
-            DataType::UInt64 =&gt; <span class="string">"u64"</span>,
-            DataType::Float16 =&gt; <span class="string">"f16"</span>,
-            DataType::Float32 =&gt; <span class="string">"f32"</span>,
-            DataType::Float64 =&gt; <span class="string">"f64"</span>,
-            DataType::Timestamp(unit, timezone) =&gt; {
-                <span class="kw">let </span>s = <span class="kw">if let </span><span class="prelude-val">Some</span>(tz) = timezone {
-                    <span class="macro">format!</span>(<span class="string">"Timestamp({}, {tz})"</span>, DisplayTimeUnit(<span class="kw-2">*</span>unit))
-                } <span class="kw">else </span>{
-                    <span class="macro">format!</span>(<span class="string">"Timestamp({})"</span>, DisplayTimeUnit(<span class="kw-2">*</span>unit))
-                };
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::Date32 =&gt; <span class="string">"Date32"</span>,
-            DataType::Date64 =&gt; <span class="string">"Date64"</span>,
-            DataType::Time32(unit) =&gt; {
-                <span class="kw">let </span>s = <span class="macro">format!</span>(<span class="string">"Time32({})"</span>, DisplayTimeUnit(<span class="kw-2">*</span>unit));
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::Time64(unit) =&gt; {
-                <span class="kw">let </span>s = <span class="macro">format!</span>(<span class="string">"Time64({})"</span>, DisplayTimeUnit(<span class="kw-2">*</span>unit));
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::Duration(unit) =&gt; {
-                <span class="kw">let </span>s = <span class="macro">format!</span>(<span class="string">"Duration({})"</span>, DisplayTimeUnit(<span class="kw-2">*</span>unit));
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::Interval(unit) =&gt; {
-                <span class="kw">let </span>s = <span class="macro">format!</span>(<span class="string">"Interval({})"</span>, DisplayIntervalUnit(<span class="kw-2">*</span>unit));
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::Binary =&gt; <span class="string">"Binary"</span>,
-            DataType::FixedSizeBinary(size) =&gt; <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"FixedSizeBinary[{size}]"</span>),
-            DataType::LargeBinary =&gt; <span class="string">"LargeBinary"</span>,
-            DataType::Utf8 =&gt; <span class="string">"Utf8"</span>,
-            DataType::LargeUtf8 =&gt; <span class="string">"LargeUtf8"</span>,
-            DataType::List(<span class="kw-2">ref </span>field) =&gt; {
-                <span class="kw">let </span>s = <span class="macro">format!</span>(<span class="string">"List[{}]"</span>, <span class="self">Self</span>(field.data_type()));
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::FixedSizeList(field, len) =&gt; {
-                <span class="kw">let </span>s = <span class="macro">format!</span>(<span class="string">"FixedSizeList[{}; {len}]"</span>, <span class="self">Self</span>(field.data_type()));
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::LargeList(field) =&gt; {
-                <span class="kw">let </span>s = <span class="macro">format!</span>(<span class="string">"LargeList[{}]"</span>, <span class="self">Self</span>(field.data_type()));
-                <span class="kw">return </span>f.write_str(<span class="kw-2">&amp;</span>s);
-            }
-            DataType::Struct(fields) =&gt; <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"Struct[{}]"</span>, fields.len()),
-            DataType::Union(fields, <span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"Union[{}]"</span>, fields.len()),
-            DataType::Map(field, <span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"Map[{}]"</span>, <span class="self">Self</span>(field.data_type())),
-            DataType::Dictionary(key, value) =&gt; {
-                <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"Dictionary{{{}: {}}}"</span>, <span class="self">Self</span>(key), <span class="self">Self</span>(value));
-            }
-            DataType::Decimal128(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">"Decimal128"</span>,
-            DataType::Decimal256(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">"Decimal256"</span>,
-            DataType::BinaryView =&gt; <span class="string">"BinaryView"</span>,
-            DataType::Utf8View =&gt; <span class="string">"Utf8View"</span>,
-            DataType::ListView(field) =&gt; <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"ListView[{}]"</span>, <span class="self">Self</span>(field.data_type())),
-            DataType::LargeListView(field) =&gt; {
-                <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"LargeListView[{}]"</span>, <span class="self">Self</span>(field.data_type()));
-            }
-            DataType::RunEndEncoded(_run_ends, values) =&gt; {
-                <span class="kw">return </span><span class="macro">write!</span>(f, <span class="string">"RunEndEncoded[{}]"</span>, <span class="self">Self</span>(values.data_type()));
-            }
-        };
-        f.write_str(s)
-    }
-}
-
-<span class="kw">struct </span>DisplayMetadata {
+</span><span class="kw">struct </span>DisplayMetadata {
     prefix: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str,
     metadata: Metadata,
 }
@@ -683,7 +465,7 @@
         f.write_str(
             <span class="kw-2">&amp;</span>metadata
                 .iter()
-                .map(|(key, value)| <span class="macro">format!</span>(<span class="string">"{prefix}{}: {:?}"</span>, trim_name(key), trim_name(value)))
+                .map(|(key, value)| <span class="macro">format!</span>(<span class="string">"{prefix}{}: {}"</span>, trim_name(key), trim_name(value)))
                 .collect_vec()
                 .join(<span class="string">"\n"</span>),
         )
@@ -691,7 +473,8 @@
 }
 
 <span class="kw">fn </span>trim_name(name: <span class="kw-2">&amp;</span>str) -&gt; <span class="kw-2">&amp;</span>str {
-    name.trim_start_matches(<span class="string">"rerun.archetypes."</span>)
+    name.trim()
+        .trim_start_matches(<span class="string">"rerun.archetypes."</span>)
         .trim_start_matches(<span class="string">"rerun.components."</span>)
         .trim_start_matches(<span class="string">"rerun.datatypes."</span>)
         .trim_start_matches(<span class="string">"rerun.controls."</span>)
@@ -828,8 +611,6 @@
     columns: <span class="kw-2">&amp;</span>[ArrayRef],
     opts: <span class="kw-2">&amp;</span>RecordBatchFormatOpts,
 ) -&gt; (usize, Table) {
-    <span class="kw">const </span>MAXIMUM_CELL_CONTENT_WIDTH: u16 = <span class="number">100</span>;
-
     <span class="kw">let </span><span class="kw-2">&amp;</span>RecordBatchFormatOpts {
         transposed,
         width,
@@ -885,20 +666,7 @@
 
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..col.len() {
                 <span class="kw">let </span>cell = <span class="kw">match </span>formatter(i) {
-                    <span class="prelude-val">Ok</span>(string) =&gt; {
-                        <span class="kw">let </span>chars: Vec&lt;<span class="kw">_</span>&gt; = string.chars().collect();
-                        <span class="kw">if </span>chars.len() &gt; MAXIMUM_CELL_CONTENT_WIDTH <span class="kw">as </span>usize {
-                            Cell::new(
-                                chars
-                                    .into_iter()
-                                    .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(<span class="number">1</span>).into())
-                                    .chain([<span class="string">'…'</span>])
-                                    .collect::&lt;String&gt;(),
-                            )
-                        } <span class="kw">else </span>{
-                            Cell::new(string)
-                        }
-                    }
+                    <span class="prelude-val">Ok</span>(string) =&gt; format_cell(string),
                     <span class="prelude-val">Err</span>(err) =&gt; Cell::new(err),
                 };
                 cells.push(cell);
@@ -913,15 +681,15 @@
             Either::Left(fields.iter().map(|field| {
                 <span class="kw">if </span>field.metadata().is_empty() {
                     Cell::new(<span class="macro">format!</span>(
-                        <span class="string">"{}\n---\ntype: \"{}\""</span>, <span class="comment">// NOLINT
-                        </span>trim_name(field.name()),
-                        DisplayDatatype(field.data_type()),
+                        <span class="string">"{}\n---\ntype: {}"</span>,
+                        trim_name(field.name()),
+                        format_data_type(field.data_type()),
                     ))
                 } <span class="kw">else </span>{
                     Cell::new(<span class="macro">format!</span>(
-                        <span class="string">"{}\n---\ntype: \"{}\"\n{}"</span>, <span class="comment">// NOLINT
-                        </span>trim_name(field.name()),
-                        DisplayDatatype(field.data_type()),
+                        <span class="string">"{}\n---\ntype: {}\n{}"</span>,
+                        trim_name(field.name()),
+                        format_data_type(field.data_type()),
                         DisplayMetadata {
                             prefix: <span class="string">""</span>,
                             metadata: field.metadata().clone().into_iter().collect()
@@ -945,20 +713,7 @@
             <span class="kw">let </span>cells: Vec&lt;<span class="kw">_</span>&gt; = formatters
                 .iter()
                 .map(|formatter| <span class="kw">match </span>formatter(row) {
-                    <span class="prelude-val">Ok</span>(string) =&gt; {
-                        <span class="kw">let </span>chars: Vec&lt;<span class="kw">_</span>&gt; = string.chars().collect();
-                        <span class="kw">if </span>chars.len() &gt; MAXIMUM_CELL_CONTENT_WIDTH <span class="kw">as </span>usize {
-                            Cell::new(
-                                chars
-                                    .into_iter()
-                                    .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(<span class="number">1</span>).into())
-                                    .chain([<span class="string">'…'</span>])
-                                    .collect::&lt;String&gt;(),
-                            )
-                        } <span class="kw">else </span>{
-                            Cell::new(string)
-                        }
-                    }
+                    <span class="prelude-val">Ok</span>(string) =&gt; format_cell(string),
                     <span class="prelude-val">Err</span>(err) =&gt; Cell::new(err),
                 })
                 .collect();
@@ -979,5 +734,22 @@
     }
 
     (num_columns, table)
+}
+
+<span class="kw">fn </span>format_cell(string: String) -&gt; Cell {
+    <span class="kw">const </span>MAXIMUM_CELL_CONTENT_WIDTH: u16 = <span class="number">100</span>;
+
+    <span class="kw">let </span>chars: Vec&lt;<span class="kw">_</span>&gt; = string.chars().collect();
+    <span class="kw">if </span>chars.len() &gt; MAXIMUM_CELL_CONTENT_WIDTH <span class="kw">as </span>usize {
+        Cell::new(
+            chars
+                .into_iter()
+                .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(<span class="number">1</span>).into())
+                .chain([<span class="string">'…'</span>])
+                .collect::&lt;String&gt;(),
+        )
+    } <span class="kw">else </span>{
+        Cell::new(string)
+    }
 }
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["compute_uber_table"],"struct":["CompareCommand"]};
+window.SIDEBAR_ITEMS = {"fn":["load_chunks"],"struct":["CompareCommand"]};

@@ -847,14 +847,7 @@
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
 <a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::Range;
+<a href="#849" id="849">849</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::Range;
 
 <span class="kw">use </span>egui::{Color32, NumExt <span class="kw">as _</span>, Widget <span class="kw">as _</span>};
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
@@ -935,9 +928,18 @@
             .map(|state| state.filter_query.as_str())
     }
 
-    <span class="doccomment">/// Return the current session ID of the filter widget, if active.
+    <span class="doccomment">/// Return the current session ID of the filter widget.
+    ///
+    /// This returns `Some` value iff the filter is active AND the query is non-empty.
+    ///
+    /// Rationale: this is primarily used to keep track of a different collapse state while a search
+    /// session is ongoing. When the filter is active but the query is empty, we display all
+    /// entities without filtering, so the collapse state is the same as when the filter is
+    /// inactive.
     </span><span class="kw">pub fn </span>session_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;egui::Id&gt; {
-        <span class="self">self</span>.inner_state.as_ref().map(|state| state.session_id)
+        <span class="self">self</span>.inner_state
+            .as_ref()
+            .and_then(|state| (!state.filter_query.is_empty()).then_some(state.session_id))
     }
 
     <span class="doccomment">/// Return a filter matcher for the current query.
@@ -1121,31 +1123,15 @@
         <span class="self">self</span>.keywords.is_some()
     }
 
-    <span class="doccomment">/// Is the filter set to match everything?
-    ///
-    /// Can be used by client code to short-circuit more expansive matching logic.
-    </span><span class="kw">pub fn </span>matches_everything(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.keywords.is_none()
-    }
-
-    <span class="doccomment">/// Is the filter set to match nothing?
-    ///
-    /// Can be used by client code to short-circuit more expansive matching logic.
-    </span><span class="kw">pub fn </span>matches_nothing(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.keywords
-            .as_ref()
-            .is_some_and(|keywords| keywords.is_empty())
-    }
-
     <span class="doccomment">/// Match a path and return the highlight ranges if any.
     ///
     /// `None`: the filter is active, but the path didn't match the keyword
     /// `Some(ranges)`: either the filter is inactive (i.e., it matches everything), or it is active
-    /// and all keywords matched at least once.
+    /// all keywords matched at least once (including when there are no keywords at all).
     </span><span class="kw">pub fn </span>match_path&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw">impl </span>IntoIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;PathRanges&gt; {
         <span class="kw">match </span><span class="self">self</span>.keywords.as_deref() {
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Some</span>(PathRanges::default()),
-            <span class="prelude-val">Some</span>([]) =&gt; <span class="prelude-val">None</span>,
+            <span class="prelude-val">None </span>| <span class="prelude-val">Some</span>([]) =&gt; <span class="prelude-val">Some</span>(PathRanges::default()),
+
             <span class="prelude-val">Some</span>(keywords) =&gt; {
                 <span class="kw">let </span>path = path.into_iter().map(str::to_lowercase).collect_vec();
 

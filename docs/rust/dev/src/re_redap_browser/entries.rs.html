@@ -435,6 +435,7 @@
 
 <span class="kw">use </span>re_data_ui::item_ui::entity_db_button_ui;
 <span class="kw">use </span>re_data_ui::DataUi <span class="kw">as _</span>;
+<span class="kw">use </span>re_dataframe_ui::RequestedObject;
 <span class="kw">use </span>re_grpc_client::redap::ConnectionError;
 <span class="kw">use </span>re_grpc_client::{redap, StreamError};
 <span class="kw">use </span>re_log_encoding::codec::wire::decoder::Decode <span class="kw">as _</span>;
@@ -456,7 +457,6 @@
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::context::Context;
-<span class="kw">use </span><span class="kw">crate</span>::requested_object::RequestedObject;
 
 <span class="attr">#[derive(Debug, thiserror::Error)]
 </span><span class="kw">pub enum </span>EntryError {

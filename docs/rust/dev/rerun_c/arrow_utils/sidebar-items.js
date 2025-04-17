@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["arrow2_array_from_c_ffi","arrow_array_from_c_ffi"]};
+window.SIDEBAR_ITEMS = {"fn":["arrow_array_from_c_ffi"]};

@@ -409,9 +409,17 @@
 <a href="#408" id="408">408</a>
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a></pre></div><pre class="rust"><code><span class="doccomment">//! Image-related utilities.
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a></pre></div><pre class="rust"><code><span class="doccomment">//! Image-related utilities.
 
-</span><span class="kw">use </span>re_types_core::ArrowBuffer;
+</span><span class="kw">use </span>arrow::buffer::ScalarBuffer;
 <span class="kw">use </span>smallvec::{smallvec, SmallVec};
 
 <span class="kw">use crate</span>::{
@@ -524,7 +532,7 @@
 
     <span class="doccomment">/// The tensor did not have the right shape for an image (e.g. had too many dimensions).
     </span><span class="attr">#[error(<span class="string">"Could not create Image from TensorData with shape {0:?}"</span>)]
-    </span>BadImageShape(ArrowBuffer&lt;u64&gt;),
+    </span>BadImageShape(ScalarBuffer&lt;u64&gt;),
 
     <span class="doccomment">/// Happens if you try to cast `NV12` or `YUY2` to a depth image or segmentation image.
     </span><span class="attr">#[error(
@@ -537,17 +545,25 @@
 </span><span class="kw">pub fn </span>blob_and_datatype_from_tensor(tensor_buffer: TensorBuffer) -&gt; (Blob, ChannelDatatype) {
     <span class="kw">match </span>tensor_buffer {
         TensorBuffer::U8(buffer) =&gt; (Blob(buffer), ChannelDatatype::U8),
-        TensorBuffer::U16(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::U16),
-        TensorBuffer::U32(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::U32),
-        TensorBuffer::U64(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::U64),
-        TensorBuffer::I8(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::I8),
-        TensorBuffer::I16(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::I16),
-        TensorBuffer::I32(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::I32),
-        TensorBuffer::I64(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::I64),
-        TensorBuffer::F16(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::F16),
-        TensorBuffer::F32(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::F32),
-        TensorBuffer::F64(buffer) =&gt; (Blob(buffer.cast_to_u8()), ChannelDatatype::F64),
+        TensorBuffer::U16(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::U16),
+        TensorBuffer::U32(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::U32),
+        TensorBuffer::U64(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::U64),
+        TensorBuffer::I8(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::I8),
+        TensorBuffer::I16(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::I16),
+        TensorBuffer::I32(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::I32),
+        TensorBuffer::I64(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::I64),
+        TensorBuffer::F16(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::F16),
+        TensorBuffer::F32(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::F32),
+        TensorBuffer::F64(buffer) =&gt; (Blob(cast_to_u8(<span class="kw-2">&amp;</span>buffer)), ChannelDatatype::F64),
     }
+}
+
+<span class="doccomment">/// Reinterpret POD (plain-old-data) types to `u8`.
+</span><span class="attr">#[inline]
+</span><span class="kw">pub fn </span>cast_to_u8&lt;T: arrow::datatypes::ArrowNativeType&gt;(
+    buffer: <span class="kw-2">&amp;</span>arrow::buffer::ScalarBuffer&lt;T&gt;,
+) -&gt; ScalarBuffer&lt;u8&gt; {
+    arrow::buffer::ScalarBuffer::new(buffer.inner().clone(), <span class="number">0</span>, buffer.inner().len())
 }
 
 <span class="comment">// ----------------------------------------------------------------------------

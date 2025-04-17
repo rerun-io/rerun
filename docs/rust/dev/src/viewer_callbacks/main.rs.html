@@ -197,14 +197,13 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a></pre></div><pre class="rust"><code><span class="doccomment">//! This example shows how to wrap the Rerun Viewer in your own GUI.
+<a href="#199" id="199">199</a></pre></div><pre class="rust"><code><span class="doccomment">//! This example shows how to wrap the Rerun Viewer in your own GUI.
 
-</span><span class="kw">use </span>std::sync::Arc;
+</span><span class="kw">use </span>std::rc::Rc;
+<span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>re_viewer::external::{eframe, egui, egui::mutex::Mutex, re_log, re_memory};
-<span class="kw">use </span>re_viewer::AsyncRuntimeHandle;
+<span class="kw">use </span>re_viewer::{AsyncRuntimeHandle, ViewerEvent, ViewerEventKind};
 
 <span class="comment">// By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -240,31 +239,28 @@
     <span class="kw">let </span>shared_state: Arc&lt;Mutex&lt;SharedState&gt;&gt; = Default::default();
 
     <span class="kw">let </span>startup_options = re_viewer::StartupOptions {
-        callbacks: <span class="prelude-val">Some</span>(
-            re_viewer::Callbacks::builder()
-                .on_selection_change({
-                    <span class="kw">let </span>shared_state = shared_state.clone();
-                    <span class="kw">move </span>|items| {
-                        shared_state.lock().current_selection = items;
-                    }
-                })
-                .on_timeline_change({
-                    <span class="kw">let </span>shared_state = shared_state.clone();
-                    <span class="kw">move </span>|timeline, time| {
-                        <span class="kw">let </span><span class="kw-2">mut </span>shared_state = shared_state.lock();
-                        shared_state.current_timeline = timeline.name().as_str().to_owned();
+        on_event: <span class="prelude-val">Some</span>({
+            <span class="kw">let </span>shared_state = shared_state.clone();
+            Rc::new(<span class="kw">move </span>|event: ViewerEvent| {
+                <span class="kw">let </span><span class="kw-2">mut </span>shared_state = shared_state.lock();
+                <span class="kw">match </span>event.kind {
+                    ViewerEventKind::Play | ViewerEventKind::Pause =&gt; {}
+                    ViewerEventKind::TimeUpdate { time } =&gt; {
                         shared_state.current_time = time.as_f64();
                     }
-                })
-                .on_time_update({
-                    <span class="kw">let </span>shared_state = shared_state.clone();
-                    <span class="kw">move </span>|time| {
-                        <span class="kw">let </span><span class="kw-2">mut </span>shared_state = shared_state.lock();
+                    ViewerEventKind::TimelineChange {
+                        timeline_name,
+                        time,
+                    } =&gt; {
+                        shared_state.current_timeline = timeline_name.as_str().to_owned();
                         shared_state.current_time = time.as_f64();
                     }
-                })
-                .build(),
-        ),
+                    ViewerEventKind::SelectionChange { items } =&gt; {
+                        shared_state.current_selection = items;
+                    }
+                }
+            })
+        }),
         ..Default::default()
     };
 
@@ -299,7 +295,7 @@
 
 <span class="attr">#[derive(Default)]
 </span><span class="kw">struct </span>SharedState {
-    current_selection: Vec&lt;re_viewer::CallbackSelectionItem&gt;,
+    current_selection: Vec&lt;re_viewer::event::SelectionChangeItem&gt;,
     current_time: f64,
     current_timeline: String,
 }
@@ -357,9 +353,9 @@
     }
 }
 
-<span class="kw">fn </span>selection_item_ui(ui: <span class="kw-2">&amp;mut </span>egui::Ui, item: <span class="kw-2">&amp;</span>re_viewer::CallbackSelectionItem) {
+<span class="kw">fn </span>selection_item_ui(ui: <span class="kw-2">&amp;mut </span>egui::Ui, item: <span class="kw-2">&amp;</span>re_viewer::SelectionChangeItem) {
     <span class="kw">match </span>item {
-        re_viewer::CallbackSelectionItem::Entity {
+        re_viewer::SelectionChangeItem::Entity {
             entity_path,
             instance_id,
             view_name,
@@ -381,14 +377,14 @@
                 });
             });
         }
-        re_viewer::CallbackSelectionItem::View { view_id, view_name } =&gt; {
+        re_viewer::SelectionChangeItem::View { view_id, view_name } =&gt; {
             ui.label(<span class="macro">format!</span>(<span class="string">"View {view_name}"</span>));
             ui.horizontal(|ui| {
                 ui.add_space(<span class="number">16.0</span>);
                 ui.label(<span class="macro">format!</span>(<span class="string">"View ID: {}"</span>, view_id.uuid()));
             });
         }
-        re_viewer::CallbackSelectionItem::Container {
+        re_viewer::SelectionChangeItem::Container {
             container_id,
             container_name,
         } =&gt; {

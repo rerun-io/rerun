@@ -379,7 +379,9 @@
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::array::{Array <span class="kw">as _</span>, ListArray <span class="kw">as </span>ArrowListArray, RecordBatch <span class="kw">as </span>ArrowRecordBatch};
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::array::{Array <span class="kw">as _</span>, ListArray <span class="kw">as </span>ArrowListArray, RecordBatch <span class="kw">as </span>ArrowRecordBatch};
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 <span class="kw">use </span>nohash_hasher::IntMap;
 
@@ -395,6 +397,7 @@
     <span class="doccomment">/// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    </span><span class="comment">// TODO(#8744): this is infallible, so we should not return a `Result` here.
     </span><span class="kw">pub fn </span>to_record_batch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ChunkResult&lt;ArrowRecordBatch&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.to_chunk_batch()<span class="question-mark">?</span>.into())
@@ -403,6 +406,7 @@
     <span class="doccomment">/// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    </span><span class="comment">// TODO(#8744): this is infallible, so we should not return a `Result` here.
     </span><span class="kw">pub fn </span>to_chunk_batch(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ChunkResult&lt;re_sorbet::ChunkBatch&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
         <span class="self">self</span>.sanity_check()<span class="question-mark">?</span>;

@@ -497,12 +497,7 @@
 <a href="#496" id="496">496</a>
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui_extras::Column;
+<a href="#499" id="499">499</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui_extras::Column;
 <span class="kw">use </span>re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
@@ -766,12 +761,7 @@
     <span class="kw">let </span>player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with(<span class="string">"video_player"</span>).value());
 
-    <span class="kw">match </span>video.frame_at(
-        render_ctx,
-        player_stream_id,
-        timestamp_in_secs,
-        blob.as_slice(),
-    ) {
+    <span class="kw">match </span>video.frame_at(render_ctx, player_stream_id, timestamp_in_secs, blob) {
         <span class="prelude-val">Ok</span>(VideoFrameTexture {
             texture,
             is_pending,
@@ -884,7 +874,7 @@
     <span class="kw">fn </span>value_fn_for_time(
         time: re_video::Time,
         video_data: <span class="kw-2">&amp;</span>re_video::VideoData,
-    ) -&gt; <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, egui::style::WidgetVisuals) + <span class="lifetime">'_ </span>{
+    ) -&gt; <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, list_item::ListVisuals) + <span class="lifetime">'_ </span>{
         <span class="kw">move </span>|ui, <span class="kw">_</span>| {
             timestamp_ui(ui, video_data, time);
         }

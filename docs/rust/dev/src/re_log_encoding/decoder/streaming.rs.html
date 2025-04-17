@@ -397,22 +397,7 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::pin::Pin;
+<a href="#399" id="399">399</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::pin::Pin;
 
 <span class="kw">use </span>bytes::{Buf <span class="kw">as _</span>, BytesMut};
 <span class="kw">use </span>re_build_info::CrateVersion;
@@ -423,7 +408,7 @@
 
 <span class="kw">use crate</span>::{
     codec::file::{<span class="self">self</span>},
-    EncodingOptions, VersionPolicy,
+    EncodingOptions,
 };
 
 <span class="kw">use super</span>::{options_from_bytes, DecodeError, FileHeader};
@@ -480,7 +465,7 @@
 }
 
 <span class="kw">impl</span>&lt;R: AsyncBufRead + Unpin&gt; StreamingDecoder&lt;R&gt; {
-    <span class="kw">pub async fn </span>new(version_policy: VersionPolicy, <span class="kw-2">mut </span>reader: R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, DecodeError&gt; {
+    <span class="kw">pub async fn </span>new(<span class="kw-2">mut </span>reader: R) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, DecodeError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>data = [<span class="number">0_u8</span>; FileHeader::SIZE];
 
         reader
@@ -488,7 +473,7 @@
             .<span class="kw">await
             </span>.map_err(DecodeError::Read)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>(version, options) = options_from_bytes(version_policy, <span class="kw-2">&amp;</span>data)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(version, options) = options_from_bytes(<span class="kw-2">&amp;</span>data)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             version,
@@ -576,7 +561,7 @@
                 <span class="kw">let </span>data = <span class="kw-2">&amp;</span>unprocessed_bytes[..FileHeader::SIZE];
                 <span class="comment">// We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
-                </span><span class="kw">match </span>options_from_bytes(VersionPolicy::Warn, data) {
+                </span><span class="kw">match </span>options_from_bytes(data) {
                     <span class="prelude-val">Ok</span>((version, options)) =&gt; {
                         <span class="self">self</span>.version = CrateVersion::max(<span class="self">self</span>.version, version);
                         <span class="self">self</span>.options = options;
@@ -670,11 +655,8 @@
     <span class="kw">use </span>tokio_stream::StreamExt <span class="kw">as _</span>;
 
     <span class="kw">use crate</span>::{
-        decoder::{
-            streaming::StreamingDecoder,
-            tests::{fake_log_messages, strip_arrow_extensions_from_log_messages},
-        },
-        Compression, EncodingOptions, Serializer, VersionPolicy,
+        decoder::{streaming::StreamingDecoder, tests::fake_log_messages},
+        Compression, EncodingOptions, Serializer,
     };
 
     <span class="attr">#[tokio::test]
@@ -705,17 +687,13 @@
 
             <span class="kw">let </span>buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            <span class="kw">let </span>decoder = StreamingDecoder::new(VersionPolicy::Error, buf_reader)
+            <span class="kw">let </span>decoder = StreamingDecoder::new(buf_reader).<span class="kw">await</span>.unwrap();
+
+            <span class="kw">let </span>decoded_messages = decoder
+                .map(|res| res.map(|msg| msg.inner))
+                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()
                 .<span class="kw">await
                 </span>.unwrap();
-
-            <span class="kw">let </span>decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder
-                    .map(|res| res.map(|msg| msg.inner))
-                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()
-                    .<span class="kw">await
-                    </span>.unwrap(),
-            );
 
             <span class="macro">similar_asserts::assert_eq!</span>(decoded_messages, messages);
         }
@@ -745,17 +723,13 @@
 
             <span class="kw">let </span>buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            <span class="kw">let </span>decoder = StreamingDecoder::new(VersionPolicy::Error, buf_reader)
+            <span class="kw">let </span>decoder = StreamingDecoder::new(buf_reader).<span class="kw">await</span>.unwrap();
+
+            <span class="kw">let </span>decoded_messages = decoder
+                .map(|res| res.map(|msg| msg.inner))
+                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()
                 .<span class="kw">await
                 </span>.unwrap();
-
-            <span class="kw">let </span>decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder
-                    .map(|res| res.map(|msg| msg.inner))
-                    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()
-                    .<span class="kw">await
-                    </span>.unwrap(),
-            );
 
             <span class="macro">similar_asserts::assert_eq!</span>(decoded_messages, messages);
         }
@@ -785,9 +759,7 @@
 
             <span class="kw">let </span>buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data.clone()));
 
-            <span class="kw">let </span>decoder = StreamingDecoder::new(VersionPolicy::Error, buf_reader)
-                .<span class="kw">await
-                </span>.unwrap();
+            <span class="kw">let </span>decoder = StreamingDecoder::new(buf_reader).<span class="kw">await</span>.unwrap();
 
             <span class="kw">let </span>decoded_messages = decoder.collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>.unwrap();
 
@@ -814,13 +786,11 @@
                 }
             }
 
-            <span class="kw">let </span>decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoded_messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| msg.inner)
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-            );
+            <span class="kw">let </span>decoded_messages = decoded_messages
+                .clone()
+                .into_iter()
+                .map(|msg| msg.inner)
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
             <span class="macro">similar_asserts::assert_eq!</span>(decoded_messages, messages);
         }

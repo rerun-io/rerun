@@ -906,39 +906,7 @@
 <a href="#905" id="905">905</a>
 <a href="#906" id="906">906</a>
 <a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a>
-<a href="#919" id="919">919</a>
-<a href="#920" id="920">920</a>
-<a href="#921" id="921">921</a>
-<a href="#922" id="922">922</a>
-<a href="#923" id="923">923</a>
-<a href="#924" id="924">924</a>
-<a href="#925" id="925">925</a>
-<a href="#926" id="926">926</a>
-<a href="#927" id="927">927</a>
-<a href="#928" id="928">928</a>
-<a href="#929" id="929">929</a>
-<a href="#930" id="930">930</a>
-<a href="#931" id="931">931</a>
-<a href="#932" id="932">932</a>
-<a href="#933" id="933">933</a>
-<a href="#934" id="934">934</a>
-<a href="#935" id="935">935</a>
-<a href="#936" id="936">936</a>
-<a href="#937" id="937">937</a>
-<a href="#938" id="938">938</a>
-<a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a></pre></div><pre class="rust"><code><span class="doccomment">//! The different types that make up the rerun log format.
+<a href="#908" id="908">908</a></pre></div><pre class="rust"><code><span class="doccomment">//! The different types that make up the rerun log format.
 //!
 //! ## Feature flags
 </span><span class="attr">#![doc = <span class="macro">document_features::document_features!</span>()]
@@ -972,12 +940,14 @@
 
 <span class="kw">use </span>std::sync::Arc;
 
+<span class="kw">use </span>arrow::array::RecordBatch <span class="kw">as </span>ArrowRecordBatch;
+
 <span class="kw">use </span>re_build_info::CrateVersion;
 <span class="kw">use </span>re_byte_size::SizeBytes;
 
 <span class="kw">pub use </span><span class="self">self</span>::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
-    entry_id::EntryId,
+    entry_id::{EntryId, EntryIdOrName},
     index::{
         Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, TimeCell, TimeInt, TimePoint,
         TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,
@@ -1053,7 +1023,7 @@
     </span><span class="kw">pub fn </span>random(kind: StoreKind) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             kind,
-            id: Arc::new(uuid::Uuid::new_v4().to_string()),
+            id: Arc::new(uuid::Uuid::new_v4().simple().to_string()),
         }
     }
 
@@ -1066,7 +1036,7 @@
     </span><span class="kw">pub fn </span>from_uuid(kind: StoreKind, uuid: uuid::Uuid) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             kind,
-            id: Arc::new(uuid.to_string()),
+            id: Arc::new(uuid.simple().to_string()),
         }
     }
 
@@ -1129,6 +1099,11 @@
 
     <span class="kw">pub fn </span>as_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         <span class="self">self</span>.<span class="number">0</span>.as_str()
+    }
+
+    <span class="doccomment">/// A randomly generated app id
+    </span><span class="kw">pub fn </span>random() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(<span class="macro">format!</span>(<span class="string">"app_{}"</span>, uuid::Uuid::new_v4().simple()))
     }
 }
 
@@ -1275,18 +1250,6 @@
             <span class="self">Self</span>::BlueprintActivationCommand(cmd) =&gt; {
                 cmd.blueprint_id = new_store_id;
             }
-        }
-    }
-
-    <span class="comment">// TODO(#3741): remove this once we are all in on arrow-rs
-    </span><span class="doccomment">/// USE ONLY FOR TESTS
-    </span><span class="kw">pub fn </span>strip_arrow_extension_types(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::ArrowMsg(store_id, <span class="kw-2">mut </span>arrow_msg) =&gt; {
-                strip_arrow_extension_types_from_batch(<span class="kw-2">&amp;mut </span>arrow_msg.batch);
-                <span class="self">Self</span>::ArrowMsg(store_id, arrow_msg)
-            }
-            other =&gt; other,
         }
     }
 }
@@ -1750,33 +1713,6 @@
                 blueprint_activation_command.heap_size_bytes()
             }
         }
-    }
-}
-
-<span class="doccomment">/// USE ONLY FOR TESTS
-</span><span class="comment">// TODO(#3741): remove once &lt;https://github.com/apache/arrow-rs/issues/6803&gt; is released
-</span><span class="kw">use </span>arrow::array::RecordBatch <span class="kw">as </span>ArrowRecordBatch;
-
-<span class="kw">pub fn </span>strip_arrow_extension_types_from_batch(batch: <span class="kw-2">&amp;mut </span>ArrowRecordBatch) {
-    <span class="kw">use </span>arrow::datatypes::{Field, Schema};
-
-    <span class="kw">fn </span>strip_arrow_extensions_from_field(field: <span class="kw-2">&amp;</span>Field) -&gt; Field {
-        <span class="kw">let </span><span class="kw-2">mut </span>metadata = field.metadata().clone();
-        metadata.retain(|key, <span class="kw">_</span>| !key.starts_with(<span class="string">"ARROW:extension"</span>));
-        field.clone().with_metadata(metadata)
-    }
-
-    <span class="kw">let </span>old_schema = batch.schema();
-    <span class="kw">let </span>new_fields: arrow::datatypes::Fields = old_schema
-        .fields()
-        .iter()
-        .map(|field| strip_arrow_extensions_from_field(field))
-        .collect();
-    <span class="kw">let </span>new_schema = Schema::new_with_metadata(new_fields, old_schema.metadata().clone());
-
-    <span class="attr">#[allow(clippy::unwrap_used)] </span><span class="comment">// The invariants of the input aren't changed
-    </span>{
-        <span class="kw-2">*</span>batch = ArrowRecordBatch::try_new(new_schema.into(), batch.columns().to_vec()).unwrap();
     }
 }
 

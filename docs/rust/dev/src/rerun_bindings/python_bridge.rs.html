@@ -1607,10 +1607,7 @@
 <a href="#1606" id="1606">1606</a>
 <a href="#1607" id="1607">1607</a>
 <a href="#1608" id="1608">1608</a>
-<a href="#1609" id="1609">1609</a>
-<a href="#1610" id="1610">1610</a>
-<a href="#1611" id="1611">1611</a>
-<a href="#1612" id="1612">1612</a></pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::borrow_deref_ref)] </span><span class="comment">// False positive due to #[pyfunction] macro
+<a href="#1609" id="1609">1609</a></pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::borrow_deref_ref)] </span><span class="comment">// False positive due to #[pyfunction] macro
 </span><span class="attr">#![allow(clippy::needless_pass_by_value)] </span><span class="comment">// A lot of arguments to #[pyfunction] need to be by value
 </span><span class="attr">#![allow(clippy::too_many_arguments)] </span><span class="comment">// We used named arguments, so this is fine
 </span><span class="attr">#![allow(unsafe_op_in_unsafe_fn)] </span><span class="comment">// False positive due to #[pyfunction] macro
@@ -2553,23 +2550,20 @@
     ///
     /// If `flush` is `true`, the sink will be flushed before reading.
     </span><span class="attr">#[pyo3(signature = (<span class="kw-2">*</span>, flush = <span class="bool-val">true</span>))]
-    </span><span class="kw">fn </span>read&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, flush: bool, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; Bound&lt;<span class="lifetime">'p</span>, PyBytes&gt; {
+    </span><span class="kw">fn </span>read&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, flush: bool, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Bound&lt;<span class="lifetime">'p</span>, PyBytes&gt;&gt; {
         <span class="comment">// Release the GIL in case any flushing behavior needs to cleanup a python object.
-        </span>PyBytes::new(
-            py,
-            py.allow_threads(|| {
-                <span class="kw">if </span>flush {
-                    <span class="self">self</span>.inner.flush();
-                }
+        </span>py.allow_threads(|| {
+            <span class="kw">if </span>flush {
+                <span class="self">self</span>.inner.flush();
+            }
 
-                <span class="kw">let </span>bytes = <span class="self">self</span>.inner.read();
+            <span class="kw">let </span>bytes = <span class="self">self</span>.inner.read();
 
-                flush_garbage_queue();
+            flush_garbage_queue();
 
-                bytes
-            })
-            .as_slice(),
-        )
+            bytes
+        })
+        .map(|bytes| PyBytes::new(py, <span class="kw-2">&amp;</span>bytes))
     }
 
     <span class="doccomment">/// Flush the binary sink manually.

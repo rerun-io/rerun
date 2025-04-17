@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["arrow2_datatype_docs","arrow_datatype_docs"]};

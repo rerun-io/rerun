@@ -2552,7 +2552,27 @@
 <a href="#2551" id="2551">2551</a>
 <a href="#2552" id="2552">2552</a>
 <a href="#2553" id="2553">2553</a>
-<a href="#2554" id="2554">2554</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#2554" id="2554">2554</a>
+<a href="#2555" id="2555">2555</a>
+<a href="#2556" id="2556">2556</a>
+<a href="#2557" id="2557">2557</a>
+<a href="#2558" id="2558">2558</a>
+<a href="#2559" id="2559">2559</a>
+<a href="#2560" id="2560">2560</a>
+<a href="#2561" id="2561">2561</a>
+<a href="#2562" id="2562">2562</a>
+<a href="#2563" id="2563">2563</a>
+<a href="#2564" id="2564">2564</a>
+<a href="#2565" id="2565">2565</a>
+<a href="#2566" id="2566">2566</a>
+<a href="#2567" id="2567">2567</a>
+<a href="#2568" id="2568">2568</a>
+<a href="#2569" id="2569">2569</a>
+<a href="#2570" id="2570">2570</a>
+<a href="#2571" id="2571">2571</a>
+<a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
@@ -2571,7 +2591,7 @@
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
-    StoreContext, SystemCommand, SystemCommandSender <span class="kw">as _</span>, TableStore, ViewClass,
+    StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender <span class="kw">as _</span>, TableStore, ViewClass,
     ViewClassRegistry, ViewClassRegistryError,
 };
 
@@ -2580,7 +2600,7 @@
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
-    callback::Callbacks,
+    event::ViewerEventDispatcher,
     AppState,
 };
 <span class="comment">// ----------------------------------------------------------------------------
@@ -2677,7 +2697,7 @@
     reflection: re_types_core::reflection::Reflection,
 
     <span class="doccomment">/// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
-    </span><span class="kw">pub </span>callbacks: <span class="prelude-ty">Option</span>&lt;Callbacks&gt;,
+    </span><span class="kw">pub </span>event_dispatcher: <span class="prelude-ty">Option</span>&lt;ViewerEventDispatcher&gt;,
 
     <span class="doccomment">/// The async runtime that should be used for all asynchronous operations.
     ///
@@ -2813,7 +2833,10 @@
             Default::default()
         });
 
-        <span class="kw">let </span>callbacks = startup_options.callbacks.clone();
+        <span class="kw">let </span>event_dispatcher = startup_options
+            .on_event
+            .clone()
+            .map(ViewerEventDispatcher::new);
 
         <span class="kw">if </span>!state.redap_servers.is_empty() {
             command_sender.send_ui(UICommand::ExpandBlueprintPanel);
@@ -2870,7 +2893,7 @@
 
             reflection,
 
-            callbacks,
+            event_dispatcher,
             async_runtime: tokio_runtime,
         }
     }
@@ -2987,7 +3010,8 @@
             }
 
             SystemCommand::CloseEntry(entry) =&gt; {
-                store_hub.remove(<span class="kw-2">&amp;</span>entry);
+                <span class="comment">// TODO(#9464): Find a better successor here.
+                </span>store_hub.remove(<span class="kw-2">&amp;</span>entry);
             }
 
             SystemCommand::CloseAllEntries =&gt; {
@@ -3273,7 +3297,7 @@
             .cloned()
             <span class="comment">// If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
-            </span>.or_else(|| <span class="prelude-val">Some</span>(uuid::Uuid::new_v4().to_string().into()));
+            </span>.or_else(|| <span class="prelude-val">Some</span>(ApplicationId::random()));
         <span class="kw">let </span>active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
             <span class="comment">// When we're on the welcome screen, there is no recording ID to recommend.
             // But we want one, otherwise multiple things being dropped simultaneously on the
@@ -3882,7 +3906,7 @@
                                 opacity: <span class="self">self</span>.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
-                            <span class="self">self</span>.callbacks.as_ref(),
+                            <span class="self">self</span>.event_dispatcher.as_ref(),
                         );
                         render_ctx.before_submit();
                     }
@@ -4255,7 +4279,7 @@
             .cloned()
             <span class="comment">// If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
-            </span>.or_else(|| <span class="prelude-val">Some</span>(uuid::Uuid::new_v4().to_string().into()));
+            </span>.or_else(|| <span class="prelude-val">Some</span>(ApplicationId::random()));
         <span class="kw">let </span>active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
             <span class="comment">// When we're on the welcome screen, there is no recording ID to recommend.
             // But we want one, otherwise multiple things being dropped simultaneously on the
@@ -4704,6 +4728,22 @@
                 .collect();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(app_id) = apps.first().copied() {
                 store_hub.set_active_app(app_id.clone());
+                <span class="comment">// set_active_app will also activate a new entry.
+                // Select this entry so it's more obvious to the user which recording
+                // is now active.
+                </span><span class="kw">match </span>store_hub.active_entry() {
+                    <span class="prelude-val">Some</span>(StoreHubEntry::Recording { store_id }) =&gt; {
+                        <span class="self">self</span>.state
+                            .selection_state
+                            .set_selection(Item::StoreId(store_id.clone()));
+                    }
+                    <span class="prelude-val">Some</span>(StoreHubEntry::Table { table_id }) =&gt; {
+                        <span class="self">self</span>.state
+                            .selection_state
+                            .set_selection(Item::TableId(table_id.clone()));
+                    }
+                    <span class="prelude-val">None </span>=&gt; {}
+                }
             } <span class="kw">else </span>{
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }

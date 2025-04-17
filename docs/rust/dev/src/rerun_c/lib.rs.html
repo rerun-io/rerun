@@ -1090,7 +1090,13 @@
 <a href="#1089" id="1089">1089</a>
 <a href="#1090" id="1090">1090</a>
 <a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a></pre></div><pre class="rust"><code><span class="doccomment">//! The Rerun C SDK.
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a></pre></div><pre class="rust"><code><span class="doccomment">//! The Rerun C SDK.
 //!
 //! The functions here must match `rerun_cpp/src/rerun/c/rerun.h`.
 
@@ -1106,7 +1112,10 @@
 
 <span class="kw">use </span>std::ffi::{c_char, c_uchar, CString};
 
-<span class="kw">use </span>arrow::array::{ArrayRef <span class="kw">as </span>ArrowArrayRef, ListArray <span class="kw">as </span>ArrowListArray};
+<span class="kw">use </span>arrow::{
+    array::{ArrayRef <span class="kw">as </span>ArrowArrayRef, ListArray <span class="kw">as </span>ArrowListArray},
+    ffi::{FFI_ArrowArray, FFI_ArrowSchema},
+};
 <span class="kw">use </span>arrow_utils::arrow_array_from_c_ffi;
 <span class="kw">use </span>once_cell::sync::Lazy;
 
@@ -1270,14 +1279,14 @@
 </span><span class="attr">#[repr(C)]
 </span><span class="kw">pub struct </span>CComponentType {
     <span class="kw">pub </span>descriptor: CComponentDescriptor,
-    <span class="kw">pub </span>schema: arrow2::ffi::ArrowSchema,
+    <span class="kw">pub </span>schema: FFI_ArrowSchema,
 }
 
 <span class="doccomment">/// See `rr_component_batch` in the C header.
 </span><span class="attr">#[repr(C)]
 </span><span class="kw">pub struct </span>CComponentBatch {
     <span class="kw">pub </span>component_type: CComponentTypeHandle,
-    <span class="kw">pub </span>array: arrow2::ffi::ArrowArray,
+    <span class="kw">pub </span>array: FFI_ArrowArray,
 }
 
 <span class="attr">#[repr(C)]
@@ -1293,7 +1302,7 @@
     <span class="kw">pub </span>component_type: CComponentTypeHandle,
 
     <span class="doccomment">/// A `ListArray` with the datatype `List(component_type)`.
-    </span><span class="kw">pub </span>array: arrow2::ffi::ArrowArray,
+    </span><span class="kw">pub </span>array: FFI_ArrowArray,
 }
 
 <span class="doccomment">/// See `rr_sorting_status` in the C header.
@@ -1363,7 +1372,7 @@
     <span class="kw">pub </span>timeline: CTimeline,
 
     <span class="doccomment">/// Times, a primitive array of i64.
-    </span><span class="kw">pub </span>times: arrow2::ffi::ArrowArray,
+    </span><span class="kw">pub </span>times: FFI_ArrowArray,
 
     <span class="doccomment">/// The sorting order of the times array.
     </span><span class="kw">pub </span>sorting_status: CSortingStatus,
@@ -1477,23 +1486,22 @@
         component_name: component_name.into(),
     };
 
-    <span class="kw">let </span>schema =
-        <span class="kw">unsafe </span>{ arrow2::ffi::import_field_from_c(<span class="kw-2">&amp;</span>component_type.schema) }.map_err(|err| {
-            CError::new(
-                CErrorCode::ArrowFfiSchemaImportError,
-                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Failed to import ffi schema: {err}"</span>),
-            )
-        })<span class="question-mark">?</span>;
+    <span class="kw">let </span>field = arrow::datatypes::Field::try_from(<span class="kw-2">&amp;</span>component_type.schema).map_err(|err| {
+        CError::new(
+            CErrorCode::ArrowFfiSchemaImportError,
+            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Failed to import ffi schema: {err}"</span>),
+        )
+    })<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(COMPONENT_TYPES
         .write()
-        .register(component_descr, schema.data_type))
+        .register(component_descr, field.data_type().clone()))
 }
 
 <span class="attr">#[allow(unsafe_code)]
 #[no_mangle]
 </span><span class="kw">pub extern </span><span class="string">"C" </span><span class="kw">fn </span>rr_register_component_type(
-    <span class="comment">// Note that since this is passed by value, Arrow2 will release the schema on drop!
+    <span class="comment">// Note that since this is passed by value, arrow will release the schema on drop!
     </span>component_type: CComponentType,
     error: <span class="kw-2">*mut </span>CError,
 ) -&gt; u32 {
@@ -1916,10 +1924,11 @@
             <span class="kw">let </span>CComponentBatch {
                 component_type,
                 array,
-            } = <span class="kw-2">&amp;</span>batch;
+            } = batch;
             <span class="kw">let </span>component_type = component_type_registry.get(<span class="kw-2">*</span>component_type)<span class="question-mark">?</span>;
             <span class="kw">let </span>datatype = component_type.datatype.clone();
-            <span class="kw">let </span>values = <span class="kw">unsafe </span>{ arrow_array_from_c_ffi(array, datatype) }<span class="question-mark">?</span>;
+            <span class="kw">let </span>array = <span class="kw">unsafe </span>{ FFI_ArrowArray::from_raw(array) }; <span class="comment">// Move out from `batches`
+            </span><span class="kw">let </span>values = <span class="kw">unsafe </span>{ arrow_array_from_c_ffi(array, datatype) }<span class="question-mark">?</span>;
             components.insert(component_type.descriptor.clone(), values);
         }
     }
@@ -2047,8 +2056,8 @@
 </span><span class="kw">fn </span>rr_recording_stream_send_columns_impl(
     stream: CRecordingStream,
     entity_path: CStringView,
-    time_columns: <span class="kw-2">&amp;</span>[CTimeColumn],
-    component_columns: <span class="kw-2">&amp;</span>[CComponentColumns],
+    time_columns: <span class="kw-2">&amp;mut </span>[CTimeColumn],
+    component_columns: <span class="kw-2">&amp;mut </span>[CComponentColumns],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), CError&gt; {
     <span class="comment">// Create chunk-id as early as possible. It has a timestamp and is used to estimate e2e latency.
     </span><span class="kw">let </span>id = ChunkId::new();
@@ -2057,11 +2066,12 @@
     <span class="kw">let </span>entity_path = entity_path.as_str(<span class="string">"entity_path"</span>)<span class="question-mark">?</span>;
 
     <span class="kw">let </span>time_columns: IntMap&lt;TimelineName, TimeColumn&gt; = time_columns
-        .iter()
+        .iter_mut()
         .map(|time_column| {
             <span class="kw">let </span>timeline: Timeline = time_column.timeline.clone().try_into()<span class="question-mark">?</span>;
-            <span class="kw">let </span>datatype = arrow2::datatypes::DataType::Int64;
-            <span class="kw">let </span>time_values_untyped = <span class="kw">unsafe </span>{ arrow_array_from_c_ffi(<span class="kw-2">&amp;</span>time_column.times, datatype) }<span class="question-mark">?</span>;
+            <span class="kw">let </span>datatype = arrow::datatypes::DataType::Int64;
+            <span class="kw">let </span>array = <span class="kw">unsafe </span>{ FFI_ArrowArray::from_raw(<span class="kw-2">&amp;mut </span>time_column.times) } ; <span class="comment">// Move out of the array
+            </span><span class="kw">let </span>time_values_untyped = <span class="kw">unsafe </span>{ arrow_array_from_c_ffi(array, datatype) }<span class="question-mark">?</span>;
             <span class="kw">let </span>time_values = TimeColumn::read_array(<span class="kw-2">&amp;</span>ArrowArrayRef::from(time_values_untyped)).map_err(|err| {
                 CError::new(
                     CErrorCode::ArrowFfiArrayImportError,
@@ -2083,18 +2093,19 @@
     <span class="kw">let </span>components: IntMap&lt;ComponentDescriptor, ArrowListArray&gt; = {
         <span class="kw">let </span>component_type_registry = COMPONENT_TYPES.read();
         component_columns
-            .iter()
+            .iter_mut()
             .map(|batch| {
                 <span class="kw">let </span>CComponentColumns {
                     component_type,
                     array,
-                } = <span class="kw-2">&amp;</span>batch;
+                } = batch;
                 <span class="kw">let </span>component_type = component_type_registry.get(<span class="kw-2">*</span>component_type)<span class="question-mark">?</span>;
-                <span class="kw">let </span>datatype = arrow2::array::ListArray::&lt;i32&gt;::default_datatype(
-                    component_type.datatype.clone(),
-                );
 
-                <span class="kw">let </span>component_values_untyped = <span class="kw">unsafe </span>{ arrow_array_from_c_ffi(array, datatype) }<span class="question-mark">?</span>;
+                <span class="kw">let </span>nullable = <span class="bool-val">true</span>;
+                <span class="kw">let </span>list_datatype = arrow::datatypes::DataType::List(arrow::datatypes::Field::new_list_field(component_type.datatype.clone(), nullable).into());
+
+                <span class="kw">let </span>array = <span class="kw">unsafe </span>{ FFI_ArrowArray::from_raw(array) }; <span class="comment">// Move out of the array
+                </span><span class="kw">let </span>component_values_untyped = <span class="kw">unsafe </span>{ arrow_array_from_c_ffi(array, list_datatype) }<span class="question-mark">?</span>;
                 <span class="kw">let </span>component_values = component_values_untyped
                     .downcast_array_ref::&lt;ArrowListArray&gt;()
                     .ok_or_else(|| {
@@ -2132,16 +2143,17 @@
 </span><span class="kw">pub unsafe extern </span><span class="string">"C" </span><span class="kw">fn </span>rr_recording_stream_send_columns(
     stream: CRecordingStream,
     entity_path: CStringView,
-    time_columns: <span class="kw-2">*const </span>CTimeColumn,
+    time_columns: <span class="kw-2">*mut </span>CTimeColumn,
     num_time_columns: u32,
-    component_batches: <span class="kw-2">*const </span>CComponentColumns,
+    component_batches: <span class="kw-2">*mut </span>CComponentColumns,
     num_component_batches: u32,
     error: <span class="kw-2">*mut </span>CError,
 ) {
     <span class="kw">let </span>time_columns =
-        <span class="kw">unsafe </span>{ std::slice::from_raw_parts(time_columns, num_time_columns <span class="kw">as </span>usize) };
-    <span class="kw">let </span>component_batches =
-        <span class="kw">unsafe </span>{ std::slice::from_raw_parts(component_batches, num_component_batches <span class="kw">as </span>usize) };
+        <span class="kw">unsafe </span>{ std::slice::from_raw_parts_mut(time_columns, num_time_columns <span class="kw">as </span>usize) };
+    <span class="kw">let </span>component_batches = <span class="kw">unsafe </span>{
+        std::slice::from_raw_parts_mut(component_batches, num_component_batches <span class="kw">as </span>usize)
+    };
 
     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
         rr_recording_stream_send_columns_impl(stream, entity_path, time_columns, component_batches)

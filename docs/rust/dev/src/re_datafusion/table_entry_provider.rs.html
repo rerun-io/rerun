@@ -81,7 +81,59 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>async_trait::async_trait;
 
@@ -93,7 +145,9 @@
 <span class="kw">use </span>tonic::transport::Channel;
 
 <span class="kw">use </span>re_log_encoding::codec::wire::decoder::Decode <span class="kw">as _</span>;
-<span class="kw">use </span>re_log_types::EntryId;
+<span class="kw">use </span>re_log_types::{EntryId, EntryIdOrName};
+<span class="kw">use </span>re_protos::catalog::v1alpha1::ext::EntryDetails;
+<span class="kw">use </span>re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
 <span class="kw">use </span>re_protos::frontend::v1alpha1::{
     frontend_service_client::FrontendServiceClient, GetTableSchemaRequest, ScanTableRequest,
     ScanTableResponse,
@@ -104,17 +158,64 @@
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>TableEntryTableProvider {
     client: FrontendServiceClient&lt;Channel&gt;,
-    table_id: EntryId,
+    table: EntryIdOrName,
+
+    <span class="comment">// cache the table id when resolved
+    </span>table_id: <span class="prelude-ty">Option</span>&lt;EntryId&gt;,
 }
 
 <span class="kw">impl </span>TableEntryTableProvider {
-    <span class="kw">pub fn </span>new(client: FrontendServiceClient&lt;Channel&gt;, table_id: EntryId) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ client, table_id }
+    <span class="kw">pub fn </span>new(client: FrontendServiceClient&lt;Channel&gt;, table: <span class="kw">impl </span>Into&lt;EntryIdOrName&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            client,
+            table: table.into(),
+            table_id: <span class="prelude-val">None</span>,
+        }
     }
 
     <span class="doccomment">/// This is a convenience function
     </span><span class="kw">pub async fn </span>into_provider(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Arc&lt;<span class="kw">dyn </span>TableProvider&gt;, DataFusionError&gt; {
         <span class="prelude-val">Ok</span>(GrpcStreamProvider::prepare(<span class="self">self</span>).<span class="kw">await</span><span class="question-mark">?</span>)
+    }
+
+    <span class="kw">async fn </span>table_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;EntryId, DataFusionError&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(table_id) = <span class="self">self</span>.table_id {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(table_id);
+        }
+
+        <span class="kw">let </span>table_id = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.table {
+            EntryIdOrName::Id(entry_id) =&gt; <span class="kw-2">*</span>entry_id,
+
+            EntryIdOrName::Name(table_name) =&gt; {
+                <span class="kw">let </span>entry_details: EntryDetails = <span class="self">self
+                    </span>.client
+                    .find_entries(FindEntriesRequest {
+                        filter: <span class="prelude-val">Some</span>(EntryFilter {
+                            id: <span class="prelude-val">None</span>,
+                            name: <span class="prelude-val">Some</span>(table_name.clone()),
+                            entry_kind: <span class="prelude-val">Some</span>(EntryKind::Table <span class="kw">as </span>i32),
+                        }),
+                    })
+                    .<span class="kw">await
+                    </span>.map_err(|err| DataFusionError::External(Box::new(err)))<span class="question-mark">?
+                    </span>.into_inner()
+                    .entries
+                    .first()
+                    .ok_or_else(|| {
+                        DataFusionError::External(
+                            <span class="macro">format!</span>(<span class="string">"No entry found with name: {table_name}"</span>).into(),
+                        )
+                    })<span class="question-mark">?
+                    </span>.clone()
+                    .try_into()
+                    .map_err(|err| DataFusionError::External(Box::new(err)))<span class="question-mark">?</span>;
+
+                entry_details.id
+            }
+        };
+
+        <span class="self">self</span>.table_id = <span class="prelude-val">Some</span>(table_id);
+        <span class="prelude-val">Ok</span>(table_id)
     }
 }
 
@@ -122,9 +223,9 @@
 </span><span class="kw">impl </span>GrpcStreamToTable <span class="kw">for </span>TableEntryTableProvider {
     <span class="kw">type </span>GrpcStreamData = ScanTableResponse;
 
-    <span class="kw">async fn </span>fetch_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SchemaRef, DataFusionError&gt; {
+    <span class="kw">async fn </span>fetch_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; DataFusionResult&lt;SchemaRef&gt; {
         <span class="kw">let </span>request = GetTableSchemaRequest {
-            table_id: <span class="prelude-val">Some</span>(<span class="self">self</span>.table_id.into()),
+            table_id: <span class="prelude-val">Some</span>(<span class="self">self</span>.table_id().<span class="kw">await</span><span class="question-mark">?</span>.into()),
         };
 
         <span class="prelude-val">Ok</span>(Arc::new(
@@ -143,13 +244,16 @@
 
     <span class="kw">async fn </span>send_streaming_request(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;tonic::Streaming&lt;<span class="self">Self</span>::GrpcStreamData&gt;&gt;, tonic::Status&gt; {
+    ) -&gt; DataFusionResult&lt;tonic::Response&lt;tonic::Streaming&lt;<span class="self">Self</span>::GrpcStreamData&gt;&gt;&gt; {
         <span class="kw">let </span>request = ScanTableRequest {
-            table_id: <span class="prelude-val">Some</span>(<span class="self">self</span>.table_id.into()),
+            table_id: <span class="prelude-val">Some</span>(<span class="self">self</span>.table_id().<span class="kw">await</span><span class="question-mark">?</span>.into()),
         };
 
-        <span class="self">self</span>.client.scan_table(request).<span class="kw">await
-    </span>}
+        <span class="self">self</span>.client
+            .scan_table(request)
+            .<span class="kw">await
+            </span>.map_err(|err| DataFusionError::External(Box::new(err)))
+    }
 
     <span class="kw">fn </span>process_response(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,

@@ -89,17 +89,17 @@
     </span><span class="attr">#[allow(clippy::match_same_arms)]
     </span><span class="kw">pub fn </span>size_in_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::U8(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::U16(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::U32(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::U64(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::I8(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::I16(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::I32(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::I64(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::F16(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::F32(buf) =&gt; buf.size_in_bytes(),
-            <span class="self">Self</span>::F64(buf) =&gt; buf.size_in_bytes(),
+            <span class="self">Self</span>::U8(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::U16(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::U32(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::U64(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::I8(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::I16(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::I32(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::I64(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::F16(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::F32(buf) =&gt; buf.inner().len(),
+            <span class="self">Self</span>::F64(buf) =&gt; buf.inner().len(),
         }
     }
 

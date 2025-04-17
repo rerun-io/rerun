@@ -29,18 +29,14 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a></pre></div><pre class="rust"><code><span class="doccomment">//! This crates implements the Redap browser feature, including the communication and UI aspects of
+<a href="#31" id="31">31</a></pre></div><pre class="rust"><code><span class="doccomment">//! This crates implements the Redap browser feature, including the communication and UI aspects of
 //! it.
 
 </span><span class="kw">mod </span>add_server_modal;
 <span class="kw">mod </span>context;
 <span class="kw">mod </span>dataset_ui;
 <span class="kw">mod </span>entries;
-<span class="kw">mod </span>requested_object;
 <span class="kw">mod </span>servers;
-<span class="kw">pub mod </span>table_utils;
 
 <span class="kw">pub use </span>entries::{dataset_and_its_recordings_ui, sort_datasets, EntryKind, SortDatasetsResults};
 <span class="kw">use </span>re_uri::Scheme;

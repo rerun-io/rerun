@@ -121,8 +121,7 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::path::PathBuf;
+<a href="#123" id="123">123</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::path::PathBuf;
 
 <span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
 <span class="kw">use </span>crossbeam::channel;
@@ -162,13 +161,16 @@
 ///
 /// This function is capable of decoding multiple independent recordings from a single stream.
 </span><span class="kw">pub fn </span>read_rrd_streams_from_file_or_stdin(
-    version_policy: re_log_encoding::VersionPolicy,
     paths: <span class="kw-2">&amp;</span>[String],
 ) -&gt; (
     channel::Receiver&lt;(InputSource, anyhow::Result&lt;LogMsg&gt;)&gt;,
     channel::Receiver&lt;u64&gt;,
 ) {
-    <span class="kw">let </span>path_to_input_rrds = paths.iter().map(PathBuf::from).collect_vec();
+    <span class="kw">let </span>path_to_input_rrds = paths
+        .iter()
+        .filter(|s| !s.is_empty()) <span class="comment">// Avoid a problem with `pixi run check-backwards-compatibility`
+        </span>.map(PathBuf::from)
+        .collect_vec();
 
     <span class="comment">// TODO(cmc): might want to make this configurable at some point.
     </span><span class="kw">let </span>(tx, rx) = crossbeam::channel::bounded(<span class="number">100</span>);
@@ -184,11 +186,8 @@
 
                 </span><span class="kw">let </span>stdin = std::io::BufReader::new(std::io::stdin().lock());
 
-                <span class="kw">let </span><span class="kw-2">mut </span>decoder = <span class="kw">match </span>re_log_encoding::decoder::Decoder::new_concatenated(
-                    version_policy,
-                    stdin,
-                )
-                .context(<span class="string">"couldn't decode stdin stream -- skipping"</span>)
+                <span class="kw">let </span><span class="kw-2">mut </span>decoder = <span class="kw">match </span>re_log_encoding::decoder::Decoder::new_concatenated(stdin)
+                    .context(<span class="string">"couldn't decode stdin stream -- skipping"</span>)
                 {
                     <span class="prelude-val">Ok</span>(decoder) =&gt; decoder,
                     <span class="prelude-val">Err</span>(err) =&gt; {
@@ -218,17 +217,16 @@
                         }
                     };
 
-                    <span class="kw">let </span><span class="kw-2">mut </span>decoder =
-                        <span class="kw">match </span>re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)
-                            .with_context(|| <span class="macro">format!</span>(<span class="string">"couldn't decode {rrd_path:?} -- skipping"</span>))
-                        {
-                            <span class="prelude-val">Ok</span>(decoder) =&gt; decoder,
-                            <span class="prelude-val">Err</span>(err) =&gt; {
-                                tx.send((InputSource::File(rrd_path.clone()), <span class="prelude-val">Err</span>(err)))
-                                    .ok();
-                                <span class="kw">continue</span>;
-                            }
-                        };
+                    <span class="kw">let </span><span class="kw-2">mut </span>decoder = <span class="kw">match </span>re_log_encoding::decoder::Decoder::new(rrd_file)
+                        .with_context(|| <span class="macro">format!</span>(<span class="string">"couldn't decode {rrd_path:?} -- skipping"</span>))
+                    {
+                        <span class="prelude-val">Ok</span>(decoder) =&gt; decoder,
+                        <span class="prelude-val">Err</span>(err) =&gt; {
+                            tx.send((InputSource::File(rrd_path.clone()), <span class="prelude-val">Err</span>(err)))
+                                .ok();
+                            <span class="kw">continue</span>;
+                        }
+                    };
 
                     <span class="kw">for </span>res <span class="kw">in </span><span class="kw-2">&amp;mut </span>decoder {
                         <span class="kw">let </span>res = res.context(<span class="string">"decode rrd message"</span>).with_context(|| {

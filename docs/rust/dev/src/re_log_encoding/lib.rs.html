@@ -162,21 +162,7 @@
 <a href="#161" id="161">161</a>
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a></pre></div><pre class="rust"><code><span class="doccomment">//! Crate that handles encoding of rerun log types.
+<a href="#164" id="164">164</a></pre></div><pre class="rust"><code><span class="doccomment">//! Crate that handles encoding of rerun log types.
 
 </span><span class="attr">#[cfg(feature = <span class="string">"decoder"</span>)]
 </span><span class="kw">pub mod </span>decoder;
@@ -194,20 +180,6 @@
 
 <span class="attr">#[cfg(feature = <span class="string">"stream_from_http"</span>)]
 </span><span class="kw">pub mod </span>stream_rrd_from_http;
-
-<span class="doccomment">/// How to handle version mismatches during decoding.
-</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>VersionPolicy {
-    <span class="doccomment">/// Warn if the versions don't match, but continue loading.
-    ///
-    /// We usually use this for loading `.rrd` recordings.
-    </span>Warn,
-
-    <span class="doccomment">/// Return an error if the versions aren't compatible.
-    ///
-    /// We usually use this for tests, and for loading `.rbl` blueprint files.
-    </span>Error,
-}
 
 <span class="comment">// ---------------------------------------------------------------------
 

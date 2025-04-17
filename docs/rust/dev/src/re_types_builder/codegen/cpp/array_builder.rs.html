@@ -200,7 +200,7 @@
             declarations.insert(<span class="string">"arrow"</span>, ForwardDecl::Class(ident.clone()));
             ident
         }
-        Type::Object(fqname) =&gt; {
+        Type::Object { fqname } =&gt; {
             arrow_array_builder_type_object(<span class="kw-2">&amp;</span>objects[fqname], objects, declarations)
         }
     }

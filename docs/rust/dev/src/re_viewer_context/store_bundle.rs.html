@@ -153,14 +153,9 @@
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a></pre></div><pre class="rust"><code><span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
+<a href="#155" id="155">155</a></pre></div><pre class="rust"><code><span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
 <span class="kw">use </span>re_entity_db::EntityDb;
-<span class="kw">use </span>re_log_encoding::VersionPolicy;
 <span class="kw">use </span>re_log_types::{StoreId, StoreKind};
 
 <span class="attr">#[derive(thiserror::Error, Debug)]
@@ -181,13 +176,10 @@
 <span class="kw">impl </span>StoreBundle {
     <span class="doccomment">/// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
-    </span><span class="kw">pub fn </span>from_rrd(
-        version_policy: VersionPolicy,
-        read: <span class="kw">impl </span>std::io::Read,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, StoreLoadError&gt; {
+    </span><span class="kw">pub fn </span>from_rrd(read: <span class="kw">impl </span>std::io::Read) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, StoreLoadError&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
-        <span class="kw">let </span>decoder = re_log_encoding::decoder::Decoder::new(version_policy, read)<span class="question-mark">?</span>;
+        <span class="kw">let </span>decoder = re_log_encoding::decoder::Decoder::new(read)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>slf = <span class="self">Self</span>::default();
 

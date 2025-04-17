@@ -130,8 +130,8 @@
     <span class="kw">fn </span>generate(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span><span class="kw">crate</span>::Reporter,
-        _objects: <span class="kw-2">&amp;</span><span class="kw">crate</span>::Objects,              <span class="comment">// Expected to be empty.
-        </span>_arrow_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ArrowRegistry, <span class="comment">// Expected to be empty.
+        _objects: <span class="kw-2">&amp;</span><span class="kw">crate</span>::Objects,            <span class="comment">// Expected to be empty.
+        </span>_type_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::TypeRegistry, <span class="comment">// Expected to be empty.
     </span>) -&gt; <span class="kw">crate</span>::GeneratedFiles {
         <span class="kw">let </span><span class="kw-2">mut </span>files_to_write = GeneratedFiles::default();
 

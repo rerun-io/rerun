@@ -787,7 +787,7 @@
     ///
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     </span><span class="comment">//
-    // TODO(#3741): Provide a path that only shuffles offsets instead of the data itself, using a `ListView`.
+    // TODO(apache/arrow-rs#5375): Provide a path that only shuffles offsets instead of the data itself, using a `ListView`.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>shuffle_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, swaps: <span class="kw-2">&amp;</span>[usize]) {
         <span class="macro">re_tracing::profile_function!</span>();
 

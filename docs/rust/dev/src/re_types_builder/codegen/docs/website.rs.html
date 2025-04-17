@@ -808,7 +808,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span>Reporter,
         objects: <span class="kw-2">&amp;</span>Objects,
-        arrow_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ArrowRegistry,
+        type_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::TypeRegistry,
     ) -&gt; GeneratedFiles {
         <span class="macro">re_tracing::profile_function!</span>();
 
@@ -842,7 +842,7 @@
                 reporter,
                 objects,
                 object,
-                arrow_registry,
+                type_registry,
                 <span class="kw-2">&amp;</span>views_per_archetype,
             );
             <span class="kw">let </span>path = <span class="self">self</span>.docs_dir.join(<span class="macro">format!</span>(
@@ -986,7 +986,7 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
     reporter: <span class="kw-2">&amp;</span>Reporter,
     objects: <span class="kw-2">&amp;</span>Objects,
     object: <span class="kw-2">&amp;</span>Object,
-    arrow_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::TypeRegistry,
     views_per_archetype: <span class="kw-2">&amp;</span>ViewsPerArchetype,
 ) -&gt; String {
     <span class="kw">let </span>top_level_docs = object
@@ -1037,11 +1037,11 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
     }
 
     <span class="kw">if </span><span class="macro">matches!</span>(object.kind, ObjectKind::Datatype | ObjectKind::Component) {
-        <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>object.fqname);
+        <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>type_registry.get(<span class="kw-2">&amp;</span>object.fqname);
         <span class="macro">putln!</span>(page);
         <span class="macro">putln!</span>(page, <span class="string">"## Arrow datatype"</span>);
         <span class="macro">putln!</span>(page, <span class="string">"```"</span>);
-        <span class="kw">super</span>::arrow_datatype::arrow2_datatype_docs(<span class="kw-2">&amp;mut </span>page, datatype);
+        <span class="kw">super</span>::datatype_docs(<span class="kw-2">&amp;mut </span>page, datatype);
         <span class="macro">putln!</span>(page);
         <span class="macro">putln!</span>(page, <span class="string">"```"</span>);
     }
@@ -1197,7 +1197,7 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
                     type_info(objects, <span class="kw-2">&amp;</span>Type::from(elem_type.clone()))
                 )
             }
-            Type::Object(fqname) =&gt; {
+            Type::Object { fqname } =&gt; {
                 <span class="kw">let </span>ty = objects.get(fqname).unwrap();
                 <span class="macro">format!</span>(
                     <span class="string">"[`{}`](../{}/{}.md)"</span>,
@@ -1213,7 +1213,7 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
         <span class="macro">assert!</span>(object.is_struct());
         <span class="macro">assert_eq!</span>(object.fields.len(), <span class="number">1</span>);
         <span class="kw">let </span>field_type = <span class="kw-2">&amp;</span>object.fields[<span class="number">0</span>].typ;
-        <span class="kw">if </span>object.kind == ObjectKind::Component &amp;&amp; <span class="macro">matches!</span>(field_type, Type::Object(<span class="kw">_</span>)) {
+        <span class="kw">if </span>object.kind == ObjectKind::Component &amp;&amp; <span class="macro">matches!</span>(field_type, Type::Object { .. }) {
             <span class="macro">putln!</span>(o, <span class="string">"## Rerun datatype"</span>);
             <span class="macro">putln!</span>(o, <span class="string">"{}"</span>, type_info(objects, field_type));
             <span class="macro">putln!</span>(o);

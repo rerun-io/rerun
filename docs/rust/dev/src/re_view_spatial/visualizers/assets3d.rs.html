@@ -210,13 +210,17 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_chunk_store::RowId;
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::buffer::ScalarBuffer;
+
+<span class="kw">use </span>re_chunk_store::RowId;
 <span class="kw">use </span>re_log_types::{hash::Hash64, Instance, TimeInt};
 <span class="kw">use </span>re_renderer::renderer::GpuMeshInstance;
 <span class="kw">use </span>re_types::{
     archetypes::Asset3D,
     components::{AlbedoFactor, Blob, MediaType},
-    ArrowBuffer, ArrowString, Component <span class="kw">as _</span>,
+    ArrowString, Component <span class="kw">as _</span>,
 };
 <span class="kw">use </span>re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
@@ -246,7 +250,7 @@
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
-    blob: ArrowBuffer&lt;u8&gt;,
+    blob: ScalarBuffer&lt;u8&gt;,
     media_type: <span class="prelude-ty">Option</span>&lt;ArrowString&gt;,
     albedo_factor: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>AlbedoFactor&gt;,
 }
@@ -287,7 +291,7 @@
                         key.clone(),
                         AnyMesh::Asset {
                             asset: <span class="kw">crate</span>::mesh_loader::NativeAsset3D {
-                                bytes: data.blob.as_slice(),
+                                bytes: <span class="kw-2">&amp;</span>data.blob,
                                 media_type: data.media_type.clone().map(Into::into),
                                 albedo_factor: data.albedo_factor.map(|a| a.<span class="number">0</span>.into()),
                             },
@@ -382,7 +386,7 @@
                     blobs.first().map(|blob| Asset3DComponentData {
                         index,
                         query_result_hash,
-                        blob: blob.clone().into(),
+                        blob: blob.clone(),
                         media_type: media_types
                             .and_then(|media_types| media_types.first().cloned()),
                         albedo_factor: albedo_factors

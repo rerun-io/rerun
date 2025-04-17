@@ -371,7 +371,7 @@
 <a href="#370" id="370">370</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 
 <span class="kw">use </span>ahash::{HashMap, HashMapExt <span class="kw">as _</span>};
-<span class="kw">use </span>re_log_types::{FileSource, LogMsg};
+<span class="kw">use </span>re_log_types::{ApplicationId, FileSource, LogMsg};
 <span class="kw">use </span>re_smart_channel::Sender;
 
 <span class="kw">use crate</span>::{DataLoader <span class="kw">as _</span>, DataLoaderError, LoadedData, RrdLoader};
@@ -708,7 +708,7 @@
                     <span class="kw">let </span>app_id = settings
                         .opened_application_id
                         .clone()
-                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string().into());
+                        .unwrap_or_else(ApplicationId::random);
                     <span class="kw">let </span>store_info = prepare_store_info(app_id, <span class="kw-2">&amp;</span>store_id, file_source.clone());
                     tx.send(store_info).ok();
                 }

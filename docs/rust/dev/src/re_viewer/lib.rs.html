@@ -348,8 +348,8 @@
 <span class="kw">mod </span>app_blueprint;
 <span class="kw">mod </span>app_state;
 <span class="kw">mod </span>background_tasks;
-<span class="kw">mod </span>callback;
 <span class="kw">pub mod </span>env_vars;
+<span class="kw">pub mod </span>event;
 <span class="kw">mod </span>saving;
 <span class="kw">mod </span>screenshotter;
 <span class="kw">mod </span>startup_options;
@@ -368,7 +368,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>{app_state::AppState, ui::memory_panel};
 
-<span class="kw">pub use </span>callback::{CallbackSelectionItem, Callbacks};
+<span class="kw">pub use </span>event::{SelectionChangeItem, ViewerEvent, ViewerEventKind};
 
 <span class="kw">pub use </span>app::App;
 <span class="kw">pub use </span>startup_options::StartupOptions;

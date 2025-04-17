@@ -235,9 +235,7 @@
 <a href="#234" id="234">234</a>
 <a href="#235" id="235">235</a>
 <a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
-<a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
+<a href="#237" id="237">237</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::ops::ControlFlow;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -310,8 +308,7 @@
     <span class="macro">re_log::debug!</span>(<span class="string">"Downloading .rrd file from {url:?}…"</span>);
 
     ehttp::streaming::fetch(ehttp::Request::get(<span class="kw-2">&amp;</span>url), {
-        <span class="kw">let </span>version_policy = <span class="kw">crate</span>::VersionPolicy::Warn;
-        <span class="kw">let </span>decoder = RefCell::new(StreamDecoder::new(version_policy));
+        <span class="kw">let </span>decoder = RefCell::new(StreamDecoder::new());
         <span class="kw">move </span>|part| <span class="kw">match </span>part {
             <span class="prelude-val">Ok</span>(part) =&gt; <span class="kw">match </span>part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {
@@ -423,8 +420,7 @@
     </span><span class="kw">async fn </span>decode_rrd_async(rrd_bytes: Vec&lt;u8&gt;, on_msg: Arc&lt;HttpMessageCallback&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>last_yield = web_time::Instant::now();
 
-        <span class="kw">let </span>version_policy = <span class="kw">crate</span>::VersionPolicy::Warn;
-        <span class="kw">match </span><span class="kw">crate</span>::decoder::Decoder::new(version_policy, rrd_bytes.as_slice()) {
+        <span class="kw">match </span><span class="kw">crate</span>::decoder::Decoder::new(rrd_bytes.as_slice()) {
             <span class="prelude-val">Ok</span>(decoder) =&gt; {
                 <span class="kw">for </span>msg <span class="kw">in </span>decoder {
                     <span class="kw">match </span>msg {

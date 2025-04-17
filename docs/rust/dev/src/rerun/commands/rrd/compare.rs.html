@@ -169,7 +169,20 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::{
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -219,9 +232,9 @@
         <span class="kw">let </span>path_to_rrd2 = PathBuf::from(path_to_rrd2);
 
         <span class="kw">let </span>(app_id1, chunks1) =
-            compute_uber_table(<span class="kw-2">&amp;</span>path_to_rrd1).with_context(|| <span class="macro">format!</span>(<span class="string">"path: {path_to_rrd1:?}"</span>))<span class="question-mark">?</span>;
+            load_chunks(<span class="kw-2">&amp;</span>path_to_rrd1).with_context(|| <span class="macro">format!</span>(<span class="string">"path: {path_to_rrd1:?}"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>(app_id2, chunks2) =
-            compute_uber_table(<span class="kw-2">&amp;</span>path_to_rrd2).with_context(|| <span class="macro">format!</span>(<span class="string">"path: {path_to_rrd2:?}"</span>))<span class="question-mark">?</span>;
+            load_chunks(<span class="kw-2">&amp;</span>path_to_rrd2).with_context(|| <span class="macro">format!</span>(<span class="string">"path: {path_to_rrd2:?}"</span>))<span class="question-mark">?</span>;
 
         <span class="kw">if </span><span class="kw-2">*</span>full_dump {
             <span class="macro">println!</span>(<span class="string">"{app_id1}"</span>);
@@ -254,7 +267,7 @@
             <span class="lifetime">'outer</span>: <span class="kw">for </span>chunk1 <span class="kw">in </span><span class="kw-2">&amp;</span>chunks1 {
                 <span class="kw">for </span>chunk2 <span class="kw">in </span>chunks2_opt.iter_mut().filter(|c| c.is_some()) {
                     <span class="attr">#[allow(clippy::unwrap_used)]
-                    </span><span class="kw">if </span>re_chunk::Chunk::are_similar(chunk1, chunk2.as_ref().unwrap()) {
+                    </span><span class="kw">if </span>re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
                         <span class="kw-2">*</span>chunk2 = <span class="prelude-val">None</span>;
                         <span class="kw">continue </span><span class="lifetime">'outer</span>;
                     }
@@ -264,18 +277,32 @@
             }
         }
 
+        <span class="kw">fn </span>format_chunk(chunk: <span class="kw-2">&amp;</span>Chunk) -&gt; String {
+            re_format_arrow::format_record_batch_opts(
+                <span class="kw-2">&amp;</span>chunk.to_record_batch().expect(<span class="string">"Cannot fail in practice"</span>),
+                <span class="kw-2">&amp;</span>re_format_arrow::RecordBatchFormatOpts {
+                    transposed: <span class="bool-val">false</span>,
+                    width: <span class="prelude-val">Some</span>(<span class="number">800</span>),
+                    include_metadata: <span class="bool-val">true</span>,
+                    include_column_metadata: <span class="bool-val">true</span>,
+                },
+            )
+            .to_string()
+        }
+
         <span class="kw">if </span>!<span class="kw-2">*</span>unordered || unordered_failed {
             <span class="kw">for </span>(chunk1, chunk2) <span class="kw">in </span><span class="macro">izip!</span>(chunks1, chunks2) {
-                <span class="macro">anyhow::ensure!</span>(
-                    re_chunk::Chunk::are_similar(<span class="kw-2">&amp;</span>chunk1, <span class="kw-2">&amp;</span>chunk2),
-                    <span class="string">"Chunks do not match:\n{}"</span>,
-                    similar_asserts::SimpleDiff::from_str(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{chunk1}"</span>),
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{chunk2}"</span>),
-                        <span class="string">"got"</span>,
-                        <span class="string">"expected"</span>,
-                    ),
-                );
+                re_chunk::Chunk::ensure_similar(<span class="kw-2">&amp;</span>chunk1, <span class="kw-2">&amp;</span>chunk2).with_context(|| {
+                    <span class="macro">format!</span>(
+                        <span class="string">"Chunks diff:\n{}"</span>,
+                        similar_asserts::SimpleDiff::from_str(
+                            <span class="kw-2">&amp;</span>format_chunk(<span class="kw-2">&amp;</span>chunk1),
+                            <span class="kw-2">&amp;</span>format_chunk(<span class="kw-2">&amp;</span>chunk2),
+                            <span class="string">"got"</span>,
+                            <span class="string">"expected"</span>,
+                        ),
+                    )
+                })<span class="question-mark">?</span>;
             }
         }
 
@@ -289,7 +316,7 @@
 /// `Chunk`s.
 ///
 /// Fails if there are more than one data recordings present in the rrd file.
-</span><span class="kw">fn </span>compute_uber_table(
+</span><span class="kw">fn </span>load_chunks(
     path_to_rrd: <span class="kw-2">&amp;</span>Path,
 ) -&gt; anyhow::Result&lt;(re_log_types::ApplicationId, Vec&lt;Arc&lt;re_chunk::Chunk&gt;&gt;)&gt; {
     <span class="kw">use </span>re_entity_db::EntityDb;
@@ -299,8 +326,7 @@
     <span class="kw">let </span>rrd_file = std::io::BufReader::new(rrd_file);
 
     <span class="kw">let </span><span class="kw-2">mut </span>stores: std::collections::HashMap&lt;StoreId, EntityDb&gt; = Default::default();
-    <span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Error;
-    <span class="kw">let </span>decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)<span class="question-mark">?</span>;
+    <span class="kw">let </span>decoder = re_log_encoding::decoder::Decoder::new(rrd_file)<span class="question-mark">?</span>;
     <span class="kw">for </span>msg <span class="kw">in </span>decoder {
         <span class="kw">let </span>msg = msg.context(<span class="string">"decode rrd message"</span>)<span class="question-mark">?</span>;
         stores

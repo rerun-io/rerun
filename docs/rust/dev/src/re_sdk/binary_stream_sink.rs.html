@@ -102,9 +102,7 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#104" id="104">104</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>parking_lot::Mutex;
 
@@ -140,17 +138,15 @@
     /// Use [`BinaryStreamStorage::flush`] if you want to guarantee that all
     /// logged messages have been written to the stream before you read them.
     </span><span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+    </span><span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>inner = <span class="self">self</span>.inner.lock();
 
         <span class="comment">// if there's no messages to send, do not include the RRD headers.
         </span><span class="kw">if </span>inner.is_empty() {
-            Vec::default()
-        } <span class="kw">else </span>{
-            encode_as_bytes_local(inner.drain(..).map(<span class="prelude-val">Ok</span>))
-                .ok_or_log_error()
-                .unwrap_or_default()
+            <span class="kw">return </span><span class="prelude-val">None</span>;
         }
+
+        encode_as_bytes_local(inner.drain(..).map(<span class="prelude-val">Ok</span>)).ok_or_log_error()
     }
 
     <span class="doccomment">/// Flush the batcher and log encoder to guarantee that all logged messages
@@ -168,7 +164,7 @@
         <span class="self">self</span>.flush();
         <span class="kw">let </span>bytes = <span class="self">self</span>.read();
 
-        <span class="kw">if </span>!bytes.is_empty() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(bytes) = bytes {
             <span class="macro">re_log::warn!</span>(
                 <span class="string">"Dropping data in BinaryStreamStorage ({} bytes)"</span>,
                 bytes.len()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DisplayColumn","DisplayRecordBatchError","RequestedObject"],"mod":["display_record_batch","requested_object","table_utils"],"struct":["DisplayRecordBatch"]};

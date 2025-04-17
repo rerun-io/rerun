@@ -781,12 +781,12 @@
 <span class="kw">use </span>re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 <span class="kw">use </span>re_dataframe::external::re_query::StorageEngineArcReadGuard;
 <span class="kw">use </span>re_dataframe::QueryHandle;
+<span class="kw">use </span>re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 <span class="kw">use </span>re_log_types::{EntityPath, TimeInt, TimelineName};
 <span class="kw">use </span>re_types_core::ComponentName;
 <span class="kw">use </span>re_ui::UiExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_viewer_context::{SystemCommandSender <span class="kw">as _</span>, ViewId, ViewerContext};
 
-<span class="kw">use </span><span class="kw">crate</span>::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 <span class="kw">use </span><span class="kw">crate</span>::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
 <span class="doccomment">/// Ui actions triggered by the dataframe UI to be handled by the calling code.

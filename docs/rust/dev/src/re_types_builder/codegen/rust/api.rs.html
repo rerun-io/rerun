@@ -1696,7 +1696,10 @@
 <a href="#1695" id="1695">1695</a>
 <a href="#1696" id="1696">1696</a>
 <a href="#1697" id="1697">1697</a>
-<a href="#1698" id="1698">1698</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet};
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
+<a href="#1701" id="1701">1701</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet};
 
 <span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
 <span class="kw">use </span>camino::{Utf8Path, Utf8PathBuf};
@@ -1720,8 +1723,8 @@
     },
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    TypeRegistry, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
     ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
     ATTR_RUST_REPR,
@@ -1752,7 +1755,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span>Reporter,
         objects: <span class="kw-2">&amp;</span>Objects,
-        arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+        type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     ) -&gt; BTreeMap&lt;Utf8PathBuf, String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>files_to_write: BTreeMap&lt;Utf8PathBuf, String&gt; = Default::default();
         <span class="kw">let </span><span class="kw-2">mut </span>extension_contents_for_fqname: HashMap&lt;String, String&gt; = Default::default();
@@ -1761,7 +1764,7 @@
             <span class="self">self</span>.generate_folder(
                 reporter,
                 objects,
-                arrow_registry,
+                type_registry,
                 object_kind,
                 <span class="kw-2">&amp;mut </span>files_to_write,
                 <span class="kw-2">&amp;mut </span>extension_contents_for_fqname,
@@ -1785,7 +1788,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span>Reporter,
         objects: <span class="kw-2">&amp;</span>Objects,
-        arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+        type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
         object_kind: ObjectKind,
         files_to_write: <span class="kw-2">&amp;mut </span>BTreeMap&lt;Utf8PathBuf, String&gt;,
         extension_contents_for_fqname: <span class="kw-2">&amp;mut </span>HashMap&lt;String, String&gt;,
@@ -1810,7 +1813,7 @@
             <span class="kw">let </span>filename = <span class="macro">format!</span>(<span class="string">"{filename_stem}.rs"</span>);
 
             <span class="kw">let </span>filepath = module_path.join(filename);
-            <span class="kw">let </span><span class="kw-2">mut </span>code = generate_object_file(reporter, objects, arrow_registry, obj, <span class="kw-2">&amp;</span>filepath);
+            <span class="kw">let </span><span class="kw-2">mut </span>code = generate_object_file(reporter, objects, type_registry, obj, <span class="kw-2">&amp;</span>filepath);
 
             <span class="kw">if let </span><span class="prelude-val">Ok</span>(extension_contents) =
                 std::fs::read_to_string(module_path.join(<span class="macro">format!</span>(<span class="string">"{filename_stem}_ext.rs"</span>)))
@@ -1848,7 +1851,7 @@
 <span class="kw">fn </span>generate_object_file(
     reporter: <span class="kw-2">&amp;</span>Reporter,
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     obj: <span class="kw-2">&amp;</span>Object,
     target_file: <span class="kw-2">&amp;</span>Utf8Path,
 ) -&gt; String {
@@ -1890,9 +1893,9 @@
     // random spacing into doc comments that look like code!
 
     </span><span class="kw">let </span>quoted_obj = <span class="kw">match </span>obj.class {
-        <span class="kw">crate</span>::objects::ObjectClass::Struct =&gt; quote_struct(reporter, arrow_registry, objects, obj),
-        <span class="kw">crate</span>::objects::ObjectClass::Union =&gt; quote_union(reporter, arrow_registry, objects, obj),
-        <span class="kw">crate</span>::objects::ObjectClass::Enum =&gt; quote_enum(reporter, arrow_registry, objects, obj),
+        <span class="kw">crate</span>::objects::ObjectClass::Struct =&gt; quote_struct(reporter, type_registry, objects, obj),
+        <span class="kw">crate</span>::objects::ObjectClass::Union =&gt; quote_union(reporter, type_registry, objects, obj),
+        <span class="kw">crate</span>::objects::ObjectClass::Enum =&gt; quote_enum(reporter, type_registry, objects, obj),
     };
 
     append_tokens(reporter, code, <span class="kw-2">&amp;</span>quoted_obj, target_file)
@@ -1953,7 +1956,7 @@
 
 </span><span class="kw">fn </span>quote_struct(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
 ) -&gt; TokenStream {
@@ -2006,7 +2009,7 @@
 
     <span class="kw">let </span>quoted_from_impl = quote_from_impl_from_obj(obj);
 
-    <span class="kw">let </span>quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    <span class="kw">let </span>quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     <span class="kw">let </span>quoted_builder = quote_builder_from_obj(reporter, objects, obj);
 
@@ -2076,7 +2079,7 @@
 
 <span class="kw">fn </span>quote_union(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
 ) -&gt; TokenStream {
@@ -2120,7 +2123,7 @@
         }
     });
 
-    <span class="kw">let </span>quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    <span class="kw">let </span>quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     <span class="kw">let </span>quoted_heap_size_bytes = {
         <span class="kw">let </span>quoted_matches = fields.iter().map(|obj_field| {
@@ -2189,7 +2192,7 @@
 <span class="comment">// Pure C-style enum
 </span><span class="kw">fn </span>quote_enum(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
 ) -&gt; TokenStream {
@@ -2268,7 +2271,7 @@
         }
     });
 
-    <span class="kw">let </span>quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
+    <span class="kw">let </span>quoted_trait_impls = quote_trait_impls_from_obj(reporter, type_registry, objects, obj);
 
     <span class="kw">let </span>all = fields.iter().map(|field| {
         <span class="kw">let </span>name = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, field.name);
@@ -2476,13 +2479,13 @@
             Type::Vector { elem_type } =&gt; {
                 <span class="kw">if </span><span class="kw-2">*</span>unwrap {
                     <span class="macro">quote!</span>(#elem_type)
-                } <span class="kw">else if </span>elem_type.backed_by_arrow_buffer() {
-                    <span class="macro">quote!</span>(::re_types_core::ArrowBuffer&lt;#elem_type&gt;)
+                } <span class="kw">else if </span>elem_type.backed_by_scalar_buffer() {
+                    <span class="macro">quote!</span>(::arrow::buffer::ScalarBuffer&lt;#elem_type&gt;)
                 } <span class="kw">else </span>{
                     <span class="macro">quote!</span>(Vec&lt;#elem_type&gt;)
                 }
             }
-            Type::Object(fqname) =&gt; quote_fqname_as_type_path(fqname),
+            Type::Object { fqname } =&gt; quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
     }
@@ -2504,7 +2507,7 @@
             ElementType::Float32 =&gt; <span class="macro">quote!</span>(f32),
             ElementType::Float64 =&gt; <span class="macro">quote!</span>(f64),
             ElementType::String =&gt; <span class="macro">quote!</span>(::re_types_core::ArrowString),
-            ElementType::Object(fqname) =&gt; quote_fqname_as_type_path(fqname),
+            ElementType::Object { fqname } =&gt; quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
     }
@@ -2534,13 +2537,13 @@
 
 <span class="kw">fn </span>quote_trait_impls_from_obj(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
 ) -&gt; TokenStream {
     <span class="kw">match </span>obj.kind {
         ObjectKind::Datatype | ObjectKind::Component =&gt; {
-            quote_trait_impls_for_datatype_or_component(objects, arrow_registry, obj)
+            quote_trait_impls_for_datatype_or_component(objects, type_registry, obj)
         }
 
         ObjectKind::Archetype =&gt; quote_trait_impls_for_archetype(reporter, obj),
@@ -2551,7 +2554,7 @@
 
 <span class="kw">fn </span>quote_trait_impls_for_datatype_or_component(
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     obj: <span class="kw-2">&amp;</span>Object,
 ) -&gt; TokenStream {
     <span class="kw">let </span>Object {
@@ -2562,13 +2565,13 @@
 
     <span class="kw">let </span>name = <span class="macro">format_ident!</span>(<span class="string">"{name}"</span>);
 
-    <span class="kw">let </span>datatype = arrow_registry.get(fqname);
+    <span class="kw">let </span>datatype = type_registry.get(fqname);
 
-    <span class="kw">let </span>optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, arrow_registry);
+    <span class="kw">let </span>optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, type_registry);
 
     <span class="kw">let </span>is_forwarded_type = obj.is_arrow_transparent()
         &amp;&amp; !obj.fields[<span class="number">0</span>].is_nullable
-        &amp;&amp; <span class="macro">matches!</span>(obj.fields[<span class="number">0</span>].typ, Type::Object(<span class="kw">_</span>));
+        &amp;&amp; <span class="macro">matches!</span>(obj.fields[<span class="number">0</span>].typ, Type::Object { .. });
     <span class="kw">let </span>forwarded_type =
         is_forwarded_type.then(|| quote_field_type_from_typ(<span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>].typ, <span class="bool-val">true</span>).<span class="number">0</span>);
 
@@ -2580,7 +2583,10 @@
             }
         }
     } <span class="kw">else </span>{
-        <span class="kw">let </span>datatype = ArrowDataTypeTokenizer(<span class="kw-2">&amp;</span>datatype, <span class="bool-val">false</span>);
+        <span class="kw">let </span>datatype = ArrowDataTypeTokenizer {
+            datatype: <span class="kw-2">&amp;</span>datatype,
+            recursive: <span class="bool-val">false</span>,
+        };
         <span class="macro">quote!</span> {
             <span class="attr">#[inline]
             </span><span class="kw">fn </span>arrow_datatype() -&gt; arrow::datatypes::DataType {
@@ -2610,7 +2616,7 @@
             }
         } <span class="kw">else </span>{
             <span class="kw">let </span>quoted_deserializer =
-                quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
+                quote_arrow_deserializer_buffer_slice(type_registry, objects, obj);
 
             <span class="macro">quote!</span> {
                 <span class="comment">// NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
@@ -2653,7 +2659,7 @@
             #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(<span class="self">Self</span>)).collect())
         }
     } <span class="kw">else </span>{
-        <span class="kw">let </span>quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
+        <span class="kw">let </span>quoted_deserializer = quote_arrow_deserializer(type_registry, objects, obj);
         <span class="macro">quote!</span> {
             <span class="comment">// NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
             // re_tracing::profile_function!();
@@ -2684,7 +2690,7 @@
         }
     } <span class="kw">else </span>{
         <span class="kw">let </span>quoted_serializer =
-            quote_arrow_serializer(arrow_registry, objects, obj, <span class="kw-2">&amp;</span><span class="macro">format_ident!</span>(<span class="string">"data"</span>));
+            quote_arrow_serializer(type_registry, objects, obj, <span class="kw-2">&amp;</span><span class="macro">format_ident!</span>(<span class="string">"data"</span>));
 
         <span class="macro">quote!</span> {
             <span class="comment">// NOTE: Don't inline this, this gets _huge_.

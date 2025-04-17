@@ -487,10 +487,7 @@
 <a href="#486" id="486">486</a>
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
+<a href="#489" id="489">489</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::io::Cursor;
 <span class="kw">use </span>std::io::Read <span class="kw">as _</span>;
 
@@ -502,7 +499,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::FileHeader;
 <span class="kw">use </span><span class="kw">crate</span>::Serializer;
 
-<span class="kw">use super</span>::{DecodeError, VersionPolicy};
+<span class="kw">use </span><span class="kw">super</span>::DecodeError;
 
 <span class="doccomment">/// The stream decoder is a state machine which ingests byte chunks
 /// and outputs messages once it has enough data to deserialize one.
@@ -514,9 +511,6 @@
     ///
     /// `None` until a Rerun header has been processed.
     </span>version: <span class="prelude-ty">Option</span>&lt;CrateVersion&gt;,
-
-    <span class="doccomment">/// How to handle version mismatches
-    </span>version_policy: VersionPolicy,
 
     options: EncodingOptions,
 
@@ -559,10 +553,10 @@
 }
 
 <span class="kw">impl </span>StreamDecoder {
-    <span class="kw">pub fn </span>new(version_policy: VersionPolicy) -&gt; <span class="self">Self </span>{
+    <span class="attr">#[expect(clippy::new_without_default)]
+    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             version: <span class="prelude-val">None</span>,
-            version_policy,
             <span class="comment">// Note: `options` are filled in once we read `FileHeader`,
             // so this value does not matter.
             </span>options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
@@ -580,7 +574,7 @@
             State::StreamHeader =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(header) = <span class="self">self</span>.chunks.try_read(FileHeader::SIZE) {
                     <span class="comment">// header contains version and compression options
-                    </span><span class="kw">let </span>(version, options) = options_from_bytes(<span class="self">self</span>.version_policy, header)<span class="question-mark">?</span>;
+                    </span><span class="kw">let </span>(version, options) = options_from_bytes(header)<span class="question-mark">?</span>;
                     <span class="self">self</span>.version = <span class="prelude-val">Some</span>(version);
                     <span class="self">self</span>.options = options;
 
@@ -788,7 +782,7 @@
     </span><span class="kw">fn </span>stream_whole_chunks_uncompressed_protobuf() {
         <span class="kw">let </span>(input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, <span class="number">16</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new(VersionPolicy::Error);
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new();
 
         <span class="macro">assert_message_incomplete!</span>(decoder.try_read());
 
@@ -805,7 +799,7 @@
     </span><span class="kw">fn </span>stream_byte_chunks_uncompressed_protobuf() {
         <span class="kw">let </span>(input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, <span class="number">16</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new(VersionPolicy::Error);
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new();
 
         <span class="macro">assert_message_incomplete!</span>(decoder.try_read());
 
@@ -826,7 +820,7 @@
         <span class="kw">let </span>(input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, <span class="number">16</span>);
         <span class="kw">let </span>input = input1.into_iter().chain(input2).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new(VersionPolicy::Error);
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new();
 
         <span class="macro">assert_message_incomplete!</span>(decoder.try_read());
 
@@ -844,7 +838,7 @@
     </span><span class="kw">fn </span>stream_whole_chunks_compressed_protobuf() {
         <span class="kw">let </span>(input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, <span class="number">16</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new(VersionPolicy::Error);
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new();
 
         <span class="macro">assert_message_incomplete!</span>(decoder.try_read());
 
@@ -861,7 +855,7 @@
     </span><span class="kw">fn </span>stream_byte_chunks_compressed_protobuf() {
         <span class="kw">let </span>(input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, <span class="number">16</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new(VersionPolicy::Error);
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new();
 
         <span class="macro">assert_message_incomplete!</span>(decoder.try_read());
 
@@ -880,7 +874,7 @@
     </span><span class="kw">fn </span>stream_3x16_chunks_protobuf() {
         <span class="kw">let </span>(input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, <span class="number">16</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new(VersionPolicy::Error);
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new();
         <span class="kw">let </span><span class="kw-2">mut </span>decoded_messages = <span class="macro">vec!</span>[];
 
         <span class="comment">// keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
@@ -910,7 +904,7 @@
         </span><span class="kw">let </span>(input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, <span class="number">16</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>data = Cursor::new(data);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new(VersionPolicy::Error);
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = StreamDecoder::new();
         <span class="kw">let </span><span class="kw-2">mut </span>decoded_messages = <span class="macro">vec!</span>[];
 
         <span class="comment">// read chunks 2xN bytes at a time, where `N` comes from a regular pattern

@@ -305,7 +305,7 @@
     <span class="macro">re_log::info!</span>(<span class="string">"Generating flatbuffers code…"</span>);
     re_types_builder::generate_fbs(<span class="kw-2">&amp;</span>reporter, <span class="kw-2">&amp;</span>definitions_dir_path, check);
 
-    <span class="kw">let </span>(objects, arrow_registry) =
+    <span class="kw">let </span>(objects, type_registry) =
         re_types_builder::generate_lang_agnostic(<span class="kw-2">&amp;</span>reporter, definitions_dir_path, entrypoint_path);
 
     <span class="macro">re_tracing::profile_scope!</span>(<span class="string">"Language-specific code-gen"</span>);
@@ -314,14 +314,14 @@
             <span class="kw-2">&amp;</span>reporter,
             cpp_output_dir_path,
             <span class="kw-2">&amp;</span>objects,
-            <span class="kw-2">&amp;</span>arrow_registry,
+            <span class="kw-2">&amp;</span>type_registry,
             check,
         ),
         || re_types_builder::generate_rust_code(
             <span class="kw-2">&amp;</span>reporter,
             workspace_dir,
             <span class="kw-2">&amp;</span>objects,
-            <span class="kw-2">&amp;</span>arrow_registry,
+            <span class="kw-2">&amp;</span>type_registry,
             check,
         ),
         || re_types_builder::generate_python_code(
@@ -329,21 +329,21 @@
             python_output_dir_path,
             python_testing_output_dir_path,
             <span class="kw-2">&amp;</span>objects,
-            <span class="kw-2">&amp;</span>arrow_registry,
+            <span class="kw-2">&amp;</span>type_registry,
             check,
         ),
         || re_types_builder::generate_docs(
             <span class="kw-2">&amp;</span>reporter,
             docs_content_dir_path,
             <span class="kw-2">&amp;</span>objects,
-            <span class="kw-2">&amp;</span>arrow_registry,
+            <span class="kw-2">&amp;</span>type_registry,
             check,
         ),
         || re_types_builder::generate_snippets_ref(
             <span class="kw-2">&amp;</span>reporter,
             snippets_ref_dir_path,
             <span class="kw-2">&amp;</span>objects,
-            <span class="kw-2">&amp;</span>arrow_registry,
+            <span class="kw-2">&amp;</span>type_registry,
             check,
         ),
     );

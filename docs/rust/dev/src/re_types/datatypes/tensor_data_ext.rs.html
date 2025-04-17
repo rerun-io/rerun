@@ -412,7 +412,11 @@
 <a href="#411" id="411">411</a>
 <a href="#412" id="412">412</a>
 <a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_types_core::{ArrowBuffer, ArrowString};
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::buffer::ScalarBuffer;
+
+<span class="kw">use </span>re_types_core::ArrowString;
 
 <span class="kw">use </span><span class="kw">crate</span>::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 
@@ -429,7 +433,7 @@
 </span><span class="kw">impl </span>TensorData {
     <span class="doccomment">/// Create a new tensor.
     </span><span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>new(shape: <span class="kw">impl </span>Into&lt;ArrowBuffer&lt;u64&gt;&gt;, buffer: TensorBuffer) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(shape: <span class="kw">impl </span>Into&lt;ScalarBuffer&lt;u64&gt;&gt;, buffer: TensorBuffer) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             shape: shape.into(),
             names: <span class="prelude-val">None</span>,
@@ -465,7 +469,7 @@
     <span class="doccomment">/// The shape of the tensor.
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>shape(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u64] {
-        <span class="self">self</span>.shape.as_slice()
+        <span class="kw-2">&amp;</span><span class="self">self</span>.shape
     }
 
     <span class="doccomment">/// Get the name of a specific dimension.
@@ -555,7 +559,7 @@
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            shape: Default::default(),
+            shape: <span class="macro">vec!</span>[].into(),
             names: <span class="prelude-val">None</span>,
             buffer: TensorBuffer::U8(Vec::new().into()),
         }
@@ -573,7 +577,7 @@
                 <span class="kw">let </span>shape: Vec&lt;usize&gt; = value.shape.iter().map(|<span class="kw-2">&amp;</span>d| d <span class="kw">as </span>usize).collect();
 
                 <span class="kw">if let </span>TensorBuffer::<span class="macro-nonterminal">$variant</span>(data) = <span class="kw-2">&amp;</span>value.buffer {
-                    ndarray::ArrayViewD::from_shape(shape, data.as_slice())
+                    ndarray::ArrayViewD::from_shape(shape, data)
                         .map_err(|err| TensorCastError::BadTensorShape { source: err })
                 } <span class="kw">else </span>{
                     <span class="prelude-val">Err</span>(TensorCastError::TypeMismatch)
@@ -591,7 +595,7 @@
             <span class="kw">type </span>Error = TensorCastError;
 
             <span class="kw">fn </span>try_from(view: ::ndarray::ArrayView&lt;<span class="lifetime">'a</span>, <span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">D</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-                <span class="kw">let </span>shape = ArrowBuffer::from_iter(view.shape().iter().map(|<span class="kw-2">&amp;</span>dim| dim <span class="kw">as </span>u64));
+                <span class="kw">let </span>shape = ScalarBuffer::from_iter(view.shape().iter().map(|<span class="kw-2">&amp;</span>dim| dim <span class="kw">as </span>u64));
 
                 <span class="kw">match </span>view.to_slice() {
                     <span class="prelude-val">Some</span>(slice) =&gt; <span class="prelude-val">Ok</span>(TensorData::new(
@@ -610,7 +614,7 @@
             <span class="kw">type </span>Error = TensorCastError;
 
             <span class="kw">fn </span>try_from(value: ndarray::Array&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">D</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-                <span class="kw">let </span>shape = ArrowBuffer::from_iter(value.shape().iter().map(|<span class="kw-2">&amp;</span>dim| dim <span class="kw">as </span>u64));
+                <span class="kw">let </span>shape = ScalarBuffer::from_iter(value.shape().iter().map(|<span class="kw-2">&amp;</span>dim| dim <span class="kw">as </span>u64));
 
                 <span class="kw">let </span>vec = <span class="kw">if </span>value.is_standard_layout() {
                     <span class="kw">let </span>(<span class="kw-2">mut </span>vec, offset) = value.into_raw_vec_and_offset();
@@ -641,7 +645,7 @@
             <span class="kw">fn </span>from(slice: <span class="kw-2">&amp;</span>[<span class="macro-nonterminal">$</span><span class="kw">type</span>]) -&gt; <span class="macro-nonterminal">Self </span>{
                 <span class="self">Self</span>::new(
                     <span class="macro">vec!</span>[slice.len() <span class="kw">as </span>u64],
-                    TensorBuffer::<span class="macro-nonterminal">$variant</span>(slice.into()),
+                    TensorBuffer::<span class="macro-nonterminal">$variant</span>(slice.to_vec().into()),
                 )
             }
         }
@@ -679,7 +683,7 @@
         <span class="kw">match </span><span class="kw-2">&amp;</span>value.buffer {
             TensorBuffer::U8(data) =&gt; {
                 <span class="kw">let </span>shape: Vec&lt;usize&gt; = value.shape.iter().map(|<span class="kw-2">&amp;</span>d| d <span class="kw">as </span>usize).collect();
-                ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
+                ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data))
                     .map_err(|err| TensorCastError::BadTensorShape { source: err })
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(TensorCastError::TypeMismatch),

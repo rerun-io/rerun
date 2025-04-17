@@ -1689,9 +1689,32 @@
 <a href="#1688" id="1688">1688</a>
 <a href="#1689" id="1689">1689</a>
 <a href="#1690" id="1690">1690</a>
-<a href="#1691" id="1691">1691</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::atomic::{AtomicU64, Ordering};
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a>
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
+<a href="#1701" id="1701">1701</a>
+<a href="#1702" id="1702">1702</a>
+<a href="#1703" id="1703">1703</a>
+<a href="#1704" id="1704">1704</a>
+<a href="#1705" id="1705">1705</a>
+<a href="#1706" id="1706">1706</a>
+<a href="#1707" id="1707">1707</a>
+<a href="#1708" id="1708">1708</a>
+<a href="#1709" id="1709">1709</a>
+<a href="#1710" id="1710">1710</a>
+<a href="#1711" id="1711">1711</a>
+<a href="#1712" id="1712">1712</a>
+<a href="#1713" id="1713">1713</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::atomic::{AtomicU64, Ordering};
 
 <span class="kw">use </span>ahash::HashMap;
+<span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
 <span class="kw">use </span>arrow::{
     array::{
         Array <span class="kw">as </span>ArrowArray, ArrayRef <span class="kw">as </span>ArrowArrayRef, FixedSizeBinaryArray,
@@ -1820,6 +1843,30 @@
         <span class="self">self</span>,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (ComponentDescriptor, ArrowListArray)&gt; {
         <span class="self">self</span>.<span class="number">0</span>.into_values().flatten()
+    }
+
+    <span class="doccomment">/// Approximate equal, that ignores small numeric differences.
+    ///
+    /// Returns `Ok` if similar.
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
+    ///
+    /// Useful for tests.
+    </span><span class="kw">pub fn </span>ensure_similar(left: <span class="kw-2">&amp;</span><span class="self">Self</span>, right: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; anyhow::Result&lt;()&gt; {
+        <span class="macro">anyhow::ensure!</span>(left.len() == right.len());
+        <span class="kw">for </span>(comp_name, left_comp_map) <span class="kw">in </span>left.iter() {
+            <span class="kw">let </span><span class="prelude-val">Some</span>(right_map) = right.get(comp_name) <span class="kw">else </span>{
+                <span class="macro">anyhow::bail!</span>(<span class="string">"rhs is missing {comp_name:?}"</span>);
+            };
+            <span class="kw">for </span>(descr, left_array) <span class="kw">in </span>left_comp_map {
+                <span class="kw">let </span><span class="prelude-val">Some</span>(right_array) = right_map.get(descr) <span class="kw">else </span>{
+                    <span class="macro">anyhow::bail!</span>(<span class="string">"rhs {comp_name:?} is missing {descr:?}"</span>);
+                };
+                re_arrow_util::ensure_similar(<span class="kw-2">&amp;</span>left_array.to_data(), <span class="kw-2">&amp;</span>right_array.to_data())
+                    .with_context(|| <span class="macro">format!</span>(<span class="string">"Component {comp_name:?}"</span>))<span class="question-mark">?</span>;
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -1958,12 +2005,16 @@
         <span class="self">self
     </span>}
 
-    <span class="doccomment">/// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
+    <span class="doccomment">/// Returns `Ok` if two [`Chunk`]s are _similar_, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as `log_time` timestamps.
+    /// It also forgives small numeric inaccuracies in floating point buffers.
+    ///
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
     ///
     /// Useful for tests.
-    </span><span class="kw">pub fn </span>are_similar(lhs: <span class="kw-2">&amp;</span><span class="self">Self</span>, rhs: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+    </span><span class="kw">pub fn </span>ensure_similar(lhs: <span class="kw-2">&amp;</span><span class="self">Self</span>, rhs: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; anyhow::Result&lt;()&gt; {
         <span class="kw">let </span><span class="self">Self </span>{
             id: <span class="kw">_</span>,
             entity_path,
@@ -1974,36 +2025,32 @@
             components,
         } = lhs;
 
-        <span class="kw">if </span><span class="kw-2">*</span>entity_path != rhs.entity_path {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
+        <span class="macro">anyhow::ensure!</span>(<span class="kw-2">*</span>entity_path == rhs.entity_path);
 
-        <span class="kw">if </span>timelines.keys().collect_vec() != rhs.timelines.keys().collect_vec() {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
+        <span class="macro">anyhow::ensure!</span>(timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec());
 
-        <span class="kw">let </span>timelines: IntMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = timelines
-            .iter()
-            .map(|(timeline, time_column)| (<span class="kw-2">*</span>timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != <span class="kw-2">&amp;</span>TimelineName::log_time())
-            .collect();
-        <span class="kw">let </span>rhs_timelines: IntMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = rhs
-            .timelines
-            .iter()
-            .map(|(timeline, time_column)| (<span class="kw-2">*</span>timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != <span class="kw-2">&amp;</span>TimelineName::log_time())
-            .collect();
-        <span class="kw">if </span>timelines != rhs_timelines {
-            <span class="kw">return </span><span class="bool-val">false</span>;
+        <span class="kw">for </span>(timeline, left_time_col) <span class="kw">in </span>timelines {
+            <span class="kw">let </span>right_time_col = rhs
+                .timelines
+                .get(timeline)
+                .ok_or_else(|| <span class="macro">anyhow::format_err!</span>(<span class="string">"right is missing timeline {timeline:?}"</span>))<span class="question-mark">?</span>;
+            <span class="kw">if </span>timeline == <span class="kw-2">&amp;</span>TimelineName::log_time() {
+                <span class="kw">continue</span>; <span class="comment">// We expect this to differ
+            </span>}
+            <span class="kw">if </span>timeline == <span class="string">"sim_time" </span>{
+                <span class="kw">continue</span>; <span class="comment">// Small numeric differences
+            </span>}
+            <span class="macro">anyhow::ensure!</span>(
+                left_time_col == right_time_col,
+                <span class="string">"Timeline differs: {timeline:?}"
+            </span>);
         }
 
         <span class="comment">// Handle edge case: recording time on partition properties should ignore start time.
         </span><span class="kw">if </span>entity_path == <span class="kw-2">&amp;</span>EntityPath::recording_properties() {
             <span class="comment">// We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.
-            </span><span class="kw">if </span>components.len() != rhs.components.len() {
-                <span class="kw">return </span><span class="bool-val">false</span>;
-            }
+            </span><span class="macro">anyhow::ensure!</span>(components.len() == rhs.components.len());
 
             <span class="comment">// Copied from `rerun.archetypes.RecordingProperties`.
             </span><span class="kw">let </span>recording_time_descriptor = ComponentDescriptor {
@@ -2033,15 +2080,12 @@
                 })
                 .collect::&lt;IntMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
 
-            <span class="kw">if </span>lhs_components != rhs_components {
-                <span class="kw">return </span><span class="bool-val">false</span>;
-            }
-        } <span class="kw">else if </span><span class="kw-2">*</span>components != rhs.components {
-            <span class="kw">return </span><span class="bool-val">false</span>;
+            <span class="macro">anyhow::ensure!</span>(lhs_components == rhs_components);
+            <span class="prelude-val">Ok</span>(())
+        } <span class="kw">else </span>{
+            ChunkComponents::ensure_similar(components, <span class="kw-2">&amp;</span>rhs.components)
         }
-
-        <span class="bool-val">true
-    </span>}
+    }
 
     <span class="comment">// Only used for tests atm
     </span><span class="kw">pub fn </span>are_equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {

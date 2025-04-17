@@ -520,19 +520,12 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#522" id="522">522</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>arrow::{
     array::{
-        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-        PrimitiveArray, UInt32Array,
+        new_empty_array, Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray,
+        ListArray, PrimitiveArray, UInt32Array,
     },
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},
@@ -646,13 +639,6 @@
         .map(|array| array.data_type().clone())
         .next()<span class="question-mark">?</span>;
     arrays_to_list_array(datatype, arrays)
-}
-
-<span class="doccomment">/// An empty array of the given datatype.
-</span><span class="comment">// TODO(#3741): replace with `arrow::array::new_empty_array`
-</span><span class="kw">pub fn </span>new_empty_array(datatype: <span class="kw-2">&amp;</span>DataType) -&gt; ArrayRef {
-    <span class="kw">let </span>capacity = <span class="number">0</span>;
-    arrow::array::make_builder(datatype, capacity).finish()
 }
 
 <span class="doccomment">/// Create a sparse list-array out of an array of arrays.

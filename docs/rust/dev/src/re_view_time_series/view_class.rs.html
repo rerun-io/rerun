@@ -889,8 +889,21 @@
 <a href="#888" id="888">888</a>
 <a href="#889" id="889">889</a>
 <a href="#890" id="890">890</a>
-<a href="#891" id="891">891</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::ahash::{HashMap, HashSet};
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::ahash::{HashMap, HashSet};
 <span class="kw">use </span>egui_plot::{Legend, Line, Plot, PlotPoint, Points};
+<span class="kw">use </span>nohash_hasher::IntSet;
 <span class="kw">use </span>smallvec::SmallVec;
 
 <span class="kw">use </span>re_chunk_store::TimeType;
@@ -1134,16 +1147,27 @@
             <span class="kw">return </span>ViewSpawnHeuristics::default();
         }
 
-        <span class="comment">// Spawn time series data at the root if there's time series data either
-        // directly at the root or one of its children.
+        <span class="comment">// Spawn time series data at the root if theres 'either:
+        // * time series data directly at the root
+        // * all time series data are direct children of the root
+        //
+        // This heuristic was last edited in 2015-04-11 by @emilk,
+        // because it was triggering too often (https://github.com/rerun-io/rerun/pull/9587).
+        // Maybe we should remove it completely?
+        // I have a feeling it was added to handle the case many scalars of the form `/x`, `/y`, `/z` etc,
+        // but we now support logging multiple scalars in one entity.
         //
         // This is the last hold out of "child of root" spawning, which we removed otherwise
         // (see https://github.com/rerun-io/rerun/issues/4926)
-        </span><span class="kw">let </span>subtree_of_root_entity = <span class="kw-2">&amp;</span>ctx.recording().tree().children;
+        </span><span class="kw">let </span>root_entities: IntSet&lt;EntityPath&gt; = ctx
+            .recording()
+            .tree()
+            .children
+            .values()
+            .map(|subtree| subtree.path.clone())
+            .collect();
         <span class="kw">if </span>indicated_entities.contains(<span class="kw-2">&amp;</span>EntityPath::root())
-            || subtree_of_root_entity
-                .iter()
-                .any(|(<span class="kw">_</span>, subtree)| indicated_entities.contains(<span class="kw-2">&amp;</span>subtree.path))
+            || indicated_entities.is_subset(<span class="kw-2">&amp;</span>root_entities)
         {
             <span class="kw">return </span>ViewSpawnHeuristics::root();
         }

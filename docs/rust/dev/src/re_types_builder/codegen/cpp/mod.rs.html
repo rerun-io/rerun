@@ -2854,7 +2854,15 @@
 <a href="#2853" id="2853">2853</a>
 <a href="#2854" id="2854">2854</a>
 <a href="#2855" id="2855">2855</a>
-<a href="#2856" id="2856">2856</a></pre></div><pre class="rust"><code><span class="kw">mod </span>array_builder;
+<a href="#2856" id="2856">2856</a>
+<a href="#2857" id="2857">2857</a>
+<a href="#2858" id="2858">2858</a>
+<a href="#2859" id="2859">2859</a>
+<a href="#2860" id="2860">2860</a>
+<a href="#2861" id="2861">2861</a>
+<a href="#2862" id="2862">2862</a>
+<a href="#2863" id="2863">2863</a>
+<a href="#2864" id="2864">2864</a></pre></div><pre class="rust"><code><span class="kw">mod </span>array_builder;
 <span class="kw">mod </span>forward_decl;
 <span class="kw">mod </span>includes;
 <span class="kw">mod </span>method;
@@ -2871,8 +2879,8 @@
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
-    ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
+    Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    TypeRegistry, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
 };
 
 <span class="kw">use </span><span class="self">self</span>::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -2980,7 +2988,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span>Reporter,
         objects: <span class="kw-2">&amp;</span>Objects,
-        _arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+        _type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     ) -&gt; GeneratedFiles {
         <span class="macro">re_tracing::profile_wait!</span>(<span class="string">"generate_folder"</span>);
 
@@ -3780,7 +3788,10 @@
             &amp;&amp; obj.fields.len() == <span class="number">1
             </span>&amp;&amp; <span class="macro">matches!</span>(obj.fields[<span class="number">0</span>].typ, Type::Object { .. })
         {
-            <span class="kw">if let </span>Type::Object(datatype_fqname) = <span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>].typ {
+            <span class="kw">if let </span>Type::Object {
+                fqname: datatype_fqname,
+            } = <span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>].typ
+            {
                 <span class="kw">let </span>data_type = quote_field_type(<span class="kw-2">&amp;mut </span>hpp_includes, <span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>]);
                 <span class="kw">let </span>type_name = datatype_fqname.split(<span class="string">'.'</span>).last().unwrap();
                 <span class="kw">let </span>field_name = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, obj.fields[<span class="number">0</span>].name);
@@ -4405,7 +4416,10 @@
     //
     // Note that we previously we tried to do a general forwarding constructor via variadic templates,
     // but ran into some issues when init archetypes with initializer lists.
-    </span><span class="kw">if let </span>Type::Object(field_type_fqname) = <span class="kw-2">&amp;</span>field.typ {
+    </span><span class="kw">if let </span>Type::Object {
+        fqname: field_type_fqname,
+    } = <span class="kw-2">&amp;</span>field.typ
+    {
         <span class="kw">let </span>field_type_obj = <span class="kw-2">&amp;</span>objects[field_type_fqname];
         <span class="kw">if </span>field_type_obj.fields.len() == <span class="number">1 </span>&amp;&amp; !field_type_obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
         {
@@ -4483,7 +4497,7 @@
 <span class="doccomment">/// If the type forwards to another rerun defined type, returns the fully qualified name of that type.
 </span><span class="kw">fn </span>transparent_forwarded_fqname(obj: <span class="kw-2">&amp;</span>Object) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
     <span class="kw">if </span>obj.is_arrow_transparent() &amp;&amp; obj.fields.len() == <span class="number">1 </span>&amp;&amp; !obj.fields[<span class="number">0</span>].is_nullable {
-        <span class="kw">if let </span>Type::Object(fqname) = <span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>].typ {
+        <span class="kw">if let </span>Type::Object { fqname } = <span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>].typ {
             <span class="kw">return </span><span class="prelude-val">Some</span>(fqname);
         }
     }
@@ -4513,7 +4527,9 @@
             hpp_declarations.insert(<span class="string">"arrow"</span>, ForwardDecl::Class(<span class="macro">format_ident!</span>(<span class="string">"DataType"</span>)));
 
             <span class="kw">let </span>quoted_datatype = quote_arrow_datatype(
-                <span class="kw-2">&amp;</span>Type::Object(obj.fqname.clone()),
+                <span class="kw-2">&amp;</span>Type::Object {
+                    fqname: obj.fqname.clone(),
+                },
                 objects,
                 cpp_includes,
                 <span class="bool-val">true</span>,
@@ -4748,7 +4764,7 @@
 
     <span class="kw">if </span>obj.is_arrow_transparent() {
         <span class="kw">let </span>field = <span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>];
-        <span class="kw">if let </span>Type::Object(fqname) = <span class="kw-2">&amp;</span>field.typ {
+        <span class="kw">if let </span>Type::Object { fqname } = <span class="kw-2">&amp;</span>field.typ {
             <span class="kw">if </span>field.is_nullable {
                 <span class="macro">quote!</span> {
                     (void)builder;
@@ -4861,7 +4877,7 @@
                                     ElementType::Float32 =&gt; <span class="prelude-val">Some</span>(<span class="string">"FloatBuilder"</span>),
                                     ElementType::Float64 =&gt; <span class="prelude-val">Some</span>(<span class="string">"DoubleBuilder"</span>),
                                     ElementType::String =&gt; <span class="prelude-val">Some</span>(<span class="string">"StringBuilder"</span>),
-                                    ElementType::Object(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+                                    ElementType::Object{..} =&gt; <span class="prelude-val">None</span>,
                                 };
 
                                 <span class="kw">if let </span><span class="prelude-val">Some</span>(type_builder_name) = type_builder_name {
@@ -5154,7 +5170,7 @@
                         }
                     }
                 }
-                ElementType::Object(fqname) =&gt; {
+                ElementType::Object { fqname } =&gt; {
                     <span class="kw">let </span>fqname = quote_fqname_as_type_path(includes, fqname);
                     <span class="kw">let </span>field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     <span class="macro">quote!</span> {
@@ -5165,7 +5181,7 @@
                 }
             }
         }
-        Type::Object(fqname) =&gt; {
+        Type::Object { fqname } =&gt; {
             <span class="kw">let </span>fqname = quote_fqname_as_type_path(includes, fqname);
             <span class="macro">quote!</span>(RR_RETURN_NOT_OK(Loggable&lt;#fqname&gt;::fill_arrow_array_builder(#value_builder, <span class="kw-2">&amp;</span>#value_access, <span class="number">1</span>));)
         }
@@ -5260,7 +5276,7 @@
             <span class="kw">let </span>elem_type = quote_element_type(hpp_includes, elem_type);
             <span class="macro">quote!</span> { Collection&lt;#elem_type&gt; }
         }
-        Type::Object(fqname) =&gt; quote_fqname_as_type_path(hpp_includes, fqname),
+        Type::Object { fqname } =&gt; quote_fqname_as_type_path(hpp_includes, fqname),
         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Only vectors and objects are allowed in archetypes."</span>),
     }
 }
@@ -5319,7 +5335,7 @@
             includes.insert_rerun(<span class="string">"collection.hpp"</span>);
             <span class="macro">quote!</span> { rerun::Collection&lt;#elem_type&gt;  }
         }
-        Type::Object(fqname) =&gt; {
+        Type::Object { fqname } =&gt; {
             <span class="kw">let </span>type_name = quote_fqname_as_type_path(includes, fqname);
             <span class="macro">quote!</span> { #type_name  }
         }
@@ -5368,7 +5384,7 @@
             includes.insert_system(<span class="string">"string"</span>);
             <span class="macro">quote!</span> { std::string }
         }
-        ElementType::Object(fqname) =&gt; quote_fqname_as_type_path(includes, fqname),
+        ElementType::Object { fqname } =&gt; quote_fqname_as_type_path(includes, fqname),
     }
 }
 
@@ -5510,7 +5526,7 @@
             <span class="macro">quote!</span>(arrow::fixed_size_list(#quoted_field, #quoted_length))
         }
 
-        Type::Object(fqname) =&gt; {
+        Type::Object { fqname } =&gt; {
             <span class="comment">// TODO(andreas): We're no`t emitting the actual extension types here yet which is why we're skipping the extension type at top level.
             // Currently, we wrap only Components in extension types but this is done in `rerun_c`.
             // In the future we'll add the extension type here to the schema.

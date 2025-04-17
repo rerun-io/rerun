@@ -179,9 +179,7 @@
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
 <a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a></pre></div><pre class="rust"><code><span class="doccomment">//! Rerun Viewer context
+<a href="#181" id="181">181</a></pre></div><pre class="rust"><code><span class="doccomment">//! Rerun Viewer context
 //!
 //! This crate contains data structures that are shared with most modules of the viewer.
 
@@ -209,7 +207,6 @@
 <span class="kw">mod </span>tables;
 <span class="kw">mod </span>tensor;
 <span class="kw">mod </span>time_control;
-<span class="kw">mod </span>time_drag_value;
 <span class="kw">mod </span>typed_entity_collections;
 <span class="kw">mod </span>undo;
 <span class="kw">mod </span>utils;
@@ -259,7 +256,6 @@
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
-    time_drag_value::TimeDragValue,
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },

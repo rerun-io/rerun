@@ -164,9 +164,15 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a></pre></div><pre class="rust"><code><span class="doccomment">//! Function to setup logging in binaries and web apps.
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a></pre></div><pre class="rust"><code><span class="doccomment">//! Function to setup logging in binaries and web apps.
 
 </span><span class="kw">use </span>std::sync::atomic::AtomicIsize;
+
+<span class="comment">// This can be useful to enable to figure out what is causing a log message.
+</span><span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+</span><span class="kw">const </span>LOG_FILE_LINE: bool = <span class="bool-val">false</span>;
 
 <span class="doccomment">/// Sets up logging for the current process using default log filter as defined in `crate::default_log_filter`.
 ///
@@ -206,9 +212,7 @@
 
         log::set_max_level(max_level);
 
-        <span class="comment">// This can be useful to enable to figure out what is causing a log message.
-        </span><span class="kw">let </span>log_file_line = <span class="bool-val">false</span>;
-        <span class="kw">if </span>log_file_line {
+        <span class="kw">if </span>LOG_FILE_LINE {
             stderr_logger.format(|buf, record| {
                 <span class="kw">use </span>std::io::Write <span class="kw">as _</span>;
                 <span class="macro">writeln!</span>(

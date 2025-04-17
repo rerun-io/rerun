@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SelectionChangeItem","ViewerEventKind"],"fn":["get_container_name","get_position","get_view_name","instance_is_all"],"mod":["serde"],"struct":["ViewerEvent","ViewerEventDispatcher"],"type":["ViewerEventCallback"]};

@@ -44,7 +44,7 @@
 
 <span class="kw">use super</span>::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 
-<span class="attr">#[derive(Default)]
+<span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>AuthDecorator {
     jwt: <span class="prelude-ty">Option</span>&lt;Jwt&gt;,
 }

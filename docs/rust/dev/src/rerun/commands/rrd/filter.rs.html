@@ -212,10 +212,7 @@
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, io::IsTerminal <span class="kw">as _</span>};
+<a href="#214" id="214">214</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::HashSet, io::IsTerminal <span class="kw">as _</span>};
 
 <span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
 <span class="kw">use </span>arrow::{
@@ -281,10 +278,7 @@
             .map(|s| EntityPath::parse_forgiving(s))
             .collect();
 
-        <span class="comment">// TODO(cmc): might want to make this configurable at some point.
-        </span><span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Warn;
-        <span class="kw">let </span>(rx_decoder, rx_size_bytes) =
-            read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+        <span class="kw">let </span>(rx_decoder, rx_size_bytes) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         <span class="comment">// TODO(cmc): might want to make this configurable at some point.
         </span><span class="kw">let </span>(tx_encoder, rx_encoder) = crossbeam::channel::bounded(<span class="number">100</span>);

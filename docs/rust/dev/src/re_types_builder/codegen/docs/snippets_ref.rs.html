@@ -813,7 +813,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span>Reporter,
         objects: <span class="kw-2">&amp;</span>Objects,
-        _arrow_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ArrowRegistry,
+        _type_registry: <span class="kw-2">&amp;</span><span class="kw">crate</span>::TypeRegistry,
     ) -&gt; GeneratedFiles {
         <span class="kw">match </span><span class="self">self</span>.generate_fallible(objects) {
             <span class="prelude-val">Ok</span>(files) =&gt; files,

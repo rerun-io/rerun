@@ -252,10 +252,7 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::io::{IsTerminal <span class="kw">as _</span>, Write <span class="kw">as _</span>};
+<a href="#254" id="254">254</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::io::{IsTerminal <span class="kw">as _</span>, Write <span class="kw">as _</span>};
 
 <span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
 <span class="kw">use </span>itertools::Either;
@@ -413,10 +410,7 @@
         <span class="string">"merge/compaction started"
     </span>);
 
-    <span class="comment">// TODO(cmc): might want to make this configurable at some point.
-    </span><span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Warn;
-    <span class="kw">let </span>(rx, rx_size_bytes) =
-        read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+    <span class="kw">let </span>(rx, rx_size_bytes) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
     <span class="kw">let </span><span class="kw-2">mut </span>entity_dbs: std::collections::HashMap&lt;StoreId, EntityDb&gt; = Default::default();
 

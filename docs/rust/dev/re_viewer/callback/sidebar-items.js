@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["CallbackSelectionItem"],"fn":["get_container_name","get_position","get_view_name"],"struct":["Callbacks","CallbacksBuilder"]};

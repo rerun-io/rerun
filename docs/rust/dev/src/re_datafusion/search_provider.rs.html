@@ -99,7 +99,10 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>arrow::{array::RecordBatch, datatypes::SchemaRef};
 <span class="kw">use </span>async_trait::async_trait;
@@ -149,7 +152,7 @@
 </span><span class="kw">impl </span>GrpcStreamToTable <span class="kw">for </span>SearchResultsTableProvider {
     <span class="kw">type </span>GrpcStreamData = SearchDatasetResponse;
 
-    <span class="kw">async fn </span>fetch_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SchemaRef, DataFusionError&gt; {
+    <span class="kw">async fn </span>fetch_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; DataFusionResult&lt;SchemaRef&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>request = <span class="self">self</span>.request.clone();
         request.scan_parameters = <span class="prelude-val">Some</span>(ScanParameters {
             limit_len: <span class="prelude-val">Some</span>(<span class="number">0</span>),
@@ -181,11 +184,14 @@
 
     <span class="kw">async fn </span>send_streaming_request(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;tonic::Streaming&lt;<span class="self">Self</span>::GrpcStreamData&gt;&gt;, tonic::Status&gt; {
+    ) -&gt; DataFusionResult&lt;tonic::Response&lt;tonic::Streaming&lt;<span class="self">Self</span>::GrpcStreamData&gt;&gt;&gt; {
         <span class="kw">let </span>request = <span class="self">self</span>.request.clone();
 
-        <span class="self">self</span>.client.search_dataset(request).<span class="kw">await
-    </span>}
+        <span class="self">self</span>.client
+            .search_dataset(request)
+            .<span class="kw">await
+            </span>.map_err(|err| DataFusionError::External(Box::new(err)))
+    }
 
     <span class="kw">fn </span>process_response(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,

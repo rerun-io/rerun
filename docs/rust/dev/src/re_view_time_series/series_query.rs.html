@@ -311,7 +311,17 @@
 <a href="#310" id="310">310</a>
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a></pre></div><pre class="rust"><code><span class="doccomment">//! Shared functionality for querying time series data.
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a></pre></div><pre class="rust"><code><span class="doccomment">//! Shared functionality for querying time series data.
 
 </span><span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
@@ -347,14 +357,24 @@
     results: <span class="kw-2">&amp;</span>HybridRangeResults&lt;<span class="lifetime">'_</span>&gt;,
     num_series: usize,
 ) -&gt; Vec&lt;bool&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>series_visibility_flags: Vec&lt;bool&gt; = results
+    results
         .iter_as(<span class="kw-2">*</span>query.timeline(), components::SeriesVisible::name())
         .slice::&lt;bool&gt;()
         .next()
-        .map_or(Vec::new(), |(<span class="kw">_</span>, visible)| visible.iter().collect_vec());
-    series_visibility_flags.resize(num_series, <span class="bool-val">true</span>);
-
-    series_visibility_flags
+        .map_or_else(
+            || <span class="macro">vec!</span>[<span class="bool-val">true</span>; num_series], <span class="comment">// By default all series are visible.
+            </span>|(<span class="kw">_</span>, visible)| {
+                <span class="kw">let </span><span class="kw-2">mut </span>flags = visible.iter().collect_vec();
+                <span class="kw">if </span>flags.len() &lt; num_series {
+                    <span class="comment">// If there are less flags than series, repeat the last flag (or true if there are no flags).
+                    </span>flags.extend(
+                        std::iter::repeat(<span class="kw-2">*</span>flags.last().unwrap_or(<span class="kw-2">&amp;</span><span class="bool-val">true</span>))
+                            .take(num_series - flags.len()),
+                    );
+                }
+                flags
+            },
+        )
 }
 
 <span class="doccomment">/// Allocates all points for the series.

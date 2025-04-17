@@ -61,7 +61,7 @@
 
 <span class="kw">pub struct </span>ComponentType {
     <span class="kw">pub </span>descriptor: ComponentDescriptor,
-    <span class="kw">pub </span>datatype: arrow2::datatypes::DataType,
+    <span class="kw">pub </span>datatype: arrow::datatypes::DataType,
 }
 
 <span class="attr">#[derive(Default)]
@@ -74,7 +74,7 @@
     <span class="kw">pub fn </span>register(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         descriptor: ComponentDescriptor,
-        datatype: arrow2::datatypes::DataType,
+        datatype: arrow::datatypes::DataType,
     ) -&gt; CComponentTypeHandle {
         <span class="attr">#[cfg(debug_assertions)]
         </span>{

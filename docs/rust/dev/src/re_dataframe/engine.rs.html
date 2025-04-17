@@ -105,8 +105,7 @@
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<a href="#107" id="107">107</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>re_chunk::EntityPath;
 <span class="kw">use </span>re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression};
@@ -157,10 +156,9 @@
     </span><span class="kw">pub fn </span>from_rrd_filepath(
         store_config: <span class="kw-2">&amp;</span>ChunkStoreConfig,
         path_to_rrd: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -&gt; anyhow::Result&lt;BTreeMap&lt;StoreId, <span class="self">Self</span>&gt;&gt; {
         <span class="prelude-val">Ok</span>(
-            ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd, version_policy)<span class="question-mark">?
+            ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd)<span class="question-mark">?
                 </span>.into_iter()
                 .map(|(store_id, store)| (store_id, <span class="self">Self</span>::from_store(store)))
                 .collect(),

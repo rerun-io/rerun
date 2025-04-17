@@ -1519,9 +1519,7 @@
 <a href="#1518" id="1518">1518</a>
 <a href="#1519" id="1519">1519</a>
 <a href="#1520" id="1520">1520</a>
-<a href="#1521" id="1521">1521</a>
-<a href="#1522" id="1522">1522</a>
-<a href="#1523" id="1523">1523</a></pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::borrow_deref_ref)] </span><span class="comment">// False positive due to #[pyfunction] macro
+<a href="#1521" id="1521">1521</a></pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::borrow_deref_ref)] </span><span class="comment">// False positive due to #[pyfunction] macro
 </span><span class="attr">#![allow(clippy::needless_pass_by_value)] </span><span class="comment">// A lot of arguments to #[pyfunction] need to be by value
 </span><span class="attr">#![allow(deprecated)] </span><span class="comment">// False positive due to macro
 </span><span class="attr">#![allow(unsafe_op_in_unsafe_fn)] </span><span class="comment">// False positive due to #[pyfunction] macro
@@ -1553,7 +1551,6 @@
     SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 <span class="kw">use </span>re_dataframe::{QueryEngine, StorageEngine};
-<span class="kw">use </span>re_log_encoding::VersionPolicy;
 <span class="kw">use </span>re_log_types::{EntityPathFilter, ResolvedTimeRange};
 <span class="kw">use </span>re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 <span class="kw">use </span>re_sorbet::SorbetColumnDescriptors;
@@ -2981,12 +2978,11 @@
 ///     The loaded archive.
 </span><span class="attr">#[pyfunction]
 </span><span class="kw">pub fn </span>load_archive(path_to_rrd: std::path::PathBuf) -&gt; PyResult&lt;PyRRDArchive&gt; {
-    <span class="kw">let </span>stores =
-        ChunkStore::from_rrd_filepath(<span class="kw-2">&amp;</span>ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))<span class="question-mark">?
-            </span>.into_iter()
-            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-            .collect();
+    <span class="kw">let </span>stores = ChunkStore::from_rrd_filepath(<span class="kw-2">&amp;</span>ChunkStoreConfig::DEFAULT, path_to_rrd)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))<span class="question-mark">?
+        </span>.into_iter()
+        .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+        .collect();
 
     <span class="kw">let </span>archive = PyRRDArchive { datasets: stores };
 

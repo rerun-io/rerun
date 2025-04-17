@@ -395,19 +395,16 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{text::TextWrapping, Align, Align2, NumExt <span class="kw">as _</span>, Ui};
+<a href="#397" id="397">397</a></pre></div><pre class="rust"><code><span class="kw">use </span>egui::{text::TextWrapping, Align, Align2, NumExt <span class="kw">as _</span>, Ui};
 
-<span class="kw">use super</span>::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
+<span class="kw">use super</span>::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent, ListVisuals};
 <span class="kw">use crate</span>::{DesignTokens, Icon, UiExt <span class="kw">as _</span>};
 
 <span class="doccomment">/// Closure to draw an icon left of the label.
-</span><span class="kw">type </span>IconFn&lt;<span class="lifetime">'a</span>&gt; = <span class="kw">dyn </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, egui::Rect, egui::style::WidgetVisuals) + <span class="lifetime">'a</span>;
+</span><span class="kw">type </span>IconFn&lt;<span class="lifetime">'a</span>&gt; = <span class="kw">dyn </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, egui::Rect, ListVisuals) + <span class="lifetime">'a</span>;
 
 <span class="doccomment">/// Closure to draw the right column of the property.
-</span><span class="kw">type </span>PropertyValueFn&lt;<span class="lifetime">'a</span>&gt; = <span class="kw">dyn </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, egui::style::WidgetVisuals) + <span class="lifetime">'a</span>;
+</span><span class="kw">type </span>PropertyValueFn&lt;<span class="lifetime">'a</span>&gt; = <span class="kw">dyn </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, ListVisuals) + <span class="lifetime">'a</span>;
 
 <span class="doccomment">/// [`ListItemContent`] to display property-like, two-column content.
 ///
@@ -455,8 +452,7 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>with_icon(<span class="self">self</span>, icon: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Icon) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.with_icon_fn(|ui, rect, visuals| {
-            <span class="kw">let </span>tint = visuals.fg_stroke.color;
-            icon.as_image().tint(tint).paint_at(ui, rect);
+            icon.as_image().tint(visuals.icon_tint()).paint_at(ui, rect);
         })
     }
 
@@ -464,7 +460,7 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>with_icon_fn&lt;F&gt;(<span class="kw-2">mut </span><span class="self">self</span>, icon_fn: F) -&gt; <span class="self">Self
     </span><span class="kw">where
-        </span>F: FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, egui::Rect, egui::style::WidgetVisuals) + <span class="lifetime">'a</span>,
+        </span>F: FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, egui::Rect, ListVisuals) + <span class="lifetime">'a</span>,
     {
         <span class="self">self</span>.icon_fn = <span class="prelude-val">Some</span>(Box::new(icon_fn));
         <span class="self">self
@@ -540,7 +536,7 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>value_fn&lt;F&gt;(<span class="kw-2">mut </span><span class="self">self</span>, value_fn: F) -&gt; <span class="self">Self
     </span><span class="kw">where
-        </span>F: FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, egui::style::WidgetVisuals) + <span class="lifetime">'a</span>,
+        </span>F: FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui, ListVisuals) + <span class="lifetime">'a</span>,
     {
         <span class="self">self</span>.value_fn = <span class="prelude-val">Some</span>(Box::new(value_fn));
         <span class="self">self
@@ -676,9 +672,7 @@
             context.rect.y_range(),
         );
 
-        <span class="kw">let </span>visuals = ui
-            .style()
-            .interact_selectable(context.response, context.list_item.selected);
+        <span class="kw">let </span>visuals = context.visuals;
 
         <span class="comment">// Draw icon
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(icon_fn) = icon_fn {

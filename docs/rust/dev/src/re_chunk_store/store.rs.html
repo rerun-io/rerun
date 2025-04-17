@@ -830,11 +830,7 @@
 <a href="#829" id="829">829</a>
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
-<a href="#832" id="832">832</a>
-<a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
-<a href="#836" id="836">836</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<a href="#832" id="832">832</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::sync::atomic::AtomicU64;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -1553,7 +1549,6 @@
     </span><span class="kw">pub fn </span>from_rrd_filepath(
         store_config: <span class="kw-2">&amp;</span>ChunkStoreConfig,
         path_to_rrd: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -&gt; anyhow::Result&lt;BTreeMap&lt;StoreId, <span class="self">Self</span>&gt;&gt; {
         <span class="kw">let </span>path_to_rrd = path_to_rrd.as_ref();
 
@@ -1566,7 +1561,7 @@
         <span class="kw">let </span>rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| <span class="macro">format!</span>(<span class="string">"couldn't open {path_to_rrd:?}"</span>))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = re_log_encoding::decoder::Decoder::new(rrd_file)
             .with_context(|| <span class="macro">format!</span>(<span class="string">"couldn't decode {path_to_rrd:?}"</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// TODO(cmc): offload the decoding to a background thread.
@@ -1660,14 +1655,11 @@
     </span><span class="kw">pub fn </span>handle_from_rrd_filepath(
         store_config: <span class="kw-2">&amp;</span>ChunkStoreConfig,
         path_to_rrd: <span class="kw">impl </span>AsRef&lt;std::path::Path&gt;,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -&gt; anyhow::Result&lt;BTreeMap&lt;StoreId, ChunkStoreHandle&gt;&gt; {
-        <span class="prelude-val">Ok</span>(
-            <span class="self">Self</span>::from_rrd_filepath(store_config, path_to_rrd, version_policy)<span class="question-mark">?
-                </span>.into_iter()
-                .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-                .collect(),
-        )
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span>::from_rrd_filepath(store_config, path_to_rrd)<span class="question-mark">?
+            </span>.into_iter()
+            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+            .collect())
     }
 }
 </code></pre></div></section></main></body></html>

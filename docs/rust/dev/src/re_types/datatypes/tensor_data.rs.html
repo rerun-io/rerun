@@ -525,7 +525,7 @@
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub struct </span>TensorData {
     <span class="doccomment">/// The shape of the tensor, i.e. the length of each dimension.
-    </span><span class="kw">pub </span>shape: ::re_types_core::ArrowBuffer&lt;u64&gt;,
+    </span><span class="kw">pub </span>shape: ::arrow::buffer::ScalarBuffer&lt;u64&gt;,
 
     <span class="doccomment">/// The names of the dimensions of the tensor (optional).
     ///
@@ -637,14 +637,15 @@
                             any_nones.then(|| somes.into())
                         };
                         {
-                            <span class="kw">let </span>offsets =
-                                arrow::buffer::OffsetBuffer::&lt;i32&gt;::from_lengths(shape.iter().map(
-                                    |opt| opt.as_ref().map_or(<span class="number">0</span>, |datum| datum.num_instances()),
-                                ));
+                            <span class="kw">let </span>offsets = arrow::buffer::OffsetBuffer::&lt;i32&gt;::from_lengths(
+                                shape
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(<span class="number">0</span>, |datum| datum.len())),
+                            );
                             <span class="kw">let </span>shape_inner_data: ScalarBuffer&lt;<span class="kw">_</span>&gt; = shape
                                 .iter()
                                 .flatten()
-                                .map(|b| b.as_slice())
+                                .map(|b| b <span class="kw">as </span><span class="kw-2">&amp;</span>[<span class="kw">_</span>])
                                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                                 .concat()
                                 .into();
@@ -817,7 +818,6 @@
                                         <span class="attr">#[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         </span><span class="kw">let </span>data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        <span class="kw">let </span>data = ::re_types_core::ArrowBuffer::from(data);
                                         <span class="prelude-val">Ok</span>(data)
                                     })
                                     .transpose()
@@ -985,7 +985,7 @@
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>is_pod() -&gt; bool {
-        &lt;::re_types_core::ArrowBuffer&lt;u64&gt;&gt;::is_pod()
+        &lt;::arrow::buffer::ScalarBuffer&lt;u64&gt;&gt;::is_pod()
             &amp;&amp; &lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;::re_types_core::ArrowString&gt;&gt;&gt;::is_pod()
             &amp;&amp; &lt;<span class="kw">crate</span>::datatypes::TensorBuffer&gt;::is_pod()
     }

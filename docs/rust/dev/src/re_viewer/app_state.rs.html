@@ -902,6 +902,7 @@
 
 <span class="kw">use crate</span>::{
     app_blueprint::AppBlueprint,
+    event::ViewerEventDispatcher,
     ui::{recordings_panel_ui, settings_screen_ui},
 };
 
@@ -1052,7 +1053,7 @@
         command_sender: <span class="kw-2">&amp;</span>CommandSender,
         welcome_screen_state: <span class="kw-2">&amp;</span>WelcomeScreenState,
         is_history_enabled: bool,
-        callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::callback::Callbacks&gt;,
+        event_dispatcher: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::event::ViewerEventDispatcher&gt;,
     ) {
         <span class="macro">re_tracing::profile_function!</span>();
 
@@ -1116,8 +1117,12 @@
         );
 
         <span class="kw">if let </span>SelectionChange::SelectionChanged(selection) = selection_change {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(callbacks) = callbacks {
-                callbacks.on_selection_change(selection, <span class="kw-2">&amp;</span>viewport_ui.blueprint);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(event_dispatcher) = event_dispatcher {
+                event_dispatcher.on_selection_change(
+                    store_context.recording,
+                    selection,
+                    <span class="kw-2">&amp;</span>viewport_ui.blueprint,
+                );
             }
         }
 
@@ -1183,7 +1188,6 @@
             maybe_visualizable_entities_per_visualizer: <span class="kw-2">&amp;</span>maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: <span class="kw-2">&amp;</span>indicated_entities_per_visualizer,
             query_results: <span class="kw-2">&amp;</span>query_results,
-            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -1201,7 +1205,7 @@
 
         <span class="comment">// We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        </span>move_time(<span class="kw-2">&amp;</span>ctx, recording, rx_log, callbacks);
+        </span>move_time(<span class="kw-2">&amp;</span>ctx, recording, rx_log, event_dispatcher);
 
         <span class="comment">// Update the viewport. May spawn new views and handle queued requests (like screenshots).
         </span>viewport_ui.on_frame_start(<span class="kw-2">&amp;</span>ctx);
@@ -1266,7 +1270,6 @@
             maybe_visualizable_entities_per_visualizer: <span class="kw-2">&amp;</span>maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: <span class="kw-2">&amp;</span>indicated_entities_per_visualizer,
             query_results: <span class="kw-2">&amp;</span>query_results,
-            active_table: storage_context.hub.active_table_id().cloned(),
             rec_cfg,
             blueprint_cfg,
             selection_state,
@@ -1452,7 +1455,7 @@
                 .show_inside(ui, |ui| {
                     <span class="kw">match </span>display_mode {
                         DisplayMode::LocalRecordings =&gt; {
-                            <span class="kw">if let </span><span class="prelude-val">Some</span>(table_id) = ctx.active_table.as_ref() {
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>(table_id) = ctx.storage_context.hub.active_table_id() {
                                 <span class="kw">if let </span><span class="prelude-val">Some</span>(store) = ctx.storage_context.tables.get(table_id) {
                                     <span class="kw">let </span>context = TableContext {
                                         table_id: table_id.clone(),
@@ -1585,7 +1588,7 @@
     ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
     recording: <span class="kw-2">&amp;</span>EntityDb,
     rx: <span class="kw-2">&amp;</span>ReceiveSet&lt;LogMsg&gt;,
-    callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::callback::Callbacks&gt;,
+    events: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ViewerEventDispatcher&gt;,
 ) {
     <span class="kw">let </span>dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -1606,7 +1609,7 @@
         </span>should_diff_time_ctrl,
     );
 
-    handle_time_ctrl_callbacks(callbacks, <span class="kw-2">&amp;</span>recording_time_ctrl_response);
+    handle_time_ctrl_event(recording, events, <span class="kw-2">&amp;</span>recording_time_ctrl_response);
 
     <span class="kw">let </span>recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
 
@@ -1633,28 +1636,25 @@
     }
 }
 
-<span class="kw">fn </span>handle_time_ctrl_callbacks(
-    callbacks: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">crate</span>::callback::Callbacks&gt;,
+<span class="kw">fn </span>handle_time_ctrl_event(
+    recording: <span class="kw-2">&amp;</span>EntityDb,
+    events: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ViewerEventDispatcher&gt;,
     response: <span class="kw-2">&amp;</span>re_viewer_context::TimeControlResponse,
 ) {
-    <span class="kw">let </span><span class="prelude-val">Some</span>(callbacks) = callbacks <span class="kw">else </span>{
+    <span class="kw">let </span><span class="prelude-val">Some</span>(events) = events <span class="kw">else </span>{
         <span class="kw">return</span>;
     };
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(playing) = response.playing_change {
-        <span class="kw">if </span>playing {
-            callbacks.on_play();
-        } <span class="kw">else </span>{
-            callbacks.on_pause();
-        }
+        events.on_play_state_change(recording, playing);
     }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>((timeline, time)) = response.timeline_change {
-        callbacks.on_timeline_change(timeline, time);
+        events.on_timeline_change(recording, timeline, time);
     }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(time) = response.time_change {
-        callbacks.on_time_update(time);
+        events.on_time_update(recording, time);
     }
 }
 

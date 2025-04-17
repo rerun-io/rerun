@@ -118,7 +118,7 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::app_blueprint::PanelStateOverrides;
-<span class="kw">use </span><span class="kw">crate</span>::Callbacks;
+<span class="kw">use </span><span class="kw">crate</span>::event::ViewerEventCallback;
 
 <span class="doccomment">/// Settings set once at startup (e.g. via command-line options) and not serialized.
 </span><span class="attr">#[derive(Clone)]
@@ -170,7 +170,7 @@
     </span><span class="kw">pub </span>video_decoder_hw_acceleration: <span class="prelude-ty">Option</span>&lt;re_video::decode::DecodeHardwareAcceleration&gt;,
 
     <span class="doccomment">/// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
-    </span><span class="kw">pub </span>callbacks: <span class="prelude-ty">Option</span>&lt;Callbacks&gt;,
+    </span><span class="kw">pub </span>on_event: <span class="prelude-ty">Option</span>&lt;ViewerEventCallback&gt;,
 
     <span class="doccomment">/// Fullscreen is handled by JS on web.
     ///
@@ -224,7 +224,7 @@
             force_wgpu_backend: <span class="prelude-val">None</span>,
             video_decoder_hw_acceleration: <span class="prelude-val">None</span>,
 
-            callbacks: Default::default(),
+            on_event: <span class="prelude-val">None</span>,
 
             <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
             </span>fullscreen_options: Default::default(),

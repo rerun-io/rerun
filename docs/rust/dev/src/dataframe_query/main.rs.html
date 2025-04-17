@@ -68,18 +68,14 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
-<a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a>
-<a href="#74" id="74">74</a></pre></div><pre class="rust"><code><span class="doccomment">//! Demonstrates basic usage of the dataframe APIs.
+<a href="#70" id="70">70</a></pre></div><pre class="rust"><code><span class="doccomment">//! Demonstrates basic usage of the dataframe APIs.
 
 </span><span class="kw">use </span>itertools::Itertools;
 
 <span class="kw">use </span>rerun::{
     dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
     external::{arrow, re_format_arrow::format_record_batch},
-    ChunkStoreConfig, StoreKind, VersionPolicy,
+    ChunkStoreConfig, StoreKind,
 };
 
 <span class="kw">fn </span>main() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
@@ -114,11 +110,7 @@
     <span class="kw">let </span>entity_path_filter = args.get(<span class="number">2</span>).map_or(<span class="string">"/**"</span>, |s| s.as_str()).parse()<span class="question-mark">?</span>;
     <span class="kw">let </span>timeline = TimelineName::log_time();
 
-    <span class="kw">let </span>engines = QueryEngine::from_rrd_filepath(
-        <span class="kw-2">&amp;</span>ChunkStoreConfig::DEFAULT,
-        path_to_rrd,
-        VersionPolicy::Warn,
-    )<span class="question-mark">?</span>;
+    <span class="kw">let </span>engines = QueryEngine::from_rrd_filepath(<span class="kw-2">&amp;</span>ChunkStoreConfig::DEFAULT, path_to_rrd)<span class="question-mark">?</span>;
 
     <span class="kw">for </span>(store_id, engine) <span class="kw">in </span>engines {
         <span class="kw">if </span>store_id.kind != StoreKind::Recording {

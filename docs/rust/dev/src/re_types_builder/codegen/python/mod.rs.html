@@ -2781,7 +2781,15 @@
 <a href="#2780" id="2780">2780</a>
 <a href="#2781" id="2781">2781</a>
 <a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a></pre></div><pre class="rust"><code><span class="doccomment">//! Implements the Python codegen pass.
+<a href="#2783" id="2783">2783</a>
+<a href="#2784" id="2784">2784</a>
+<a href="#2785" id="2785">2785</a>
+<a href="#2786" id="2786">2786</a>
+<a href="#2787" id="2787">2787</a>
+<a href="#2788" id="2788">2788</a>
+<a href="#2789" id="2789">2789</a>
+<a href="#2790" id="2790">2790</a>
+<a href="#2791" id="2791">2791</a></pre></div><pre class="rust"><code><span class="doccomment">//! Implements the Python codegen pass.
 
 </span><span class="kw">mod </span>views;
 
@@ -2798,10 +2806,11 @@
         common::{collect_snippets_for_api_docs, Example},
         StringExt <span class="kw">as _</span>,
     },
+    data_type::{AtomicDataType, DataType, Field, UnionMode},
     format_path,
     objects::{ObjectClass, State},
-    ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
-    ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, TypeRegistry, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 <span class="kw">use </span><span class="self">self</span>::views::code_for_view;
@@ -2854,7 +2863,7 @@
 
 <span class="kw">impl </span>PythonObjectExt <span class="kw">for </span>Object {
     <span class="kw">fn </span>is_delegating_component(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.kind == ObjectKind::Component &amp;&amp; <span class="macro">matches!</span>(<span class="self">self</span>.fields[<span class="number">0</span>].typ, Type::Object(<span class="kw">_</span>))
+        <span class="self">self</span>.kind == ObjectKind::Component &amp;&amp; <span class="macro">matches!</span>(<span class="self">self</span>.fields[<span class="number">0</span>].typ, Type::Object { .. })
     }
 
     <span class="kw">fn </span>is_non_delegating_component(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -2864,8 +2873,8 @@
     <span class="kw">fn </span>delegate_datatype&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, objects: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Objects) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Object&gt; {
         <span class="self">self</span>.is_delegating_component()
             .then(|| {
-                <span class="kw">if let </span>Type::Object(name) = <span class="kw-2">&amp;</span><span class="self">self</span>.fields[<span class="number">0</span>].typ {
-                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>objects[name])
+                <span class="kw">if let </span>Type::Object { fqname } = <span class="kw-2">&amp;</span><span class="self">self</span>.fields[<span class="number">0</span>].typ {
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>objects[fqname])
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>}
@@ -2893,7 +2902,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span>Reporter,
         objects: <span class="kw-2">&amp;</span>Objects,
-        arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+        type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     ) -&gt; GeneratedFiles {
         <span class="kw">let </span><span class="kw-2">mut </span>files_to_write = GeneratedFiles::default();
 
@@ -2901,7 +2910,7 @@
             <span class="self">self</span>.generate_folder(
                 reporter,
                 objects,
-                arrow_registry,
+                type_registry,
                 object_kind,
                 <span class="kw-2">&amp;mut </span>files_to_write,
             );
@@ -3091,7 +3100,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         reporter: <span class="kw-2">&amp;</span>Reporter,
         objects: <span class="kw-2">&amp;</span>Objects,
-        arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+        type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
         object_kind: ObjectKind,
         files_to_write: <span class="kw-2">&amp;mut </span>BTreeMap&lt;Utf8PathBuf, String&gt;,
     ) {
@@ -3263,14 +3272,14 @@
                     <span class="kw">if </span>obj.kind == ObjectKind::View {
                         code_for_view(reporter, objects, <span class="kw-2">&amp;</span>ext_class, obj)
                     } <span class="kw">else </span>{
-                        code_for_struct(reporter, arrow_registry, <span class="kw-2">&amp;</span>ext_class, objects, obj)
+                        code_for_struct(reporter, type_registry, <span class="kw-2">&amp;</span>ext_class, objects, obj)
                     }
                 }
                 <span class="kw">crate</span>::objects::ObjectClass::Enum =&gt; {
-                    code_for_enum(reporter, arrow_registry, <span class="kw-2">&amp;</span>ext_class, objects, obj)
+                    code_for_enum(reporter, type_registry, <span class="kw-2">&amp;</span>ext_class, objects, obj)
                 }
                 <span class="kw">crate</span>::objects::ObjectClass::Union =&gt; {
-                    code_for_union(reporter, arrow_registry, <span class="kw-2">&amp;</span>ext_class, objects, obj)
+                    code_for_union(reporter, type_registry, <span class="kw-2">&amp;</span>ext_class, objects, obj)
                 }
             };
 
@@ -3356,7 +3365,7 @@
 
 </span><span class="kw">fn </span>code_for_struct(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     ext_class: <span class="kw-2">&amp;</span>ExtensionClass,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
@@ -3599,7 +3608,7 @@
         ObjectKind::Component =&gt; {
             code.push_indented(
                 <span class="number">0</span>,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 <span class="number">1</span>,
             );
 
@@ -3615,7 +3624,7 @@
         ObjectKind::Datatype =&gt; {
             code.push_indented(
                 <span class="number">0</span>,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 <span class="number">1</span>,
             );
         }
@@ -3629,7 +3638,7 @@
 
 <span class="kw">fn </span>code_for_enum(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     ext_class: <span class="kw-2">&amp;</span>ExtensionClass,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
@@ -3773,7 +3782,7 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
         ObjectKind::Component | ObjectKind::Datatype =&gt; {
             code.push_indented(
                 <span class="number">0</span>,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 <span class="number">1</span>,
             );
         }
@@ -3787,7 +3796,7 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
 
 <span class="kw">fn </span>code_for_union(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     ext_class: <span class="kw-2">&amp;</span>ExtensionClass,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
@@ -3939,7 +3948,7 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
         ObjectKind::Datatype =&gt; {
             code.push_indented(
                 <span class="number">0</span>,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 <span class="number">1</span>,
             );
         }
@@ -4326,10 +4335,10 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
             length: <span class="kw">_</span>,
         }
         | Type::Vector { elem_type } =&gt; <span class="kw">match </span>elem_type {
-            ElementType::Object(fqname) =&gt; <span class="prelude-val">Some</span>(fqname),
+            ElementType::Object { fqname } =&gt; <span class="prelude-val">Some</span>(fqname),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         },
-        Type::Object(fqname) =&gt; <span class="prelude-val">Some</span>(fqname),
+        Type::Object { fqname } =&gt; <span class="prelude-val">Some</span>(fqname),
         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
     };
 
@@ -4425,7 +4434,7 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
             ElementType::Float32 =&gt; <span class="string">"npt.NDArray[np.float32]"</span>.to_owned(),
             ElementType::Float64 =&gt; <span class="string">"npt.NDArray[np.float64]"</span>.to_owned(),
             ElementType::String =&gt; <span class="string">"list[str]"</span>.to_owned(),
-            ElementType::Object(<span class="kw">_</span>) =&gt; {
+            ElementType::Object { .. } =&gt; {
                 <span class="kw">let </span>typ = quote_type_from_element_type(elem_type);
                 <span class="kw">if </span>unwrap {
                     unwrapped = <span class="bool-val">true</span>;
@@ -4435,7 +4444,9 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
                 }
             }
         },
-        Type::Object(fqname) =&gt; quote_type_from_element_type(<span class="kw-2">&amp;</span>ElementType::Object(fqname.clone())),
+        Type::Object { fqname } =&gt; quote_type_from_element_type(<span class="kw-2">&amp;</span>ElementType::Object {
+            fqname: fqname.clone(),
+        }),
     };
 
     (typ, unwrapped)
@@ -4509,8 +4520,10 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
             ElementType::Float64 =&gt; <span class="string">"to_np_float64"</span>.to_owned(),
             <span class="kw">_ </span>=&gt; String::new(),
         },
-        Type::Object(fqname) =&gt; {
-            <span class="kw">let </span>typ = quote_type_from_element_type(<span class="kw-2">&amp;</span>ElementType::Object(fqname.clone()));
+        Type::Object { fqname } =&gt; {
+            <span class="kw">let </span>typ = quote_type_from_element_type(<span class="kw-2">&amp;</span>ElementType::Object {
+                fqname: fqname.clone(),
+            });
             <span class="kw">let </span>field_obj = <span class="kw-2">&amp;</span>objects[fqname];
 
             <span class="comment">// we generate a default converter only if the field's type can be constructed with a
@@ -4598,7 +4611,7 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
         Type::Bool =&gt; <span class="string">"bool"</span>.to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 =&gt; <span class="string">"float"</span>.to_owned(),
         Type::String =&gt; <span class="string">"str"</span>.to_owned(),
-        Type::Object(fqname) =&gt; fqname_to_type(fqname),
+        Type::Object { fqname } =&gt; fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } =&gt; {
             <span class="macro">format!</span>(
                 <span class="string">"list[{}]"</span>,
@@ -4618,7 +4631,7 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
 /// delegate to the Datatype's arrow support.
 </span><span class="kw">fn </span>quote_arrow_support_from_obj(
     reporter: <span class="kw-2">&amp;</span>Reporter,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     ext_class: <span class="kw-2">&amp;</span>ExtensionClass,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
@@ -4656,14 +4669,14 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
         batch_superclasses.push(<span class="string">"ComponentBatchMixin"</span>.to_owned());
     }
 
-    <span class="kw">let </span>datatype = quote_arrow_datatype(<span class="kw-2">&amp;</span>arrow_registry.get(fqname));
+    <span class="kw">let </span>datatype = quote_arrow_datatype(<span class="kw-2">&amp;</span>type_registry.get(fqname));
     <span class="kw">let </span>extension_batch = <span class="macro">format!</span>(<span class="string">"{name}Batch"</span>);
 
     <span class="kw">let </span>native_to_pa_array_impl = <span class="kw">match </span>quote_arrow_serialization(
         reporter,
         objects,
         obj,
-        arrow_registry,
+        type_registry,
     ) {
         <span class="prelude-val">Ok</span>(automatic_arrow_serialization) =&gt; {
             <span class="kw">if </span>ext_class.has_native_to_pa_array {
@@ -4754,9 +4767,11 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
         Type::Float16 =&gt; <span class="prelude-val">Some</span>(<span class="string">"np.float16"</span>),
         Type::Float32 =&gt; <span class="prelude-val">Some</span>(<span class="string">"np.float32"</span>),
         Type::Float64 =&gt; <span class="prelude-val">Some</span>(<span class="string">"np.float64"</span>),
-        Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(<span class="kw">_</span>) =&gt; {
-            <span class="prelude-val">None
-        </span>}
+        Type::Unit
+        | Type::String
+        | Type::Array { .. }
+        | Type::Vector { .. }
+        | Type::Object { .. } =&gt; <span class="prelude-val">None</span>,
     }
 }
 
@@ -4765,7 +4780,7 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
     reporter: <span class="kw-2">&amp;</span>Reporter,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;String, String&gt; {
     <span class="kw">let </span>Object { name, .. } = obj;
 
@@ -4850,7 +4865,9 @@ def auto(cls, val: str | int | {enum_name}) -&gt; {enum_name}:
                             <span class="string">"We lack codegen for arrow-serialization of general structs"</span>.to_owned()
                         );
                     }
-                    Type::Object(field_fqname) =&gt; {
+                    Type::Object {
+                        fqname: field_fqname,
+                    } =&gt; {
                         <span class="kw">let </span>field_obj = <span class="kw-2">&amp;</span>objects[field_fqname];
                         <span class="kw">let </span>field_type_name = <span class="kw-2">&amp;</span>field_obj.name;
 
@@ -4951,7 +4968,7 @@ return pa.array(pa_data, type=data_type)
 
                 // Converting the variant list to a pa array.
                 </span><span class="kw">let </span>variant_list_to_pa_array = <span class="kw">match </span><span class="kw-2">&amp;</span>field.typ {
-                    Type::Object(fqname) =&gt; {
+                    Type::Object { fqname } =&gt; {
                         <span class="kw">let </span>field_type_name = <span class="kw-2">&amp;</span>objects[fqname].name;
                         <span class="macro">format!</span>(<span class="string">"{field_type_name}Batch({variant_kind_list}).as_arrow_array()"</span>)
                     }
@@ -4971,7 +4988,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float32
                     | Type::Float64
                     | Type::String =&gt; {
-                        <span class="kw">let </span>datatype = quote_arrow_datatype(<span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>field.fqname));
+                        <span class="kw">let </span>datatype = quote_arrow_datatype(<span class="kw-2">&amp;</span>type_registry.get(<span class="kw-2">&amp;</span>field.fqname));
                         <span class="macro">format!</span>(<span class="string">"pa.array({variant_kind_list}, type={datatype})"</span>)
                     }
                     Type::Array { .. } | Type::Vector { .. } =&gt; {
@@ -5052,7 +5069,10 @@ return pa.UnionArray.from_buffers(
     <span class="kw">let </span><span class="kw-2">mut </span>code = String::new();
 
     <span class="kw">for </span>field <span class="kw">in </span>fields {
-        <span class="kw">let </span>Type::Object(field_fqname) = <span class="kw-2">&amp;</span>field.typ <span class="kw">else </span>{
+        <span class="kw">let </span>Type::Object {
+            fqname: field_fqname,
+        } = <span class="kw-2">&amp;</span>field.typ
+        <span class="kw">else </span>{
             <span class="kw">continue</span>;
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(last_dot) = field_fqname.rfind(<span class="string">'.'</span>) {
@@ -5454,10 +5474,11 @@ return pa.UnionArray.from_buffers(
                 if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                     param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) &gt; 1 else 1  # type: ignore[redundant-expr,misc]
 
-                    if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) &lt;= 2:
-                        # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                        # `shape[1]` should be the length of the fixed sized list.
+                    if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                        # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # we have `num_rows` single element batches (each element is a fixed sized list).
                         # (This should have been already validated by conversion to the arrow_array)
                         batch_length = 1
                     else:
@@ -5479,29 +5500,26 @@ return pa.UnionArray.from_buffers(
 }
 
 <span class="comment">// --- Arrow registry code generators ---
-</span><span class="kw">use </span>arrow2::datatypes::{DataType, Field, UnionMode};
 
-<span class="kw">fn </span>quote_arrow_datatype(datatype: <span class="kw-2">&amp;</span>DataType) -&gt; String {
+</span><span class="kw">fn </span>quote_arrow_datatype(datatype: <span class="kw-2">&amp;</span>DataType) -&gt; String {
     <span class="kw">match </span>datatype {
-        DataType::Null =&gt; <span class="string">"pa.null()"</span>.to_owned(),
-        DataType::Boolean =&gt; <span class="string">"pa.bool_()"</span>.to_owned(),
-        DataType::Int8 =&gt; <span class="string">"pa.int8()"</span>.to_owned(),
-        DataType::Int16 =&gt; <span class="string">"pa.int16()"</span>.to_owned(),
-        DataType::Int32 =&gt; <span class="string">"pa.int32()"</span>.to_owned(),
-        DataType::Int64 =&gt; <span class="string">"pa.int64()"</span>.to_owned(),
-        DataType::UInt8 =&gt; <span class="string">"pa.uint8()"</span>.to_owned(),
-        DataType::UInt16 =&gt; <span class="string">"pa.uint16()"</span>.to_owned(),
-        DataType::UInt32 =&gt; <span class="string">"pa.uint32()"</span>.to_owned(),
-        DataType::UInt64 =&gt; <span class="string">"pa.uint64()"</span>.to_owned(),
-        DataType::Float16 =&gt; <span class="string">"pa.float16()"</span>.to_owned(),
-        DataType::Float32 =&gt; <span class="string">"pa.float32()"</span>.to_owned(),
-        DataType::Float64 =&gt; <span class="string">"pa.float64()"</span>.to_owned(),
-        DataType::Date32 =&gt; <span class="string">"pa.date32()"</span>.to_owned(),
-        DataType::Date64 =&gt; <span class="string">"pa.date64()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Null) =&gt; <span class="string">"pa.null()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Boolean) =&gt; <span class="string">"pa.bool_()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Int8) =&gt; <span class="string">"pa.int8()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Int16) =&gt; <span class="string">"pa.int16()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Int32) =&gt; <span class="string">"pa.int32()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Int64) =&gt; <span class="string">"pa.int64()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::UInt8) =&gt; <span class="string">"pa.uint8()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::UInt16) =&gt; <span class="string">"pa.uint16()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::UInt32) =&gt; <span class="string">"pa.uint32()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::UInt64) =&gt; <span class="string">"pa.uint64()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Float16) =&gt; <span class="string">"pa.float16()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Float32) =&gt; <span class="string">"pa.float32()"</span>.to_owned(),
+        DataType::Atomic(AtomicDataType::Float64) =&gt; <span class="string">"pa.float64()"</span>.to_owned(),
+
         DataType::Binary =&gt; <span class="string">"pa.binary()"</span>.to_owned(),
-        DataType::LargeBinary =&gt; <span class="string">"pa.large_binary()"</span>.to_owned(),
+
         DataType::Utf8 =&gt; <span class="string">"pa.utf8()"</span>.to_owned(),
-        DataType::LargeUtf8 =&gt; <span class="string">"pa.large_utf8()"</span>.to_owned(),
 
         DataType::List(field) =&gt; {
             <span class="kw">let </span>field = quote_arrow_field(field);
@@ -5513,7 +5531,7 @@ return pa.UnionArray.from_buffers(
             <span class="macro">format!</span>(<span class="string">"pa.list_({field}, {length})"</span>)
         }
 
-        DataType::Union(fields, <span class="kw">_</span>, mode) =&gt; {
+        DataType::Union(fields, mode) =&gt; {
             <span class="kw">let </span>fields = fields
                 .iter()
                 .map(quote_arrow_field)
@@ -5534,9 +5552,7 @@ return pa.UnionArray.from_buffers(
             <span class="macro">format!</span>(<span class="string">"pa.struct([{fields}])"</span>)
         }
 
-        DataType::Extension(<span class="kw">_</span>, datatype, <span class="kw">_</span>) =&gt; quote_arrow_datatype(datatype),
-
-        <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>(<span class="string">"{datatype:#?}"</span>),
+        DataType::Object { datatype, .. } =&gt; quote_arrow_datatype(datatype),
     }
 }
 

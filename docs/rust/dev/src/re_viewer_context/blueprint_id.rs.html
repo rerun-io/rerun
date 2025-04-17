@@ -339,14 +339,14 @@
 <span class="kw">impl</span>&lt;T: BlueprintIdRegistry&gt; std::fmt::Display <span class="kw">for </span>BlueprintId&lt;T&gt; {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">"{}({})"</span>, T::registry_name(), <span class="self">self</span>.id)
+        <span class="macro">write!</span>(f, <span class="string">"{}({})"</span>, T::registry_name(), <span class="self">self</span>.id.simple())
     }
 }
 
 <span class="kw">impl</span>&lt;T: BlueprintIdRegistry&gt; std::fmt::Debug <span class="kw">for </span>BlueprintId&lt;T&gt; {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">"{}({})"</span>, T::registry_name(), <span class="self">self</span>.id)
+        <span class="macro">write!</span>(f, <span class="string">"{}({})"</span>, T::registry_name(), <span class="self">self</span>.id.simple())
     }
 }
 

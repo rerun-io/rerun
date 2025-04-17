@@ -682,7 +682,8 @@
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
 <a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a></pre></div><pre class="rust"><code><span class="doccomment">//! This crate implements Rerun's code generation tools.
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a></pre></div><pre class="rust"><code><span class="doccomment">//! This crate implements Rerun's code generation tools.
 //!
 //! These tools translate language-agnostic IDL definitions (flatbuffers) into code.
 //!
@@ -712,7 +713,7 @@
 //!
 //! The Arrow registry keeps track of all type definitions and maps them to Arrow datatypes.
 //!
-//! Look for `arrow_registry.rs`.
+//! Look for `type_registry.rs`.
 //!
 //! #### 4. Run the actual codegen pass for a given language.
 //!
@@ -823,14 +824,15 @@
 <span class="comment">// NOTE: This crate isn't only okay with `unimplemented`, it actively encourages it.
 
 </span><span class="attr">#[allow(clippy::unimplemented)]
-</span><span class="kw">mod </span>arrow_registry;
-<span class="attr">#[allow(clippy::unimplemented)]
 </span><span class="kw">mod </span>codegen;
 <span class="attr">#[allow(clippy::unimplemented)]
 </span><span class="kw">mod </span>format;
 <span class="attr">#[allow(clippy::unimplemented)]
 </span><span class="kw">mod </span>objects;
+<span class="attr">#[allow(clippy::unimplemented)]
+</span><span class="kw">mod </span>type_registry;
 
+<span class="kw">pub mod </span>data_type;
 <span class="kw">mod </span>docs;
 
 <span class="kw">pub mod </span>report;
@@ -842,7 +844,6 @@
 </span><span class="kw">pub type </span>GeneratedFiles = std::collections::BTreeMap&lt;camino::Utf8PathBuf, String&gt;;
 
 <span class="kw">pub use </span><span class="self">self</span>::{
-    arrow_registry::{ArrowRegistry, LazyDatatype, LazyField},
     codegen::{
         CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
         SnippetsRefCodeGenerator,
@@ -853,6 +854,7 @@
         Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
     },
     report::{Report, Reporter},
+    type_registry::TypeRegistry,
 };
 
 <span class="comment">// --- Attributes ---
@@ -944,7 +946,7 @@
     reporter: <span class="kw-2">&amp;</span>Reporter,
     include_dir_path: <span class="kw">impl </span>AsRef&lt;Utf8Path&gt;,
     entrypoint_path: <span class="kw">impl </span>AsRef&lt;Utf8Path&gt;,
-) -&gt; (Objects, ArrowRegistry) {
+) -&gt; (Objects, TypeRegistry) {
     <span class="macro">re_tracing::profile_function!</span>();
 
     <span class="kw">use </span>xshell::Shell;
@@ -978,12 +980,12 @@
     );
 
     <span class="comment">// create and fill out arrow registry
-    </span><span class="kw">let </span><span class="kw-2">mut </span>arrow_registry = ArrowRegistry::default();
+    </span><span class="kw">let </span><span class="kw-2">mut </span>type_registry = TypeRegistry::default();
     <span class="kw">for </span>obj <span class="kw">in </span>objects.objects.values_mut() {
-        arrow_registry.register(obj);
+        type_registry.register(obj);
     }
 
-    (objects, arrow_registry)
+    (objects, type_registry)
 }
 
 <span class="doccomment">/// Generates .gitattributes files that mark up all generated files as generated.
@@ -1088,7 +1090,7 @@
 </span><span class="kw">fn </span>generate_code(
     reporter: <span class="kw-2">&amp;</span>Reporter,
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     generator: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>CodeGenerator,
     formatter: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>CodeFormatter,
     orphan_paths_opt_out: <span class="kw-2">&amp;</span>BTreeSet&lt;Utf8PathBuf&gt;,
@@ -1097,7 +1099,7 @@
     <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 
     <span class="comment">// Generate in-memory code files:
-    </span><span class="kw">let </span><span class="kw-2">mut </span>files = generator.generate(reporter, objects, arrow_registry);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>files = generator.generate(reporter, objects, type_registry);
 
     <span class="kw">for </span>(filepath, contents) <span class="kw">in </span><span class="kw-2">&amp;</span>files {
         <span class="kw">if </span>!contents.contains(<span class="string">"DO NOT EDIT"</span>) {
@@ -1151,7 +1153,7 @@
     reporter: <span class="kw-2">&amp;</span>Reporter,
     output_path: <span class="kw">impl </span>AsRef&lt;Utf8Path&gt;,
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     check: bool,
 ) {
     <span class="macro">re_tracing::profile_function!</span>();
@@ -1167,7 +1169,7 @@
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         <span class="kw-2">&amp;mut </span>generator,
         <span class="kw-2">&amp;mut </span>formatter,
         <span class="kw-2">&amp;</span>std::iter::once(orphan_path_opt_out).collect(),
@@ -1184,7 +1186,7 @@
     reporter: <span class="kw-2">&amp;</span>Reporter,
     workspace_path: <span class="kw">impl </span>Into&lt;Utf8PathBuf&gt;,
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     check: bool,
 ) {
     <span class="macro">re_tracing::profile_function!</span>();
@@ -1195,7 +1197,7 @@
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         <span class="kw-2">&amp;mut </span>generator,
         <span class="kw-2">&amp;mut </span>formatter,
         <span class="kw-2">&amp;</span>Default::default(),
@@ -1215,7 +1217,7 @@
     output_pkg_path: <span class="kw">impl </span>AsRef&lt;Utf8Path&gt;,
     testing_output_pkg_path: <span class="kw">impl </span>AsRef&lt;Utf8Path&gt;,
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     check: bool,
 ) {
     <span class="macro">re_tracing::profile_function!</span>();
@@ -1228,7 +1230,7 @@
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         <span class="kw-2">&amp;mut </span>generator,
         <span class="kw-2">&amp;mut </span>formatter,
         <span class="kw-2">&amp;</span>Default::default(),
@@ -1240,7 +1242,7 @@
     reporter: <span class="kw-2">&amp;</span>Reporter,
     output_docs_dir: <span class="kw">impl </span>AsRef&lt;Utf8Path&gt;,
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     check: bool,
 ) {
     <span class="macro">re_tracing::profile_function!</span>();
@@ -1253,7 +1255,7 @@
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         <span class="kw-2">&amp;mut </span>generator,
         <span class="kw-2">&amp;mut </span>formatter,
         <span class="kw-2">&amp;</span>Default::default(),
@@ -1265,7 +1267,7 @@
     reporter: <span class="kw-2">&amp;</span>Reporter,
     output_snippets_ref_dir: <span class="kw">impl </span>AsRef&lt;Utf8Path&gt;,
     objects: <span class="kw-2">&amp;</span>Objects,
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     check: bool,
 ) {
     <span class="macro">re_tracing::profile_function!</span>();
@@ -1284,7 +1286,7 @@
     generate_code(
         reporter,
         objects,
-        arrow_registry,
+        type_registry,
         <span class="kw-2">&amp;mut </span>generator,
         <span class="kw-2">&amp;mut </span>formatter,
         <span class="kw-2">&amp;</span>std::iter::once(orphan_path_opt_out).collect(),
@@ -1303,7 +1305,7 @@
 
     <span class="comment">// We don't have arrow registry &amp; objects yet!
     </span><span class="kw">let </span>objects = Objects::default();
-    <span class="kw">let </span>arrow_registry = ArrowRegistry::default();
+    <span class="kw">let </span>type_registry = TypeRegistry::default();
 
     <span class="kw">let </span>orphan_path_opt_outs = [
         definition_dir.as_ref().to_path_buf(),
@@ -1315,7 +1317,7 @@
     generate_code(
         reporter,
         <span class="kw-2">&amp;</span>objects,
-        <span class="kw-2">&amp;</span>arrow_registry,
+        <span class="kw-2">&amp;</span>type_registry,
         <span class="kw-2">&amp;mut </span>generator,
         <span class="kw-2">&amp;mut </span>formatter,
         <span class="kw-2">&amp;</span>orphan_path_opt_outs,

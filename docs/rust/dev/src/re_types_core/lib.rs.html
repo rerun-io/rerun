@@ -209,9 +209,7 @@
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a></pre></div><pre class="rust"><code><span class="doccomment">//! The core types and traits that power Rerun's data model.
+<a href="#211" id="211">211</a></pre></div><pre class="rust"><code><span class="doccomment">//! The core types and traits that power Rerun's data model.
 //!
 //! The [`Archetype`] trait is the core of this crate and is a good starting point to get familiar
 //! with the code.
@@ -234,7 +232,6 @@
 </span><span class="kw">pub const </span>DEFAULT_DISPLAY_DECIMALS: usize = <span class="number">3</span>;
 
 <span class="kw">mod </span>archetype;
-<span class="kw">mod </span>arrow_buffer;
 <span class="kw">pub mod </span>arrow_helpers;
 <span class="kw">mod </span>arrow_string;
 <span class="kw">pub mod </span>arrow_zip_validity;
@@ -253,7 +250,6 @@
         Archetype, ArchetypeFieldName, ArchetypeName, ArchetypeReflectionMarker,
         GenericIndicatorComponent, NamedIndicatorComponent,
     },
-    arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
     as_components::AsComponents,
     component_descriptor::ComponentDescriptor,

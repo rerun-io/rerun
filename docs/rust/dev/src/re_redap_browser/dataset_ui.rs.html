@@ -310,20 +310,20 @@
 <span class="kw">use </span>egui_table::{CellInfo, HeaderCellInfo};
 
 <span class="kw">use </span>re_arrow_util::ArrowArrayDowncastRef <span class="kw">as _</span>;
+<span class="kw">use </span>re_dataframe_ui::table_utils::{
+    apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
+};
+<span class="kw">use </span>re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 <span class="kw">use </span>re_log_types::{EntityPath, EntryId, TimelineName};
 <span class="kw">use </span>re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 <span class="kw">use </span>re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 <span class="kw">use </span>re_types_core::arrow_helpers::as_array_ref;
 <span class="kw">use </span>re_ui::{icons, UiExt <span class="kw">as _</span>};
-<span class="kw">use </span>re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 <span class="kw">use </span>re_viewer_context::ViewerContext;
 
 <span class="kw">use </span><span class="kw">super</span>::servers::Command;
 <span class="kw">use </span><span class="kw">crate</span>::context::Context;
 <span class="kw">use </span><span class="kw">crate</span>::entries::Dataset;
-<span class="kw">use </span><span class="kw">crate</span>::table_utils::{
-    apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
-};
 
 <span class="attr">#[derive(thiserror::Error, Debug)]
 </span><span class="kw">enum </span>CollectionUiError {

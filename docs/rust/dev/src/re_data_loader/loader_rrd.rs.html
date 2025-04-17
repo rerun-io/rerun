@@ -410,10 +410,7 @@
 <a href="#409" id="409">409</a>
 <a href="#410" id="410">410</a>
 <a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_log_encoding::decoder::Decoder;
+<a href="#412" id="412">412</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_log_encoding::decoder::Decoder;
 
 <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
 </span><span class="kw">use </span>crossbeam::channel::Receiver;
@@ -455,8 +452,6 @@
             <span class="string">"Loading rrd data from filesystem…"</span>,
         );
 
-        <span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Warn;
-
         <span class="kw">match </span>extension.as_str() {
             <span class="string">"rbl" </span>=&gt; {
                 <span class="comment">// We assume .rbl is not streamed and no retrying after seeing EOF is needed.
@@ -467,7 +462,7 @@
                     .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to open file {filepath:?}"</span>))<span class="question-mark">?</span>;
                 <span class="kw">let </span>file = std::io::BufReader::new(file);
 
-                <span class="kw">let </span>decoder = Decoder::new(version_policy, file)<span class="question-mark">?</span>;
+                <span class="kw">let </span>decoder = Decoder::new(file)<span class="question-mark">?</span>;
 
                 <span class="comment">// NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 </span>std::thread::Builder::new()
@@ -495,7 +490,7 @@
                 </span><span class="kw">let </span>retryable_reader = RetryableFileReader::new(<span class="kw-2">&amp;</span>filepath).with_context(|| {
                     <span class="macro">format!</span>(<span class="string">"failed to create retryable file reader for {filepath:?}"</span>)
                 })<span class="question-mark">?</span>;
-                <span class="kw">let </span>decoder = Decoder::new(version_policy, retryable_reader)<span class="question-mark">?</span>;
+                <span class="kw">let </span>decoder = Decoder::new(retryable_reader)<span class="question-mark">?</span>;
 
                 <span class="comment">// NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 </span>std::thread::Builder::new()
@@ -533,9 +528,8 @@
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="kw">crate</span>::DataLoaderError::Incompatible(filepath));
         }
 
-        <span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Warn;
         <span class="kw">let </span>contents = std::io::Cursor::new(contents);
-        <span class="kw">let </span>decoder = <span class="kw">match </span>re_log_encoding::decoder::Decoder::new(version_policy, contents) {
+        <span class="kw">let </span>decoder = <span class="kw">match </span>re_log_encoding::decoder::Decoder::new(contents) {
             <span class="prelude-val">Ok</span>(decoder) =&gt; decoder,
             <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">match </span>err {
                 <span class="comment">// simply not interested
@@ -723,7 +717,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>re_build_info::CrateVersion;
     <span class="kw">use </span>re_chunk::RowId;
-    <span class="kw">use </span>re_log_encoding::{encoder::DroppableEncoder, VersionPolicy};
+    <span class="kw">use </span>re_log_encoding::encoder::DroppableEncoder;
     <span class="kw">use </span>re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
@@ -785,7 +779,7 @@
         encoder.flush_blocking().expect(<span class="string">"failed to flush messages"</span>);
 
         <span class="kw">let </span>reader = RetryableFileReader::new(<span class="kw-2">&amp;</span>rrd_file_path).unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>decoder = Decoder::new(VersionPolicy::Warn, reader).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>decoder = Decoder::new(reader).unwrap();
 
         <span class="comment">// we should be able to read 5 messages that we wrote
         </span><span class="kw">let </span>decoded_messages = (<span class="number">0</span>..<span class="number">5</span>)

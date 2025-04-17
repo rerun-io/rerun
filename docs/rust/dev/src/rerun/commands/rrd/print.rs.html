@@ -138,9 +138,7 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a></pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
+<a href="#140" id="140">140</a></pre></div><pre class="rust"><code><span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
 <span class="kw">use </span>re_byte_size::SizeBytes <span class="kw">as _</span>;
@@ -182,9 +180,7 @@
             continue_on_error,
         } = <span class="self">self</span>;
 
-        <span class="comment">// TODO(cmc): might want to make this configurable at some point.
-        </span><span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Warn;
-        <span class="kw">let </span>(rx, <span class="kw">_</span>) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+        <span class="kw">let </span>(rx, <span class="kw">_</span>) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         <span class="kw">for </span>(_source, res) <span class="kw">in </span>rx {
             <span class="kw">let </span><span class="kw-2">mut </span>is_success = <span class="bool-val">true</span>;

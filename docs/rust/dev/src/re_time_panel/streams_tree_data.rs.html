@@ -252,12 +252,7 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{ControlFlow, Range};
+<a href="#254" id="254">254</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::{ControlFlow, Range};
 
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 <span class="kw">use </span>smallvec::SmallVec;
@@ -365,11 +360,6 @@
         hierarchy: <span class="kw-2">&amp;mut </span>Vec&lt;String&gt;,
         hierarchy_highlights: <span class="kw-2">&amp;mut </span>PathRanges,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="comment">// Early out
-        </span><span class="kw">if </span>filter_matcher.matches_nothing() {
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-
         <span class="kw">let </span>entity_part_ui_string = entity_tree
             .path
             .last()

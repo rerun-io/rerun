@@ -858,7 +858,7 @@
         <span class="macro">assert_eq!</span>(elements.len(), <span class="number">2 </span>* <span class="number">2</span>);
         ImageInfo {
             buffer_cache_key: Hash64::ZERO, <span class="comment">// unused
-            </span>buffer: re_types::datatypes::Blob(bytemuck::cast_slice::&lt;<span class="kw">_</span>, u8&gt;(elements).into()),
+            </span>buffer: re_types::datatypes::Blob::from(bytemuck::cast_slice::&lt;<span class="kw">_</span>, u8&gt;(elements)),
             format: re_types::datatypes::ImageFormat::from_color_model(
                 [<span class="number">2</span>, <span class="number">2</span>],
                 color_model,

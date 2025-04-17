@@ -1712,7 +1712,23 @@
 <a href="#1711" id="1711">1711</a>
 <a href="#1712" id="1712">1712</a>
 <a href="#1713" id="1713">1713</a>
-<a href="#1714" id="1714">1714</a></pre></div><pre class="rust"><code><span class="doccomment">//! This package implements the semantic pass of the codegen process.
+<a href="#1714" id="1714">1714</a>
+<a href="#1715" id="1715">1715</a>
+<a href="#1716" id="1716">1716</a>
+<a href="#1717" id="1717">1717</a>
+<a href="#1718" id="1718">1718</a>
+<a href="#1719" id="1719">1719</a>
+<a href="#1720" id="1720">1720</a>
+<a href="#1721" id="1721">1721</a>
+<a href="#1722" id="1722">1722</a>
+<a href="#1723" id="1723">1723</a>
+<a href="#1724" id="1724">1724</a>
+<a href="#1725" id="1725">1725</a>
+<a href="#1726" id="1726">1726</a>
+<a href="#1727" id="1727">1727</a>
+<a href="#1728" id="1728">1728</a>
+<a href="#1729" id="1729">1729</a>
+<a href="#1730" id="1730">1730</a></pre></div><pre class="rust"><code><span class="doccomment">//! This package implements the semantic pass of the codegen process.
 //!
 //! The semantic pass transforms the low-level raw reflection data into higher level types that
 //! are much easier to inspect and manipulate / friendler to work with.
@@ -1724,10 +1740,10 @@
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
 <span class="kw">use crate</span>::{
-    root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE,
-    ATTR_RERUN_OVERRIDE_TYPE, ATTR_RERUN_STATE,
+    data_type::LazyDatatype, root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField,
+    FbsKeyValue, FbsObject, FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL,
+    ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_DEPRECATED_NOTICE,
+    ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE, ATTR_RERUN_STATE,
 };
 
 <span class="comment">// ---
@@ -2137,7 +2153,7 @@
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    </span><span class="kw">pub </span>datatype: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::LazyDatatype&gt;,
+    </span><span class="kw">pub </span>datatype: <span class="prelude-ty">Option</span>&lt;LazyDatatype&gt;,
 }
 
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>Object {
@@ -2611,7 +2627,7 @@
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    </span><span class="kw">pub </span>datatype: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::LazyDatatype&gt;,
+    </span><span class="kw">pub </span>datatype: <span class="prelude-ty">Option</span>&lt;LazyDatatype&gt;,
 }
 
 <span class="kw">impl </span>ObjectField {
@@ -2874,8 +2890,10 @@
     Vector {
         elem_type: ElementType,
     },
-    Object(String), <span class="comment">// fqname
-</span>}
+    Object {
+        fqname: String,
+    },
+}
 
 <span class="kw">impl </span>From&lt;ElementType&gt; <span class="kw">for </span>Type {
     <span class="kw">fn </span>from(typ: ElementType) -&gt; <span class="self">Self </span>{
@@ -2893,7 +2911,7 @@
             ElementType::Float32 =&gt; <span class="self">Self</span>::Float32,
             ElementType::Float64 =&gt; <span class="self">Self</span>::Float64,
             ElementType::String =&gt; <span class="self">Self</span>::String,
-            ElementType::Object(fqname) =&gt; <span class="self">Self</span>::Object(fqname),
+            ElementType::Object { fqname } =&gt; <span class="self">Self</span>::Object { fqname },
         }
     }
 }
@@ -2922,7 +2940,9 @@
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(enum_fqname) = try_get_enum_fqname(enums, field_type, typ, virtpath) {
-            <span class="kw">return </span><span class="self">Self</span>::Object(enum_fqname);
+            <span class="kw">return </span><span class="self">Self</span>::Object {
+                fqname: enum_fqname,
+            };
         }
 
         <span class="kw">match </span>typ {
@@ -2945,12 +2965,16 @@
                 <span class="kw">if </span>obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
                     <span class="self">Self</span>::Unit
                 } <span class="kw">else </span>{
-                    <span class="self">Self</span>::Object(obj.name().to_owned())
+                    <span class="self">Self</span>::Object {
+                        fqname: obj.name().to_owned(),
+                    }
                 }
             }
             FbsBaseType::Union =&gt; {
                 <span class="kw">let </span>union = <span class="kw-2">&amp;</span>enums[field_type.index() <span class="kw">as </span>usize];
-                <span class="self">Self</span>::Object(union.name().to_owned())
+                <span class="self">Self</span>::Object {
+                    fqname: union.name().to_owned(),
+                }
             }
             FbsBaseType::Array =&gt; <span class="self">Self</span>::Array {
                 elem_type: ElementType::from_raw_base_type(
@@ -3029,8 +3053,10 @@
             <span class="self">Self</span>::String =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Vector {
                 elem_type: ElementType::String,
             }),
-            <span class="self">Self</span>::Object(obj) =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Vector {
-                elem_type: ElementType::Object(obj.clone()),
+            <span class="self">Self</span>::Object { fqname } =&gt; <span class="prelude-val">Some</span>(<span class="self">Self</span>::Vector {
+                elem_type: ElementType::Object {
+                    fqname: fqname.clone(),
+                },
             }),
 
             <span class="self">Self</span>::Unit =&gt; <span class="prelude-val">None</span>,
@@ -3065,7 +3091,7 @@
             | <span class="self">Self</span>::Float32
             | <span class="self">Self</span>::Float64
             | <span class="self">Self</span>::String
-            | <span class="self">Self</span>::Object(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+            | <span class="self">Self</span>::Object { .. } =&gt; <span class="prelude-val">None</span>,
         }
     }
 
@@ -3077,7 +3103,7 @@
     <span class="doccomment">/// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
     </span><span class="kw">pub fn </span>fqname(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Object(fqname) =&gt; <span class="prelude-val">Some</span>(fqname.as_str()),
+            <span class="self">Self</span>::Object { fqname } =&gt; <span class="prelude-val">Some</span>(fqname.as_str()),
             <span class="self">Self</span>::Array {
                 elem_type,
                 length: <span class="kw">_</span>,
@@ -3108,12 +3134,12 @@
 
             <span class="self">Self</span>::Array { elem_type, .. } =&gt; elem_type.has_default_destructor(objects),
 
-            <span class="self">Self</span>::Object(fqname) =&gt; objects[fqname].has_default_destructor(objects),
+            <span class="self">Self</span>::Object { fqname } =&gt; objects[fqname].has_default_destructor(objects),
         }
     }
 
     <span class="kw">pub fn </span>is_union(<span class="kw-2">&amp;</span><span class="self">self</span>, objects: <span class="kw-2">&amp;</span>Objects) -&gt; bool {
-        <span class="kw">if let </span><span class="self">Self</span>::Object(fqname) = <span class="self">self </span>{
+        <span class="kw">if let </span><span class="self">Self</span>::Object { fqname } = <span class="self">self </span>{
             <span class="kw">let </span>obj = <span class="kw-2">&amp;</span>objects[fqname];
             <span class="kw">if </span>obj.is_arrow_transparent() {
                 obj.fields[<span class="number">0</span>].typ.is_union(objects)
@@ -3183,8 +3209,8 @@
     Float32,
     Float64,
     String,
-    Object(String), <span class="comment">// fqname
-</span>}
+    Object { fqname: String },
+}
 
 <span class="kw">impl </span>ElementType {
     <span class="kw">pub fn </span>from_raw_base_type(
@@ -3196,7 +3222,9 @@
         virtpath: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(enum_fqname) = try_get_enum_fqname(enums, outer_type, inner_type, virtpath) {
-            <span class="kw">return </span><span class="self">Self</span>::Object(enum_fqname);
+            <span class="kw">return </span><span class="self">Self</span>::Object {
+                fqname: enum_fqname,
+            };
         }
 
         <span class="comment">// TODO(jleibs): Clean up fqname plumbing
@@ -3228,11 +3256,15 @@
             FbsBaseType::String =&gt; <span class="self">Self</span>::String,
             FbsBaseType::Obj =&gt; {
                 <span class="kw">let </span>obj = <span class="kw-2">&amp;</span>objs[outer_type.index() <span class="kw">as </span>usize];
-                <span class="self">Self</span>::Object(obj.name().to_owned())
+                <span class="self">Self</span>::Object {
+                    fqname: obj.name().to_owned(),
+                }
             }
             FbsBaseType::Union =&gt; {
                 <span class="kw">let </span>enm = <span class="kw-2">&amp;</span>enums[outer_type.index() <span class="kw">as </span>usize];
-                <span class="self">Self</span>::Object(enm.name().to_owned())
+                <span class="self">Self</span>::Object {
+                    fqname: enm.name().to_owned(),
+                }
             }
             FbsBaseType::None
             | FbsBaseType::UType
@@ -3247,7 +3279,7 @@
     <span class="doccomment">/// `Some(fqname)` if this is an `Object`.
     </span><span class="kw">pub fn </span>fqname(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Object(fqname) =&gt; <span class="prelude-val">Some</span>(fqname.as_str()),
+            <span class="self">Self</span>::Object { fqname } =&gt; <span class="prelude-val">Some</span>(fqname.as_str()),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -3270,14 +3302,14 @@
 
             <span class="self">Self</span>::String =&gt; <span class="bool-val">false</span>,
 
-            <span class="self">Self</span>::Object(fqname) =&gt; objects[fqname].has_default_destructor(objects),
+            <span class="self">Self</span>::Object { fqname } =&gt; objects[fqname].has_default_destructor(objects),
         }
     }
 
     <span class="doccomment">/// Is this type directly backed by a native arrow `Buffer`. This means the data can
-    /// be returned using a `re_types::ArrowBuffer` which facilitates direct zero-copy access to
+    /// be returned using a `ScalarBuffer` which facilitates direct zero-copy access to
     /// a slice representation.
-    </span><span class="kw">pub fn </span>backed_by_arrow_buffer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    </span><span class="kw">pub fn </span>backed_by_scalar_buffer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::UInt8
             | <span class="self">Self</span>::UInt16
@@ -3290,12 +3322,12 @@
             | <span class="self">Self</span>::Float16
             | <span class="self">Self</span>::Float32
             | <span class="self">Self</span>::Float64 =&gt; <span class="bool-val">true</span>,
-            <span class="self">Self</span>::Bool | <span class="self">Self</span>::Object(<span class="kw">_</span>) | <span class="self">Self</span>::String =&gt; <span class="bool-val">false</span>,
+            <span class="self">Self</span>::Bool | <span class="self">Self</span>::Object { .. } | <span class="self">Self</span>::String =&gt; <span class="bool-val">false</span>,
         }
     }
 
     <span class="kw">pub fn </span>is_union(<span class="kw-2">&amp;</span><span class="self">self</span>, objects: <span class="kw-2">&amp;</span>Objects) -&gt; bool {
-        <span class="kw">if let </span><span class="self">Self</span>::Object(fqname) = <span class="self">self </span>{
+        <span class="kw">if let </span><span class="self">Self</span>::Object { fqname } = <span class="self">self </span>{
             <span class="kw">let </span>obj = <span class="kw-2">&amp;</span>objects[fqname];
             <span class="kw">if </span>obj.is_arrow_transparent() {
                 obj.fields[<span class="number">0</span>].typ.is_union(objects)

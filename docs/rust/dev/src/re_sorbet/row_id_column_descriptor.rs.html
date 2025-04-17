@@ -91,7 +91,12 @@
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::datatypes::{DataType <span class="kw">as </span>ArrowDatatype, Field <span class="kw">as </span>ArrowField};
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow::datatypes::{DataType <span class="kw">as </span>ArrowDatatype, Field <span class="kw">as </span>ArrowField};
 <span class="kw">use </span>re_types_core::{Component <span class="kw">as _</span>, Loggable <span class="kw">as _</span>, RowId};
 
 <span class="kw">use </span><span class="kw">crate</span>::MetadataExt <span class="kw">as _</span>;
@@ -154,6 +159,11 @@
                 <span class="string">"ARROW:extension:name"</span>.to_owned(),
                 re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
             ),
+            (
+                <span class="comment">// Storing the metadata as JSON as is the convention…
+                </span><span class="string">"ARROW:extension:metadata"</span>.to_owned(),
+                <span class="string">r#"{"namespace":"row"}"#</span>.to_owned(), <span class="comment">// for row_ prefix
+            </span>),
         ]);
         <span class="kw">if </span><span class="kw-2">*</span>is_sorted {
             metadata.insert(<span class="string">"rerun.is_sorted"</span>.to_owned(), <span class="string">"true"</span>.to_owned());

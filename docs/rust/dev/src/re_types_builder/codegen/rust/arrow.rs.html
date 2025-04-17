@@ -197,47 +197,46 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow2::datatypes::DataType;
-<span class="kw">use </span>proc_macro2::{Literal, TokenStream};
+<a href="#199" id="199">199</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Literal, TokenStream};
 <span class="kw">use </span>quote::quote;
+
+<span class="kw">use </span><span class="kw">crate</span>::data_type::{AtomicDataType, DataType, Field, UnionMode};
 
 <span class="comment">// ---
 
-</span><span class="doccomment">/// `(Datatype, is_recursive)`
-///
-/// If `is_recursive` is set to `true`,
-/// then the generated code will often be shorter, as it will
-/// defer to calling `arrow_datatype()` on the inner type.
-</span><span class="kw">pub struct </span>ArrowDataTypeTokenizer&lt;<span class="lifetime">'a</span>&gt;(<span class="kw">pub </span><span class="kw-2">&amp;</span><span class="lifetime">'a </span>::arrow2::datatypes::DataType, <span class="kw">pub </span>bool);
+</span><span class="kw">pub struct </span>ArrowDataTypeTokenizer&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">pub </span>datatype: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>DataType,
+
+    <span class="doccomment">/// If `true`,
+    /// then the generated code will often be shorter, as it will
+    /// defer to calling `arrow_datatype()` on the inner type.
+    </span><span class="kw">pub </span>recursive: bool,
+}
 
 <span class="kw">impl </span>quote::ToTokens <span class="kw">for </span>ArrowDataTypeTokenizer&lt;<span class="lifetime">'_</span>&gt; {
     <span class="kw">fn </span>to_tokens(<span class="kw-2">&amp;</span><span class="self">self</span>, tokens: <span class="kw-2">&amp;mut </span>TokenStream) {
-        <span class="kw">use </span>arrow2::datatypes::UnionMode;
-        <span class="kw">let </span><span class="self">Self</span>(datatype, recursive) = <span class="self">self</span>;
+        <span class="kw">let </span><span class="self">Self </span>{
+            datatype,
+            recursive,
+        } = <span class="self">self</span>;
         <span class="kw">match </span>datatype {
-            DataType::Null =&gt; <span class="macro">quote!</span>(DataType::Null),
-            DataType::Boolean =&gt; <span class="macro">quote!</span>(DataType::Boolean),
-            DataType::Int8 =&gt; <span class="macro">quote!</span>(DataType::Int8),
-            DataType::Int16 =&gt; <span class="macro">quote!</span>(DataType::Int16),
-            DataType::Int32 =&gt; <span class="macro">quote!</span>(DataType::Int32),
-            DataType::Int64 =&gt; <span class="macro">quote!</span>(DataType::Int64),
-            DataType::UInt8 =&gt; <span class="macro">quote!</span>(DataType::UInt8),
-            DataType::UInt16 =&gt; <span class="macro">quote!</span>(DataType::UInt16),
-            DataType::UInt32 =&gt; <span class="macro">quote!</span>(DataType::UInt32),
-            DataType::UInt64 =&gt; <span class="macro">quote!</span>(DataType::UInt64),
-            DataType::Float16 =&gt; <span class="macro">quote!</span>(DataType::Float16),
-            DataType::Float32 =&gt; <span class="macro">quote!</span>(DataType::Float32),
-            DataType::Float64 =&gt; <span class="macro">quote!</span>(DataType::Float64),
+            DataType::Atomic(AtomicDataType::Null) =&gt; <span class="macro">quote!</span>(DataType::Null),
+            DataType::Atomic(AtomicDataType::Boolean) =&gt; <span class="macro">quote!</span>(DataType::Boolean),
+            DataType::Atomic(AtomicDataType::Int8) =&gt; <span class="macro">quote!</span>(DataType::Int8),
+            DataType::Atomic(AtomicDataType::Int16) =&gt; <span class="macro">quote!</span>(DataType::Int16),
+            DataType::Atomic(AtomicDataType::Int32) =&gt; <span class="macro">quote!</span>(DataType::Int32),
+            DataType::Atomic(AtomicDataType::Int64) =&gt; <span class="macro">quote!</span>(DataType::Int64),
+            DataType::Atomic(AtomicDataType::UInt8) =&gt; <span class="macro">quote!</span>(DataType::UInt8),
+            DataType::Atomic(AtomicDataType::UInt16) =&gt; <span class="macro">quote!</span>(DataType::UInt16),
+            DataType::Atomic(AtomicDataType::UInt32) =&gt; <span class="macro">quote!</span>(DataType::UInt32),
+            DataType::Atomic(AtomicDataType::UInt64) =&gt; <span class="macro">quote!</span>(DataType::UInt64),
+            DataType::Atomic(AtomicDataType::Float16) =&gt; <span class="macro">quote!</span>(DataType::Float16),
+            DataType::Atomic(AtomicDataType::Float32) =&gt; <span class="macro">quote!</span>(DataType::Float32),
+            DataType::Atomic(AtomicDataType::Float64) =&gt; <span class="macro">quote!</span>(DataType::Float64),
+
             DataType::Binary =&gt; <span class="macro">quote!</span>(DataType::Binary),
-            DataType::LargeBinary =&gt; <span class="macro">quote!</span>(DataType::LargeBinary),
+
             DataType::Utf8 =&gt; <span class="macro">quote!</span>(DataType::Utf8),
-            DataType::LargeUtf8 =&gt; <span class="macro">quote!</span>(DataType::LargeUtf8),
 
             DataType::List(field) =&gt; {
                 <span class="kw">let </span>field = ArrowFieldTokenizer::new(field);
@@ -250,28 +249,25 @@
                 <span class="macro">quote!</span>(DataType::FixedSizeList(std::sync::Arc::new(#field), #length))
             }
 
-            DataType::Union(fields, types, mode) =&gt; {
+            DataType::Union(fields, mode) =&gt; {
                 <span class="kw">let </span>fields = fields.iter().map(ArrowFieldTokenizer::new);
                 <span class="kw">let </span>mode = <span class="kw">match </span>mode {
                     UnionMode::Dense =&gt; <span class="macro">quote!</span>(UnionMode::Dense),
                     UnionMode::Sparse =&gt; <span class="macro">quote!</span>(UnionMode::Sparse),
                 };
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(types) = types {
-                    <span class="kw">let </span>types = types.iter().map(|<span class="kw-2">&amp;</span>t| {
-                        Literal::i8_unsuffixed(i8::try_from(t).unwrap_or_else(|<span class="kw">_</span>| {
-                            <span class="macro">panic!</span>(<span class="string">"Expect union type tag to be in 0-127; got {t}"</span>)
-                        }))
-                    });
-                    <span class="macro">quote!</span>(DataType::Union(
-                        UnionFields::new(
-                            <span class="macro">vec!</span>[ #(#types,)* ],
-                            <span class="macro">vec!</span>[ #(#fields,)* ],
-                        ),
-                        #mode,
-                    ))
-                } <span class="kw">else </span>{
-                    <span class="macro">quote!</span>(DataType::Union(UnionFields::from(<span class="macro">vec!</span>[ #(#fields,)* ]), #mode))
-                }
+
+                <span class="kw">let </span>types = (<span class="number">0</span>..fields.len()).map(|t| {
+                    Literal::i8_unsuffixed(i8::try_from(t).unwrap_or_else(|<span class="kw">_</span>| {
+                        <span class="macro">panic!</span>(<span class="string">"Expect union type tag to be in 0-127; got {t}"</span>)
+                    }))
+                });
+                <span class="macro">quote!</span>(DataType::Union(
+                    UnionFields::new(
+                        <span class="macro">vec!</span>[ #(#types,)* ],
+                        <span class="macro">vec!</span>[ #(#fields,)* ],
+                    ),
+                    #mode,
+                ))
             }
 
             DataType::Struct(fields) =&gt; {
@@ -279,34 +275,31 @@
                 <span class="macro">quote!</span>(DataType::Struct(Fields::from(<span class="macro">vec!</span>[ #(#fields,)* ])))
             }
 
-            DataType::Extension(fqname, datatype, _metadata) =&gt; {
+            DataType::Object { fqname, datatype } =&gt; {
                 <span class="kw">if </span><span class="kw-2">*</span>recursive {
-                    <span class="comment">// TODO(emilk): if the logical datatype is a primitive, then we can just use it directly
+                    <span class="comment">// TODO(emilk): if the datatype is a primitive, then we can just use it directly
                     // so we get shorter generated code.
                     </span><span class="kw">let </span>fqname_use = quote_fqname_as_type_path(fqname);
                     <span class="macro">quote!</span>(&lt;#fqname_use&gt;::arrow_datatype())
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>datatype = ArrowDataTypeTokenizer(datatype.to_logical_type(), <span class="bool-val">false</span>);
+                    <span class="kw">let </span>datatype = ArrowDataTypeTokenizer {
+                        datatype: datatype.to_logical_type(),
+                        recursive: <span class="bool-val">false</span>,
+                    };
                     <span class="macro">quote!</span>(#datatype)
-                    <span class="comment">// TODO(#3741): Bring back extensions once we've fully replaced `arrow2-convert`!
-                    // let datatype = ArrowDataTypeTokenizer(datatype, false);
-                    // let metadata = OptionTokenizer(metadata.as_ref());
-                    // quote!(DataType::Extension(#fqname.to_owned(), Box::new(#datatype), #metadata))
-                </span>}
+                }
             }
-
-            <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>(<span class="string">"{:#?}"</span>, <span class="self">self</span>.<span class="number">0</span>),
         }
         .to_tokens(tokens);
     }
 }
 
 <span class="kw">pub struct </span>ArrowFieldTokenizer&lt;<span class="lifetime">'a</span>&gt; {
-    field: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::arrow2::datatypes::Field,
+    field: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Field,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ArrowFieldTokenizer&lt;<span class="lifetime">'a</span>&gt; {
-    <span class="kw">pub fn </span>new(field: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::arrow2::datatypes::Field) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(field: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Field) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ field }
     }
 }
@@ -314,7 +307,7 @@
 <span class="kw">impl </span>quote::ToTokens <span class="kw">for </span>ArrowFieldTokenizer&lt;<span class="lifetime">'_</span>&gt; {
     <span class="kw">fn </span>to_tokens(<span class="kw-2">&amp;</span><span class="self">self</span>, tokens: <span class="kw-2">&amp;mut </span>TokenStream) {
         <span class="kw">let </span><span class="self">Self </span>{ field } = <span class="self">self</span>;
-        <span class="kw">let </span>arrow2::datatypes::Field {
+        <span class="kw">let </span>Field {
             name,
             data_type,
             is_nullable,
@@ -326,7 +319,10 @@
         </span><span class="kw">let </span>is_nullable =
             <span class="kw-2">*</span>is_nullable || <span class="macro">matches!</span>(field.data_type.to_logical_type(), DataType::Union { .. });
 
-        <span class="kw">let </span>datatype = ArrowDataTypeTokenizer(data_type, <span class="bool-val">true</span>);
+        <span class="kw">let </span>datatype = ArrowDataTypeTokenizer {
+            datatype: data_type,
+            recursive: <span class="bool-val">true</span>,
+        };
 
         <span class="kw">let </span>maybe_with_metadata = <span class="kw">if </span>metadata.is_empty() {
             <span class="macro">quote!</span>()
@@ -373,38 +369,30 @@
     <span class="macro">quote!</span>(#expr)
 }
 
-<span class="kw">pub fn </span>is_backed_by_arrow_buffer(typ: <span class="kw-2">&amp;</span>DataType) -&gt; bool {
-    <span class="macro">matches!</span>(
-        typ,
-        DataType::Int8
-            | DataType::Int16
-            | DataType::Int32
-            | DataType::Int64
-            | DataType::UInt8
-            | DataType::UInt16
-            | DataType::UInt32
-            | DataType::UInt64
-            | DataType::Float16
-            | DataType::Float32
-            | DataType::Float64
-    )
+<span class="doccomment">/// Can this type be used with `arrow::ScalarBuffer`?
+</span><span class="kw">pub fn </span>is_backed_by_scalar_buffer(typ: <span class="kw-2">&amp;</span>DataType) -&gt; bool {
+    <span class="kw">if let </span>DataType::Atomic(atomic) = typ {
+        !<span class="macro">matches!</span>(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
+    } <span class="kw">else </span>{
+        <span class="bool-val">false
+    </span>}
 }
 
 <span class="kw">pub fn </span>quoted_arrow_primitive_type(datatype: <span class="kw-2">&amp;</span>DataType) -&gt; TokenStream {
     <span class="kw">match </span>datatype {
-        DataType::Null =&gt; <span class="macro">quote!</span>(NullType),
-        DataType::Boolean =&gt; <span class="macro">quote!</span>(BooleanType),
-        DataType::Int8 =&gt; <span class="macro">quote!</span>(Int8Type),
-        DataType::Int16 =&gt; <span class="macro">quote!</span>(Int16Type),
-        DataType::Int32 =&gt; <span class="macro">quote!</span>(Int32Type),
-        DataType::Int64 =&gt; <span class="macro">quote!</span>(Int64Type),
-        DataType::UInt8 =&gt; <span class="macro">quote!</span>(UInt8Type),
-        DataType::UInt16 =&gt; <span class="macro">quote!</span>(UInt16Type),
-        DataType::UInt32 =&gt; <span class="macro">quote!</span>(UInt32Type),
-        DataType::UInt64 =&gt; <span class="macro">quote!</span>(UInt64Type),
-        DataType::Float16 =&gt; <span class="macro">quote!</span>(Float16Type),
-        DataType::Float32 =&gt; <span class="macro">quote!</span>(Float32Type),
-        DataType::Float64 =&gt; <span class="macro">quote!</span>(Float64Type),
+        DataType::Atomic(AtomicDataType::Null) =&gt; <span class="macro">quote!</span>(NullType),
+        DataType::Atomic(AtomicDataType::Boolean) =&gt; <span class="macro">quote!</span>(BooleanType),
+        DataType::Atomic(AtomicDataType::Int8) =&gt; <span class="macro">quote!</span>(Int8Type),
+        DataType::Atomic(AtomicDataType::Int16) =&gt; <span class="macro">quote!</span>(Int16Type),
+        DataType::Atomic(AtomicDataType::Int32) =&gt; <span class="macro">quote!</span>(Int32Type),
+        DataType::Atomic(AtomicDataType::Int64) =&gt; <span class="macro">quote!</span>(Int64Type),
+        DataType::Atomic(AtomicDataType::UInt8) =&gt; <span class="macro">quote!</span>(UInt8Type),
+        DataType::Atomic(AtomicDataType::UInt16) =&gt; <span class="macro">quote!</span>(UInt16Type),
+        DataType::Atomic(AtomicDataType::UInt32) =&gt; <span class="macro">quote!</span>(UInt32Type),
+        DataType::Atomic(AtomicDataType::UInt64) =&gt; <span class="macro">quote!</span>(UInt64Type),
+        DataType::Atomic(AtomicDataType::Float16) =&gt; <span class="macro">quote!</span>(Float16Type),
+        DataType::Atomic(AtomicDataType::Float32) =&gt; <span class="macro">quote!</span>(Float32Type),
+        DataType::Atomic(AtomicDataType::Float64) =&gt; <span class="macro">quote!</span>(Float64Type),
         <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>(<span class="string">"Not a primitive type: {datatype:#?}"</span>),
     }
 }

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Compression","FileSinkError","OptionsError","Serializer","VersionPolicy"],"mod":["codec","decoder","encoder","protobuf_conversions","stream_rrd_from_http"],"struct":["EncodingOptions","FileSink"]};
+window.SIDEBAR_ITEMS = {"enum":["Compression","FileSinkError","OptionsError","Serializer"],"mod":["codec","decoder","encoder","protobuf_conversions","stream_rrd_from_http"],"struct":["EncodingOptions","FileSink"]};

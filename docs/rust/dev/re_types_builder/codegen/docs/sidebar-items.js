@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["arrow_datatype","snippets_ref","website"]};
+window.SIDEBAR_ITEMS = {"mod":["datatype_docs","snippets_ref","website"]};

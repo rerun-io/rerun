@@ -914,29 +914,17 @@
 <a href="#913" id="913">913</a>
 <a href="#914" id="914">914</a>
 <a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a>
-<a href="#919" id="919">919</a>
-<a href="#920" id="920">920</a>
-<a href="#921" id="921">921</a>
-<a href="#922" id="922">922</a>
-<a href="#923" id="923">923</a>
-<a href="#924" id="924">924</a>
-<a href="#925" id="925">925</a>
-<a href="#926" id="926">926</a>
-<a href="#927" id="927">927</a>
-<a href="#928" id="928">928</a>
-<a href="#929" id="929">929</a>
-<a href="#930" id="930">930</a></pre></div><pre class="rust"><code><span class="kw">use </span>arrow2::datatypes::DataType;
-<span class="kw">use </span>proc_macro2::{Literal, TokenStream};
+<a href="#916" id="916">916</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Literal, TokenStream};
 <span class="kw">use </span>quote::{format_ident, quote};
 
-<span class="kw">use crate</span>::{ArrowRegistry, Object, Objects};
+<span class="kw">use crate</span>::{
+    data_type::{AtomicDataType, DataType, UnionMode},
+    Object, Objects, TypeRegistry,
+};
 
 <span class="kw">use super</span>::{
     arrow::{
-        is_backed_by_arrow_buffer, quote_fqname_as_type_path, quoted_arrow_primitive_type,
+        is_backed_by_scalar_buffer, quote_fqname_as_type_path, quoted_arrow_primitive_type,
         ArrowFieldTokenizer,
     },
     util::{is_tuple_struct_from_obj, quote_comment},
@@ -945,12 +933,12 @@
 <span class="comment">// ---
 
 </span><span class="kw">pub fn </span>quote_arrow_serializer(
-    arrow_registry: <span class="kw-2">&amp;</span>ArrowRegistry,
+    type_registry: <span class="kw-2">&amp;</span>TypeRegistry,
     objects: <span class="kw-2">&amp;</span>Objects,
     obj: <span class="kw-2">&amp;</span>Object,
     data_src: <span class="kw-2">&amp;</span>proc_macro2::Ident,
 ) -&gt; TokenStream {
-    <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>obj.fqname);
+    <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>type_registry.get(<span class="kw-2">&amp;</span>obj.fqname);
 
     <span class="kw">let </span>is_enum = obj.is_enum();
     <span class="kw">let </span>is_arrow_transparent = obj.datatype.is_none();
@@ -1040,7 +1028,7 @@
             <span class="macro">quote!</span>(#quoted_data_dst)
         };
 
-        <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>obj_field.fqname);
+        <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>type_registry.get(<span class="kw-2">&amp;</span>obj_field.fqname);
         <span class="kw">let </span>elements_are_nullable = <span class="bool-val">true</span>;
 
         <span class="kw">let </span>quoted_serializer = quote_arrow_field_serializer(
@@ -1087,7 +1075,7 @@
                     <span class="kw">let </span>data_dst = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, obj_field.name);
                     <span class="kw">let </span>validity_dst = <span class="macro">format_ident!</span>(<span class="string">"{data_dst}_validity"</span>);
 
-                    <span class="kw">let </span>inner_datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>obj_field.fqname);
+                    <span class="kw">let </span>inner_datatype = <span class="kw-2">&amp;</span>type_registry.get(<span class="kw-2">&amp;</span>obj_field.fqname);
                     <span class="kw">let </span>elements_are_nullable = <span class="bool-val">true</span>;
 
                     <span class="kw">let </span>quoted_serializer = quote_arrow_field_serializer(
@@ -1148,7 +1136,7 @@
                 }}
             }
 
-            DataType::Union(fields, <span class="kw">_</span>, arrow2::datatypes::UnionMode::Sparse) =&gt; {
+            DataType::Union(fields, UnionMode::Sparse) =&gt; {
                 <span class="comment">// We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
                 </span><span class="kw">let </span>quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
@@ -1204,7 +1192,7 @@
                 }}
             }
 
-            DataType::Union(fields, <span class="kw">_</span>, arrow2::datatypes::UnionMode::Dense) =&gt; {
+            DataType::Union(fields, UnionMode::Dense) =&gt; {
                 <span class="kw">let </span>quoted_field_type_ids = (<span class="number">0</span>..fields.len()).map(Literal::usize_unsuffixed);
                 <span class="kw">let </span>quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
                 <span class="kw">let </span>quoted_data_collect = <span class="macro">quote!</span> {
@@ -1238,7 +1226,7 @@
                     </span><span class="kw">let </span>elements_are_nullable = <span class="bool-val">false</span>;
                     <span class="kw">let </span>validity_dst = <span class="macro">format_ident!</span>(<span class="string">"{}_validity"</span>, data_dst);
 
-                    <span class="kw">let </span>inner_datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>obj_field.fqname);
+                    <span class="kw">let </span>inner_datatype = <span class="kw-2">&amp;</span>type_registry.get(<span class="kw-2">&amp;</span>obj_field.fqname);
 
                     <span class="kw">let </span>quoted_serializer = quote_arrow_field_serializer(
                         objects,
@@ -1377,9 +1365,9 @@
 
 <span class="attr">#[derive(Copy, Clone)]
 </span><span class="kw">enum </span>InnerRepr {
-    <span class="doccomment">/// The inner elements of the field will come from an `ArrowBuffer&lt;T&gt;`
-    /// This is only applicable when T is an arrow primitive
-    </span>ArrowBuffer,
+    <span class="doccomment">/// The inner elements of the field will come from an `ScalarBuffer&lt;T&gt;`
+    /// This is only applicable when T implements [`ArrowNativeType`](https://docs.rs/arrow/latest/arrow/datatypes/trait.ArrowNativeType.html).
+    </span>ScalarBuffer,
 
     <span class="doccomment">/// The inner elements of the field will come from an iterable of T
     </span>NativeIterable,
@@ -1403,7 +1391,7 @@
     data_src: <span class="kw-2">&amp;</span>proc_macro2::Ident,
     inner_repr: InnerRepr,
 ) -&gt; TokenStream {
-    <span class="kw">let </span>inner_obj = <span class="kw">if let </span>DataType::Extension(fqname, <span class="kw">_</span>, <span class="kw">_</span>) = datatype {
+    <span class="kw">let </span>inner_obj = <span class="kw">if let </span>DataType::Object { fqname, .. } = datatype {
         <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>objects[fqname])
     } <span class="kw">else </span>{
         <span class="prelude-val">None
@@ -1429,18 +1417,13 @@
     <span class="kw">let </span>inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
 
     <span class="kw">match </span>datatype.to_logical_type() {
-        DataType::Boolean
-        | DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64 =&gt; {
+        DataType::Atomic(AtomicDataType::Null) =&gt; {
+            <span class="macro">panic!</span>(
+                <span class="string">"Null fields should only occur within enums and unions where they are handled separately."
+            </span>);
+        }
+
+        DataType::Atomic(atomic) =&gt; {
             <span class="comment">// NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default` (unless elements_are_nullable is false)
             </span><span class="kw">let </span>quoted_transparent_mapping = <span class="kw">if </span>inner_is_arrow_transparent {
@@ -1479,7 +1462,7 @@
                 <span class="macro">quote!</span> {}
             };
 
-            <span class="kw">if </span>datatype.to_logical_type() == <span class="kw-2">&amp;</span>DataType::Boolean {
+            <span class="kw">if </span>atomic == <span class="kw-2">&amp;</span>AtomicDataType::Boolean {
                 <span class="macro">quote!</span> {
                     as_array_ref(BooleanArray::new(
                         BooleanBuffer::from(#data_src.into_iter() #quoted_transparent_mapping .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()),
@@ -1492,7 +1475,7 @@
                 <span class="kw">match </span>inner_repr {
                     <span class="comment">// A primitive that's an inner element of a list will already have been mapped
                     // to a buffer type.
-                    </span>InnerRepr::ArrowBuffer =&gt; <span class="macro">quote!</span> {
+                    </span>InnerRepr::ScalarBuffer =&gt; <span class="macro">quote!</span> {
                         as_array_ref(PrimitiveArray::&lt;#arrow_primitive_type&gt;::new(
                             #data_src,
                             #validity_src,
@@ -1506,12 +1489,6 @@
                     },
                 }
             }
-        }
-
-        DataType::Null =&gt; {
-            <span class="macro">panic!</span>(
-                <span class="string">"Null fields should only occur within enums and unions where they are handled separately."
-            </span>);
         }
 
         DataType::Utf8 =&gt; {
@@ -1605,16 +1582,16 @@
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, <span class="kw">_</span>) =&gt; {
             <span class="kw">let </span>inner_datatype = inner_field.data_type();
 
-            <span class="comment">// Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
-            // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
+            <span class="comment">// Note: We only use the ScalarBuffer optimization for `Lists` but not `FixedSizeList`.
+            // This is because the `ScalarBuffer` has a dynamic length, which would add more overhead
             // to simple fixed-sized types like `Position2D`.
             //
-            // TODO(jleibs): If we need to support large FixedSizeList types where the `ArrowBuffer`
+            // TODO(jleibs): If we need to support large FixedSizeList types where the `ScalarBuffer`
             // optimization would be significant, we can introduce a new attribute to force this.
-            </span><span class="kw">let </span>inner_repr = <span class="kw">if </span>is_backed_by_arrow_buffer(inner_field.data_type())
+            </span><span class="kw">let </span>inner_repr = <span class="kw">if </span>is_backed_by_scalar_buffer(inner_field.data_type())
                 &amp;&amp; <span class="macro">matches!</span>(datatype, DataType::List(<span class="kw">_</span>))
             {
-                InnerRepr::ArrowBuffer
+                InnerRepr::ScalarBuffer
             } <span class="kw">else </span>{
                 InnerRepr::NativeIterable
             };
@@ -1682,13 +1659,13 @@
                 };
 
                 <span class="kw">match </span>inner_repr {
-                    InnerRepr::ArrowBuffer =&gt; {
+                    InnerRepr::ScalarBuffer =&gt; {
                         <span class="comment">// TODO(emilk): this can probably be optimized
                         </span><span class="macro">quote!</span> {
                             #data_src
                                 .iter()
                                 #flatten_if_needed
-                                .map(|b| b.as_slice())
+                                .map(|b| b <span class="kw">as </span><span class="kw-2">&amp;</span>[<span class="kw">_</span>])
                                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                                 .concat()
                                 .into()
@@ -1727,16 +1704,11 @@
                 }
             };
 
-            <span class="kw">let </span>quoted_num_instances = <span class="kw">match </span>inner_repr {
-                InnerRepr::ArrowBuffer =&gt; <span class="macro">quote!</span>(num_instances()),
-                InnerRepr::NativeIterable =&gt; <span class="macro">quote!</span>(len()),
-            };
-
             <span class="kw">let </span>quoted_declare_offsets = <span class="kw">if let </span>DataType::List(<span class="kw">_</span>) = datatype {
                 <span class="kw">let </span>map_to_length = <span class="kw">if </span>elements_are_nullable {
-                    <span class="macro">quote!</span> { map(|opt| opt.as_ref().map_or(<span class="number">0</span>, |datum| datum. #quoted_num_instances)) }
+                    <span class="macro">quote!</span> { map(|opt| opt.as_ref().map_or(<span class="number">0</span>, |datum| datum.len())) }
                 } <span class="kw">else </span>{
-                    <span class="macro">quote!</span> { map(|datum| datum. #quoted_num_instances) }
+                    <span class="macro">quote!</span> { map(|datum| datum.len()) }
                 };
 
                 <span class="macro">quote!</span> {
@@ -1809,7 +1781,7 @@
             };
 
             <span class="kw">match </span>inner_repr {
-                InnerRepr::ArrowBuffer =&gt; {
+                InnerRepr::ScalarBuffer =&gt; {
                     <span class="macro">quote!</span> {{
                         #quoted_declare_offsets
 
@@ -1837,9 +1809,9 @@
             }
         }
 
-        DataType::Struct(<span class="kw">_</span>) | DataType::Union(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+        DataType::Struct(<span class="kw">_</span>) | DataType::Union { .. } =&gt; {
             <span class="comment">// NOTE: We always wrap objects with full extension metadata.
-            </span><span class="kw">let </span>DataType::Extension(fqname, <span class="kw">_</span>, <span class="kw">_</span>) = datatype <span class="kw">else </span>{
+            </span><span class="kw">let </span>DataType::Object { fqname, .. } = datatype <span class="kw">else </span>{
                 <span class="macro">unreachable!</span>()
             };
             <span class="kw">let </span>fqname_use = quote_fqname_as_type_path(fqname);

@@ -84,7 +84,10 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>arrow::{array::RecordBatch, datatypes::SchemaRef};
 <span class="kw">use </span>async_trait::async_trait;
@@ -118,7 +121,7 @@
     }
 
     <span class="doccomment">/// This is a convenience function
-    </span><span class="kw">pub async fn </span>into_provider(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Arc&lt;<span class="kw">dyn </span>TableProvider&gt;, DataFusionError&gt; {
+    </span><span class="kw">pub async fn </span>into_provider(<span class="self">self</span>) -&gt; DataFusionResult&lt;Arc&lt;<span class="kw">dyn </span>TableProvider&gt;&gt; {
         <span class="prelude-val">Ok</span>(GrpcStreamProvider::prepare(<span class="self">self</span>).<span class="kw">await</span><span class="question-mark">?</span>)
     }
 }
@@ -127,7 +130,7 @@
 </span><span class="kw">impl </span>GrpcStreamToTable <span class="kw">for </span>PartitionTableProvider {
     <span class="kw">type </span>GrpcStreamData = ScanPartitionTableResponse;
 
-    <span class="kw">async fn </span>fetch_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;SchemaRef, DataFusionError&gt; {
+    <span class="kw">async fn </span>fetch_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; DataFusionResult&lt;SchemaRef&gt; {
         <span class="kw">let </span>request = GetPartitionTableSchemaRequest {
             dataset_id: <span class="prelude-val">Some</span>(<span class="self">self</span>.dataset_id.into()),
         };
@@ -148,14 +151,17 @@
 
     <span class="kw">async fn </span>send_streaming_request(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;tonic::Streaming&lt;<span class="self">Self</span>::GrpcStreamData&gt;&gt;, tonic::Status&gt; {
+    ) -&gt; DataFusionResult&lt;tonic::Response&lt;tonic::Streaming&lt;<span class="self">Self</span>::GrpcStreamData&gt;&gt;&gt; {
         <span class="kw">let </span>request = ScanPartitionTableRequest {
             dataset_id: <span class="prelude-val">Some</span>(<span class="self">self</span>.dataset_id.into()),
             scan_parameters: <span class="prelude-val">None</span>,
         };
 
-        <span class="self">self</span>.client.scan_partition_table(request).<span class="kw">await
-    </span>}
+        <span class="self">self</span>.client
+            .scan_partition_table(request)
+            .<span class="kw">await
+            </span>.map_err(|err| DataFusionError::External(Box::new(err)))
+    }
 
     <span class="kw">fn </span>process_response(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,

@@ -30,9 +30,7 @@
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
 <a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_log_types::LogMsg;
+<a href="#32" id="32">32</a></pre></div><pre class="rust"><code><span class="kw">use </span>re_log_types::LogMsg;
 <span class="kw">use </span>re_smart_channel::Sender;
 
 <span class="doccomment">/// Asynchronously loads RRD data streaming in from standard input.
@@ -40,10 +38,8 @@
 /// This fails synchronously iff the standard input stream could not be opened, otherwise errors
 /// are handled asynchronously (as in: they're logged).
 </span><span class="kw">pub fn </span>load_stdin(tx: Sender&lt;LogMsg&gt;) -&gt; anyhow::Result&lt;()&gt; {
-    <span class="kw">let </span>version_policy = re_log_encoding::VersionPolicy::Warn;
-
     <span class="kw">let </span>stdin = std::io::BufReader::new(std::io::stdin());
-    <span class="kw">let </span>decoder = re_log_encoding::decoder::Decoder::new_concatenated(version_policy, stdin)<span class="question-mark">?</span>;
+    <span class="kw">let </span>decoder = re_log_encoding::decoder::Decoder::new_concatenated(stdin)<span class="question-mark">?</span>;
 
     rayon::spawn(<span class="kw">move </span>|| {
         <span class="macro">re_tracing::profile_scope!</span>(<span class="string">"stdin"</span>);

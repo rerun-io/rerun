@@ -277,7 +277,71 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>arrow::datatypes::Schema <span class="kw">as </span>ArrowSchema;
 <span class="kw">use </span>pyo3::exceptions::PyValueError;
@@ -285,6 +349,7 @@
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
+<span class="kw">use </span>re_log_encoding::codec::wire::decoder::Decode <span class="kw">as _</span>;
 <span class="kw">use </span>tokio_stream::StreamExt <span class="kw">as _</span>;
 
 <span class="kw">use </span>re_chunk::{LatestAtQuery, RangeQuery};
@@ -292,17 +357,18 @@
 <span class="kw">use </span>re_dataframe::ViewContentsSelector;
 <span class="kw">use </span>re_grpc_client::redap::{client, get_chunks_response_to_chunk_and_partition_id};
 <span class="kw">use </span>re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
-<span class="kw">use </span>re_protos::common::v1alpha1::IfDuplicateBehavior;
-<span class="kw">use </span>re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-<span class="kw">use </span>re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
-<span class="kw">use </span>re_protos::manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange};
 <span class="kw">use </span>re_protos::{
     catalog::v1alpha1::{
         ext::{DatasetEntry, EntryDetails, TableEntry},
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
         ReadTableEntryRequest,
     },
-    frontend::v1alpha1::GetChunksRequest,
+    common::v1alpha1::{IfDuplicateBehavior, TaskId},
+    frontend::v1alpha1::{
+        frontend_service_client::FrontendServiceClient, GetChunksRequest, GetDatasetSchemaRequest,
+        RegisterWithDatasetRequest,
+    },
+    manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::catalog::to_py_err;
@@ -444,9 +510,10 @@
         py: Python&lt;<span class="lifetime">'_</span>&gt;,
         dataset_id: EntryId,
         recording_uri: String,
-    ) -&gt; PyResult&lt;()&gt; {
+    ) -&gt; PyResult&lt;TaskId&gt; {
         wait_for_future(py, <span class="kw">async </span>{
-            <span class="self">self</span>.client
+            <span class="kw">let </span>response = <span class="self">self
+                </span>.client
                 .register_with_dataset(RegisterWithDatasetRequest {
                     dataset_id: <span class="prelude-val">Some</span>(dataset_id.into()),
                     data_sources: <span class="macro">vec!</span>[DataSource::new_rrd(recording_uri)
@@ -456,9 +523,70 @@
                     </span>on_duplicate: IfDuplicateBehavior::Error <span class="kw">as </span>i32,
                 })
                 .<span class="kw">await
-                </span>.map_err(to_py_err)<span class="question-mark">?</span>;
+                </span>.map_err(to_py_err)<span class="question-mark">?
+                </span>.into_inner();
 
-            <span class="prelude-val">Ok</span>(())
+            response
+                .id
+                .ok_or_else(|| PyValueError::new_err(<span class="string">"received response without task id"</span>))
+        })
+    }
+
+    <span class="kw">pub fn </span>wait_for_task(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        py: Python&lt;<span class="lifetime">'_</span>&gt;,
+        task_id: <span class="kw-2">&amp;</span>TaskId,
+        timeout: std::time::Duration,
+    ) -&gt; PyResult&lt;()&gt; {
+        wait_for_future(py, <span class="kw">async </span>{
+            <span class="kw">let </span>timeout: prost_types::Duration = timeout.try_into().map_err(|err| {
+                PyValueError::new_err(<span class="macro">format!</span>(
+                    <span class="string">"failed to convert timeout to serialized duration: {err}"
+                </span>))
+            })<span class="question-mark">?</span>;
+            <span class="kw">let </span>request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
+                ids: <span class="macro">vec!</span>[task_id.clone()],
+                timeout: <span class="prelude-val">Some</span>(timeout),
+            };
+            <span class="kw">let </span><span class="kw-2">mut </span>response_stream = <span class="self">self
+                </span>.client
+                .query_tasks_on_completion(request)
+                .<span class="kw">await
+                </span>.map_err(to_py_err)<span class="question-mark">?
+                </span>.into_inner();
+
+            <span class="comment">// we know there is only one item in the stream
+            </span><span class="kw">let </span>task_status = <span class="kw">if let </span><span class="prelude-val">Some</span>(response) = response_stream.next().<span class="kw">await </span>{
+                response
+                    .map_err(to_py_err)<span class="question-mark">?
+                    </span>.data
+                    .ok_or_else(|| PyValueError::new_err(<span class="string">"received response without data"</span>))<span class="question-mark">?
+                    </span>.decode()
+                    .map_err(to_py_err)<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(PyValueError::new_err(<span class="string">"no response from task"</span>));
+            };
+
+            <span class="comment">// TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather
+            // than a nicely typed object should be revisited.
+
+            </span><span class="kw">let </span>exec_status = task_status
+                .column_by_name(<span class="string">"exec_status"</span>)
+                .and_then(|col| col.as_any().downcast_ref::&lt;arrow::array::StringArray&gt;())
+                .and_then(|arr| arr.value(<span class="number">0</span>).into())
+                .ok_or_else(|| PyValueError::new_err(<span class="string">"couldn't read exec_status column"</span>))<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>msgs = task_status
+                .column_by_name(<span class="string">"msgs"</span>)
+                .and_then(|col| col.as_any().downcast_ref::&lt;arrow::array::StringArray&gt;())
+                .and_then(|arr| arr.value(<span class="number">0</span>).into())
+                .ok_or_else(|| PyValueError::new_err(<span class="string">"couldn't read msgs column"</span>))<span class="question-mark">?</span>;
+
+            <span class="kw">if </span>exec_status == <span class="string">"success" </span>{
+                <span class="prelude-val">Ok</span>(())
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Err</span>(PyValueError::new_err(<span class="macro">format!</span>(<span class="string">"task failed: {msgs}"</span>,)))
+            }
         })
     }
 

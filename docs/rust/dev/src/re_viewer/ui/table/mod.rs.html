@@ -190,13 +190,13 @@
 <span class="kw">use </span>egui::{Frame, Id, RichText};
 <span class="kw">use </span>egui_table::{CellInfo, HeaderCellInfo};
 
-<span class="kw">use </span>re_log_types::TimelineName;
-<span class="kw">use </span>re_redap_browser::table_utils::{
+<span class="kw">use </span>re_dataframe_ui::table_utils::{
     apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
 };
+<span class="kw">use </span>re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
+<span class="kw">use </span>re_log_types::TimelineName;
 <span class="kw">use </span>re_sorbet::{ColumnDescriptorRef, SorbetBatch};
 <span class="kw">use </span>re_ui::UiExt <span class="kw">as _</span>;
-<span class="kw">use </span>re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 <span class="kw">use </span>re_viewer_context::{TableContext, ViewerContext};
 
 <span class="kw">pub fn </span>table_ui(viewer_ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;, ui: <span class="kw-2">&amp;mut </span>egui::Ui, context: <span class="kw-2">&amp;</span>TableContext&lt;<span class="lifetime">'_</span>&gt;) {

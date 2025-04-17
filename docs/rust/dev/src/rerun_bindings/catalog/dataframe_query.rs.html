@@ -1058,7 +1058,7 @@
         <span class="kw">let </span>ctx = client.ctx(py)<span class="question-mark">?</span>;
         <span class="kw">let </span>ctx = ctx.bind(py);
 
-        <span class="kw">let </span>uuid = uuid::Uuid::new_v4();
+        <span class="kw">let </span>uuid = uuid::Uuid::new_v4().simple();
         <span class="kw">let </span>name = <span class="macro">format!</span>(<span class="string">"{}_dataframe_query_{uuid}"</span>, super_.name());
 
         drop(client);

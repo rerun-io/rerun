@@ -64,7 +64,7 @@
 /// to spawn a view for every single entity that is visualizable with a given visualizer.
 </span><span class="kw">pub fn </span>suggest_view_for_each_entity&lt;TVisualizer&gt;(
     ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
-    view: <span class="kw-2">&amp;</span><span class="kw">impl </span>ViewClass,
+    view: <span class="kw-2">&amp;</span><span class="kw">dyn </span>ViewClass,
     suggested_filter: <span class="kw-2">&amp;</span>ResolvedEntityPathFilter,
 ) -&gt; ViewSpawnHeuristics
 <span class="kw">where
