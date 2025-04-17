@@ -27,6 +27,7 @@ re_log.workspace = true
 re_tracing.workspace = true
 
 arrow.workspace = true
+half.workspace = true
 itertools.workspace = true
 
 [dev-dependencies]

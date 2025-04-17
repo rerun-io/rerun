@@ -1,3 +1,4 @@
+use half::f16;
 use itertools::izip;
 
 /// Are two arrays equal, ignoring small numeric differences?
@@ -32,7 +33,17 @@ pub fn approximate_equals(left: &arrow::array::ArrayData, right: &arrow::array::
                 return false;
             }
 
-            if data_type == &arrow::datatypes::DataType::Float32 {
+            if data_type == &arrow::datatypes::DataType::Float16 {
+                // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
+                let left_floats = left_buff.typed_data::<f16>();
+                let right_floats = right_buff.typed_data::<f16>();
+                for (&l, &r) in izip!(left_floats, right_floats) {
+                    if !almost_equal_f32(l.to_f32(), r.to_f32(), 1e-3) {
+                        re_log::debug!("Significant f16 difference: {l} vs {r}");
+                        return false;
+                    }
+                }
+            } else if data_type == &arrow::datatypes::DataType::Float32 {
                 // Approximate compare to accommodate differences in snippet output from Python/C++/Rust
                 let left_floats = left_buff.typed_data::<f32>();
                 let right_floats = right_buff.typed_data::<f32>();
