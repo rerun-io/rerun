@@ -24,13 +24,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Randomly distributed 2D points with varying color and radius
 /// ```ignore
-/// use rand::{distributions::Uniform, Rng as _};
+/// use rand::prelude::*;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d_random").spawn()?;
 ///
-///     let mut rng = rand::thread_rng();
-///     let dist = Uniform::new(-3., 3.);
+///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
+///     let dist = rand::distributions::Uniform::new(-3., 3.);
 ///
 ///     rec.log(
 ///         "random",

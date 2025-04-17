@@ -32,14 +32,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Covariance ellipsoid
 /// ```ignore
-/// use rand::distributions::Distribution as _;
+/// use rand::prelude::*;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_simple").spawn()?;
 ///
 ///     let sigmas: [f32; 3] = [5., 3., 1.];
 ///
-///     let mut rng = rand::thread_rng();
+///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
 ///     let normal = rand_distr::Normal::new(0.0, 1.0)?;
 ///
 ///     rec.log(
