@@ -17,6 +17,13 @@ pub fn ensure_similar(
 
     let data_type = left.data_type();
 
+    if matches!(data_type, arrow::datatypes::DataType::Union { .. }) {
+        // We encode arrow unions slightly different in Python and Rust.
+        // TODO(#6388): Remove this hack once we have stopped using arrow unions.
+        ensure!(left == right);
+        return Ok(());
+    }
+
     ensure!(left.len() == right.len());
     ensure!(left.offset() == right.offset());
     ensure!(left.null_count() == right.null_count());
