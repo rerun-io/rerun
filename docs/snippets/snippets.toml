@@ -280,8 +280,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "archetypes/arrows3d_simple" = [
-  "py",  # Python uses doubles
-  "cpp", # Trigonometry doesn't work out the same with all C++ toolchains (*some* Windows machines yield a different result)
+  "py",  # Python has different colors. TODO(emilk): fix that
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
@@ -290,9 +289,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
-]
-"archetypes/mesh3d_partial_updates" = [ # Python uses doubles
-  "py",
 ]
 "archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
@@ -309,9 +305,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
-  "cpp",
-]
 "archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -322,20 +315,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
-  "py",
-]
-
-"archetypes/mesh3d_instancing" = [ # Python uses doubles
-  "py",
-]
-"archetypes/series_line_style" = [
-  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
-]
-"archetypes/series_point_style" = [
-  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
-]
-
 
 # -----------------------------------------------------------------------------
 

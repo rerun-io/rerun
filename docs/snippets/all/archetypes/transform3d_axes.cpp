@@ -6,7 +6,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_transform3d_axes");
     rec.spawn().exit_on_failure();
 
-    auto base_axes = rerun::Transform3D().with_axis_length(1.0);
+    auto base_axes = rerun::Transform3D::clear_fields().with_axis_length(1.0);
 
     rec.set_time_sequence("step", 0);
 
