@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"static":["SUBSCRIBERS"],"struct":["ChunkStoreSubscriberHandle","PerStoreStoreSubscriberWrapper"],"trait":["ChunkStoreSubscriber","PerStoreChunkSubscriber"],"type":["SharedStoreSubscriber"]};

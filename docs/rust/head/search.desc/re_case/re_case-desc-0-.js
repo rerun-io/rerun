@@ -1,0 +1,1 @@
+searchState.loadedDescShard("re_case", 0, "Case conversions, the way Rerun likes them.\nConverts a snake or pascal case input into “human case”…\nConverts a snake or pascal case input into a pascal case …\nConverts a snake or pascal case input into a snake case …")

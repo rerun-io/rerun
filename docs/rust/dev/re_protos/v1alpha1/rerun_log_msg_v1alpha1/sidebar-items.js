@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Compression","Encoding","FileSourceKind","StoreSourceKind"],"mod":["log_msg"],"struct":["ArrowMsg","BlueprintActivationCommand","CrateInfo","FileSource","LogMsg","PythonVersion","SetStoreInfo","StoreInfo","StoreSource","StoreSourceExtra","StoreVersion"]};

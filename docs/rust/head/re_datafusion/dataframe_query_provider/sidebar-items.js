@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["align_record_batch_to_schema","prepend_string_column","prepend_string_column_schema"],"struct":["DataframeQueryTableProvider"]};

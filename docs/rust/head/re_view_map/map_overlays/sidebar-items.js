@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["acknowledgement_overlay"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["is_backed_by_arrow_buffer","quote_fqname_as_type_path"],"struct":["ArrowDataTypeTokenizer","ArrowFieldTokenizer","OptionTokenizer","StrStrMapTokenizer"]};

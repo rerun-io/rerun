@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ArrowArrayStreamReader","FFI_ArrowArrayStream"]};
