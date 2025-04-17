@@ -93,9 +93,9 @@ impl CompareCommand {
             }
         }
 
-        fn format_chunk(chunk: &Chunk) -> String {
-            re_format_arrow::format_record_batch_opts(
-                &chunk.to_record_batch().unwrap(),
+        fn format_chunk(chunk: &Chunk) -> anyhow::Result<String> {
+            Ok(re_format_arrow::format_record_batch_opts(
+                &chunk.to_record_batch()?,
                 &re_format_arrow::RecordBatchFormatOpts {
                     transposed: true,
                     width: None,
@@ -103,7 +103,7 @@ impl CompareCommand {
                     include_column_metadata: false,
                 },
             )
-            .to_string()
+            .to_string())
         }
 
         if !*unordered || unordered_failed {
@@ -112,8 +112,8 @@ impl CompareCommand {
                     re_chunk::Chunk::are_similar(&chunk1, &chunk2),
                     "Chunks do not match:\n{}",
                     similar_asserts::SimpleDiff::from_str(
-                        &format_chunk(&chunk1),
-                        &format_chunk(&chunk2),
+                        &format_chunk(&chunk1)?,
+                        &format_chunk(&chunk2)?,
                         "got",
                         "expected",
                     ),
