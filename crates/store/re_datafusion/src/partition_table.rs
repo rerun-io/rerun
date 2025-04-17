@@ -32,7 +32,7 @@ impl PartitionTableProvider {
     }
 
     /// This is a convenience function
-    pub async fn into_provider(self) -> Result<Arc<dyn TableProvider>, DataFusionError> {
+    pub async fn into_provider(self) -> DataFusionResult<Arc<dyn TableProvider>> {
         Ok(GrpcStreamProvider::prepare(self).await?)
     }
 }
@@ -41,7 +41,7 @@ impl PartitionTableProvider {
 impl GrpcStreamToTable for PartitionTableProvider {
     type GrpcStreamData = ScanPartitionTableResponse;
 
-    async fn fetch_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
+    async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let request = GetPartitionTableSchemaRequest {
             dataset_id: Some(self.dataset_id.into()),
         };
@@ -62,13 +62,16 @@ impl GrpcStreamToTable for PartitionTableProvider {
 
     async fn send_streaming_request(
         &mut self,
-    ) -> Result<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>, tonic::Status> {
+    ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
         let request = ScanPartitionTableRequest {
             dataset_id: Some(self.dataset_id.into()),
             scan_parameters: None,
         };
 
-        self.client.scan_partition_table(request).await
+        self.client
+            .scan_partition_table(request)
+            .await
+            .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 
     fn process_response(

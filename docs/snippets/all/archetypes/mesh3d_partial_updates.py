@@ -18,8 +18,8 @@ rr.log(
     ),
 )
 
-# Only update its vertices' positions each frame
-factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
-for i, factor in enumerate(factors):
+# Only update its vertices' positions each frame:
+for i in range(1, 300):
+    factor = np.abs(np.sin(i * 0.04))
     rr.set_time("frame", sequence=i)
     rr.log("triangle", rr.Mesh3D.from_fields(vertex_positions=vertex_positions * factor))

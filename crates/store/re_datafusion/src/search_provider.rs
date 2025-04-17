@@ -48,7 +48,7 @@ impl SearchResultsTableProvider {
 impl GrpcStreamToTable for SearchResultsTableProvider {
     type GrpcStreamData = SearchDatasetResponse;
 
-    async fn fetch_schema(&mut self) -> Result<SchemaRef, DataFusionError> {
+    async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let mut request = self.request.clone();
         request.scan_parameters = Some(ScanParameters {
             limit_len: Some(0),
@@ -80,10 +80,13 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
 
     async fn send_streaming_request(
         &mut self,
-    ) -> Result<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>, tonic::Status> {
+    ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
         let request = self.request.clone();
 
-        self.client.search_dataset(request).await
+        self.client
+            .search_dataset(request)
+            .await
+            .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 
     fn process_response(

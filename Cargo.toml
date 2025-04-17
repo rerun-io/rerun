@@ -112,6 +112,7 @@ re_redap_browser = { path = "crates/viewer/re_redap_browser", version = "=0.23.0
 re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.23.0-alpha.3", default-features = false }
 re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.23.0-alpha.3", default-features = false }
 re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.23.0-alpha.3", default-features = false }
+re_dataframe_ui = { path = "crates/viewer/re_dataframe_ui", version = "=0.23.0-alpha.3", default-features = false }
 re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.23.0-alpha.3", default-features = false }
 re_renderer = { path = "crates/viewer/re_renderer", version = "=0.23.0-alpha.3", default-features = false }
 re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.23.0-alpha.3", default-features = false }
@@ -197,7 +198,6 @@ const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
-crossbeam-channel = "0.5"
 datafusion = "46"
 datafusion-ffi = "46"
 directories = "5"

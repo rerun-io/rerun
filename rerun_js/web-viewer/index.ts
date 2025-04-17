@@ -107,9 +107,64 @@ export interface AppOptions extends WebViewerOptions {
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
-  callbacks?: Callbacks;
+  on_viewer_event?: (event_json: string) => void;
   fullscreen?: FullscreenOptions;
   enable_history?: boolean;
+}
+
+// Types are based on `crates/viewer/re_viewer/src/event.rs`.
+/** An event produced in the Viewer. */
+export type ViewerEvent =
+  | PlayEvent
+  | PauseEvent
+  | TimeUpdateEvent
+  | TimelineChangeEvent
+  | SelectionChangeEvent;
+
+type ViewerEventBase = {
+  application_id: string;
+  recording_id: string;
+}
+
+export type PlayEvent = ViewerEventBase & {
+  type: "play";
+};
+
+export type PauseEvent = ViewerEventBase & {
+  type: "pause";
+}
+
+export type TimeUpdateEvent = ViewerEventBase & {
+  type: "time_update";
+  time: number;
+}
+
+export type TimelineChangeEvent = ViewerEventBase & {
+  type: "timeline_change";
+  timeline: string;
+  time: number;
+}
+
+export type SelectionChangeEvent = ViewerEventBase & {
+  type: "selection_change";
+  items: SelectionChangeItem[];
+}
+
+// A bit of TypeScript metaprogramming to automatically produce a
+// mapping of event names to event payloads given the above type
+// definitions.
+
+// Yield the event with type `K`.
+type _GetViewerEvent<K> =
+  Extract<ViewerEvent, { type: K }>;
+
+// `ViewerEvent` is a union of all events, so its `type` field
+// is a union of all `type` fields.
+type _ViewerEventNames = ViewerEvent["type"];
+
+// For every event, get its payload type.
+type ViewerEventMap = {
+  [K in _ViewerEventNames]: _GetViewerEvent<K>
 }
 
 /**
@@ -141,30 +196,16 @@ export type ContainerItem = {
 };
 
 /** A single item in a selection. */
-export type SelectionItem = EntityItem | ViewItem | ContainerItem;
-
-interface Callbacks {
-  on_selectionchange: (selection: SelectionItem[]) => void;
-  on_timelinechange: (timeline: string, time: number) => void;
-  on_timeupdate: (time: number) => void;
-  on_pause: () => void;
-  on_play: () => void;
-}
+export type SelectionChangeItem = EntityItem | ViewItem | ContainerItem;
 
 interface FullscreenOptions {
   get_state: () => boolean;
   on_toggle: () => void;
 }
 
-interface WebViewerEvents {
+interface WebViewerEvents extends ViewerEventMap {
   fullscreen: boolean;
   ready: void;
-
-  selectionchange: [SelectionItem[]];
-  timelinechange: [timeline_name: string, time: number];
-  timeupdate: number;
-  play: void;
-  pause: void;
 }
 
 // This abomination is a mapped type with key filtering, and is used to split the events
@@ -245,21 +286,24 @@ export class WebViewer {
       }
       : undefined;
 
-    const callbacks = {
-      on_selectionchange: (items: SelectionItem[]) => {
-        this.#dispatch_event("selectionchange", items);
-      },
-      on_timelinechange: (timeline: string, time: number) =>
-        this.#dispatch_event("timelinechange", timeline, time),
-      on_timeupdate: (time: number) => this.#dispatch_event("timeupdate", time),
-      on_pause: () => this.#dispatch_event("pause"),
-      on_play: () => this.#dispatch_event("play"),
-    };
+    const on_viewer_event = (event_json: string) => {
+      // for notebooks/gradio, we can avoid a whole layer
+      // of serde by sending over the raw json directly,
+      // which will be deserialized in Python instead
+      this.#_dispatch_raw_event(event_json);
+
+      // for JS users, we dispatch the parsed event
+      let event: ViewerEvent = JSON.parse(event_json);
+      this.#dispatch_event(
+        event.type as any,
+        event,
+      );
+    }
 
     this.#handle = new WebHandle_class({
       ...options,
       fullscreen,
-      callbacks,
+      on_viewer_event,
     });
     try {
       await this.#handle.start(this.#canvas);
@@ -277,6 +321,25 @@ export class WebViewer {
     }
 
     return;
+  }
+
+  #_raw_events: Set<(event_json: string) => void> = new Set();
+
+  #_dispatch_raw_event(event_json: string) {
+    for (const callback of this.#_raw_events) {
+      callback(event_json);
+    }
+  }
+
+  /** Internal interface */
+  // NOTE: Callbacks passed to this function must NOT invoke any viewer methods!
+  //       The `setTimeout` is omitted to avoid the 1-tick delay, as it is unnecessary,
+  //       because this is only meant to be used for sending events to Jupyter/Gradio.
+  // 
+  // Do not change this without searching for grepping for usage!
+  private _on_raw_event(callback: (event: string) => void): Cancel {
+    this.#_raw_events.add(callback);
+    return () => this.#_raw_events.delete(callback);
   }
 
   #event_map: Map<

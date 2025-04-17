@@ -6601,7 +6601,9 @@ dependencies = [
 name = "re_arrow_util"
 version = "0.23.0-alpha.3+dev"
 dependencies = [
+ "anyhow",
  "arrow",
+ "half",
  "insta",
  "itertools 0.14.0",
  "re_log",
@@ -6935,6 +6937,29 @@ dependencies = [
  "similar-asserts",
  "tokio",
  "tokio-stream",
+]
+
+[[package]]
+name = "re_dataframe_ui"
+version = "0.23.0-alpha.3+dev"
+dependencies = [
+ "ahash",
+ "arrow",
+ "egui",
+ "egui_dnd",
+ "re_arrow_util",
+ "re_chunk_store",
+ "re_dataframe",
+ "re_log_types",
+ "re_sorbet",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "re_ui",
+ "re_viewer_context",
+ "serde",
+ "static_assertions",
+ "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -7325,14 +7350,13 @@ version = "0.23.0-alpha.3+dev"
 dependencies = [
  "ahash",
  "arrow",
- "crossbeam-channel",
  "egui",
- "egui_dnd",
  "egui_table",
  "itertools 0.14.0",
  "once_cell",
  "re_arrow_util",
  "re_data_ui",
+ "re_dataframe_ui",
  "re_grpc_client",
  "re_log",
  "re_log_encoding",
@@ -7344,7 +7368,6 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_uri",
- "re_view_dataframe",
  "re_viewer_context",
  "serde",
  "thiserror 1.0.65",
@@ -7810,22 +7833,20 @@ dependencies = [
 name = "re_view_dataframe"
 version = "0.23.0-alpha.3+dev"
 dependencies = [
- "ahash",
  "anyhow",
  "arrow",
  "egui",
  "egui_table",
  "itertools 0.14.0",
- "re_arrow_util",
  "re_chunk_store",
  "re_component_ui",
  "re_dataframe",
+ "re_dataframe_ui",
  "re_error",
  "re_format",
  "re_log",
  "re_log_types",
  "re_renderer",
- "re_sorbet",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -7833,7 +7854,6 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
- "thiserror 1.0.65",
 ]
 
 [[package]]
@@ -8051,6 +8071,7 @@ dependencies = [
  "re_data_loader",
  "re_data_source",
  "re_data_ui",
+ "re_dataframe_ui",
  "re_entity_db",
  "re_error",
  "re_format",

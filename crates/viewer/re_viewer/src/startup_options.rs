@@ -1,5 +1,5 @@
 use crate::app_blueprint::PanelStateOverrides;
-use crate::Callbacks;
+use crate::event::ViewerEventCallback;
 
 /// Settings set once at startup (e.g. via command-line options) and not serialized.
 #[derive(Clone)]
@@ -51,7 +51,7 @@ pub struct StartupOptions {
     pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
 
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
-    pub callbacks: Option<Callbacks>,
+    pub on_event: Option<ViewerEventCallback>,
 
     /// Fullscreen is handled by JS on web.
     ///
@@ -105,7 +105,7 @@ impl Default for StartupOptions {
             force_wgpu_backend: None,
             video_decoder_hw_acceleration: None,
 
-            callbacks: Default::default(),
+            on_event: None,
 
             #[cfg(target_arch = "wasm32")]
             fullscreen_options: Default::default(),

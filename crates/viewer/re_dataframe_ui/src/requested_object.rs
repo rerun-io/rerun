@@ -1,8 +1,12 @@
-use crossbeam_channel::{bounded, Receiver};
+use std::sync::mpsc::{sync_channel, Receiver};
 
 use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 
 /// A handle to an object that is requested asynchronously.
+///
+/// Note: this object cannot be [`Clone`] because it uses a one-shot channel to track completion of
+/// the async operation.
+#[derive(Debug)]
 pub enum RequestedObject<T: Send + 'static> {
     Pending(Receiver<T>),
     Completed(T),
@@ -14,7 +18,7 @@ impl<T: Send + 'static> RequestedObject<T> {
     where
         F: std::future::Future<Output = T> + WasmNotSend + 'static,
     {
-        let (tx, rx) = bounded(1);
+        let (tx, rx) = sync_channel(1);
         let handle = Self::Pending(rx);
 
         runtime.spawn_future(async move {
@@ -60,5 +64,17 @@ impl<T: Send + 'static> RequestedObject<T> {
             Self::Pending(_) => None,
             Self::Completed(result) => Some(result),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// This test is to ensure you think twice before deriving `Clone` for [`RequestedObject`] (see
+    /// docstring for the background).
+    #[test]
+    fn requested_object_not_clone() {
+        static_assertions::assert_not_impl_any!(RequestedObject<usize>: Clone);
     }
 }

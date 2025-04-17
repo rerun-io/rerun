@@ -202,18 +202,12 @@ impl ComponentName {
 
     /// Is this an indicator component for an archetype?
     pub fn is_indicator_component(&self) -> bool {
-        (self.starts_with("rerun.components.") || self.starts_with("rerun.blueprint.components."))
-            && self.ends_with("Indicator")
+        self.ends_with("Indicator")
     }
 
     /// If this is an indicator component, for which archetype?
     pub fn indicator_component_archetype(&self) -> Option<String> {
-        if let Some(name) = self.strip_prefix("rerun.components.") {
-            if let Some(name) = name.strip_suffix("Indicator") {
-                return Some(name.to_owned());
-            }
-        }
-        None
+        self.strip_suffix("Indicator").map(|name| name.to_owned())
     }
 
     /// Web URL to the Rerun documentation for this component.

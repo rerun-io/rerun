@@ -24,6 +24,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 use crate::{
     app_blueprint::AppBlueprint,
     navigation::Navigation,
+    event::ViewerEventDispatcher,
     ui::{recordings_panel_ui, settings_screen_ui},
 };
 
@@ -166,7 +167,7 @@ impl AppState {
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        callbacks: Option<&crate::callback::Callbacks>,
+        event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
     ) {
         re_tracing::profile_function!();
 
@@ -213,27 +214,39 @@ impl AppState {
                 } = self;
 
                 blueprint_undo_state
-                    .entry(store_context.blueprint.store_id().clone())
-                    .or_default()
-                    .update(ui.ctx(), store_context.blueprint);
+            .entry(store_context.blueprint.store_id().clone())
+            .or_default()
+            .update(ui.ctx(), store_context.blueprint);
 
-                let viewport_blueprint =
-                    ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
-                let viewport_ui = ViewportUi::new(viewport_blueprint);
+            let viewport_blueprint =
+            ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
+        let viewport_ui = ViewportUi::new(viewport_blueprint);
 
-                // If the blueprint is invalid, reset it.
-                if viewport_ui.blueprint.is_invalid() {
-                    re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-                    command_sender
-                        .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
+        // If the blueprint is invalid, reset it.
+        if viewport_ui.blueprint.is_invalid() {
+            re_log::warn!("Incompatible blueprint detected. Resetting to default.");
+            command_sender.send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
 
-                    // The blueprint isn't valid so nothing past this is going to work properly.
-                    // we might as well return and it will get fixed on the next frame.
+            // The blueprint isn't valid so nothing past this is going to work properly.
+            // we might as well return and it will get fixed on the next frame.
 
-                    // TODO(jleibs): If we move viewport loading up to a context where the EntityDb is mutable
-                    // we can run the clear and re-load.
-                    return;
+            // TODO(jleibs): If we move viewport loading up to a context where the EntityDb is mutable
+            // we can run the clear and re-load.
+            return;
+        }
+
+        let selection_change = selection_state.on_frame_start(
+            |item| {
+                if let Item::StoreId(store_id) = item {
+                    if store_id.is_empty_recording() {
+                        return false;
+                    }
                 }
+
+                viewport_ui.blueprint.is_item_valid(storage_context, item)
+            },
+            Some(Item::StoreId(store_context.recording.store_id().clone())),
+        );
 
                 let selection_change = selection_state.on_frame_start(
                     |item| {
@@ -249,8 +262,12 @@ impl AppState {
                 );
 
                 if let SelectionChange::SelectionChanged(selection) = selection_change {
-                    if let Some(callbacks) = callbacks {
-                        callbacks.on_selection_change(selection, &viewport_ui.blueprint);
+                    if let Some(event_dispatcher) = event_dispatcher {
+                        event_dispatcher.on_selection_change(
+                            store_context.recording,
+                            selection,
+                            &viewport_ui.blueprint,
+                        );
                     }
                 }
 
@@ -266,38 +283,37 @@ impl AppState {
                     view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
 
                 // Execute the queries for every `View`
-                let mut query_results = {
-                    re_tracing::profile_scope!("query_results");
-                    viewport_ui
-                        .blueprint
-                        .views
-                        .values()
-                        .map(|view| {
-                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                            let visualizable_entities = view
-                                .class(view_class_registry)
-                                .determine_visualizable_entities(
-                                    &maybe_visualizable_entities_per_visualizer,
-                                    recording,
-                                    &view_class_registry
-                                        .new_visualizer_collection(view.class_identifier()),
-                                    &view.space_origin,
-                                );
+        let mut query_results = {
+            re_tracing::profile_scope!("query_results");
+            viewport_ui
+                .blueprint
+                .views
+                .values()
+                .map(|view| {
+                    // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
+                    // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                    // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                    let visualizable_entities = view
+                        .class(view_class_registry)
+                        .determine_visualizable_entities(
+                            &maybe_visualizable_entities_per_visualizer,
+                            recording,
+                            &view_class_registry.new_visualizer_collection(view.class_identifier()),
+                            &view.space_origin,
+                        );
 
-                            (
-                                view.id,
-                                view.contents.execute_query(
-                                    store_context,
-                                    view_class_registry,
-                                    &blueprint_query,
-                                    &visualizable_entities,
-                                ),
-                            )
-                        })
-                        .collect::<_>()
-                };
+                    (
+                        view.id,
+                        view.contents.execute_query(
+                            store_context,
+                            view_class_registry,
+                            &blueprint_query,
+                            &visualizable_entities,
+                        ),
+                    )
+                })
+                .collect::<_>()
+        };
 
                 let rec_cfg = recording_config_entry(recording_configs, recording);
                 let egui_ctx = ui.ctx().clone();
@@ -334,53 +350,49 @@ impl AppState {
                 };
 
                 // enable the heuristics if we must this frame
-                if store_context.should_enable_heuristics {
-                    viewport_ui.blueprint.set_auto_layout(true, &ctx);
-                    viewport_ui.blueprint.set_auto_views(true, &ctx);
-                    egui_ctx.request_repaint();
-                }
+        if store_context.should_enable_heuristics {
+            viewport_ui.blueprint.set_auto_layout(true, &ctx);
+            viewport_ui.blueprint.set_auto_views(true, &ctx);
+            egui_ctx.request_repaint();
+        }
 
                 // We move the time at the very start of the frame,
-                // so that we always show the latest data when we're in "follow" mode.
-                move_time(&ctx, recording, rx_log, callbacks);
+        // so that we always show the latest data when we're in "follow" mode.
+        move_time(&ctx, recording, rx_log, event_dispatcher);
 
-                // Update the viewport. May spawn new views and handle queued requests (like screenshots).
-                viewport_ui.on_frame_start(&ctx);
+        // Update the viewport. May spawn new views and handle queued requests (like screenshots).
+        viewport_ui.on_frame_start(&ctx);
 
-                {
-                    re_tracing::profile_scope!("updated_query_results");
+        for view in viewport_ui.blueprint.views.values() {
+            if let Some(query_result) = query_results.get_mut(&view.id) {
+                // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
+                // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                let visualizable_entities = view
+                    .class(view_class_registry)
+                    .determine_visualizable_entities(
+                        &maybe_visualizable_entities_per_visualizer,
+                        recording,
+                        &view_class_registry.new_visualizer_collection(view.class_identifier()),
+                        &view.space_origin,
+                    );
 
-                    for view in viewport_ui.blueprint.views.values() {
-                        if let Some(query_result) = query_results.get_mut(&view.id) {
-                            // TODO(andreas): This needs to be done in a store subscriber that exists per view (instance, not class!).
-                            // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                            // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                            let visualizable_entities = view
-                                .class(view_class_registry)
-                                .determine_visualizable_entities(
-                                    &maybe_visualizable_entities_per_visualizer,
-                                    recording,
-                                    &view_class_registry
-                                        .new_visualizer_collection(view.class_identifier()),
-                                    &view.space_origin,
-                                );
+                let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
+                    view,
+                    view_class_registry,
+                    &maybe_visualizable_entities_per_visualizer,
+                    &visualizable_entities,
+                    &indicated_entities_per_visualizer,
+                );
 
-                            let resolver = re_viewport_blueprint::DataQueryPropertyResolver::new(
-                                view,
-                                view_class_registry,
-                                &maybe_visualizable_entities_per_visualizer,
-                                &visualizable_entities,
-                                &indicated_entities_per_visualizer,
-                            );
-
-                            resolver.update_overrides(
-                                store_context.blueprint,
-                                &blueprint_query,
-                                rec_cfg.time_ctrl.read().timeline(),
-                                view_class_registry,
-                                query_result,
-                                view_states,
-                            );
+                resolver.update_overrides(
+                    store_context.blueprint,
+                    &blueprint_query,
+                    rec_cfg.time_ctrl.read().timeline(),
+                    view_class_registry,
+                    query_result,
+                    view_states,
+                );
                         }
                     }
                 };
@@ -739,7 +751,7 @@ fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
     rx: &ReceiveSet<LogMsg>,
-    callbacks: Option<&crate::callback::Callbacks>,
+    events: Option<&ViewerEventDispatcher>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -760,7 +772,7 @@ fn move_time(
         should_diff_time_ctrl,
     );
 
-    handle_time_ctrl_callbacks(callbacks, &recording_time_ctrl_response);
+    handle_time_ctrl_event(recording, events, &recording_time_ctrl_response);
 
     let recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
 
@@ -787,28 +799,25 @@ fn move_time(
     }
 }
 
-fn handle_time_ctrl_callbacks(
-    callbacks: Option<&crate::callback::Callbacks>,
+fn handle_time_ctrl_event(
+    recording: &EntityDb,
+    events: Option<&ViewerEventDispatcher>,
     response: &re_viewer_context::TimeControlResponse,
 ) {
-    let Some(callbacks) = callbacks else {
+    let Some(events) = events else {
         return;
     };
 
     if let Some(playing) = response.playing_change {
-        if playing {
-            callbacks.on_play();
-        } else {
-            callbacks.on_pause();
-        }
+        events.on_play_state_change(recording, playing);
     }
 
     if let Some((timeline, time)) = response.timeline_change {
-        callbacks.on_timeline_change(timeline, time);
+        events.on_timeline_change(recording, timeline, time);
     }
 
     if let Some(time) = response.time_change {
-        callbacks.on_time_update(time);
+        events.on_time_update(recording, time);
     }
 }
 

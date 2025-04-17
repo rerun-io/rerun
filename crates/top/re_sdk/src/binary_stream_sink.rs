@@ -34,17 +34,15 @@ impl BinaryStreamStorage {
     /// Use [`BinaryStreamStorage::flush`] if you want to guarantee that all
     /// logged messages have been written to the stream before you read them.
     #[inline]
-    pub fn read(&self) -> Vec<u8> {
+    pub fn read(&self) -> Option<Vec<u8>> {
         let mut inner = self.inner.lock();
 
         // if there's no messages to send, do not include the RRD headers.
         if inner.is_empty() {
-            Vec::default()
-        } else {
-            encode_as_bytes_local(inner.drain(..).map(Ok))
-                .ok_or_log_error()
-                .unwrap_or_default()
+            return None;
         }
+
+        encode_as_bytes_local(inner.drain(..).map(Ok)).ok_or_log_error()
     }
 
     /// Flush the batcher and log encoder to guarantee that all logged messages
@@ -62,7 +60,7 @@ impl Drop for BinaryStreamStorage {
         self.flush();
         let bytes = self.read();
 
-        if !bytes.is_empty() {
+        if let Some(bytes) = bytes {
             re_log::warn!(
                 "Dropping data in BinaryStreamStorage ({} bytes)",
                 bytes.len()
