@@ -40,8 +40,6 @@ impl PrintCommand {
             continue_on_error,
         } = self;
 
-        // TODO(cmc): might want to make this configurable at some point.
-
         let (rx, _) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         for (_source, res) in rx {

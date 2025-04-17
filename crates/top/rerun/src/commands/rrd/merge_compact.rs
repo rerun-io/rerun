@@ -156,8 +156,6 @@ fn merge_and_compact(
         "merge/compaction started"
     );
 
-    // TODO(cmc): might want to make this configurable at some point.
-
     let (rx, rx_size_bytes) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
     let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();

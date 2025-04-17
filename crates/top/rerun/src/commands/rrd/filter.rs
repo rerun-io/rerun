@@ -64,8 +64,6 @@ impl FilterCommand {
             .map(|s| EntityPath::parse_forgiving(s))
             .collect();
 
-        // TODO(cmc): might want to make this configurable at some point.
-
         let (rx_decoder, rx_size_bytes) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         // TODO(cmc): might want to make this configurable at some point.
