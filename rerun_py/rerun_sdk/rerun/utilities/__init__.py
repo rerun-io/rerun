@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from .data import (
-    ColorGrid,
-    ColorSpiral,
-    RectPyramid,
-    build_color_grid,
-    build_color_spiral,
-    build_rect_pyramid,
-    color_grid,
-    color_spiral,
-    rect_pyramid,
+from ._data import (
+    ColorGrid as ColorGrid,
+    ColorSpiral as ColorSpiral,
+    build_color_grid as build_color_grid,
+    build_color_spiral as build_color_spiral,
+    color_grid as color_grid,
+    color_spiral as color_spiral,
 )
-from .turbo import turbo_colormap_data
-from .util import bounce_lerp, interleave
+from ._util import (
+    bounce_lerp as bounce_lerp,
+)

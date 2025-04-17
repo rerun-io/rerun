@@ -7,9 +7,7 @@ from math import cos, sin, tau
 
 import numpy as np
 
-from rerun import Box2DFormat
-
-from .turbo import turbo_colormap_data
+from ._turbo import turbo_colormap_data
 
 ColorGrid = namedtuple("ColorGrid", ["positions", "colors"])
 
@@ -58,37 +56,6 @@ def build_color_grid(x_count: int = 10, y_count: int = 10, z_count: int = 10, tw
 
 color_grid = build_color_grid()
 """Default color grid"""
-
-
-RectPyramid = namedtuple("RectPyramid", ["rects", "format", "colors"])
-
-
-def build_rect_pyramid(count: int = 20, width: int = 100, height: int = 100) -> RectPyramid:
-    """
-    Create a stack of N colored rectangles.
-
-    Parameters
-    ----------
-    count:
-        Number of rectangles to create.
-    width:
-        Width of the base of the pyramid.
-    height:
-        Height of the pyramid.
-
-    """
-    x = np.zeros(count)
-    y = np.linspace(0, height, count)
-    widths = np.linspace(float(width) / count, width, count)
-    heights = 0.8 * np.ones(count) * height / count
-    rects = np.stack((x, y, widths, heights), axis=1)
-    colors = turbo_colormap_data[np.linspace(0, len(turbo_colormap_data) - 1, count, dtype=int)]
-
-    return RectPyramid(rects, Box2DFormat.XCYCWH, colors)
-
-
-rect_pyramid = build_rect_pyramid()
-"""Default rect pyramid data"""
 
 
 ColorSpiral = namedtuple("ColorSpiral", ["positions", "colors"])
