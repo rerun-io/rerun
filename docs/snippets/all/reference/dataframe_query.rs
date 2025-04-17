@@ -3,7 +3,7 @@
 use rerun::{
     dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
     external::re_format_arrow::format_record_batch,
-    ChunkStoreConfig, VersionPolicy,
+    ChunkStoreConfig,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,11 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path_to_rrd = &args[1];
     let timeline = TimelineName::log_time();
 
-    let engines = QueryEngine::from_rrd_filepath(
-        &ChunkStoreConfig::DEFAULT,
-        path_to_rrd,
-        VersionPolicy::Warn,
-    )?;
+    let engines = QueryEngine::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)?;
 
     let Some((_, engine)) = engines.first_key_value() else {
         return Ok(());
