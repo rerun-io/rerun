@@ -1,22 +1,18 @@
 use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
-use re_viewer::external::re_log_types::ResolvedEntityPathFilter;
-use re_viewer::external::re_ui::Help;
-use re_viewer::external::re_viewer_context::{
-    IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, SmallVisualizerSet,
-    VisualizableEntities,
-};
 use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
     re_entity_db::InstancePath,
-    re_log_types::EntityPath,
+    re_log_types::{EntityPath, ResolvedEntityPathFilter},
     re_types::ViewClassIdentifier,
-    re_ui,
+    re_ui::{self, Help},
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SystemExecutionOutput,
-        UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-        ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-        ViewSystemRegistrator, ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item,
+        MaybeVisualizableEntities, PerVisualizer, SelectionHighlight, SmallVisualizerSet,
+        SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority,
+        ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+        ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+        VisualizableEntities,
     },
 };
 
