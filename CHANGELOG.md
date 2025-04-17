@@ -2,14 +2,18 @@
 
 ## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0)
 
-TODO: add link to release video
+https://github.com/user-attachments/assets/f064403f-5d34-4b55-83f9-12db518f7ddd
 
 📖 Release blogpost: TODO: add link
 
 🧳 Migration guide: TODO: add link
 
 ### ✨ Overview & highlights
-TODO: fill in
+ 
+#### Viewer
+
+* 📈 Added support for multiple scalars under a single entity
+
 
 ### ⚠️ Breaking changes
 TODO: fill in
