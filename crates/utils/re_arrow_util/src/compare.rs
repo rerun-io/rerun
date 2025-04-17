@@ -38,7 +38,7 @@ pub fn approximate_equals(left: &arrow::array::ArrayData, right: &arrow::array::
                 let left_floats = left_buff.typed_data::<f16>();
                 let right_floats = right_buff.typed_data::<f16>();
                 for (&l, &r) in izip!(left_floats, right_floats) {
-                    if !almost_equal_f32(l.to_f32(), r.to_f32(), 1e-3) {
+                    if !almost_equal_f64(l.to_f64(), r.to_f64(), 1e-3) {
                         re_log::debug!("Significant f16 difference: {l} vs {r}");
                         return false;
                     }
@@ -48,7 +48,7 @@ pub fn approximate_equals(left: &arrow::array::ArrayData, right: &arrow::array::
                 let left_floats = left_buff.typed_data::<f32>();
                 let right_floats = right_buff.typed_data::<f32>();
                 for (&l, &r) in izip!(left_floats, right_floats) {
-                    if !almost_equal_f32(l, r, 1e-3) {
+                    if !almost_equal_f64(l as f64, r as f64, 1e-3) {
                         re_log::debug!("Significant f32 difference: {l} vs {r}");
                         return false;
                     }
@@ -58,7 +58,7 @@ pub fn approximate_equals(left: &arrow::array::ArrayData, right: &arrow::array::
                 let left_floats = left_buff.typed_data::<f64>();
                 let right_floats = right_buff.typed_data::<f64>();
                 for (&l, &r) in izip!(left_floats, right_floats) {
-                    if !almost_equal_f32(l as f32, r as f32, 1e-5) {
+                    if !almost_equal_f64(l, r, 1e-8) {
                         re_log::debug!("Significant f64 difference: {l} vs {r}");
                         return false;
                     }
@@ -91,10 +91,10 @@ pub fn approximate_equals(left: &arrow::array::ArrayData, right: &arrow::array::
 
 /// Return true when arguments are the same within some rounding error.
 ///
-/// For instance `almost_equal(x, x.to_degrees().to_radians(), f32::EPSILON)` should hold true for all x.
-/// The `epsilon`  can be `f32::EPSILON` to handle simple transforms (like degrees -> radians)
+/// For instance `almost_equal(x, x.to_degrees().to_radians(), f64::EPSILON)` should hold true for all x.
+/// The `epsilon`  can be `f64::EPSILON` to handle simple transforms (like degrees -> radians)
 /// but should be higher to handle more complex transformations.
-pub fn almost_equal_f32(a: f32, b: f32, epsilon: f32) -> bool {
+pub fn almost_equal_f64(a: f64, b: f64, epsilon: f64) -> bool {
     if a == b {
         true // handle infinites
     } else {
@@ -106,28 +106,28 @@ pub fn almost_equal_f32(a: f32, b: f32, epsilon: f32) -> bool {
 #[test]
 fn test_almost_equal() {
     for &x in &[
-        0.0_f32,
-        f32::MIN_POSITIVE,
+        0.0_f64,
+        f64::MIN_POSITIVE,
         1e-20,
         1e-10,
-        f32::EPSILON,
+        f64::EPSILON,
         0.1,
         0.99,
         1.0,
         1.001,
         1e10,
-        f32::MAX / 100.0,
-        // f32::MAX, // overflows in rad<->deg test
-        f32::INFINITY,
+        f64::MAX / 100.0,
+        // f64::MAX, // overflows in rad<->deg test
+        f64::INFINITY,
     ] {
         for &x in &[-x, x] {
             for roundtrip in &[
-                |x: f32| x.to_degrees().to_radians(),
-                |x: f32| x.to_radians().to_degrees(),
+                |x: f64| x.to_degrees().to_radians(),
+                |x: f64| x.to_radians().to_degrees(),
             ] {
-                let epsilon = f32::EPSILON;
+                let epsilon = f64::EPSILON;
                 assert!(
-                    almost_equal_f32(x, roundtrip(x), epsilon),
+                    almost_equal_f64(x, roundtrip(x), epsilon),
                     "{} vs {}",
                     x,
                     roundtrip(x)
