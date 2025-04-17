@@ -27,12 +27,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Simple pinhole camera
 /// ```ignore
 /// use ndarray::{Array, ShapeBuilder as _};
+/// use rand::prelude::*;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole").spawn()?;
 ///
 ///     let mut image = Array::<u8, _>::default((3, 3, 3).f());
-///     image.map_inplace(|x| *x = rand::random());
+///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
+///     image.map_inplace(|x| *x = rng.gen());
 ///
 ///     rec.log(
 ///         "world/image",
