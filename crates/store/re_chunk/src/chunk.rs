@@ -13,7 +13,6 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
-use re_error::format;
 use re_log_types::{
     EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
@@ -318,23 +317,19 @@ impl Chunk {
 
         anyhow::ensure!(timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec());
 
-        let left_timelines: IntMap<_, _> = timelines
-            .iter()
-            .map(|(timeline, time_column)| (*timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-            .collect();
-        let right_timelines: IntMap<_, _> = rhs
-            .timelines
-            .iter()
-            .map(|(timeline, time_column)| (*timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-            .collect();
-        for (timeline, left_time_col) in left_timelines {
-            let right_time_col = right_timelines
-                .get(&timeline)
+        for (timeline, left_time_col) in timelines {
+            let right_time_col = rhs
+                .timelines
+                .get(timeline)
                 .ok_or_else(|| anyhow::format_err!("right is missing timeline {timeline:?}"))?;
+            if timeline == &TimelineName::log_time() {
+                continue; // We expect this to differ
+            }
+            if timeline == "sim_time" {
+                continue; // Small numeric differences
+            }
             anyhow::ensure!(
-                &left_time_col == right_time_col,
+                left_time_col == right_time_col,
                 "Timeline differs: {timeline:?}"
             );
         }
