@@ -8,7 +8,6 @@ namespace rerun.components;
 /// Should be an absolute time, i.e. relative to Unix Epoch.
 table Timestamp (
   "attr.arrow.transparent",
-  "attr.docs.unreleased",
   "attr.python.array_aliases": "npt.NDArray[np.int64]",
   "attr.rerun.state": "stable",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",

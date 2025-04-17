@@ -20,4 +20,4 @@ int64
 ## Used by
 
 * [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
-* [`Timestamp`](../components/timestamp.md?speculative-link)
+* [`Timestamp`](../components/timestamp.md)

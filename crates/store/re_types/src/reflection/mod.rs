@@ -932,7 +932,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SeriesVisible as Component>::name(),
             ComponentReflection {
-                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link) since it would conflict with the entity-wide visibility state.",
+                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: SeriesVisible::arrow_datatype(),
