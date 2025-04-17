@@ -350,8 +350,6 @@ fn format_dataframe_without_metadata(
     columns: &[ArrayRef],
     opts: &RecordBatchFormatOpts,
 ) -> (usize, Table) {
-    const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
-
     let &RecordBatchFormatOpts {
         transposed,
         width,
@@ -407,20 +405,7 @@ fn format_dataframe_without_metadata(
 
             for i in 0..col.len() {
                 let cell = match formatter(i) {
-                    Ok(string) => {
-                        let chars: Vec<_> = string.chars().collect();
-                        if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
-                            Cell::new(
-                                chars
-                                    .into_iter()
-                                    .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
-                                    .chain(['…'])
-                                    .collect::<String>(),
-                            )
-                        } else {
-                            Cell::new(string)
-                        }
-                    }
+                    Ok(string) => format_cell(string),
                     Err(err) => Cell::new(err),
                 };
                 cells.push(cell);
@@ -467,20 +452,7 @@ fn format_dataframe_without_metadata(
             let cells: Vec<_> = formatters
                 .iter()
                 .map(|formatter| match formatter(row) {
-                    Ok(string) => {
-                        let chars: Vec<_> = string.chars().collect();
-                        if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
-                            Cell::new(
-                                chars
-                                    .into_iter()
-                                    .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
-                                    .chain(['…'])
-                                    .collect::<String>(),
-                            )
-                        } else {
-                            Cell::new(string)
-                        }
-                    }
+                    Ok(string) => format_cell(string),
                     Err(err) => Cell::new(err),
                 })
                 .collect();
@@ -501,4 +473,21 @@ fn format_dataframe_without_metadata(
     }
 
     (num_columns, table)
+}
+
+fn format_cell(string: String) -> Cell {
+    const MAXIMUM_CELL_CONTENT_WIDTH: u16 = 100;
+
+    let chars: Vec<_> = string.chars().collect();
+    if chars.len() > MAXIMUM_CELL_CONTENT_WIDTH as usize {
+        Cell::new(
+            chars
+                .into_iter()
+                .take(MAXIMUM_CELL_CONTENT_WIDTH.saturating_sub(1).into())
+                .chain(['…'])
+                .collect::<String>(),
+        )
+    } else {
+        Cell::new(string)
+    }
 }
