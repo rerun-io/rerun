@@ -29,7 +29,7 @@ The bar chart is created by logging the [`BarChart`](https://www.rerun.io/docs/r
 All other plots are created using the [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype.
 Each plot is created by logging scalars at different time steps (i.e., the x-axis).
 Additionally, the plots are styled using the [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) and
-[`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_poins?speculative-linkt) archetypes respectively.
+[`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_points?speculative-link) archetypes respectively.
 
 The visualizations in this example were created with the following Rerun code:
 
@@ -96,7 +96,7 @@ The `log_classification` function simulates a classification problem by logging 
 
 It first logs the styling properties of the line plot using [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) archetype.
 Then, it iterates over a range of time steps, calculates the y value of the line function at each time step, and logs it as a scalars using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype.
-Additionally, it generates random samples around the line function and logs them using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) and [`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_poins?speculative-linkt) archetypes.
+Additionally, it generates random samples around the line function and logs them using [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) and [`SeriesPoints`](https://www.rerun.io/docs/reference/types/archetypes/series_points?speculative-link) archetypes.
 
  ```python
 def log_classification() -> None:
@@ -138,4 +138,4 @@ python -m plots --help
 ## Advanced time series - [`send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
 Logging many scalars individually can be slow.
 The [`send_columns`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns) API can be used to log many scalars at once.
-Check the [`Scalars` `send_columns` snippet](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-links#scalars-send-columns) to learn more.
+Check the [`Scalars` `send_columns` snippet](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-links#update-a-scalar-over-time-in-a-single-operation) to learn more.
