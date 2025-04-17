@@ -83,7 +83,7 @@ impl CompareCommand {
             'outer: for chunk1 in &chunks1 {
                 for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
                     #[allow(clippy::unwrap_used)]
-                    if re_chunk::Chunk::are_similar(chunk1, chunk2.as_ref().unwrap()) {
+                    if re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
                         *chunk2 = None;
                         continue 'outer;
                     }
@@ -93,31 +93,32 @@ impl CompareCommand {
             }
         }
 
-        fn format_chunk(chunk: &Chunk) -> anyhow::Result<String> {
-            Ok(re_format_arrow::format_record_batch_opts(
-                &chunk.to_record_batch()?,
+        fn format_chunk(chunk: &Chunk) -> String {
+            re_format_arrow::format_record_batch_opts(
+                &chunk.to_record_batch().expect("Cannot fail in practice"),
                 &re_format_arrow::RecordBatchFormatOpts {
-                    transposed: true,
+                    transposed: false,
                     width: None,
                     include_metadata: true,
                     include_column_metadata: false,
                 },
             )
-            .to_string())
+            .to_string()
         }
 
         if !*unordered || unordered_failed {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
-                anyhow::ensure!(
-                    re_chunk::Chunk::are_similar(&chunk1, &chunk2),
-                    "Chunks do not match:\n{}",
-                    similar_asserts::SimpleDiff::from_str(
-                        &format_chunk(&chunk1)?,
-                        &format_chunk(&chunk2)?,
-                        "got",
-                        "expected",
-                    ),
-                );
+                re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
+                    format!(
+                        "Chunks diff:\n{}",
+                        similar_asserts::SimpleDiff::from_str(
+                            &format_chunk(&chunk1),
+                            &format_chunk(&chunk2),
+                            "got",
+                            "expected",
+                        ),
+                    )
+                })?;
             }
         }
 

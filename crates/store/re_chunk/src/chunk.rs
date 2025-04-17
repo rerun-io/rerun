@@ -13,6 +13,7 @@ use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
+use re_error::format;
 use re_log_types::{
     EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
@@ -133,26 +134,28 @@ impl ChunkComponents {
 
     /// Approximate equal, that ignores small numeric differences.
     ///
+    /// Returns `Ok` if similar.
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
+    ///
     /// Useful for tests.
-    pub fn are_similar(left: &Self, right: &Self) -> bool {
-        if left.len() != right.len() {
-            return false;
-        }
+    pub fn ensure_similar(left: &Self, right: &Self) -> anyhow::Result<()> {
+        anyhow::ensure!(left.len() == right.len());
         for (comp_name, left_comp_map) in left.iter() {
             let Some(right_map) = right.get(comp_name) else {
-                return false;
+                anyhow::bail!("rhs is missing {comp_name:?}");
             };
             for (descr, left_array) in left_comp_map {
                 let Some(right_array) = right_map.get(descr) else {
-                    return false;
+                    anyhow::bail!("rhs {comp_name:?} is missing {descr:?}");
                 };
                 if !re_arrow_util::approximate_equals(&left_array.to_data(), &right_array.to_data())
                 {
-                    return false;
+                    anyhow::bail!("Difference in {comp_name:?} {descr:?}");
                 }
             }
         }
-        true
+        Ok(())
     }
 }
 
@@ -291,12 +294,16 @@ impl Chunk {
         self
     }
 
-    /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
+    /// Returns `Ok` if two [`Chunk`]s are _similar_, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as `log_time` timestamps.
+    /// It also forgives small numeric inaccuracies in floating point buffers.
+    ///
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
     ///
     /// Useful for tests.
-    pub fn are_similar(lhs: &Self, rhs: &Self) -> bool {
+    pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
         let Self {
             id: _,
             entity_path,
@@ -307,36 +314,36 @@ impl Chunk {
             components,
         } = lhs;
 
-        if *entity_path != rhs.entity_path {
-            return false;
-        }
+        anyhow::ensure!(*entity_path == rhs.entity_path);
 
-        if timelines.keys().collect_vec() != rhs.timelines.keys().collect_vec() {
-            return false;
-        }
+        anyhow::ensure!(timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec());
 
-        let timelines: IntMap<_, _> = timelines
+        let left_timelines: IntMap<_, _> = timelines
             .iter()
             .map(|(timeline, time_column)| (*timeline, time_column))
             .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
             .collect();
-        let rhs_timelines: IntMap<_, _> = rhs
+        let right_timelines: IntMap<_, _> = rhs
             .timelines
             .iter()
             .map(|(timeline, time_column)| (*timeline, time_column))
             .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
             .collect();
-        if timelines != rhs_timelines {
-            return false;
+        for (timeline, left_time_col) in left_timelines {
+            let right_time_col = right_timelines
+                .get(&timeline)
+                .ok_or_else(|| anyhow::format_err!("right is missing timeline {timeline:?}"))?;
+            anyhow::ensure!(
+                &left_time_col == right_time_col,
+                "Timeline differs: {timeline:?}"
+            );
         }
 
         // Handle edge case: recording time on partition properties should ignore start time.
         if entity_path == &EntityPath::recording_properties() {
             // We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.
-            if components.len() != rhs.components.len() {
-                return false;
-            }
+            anyhow::ensure!(components.len() == rhs.components.len());
 
             // Copied from `rerun.archetypes.RecordingProperties`.
             let recording_time_descriptor = ComponentDescriptor {
@@ -366,9 +373,10 @@ impl Chunk {
                 })
                 .collect::<IntMap<_, _>>();
 
-            lhs_components == rhs_components
+            anyhow::ensure!(lhs_components == rhs_components);
+            Ok(())
         } else {
-            ChunkComponents::are_similar(components, &rhs.components)
+            ChunkComponents::ensure_similar(components, &rhs.components)
         }
     }
 
