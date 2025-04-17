@@ -13,10 +13,28 @@ https://github.com/user-attachments/assets/f064403f-5d34-4b55-83f9-12db518f7ddd
 #### Viewer
 
 * 📈 Added support for multiple scalars under a single entity
+* 🧮 [Experimental support for tables and dataframes](https://rerun.io/docs/howto/logging/send-table)
+* ⚙️ Added recording properties to the sidepanel
 
+#### APIs
+
+* ⚙️ [New APIs for attaching properties (metadata) to recordings](https://github.com/rerun-io/rerun/blob/0.23.0/docs/snippets/all/concepts/recording_properties.py)
 
 ### ⚠️ Breaking changes
-TODO: fill in
+
+This release changes how the SDKs interact with the viewer, as Rerun now relies heavily on gRPC.
+Additionally, we have changed our file format and data model to be much more flexible in the future.
+These changes will improve our backwards-compatibility going forward, but this also means that this release introduces breaking changes to our `.rrd` format and how the SDKs communicate with the viewer.
+
+TODO: Add link to BW-compat blog post 
+
+- `.rrd` files from previous releases cannot be loaded anymore.
+- Removed unsupported connection methods from the SDKs.
+- The connection URLs have changed and now require a `rerun://` (TLS) or `rerun+http://` (unencrypted) prefix.
+- Several changes to our logging SDKs (timelines, time units, ...)
+
+You can find more information in our migration guide.
+
 🧳 Migration guide: TODO: add link (yes, again)
 
 ### 🔎 Details
@@ -35,7 +53,6 @@ TODO: fill in
 - Example showcasing `send_table` from notebooks [#9522](https://github.com/rerun-io/rerun/pull/9522)
 - Add `rr.serve_web_viewer` [#9540](https://github.com/rerun-io/rerun/pull/9540)
 - Add experimental `send_table` to Python SDK [#9538](https://github.com/rerun-io/rerun/pull/9538)
-- Document `send_table` in the Python SDK [#9589](https://github.com/rerun-io/rerun/pull/9589)
 - Fix handling of custom indicator components [#9755](https://github.com/rerun-io/rerun/pull/9755)
 
 #### 🌊 C++ API
@@ -127,6 +144,7 @@ TODO: fill in
 - Update cpp/eigen_opencv README snippets [#9463](https://github.com/rerun-io/rerun/pull/9463) (thanks [@ExpertOfNil](https://github.com/ExpertOfNil)!)
 - Include field names in Archetype docs [#9563](https://github.com/rerun-io/rerun/pull/9563)
 - Unify viewer callbacks into a single `Event` interface [#9739](https://github.com/rerun-io/rerun/pull/9739)
+- Document `send_table` in the Python SDK [#9589](https://github.com/rerun-io/rerun/pull/9589)
 
 #### 🖼 UI improvements
 - Improve `redap://` connection UX and error messages [#9045](https://github.com/rerun-io/rerun/pull/9045)
