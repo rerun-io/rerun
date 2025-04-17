@@ -97,10 +97,10 @@ impl CompareCommand {
             re_format_arrow::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
                 &re_format_arrow::RecordBatchFormatOpts {
-                    transposed: true,
-                    width: None,
+                    transposed: false,
+                    width: Some(800),
                     include_metadata: true,
-                    include_column_metadata: false,
+                    include_column_metadata: true,
                 },
             )
             .to_string()
