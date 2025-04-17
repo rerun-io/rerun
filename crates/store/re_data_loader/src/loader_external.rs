@@ -182,9 +182,9 @@ impl crate::DataLoader for ExternalLoader {
                 // streaming data to stdout.
                 let is_sending_data = Arc::new(AtomicBool::new(false));
 
-                let version_policy = re_log_encoding::VersionPolicy::Warn;
+
                 let stdout = std::io::BufReader::new(stdout);
-                match re_log_encoding::decoder::Decoder::new(version_policy, stdout) {
+                match re_log_encoding::decoder::Decoder::new(stdout) {
                     Ok(decoder) => {
                         let filepath = filepath.clone();
                         let tx = tx.clone();

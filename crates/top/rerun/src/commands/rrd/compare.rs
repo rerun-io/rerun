@@ -142,8 +142,7 @@ fn load_chunks(
     let rrd_file = std::io::BufReader::new(rrd_file);
 
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let version_policy = re_log_encoding::VersionPolicy::Warn; // Loading old versions is fine, and common for backwards compatibility checks!
-    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
     for msg in decoder {
         let msg = msg.context("decode rrd message")?;
         stores

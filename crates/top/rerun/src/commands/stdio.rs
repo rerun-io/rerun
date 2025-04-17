@@ -38,7 +38,6 @@ impl std::fmt::Display for InputSource {
 ///
 /// This function is capable of decoding multiple independent recordings from a single stream.
 pub fn read_rrd_streams_from_file_or_stdin(
-    version_policy: re_log_encoding::VersionPolicy,
     paths: &[String],
 ) -> (
     channel::Receiver<(InputSource, anyhow::Result<LogMsg>)>,
@@ -64,11 +63,8 @@ pub fn read_rrd_streams_from_file_or_stdin(
 
                 let stdin = std::io::BufReader::new(std::io::stdin().lock());
 
-                let mut decoder = match re_log_encoding::decoder::Decoder::new_concatenated(
-                    version_policy,
-                    stdin,
-                )
-                .context("couldn't decode stdin stream -- skipping")
+                let mut decoder = match re_log_encoding::decoder::Decoder::new_concatenated(stdin)
+                    .context("couldn't decode stdin stream -- skipping")
                 {
                     Ok(decoder) => decoder,
                     Err(err) => {
@@ -98,17 +94,16 @@ pub fn read_rrd_streams_from_file_or_stdin(
                         }
                     };
 
-                    let mut decoder =
-                        match re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)
-                            .with_context(|| format!("couldn't decode {rrd_path:?} -- skipping"))
-                        {
-                            Ok(decoder) => decoder,
-                            Err(err) => {
-                                tx.send((InputSource::File(rrd_path.clone()), Err(err)))
-                                    .ok();
-                                continue;
-                            }
-                        };
+                    let mut decoder = match re_log_encoding::decoder::Decoder::new(rrd_file)
+                        .with_context(|| format!("couldn't decode {rrd_path:?} -- skipping"))
+                    {
+                        Ok(decoder) => decoder,
+                        Err(err) => {
+                            tx.send((InputSource::File(rrd_path.clone()), Err(err)))
+                                .ok();
+                            continue;
+                        }
+                    };
 
                     for res in &mut decoder {
                         let res = res.context("decode rrd message").with_context(|| {
