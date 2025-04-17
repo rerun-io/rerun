@@ -8,7 +8,7 @@ rr.init("rerun_example_transform3d_hierarchy", spawn=True)
 
 if False:
     # One space with the sun in the center, and another one with the planet.
-    #TODO(#5521): enable this once we have it in Rust too, so that the snippets compare equally
+    # TODO(#5521): enable this once we have it in Rust too, so that the snippets compare equally
     rr.send_blueprint(
         rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
     )
