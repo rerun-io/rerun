@@ -27,7 +27,7 @@ Sending tables (dataframes to the viewer):
 <img width="721" alt="Image" src="https://github.com/user-attachments/assets/eb80f506-ab36-4e64-ae17-0ad9b2cd7ab4" />
 
 ### ✨ Overview & highlights
- 
+
 #### Viewer
 
 * 📈 Added support for multiple scalars under a single entity
@@ -44,7 +44,7 @@ This release changes how the SDKs interact with the viewer, as Rerun now relies 
 Additionally, we have changed our file format and data model to be much more flexible in the future.
 These changes will improve our backwards-compatibility going forward, but this also means that this release introduces breaking changes to our `.rrd` format and how the SDKs communicate with the viewer.
 
-TODO: Add link to BW-compat blog post 
+TODO: Add link to BW-compat blog post
 
 - `.rrd` files from previous releases cannot be loaded anymore.
 - Removed unsupported connection methods from the SDKs.
@@ -93,7 +93,7 @@ You can find more information in our migration guide.
 - Enable a bunch of `ruff` lints [#9201](https://github.com/rerun-io/rerun/pull/9201)
 - Remove deprecated Python APIs: `log_components`, `connect`, `connect_tcp` [#9197](https://github.com/rerun-io/rerun/pull/9197)
 - Remove deprecated `rr.serve()` [#9207](https://github.com/rerun-io/rerun/pull/9207)
-- Deprecate `rr.new_recording()` in favour of `rr.RecordingStream()` and improve type checking of the Rust bindings [#9206](https://github.com/rerun-io/rerun/pull/9206)
+- Deprecate `rr.new_recording()` in favor of `rr.RecordingStream()` and improve type checking of the Rust bindings [#9206](https://github.com/rerun-io/rerun/pull/9206)
 - Archetype based overrides & defaults [#9209](https://github.com/rerun-io/rerun/pull/9209)
 - Fix several typing annotations in the SDK and run mypy on snippets [#9260](https://github.com/rerun-io/rerun/pull/9260)
 - Correct truncation of AnyValues when using strings or bytes [#9269](https://github.com/rerun-io/rerun/pull/9269)
@@ -154,7 +154,7 @@ You can find more information in our migration guide.
 - Add Mast3r_slam Example [#9242](https://github.com/rerun-io/rerun/pull/9242) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
 
 #### 📚 Docs
-- Add link to Snap Store in Gettting Started [#8972](https://github.com/rerun-io/rerun/pull/8972) (thanks [@artivis](https://github.com/artivis)!)
+- Add link to Snap Store in Getting Started [#8972](https://github.com/rerun-io/rerun/pull/8972) (thanks [@artivis](https://github.com/artivis)!)
 - Document testing in Rerun [#8989](https://github.com/rerun-io/rerun/pull/8989)
 - Fix rustdocs for `re_video` [#9295](https://github.com/rerun-io/rerun/pull/9295)
 - Callbacks: Update APIs, improve docs [#9312](https://github.com/rerun-io/rerun/pull/9312)
