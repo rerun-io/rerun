@@ -6,15 +6,14 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
-use tonic::transport::Channel;
+use tracing::instrument;
 
+use re_grpc_client::redap::RedapClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::EntryId;
 use re_protos::frontend::v1alpha1::GetPartitionTableSchemaRequest;
 use re_protos::{
-    frontend::v1alpha1::{
-        frontend_service_client::FrontendServiceClient, ScanPartitionTableRequest,
-    },
+    frontend::v1alpha1::ScanPartitionTableRequest,
     manifest_registry::v1alpha1::ScanPartitionTableResponse,
 };
 
@@ -22,12 +21,12 @@ use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
 #[derive(Debug, Clone)]
 pub struct PartitionTableProvider {
-    client: FrontendServiceClient<Channel>,
+    client: RedapClient,
     dataset_id: EntryId,
 }
 
 impl PartitionTableProvider {
-    pub fn new(client: FrontendServiceClient<Channel>, dataset_id: EntryId) -> Self {
+    pub fn new(client: RedapClient, dataset_id: EntryId) -> Self {
         Self { client, dataset_id }
     }
 
@@ -41,6 +40,7 @@ impl PartitionTableProvider {
 impl GrpcStreamToTable for PartitionTableProvider {
     type GrpcStreamData = ScanPartitionTableResponse;
 
+    #[instrument(skip(self), err)]
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
         let request = GetPartitionTableSchemaRequest {
             dataset_id: Some(self.dataset_id.into()),
@@ -60,6 +60,7 @@ impl GrpcStreamToTable for PartitionTableProvider {
         ))
     }
 
+    #[instrument(skip(self), err)]
     async fn send_streaming_request(
         &mut self,
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {

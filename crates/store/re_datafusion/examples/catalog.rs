@@ -10,11 +10,7 @@ use re_tuid::Tuid;
 async fn main() -> anyhow::Result<()> {
     let local_addr = "127.0.0.1:51234";
 
-    let conn = tonic::transport::Endpoint::new(format!("http://{local_addr}"))?
-        .connect()
-        .await?;
-
-    let mut df_connector = DataFusionConnector::new(&conn);
+    let mut df_connector = DataFusionConnector::new(&format!("http://{local_addr}")).await?;
 
     let ctx = SessionContext::default();
 

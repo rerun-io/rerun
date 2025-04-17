@@ -8,8 +8,11 @@ use pyo3::{
     types::{PyAnyMethods as _, PyCapsule},
     Bound, PyAny, PyRef, PyRefMut, PyResult,
 };
+use tracing::instrument;
 
 use re_datafusion::TableEntryTableProvider;
+
+use redap_telemetry::external::tracing;
 
 use crate::{
     catalog::PyEntry,
@@ -28,6 +31,7 @@ pub struct PyTable {
 #[pymethods]
 impl PyTable {
     /// Returns a DataFusion table provider capsule.
+    #[instrument(skip_all)]
     fn __datafusion_table_provider__(
         mut self_: PyRefMut<'_, Self>,
     ) -> PyResult<Bound<'_, PyCapsule>> {
@@ -65,6 +69,7 @@ impl PyTable {
     }
 
     /// Registers the table with the DataFusion context and return a DataFrame.
+    #[instrument(skip_all)]
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 

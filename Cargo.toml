@@ -105,6 +105,8 @@ re_tracing = { path = "crates/utils/re_tracing", version = "=0.23.0-alpha.3", de
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.23.0-alpha.3", default-features = false }
 re_uri = { path = "crates/utils/re_uri", version = "=0.23.0-alpha.3", default-features = false }
 re_video = { path = "crates/utils/re_video", version = "=0.23.0-alpha.3", default-features = false }
+# TODO
+redap_telemetry = { path = "crates/utils/redap_telemetry", version = "=0.23.0-alpha.3", default-features = false }
 
 # crates/viewer:
 re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.23.0-alpha.3", default-features = false }
@@ -361,6 +363,18 @@ wgpu = { version = "24.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 xshell = "0.2.7"
+
+
+
+# TODO
+opentelemetry = { version = "0.29.0", features = ["metrics"] }
+opentelemetry_sdk = { version = "0.29.0", features = ["rt-tokio"] }
+opentelemetry-otlp = "0.29.0"
+opentelemetry-stdout = "0.29.0"
+tracing-opentelemetry = "0.30.0"
+tracing-subscriber = { version = "0.3.18", features = ["tracing-log", "fmt", "env-filter"] }
+tower = "0.5"
+tower-service = "0.3"
 
 
 # ---------------------------------------------------------------------------------

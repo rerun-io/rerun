@@ -401,7 +401,7 @@ async fn fetch_dataset_entries(
 }
 
 async fn fetch_partition_table(
-    client: &mut redap::Client,
+    client: &mut redap::RedapClient,
     entry_id: EntryId,
 ) -> Result<Vec<SorbetBatch>, EntryError> {
     let mut response = client

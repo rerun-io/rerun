@@ -8,11 +8,12 @@ use pyo3::{
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{client, get_chunks_response_to_chunk_and_partition_id};
+use re_grpc_client::redap::{get_chunks_response_to_chunk_and_partition_id, RedapClient};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
@@ -21,10 +22,7 @@ use re_protos::{
         ReadTableEntryRequest,
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
-    frontend::v1alpha1::{
-        frontend_service_client::FrontendServiceClient, GetChunksRequest, GetDatasetSchemaRequest,
-        RegisterWithDatasetRequest,
-    },
+    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest},
     manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
 };
 
@@ -39,17 +37,18 @@ pub struct ConnectionHandle {
     origin: re_uri::Origin,
 
     /// The actual tonic connection.
-    client: FrontendServiceClient<tonic::transport::Channel>,
+    client: RedapClient,
 }
 
 impl ConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, client(origin.clone())).map_err(to_py_err)?;
+        let client = wait_for_future(py, re_grpc_client::redap::client(origin.clone()))
+            .map_err(to_py_err)?;
 
         Ok(Self { origin, client })
     }
 
-    pub fn client(&self) -> FrontendServiceClient<tonic::transport::Channel> {
+    pub fn client(&self) -> RedapClient {
         self.client.clone()
     }
 
@@ -61,6 +60,7 @@ impl ConnectionHandle {
 // TODO(ab): all these request wrapper should be implemented in a more general client wrapper also
 // used in e.g. the redap browser, etc. The present connection handle should just forward them.
 impl ConnectionHandle {
+    #[instrument(skip(self, py), err)]
     pub fn find_entries(
         &mut self,
         py: Python<'_>,
@@ -85,6 +85,7 @@ impl ConnectionHandle {
         Ok(entries?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn delete_entry(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
         let _response = wait_for_future(
             py,
@@ -97,6 +98,7 @@ impl ConnectionHandle {
         Ok(())
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn create_dataset(&mut self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
@@ -112,6 +114,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn read_dataset(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
@@ -128,6 +131,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn read_table(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         let response = wait_for_future(
             py,
@@ -144,6 +148,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn get_dataset_schema(
         &mut self,
         py: Python<'_>,
@@ -162,6 +167,7 @@ impl ConnectionHandle {
         })
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn register_with_dataset(
         &mut self,
         py: Python<'_>,
@@ -189,6 +195,7 @@ impl ConnectionHandle {
         })
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn wait_for_task(
         &mut self,
         py: Python<'_>,
@@ -248,6 +255,7 @@ impl ConnectionHandle {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip(self, py, partition_ids), err)]
     pub fn get_chunks_for_dataframe_query(
         &mut self,
         py: Python<'_>,
