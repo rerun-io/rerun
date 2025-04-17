@@ -576,7 +576,7 @@ fn line_ui(
         SubcellKind::Instance => {
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
-                &re_ui::icons::COLLAPSE,
+                &re_ui::icons::ARROW_UP,
                 CellStyle::InstanceData,
                 data_content,
             );

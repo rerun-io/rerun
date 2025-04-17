@@ -56,6 +56,7 @@ pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.png");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.png");
 pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.png");
 pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.png");
+pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.png");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.png");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.png");
 
@@ -66,8 +67,6 @@ pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_to
 
 pub const MINIMIZE: Icon = icon_from_path!("../data/icons/minimize.png");
 pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.png");
-
-pub const COLLAPSE: Icon = icon_from_path!("../data/icons/collapse.png");
 pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.png");
 pub const COLUMN_VISIBILITY: Icon = icon_from_path!("../data/icons/column_visibility.png");
 

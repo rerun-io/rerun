@@ -22,6 +22,7 @@ impl<T: Send + 'static> RequestedObject<T> {
         let handle = Self::Pending(rx);
 
         runtime.spawn_future(async move {
+            //TODO(ab): implement cancellation
             let result = func.await;
             let _ = tx.send(result);
         });

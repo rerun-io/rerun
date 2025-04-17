@@ -12,11 +12,11 @@ pub enum ColumnDescriptorRef<'a> {
 impl ColumnDescriptorRef<'_> {
     /// Human-readable name for the column.
     #[inline]
-    pub fn name(&self) -> String {
+    pub fn name(&self) -> &str {
         match self {
-            Self::RowId(descr) => descr.name().to_owned(),
-            Self::Time(descr) => descr.column_name().to_owned(),
-            Self::Component(descr) => descr.component_name.short_name().to_owned(),
+            Self::RowId(descr) => descr.name(),
+            Self::Time(descr) => descr.column_name(),
+            Self::Component(descr) => descr.component_name.short_name(),
         }
     }
 }
