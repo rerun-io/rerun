@@ -17,7 +17,7 @@ use crate::{
     BlueprintUndoState, Caches, StorageContext, StoreBundle, StoreContext, TableStore, TableStores,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum StoreHubEntry {
     Recording {
         store_id: StoreId,
@@ -139,11 +139,6 @@ impl StoreHub {
     /// App ID used as a marker to display the welcome screen.
     pub fn welcome_screen_app_id() -> ApplicationId {
         "Welcome screen".into()
-    }
-
-    /// App ID used as a marker to display tables.
-    pub fn table_app_id() -> ApplicationId {
-        "table".into()
     }
 
     /// Blueprint ID used for the default welcome screen blueprint
@@ -416,10 +411,6 @@ impl StoreHub {
             .retain(|store_id, _| store_ids_retained.contains(store_id));
 
         self.table_stores.clear();
-
-        if self.active_table_id().is_none() {
-            self.active_entry = None;
-        }
         self.active_application_id = Some(Self::welcome_screen_app_id());
     }
 
@@ -447,9 +438,7 @@ impl StoreHub {
         // If this is the welcome screen, or we didn't have any app id at all so far,
         // we set the active application_id even if we don't find a matching recording.
         // (otherwise we don't, because we don't want to leave towards a state without any recording if we don't have to)
-        if Self::welcome_screen_app_id() == app_id
-            || (self.active_application_id.is_none() && self.active_table_id().is_none())
-        {
+        if Self::welcome_screen_app_id() == app_id || self.active_application_id.is_none() {
             self.active_application_id = Some(app_id.clone());
             self.active_entry = None;
         }
@@ -490,9 +479,6 @@ impl StoreHub {
 
         if self.active_application_id.as_ref() == Some(app_id) {
             self.active_application_id = None;
-            if self.active_table_id().is_none() {
-                self.active_entry = None;
-            }
         }
 
         self.default_blueprint_by_app_id.remove(app_id);
@@ -520,12 +506,6 @@ impl StoreHub {
             Some(StoreHubEntry::Recording { store_id }) => self.store_bundle.get(store_id),
             _ => None,
         }
-    }
-
-    /// The table id for the active table.
-    #[inline]
-    pub fn active_table_id(&self) -> Option<&TableId> {
-        self.active_entry.as_ref().and_then(|e| e.table_ref())
     }
 
     /// Currently active entry if any.
@@ -576,14 +556,6 @@ impl StoreHub {
         _ = self.caches_per_recording.entry(recording_id).or_default();
     }
 
-    /// Activate an [`StoreHubEntry`]
-    pub fn set_active_entry(&mut self, entry: StoreHubEntry) {
-        match entry {
-            StoreHubEntry::Recording { store_id } => self.set_activate_recording(store_id),
-            StoreHubEntry::Table { table_id } => self.set_activate_table(table_id),
-        }
-    }
-
     /// Activate a recording by its [`StoreId`].
     pub fn set_activate_recording(&mut self, store_id: StoreId) {
         match store_id.kind {
@@ -592,12 +564,6 @@ impl StoreHub {
                 re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");
             }
         }
-    }
-
-    /// Activate a recording by its [`TableId`].
-    fn set_activate_table(&mut self, table_id: TableId) {
-        self.active_entry = Some(StoreHubEntry::Table { table_id });
-        self.active_application_id = Some(Self::table_app_id());
     }
 
     // ---------------------
