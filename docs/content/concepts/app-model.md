@@ -32,8 +32,8 @@ The **Viewer** can be executed either:
 * On the Web as a Wasm application, which we refer to as the **Web Viewer**.
 
 Both the Native Viewer and Web Viewer may also be extended in various ways:
-* The Native Viewer may be extended through its [Rust API](../howto/visualization/extend-ui)
-* The Web Viewer can be [embedded in web applications](../howto/integrations/embed-web), and used in [Jupyter Notebooks](../howto/integrations/embed-notebooks)
+* The Native Viewer may be extended through its [Rust API](../howto/visualization/extend-ui.md)
+* The Web Viewer can be [embedded in web applications](../howto/integrations/embed-web.md), and used in [Jupyter Notebooks](../howto/integrations/embed-notebooks.md)
 
 The **Web Viewer** has its own dedicated `.wasm` artifact, and always runs in isolation in the end-user's web browser.
 Running the **Web Viewer** comes with [some performance limitations](#web-viewer-limitations), so you should always prefer to run the Viewer natively if it makes sense.
