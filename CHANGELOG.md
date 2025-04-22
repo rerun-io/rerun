@@ -1,10 +1,19 @@
 # Rerun changelog
 
-## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0)
+## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0) - Backwards compatible `.rrd` and multi-scalar logging
 
-📖 Release blogpost: https://rerun.io/blog/release-0.23
+* 📖 [Release blogpost](https://rerun.io/blog/release-0.23)
+* 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-23)
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-23
+### ✨ Overview & highlights
+
+#### Viewer
+
+* ⏩ [New .rrd format that will be backwards compatible](https://rerun.io/blog/release-0.23)
+* 📈 Support for multiple scalars under a single entity
+* ↪️ [Callbacks API for notebooks and JavaScript](https://rerun.io/docs/howto/callbacks/)
+* ⚙️ [New APIs for attaching properties (metadata) to recordings](https://github.com/rerun-io/rerun/blob/0.23.0/docs/snippets/all/concepts/recording_properties.py)
+* 🧮 [Experimental support for tables and dataframes](https://rerun.io/docs/howto/logging/send-table)
 
 Logging multiple scalars under a single entity:
 
@@ -13,7 +22,7 @@ rr.log("gyroscope", rr.Scalars(measurement))
 ```
 <img width="70%" src="https://github.com/user-attachments/assets/26a23ae1-6bd9-4531-91b0-8221b622c3d0">
 
-Added support for callbacks:
+Using the new callbacks API to implement data annotation:
 
 https://github.com/user-attachments/assets/f064403f-5d34-4b55-83f9-12db518f7ddd
 
@@ -27,17 +36,6 @@ Sending tables (dataframes to the viewer):
 
 <img width="721" alt="Image" src="https://github.com/user-attachments/assets/eb80f506-ab36-4e64-ae17-0ad9b2cd7ab4" />
 
-### ✨ Overview & highlights
-
-#### Viewer
-
-* 📈 Added support for multiple scalars under a single entity
-* 🧮 [Experimental support for tables and dataframes](https://rerun.io/docs/howto/logging/send-table)
-* ⚙️ Added recording properties to the sidepanel
-
-#### APIs
-
-* ⚙️ [New APIs for attaching properties (metadata) to recordings](https://github.com/rerun-io/rerun/blob/0.23.0/docs/snippets/all/concepts/recording_properties.py)
 
 ### ⚠️ Breaking changes
 
@@ -45,16 +43,12 @@ This release changes how the SDKs interact with the viewer, as Rerun now relies 
 Additionally, we have changed our file format and data model to be much more flexible in the future.
 These changes will improve our backwards-compatibility going forward, but this also means that this release introduces breaking changes to our `.rrd` format and how the SDKs communicate with the viewer.
 
-📖 Release blogpost: https://rerun.io/blog/release-0.23
-
-- `.rrd` files from previous releases cannot be loaded anymore.
-- Removed unsupported connection methods from the SDKs.
-- The connection URLs have changed and now require a `rerun://` (TLS) or `rerun+http://` (unencrypted) prefix.
+- `.rrd` files from previous releases cannot be loaded anymore
+- Removed unsupported connection methods from the SDKs
+- The connection URLs have changed and now require a `rerun://` (TLS) or `rerun+http://` (unencrypted) prefix
 - Several changes to our logging SDKs (timelines, time units, …)
 
-You can find more information in our migration guide.
-
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-23
+You can find more information in our 🧳 [migration guide](https://rerun.io/docs/reference/migration/migration-0-23)
 
 ### 🔎 Details
 
