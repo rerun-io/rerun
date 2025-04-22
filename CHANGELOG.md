@@ -2,8 +2,9 @@
 
 ## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0)
 
-📖 Release blogpost: TODO: add link
-🧳 Migration guide: TODO: add link
+📖 Release blogpost: https://rerun.io/blog/release-0.23
+
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-23
 
 Logging multiple scalars under a single entity:
 
@@ -44,7 +45,7 @@ This release changes how the SDKs interact with the viewer, as Rerun now relies 
 Additionally, we have changed our file format and data model to be much more flexible in the future.
 These changes will improve our backwards-compatibility going forward, but this also means that this release introduces breaking changes to our `.rrd` format and how the SDKs communicate with the viewer.
 
-TODO: Add link to BW-compat blog post
+📖 Release blogpost: https://rerun.io/blog/release-0.23
 
 - `.rrd` files from previous releases cannot be loaded anymore.
 - Removed unsupported connection methods from the SDKs.
@@ -53,7 +54,7 @@ TODO: Add link to BW-compat blog post
 
 You can find more information in our migration guide.
 
-🧳 Migration guide: TODO: add link (yes, again)
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-23
 
 ### 🔎 Details
 
