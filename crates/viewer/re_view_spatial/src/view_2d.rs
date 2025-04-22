@@ -299,6 +299,14 @@ impl NonNestedImageCounts {
     fn has_any_images(&self) -> bool {
         self.total() > 0
     }
+
+    fn count(&mut self, dims: &MaxDimensions) {
+        self.image += dims.image_types.contains(ImageTypes::IMAGE) as usize;
+        self.encoded_image += dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize;
+        self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
+        self.video += dims.image_types.contains(ImageTypes::VIDEO) as usize;
+        self.segmentation += dims.image_types.contains(ImageTypes::SEGMENTATION_IMAGE) as usize;
+    }
 }
 
 // Find the shared image dimensions of every image-entity that is not
@@ -323,18 +331,7 @@ fn has_single_shared_image_dimensionn(
                 image_dimension = Some(new_dimension);
             }
 
-            non_nested_image_counts.image +=
-                dimensions.image_types.contains(ImageTypes::IMAGE) as usize;
-            non_nested_image_counts.encoded_image +=
-                dimensions.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize;
-            non_nested_image_counts.depth +=
-                dimensions.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
-            non_nested_image_counts.video +=
-                dimensions.image_types.contains(ImageTypes::VIDEO) as usize;
-            non_nested_image_counts.segmentation += dimensions
-                .image_types
-                .contains(ImageTypes::SEGMENTATION_IMAGE)
-                as usize;
+            non_nested_image_counts.count(dimensions);
 
             // Ignore any nested images.
         } else {
