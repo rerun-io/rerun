@@ -128,6 +128,7 @@ fn load_and_stream(
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
                 let properties = re_types::archetypes::RecordingProperties::new()
+                    .with_start_time(re_types::datatypes::TimeInt::from(episode.0 as i64))
                     .with_name(format!("Episode {}", episode.0));
 
                 debug_assert!(TimePoint::default().is_static());
