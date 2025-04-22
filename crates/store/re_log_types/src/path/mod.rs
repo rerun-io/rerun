@@ -8,7 +8,7 @@ mod data_path;
 mod entity_path;
 mod entity_path_filter;
 mod entity_path_part;
-mod natural_ordering;
+pub mod natural_ordering;
 mod parse_path;
 
 pub use component_path::ComponentPath;

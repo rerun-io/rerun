@@ -11,7 +11,7 @@ use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{redap, StreamError};
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::CodecError;
-use re_log_types::{ApplicationId, EntryId, StoreKind};
+use re_log_types::{natural_ordering, ApplicationId, EntryId, StoreKind};
 use re_protos::catalog::v1alpha1::{
     ext::{DatasetEntry, EntryDetails},
     EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
@@ -20,7 +20,7 @@ use re_protos::frontend::v1alpha1::ScanPartitionTableRequest;
 use re_protos::TypeConversionError;
 use re_smart_channel::SmartChannelSource;
 use re_sorbet::{BatchType, SorbetBatch, SorbetError};
-use re_types::components::Timestamp;
+use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, UiExt as _, UiLayout};
 use re_viewer_context::{
     external::re_entity_db::EntityDb, AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry,
@@ -297,7 +297,14 @@ pub fn dataset_and_its_recordings_ui(
     kind: &EntryKind,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
-    entity_dbs.sort_by_key(|entity_db| entity_db.recording_property::<Timestamp>());
+    entity_dbs.sort_by_cached_key(|entity_db| {
+        (
+            entity_db
+                .recording_property::<Name>()
+                .map(|s| natural_ordering::OrderedString(s.to_string())),
+            entity_db.recording_property::<Timestamp>(),
+        )
+    });
 
     let item = kind.item();
     let selected = ctx.selection().contains_item(&item);
