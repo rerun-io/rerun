@@ -122,6 +122,7 @@ fn load_and_stream(
 ) {
     // set up all recordings
     let episodes = prepare_episode_chunks(dataset, application_id, tx);
+
     for (episode, store_id) in &episodes {
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
