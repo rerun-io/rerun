@@ -39,7 +39,7 @@ The **Web Viewer** has its own dedicated `.wasm` artifact, and always runs in is
 Running the **Web Viewer** comes with [some performance limitations](#web-viewer-limitations), so you should always prefer to run the Viewer natively if it makes sense.
 
 
-The best way to make sense of it all it to look at some of the most common scenarios when:
+The best way to make sense of it all is to look at some of the most common scenarios when:
 * Logging and visualizing data on native.
 * Logging data on native and visualizing it on the web.
 
