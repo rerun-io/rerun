@@ -129,7 +129,7 @@ class TimeColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeSequenceColumn(TimeColumnLike):
     """
@@ -163,7 +163,7 @@ class TimeSequenceColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeSecondsColumn(TimeColumnLike):
     """
@@ -197,7 +197,7 @@ class TimeSecondsColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeNanosColumn(TimeColumnLike):
     """
