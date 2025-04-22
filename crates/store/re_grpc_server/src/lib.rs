@@ -44,7 +44,8 @@ pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 
-// roughly 1 MiB of messages
+// Channel capacity is completely arbitrary, e just want something large enough
+// to handle bursts of messages. This is roughly 1 MiB of `Msg` (excluding their contents).
 const MESSAGE_QUEUE_CAPACITY: usize =
     (1024 * 1024 / std::mem::size_of::<Msg>()).next_power_of_two();
 
@@ -599,8 +600,6 @@ impl MessageProxy {
         broadcast::Receiver<LogMsgProto>,
         broadcast::Receiver<TableMsgProto>,
     ) {
-        // Channel capacity is completely arbitrary.
-        // We just want something large enough to handle bursts of messages.
         let (event_tx, event_rx) = mpsc::channel(MESSAGE_QUEUE_CAPACITY);
         let (broadcast_log_tx, broadcast_log_rx) = broadcast::channel(MESSAGE_QUEUE_CAPACITY);
         let (broadcast_table_tx, broadcast_table_rx) = broadcast::channel(MESSAGE_QUEUE_CAPACITY);
