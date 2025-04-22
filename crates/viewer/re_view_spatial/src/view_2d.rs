@@ -228,6 +228,11 @@ impl ViewClass for SpatialView2D {
                     &mut recommended_views,
                 );
 
+                if recommended_views.is_empty() {
+                    // There were no images, so just create a single space-view at the common root:
+                    recommended_views.push(RecommendedView::new_subtree(recommended_root));
+                }
+
                 recommended_views
             }))
         })
