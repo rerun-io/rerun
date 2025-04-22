@@ -498,7 +498,7 @@ jobs:
           cpp_sdk_zip_link="https://build.rerun.io/commit/$short_commit_hash/rerun_cpp_sdk.zip"
 
           pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
-          cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
+          cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }} --locked"
           npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
 
           cat <<EOF > comment-body.txt
