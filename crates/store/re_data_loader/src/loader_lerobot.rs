@@ -127,7 +127,7 @@ fn load_and_stream(
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
                 let properties = re_types::archetypes::RecordingProperties::new()
-                    .with_name(format!("Episode {:06}", episode.0));
+                    .with_name(format!("Episode {}", episode.0));
 
                 debug_assert!(TimePoint::default().is_static());
                 let Ok(initial) = Chunk::builder(EntityPath::recording_properties())

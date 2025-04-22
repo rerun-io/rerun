@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
@@ -297,11 +298,25 @@ pub fn dataset_and_its_recordings_ui(
     kind: &EntryKind,
     mut entity_dbs: Vec<&EntityDb>,
 ) {
-    entity_dbs.sort_by_key(|entity_db| {
-        (
-            entity_db.recording_property::<Name>(),
-            entity_db.recording_property::<Timestamp>(),
-        )
+    entity_dbs.sort_by(|a, b| {
+        let name_order = match (
+            a.recording_property::<Name>(),
+            b.recording_property::<Name>(),
+        ) {
+            (Some(ref name_a), Some(ref name_b)) => {
+                re_log_types::natural_ordering::compare(name_a, name_b)
+            }
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+        };
+
+        if name_order != Ordering::Equal {
+            name_order
+        } else {
+            a.recording_property::<Timestamp>()
+                .cmp(&b.recording_property::<Timestamp>())
+        }
     });
 
     let item = kind.item();
