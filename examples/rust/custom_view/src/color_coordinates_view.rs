@@ -140,7 +140,7 @@ impl ViewClass for ColorCoordinatesView {
     ) -> SmallVisualizerSet {
         if visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
-            .map_or(false, |entities| entities.contains(entity_path))
+            .is_some_and(|entities| entities.contains(entity_path))
         {
             SmallVisualizerSet::from_slice(&[InstanceColorSystem::identifier()])
         } else {
