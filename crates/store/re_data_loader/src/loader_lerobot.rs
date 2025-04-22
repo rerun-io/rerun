@@ -122,14 +122,12 @@ fn load_and_stream(
 ) {
     // set up all recordings
     let episodes = prepare_episode_chunks(dataset, application_id, tx);
-
     for (episode, store_id) in &episodes {
         // log episode data to its respective recording
         match load_episode(dataset, *episode) {
             Ok(chunks) => {
                 let properties = re_types::archetypes::RecordingProperties::new()
-                    .with_start_time(re_types::datatypes::TimeInt::from(episode.0 as i64))
-                    .with_name(format!("Episode {}", episode.0));
+                    .with_name(format!("Episode {:06}", episode.0));
 
                 debug_assert!(TimePoint::default().is_static());
                 let Ok(initial) = Chunk::builder(EntityPath::recording_properties())
