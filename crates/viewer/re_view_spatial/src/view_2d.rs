@@ -285,7 +285,7 @@ struct NonNestedImageCounts {
 }
 
 impl NonNestedImageCounts {
-    fn has_any_images(&self) -> bool {
+    fn total(&self) -> usize {
         let Self {
             image,
             encoded_image,
@@ -293,8 +293,11 @@ impl NonNestedImageCounts {
             video,
             segmentation,
         } = self;
+        image + encoded_image + depth + video + segmentation
+    }
 
-        *image > 0 || *encoded_image > 0 || *depth > 0 || *video > 0 || *segmentation > 0
+    fn has_any_images(&self) -> bool {
+        self.total() > 0
     }
 }
 
@@ -376,9 +379,11 @@ fn recommended_views_with_image_splits(
         && image_counts.encoded_image + image_counts.image + image_counts.video <= 1
         && image_counts.depth <= 1;
 
-    if has_desired_image_overlap {
+    if 1 < image_counts.total() && has_desired_image_overlap {
         // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
         // This can be useful for comparing a segmentation image on top of an RGB image, for instance.
+        // However, it only makes sense to do this if there are at least one image,
+        // otherwise we might be creating a space-view with the root `/a` when the only image is at `/a/b/c`.
         recommended.push(RecommendedView::new_subtree(recommended_root.clone()));
     } else {
         // Split the space and recurse
