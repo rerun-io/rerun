@@ -1,5 +1,5 @@
 use egui::ahash::{HashMap, HashSet};
-use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
+use egui_plot::{ColorConflictHandling, Legend, Line, Plot, PlotPoint, Points};
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
@@ -462,7 +462,11 @@ impl ViewClass for TimeSeriesView {
             });
 
         if *legend_visible.0 {
-            plot = plot.legend(Legend::default().position(legend_corner.into()));
+            plot = plot.legend(
+                Legend::default()
+                    .position(legend_corner.into())
+                    .color_conflict_handling(ColorConflictHandling::PickFirst),
+            );
         }
 
         match timeline.typ() {

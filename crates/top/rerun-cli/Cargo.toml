@@ -61,7 +61,7 @@ default = ["native_viewer", "web_viewer", "map_view"]
 release = ["default", "nasm"]
 
 ## Enable faster native video decoding with assembly.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["rerun/nasm"]
 
 ## Support spawning a native viewer.
