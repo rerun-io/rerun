@@ -150,7 +150,7 @@ In practice, browsers restrict this down to around 2 GiB. When the Viewer runs o
 This means you can't visualize larger recordings in full. Visualizing data which does not fit in RAM is [something we're actively working on](https://rerun.io/blog/physical-ai-data).
 
 Multi-threaded Wasm is not yet generally available, and where it is available it is very inconvenient to use.
-As a result, the Viewer currently runs fully single-threaded on the web. This makes it _incredibly_ slow compared to the native Viewer,
+As a result, the Viewer currently runs fully single-threaded on the web. This makes it very slow compared to the native Viewer,
 which can use multiple cores to ingest, process, and visualize your data.
 
 ## FAQ
