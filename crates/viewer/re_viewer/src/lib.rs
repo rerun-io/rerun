@@ -44,8 +44,9 @@ pub mod external {
     pub use {eframe, egui};
     pub use {
         re_chunk, re_chunk::external::*, re_chunk_store, re_chunk_store::external::*, re_data_ui,
-        re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_types, re_ui,
-        re_viewer_context, re_viewer_context::external::*, re_viewport, re_viewport::external::*,
+        re_entity_db, re_log, re_log_types, re_memory, re_renderer, re_smart_channel, re_types,
+        re_ui, re_view_spatial, re_viewer_context, re_viewer_context::external::*, re_viewport,
+        re_viewport::external::*,
     };
 }
 

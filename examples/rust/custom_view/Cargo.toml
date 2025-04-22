@@ -10,11 +10,18 @@ publish = false
 default = []
 
 # Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
-analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
+analytics = ["rerun/analytics"]
 
 [dependencies]
-re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
-re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
+  "data_loaders",
+  "dataframe",
+  "glam",
+  "log",
+  "native_viewer",
+  "sdk",
+  "server",
+] }
 
 # We need re_grpc_server to receive log events from an SDK:
 re_grpc_server = { path = "../../../crates/store/re_grpc_server" }

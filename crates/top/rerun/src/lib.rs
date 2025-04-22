@@ -179,6 +179,9 @@ pub mod external {
     #[cfg(not(target_arch = "wasm32"))]
     pub use clap;
 
+    #[cfg(any(feature = "run", feature = "native_viewer"))]
+    pub use re_crash_handler;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
 
