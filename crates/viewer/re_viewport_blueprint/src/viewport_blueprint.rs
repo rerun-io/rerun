@@ -304,11 +304,11 @@ impl ViewportBlueprint {
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
 
-            let suggested_filter = ResolvedEntityPathFilter::properties();
+            let excluded_entities = ResolvedEntityPathFilter::properties();
 
             let mut recommended_views = entry
                 .class
-                .spawn_heuristics(ctx, &suggested_filter)
+                .spawn_heuristics(ctx, &excluded_entities)
                 .into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);

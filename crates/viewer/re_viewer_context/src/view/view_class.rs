@@ -171,12 +171,13 @@ pub trait ViewClass: Send + Sync {
 
     /// Determines which views should be spawned by default for this class.
     ///
-    /// As the name implies, `suggested_filter` is only a suggestion and can be,
+    /// Entities matching `excluded_entities` should be _excluded_,
+    /// though this is only a suggestion and may be
     /// overwritten if a view decides to display more data.
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        excluded_entities: &ResolvedEntityPathFilter,
     ) -> ViewSpawnHeuristics;
 
     /// Ui shown when the user selects a view of this class.

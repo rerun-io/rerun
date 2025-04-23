@@ -169,7 +169,7 @@ impl ViewClass for SpatialView2D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        excluded_entities: &ResolvedEntityPathFilter,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -177,7 +177,7 @@ impl ViewClass for SpatialView2D {
             ctx,
             Self::identifier(),
             SpatialViewKind::TwoD,
-            suggested_filter,
+            excluded_entities,
         );
 
         let image_dimensions =

@@ -84,7 +84,7 @@ Configure in the selection panel:
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _suggested_filter: &ResolvedEntityPathFilter,
+        _excluded_entities: &ResolvedEntityPathFilter,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         // Doesn't spawn anything by default.
         Default::default()

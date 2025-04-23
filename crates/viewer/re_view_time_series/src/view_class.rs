@@ -203,7 +203,7 @@ impl ViewClass for TimeSeriesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        excluded_entities: &ResolvedEntityPathFilter,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -231,11 +231,11 @@ impl ViewClass for TimeSeriesView {
                 .extend(maybe_visualizable.iter().cloned());
         }
 
-        // Ensure we don't modify this list anymore before we check the `suggested_filter`.
+        // Ensure we don't modify this list anymore before we check the `excluded_entities`.
         let indicated_entities = indicated_entities;
         if indicated_entities
             .iter()
-            .all(|e| suggested_filter.matches(e))
+            .all(|e| excluded_entities.matches(e))
         {
             return ViewSpawnHeuristics::default();
         }

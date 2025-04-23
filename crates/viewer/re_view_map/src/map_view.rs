@@ -145,7 +145,7 @@ impl ViewClass for MapView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        excluded_entities: &ResolvedEntityPathFilter,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -163,7 +163,7 @@ impl ViewClass for MapView {
                     !indicated_entities.is_empty()
                         && !indicated_entities
                             .iter()
-                            .all(|e| suggested_filter.matches(e))
+                            .all(|e| excluded_entities.matches(e))
                 })
         });
 

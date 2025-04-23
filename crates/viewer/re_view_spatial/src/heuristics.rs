@@ -15,7 +15,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
     view_class_identifier: ViewClassIdentifier,
     visualizer_kind: SpatialViewKind,
-    suggested_filter: &ResolvedEntityPathFilter,
+    excluded_entities: &ResolvedEntityPathFilter,
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
 
@@ -36,7 +36,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
             }
         })
         .flatten()
-        .filter(|e| !suggested_filter.matches(e))
+        .filter(|e| !excluded_entities.matches(e))
         .cloned()
         .collect()
 }

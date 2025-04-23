@@ -265,7 +265,7 @@ impl ViewClass for SpatialView3D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        excluded_entities: &ResolvedEntityPathFilter,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -273,7 +273,7 @@ impl ViewClass for SpatialView3D {
             ctx,
             Self::identifier(),
             SpatialViewKind::ThreeD,
-            suggested_filter,
+            excluded_entities,
         );
 
         // ViewCoordinates is a strong indicator that a 3D view is needed.
