@@ -105,9 +105,11 @@ impl ViewClass for GraphView {
             .get(&NodeVisualizer::identifier())
         {
             ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
-                suggested_filter
-                    .matches(&entity)
-                    .then_some(RecommendedView::new_single_entity(entity))
+                if suggested_filter.matches(&entity) {
+                    None
+                } else {
+                    Some(RecommendedView::new_single_entity(entity))
+                }
             }))
         } else {
             ViewSpawnHeuristics::empty()
