@@ -56,7 +56,7 @@ impl EntityPathSubs {
 /// the rules can not be sorted yet from general to specific, instead they are stored
 /// in alphabetical order.
 /// To expand variables & evaluate the filter, use [`ResolvedEntityPathFilter`].
-#[derive(Clone, Default, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Default, PartialEq, Eq, Hash)]
 pub struct EntityPathFilter {
     rules: BTreeMap<EntityPathRule, RuleEffect>,
 }
@@ -66,6 +66,23 @@ impl std::str::FromStr for EntityPathFilter {
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         Self::parse_strict(value)
+    }
+}
+
+impl std::fmt::Debug for EntityPathFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Keep it compact for the sake of snapshot tests:
+        self.rules
+            .iter()
+            .map(|(rule, effect)| {
+                let sign = match effect {
+                    RuleEffect::Include => '+',
+                    RuleEffect::Exclude => '-',
+                };
+                format!("{sign} {rule:?}")
+            })
+            .collect_vec()
+            .fmt(f)
     }
 }
 
@@ -120,7 +137,7 @@ impl std::fmt::Debug for ResolvedEntityPathFilter {
 ///
 /// Note that ordering of unresolved entity path rules is simply alphabetical.
 /// In contrast, [`ResolvedEntityPathRule`] are ordered by entity path from least specific to most specific.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct EntityPathRule(String);
 
 impl From<EntityPath> for EntityPathRule {
@@ -139,19 +156,10 @@ impl std::ops::Deref for EntityPathRule {
     }
 }
 
-impl std::fmt::Display for EntityPathRule {
+impl std::fmt::Debug for EntityPathRule {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}{}{}",
-            self.0,
-            if EntityPath::parse_forgiving(&self.0).is_root() {
-                ""
-            } else {
-                "/"
-            },
-            if self.include_subtree() { "**" } else { "" }
-        ))
+        f.write_str(&self.0)
     }
 }
 
