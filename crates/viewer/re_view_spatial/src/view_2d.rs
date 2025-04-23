@@ -280,25 +280,21 @@ impl ViewClass for SpatialView2D {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 struct NonNestedImageCounts {
-    image: usize,
-    encoded_image: usize,
+    color: usize,
     depth: usize,
-    video: usize,
     segmentation: usize,
 }
 
 impl NonNestedImageCounts {
     fn total(&self) -> usize {
         let Self {
-            image,
-            encoded_image,
+            color,
             depth,
-            video,
             segmentation,
         } = self;
-        image + encoded_image + depth + video + segmentation
+        color + depth + segmentation
     }
 
     fn has_any_images(&self) -> bool {
@@ -306,10 +302,10 @@ impl NonNestedImageCounts {
     }
 
     fn count(&mut self, dims: &MaxDimensions) {
-        self.image += dims.image_types.contains(ImageTypes::IMAGE) as usize;
-        self.encoded_image += dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize;
+        self.color += dims.image_types.contains(ImageTypes::IMAGE) as usize
+            + dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize
+            + dims.image_types.contains(ImageTypes::VIDEO) as usize;
         self.depth += dims.image_types.contains(ImageTypes::DEPTH_IMAGE) as usize;
-        self.video += dims.image_types.contains(ImageTypes::VIDEO) as usize;
         self.segmentation += dims.image_types.contains(ImageTypes::SEGMENTATION_IMAGE) as usize;
     }
 }
@@ -377,9 +373,8 @@ fn recommended_views_with_image_splits(
     }
 
     // NOTE: we allow stacking segmentation images, since that can be quite useful sometimes.
-    let has_desired_image_overlap = all_have_same_size
-        && image_counts.encoded_image + image_counts.image + image_counts.video <= 1
-        && image_counts.depth <= 1;
+    let has_desired_image_overlap =
+        all_have_same_size && image_counts.color <= 1 && image_counts.depth <= 1;
 
     if 1 < image_counts.total() && has_desired_image_overlap {
         // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
