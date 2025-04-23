@@ -30,22 +30,26 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_arrow_util.workspace = true
 re_dataframe.workspace = true
 re_grpc_client.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
-re_types = { workspace = true, features = ["image"] }
+re_types = { workspace = true, features = ["glam", "image"] }
 re_types_core.workspace = true
 re_video = { workspace = true, features = ["av1", "ffmpeg"] }
 
 # External dependencies:
 anyhow.workspace = true
 arrow.workspace = true
+arrow-array.workspace = true
 async-trait = "0.1.88"
 async-stream.workspace = true
+bytemuck.workspace = true
 datafusion.workspace = true
 futures-util.workspace = true
+glam.workspace = true
 image.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true

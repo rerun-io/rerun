@@ -523,11 +523,7 @@ impl ScalarUDFImpl for BoundedImageExtractionUdf {
         )?) as ArrayRef;
 
         let fields = Fields::from(fields);
-        // StructArray::try_from(vec![
-        //     (format!("{}:ImageIndicator", self.output_entity_path).as_str(), image_indicator_array),
-        //     (format!("{}:ImageBuffer", self.output_entity_path).as_str(), buffer_array),
-        //     (format!("{}:ImageFormat", self.output_entity_path).as_str(), format_array),
-        // ])
+
         StructArray::try_new(
             fields,
             vec![image_indicator_array, buffer_array, format_array],

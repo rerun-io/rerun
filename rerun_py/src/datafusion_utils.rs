@@ -2,7 +2,7 @@ use datafusion::logical_expr::ScalarUDF;
 use datafusion_ffi::udf::FFI_ScalarUDF;
 use pyo3::types::PyCapsule;
 use pyo3::{pyclass, pymethods, Bound, PyResult, Python};
-use re_datafusion::functions::bounded_image_extraction::BoundedImageExtractionUdf;
+use re_datafusion::functions::{BoundedImageExtractionUdf, DepthImageToPointCloudUdf};
 use std::sync::Arc;
 
 #[pyclass(name = "BoundedImageExtractionUDF")]
@@ -17,6 +17,35 @@ impl PyBoundedImageExtractionUdf {
         let udf = ScalarUDF::from(BoundedImageExtractionUdf::new(
             entity_path,
             class_of_interest,
+        ));
+        Self {
+            inner: Arc::new(udf),
+        }
+    }
+
+    pub fn __datafusion_scalar_udf__<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyCapsule>> {
+        let name = cr"datafusion_scalar_udf".into();
+
+        let udf = FFI_ScalarUDF::from(Arc::clone(&self.inner));
+
+        PyCapsule::new(py, udf, Some(name))
+    }
+}
+
+#[pyclass(name = "DepthImageToPointCloudUDF")]
+pub struct PyDepthImageToPointCloudUdf {
+    inner: Arc<ScalarUDF>,
+}
+
+#[pymethods]
+impl PyDepthImageToPointCloudUdf {
+    #[new]
+    pub fn new(entity_path: &str) -> Self {
+        let udf = ScalarUDF::from(DepthImageToPointCloudUdf::new(
+            entity_path,
         ));
         Self {
             inner: Arc::new(udf),
