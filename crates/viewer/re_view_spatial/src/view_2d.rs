@@ -366,21 +366,31 @@ fn recommended_views_with_image_splits(
     // Note that since this only finds entities with image dimensions, it naturally filters for `visualizable_entities`.
     let all_have_same_size =
         has_single_shared_image_dimension(image_dimensions, subtree, &mut image_counts);
+
     if !image_counts.has_any_images() {
         // This utility is all about finding views with *image* splits.
         // If there's no images in this subtree, we're done.
         return;
     }
 
-    // NOTE: we allow stacking segmentation images, since that can be quite useful sometimes.
-    let has_desired_image_overlap =
-        all_have_same_size && image_counts.color <= 1 && image_counts.depth <= 1;
+    // Should we create an all-inclusive view at this path?
+    // We usually want to be as inclusive as possible (put as much as possible in the same view)
+    // as long as the image contents (recursively) are _compatible_.
+    // Compatible images are images that can be overlaied on top of each other productively, e.g.:
+    // * Stack a depth image on top of an RGB image
+    // * Stack multiple segmentation images on top of an RGB or depth image
+    //
+    // NOTE: we allow stacking multiple segmentation images, since that can be quite useful sometimes.
+    // We also allow stacking ONE depth image on ONE color image, but never multiple of either.
+    //
+    // Of course the images must be of the same size, or stacking does not make sense.
+    //
+    // Note that non-image entities (e.g. bounding rectangles) may be present,
+    // but they are always assumed to be compatible with any image.
 
-    if 1 < image_counts.total() && has_desired_image_overlap {
-        // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
-        // This can be useful for comparing a segmentation image on top of an RGB image, for instance.
-        // However, it only makes sense to do this if there are at least one image,
-        // otherwise we might be creating a space-view with the root `/a` when the only image is at `/a/b/c`.
+    let create_inclusive_view =
+        all_have_same_size && image_counts.color <= 1 && image_counts.depth <= 1;
+    if create_inclusive_view {
         recommended.push(RecommendedView::new_subtree(recommended_root.clone()));
     } else {
         // Split the space and recurse
