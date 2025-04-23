@@ -102,7 +102,7 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
     test_context
 }
 
-fn run_herustics_snapshot_test(name: &str, test_context: &TestContext) {
+fn run_heuristics_snapshot_test(name: &str, test_context: &TestContext) {
     let view_class = test_context
         .view_class_registry
         .class(re_view_spatial::SpatialView2D::identifier())
@@ -134,7 +134,7 @@ fn test_spatial_view_2d_spawn_heuristics_like_detect_and_track_objects() {
         ("description", EntityKind::Text),
     ]);
 
-    run_herustics_snapshot_test(
+    run_heuristics_snapshot_test(
         "detect_and_track_objects_like_scene_2d_view_heuristic",
         &test_context,
     );
@@ -152,7 +152,7 @@ fn test_differing_image_sizes() {
         ),
     ]);
 
-    run_herustics_snapshot_test(
+    run_heuristics_snapshot_test(
         "should_be_two_separate_views_because_differing_sizes",
         &test_context,
     );
@@ -167,7 +167,7 @@ fn test_not_stacking_color_images() {
         ("image/b", EntityKind::Image(Color, Medium)),
     ]);
 
-    run_herustics_snapshot_test(
+    run_heuristics_snapshot_test(
         "should_be_two_separate_views_because_we_cant_stack_color_images",
         &test_context,
     );
@@ -183,7 +183,7 @@ fn test_stacking_color_and_seg() {
         ("image/seg", EntityKind::Image(Segmentation, Medium)),
     ]);
 
-    run_herustics_snapshot_test("should_be_a_single_view", &test_context);
+    run_heuristics_snapshot_test("should_be_a_single_view", &test_context);
 }
 
 #[test]
@@ -199,7 +199,7 @@ fn test_mixed_2d_and_3d() {
         ("3D/camera", EntityKind::Image(Color, Small)), // should be a separate 2D view
     ]);
 
-    run_herustics_snapshot_test("should_be_three_space_views", &test_context);
+    run_heuristics_snapshot_test("should_be_three_space_views", &test_context);
 }
 
 #[test]
@@ -215,5 +215,5 @@ fn test_mixed_images() {
         ("segmented/seg", EntityKind::Image(Segmentation, Small)),
     ]);
 
-    run_herustics_snapshot_test("four_color_views_and_one_segmentation", &test_context);
+    run_heuristics_snapshot_test("four_color_views_and_one_segmentation", &test_context);
 }
