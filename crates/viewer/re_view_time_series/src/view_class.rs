@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
+use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
@@ -203,7 +203,7 @@ impl ViewClass for TimeSeriesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -233,10 +233,7 @@ impl ViewClass for TimeSeriesView {
 
         // Ensure we don't modify this list anymore before we check the `excluded_entities`.
         let indicated_entities = indicated_entities;
-        if indicated_entities
-            .iter()
-            .all(|e| excluded_entities.matches(e))
-        {
+        if indicated_entities.iter().all(excluded_entities) {
             return ViewSpawnHeuristics::default();
         }
 

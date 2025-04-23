@@ -4,7 +4,7 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePathHash;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
@@ -145,7 +145,7 @@ impl ViewClass for MapView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -161,9 +161,7 @@ impl ViewClass for MapView {
                 .get(system_id)
                 .is_some_and(|indicated_entities| {
                     !indicated_entities.is_empty()
-                        && !indicated_entities
-                            .iter()
-                            .all(|e| excluded_entities.matches(e))
+                        && !indicated_entities.iter().all(excluded_entities)
                 })
         });
 

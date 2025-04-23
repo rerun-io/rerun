@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Component as _, View as _,
@@ -265,7 +265,7 @@ impl ViewClass for SpatialView3D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 

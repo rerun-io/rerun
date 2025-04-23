@@ -1,7 +1,7 @@
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityTree};
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{
     blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     View as _, ViewClassIdentifier,
@@ -169,7 +169,7 @@ impl ViewClass for SpatialView2D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 

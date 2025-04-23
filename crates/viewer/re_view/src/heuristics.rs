@@ -1,4 +1,4 @@
-use re_log_types::ResolvedEntityPathFilter;
+use re_log_types::EntityPath;
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, RecommendedView, ViewClass,
     ViewSpawnHeuristics, ViewerContext, VisualizerSystem,
@@ -11,7 +11,7 @@ use re_viewer_context::{
 pub fn suggest_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
     view: &dyn ViewClass,
-    excluded_entities: &ResolvedEntityPathFilter,
+    excluded_entities: &dyn Fn(&EntityPath) -> bool,
 ) -> ViewSpawnHeuristics
 where
     TVisualizer: VisualizerSystem + IdentifiedViewSystem + Default,
@@ -42,7 +42,7 @@ where
                     context.as_ref(),
                 )
                 .is_empty()
-                && !excluded_entities.matches(entity)
+                && !excluded_entities(entity)
             {
                 Some(RecommendedView::new_single_entity(entity.clone()))
             } else {

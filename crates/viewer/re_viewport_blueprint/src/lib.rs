@@ -16,7 +16,7 @@ mod viewport_command;
 
 pub use container::ContainerBlueprint;
 pub use entity_add_info::{create_entity_add_info, CanAddToView, EntityAddInfo};
-use re_log_types::ResolvedEntityPathFilter;
+use re_chunk::EntityPath;
 use re_viewer_context::ViewerContext;
 pub use view::ViewBlueprint;
 pub use view_contents::{DataQueryPropertyResolver, ViewContents};
@@ -71,9 +71,8 @@ pub fn default_created_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
     ctx.view_class_registry()
         .iter_registry()
         .flat_map(|entry| {
-            let spawn_heuristics = entry
-                .class
-                .spawn_heuristics(ctx, &ResolvedEntityPathFilter::properties());
+            let excluded_entities = |_: &EntityPath| false;
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &excluded_entities);
             spawn_heuristics
                 .into_vec()
                 .into_iter()

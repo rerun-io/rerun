@@ -1,7 +1,7 @@
 use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{ComponentName, ViewClassIdentifier};
 
 use crate::{
@@ -177,7 +177,7 @@ pub trait ViewClass: Send + Sync {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics;
 
     /// Ui shown when the user selects a view of this class.

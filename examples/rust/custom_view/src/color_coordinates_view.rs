@@ -1,5 +1,3 @@
-use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
-use re_viewer::external::re_log_types::ResolvedEntityPathFilter;
 use re_viewer::external::re_ui::Help;
 use re_viewer::external::{
     egui,
@@ -15,6 +13,8 @@ use re_viewer::external::{
         ViewSystemRegistrator, ViewerContext,
     },
 };
+
+use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -110,14 +110,14 @@ impl ViewClass for ColorCoordinatesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
             .map_or(true, |entities| {
-                entities.is_empty() || entities.iter().all(|e| excluded_entities.matches(e))
+                entities.is_empty() || entities.iter().all(excluded_entities)
             })
         {
             ViewSpawnHeuristics::default()

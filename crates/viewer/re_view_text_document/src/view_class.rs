@@ -1,16 +1,10 @@
-use egui::Label;
+use egui::{Label, Sense};
 
-use egui::Sense;
-use re_types::View as _;
-use re_types::ViewClassIdentifier;
-use re_ui::Help;
-use re_ui::UiExt as _;
+use re_types::{View as _, ViewClassIdentifier};
+use re_ui::{Help, UiExt as _};
 use re_view::suggest_view_for_each_entity;
-
-use re_viewer_context::external::re_log_types::ResolvedEntityPathFilter;
-use re_viewer_context::Item;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
+    external::re_log_types::EntityPath, Item, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
     ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
@@ -109,7 +103,7 @@ impl ViewClass for TextDocumentView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.

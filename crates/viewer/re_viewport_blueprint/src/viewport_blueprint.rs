@@ -1,20 +1,21 @@
-use ahash::HashMap;
-use egui_tiles::{SimplificationOptions, TileId};
-use nohash_hasher::IntSet;
-use parking_lot::Mutex;
-use re_log_types::{EntityPathSubs, ResolvedEntityPathFilter};
-use smallvec::SmallVec;
-use std::ops::ControlFlow;
 use std::{
     collections::BTreeMap,
+    ops::ControlFlow,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
 
+use ahash::HashMap;
+use egui_tiles::{SimplificationOptions, TileId};
+use nohash_hasher::IntSet;
+use parking_lot::Mutex;
+use smallvec::SmallVec;
+
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
+use re_log_types::EntityPathSubs;
 use re_types::blueprint::{
     archetypes as blueprint_archetypes,
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
@@ -304,7 +305,8 @@ impl ViewportBlueprint {
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
 
-            let excluded_entities = ResolvedEntityPathFilter::properties();
+            let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
+            let excluded_entities = |ent: &EntityPath| excluded_entities.matches(ent);
 
             let mut recommended_views = entry
                 .class

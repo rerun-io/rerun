@@ -3,7 +3,7 @@ use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::hash::Hash64;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
         archetypes::{TensorScalarMapping, TensorViewFit},
@@ -195,7 +195,7 @@ Set the displayed dimensions in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &ResolvedEntityPathFilter,
+        excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)

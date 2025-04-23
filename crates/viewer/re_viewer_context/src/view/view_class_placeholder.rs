@@ -1,4 +1,4 @@
-use re_log_types::ResolvedEntityPathFilter;
+use re_chunk::EntityPath;
 use re_types::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 
@@ -46,7 +46,7 @@ impl ViewClass for ViewClassPlaceholder {
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _excluded_entities: &ResolvedEntityPathFilter,
+        _excluded_entities: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         ViewSpawnHeuristics::empty()
     }
