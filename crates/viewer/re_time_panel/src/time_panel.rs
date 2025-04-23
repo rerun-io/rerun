@@ -666,7 +666,8 @@ impl TimePanel {
             .as_ref()
             .and_then(|item| item.entity_path());
 
-        if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(entity_path))
+        if focused_entity_path
+            .is_some_and(|focused_entity_path| focused_entity_path.is_descendant_of(entity_path))
         {
             collapse_scope
                 .entity(entity_path.clone())
