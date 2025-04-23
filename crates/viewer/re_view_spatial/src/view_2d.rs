@@ -312,7 +312,7 @@ impl NonNestedImageCounts {
 
 // Find the shared image dimensions of every image-entity that is not
 // not nested under another image.
-fn has_single_shared_image_dimensionn(
+fn has_single_shared_image_dimension(
     image_dimensions: &IntMap<EntityPath, MaxDimensions>,
     subtree: &EntityTree,
     non_nested_image_counts: &mut NonNestedImageCounts,
@@ -365,7 +365,7 @@ fn recommended_views_with_image_splits(
 
     // Note that since this only finds entities with image dimensions, it naturally filters for `visualizable_entities`.
     let all_have_same_size =
-        has_single_shared_image_dimensionn(image_dimensions, subtree, &mut image_counts);
+        has_single_shared_image_dimension(image_dimensions, subtree, &mut image_counts);
     if !image_counts.has_any_images() {
         // This utility is all about finding views with *image* splits.
         // If there's no images in this subtree, we're done.
