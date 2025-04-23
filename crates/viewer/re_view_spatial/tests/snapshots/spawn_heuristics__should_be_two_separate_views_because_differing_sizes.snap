@@ -5,13 +5,13 @@ expression: recommended_views
 ViewSpawnHeuristics {
     recommended_views: [
         RecommendedView {
-            origin: /segmentation,
+            origin: /image,
             query_filter: [
-                "+ $origin/**",
+                "+ $origin",
             ],
         },
         RecommendedView {
-            origin: /video,
+            origin: /image/segmentation,
             query_filter: [
                 "+ $origin/**",
             ],
