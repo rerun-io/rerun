@@ -333,11 +333,10 @@ fn has_single_shared_image_dimension(
             }
 
             non_nested_image_counts.count(dimensions);
-
-            // Ignore any nested images.
-        } else {
-            pending_subtrees.extend(subtree.children.values());
         }
+
+        // We always need to recurse to check if child entities have images of different size
+        pending_subtrees.extend(subtree.children.values());
     }
 
     image_dimension.is_some()

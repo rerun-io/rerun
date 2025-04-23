@@ -210,10 +210,10 @@ fn test_mixed_images() {
         ("image1", EntityKind::Image(Color, Small)),
         ("image2", EntityKind::Image(Color, Small)),
         ("image3", EntityKind::Image(Color, Small)),
-        ("image3/nested", EntityKind::Image(Color, Small)),
+        ("image3/nested", EntityKind::Image(Color, Small)), // Need to be a separate space view, because we don't overlap color images
         ("segmented/image4", EntityKind::Image(Color, Small)),
         ("segmented/seg", EntityKind::Image(Segmentation, Small)),
     ]);
 
-    run_herustics_snapshot_test("four_space_views_with_one_overlapping", &test_context);
+    run_herustics_snapshot_test("four_color_views_and_one_segmentation", &test_context);
 }
