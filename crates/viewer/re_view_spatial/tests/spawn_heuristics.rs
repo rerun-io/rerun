@@ -1,19 +1,28 @@
-#![allow(clippy::unwrap_used)]
+#![expect(clippy::tuple_array_conversions)]
+#![expect(clippy::unwrap_used)]
 
 use re_log_types::{EntityPath, Timeline};
-use re_types::archetypes;
+use re_types::{archetypes, AsComponents};
 use re_viewer_context::{test_context::TestContext, ViewClass as _};
 
 use ndarray::{Array, ShapeBuilder as _};
 
-#[allow(dead_code)] // TODO(emilk): expand tests
 enum ImageSize {
     Small,
     Medium,
     Large,
 }
 
-#[allow(dead_code)] // TODO(emilk): expand tests
+impl ImageSize {
+    fn wh(&self) -> [usize; 2] {
+        match self {
+            Self::Small => [48, 32],
+            Self::Medium => [320, 240],
+            Self::Large => [640, 480],
+        }
+    }
+}
+
 enum ImageType {
     Color,
     Depth,
@@ -22,7 +31,10 @@ enum ImageType {
 
 enum EntityKind {
     Text,
-    BoundingBoxes,
+    BBox2D,
+    BBox3D,
+    ViewCoords,
+    Pinhole(ImageSize),
     Image(ImageType, ImageSize),
 }
 
@@ -40,51 +52,50 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
         let entity_path = EntityPath::from(*entity_path);
         let row_id = re_types::RowId::new();
 
-        test_context.log_entity(entity_path, |builder| match entity_kind {
-            EntityKind::Text => builder.with_archetype(
-                row_id,
-                time,
-                &archetypes::TextDocument::new("test document"),
-            ),
-            EntityKind::BoundingBoxes => builder.with_archetype(
-                row_id,
-                time,
-                &archetypes::Boxes2D::from_centers_and_half_sizes(
+        test_context.log_entity(entity_path, |builder| {
+            let component = match entity_kind {
+                EntityKind::Text => {
+                    &archetypes::TextDocument::new("test document") as &dyn AsComponents
+                }
+
+                EntityKind::BBox2D => &archetypes::Boxes2D::from_centers_and_half_sizes(
                     [(5.0, 5.0), (10.0, 10.0), (15.0, 15.0)],
                     [(10.0, 10.0), (10.0, 10.0), (10.0, 10.0)],
                 ),
-            ),
-            EntityKind::Image(image_type, image_size) => {
-                let (w, h) = match image_size {
-                    ImageSize::Small => (48, 32),
-                    ImageSize::Medium => (320, 240),
-                    ImageSize::Large => (640, 480),
-                };
 
-                match image_type {
-                    ImageType::Color => builder.with_archetype(
-                        row_id,
-                        time,
-                        &archetypes::Image::from_color_model_and_tensor(
+                EntityKind::BBox3D => &archetypes::Boxes3D::from_centers_and_half_sizes(
+                    [(5.0, 5.0, 5.0)],
+                    [(10.0, 10.0, 1.0)],
+                ),
+
+                EntityKind::ViewCoords => &archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
+
+                EntityKind::Pinhole(image_size) => {
+                    let [w, h] = image_size.wh();
+                    let resolution = [w as f32, h as f32];
+                    &archetypes::Pinhole::from_focal_length_and_resolution(resolution, resolution)
+                }
+                EntityKind::Image(image_type, image_size) => {
+                    let [w, h] = image_size.wh();
+
+                    match image_type {
+                        ImageType::Color => &archetypes::Image::from_color_model_and_tensor(
                             re_types::datatypes::ColorModel::RGB,
                             Array::<u8, _>::zeros((h, w, 3).f()),
                         )
+                        .unwrap() as &dyn AsComponents,
+                        ImageType::Depth => {
+                            &archetypes::DepthImage::try_from(Array::<u8, _>::zeros((h, w).f()))
+                                .unwrap()
+                        }
+                        ImageType::Segmentation => &archetypes::SegmentationImage::try_from(
+                            Array::<u8, _>::zeros((h, w).f()),
+                        )
                         .unwrap(),
-                    ),
-                    ImageType::Depth => builder.with_archetype(
-                        row_id,
-                        time,
-                        &archetypes::DepthImage::try_from(Array::<u8, _>::zeros((h, w).f()))
-                            .unwrap(),
-                    ),
-                    ImageType::Segmentation => builder.with_archetype(
-                        row_id,
-                        time,
-                        &archetypes::SegmentationImage::try_from(Array::<u8, _>::zeros((h, w).f()))
-                            .unwrap(),
-                    ),
+                    }
                 }
-            }
+            };
+            builder.with_archetype(row_id, time, component)
         });
     }
 
@@ -113,11 +124,11 @@ fn test_spatial_view_2d_spawn_heuristics_like_detect_and_track_objects() {
     let test_context = build_test_scene(&[
         ("segmentation/rgb_scaled", EntityKind::Image(Color, Medium)),
         ("segmentation", EntityKind::Image(Segmentation, Medium)),
-        ("segmentation/detection/things", EntityKind::BoundingBoxes),
+        ("segmentation/detection/things", EntityKind::BBox2D),
         ("video", EntityKind::Image(Color, Large)),
-        ("video/tracked/0", EntityKind::BoundingBoxes),
-        ("video/tracked/1", EntityKind::BoundingBoxes),
-        ("video/tracked/2", EntityKind::BoundingBoxes),
+        ("video/tracked/0", EntityKind::BBox2D),
+        ("video/tracked/1", EntityKind::BBox2D),
+        ("video/tracked/2", EntityKind::BBox2D),
         // Since we haven't registered the text view, it won't show up in automatically generated views at all.
         // This is just here to mimic an entity the 2D spatial view can't handle at all.
         ("description", EntityKind::Text),
@@ -127,4 +138,82 @@ fn test_spatial_view_2d_spawn_heuristics_like_detect_and_track_objects() {
         "detect_and_track_objects_like_scene_2d_view_heuristic",
         &test_context,
     );
+}
+
+#[test]
+fn test_differing_image_sizes() {
+    use {ImageSize::*, ImageType::*};
+
+    let test_context = build_test_scene(&[
+        ("image", EntityKind::Image(Color, Large)),
+        (
+            "image/segmentation",
+            EntityKind::Image(Segmentation, Medium),
+        ),
+    ]);
+
+    run_herustics_snapshot_test(
+        "should_be_two_separate_views_because_differing_sizes",
+        &test_context,
+    );
+}
+
+#[test]
+fn test_not_stacking_color_images() {
+    use {ImageSize::*, ImageType::*};
+
+    let test_context = build_test_scene(&[
+        ("image/a", EntityKind::Image(Color, Medium)),
+        ("image/b", EntityKind::Image(Color, Medium)),
+    ]);
+
+    run_herustics_snapshot_test(
+        "should_be_two_separate_views_because_we_cant_stack_color_images",
+        &test_context,
+    );
+}
+
+#[test]
+fn test_stacking_color_and_seg() {
+    use {ImageSize::*, ImageType::*};
+
+    let test_context = build_test_scene(&[
+        ("image/color", EntityKind::Image(Color, Medium)),
+        ("image/depth", EntityKind::Image(Depth, Medium)),
+        ("image/seg", EntityKind::Image(Segmentation, Medium)),
+    ]);
+
+    run_herustics_snapshot_test("should_be_a_single_view", &test_context);
+}
+
+#[test]
+fn test_mixed_2d_and_3d() {
+    use {ImageSize::*, ImageType::*};
+
+    let test_context = build_test_scene(&[
+        ("image1", EntityKind::Image(Color, Small)), // should be separate 2D views
+        ("image2", EntityKind::Image(Color, Small)), // should be separate 2D views
+        ("3D", EntityKind::ViewCoords),              // should be a separate 3D view
+        ("3D/box", EntityKind::BBox3D),
+        ("3D/camera", EntityKind::Pinhole(Small)),
+        ("3D/camera", EntityKind::Image(Color, Small)), // should be a separate 32 view
+    ]);
+
+    run_herustics_snapshot_test("should_be_four_space_views", &test_context);
+}
+
+#[test]
+fn test_mixed_images() {
+    use {ImageSize::*, ImageType::*};
+
+    let test_context = build_test_scene(&[
+        ("image1", EntityKind::Image(Color, Small)),
+        ("image2", EntityKind::Image(Color, Small)),
+        ("image3", EntityKind::Image(Color, Small)),
+        ("image3/nested", EntityKind::Image(Color, Small)),
+        ("segmented/image4", EntityKind::Image(Color, Small)),
+        ("segmented/seg", EntityKind::Image(Segmentation, Small)),
+    ]);
+
+    run_herustics_snapshot_test("four_space_views_with_one_overlapping", &test_context);
 }
