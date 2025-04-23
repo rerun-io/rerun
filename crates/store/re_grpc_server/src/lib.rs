@@ -45,7 +45,7 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 
 // Channel capacity is completely arbitrary, e just want something large enough
-// to handle bursts of messages. This is roughly 1 MiB of `Msg` (excluding their contents).
+// to handle bursts of messages. This is roughly 16 MiB of `Msg` (excluding their contents).
 const MESSAGE_QUEUE_CAPACITY: usize =
     (16 * 1024 * 1024 / std::mem::size_of::<Msg>()).next_power_of_two();
 
