@@ -301,7 +301,7 @@ impl NonNestedImageCounts {
         self.total() > 0
     }
 
-    fn count(&mut self, dims: &MaxDimensions) {
+    fn increment_count(&mut self, dims: &MaxDimensions) {
         self.color += dims.image_types.contains(ImageTypes::IMAGE) as usize
             + dims.image_types.contains(ImageTypes::ENCODED_IMAGE) as usize
             + dims.image_types.contains(ImageTypes::VIDEO) as usize;
@@ -332,7 +332,7 @@ fn has_single_shared_image_dimension(
                 image_dimension = Some(new_dimension);
             }
 
-            non_nested_image_counts.count(dimensions);
+            non_nested_image_counts.increment_count(dimensions);
         }
 
         // We always need to recurse to check if child entities have images of different size
