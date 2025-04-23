@@ -193,13 +193,13 @@ fn test_mixed_2d_and_3d() {
     let test_context = build_test_scene(&[
         ("image1", EntityKind::Image(Color, Small)), // should be separate 2D views
         ("image2", EntityKind::Image(Color, Small)), // should be separate 2D views
-        ("3D", EntityKind::ViewCoords),              // should be a separate 3D view
+        ("3D", EntityKind::ViewCoords), // should be a separate 3D view, but NOT a 2D view
         ("3D/box", EntityKind::BBox3D),
         ("3D/camera", EntityKind::Pinhole(Small)),
-        ("3D/camera", EntityKind::Image(Color, Small)), // should be a separate 32 view
+        ("3D/camera", EntityKind::Image(Color, Small)), // should be a separate 2D view
     ]);
 
-    run_herustics_snapshot_test("should_be_four_space_views", &test_context);
+    run_herustics_snapshot_test("should_be_three_space_views", &test_context);
 }
 
 #[test]

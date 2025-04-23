@@ -345,7 +345,7 @@ fn has_single_shared_image_dimension(
 fn recommended_views_with_image_splits(
     ctx: &ViewerContext<'_>,
     image_dimensions: &IntMap<EntityPath, MaxDimensions>,
-    recommended_root: &EntityPath,
+    recommended_origin: &EntityPath,
     visualizable_entities: &IntSet<EntityPath>,
     recommended: &mut Vec<RecommendedView>,
 ) {
@@ -353,7 +353,7 @@ fn recommended_views_with_image_splits(
 
     let tree = ctx.recording().tree();
 
-    let Some(subtree) = tree.subtree(recommended_root) else {
+    let Some(subtree) = tree.subtree(recommended_origin) else {
         if cfg!(debug_assertions) {
             re_log::warn_once!("Ancestor of entity not found in entity tree.");
         }
@@ -372,12 +372,12 @@ fn recommended_views_with_image_splits(
         return;
     }
 
-    // Should we create an all-inclusive view at this path?
-    // We usually want to be as inclusive as possible (put as much as possible in the same view)
+    // Should we create an all-inclusive (subtree) view at this path?
+    // We usually want to be as inclusive as possible (i.e. put as much as possible in the same view)
     // as long as the image contents (recursively) are _compatible_.
     // Compatible images are images that can be overlaied on top of each other productively, e.g.:
     // * Stack a depth image on top of an RGB image
-    // * Stack multiple segmentation images on top of an RGB or depth image
+    // * Stack multiple segmentation images on top of an RGB and/or depth image
     //
     // NOTE: we allow stacking multiple segmentation images, since that can be quite useful sometimes.
     // We also allow stacking ONE depth image on ONE color image, but never multiple of either.
@@ -387,28 +387,52 @@ fn recommended_views_with_image_splits(
     // Note that non-image entities (e.g. bounding rectangles) may be present,
     // but they are always assumed to be compatible with any image.
 
-    let create_inclusive_view =
+    let could_have_subtree_view =
         all_have_same_size && image_counts.color <= 1 && image_counts.depth <= 1;
-    if create_inclusive_view {
-        recommended.push(RecommendedView::new_subtree(recommended_root.clone()));
-    } else {
-        // Split the space and recurse
 
+    if could_have_subtree_view && visualizable_entities.contains(recommended_origin) {
+        // The entity is itself visualizable, so it makes sense to have it as an origin.
+        recommended.push(RecommendedView::new_subtree(recommended_origin.clone()));
+        return; // We now include everything below this subtree, so we can stop here.
+    }
+
+    // We may still want to create a subtree view here, but only if it is not _too_ general.
+    // For instance, if the only data is at `/a/b/c` we want to create
+    // a view with the `origin: /a/b/c`, NOT `origin: /a/**`.
+    // So we recurse on the children and see if it would result in a single view, or multiple:
+
+    let num_recommended_before = recommended.len();
+
+    if visualizable_entities.contains(recommended_origin) {
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
-        if visualizable_entities.contains(recommended_root) {
-            recommended.push(RecommendedView::new_single_entity(recommended_root.clone()));
-        }
+        recommended.push(RecommendedView::new_single_entity(
+            recommended_origin.clone(),
+        ));
+    }
 
-        // And then recurse into the children
-        for child in subtree.children.values() {
-            recommended_views_with_image_splits(
-                ctx,
-                image_dimensions,
-                &child.path,
-                visualizable_entities,
-                recommended,
-            );
+    // Recurse into the children:
+    for child in subtree.children.values() {
+        recommended_views_with_image_splits(
+            ctx,
+            image_dimensions,
+            &child.path,
+            visualizable_entities,
+            recommended,
+        );
+    }
+
+    let num_children_added = recommended.len() - num_recommended_before;
+
+    if could_have_subtree_view {
+        if num_children_added <= 1 {
+            // A recursive view would have been too general - keep the child!
+            // That is: better to recommend `/recommended_origin/only_child/**` over
+            // `/recommended_origin/**`
+        } else {
+            // Better to only add /recommended_origin/** than recommended_origin/a/**, recommended_origin/b/**, etc
+            recommended.truncate(num_recommended_before);
+            recommended.push(RecommendedView::new_subtree(recommended_origin.clone()));
         }
     }
 }
