@@ -306,11 +306,11 @@ impl ViewportBlueprint {
             let class_id = entry.identifier;
 
             let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
-            let excluded_entities = |ent: &EntityPath| excluded_entities.matches(ent);
+            let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
 
             let mut recommended_views = entry
                 .class
-                .spawn_heuristics(ctx, &excluded_entities)
+                .spawn_heuristics(ctx, &include_entity)
                 .into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);

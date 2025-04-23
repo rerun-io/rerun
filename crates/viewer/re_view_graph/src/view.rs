@@ -97,7 +97,7 @@ impl ViewClass for GraphView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         // TODO(grtlr): Consider using `suggest_view_for_each_entity` here too.
         if let Some(maybe_visualizable) = ctx
@@ -105,10 +105,10 @@ impl ViewClass for GraphView {
             .get(&NodeVisualizer::identifier())
         {
             ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
-                if excluded_entities(&entity) {
-                    None
-                } else {
+                if include_entity(&entity) {
                     Some(RecommendedView::new_single_entity(entity))
+                } else {
+                    None
                 }
             }))
         } else {

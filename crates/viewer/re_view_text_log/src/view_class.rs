@@ -87,7 +87,7 @@ Filter message types and toggle column visibility in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -96,13 +96,11 @@ Filter message types and toggle column visibility in a selection panel.",
         if ctx
             .indicated_entities_per_visualizer
             .get(&TextLogSystem::identifier())
-            .map_or(true, |entities| {
-                entities.is_empty() || entities.iter().all(excluded_entities)
-            })
+            .is_some_and(|entities| entities.iter().any(include_entity))
         {
-            ViewSpawnHeuristics::default()
-        } else {
             ViewSpawnHeuristics::root()
+        } else {
+            ViewSpawnHeuristics::empty()
         }
     }
 

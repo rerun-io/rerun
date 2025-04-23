@@ -265,7 +265,7 @@ impl ViewClass for SpatialView3D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -273,7 +273,7 @@ impl ViewClass for SpatialView3D {
             ctx,
             Self::identifier(),
             SpatialViewKind::ThreeD,
-            excluded_entities,
+            include_entity,
         );
 
         // ViewCoordinates is a strong indicator that a 3D view is needed.
@@ -358,7 +358,7 @@ impl ViewClass for SpatialView3D {
                     .flatten(),
             )
         })
-        .unwrap_or_default()
+        .unwrap_or_else(ViewSpawnHeuristics::empty)
     }
 
     fn selection_ui(

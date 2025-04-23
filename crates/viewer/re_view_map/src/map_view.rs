@@ -145,7 +145,7 @@ impl ViewClass for MapView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -159,16 +159,13 @@ impl ViewClass for MapView {
             // TODO(grtlr): This looks slow.
             ctx.indicated_entities_per_visualizer
                 .get(system_id)
-                .is_some_and(|indicated_entities| {
-                    !indicated_entities.is_empty()
-                        && !indicated_entities.iter().all(excluded_entities)
-                })
+                .is_some_and(|indicated_entities| indicated_entities.iter().any(include_entity))
         });
 
         if any_map_entity {
             ViewSpawnHeuristics::root()
         } else {
-            ViewSpawnHeuristics::default()
+            ViewSpawnHeuristics::empty()
         }
     }
 

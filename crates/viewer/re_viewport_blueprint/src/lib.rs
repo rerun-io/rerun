@@ -71,8 +71,8 @@ pub fn default_created_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
     ctx.view_class_registry()
         .iter_registry()
         .flat_map(|entry| {
-            let excluded_entities = |_: &EntityPath| false;
-            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &excluded_entities);
+            let include_entity = |_: &EntityPath| true;
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &include_entity);
             spawn_heuristics
                 .into_vec()
                 .into_iter()

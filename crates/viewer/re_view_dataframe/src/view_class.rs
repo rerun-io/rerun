@@ -6,8 +6,8 @@ use re_log_types::EntityPath;
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
-    Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    Item, SystemExecutionOutput, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
 use crate::{
@@ -85,10 +85,10 @@ Configure in the selection panel:
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _excluded_entities: &dyn Fn(&EntityPath) -> bool,
-    ) -> re_viewer_context::ViewSpawnHeuristics {
+        _include_entity: &dyn Fn(&EntityPath) -> bool,
+    ) -> ViewSpawnHeuristics {
         // Doesn't spawn anything by default.
-        Default::default()
+        ViewSpawnHeuristics::empty()
     }
 
     fn selection_ui(

@@ -110,19 +110,17 @@ impl ViewClass for ColorCoordinatesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
-            .map_or(true, |entities| {
-                entities.is_empty() || entities.iter().all(excluded_entities)
-            })
+            .is_some_and(|entities| entities.iter().any(include_entity))
         {
-            ViewSpawnHeuristics::default()
-        } else {
             ViewSpawnHeuristics::root()
+        } else {
+            ViewSpawnHeuristics::empty()
         }
     }
 

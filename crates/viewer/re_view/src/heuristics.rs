@@ -11,7 +11,7 @@ use re_viewer_context::{
 pub fn suggest_view_for_each_entity<TVisualizer>(
     ctx: &ViewerContext<'_>,
     view: &dyn ViewClass,
-    excluded_entities: &dyn Fn(&EntityPath) -> bool,
+    include_entity: &dyn Fn(&EntityPath) -> bool,
 ) -> ViewSpawnHeuristics
 where
     TVisualizer: VisualizerSystem + IdentifiedViewSystem + Default,
@@ -22,13 +22,13 @@ where
         .indicated_entities_per_visualizer
         .get(&TVisualizer::identifier())
     else {
-        return Default::default();
+        return ViewSpawnHeuristics::empty();
     };
     let Some(maybe_visualizable_entities) = ctx
         .maybe_visualizable_entities_per_visualizer
         .get(&TVisualizer::identifier())
     else {
-        return Default::default();
+        return ViewSpawnHeuristics::empty();
     };
 
     let visualizer = TVisualizer::default();
@@ -42,7 +42,7 @@ where
                     context.as_ref(),
                 )
                 .is_empty()
-                && !excluded_entities(entity)
+                && include_entity(entity)
             {
                 Some(RecommendedView::new_single_entity(entity.clone()))
             } else {

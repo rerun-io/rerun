@@ -203,7 +203,7 @@ impl ViewClass for TimeSeriesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -231,14 +231,11 @@ impl ViewClass for TimeSeriesView {
                 .extend(maybe_visualizable.iter().cloned());
         }
 
-        // Ensure we don't modify this list anymore before we check the `excluded_entities`.
+        // Ensure we don't modify this list anymore before we check the `include_entity`.
         let indicated_entities = indicated_entities;
-        if indicated_entities.iter().all(excluded_entities) {
-            return ViewSpawnHeuristics::default();
-        }
 
-        if indicated_entities.0.is_empty() {
-            return ViewSpawnHeuristics::default();
+        if !indicated_entities.iter().any(include_entity) {
+            return ViewSpawnHeuristics::empty();
         }
 
         // Spawn time series data at the root if theres 'either:

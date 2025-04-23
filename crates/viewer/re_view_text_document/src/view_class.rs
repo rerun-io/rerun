@@ -103,11 +103,11 @@ impl ViewClass for TextDocumentView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
-        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self, excluded_entities)
+        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, self, include_entity)
     }
 
     fn ui(

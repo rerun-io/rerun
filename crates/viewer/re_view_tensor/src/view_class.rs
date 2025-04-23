@@ -195,11 +195,11 @@ Set the displayed dimensions in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, self, excluded_entities)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, self, include_entity)
     }
 
     fn ui(

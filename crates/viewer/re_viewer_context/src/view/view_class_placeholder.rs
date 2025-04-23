@@ -46,7 +46,7 @@ impl ViewClass for ViewClassPlaceholder {
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _excluded_entities: &dyn Fn(&EntityPath) -> bool,
+        _include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         ViewSpawnHeuristics::empty()
     }

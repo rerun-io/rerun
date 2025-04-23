@@ -110,8 +110,8 @@ fn run_heuristics_snapshot_test(name: &str, test_context: &TestContext) {
 
     test_context.run_in_egui_central_panel(|ctx, _ui| {
         let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
-        let excluded_entities = |ent: &EntityPath| excluded_entities.matches(ent);
-        let recommended_views = view_class.spawn_heuristics(ctx, &excluded_entities);
+        let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
+        let recommended_views = view_class.spawn_heuristics(ctx, &include_entity);
 
         insta::assert_debug_snapshot!(name, recommended_views);
     });
