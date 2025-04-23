@@ -181,7 +181,9 @@ impl SpatialViewState {
         let counts = self.image_counts_last_frame;
         match kind {
             ImageKind::Segmentation => {
-                if (counts.segmentation > 1) || (counts.color + counts.depth > 0) {
+                let multiple_segmentation_images = counts.segmentation > 1;
+                let any_behind_segmentation_images = (counts.color + counts.depth) > 0;
+                if multiple_segmentation_images || any_behind_segmentation_images {
                     // Segmentation images should always be opaque if there was more than one image in the view,
                     // including other segmentation images
                     0.5
@@ -190,7 +192,9 @@ impl SpatialViewState {
                 }
             }
             ImageKind::Color => {
-                if (counts.color > 1) || (counts.color > 0) {
+                let multiple_color_images = counts.color > 1;
+                let any_behind_color_images = counts.depth > 0;
+                if multiple_color_images || any_behind_color_images {
                     0.5
                 } else {
                     1.0
