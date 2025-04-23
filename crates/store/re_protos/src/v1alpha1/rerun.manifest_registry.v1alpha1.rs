@@ -817,39 +817,6 @@ impl ::prost::Name for FetchPartitionManifestResponse {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FetchPartitionRequest {
-    #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
-    #[prost(message, optional, tag = "2")]
-    pub partition_id: ::core::option::Option<super::super::common::v1alpha1::PartitionId>,
-}
-impl ::prost::Name for FetchPartitionRequest {
-    const NAME: &'static str = "FetchPartitionRequest";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.FetchPartitionRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.FetchPartitionRequest".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FetchPartitionResponse {
-    /// Chunks as arrow RecordBatch
-    #[prost(message, optional, tag = "1")]
-    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
-}
-impl ::prost::Name for FetchPartitionResponse {
-    const NAME: &'static str = "FetchPartitionResponse";
-    const PACKAGE: &'static str = "rerun.manifest_registry.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.manifest_registry.v1alpha1.FetchPartitionResponse".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.manifest_registry.v1alpha1.FetchPartitionResponse".into()
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchChunkManifestRequest {
     /// Dataset for which we want to fetch chunk manifest
     #[prost(message, optional, tag = "1")]
@@ -1367,30 +1334,6 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
-        /// Fetch an entire partition from the server, without any pre- or post-processing.
-        ///
-        /// This is a temporary hack while we get everything up and running.
-        pub async fn fetch_partition(
-            &mut self,
-            request: impl tonic::IntoRequest<super::FetchPartitionRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::FetchPartitionResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchPartition",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
-                "FetchPartition",
-            ));
-            self.inner.server_streaming(req, path, codec).await
-        }
         /// Retrieves the chunk manifest for a specific index.
         pub async fn fetch_chunk_manifest(
             &mut self,
@@ -1608,18 +1551,6 @@ pub mod manifest_registry_service_server {
             &self,
             request: tonic::Request<super::GetChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status>;
-        /// Server streaming response type for the FetchPartition method.
-        type FetchPartitionStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::FetchPartitionResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// Fetch an entire partition from the server, without any pre- or post-processing.
-        ///
-        /// This is a temporary hack while we get everything up and running.
-        async fn fetch_partition(
-            &self,
-            request: tonic::Request<super::FetchPartitionRequest>,
-        ) -> std::result::Result<tonic::Response<Self::FetchPartitionStream>, tonic::Status>;
         /// Server streaming response type for the FetchChunkManifest method.
         type FetchChunkManifestStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::FetchChunkManifestResponse, tonic::Status>,
@@ -2262,56 +2193,6 @@ pub mod manifest_registry_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetChunksSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            )
-                            .apply_max_message_size_config(
-                                max_decoding_message_size,
-                                max_encoding_message_size,
-                            );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchPartition" => {
-                    #[allow(non_camel_case_types)]
-                    struct FetchPartitionSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<super::FetchPartitionRequest>
-                    for FetchPartitionSvc<T> {
-                        type Response = super::FetchPartitionResponse;
-                        type ResponseStream = T::FetchPartitionStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::FetchPartitionRequest>,
-                        ) -> Self::Future {
-                            let inner = Arc::clone(&self.0);
-                            let fut = async move {
-                                <T as ManifestRegistryService>::fetch_partition(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let max_decoding_message_size = self.max_decoding_message_size;
-                    let max_encoding_message_size = self.max_encoding_message_size;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let method = FetchPartitionSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
