@@ -1,4 +1,4 @@
-use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor, VersionPolicy};
+use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
     rec.log_static(
@@ -34,12 +34,8 @@ fn check_tags(rec: &rerun::RecordingStream) {
     if let Ok(path_to_rrd) = std::env::var("_RERUN_TEST_FORCE_SAVE") {
         rec.flush_blocking();
 
-        let stores = ChunkStore::from_rrd_filepath(
-            &ChunkStoreConfig::ALL_DISABLED,
-            path_to_rrd,
-            VersionPolicy::Warn,
-        )
-        .unwrap();
+        let stores =
+            ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, path_to_rrd).unwrap();
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();

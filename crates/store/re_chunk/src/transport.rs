@@ -14,6 +14,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    // TODO(#8744): this is infallible, so we should not return a `Result` here.
     pub fn to_record_batch(&self) -> ChunkResult<ArrowRecordBatch> {
         re_tracing::profile_function!();
         Ok(self.to_chunk_batch()?.into())
@@ -22,6 +23,7 @@ impl Chunk {
     /// Prepare the [`Chunk`] for transport.
     ///
     /// It is probably a good idea to sort the chunk first.
+    // TODO(#8744): this is infallible, so we should not return a `Result` here.
     pub fn to_chunk_batch(&self) -> ChunkResult<re_sorbet::ChunkBatch> {
         re_tracing::profile_function!();
         self.sanity_check()?;

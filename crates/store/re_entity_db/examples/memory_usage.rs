@@ -78,8 +78,7 @@ fn log_messages() {
     }
 
     fn decode_log_msg(mut bytes: &[u8]) -> LogMsg {
-        let version_policy = re_log_encoding::VersionPolicy::Error;
-        let mut messages = re_log_encoding::decoder::Decoder::new(version_policy, &mut bytes)
+        let mut messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
             .unwrap()
             .collect::<Result<Vec<LogMsg>, _>>()
             .unwrap();

@@ -83,7 +83,7 @@ impl CompareCommand {
             'outer: for chunk1 in &chunks1 {
                 for chunk2 in chunks2_opt.iter_mut().filter(|c| c.is_some()) {
                     #[allow(clippy::unwrap_used)]
-                    if re_chunk::Chunk::are_similar(chunk1, chunk2.as_ref().unwrap()) {
+                    if re_chunk::Chunk::ensure_similar(chunk1, chunk2.as_ref().unwrap()).is_ok() {
                         *chunk2 = None;
                         continue 'outer;
                     }
@@ -93,18 +93,32 @@ impl CompareCommand {
             }
         }
 
+        fn format_chunk(chunk: &Chunk) -> String {
+            re_format_arrow::format_record_batch_opts(
+                &chunk.to_record_batch().expect("Cannot fail in practice"),
+                &re_format_arrow::RecordBatchFormatOpts {
+                    transposed: false,
+                    width: Some(800),
+                    include_metadata: true,
+                    include_column_metadata: true,
+                },
+            )
+            .to_string()
+        }
+
         if !*unordered || unordered_failed {
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
-                anyhow::ensure!(
-                    re_chunk::Chunk::are_similar(&chunk1, &chunk2),
-                    "Chunks do not match:\n{}",
-                    similar_asserts::SimpleDiff::from_str(
-                        &format!("{chunk1}"),
-                        &format!("{chunk2}"),
-                        "got",
-                        "expected",
-                    ),
-                );
+                re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
+                    format!(
+                        "Chunks diff:\n{}",
+                        similar_asserts::SimpleDiff::from_str(
+                            &format_chunk(&chunk1),
+                            &format_chunk(&chunk2),
+                            "got",
+                            "expected",
+                        ),
+                    )
+                })?;
             }
         }
 
@@ -128,8 +142,7 @@ fn compute_uber_table(
     let rrd_file = std::io::BufReader::new(rrd_file);
 
     let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
-    let version_policy = re_log_encoding::VersionPolicy::Error;
-    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+    let decoder = re_log_encoding::decoder::Decoder::new(rrd_file)?;
     for msg in decoder {
         let msg = msg.context("decode rrd message")?;
         stores

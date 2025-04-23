@@ -3,11 +3,11 @@ use tokio_stream::{Stream, StreamExt as _};
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-use re_protos::frontend::v1alpha1::FetchPartitionRequest;
-use re_protos::manifest_registry::v1alpha1::FetchPartitionResponse;
+use re_protos::{
+    catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
+};
 use re_uri::{DatasetDataUri, Origin};
 
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
@@ -156,20 +156,6 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
 
 /// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
 //TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-pub fn fetch_partition_response_to_chunk(
-    response: tonic::Streaming<FetchPartitionResponse>,
-) -> impl Stream<Item = Result<Chunk, StreamError>> {
-    response.map(|resp| {
-        resp.map_err(Into::into).and_then(|r| {
-            let batch = r.chunk.ok_or(StreamError::MissingChunkData)?.decode()?;
-
-            Chunk::from_record_batch(&batch).map_err(Into::into)
-        })
-    })
-}
-
-/// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
-//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
 //TODO(#9497): This is a hack to extract the partition id from the record batch before they are lost to
 //the `Chunk` conversion. The chunks should instead include that information.
 pub fn get_chunks_response_to_chunk_and_partition_id(
@@ -217,10 +203,12 @@ pub async fn stream_partition_async(
     let dataset_name = read_dataset_response.dataset_entry.details.name;
 
     let catalog_chunk_stream = client
-        //TODO(rerun-io/dataplatform#474): filter chunks by time range
-        .fetch_partition(FetchPartitionRequest {
+        .get_chunks(GetChunksRequest {
             dataset_id: Some(dataset_id.into()),
-            partition_id: Some(partition_id.clone().into()),
+            partition_ids: vec![partition_id.clone().into()],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            query: None,
         })
         .await?
         .into_inner();
@@ -255,10 +243,10 @@ pub async fn stream_partition_async(
         return Ok(());
     }
 
-    let mut chunk_stream = fetch_partition_response_to_chunk(catalog_chunk_stream);
+    let mut chunk_stream = get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
 
     while let Some(chunk) = chunk_stream.next().await {
-        let chunk = chunk?;
+        let (chunk, _partition_id) = chunk?;
 
         if tx
             .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))

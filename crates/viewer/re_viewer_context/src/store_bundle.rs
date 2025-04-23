@@ -1,7 +1,6 @@
 use itertools::Itertools as _;
 
 use re_entity_db::EntityDb;
-use re_log_encoding::VersionPolicy;
 use re_log_types::{StoreId, StoreKind};
 
 #[derive(thiserror::Error, Debug)]
@@ -22,13 +21,10 @@ pub struct StoreBundle {
 impl StoreBundle {
     /// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
-    pub fn from_rrd(
-        version_policy: VersionPolicy,
-        read: impl std::io::Read,
-    ) -> Result<Self, StoreLoadError> {
+    pub fn from_rrd(read: impl std::io::Read) -> Result<Self, StoreLoadError> {
         re_tracing::profile_function!();
 
-        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, read)?;
+        let decoder = re_log_encoding::decoder::Decoder::new(read)?;
 
         let mut slf = Self::default();
 

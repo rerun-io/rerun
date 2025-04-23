@@ -52,7 +52,10 @@ class InstancePoses3D(Archetype):
 
     # Log a box and points further down in the hierarchy.
     rr.log("world/box", rr.Boxes3D(half_sizes=[[1.0, 1.0, 1.0]]))
-    rr.log("world/box/points", rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T))
+    lin = np.linspace(-10, 10, 10)
+    z, y, x = np.meshgrid(lin, lin, lin, indexing="ij")
+    point_grid = np.vstack([x.flatten(), y.flatten(), z.flatten()]).T
+    rr.log("world/box/points", rr.Points3D(point_grid))
 
     for i in range(180):
         rr.set_time("frame", sequence=i)

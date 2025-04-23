@@ -263,7 +263,9 @@ impl ViewerContext<'_> {
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
                 .unwrap_or_else(|| {
-                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    if !component.is_indicator_component() {
+                        re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    }
                     arrow::datatypes::DataType::Null
                 })
         };

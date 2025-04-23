@@ -202,7 +202,7 @@ Makes sure all of the snippets in the [snippets/](./docs/snippets/) folder are w
 ### "Roundtrip" tests
 
 ```sh
-pixi run ./tests/roundtrips.py
+pixi run -e py ./tests/roundtrips.py
 ```
 
 A set of cross SDK language tests that makes sure that the same logging commands for a select group of archetypes

@@ -144,11 +144,18 @@ impl ViewClass for TextDocumentView {
             })
             .inner;
 
-        if response.hovered() {
+        // Since we want the view to be hoverable / clickable when the pointer is over a label
+        // (and we want selectable labels), we need to work around egui's interactions here.
+        // Since `rect_contains_pointer` checks for the layer id, this shouldn't cause any problems
+        // with popups / modals.
+        let hovered = ui.ctx().rect_contains_pointer(ui.layer_id(), response.rect);
+        let clicked = hovered && ui.ctx().input(|i| i.pointer.primary_pressed());
+
+        if hovered {
             ctx.selection_state().set_hovered(Item::View(query.view_id));
         }
 
-        if response.clicked() {
+        if clicked {
             ctx.selection_state()
                 .set_selection(Item::View(query.view_id));
         }

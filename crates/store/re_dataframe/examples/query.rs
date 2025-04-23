@@ -7,7 +7,6 @@ use re_dataframe::{
     SparseFillStrategy, StoreKind, TimeInt,
 };
 use re_format_arrow::format_record_batch;
-use re_log_encoding::VersionPolicy;
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();
@@ -34,11 +33,7 @@ fn main() -> anyhow::Result<()> {
     let entity_path_filter =
         EntityPathFilter::parse_strict(args.get(5).map_or("/**", |s| s.as_str()))?;
 
-    let engines = QueryEngine::from_rrd_filepath(
-        &ChunkStoreConfig::DEFAULT,
-        path_to_rrd,
-        VersionPolicy::Warn,
-    )?;
+    let engines = QueryEngine::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)?;
 
     for (store_id, engine) in &engines {
         if store_id.kind != StoreKind::Recording {

@@ -6601,7 +6601,9 @@ dependencies = [
 name = "re_arrow_util"
 version = "0.23.0-alpha.3+dev"
 dependencies = [
+ "anyhow",
  "arrow",
+ "half",
  "insta",
  "itertools 0.14.0",
  "re_log",
@@ -6925,7 +6927,6 @@ dependencies = [
  "re_chunk_store",
  "re_format_arrow",
  "re_log",
- "re_log_encoding",
  "re_log_types",
  "re_query",
  "re_sorbet",
