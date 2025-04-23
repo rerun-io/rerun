@@ -170,7 +170,7 @@ impl SpatialViewState {
 
     pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {
         // If we have multiple images in the same view, they should not be fully opaque
-        // if there there is at least one image of the same kind with equal or lower draw order.
+        // if there is at least one image of the same kind with equal or lower draw order.
         //
         // Here we also assume that if the opacity is unchanged, neither is the draw order.
         //
