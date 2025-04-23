@@ -45,12 +45,6 @@ pub struct ImageCounts {
     pub depth: usize,
 }
 
-impl ImageCounts {
-    pub fn total(&self) -> usize {
-        self.segmentation + self.color + self.depth
-    }
-}
-
 /// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by [`View3DState`], not the other way round.
 #[derive(Clone, Default)]
 pub struct SpatialViewState {
@@ -181,20 +175,16 @@ impl SpatialViewState {
         let counts = self.image_counts_last_frame;
         match kind {
             ImageKind::Segmentation => {
-                let multiple_segmentation_images = counts.segmentation > 1;
-                let any_behind_segmentation_images = (counts.color + counts.depth) > 0;
-                if multiple_segmentation_images || any_behind_segmentation_images {
+                if counts.color + counts.depth > 0 {
                     // Segmentation images should always be opaque if there was more than one image in the view,
-                    // including other segmentation images
+                    // excluding other segmentation images.
                     0.5
                 } else {
                     1.0
                 }
             }
             ImageKind::Color => {
-                let multiple_color_images = counts.color > 1;
-                let any_behind_color_images = counts.depth > 0;
-                if multiple_color_images || any_behind_color_images {
+                if counts.depth > 0 {
                     0.5
                 } else {
                     1.0
