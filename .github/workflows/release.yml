@@ -203,13 +203,15 @@ jobs:
                 - [ ] pip install: does it install and run?
                 - [ ] cargo install of cli tool: does it install and run?
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
-              - [ ] Populate the release with the changelog and a nice header video/picture, check `Set as latest release`, then click `Publish release`.
+              - [ ] Edit and publish the GitHub release:
+                - Do NOT create a GitHub release draft yourself! Let the release job do it.
+                - Populate the release with the changelog and a nice header video/picture
+                - Make sure `Set as latest release` is checked
+                - Click `Publish release`
+                - Once published, the release assets will sync to it automatically.
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
               - [ ] Update landing's version of the web viewer (@jprochazk)
-              - [ ] Make sure the release job finished correctly!
-              - [ ] The release job should have created a draft GitHub release at <https://github.com/rerun-io/rerun/releases>. DO NOT CREATE THE DRAFT YOURSELF!
-              - [ ] Update the draft release with the contents of the changelog. Copy the header from the previous release.
-              - [ ] Hit publish on the GitHub release. The release artifacts should now appear
+              - [ ] Release a new version of gradio (@oxkitsune, @jprochazk)
               - [ ] Merge the Release PR
 
           A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
