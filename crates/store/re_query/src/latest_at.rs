@@ -726,7 +726,7 @@ impl LatestAtCache {
             pending_invalidations.retain(|data_time| {
                 let is_reference = discarded
                     .get(data_time)
-                    .map_or(true, |chunk| chunk.is_reference);
+                    .is_none_or(|chunk| chunk.is_reference);
                 !is_reference
             });
         }

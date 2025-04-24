@@ -163,7 +163,7 @@ impl ViewBlueprint {
 
         let contents =
             ViewContents::from_db_or_default(id, blueprint_db, query, class_identifier, &space_env);
-        let visible = visible.map_or(true, |v| *v.0);
+        let visible = visible.is_none_or(|v| *v.0);
         let defaults_path = id.as_entity_path().join(&"defaults".into());
 
         Some(Self {

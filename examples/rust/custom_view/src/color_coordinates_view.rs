@@ -116,7 +116,7 @@ impl ViewClass for ColorCoordinatesView {
         if ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
-            .map_or(true, |entities| {
+            .is_none_or(|entities| {
                 entities.is_empty() || entities.iter().all(|e| suggested_filter.matches(e))
             })
         {

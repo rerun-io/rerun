@@ -86,7 +86,7 @@ impl log::Log for Logger {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         self.filter
             .as_ref()
-            .map_or(true, |filter| filter.enabled(metadata))
+            .is_none_or(|filter| filter.enabled(metadata))
     }
 
     #[inline]
@@ -94,7 +94,7 @@ impl log::Log for Logger {
         if !self
             .filter
             .as_ref()
-            .map_or(true, |filter| filter.matches(record))
+            .is_none_or(|filter| filter.matches(record))
         {
             return;
         }
