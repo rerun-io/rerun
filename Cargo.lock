@@ -6973,6 +6973,7 @@ dependencies = [
  "futures-util",
  "itertools 0.14.0",
  "re_dataframe",
+ "re_grpc_client",
  "re_log_encoding",
  "re_log_types",
  "re_protos",
@@ -7085,6 +7086,7 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-web-wasm-client",
+ "tower 0.5.2",
  "url",
  "wasm-bindgen-futures",
 ]
