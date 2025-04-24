@@ -71,7 +71,7 @@ How does one creates and stores chunks in Rerun, then?
 
 The `log` API is generally [what we show in the getting-started guides](https://rerun.io/docs/getting-started/quick-start/python#logging-your-own-data) since it's the easiest to use:
 
-snippet: archetypes/scalar_row_updates
+snippet: archetypes/scalars_row_updates
 
 The `log` API makes it possible to send data into Rerun on a row-by-row basis, without requiring any extra effort.
 This row-oriented interface makes it very easy to integrate into existing codebase and just start logging data as it comes (hence the name).
@@ -127,7 +127,7 @@ This is what the `send_columns` API is for: it lets you efficiently update the s
 >
 > In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
 
-snippet: archetypes/scalar_column_updates
+snippet: archetypes/scalars_column_updates
 
 See also the reference:
 * [🐍 Python `send_columns`](https://ref.rerun.io/docs/python/0.21.0/common/columnar_api/#rerun.send_columns)
