@@ -52,6 +52,8 @@ We've added a (limited) API with callbacks, useable from JavaScript and from Not
 With this you can easily write simple annotations tools.
 We've created an example for this using [Gradio](https://www.gradio.app/) at <https://github.com/rerun-io/annotation-example>.
 
+![Annotation example](https://github.com/user-attachments/assets/0ca80087-4589-4bb1-b010-c1991478d25d)
+
 
 #### Recording properties
 
