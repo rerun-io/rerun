@@ -239,6 +239,7 @@ You can find more information in our 🧳 [migration guide](https://rerun.io/doc
 - Remove speculative-links [b0ea95e9d09dd14ff70264afb4027d6b33cc14af](https://github.com/rerun-io/rerun/commit/b0ea95e9d09dd14ff70264afb4027d6b33cc14af)
 - Fix scalars docs [6b7bf5f98527cb9622759a2dbb64e247d55deeca](https://github.com/rerun-io/rerun/commit/6b7bf5f98527cb9622759a2dbb64e247d55deeca)
 
+
 ## [0.22.1](https://github.com/rerun-io/rerun/compare/0.21.0...0.22.0) - Bugfixes - 2025-02-20
 
 A small release addressing bugs and polishing rough edges.
