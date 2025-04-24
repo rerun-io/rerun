@@ -214,13 +214,13 @@ fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
             .menu_button_ui(ui, ctx.command_sender())
             .clicked()
         {
-            ui.close_menu();
+            ui.close();
         };
         if re_ui::UICommand::AddRedapServer
             .menu_button_ui(ui, ctx.command_sender())
             .clicked()
         {
-            ui.close_menu();
+            ui.close();
         };
     }))
     .ui(ui)
