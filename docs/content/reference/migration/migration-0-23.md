@@ -389,7 +389,7 @@ We've deprecated inconsistent constructors with following replacements:
     - `from_file` -> `from_file_path`
     - `from_bytes` -> `from_file_contents`
 
-## Notebooks
+## Jupyter notebooks
 
 ### Explicit `Viewer` imports
 
