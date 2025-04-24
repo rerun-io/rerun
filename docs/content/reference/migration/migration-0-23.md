@@ -1,6 +1,6 @@
 ---
 title: Migrating from 0.22 to 0.23
-order: 989
+order: 987
 ---
 
 ## Reserved namespaces
