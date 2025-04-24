@@ -1,4 +1,5 @@
 use egui::ahash::HashMap;
+use egui_plot::ColorConflictHandling;
 use re_log_types::{EntityPath, ResolvedEntityPathFilter};
 use re_types::{
     blueprint::{archetypes::PlotLegend, components::Corner2D},
@@ -156,7 +157,11 @@ impl ViewClass for BarChartView {
                 .allow_zoom([true, zoom_both_axis]);
 
             if *legend_visible.0 {
-                plot = plot.legend(Legend::default().position(legend_corner.into()));
+                plot = plot.legend(
+                    Legend::default()
+                        .position(legend_corner.into())
+                        .color_conflict_handling(ColorConflictHandling::PickFirst),
+                );
             }
 
             let mut plot_item_id_to_entity_path = HashMap::default();

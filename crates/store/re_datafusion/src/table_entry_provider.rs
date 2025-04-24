@@ -7,22 +7,19 @@ use datafusion::{
     catalog::TableProvider,
     error::{DataFusionError, Result as DataFusionResult},
 };
-use tonic::transport::Channel;
 
+use re_grpc_client::redap::RedapClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
 use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
-use re_protos::frontend::v1alpha1::{
-    frontend_service_client::FrontendServiceClient, GetTableSchemaRequest, ScanTableRequest,
-    ScanTableResponse,
-};
+use re_protos::frontend::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
 
 #[derive(Debug, Clone)]
 pub struct TableEntryTableProvider {
-    client: FrontendServiceClient<Channel>,
+    client: RedapClient,
     table: EntryIdOrName,
 
     // cache the table id when resolved
@@ -30,7 +27,7 @@ pub struct TableEntryTableProvider {
 }
 
 impl TableEntryTableProvider {
-    pub fn new(client: FrontendServiceClient<Channel>, table: impl Into<EntryIdOrName>) -> Self {
+    pub fn new(client: RedapClient, table: impl Into<EntryIdOrName>) -> Self {
         Self {
             client,
             table: table.into(),

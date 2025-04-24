@@ -4,19 +4,17 @@ use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
+use re_grpc_client::redap::get_chunks_response_to_chunk_and_partition_id;
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_dataframe::{ComponentColumnSelector, TimeColumnSelector};
 use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
-use re_grpc_client::redap::fetch_partition_response_to_chunk;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
-use re_protos::frontend::v1alpha1::{
-    CreateIndexRequest, FetchPartitionRequest, SearchDatasetRequest,
-};
+use re_protos::frontend::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
 use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
 use re_protos::manifest_registry::v1alpha1::{
     index_query_properties, IndexColumn, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
@@ -125,9 +123,12 @@ impl PyDataset {
         //TODO(ab): use `ConnectionHandle::get_chunk()`
         let store: PyResult<ChunkStore> = wait_for_future(self_.py(), async move {
             let catalog_chunk_stream = client
-                .fetch_partition(FetchPartitionRequest {
+                .get_chunks(GetChunksRequest {
                     dataset_id: Some(dataset_id.into()),
-                    partition_id: Some(partition_id.clone().into()),
+                    partition_ids: vec![partition_id.clone().into()],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    query: None,
                 })
                 .await
                 .map_err(to_py_err)?
@@ -145,10 +146,11 @@ impl PyDataset {
             let mut store = ChunkStore::new(store_id, Default::default());
             store.set_info(store_info);
 
-            let mut chunk_stream = fetch_partition_response_to_chunk(catalog_chunk_stream);
+            let mut chunk_stream =
+                get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
 
             while let Some(chunk) = chunk_stream.next().await {
-                let chunk = chunk.map_err(to_py_err)?;
+                let (chunk, _partition_id) = chunk.map_err(to_py_err)?;
                 store
                     .insert_chunk(&std::sync::Arc::new(chunk))
                     .map_err(to_py_err)?;

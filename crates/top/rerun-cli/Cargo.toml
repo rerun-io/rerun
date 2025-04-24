@@ -43,7 +43,7 @@ default = ["native_viewer", "web_viewer", "map_view"]
 # Do you _really_ want to add features in `release` that are not in `default`?
 #
 # Here are some reasons not to:
-# - These features will be missing from the `cargo install rerun-cli` command our users will inevitably use.
+# - These features will be missing from the `cargo install rerun-cli --locked` command our users will inevitably use.
 # - These features will not be picked up in places where we cannot use the `release` feature set (e.g. rerun_js).
 # - This list is not exhaustive and will unexpectedly grow in the future.
 #
@@ -61,7 +61,7 @@ default = ["native_viewer", "web_viewer", "map_view"]
 release = ["default", "nasm"]
 
 ## Enable faster native video decoding with assembly.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["rerun/nasm"]
 
 ## Support spawning a native viewer.

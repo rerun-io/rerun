@@ -717,7 +717,6 @@ impl ChunkStore {
     pub fn from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
         let path_to_rrd = path_to_rrd.as_ref();
 
@@ -730,7 +729,7 @@ impl ChunkStore {
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
 
-        let mut decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)
+        let mut decoder = re_log_encoding::decoder::Decoder::new(rrd_file)
             .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
 
         // TODO(cmc): offload the decoding to a background thread.
@@ -824,13 +823,10 @@ impl ChunkStore {
     pub fn handle_from_rrd_filepath(
         store_config: &ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
-        version_policy: re_log_encoding::VersionPolicy,
     ) -> anyhow::Result<BTreeMap<StoreId, ChunkStoreHandle>> {
-        Ok(
-            Self::from_rrd_filepath(store_config, path_to_rrd, version_policy)?
-                .into_iter()
-                .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-                .collect(),
-        )
+        Ok(Self::from_rrd_filepath(store_config, path_to_rrd)?
+            .into_iter()
+            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+            .collect())
     }
 }

@@ -16,7 +16,7 @@ Visualize a live stream of several plots, scrolling horizontally to keep a fixed
 </picture>
 
 ## Used Rerun types
-[`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link)
+[`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars)
 
 ## Setting up the blueprint
 

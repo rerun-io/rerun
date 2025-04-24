@@ -76,7 +76,7 @@ ecolor = ["re_types?/ecolor"]
 log = ["dep:env_filter", "dep:log"]
 
 ## Enable faster native video decoding with assembly.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["re_video/nasm"]
 
 ## Support spawning a native viewer.
