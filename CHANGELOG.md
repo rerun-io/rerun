@@ -15,27 +15,60 @@
 * ⚙️ [New APIs for attaching properties (metadata) to recordings](https://github.com/rerun-io/rerun/blob/0.23.0/docs/snippets/all/concepts/recording_properties.py)
 * 🧮 [Experimental support for tables and dataframes](https://rerun.io/docs/howto/logging/send-table)
 
-Logging multiple scalars under a single entity:
+#### Multiple Scalars under a single entity
+
+In this release we have added support for logging scalar data with multiple signals, under the same entity. This allow you to log data that inherently belongs together, such as the action values in a LeRobot dataset or gyroscope measurements, under the same entity path.
+
+As part of this update, we're deprecating the `SeriesLine/SeriesPoint/Scalar` archetypes in favor of the plural versions `SeriesLines/SeriesPoints/Scalars`, for consistent naming with the other archetypes.
+
+For example, the `x`, `y` and `z` component of a gyroscope measurement, previously would be logged as separate entities:
+
+```py
+rr.log("gyroscope/x", rr.Scalar(measurement[0]))
+rr.log("gyroscope/y", rr.Scalar(measurement[1]))
+rr.log("gyroscope/z", rr.Scalar(measurement[2]))
+```
+
+Now can be logged under a single entity:
 
 ```py
 rr.log("gyroscope", rr.Scalars(measurement))
 ```
-<img width="70%" src="https://github.com/user-attachments/assets/26a23ae1-6bd9-4531-91b0-8221b622c3d0">
 
-Using the new callbacks API to implement data annotation:
+<p align="center">
+  <img width="70%" src="https://github.com/user-attachments/assets/26a23ae1-6bd9-4531-91b0-8221b622c3d0">
+  <br/>
+  <i>See the new <a href="https://github.com/rerun-io/rerun/tree/main/examples/python/imu_signals">IMU signals</a> example for more</i>
+</p>
 
-https://github.com/user-attachments/assets/f064403f-5d34-4b55-83f9-12db518f7ddd
+The `SeriesLine` and `SeriesPoints` archetypes now include a `visible_series` component that lets you control which series appear in your visualizations. Unlike the regular entity visibility property, hidden series will still show up in the legend.
 
-Attaching properties (metadata) to recordings (and setting the name of a recording):
+![Image](https://github.com/user-attachments/assets/8a645f6e-787b-4671-8534-40b97cfc77a3)
+
+
+#### Recording properties
+
+For this release, we have improved Rerun's logging capabilities. There is a new _recording properties_ concept in all of our APIs. Recording properties allow you to attach metadata to a recording. For example, you can now change the name of your recording via `.send_recording_name("My episode")`, which will show up in the recording panel of the viewer as well. You can also log arbitrary data via the the general `.send_property()` method. Properties are logged as static data and will therefore show up in the timeline as well. Also, the side-panel shows an overview of the properties when a recording is selected.
 
 <img width="284" alt="Image" src="https://github.com/user-attachments/assets/1d67cb7f-76ac-4cb3-8e1d-84fc570a9442" />
+
 <img width="315" alt="Image" src="https://github.com/user-attachments/assets/3a57dc1f-e8fe-470e-b95a-4e0f6ee0b817" />
+
 <img width="173" alt="Image" src="https://github.com/user-attachments/assets/bc6326c2-226e-4835-91d5-416045b6c5b1" />
 
-Sending tables (dataframes to the viewer):
+Our snippets now contain examples for recording properties in all SDKs:
+
+* [🐍 Python (`recording_properties.py`)](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.py)
+* [🦀 Rust (`recording_properties.rs`)](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.rs)
+* [🌊 C++ (`recording_properties.cpp`)](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/recording_properties.cpp)
+
+#### Experimental `send_table` API
+
+We are also working on better support for tables and dataframes in Rerun, a feature that has been requested several times by our community. With this release, there is now an _experimental_ API `send_table` that can be used to send arbitrary Arrow record batches via the Python SDK and from notebooks. For now, while we evolve this feature, this API is separate from the rest of our logging APIs. [This tutorial](https://rerun.io/docs/howto/logging/send-table) shows how to use this APIs and also provides more details on the current implementation. In future releases, we plan to improve support for the table representation in the viewer to facility more advanced analysis tasks such as filtering, or showing summary statistics.
+
+Please note that this is distinct from our current `send_dataframe` API and dataframe query view.
 
 <img width="721" alt="Image" src="https://github.com/user-attachments/assets/eb80f506-ab36-4e64-ae17-0ad9b2cd7ab4" />
-
 
 ### ⚠️ Breaking changes
 
