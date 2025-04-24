@@ -71,7 +71,7 @@ How does one creates and stores chunks in Rerun, then?
 
 The `log` API is generally [what we show in the getting-started guides](https://rerun.io/docs/getting-started/quick-start/python#logging-your-own-data) since it's the easiest to use:
 
-snippet: archetypes/scalar_row_updates
+snippet: archetypes/scalars_row_updates
 
 The `log` API makes it possible to send data into Rerun on a row-by-row basis, without requiring any extra effort.
 This row-oriented interface makes it very easy to integrate into existing codebase and just start logging data as it comes (hence the name).
