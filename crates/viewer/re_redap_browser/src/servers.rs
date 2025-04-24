@@ -5,6 +5,7 @@ use egui::{Frame, Margin, RichText};
 
 use re_log_types::EntryId;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_ui::list_item::ItemActionButton;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
@@ -119,6 +120,12 @@ impl Server {
             egui::Id::new(&self.origin),
             "lerobot",
         )
+        .title("lerobot")
+        .title_button(ItemActionButton::new(&re_ui::icons::RESET, || {
+            let _ = ctx
+                .command_sender
+                .send(Command::RefreshCollection(self.origin.clone()));
+        }))
         .column_renamer(|desc| {
             let name = desc.name();
             name.strip_prefix("rerun_")

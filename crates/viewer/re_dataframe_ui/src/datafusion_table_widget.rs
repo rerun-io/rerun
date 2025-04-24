@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
-use egui::Id;
+use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntryId, TimelineName};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_ui::list_item::ItemButton;
 use re_ui::UiExt as _;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
@@ -18,7 +19,9 @@ use crate::table_utils::{
     apply_table_style_fixes, cell_ui, header_ui, ColumnConfig, TableConfig, CELL_MARGIN,
 };
 use crate::DisplayRecordBatch;
+
 /// Keep track of the columns in a sorbet batch, indexed by id.
+//TODO(ab): this, `TableConfig` and `DatafusionAdapter` should somehow be merged
 struct Columns<'a> {
     /// Column index and descriptor from id
     inner: IntMap<egui::Id, (usize, ColumnDescriptorRef<'a>)>,
@@ -53,12 +56,18 @@ impl Columns<'_> {
 
 type ColumnRenamerFn = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'static>>;
 
-pub struct DataFusionTableWidget {
+pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
     id: egui::Id,
     table_ref: TableReference,
 
-    // options
+    /// If provided, add a title UI on top of the table.
+    //TODO(ab): for now, this is the only way to have the column visibility/order menu
+    title: Option<String>,
+
+    /// If provided and if `title` is set, add a button next to the title.
+    title_button: Option<Box<dyn ItemButton + 'a>>,
+
     /// Closure used to determine the display name of the column.
     ///
     /// Defaults to using [`ColumnDescriptorRef::name`].
@@ -71,7 +80,7 @@ pub struct DataFusionTableWidget {
     refresh: bool,
 }
 
-impl DataFusionTableWidget {
+impl<'a> DataFusionTableWidget<'a> {
     pub fn new(
         session_ctx: Arc<SessionContext>,
         id: impl Into<egui::Id>,
@@ -81,10 +90,25 @@ impl DataFusionTableWidget {
             session_ctx,
             id: id.into(),
             table_ref: table_ref.into(),
+
+            title: None,
+            title_button: None,
             column_renamer: None,
             initial_blueprint: Default::default(),
             refresh: false,
         }
+    }
+
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.title = Some(title.into());
+
+        self
+    }
+
+    pub fn title_button(mut self, button: impl ItemButton + 'a) -> Self {
+        self.title_button = Some(Box::new(button));
+
+        self
     }
 
     pub fn column_renamer(
@@ -129,6 +153,8 @@ impl DataFusionTableWidget {
             session_ctx,
             id,
             table_ref,
+            title,
+            title_button,
             column_renamer,
             initial_blueprint,
             refresh,
@@ -244,7 +270,9 @@ impl DataFusionTableWidget {
             }),
         );
 
-        table_config.button_ui(ui);
+        if let Some(title) = title {
+            title_ui(ui, &mut table_config, &title, title_button);
+        }
 
         apply_table_style_fixes(ui.style_mut());
 
@@ -279,6 +307,35 @@ impl DataFusionTableWidget {
         drop(dataframe);
         table_state.update_query(runtime, ui, new_blueprint);
     }
+}
+
+fn title_ui<'a>(
+    ui: &mut egui::Ui,
+    table_config: &mut TableConfig,
+    title: &str,
+    title_button: Option<Box<dyn ItemButton + 'a>>,
+) {
+    Frame::new()
+        .inner_margin(Margin {
+            top: 16,
+            bottom: 12,
+            left: 16,
+            right: 16,
+        })
+        .show(ui, |ui| {
+            egui::Sides::new().show(
+                ui,
+                |ui| {
+                    ui.heading(RichText::new(title).strong());
+                    if let Some(title_button) = title_button {
+                        title_button.ui(ui);
+                    }
+                },
+                |ui| {
+                    table_config.button_ui(ui);
+                },
+            );
+        });
 }
 
 struct DataFusionTableDelegate<'a> {
