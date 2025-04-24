@@ -406,7 +406,7 @@ After:
 from rerun.notebook import Viewer
 
 viewer = Viewer()
-display(viewer)
+viewer.display()
 ```
 
 `rr.notebook_show` is still available in the root `rerun` namespace.
