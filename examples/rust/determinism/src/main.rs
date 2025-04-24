@@ -30,8 +30,8 @@ fn next_row_id_generator() -> impl FnMut() -> RowId {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     rerun::external::re_log::setup_logging();
 
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
-        .recording_id("dna")
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_determinism")
+        .recording_id("some_reproducible_id")
         .send_properties(false)
         .stdout()?;
 

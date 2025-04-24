@@ -17,7 +17,6 @@ use std::path::{Path, PathBuf};
 
 use ahash::HashMap;
 use arrow::array::RecordBatch;
-use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::{DeserializeOwned, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -170,23 +169,8 @@ impl LeRobotDataset {
     }
 
     /// Read the Parquet data file for the provided episode.
-    pub fn read_episode_data(&self, episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
-        if self.metadata.episodes.get(episode.0).is_none() {
-            return Err(LeRobotError::InvalidEpisodeIndex(episode));
-        };
-
-        let episode_data_path = self.metadata.info.episode_data_path(episode)?;
-        let episode_parquet_file = self.path.join(episode_data_path);
-
-        let file = File::open(&episode_parquet_file)
-            .map_err(|err| LeRobotError::IO(err, episode_parquet_file))?;
-        let mut reader = ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
-
-        reader
-            .next()
-            .transpose()
-            .map(|batch| batch.ok_or(LeRobotError::EmptyEpisode(episode)))
-            .map_err(LeRobotError::Arrow)?
+    pub fn read_episode_data(&self, _episode: EpisodeIndex) -> Result<RecordBatch, LeRobotError> {
+        todo!()
     }
 
     /// Read video feature for the provided episode.

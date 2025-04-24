@@ -1,0 +1,13 @@
+[package]
+name = "determinism"
+version = "0.23.0-alpha.3+dev"
+edition = "2021"
+rust-version = "1.84"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/top/rerun" }
+
+itertools = "0.14"
+rand = "0.8"

@@ -173,7 +173,18 @@ ahash = "0.8"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
-arrow = { version = "54.3.1", default-features = false }
+# arrow = { version = "54.3.1", default-features = false }
+arrow = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding", optional = false, features = ["prettyprint"] }
+arrow-arith = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-array = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-buffer = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-cast = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-data = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-ipc = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding", features = ["zstd"] }
+arrow-ord = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-row = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-schema = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
+arrow-select = { git = "https://github.com/timsaucer/arrow-rs.git", branch = "feat/deterministic-metadata-encoding" }
 async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"
