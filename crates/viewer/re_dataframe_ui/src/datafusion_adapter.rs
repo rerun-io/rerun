@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use datafusion::common::DataFusionError;
+use datafusion::common::{DataFusionError, TableReference};
 use datafusion::logical_expr::col;
 use datafusion::prelude::SessionContext;
 use parking_lot::Mutex;
@@ -40,26 +40,26 @@ pub struct SortBy {
 #[derive(Clone)]
 pub struct DataFusionQuery {
     session_ctx: Arc<SessionContext>,
-    table_name: String,
+    table_ref: TableReference,
 
     pub sort_by: Option<SortBy>,
 }
 
 impl DataFusionQuery {
-    pub fn new(session_ctx: Arc<SessionContext>, table_name: String) -> Self {
+    pub fn new(session_ctx: Arc<SessionContext>, table_ref: TableReference) -> Self {
         Self {
             session_ctx,
-            table_name,
+            table_ref,
             sort_by: None,
         }
     }
 
     /// Execute the query and produce a vector of [`SorbetBatch`]s.
     ///
-    /// Note: the future returned by this function must by `'static`, so it takes `self`. Use
+    /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
     /// `clone()` as required.
     async fn execute(self) -> Result<Vec<SorbetBatch>, DataFusionError> {
-        let mut dataframe = self.session_ctx.table(&self.table_name).await?;
+        let mut dataframe = self.session_ctx.table(self.table_ref).await?;
 
         if let Some(sort_by) = &self.sort_by {
             dataframe = dataframe.sort(vec![
@@ -87,12 +87,12 @@ impl PartialEq for DataFusionQuery {
     fn eq(&self, other: &Self) -> bool {
         let Self {
             session_ctx,
-            table_name,
+            table_ref: table_name,
             sort_by,
         } = self;
 
         Arc::ptr_eq(session_ctx, &other.session_ctx)
-            && table_name == &other.table_name
+            && table_name == &other.table_ref
             && sort_by == &other.sort_by
     }
 }
@@ -118,35 +118,36 @@ impl DataFusionAdapter {
         runtime: &AsyncRuntimeHandle,
         ui: &egui::Ui,
         session_ctx: &Arc<SessionContext>,
-        table_name: &str,
-        table_id: egui::Id,
+        table_ref: TableReference,
+        id: egui::Id,
+        force_refresh: bool,
     ) -> Self {
-        // The cache must be invalidated as soon as the input table name or session context change,
-        // so we add that to the id.
-        let id = table_id.with((table_name, session_ctx.session_id()));
+        let adapter = if force_refresh {
+            None
+        } else {
+            ui.data(|data| data.get_temp::<Self>(id))
+        };
 
-        let adapter = ui
-            .data(|data| data.get_temp::<Self>(id))
-            .unwrap_or_else(|| {
-                let query = DataFusionQuery::new(Arc::clone(session_ctx), table_name.to_owned());
+        let adapter = adapter.unwrap_or_else(|| {
+            let query = DataFusionQuery::new(Arc::clone(session_ctx), table_ref);
 
-                let table_state = Self {
-                    id,
-                    dataframe: Arc::new(Mutex::new(RequestedObject::new_with_repaint(
-                        runtime,
-                        ui.ctx().clone(),
-                        query.clone().execute(),
-                    ))),
-                    query,
-                    last_dataframe: None,
-                };
+            let table_state = Self {
+                id,
+                dataframe: Arc::new(Mutex::new(RequestedObject::new_with_repaint(
+                    runtime,
+                    ui.ctx().clone(),
+                    query.clone().execute(),
+                ))),
+                query,
+                last_dataframe: None,
+            };
 
-                ui.data_mut(|data| {
-                    data.insert_temp(table_id, table_state.clone());
-                });
-
-                table_state
+            ui.data_mut(|data| {
+                data.insert_temp(id, table_state.clone());
             });
+
+            table_state
+        });
 
         adapter.dataframe.lock().on_frame_start();
 

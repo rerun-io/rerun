@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
 use egui::Id;
 use egui_table::{CellInfo, HeaderCellInfo};
@@ -49,134 +50,180 @@ impl Columns<'_> {
     }
 }
 
-//TODO:
-// - expose a "refresh" functionality
-// - expose a column name customisation functionality
-// - document that the caller is 100% responsible for NOT calling this function if `table_name` is
-//   not yet registered in `session_ctx`.
-pub fn table_ui(
-    viewer_ctx: &ViewerContext<'_>,
-    runtime: &AsyncRuntimeHandle,
-    ui: &mut egui::Ui,
-    session_ctx: &Arc<SessionContext>,
-    origin: &re_uri::Origin,
-    table_name: &str,
-) {
-    let table_id_salt = egui::Id::new((origin, table_name)).with("__table_ui_table_state");
+pub struct DataFusionTableWidget {
+    session_ctx: Arc<SessionContext>,
+    id: egui::Id,
+    table_ref: TableReference,
 
-    let table_state = DataFusionAdapter::get(runtime, ui, session_ctx, table_name, table_id_salt);
-
-    let dataframe = table_state.dataframe.lock();
-
-    let sorbet_batches = match (dataframe.try_as_ref(), &table_state.last_dataframe) {
-        (Some(Ok(dataframe)), _) => dataframe,
-
-        (Some(Err(err)), _) => {
-            let error = format!("Could not load table: {err}");
-            drop(dataframe);
-
-            ui.horizontal(|ui| {
-                ui.error_label(error);
-
-                if ui.small_icon_button(&re_ui::icons::RESET).clicked() {
-                    table_state.clear(ui);
-                }
-            });
-            return;
-        }
-
-        (None, Some(last_dataframe)) => {
-            // The new dataframe is still processing, but we have the previous one to display for now.
-            //TODO(ab): add a progress indicator
-            last_dataframe
-        }
-
-        (None, None) => {
-            // still processing, nothing yet to show
-            ui.label("Loading table...");
-            return;
-        }
-    };
-
-    let sorbet_schema = {
-        let Some(sorbet_batch) = sorbet_batches.first() else {
-            ui.label(egui::RichText::new("This dataset is empty").italics());
-            return;
-        };
-
-        sorbet_batch.sorbet_schema()
-    };
-
-    let num_rows = sorbet_batches
-        .iter()
-        .map(|record_batch| record_batch.num_rows() as u64)
-        .sum();
-
-    let columns = Columns::from(sorbet_schema);
-
-    let display_record_batches = sorbet_batches
-        .iter()
-        .map(|sorbet_batch| {
-            DisplayRecordBatch::try_new(
-                sorbet_batch
-                    .all_columns()
-                    .map(|(desc, array)| (desc, array.clone())),
-            )
-        })
-        .collect::<Result<Vec<_>, _>>();
-
-    let display_record_batches = match display_record_batches {
-        Ok(display_record_batches) => display_record_batches,
-        Err(err) => {
-            //TODO(ab): better error handling?
-            ui.error_label(err.to_string());
-            return;
-        }
-    };
-
-    let table_config = TableConfig::get_with_columns(
-        ui.ctx(),
-        table_id_salt,
-        columns.descriptors().map(|c| {
-            //TODO(ab): we should remove this name facility if we don't use it
-            ColumnConfig::new(Id::new(c), "unused".to_owned())
-        }),
-    );
-
-    apply_table_style_fixes(ui.style_mut());
-
-    let mut new_blueprint = table_state.query.clone();
-
-    let mut table_delegate = CollectionTableDelegate {
-        ctx: viewer_ctx,
-        display_record_batches: &display_record_batches,
-        columns: &columns,
-        blueprint: &table_state.query,
-        new_blueprint: &mut new_blueprint,
-        table_config,
-    };
-
-    egui_table::Table::new()
-        .id_salt(table_id_salt)
-        .columns(
-            table_delegate
-                .table_config
-                .visible_column_ids()
-                .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
-                .collect::<Vec<_>>(),
-        )
-        .headers(vec![egui_table::HeaderRow::new(
-            re_ui::DesignTokens::table_header_height() + CELL_MARGIN.sum().y,
-        )])
-        .num_rows(num_rows)
-        .show(ui, &mut table_delegate);
-
-    drop(dataframe);
-
-    table_state.update_query(runtime, ui, new_blueprint);
+    //TODO: handle that
+    refresh: bool,
 }
 
-struct CollectionTableDelegate<'a> {
+impl DataFusionTableWidget {
+    pub fn new(
+        session_ctx: Arc<SessionContext>,
+        id: impl Into<egui::Id>,
+        table_ref: impl Into<TableReference>,
+    ) -> Self {
+        Self {
+            session_ctx,
+            id: id.into(),
+            table_ref: table_ref.into(),
+            refresh: false,
+        }
+    }
+
+    pub fn refresh(mut self, refresh: bool) -> Self {
+        self.refresh = refresh;
+
+        self
+    }
+
+    pub fn show(
+        self,
+        viewer_ctx: &ViewerContext<'_>,
+        runtime: &AsyncRuntimeHandle,
+        ui: &mut egui::Ui,
+    ) {
+        let Self {
+            session_ctx,
+            id,
+            table_ref,
+            refresh,
+        } = self;
+
+        if !session_ctx
+            .table_exist(table_ref.clone())
+            .unwrap_or_default()
+        {
+            ui.error_label(format!(
+                "Table `{}` does not exist in the provided context.",
+                &table_ref
+            ));
+            return;
+        }
+
+        // The cache must be invalidated as soon as the input table name or session context change,
+        // so we add that to the id.
+        let id = id
+            .with((&table_ref, session_ctx.session_id()))
+            .with("__table_ui_table_stateaédflkasdéf");
+
+        let table_state = DataFusionAdapter::get(runtime, ui, &session_ctx, table_ref, id, refresh);
+
+        let dataframe = table_state.dataframe.lock();
+
+        let sorbet_batches = match (dataframe.try_as_ref(), &table_state.last_dataframe) {
+            (Some(Ok(dataframe)), _) => dataframe,
+
+            (Some(Err(err)), _) => {
+                let error = format!("Could not load table: {err}");
+                drop(dataframe);
+
+                ui.horizontal(|ui| {
+                    ui.error_label(error);
+
+                    if ui.small_icon_button(&re_ui::icons::RESET).clicked() {
+                        table_state.clear(ui);
+                    }
+                });
+                return;
+            }
+
+            (None, Some(last_dataframe)) => {
+                // The new dataframe is still processing, but we have the previous one to display for now.
+                //TODO(ab): add a progress indicator
+                last_dataframe
+            }
+
+            (None, None) => {
+                // still processing, nothing yet to show
+                ui.label("Loading table...");
+                return;
+            }
+        };
+
+        let sorbet_schema = {
+            let Some(sorbet_batch) = sorbet_batches.first() else {
+                ui.label(egui::RichText::new("This dataset is empty").italics());
+                return;
+            };
+
+            sorbet_batch.sorbet_schema()
+        };
+
+        let num_rows = sorbet_batches
+            .iter()
+            .map(|record_batch| record_batch.num_rows() as u64)
+            .sum();
+
+        let columns = Columns::from(sorbet_schema);
+
+        let display_record_batches = sorbet_batches
+            .iter()
+            .map(|sorbet_batch| {
+                DisplayRecordBatch::try_new(
+                    sorbet_batch
+                        .all_columns()
+                        .map(|(desc, array)| (desc, array.clone())),
+                )
+            })
+            .collect::<Result<Vec<_>, _>>();
+
+        let display_record_batches = match display_record_batches {
+            Ok(display_record_batches) => display_record_batches,
+            Err(err) => {
+                //TODO(ab): better error handling?
+                ui.error_label(err.to_string());
+                return;
+            }
+        };
+
+        //TODO: force refresh
+        let table_config = TableConfig::get_with_columns(
+            ui.ctx(),
+            id,
+            columns.descriptors().map(|c| {
+                //TODO(ab): we should remove this name facility if we don't use it
+                ColumnConfig::new(Id::new(c), "unused".to_owned())
+            }),
+        );
+
+        apply_table_style_fixes(ui.style_mut());
+
+        let mut new_blueprint = table_state.query.clone();
+
+        let mut table_delegate = DataFusionTableDelegate {
+            ctx: viewer_ctx,
+            display_record_batches: &display_record_batches,
+            columns: &columns,
+            blueprint: &table_state.query,
+            new_blueprint: &mut new_blueprint,
+            table_config,
+        };
+
+        egui_table::Table::new()
+            .id_salt(id)
+            .columns(
+                table_delegate
+                    .table_config
+                    .visible_column_ids()
+                    .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
+                    .collect::<Vec<_>>(),
+            )
+            .headers(vec![egui_table::HeaderRow::new(
+                re_ui::DesignTokens::table_header_height() + CELL_MARGIN.sum().y,
+            )])
+            .num_rows(num_rows)
+            .show(ui, &mut table_delegate);
+
+        drop(dataframe);
+
+        table_state.update_query(runtime, ui, new_blueprint);
+    }
+}
+
+struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
@@ -185,7 +232,7 @@ struct CollectionTableDelegate<'a> {
     table_config: TableConfig,
 }
 
-impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
+impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
         ui.set_truncate_style();
 

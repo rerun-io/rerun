@@ -113,14 +113,21 @@ impl Server {
         // draw the entries table
         //TODO: clean that!
         //TODO: don't attempt to draw this until the session context is fully registered
-        re_dataframe_ui::table_ui(
-            viewer_ctx,
-            &self.runtime,
-            ui,
-            &self.tables_session_ctx.ctx,
-            &self.origin,
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.ctx.clone(),
+            egui::Id::new(&self.origin),
             "__entries",
-        );
+        )
+        .show(viewer_ctx, &self.runtime, ui);
+        // )
+        // re_dataframe_ui::table_ui(
+        //     viewer_ctx,
+        //     &self.runtime,
+        //     ui,
+        //     &self.tables_session_ctx.ctx,
+        //     &self.origin,
+        //     "__entries",
+        // );
     }
 
     fn panel_ui(
