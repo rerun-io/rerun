@@ -49,7 +49,7 @@ rr.log(
     rr.Transform3D(
         translation=rgb_from_depth.translation,
         mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
-        from_parent=True,
+        relation=rr.TransformRelation.ChildFromParent,
     ),
     static=True,
 )
@@ -67,7 +67,7 @@ rr.log(
 )
 ```
 ```python
-rr.set_index("frame_nr", sequence=frame_nr)
+rr.set_time("frame_nr", sequence=frame_nr)
 rr.log("realsense/rgb/image", rr.Image(color_image))
 ```
 
@@ -87,7 +87,7 @@ rr.log(
 )
 ```
 ```python
-rr.set_index("frame_nr", sequence=frame_nr)
+rr.set_time("frame_nr", sequence=frame_nr)
 rr.log("realsense/depth/image", rr.DepthImage(depth_image, meter=1.0 / depth_units))
 ```
 

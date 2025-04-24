@@ -1,4 +1,4 @@
-use crate::{Duration, NonMinI64, Time, TryFromIntError};
+use crate::{Duration, NonMinI64, TryFromIntError};
 
 /// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
 ///
@@ -82,14 +82,14 @@ impl TimeInt {
 
     /// For time timelines.
     #[inline]
-    pub fn from_milliseconds(millis: NonMinI64) -> Self {
+    pub fn from_millis(millis: NonMinI64) -> Self {
         Self::new_temporal(millis.get().saturating_mul(1_000_000))
     }
 
     /// For time timelines.
     #[inline]
-    pub fn from_seconds(seconds: NonMinI64) -> Self {
-        Self::new_temporal(seconds.get().saturating_mul(1_000_000_000))
+    pub fn from_secs(seconds: f64) -> Self {
+        Self::new_temporal((seconds * 1e9).round() as _)
     }
 
     /// For sequence timelines.
@@ -100,13 +100,13 @@ impl TimeInt {
 
     /// Clamp to valid non-static range.
     #[inline]
-    pub fn saturated_nonstatic_i64(value: impl Into<i64>) -> Self {
+    pub fn saturated_temporal_i64(value: impl Into<i64>) -> Self {
         Self(Some(NonMinI64::saturating_from_i64(value)))
     }
 
     /// Clamp to valid non-static range.
     #[inline]
-    pub fn saturated_nonstatic(value: impl TryInto<Self>) -> Self {
+    pub fn saturated_temporal(value: impl TryInto<Self>) -> Self {
         value.try_into().unwrap_or(Self::MIN).max(Self::MIN)
     }
 
@@ -168,33 +168,24 @@ impl From<NonMinI64> for TimeInt {
     }
 }
 
-impl TryFrom<Time> for TimeInt {
-    type Error = TryFromIntError;
-
-    #[inline]
-    fn try_from(t: Time) -> Result<Self, Self::Error> {
-        let Some(t) = NonMinI64::new(t.nanos_since_epoch()) else {
-            return Err(TryFromIntError);
-        };
-        Ok(Self(Some(t)))
+impl From<TimeInt> for NonMinI64 {
+    fn from(value: TimeInt) -> Self {
+        match value.0 {
+            Some(value) => value,
+            None => Self::MIN,
+        }
     }
 }
 
-impl TryFrom<TimeInt> for NonMinI64 {
-    type Error = TryFromIntError;
+// TODO(#9534): refactor this mess
+// impl TryFrom<TimeInt> for NonMinI64 {
+//     type Error = TryFromIntError;
 
-    #[inline]
-    fn try_from(t: TimeInt) -> Result<Self, Self::Error> {
-        Self::new(t.as_i64()).ok_or(TryFromIntError)
-    }
-}
-
-impl From<TimeInt> for Time {
-    #[inline]
-    fn from(int: TimeInt) -> Self {
-        Self::from_ns_since_epoch(int.as_i64())
-    }
-}
+//     #[inline]
+//     fn try_from(t: TimeInt) -> Result<Self, Self::Error> {
+//         Self::new(t.as_i64()).ok_or(TryFromIntError)
+//     }
+// }
 
 impl From<TimeInt> for Duration {
     #[inline]
@@ -254,12 +245,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn saturated_nonstatic() {
-        assert_eq!(TimeInt::saturated_nonstatic_i64(i64::MIN), TimeInt::MIN);
-        assert_eq!(TimeInt::saturated_nonstatic_i64(i64::MIN + 1), TimeInt::MIN);
-        assert_eq!(TimeInt::saturated_nonstatic_i64(i64::MAX), TimeInt::MAX);
+    fn saturated_temporal() {
+        assert_eq!(TimeInt::saturated_temporal_i64(i64::MIN), TimeInt::MIN);
+        assert_eq!(TimeInt::saturated_temporal_i64(i64::MIN + 1), TimeInt::MIN);
+        assert_eq!(TimeInt::saturated_temporal_i64(i64::MAX), TimeInt::MAX);
         assert_eq!(
-            TimeInt::saturated_nonstatic_i64(i64::MAX - 1),
+            TimeInt::saturated_temporal_i64(i64::MAX - 1),
             TimeInt::new_temporal(i64::MAX - 1)
         );
     }

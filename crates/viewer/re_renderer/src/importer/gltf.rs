@@ -20,7 +20,9 @@ pub enum GltfImportError {
     #[error("Unsupported texture format {0:?}.")]
     UnsupportedTextureFormat(gltf::image::Format),
 
-    #[error("Mesh {mesh_name:?} has multiple sets of texture coordinates. Only a single one is supported.")]
+    #[error(
+        "Mesh {mesh_name:?} has multiple sets of texture coordinates. Only a single one is supported."
+    )]
     MultipleTextureCoordinateSets { mesh_name: String },
 
     #[error("Mesh {mesh_name:?} has no triangles.")]

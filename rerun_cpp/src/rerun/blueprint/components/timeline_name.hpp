@@ -14,6 +14,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: A timeline identified by its name.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct TimelineName {
         rerun::datatypes::Utf8 value;
 

@@ -9,7 +9,9 @@ use super::Mesh3D;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Mesh3DError {
-    #[error("No indices were specified, so the number of positions must be divisible by 9 [(xyz xyz xyz), …], got {0}")]
+    #[error(
+        "No indices were specified, so the number of positions must be divisible by 9 [(xyz xyz xyz), …], got {0}"
+    )]
     PositionsAreNotTriangles(usize),
 
     #[error("Index out of bounds: got index={index} with {num_vertices} vertices")]

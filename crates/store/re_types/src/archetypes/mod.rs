@@ -41,11 +41,16 @@ mod pinhole_ext;
 mod points2d;
 mod points3d;
 mod points3d_ext;
+mod recording_properties;
 mod scalar;
+mod scalars;
+mod scalars_ext;
 mod segmentation_image;
 mod segmentation_image_ext;
 mod series_line;
+mod series_lines;
 mod series_point;
+mod series_points;
 mod tensor;
 mod tensor_ext;
 mod text_document;
@@ -81,13 +86,21 @@ pub use self::mesh3d::Mesh3D;
 pub use self::pinhole::Pinhole;
 pub use self::points2d::Points2D;
 pub use self::points3d::Points3D;
-pub use self::scalar::Scalar;
+pub use self::recording_properties::RecordingProperties;
+pub use self::scalars::Scalars;
 pub use self::segmentation_image::SegmentationImage;
-pub use self::series_line::SeriesLine;
-pub use self::series_point::SeriesPoint;
+pub use self::series_lines::SeriesLines;
+pub use self::series_points::SeriesPoints;
 pub use self::tensor::Tensor;
 pub use self::text_document::TextDocument;
 pub use self::text_log::TextLog;
 pub use self::transform3d::Transform3D;
 pub use self::video_frame_reference::VideoFrameReference;
 pub use self::view_coordinates::ViewCoordinates;
+
+#[expect(deprecated)]
+pub use self::scalar::Scalar;
+#[expect(deprecated)]
+pub use self::series_line::SeriesLine;
+#[expect(deprecated)]
+pub use self::series_point::SeriesPoint;

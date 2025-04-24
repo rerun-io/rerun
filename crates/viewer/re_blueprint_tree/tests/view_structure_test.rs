@@ -91,6 +91,7 @@ fn base_test_cases() -> impl Iterator<Item = TestCase> {
 fn filter_queries() -> impl Iterator<Item = Option<&'static str>> {
     [
         None,
+        Some(""),
         Some("t"),
         Some("void"),
         Some("path"),
@@ -128,7 +129,7 @@ fn test_context(test_case: &TestCase) -> TestContext {
                 origin: test_case.origin.clone(),
                 query_filter: test_case
                     .entity_filter
-                    .try_into()
+                    .parse()
                     .expect("invalid entity filter"),
             },
             ViewId::hashed_from_str(VIEW_ID),

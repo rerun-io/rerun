@@ -8,7 +8,6 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
-use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
@@ -282,17 +281,46 @@ impl SelectionPanel {
             _ => {}
         }
 
+        let (query, db) = if let Some(entity_path) = item.entity_path() {
+            guess_query_and_db_for_selected_entity(ctx, entity_path)
+        } else {
+            (ctx.current_query(), ctx.recording())
+        };
+
         if let Some(data_ui_item) = data_section_ui(item) {
             ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-
-                let (query, db) = if let Some(entity_path) = item.entity_path() {
-                    guess_query_and_db_for_selected_entity(ctx, entity_path)
-                } else {
-                    (ctx.current_query(), ctx.recording())
-                };
                 data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
+            });
+        }
+
+        if let Item::StoreId(_) = item {
+            ui.section_collapsing_header("Properties").show(ui, |ui| {
+                let filtered = db
+                    .entity_paths()
+                    .into_iter()
+                    .filter(|entity_path| {
+                        // Only check for properties, but skip the recording properties,
+                        // because we display them already elsewhere in the UI.
+                        entity_path.is_descendant_of(&EntityPath::properties())
+                    })
+                    .collect::<Vec<_>>();
+
+                if filtered.is_empty() {
+                    ui.label("No properties found for this recording.");
+                } else {
+                    for entity_path in filtered {
+                        // We strip the property part
+                        let name = entity_path
+                            .to_string()
+                            .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                            .map(re_case::to_human_case)
+                            .unwrap_or("<unknown>".to_owned());
+                        ui.label(name);
+                        entity_path.data_ui(ctx, ui, ui_layout, &query, db);
+                    }
+                }
             });
         }
 
@@ -526,8 +554,11 @@ fn entity_path_filter_ui(
     let filter_text_id = ui.id().with("filter_text");
 
     let mut filter_string = ui.data_mut(|data| {
-        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || filter.formatted())
-            .clone()
+        data.get_temp_mut_or_insert_with::<String>(filter_text_id, || {
+            // We hide the properties filter by default.
+            filter.formatted_without_properties()
+        })
+        .clone()
     });
 
     let response = ui.add(
@@ -613,7 +644,11 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
             Some(Box::new(instance_path.clone()))
         }
         // Skip data ui since we don't know yet what to show for these.
-        Item::View(_) | Item::Container(_) => None,
+        Item::TableId(_)
+        | Item::View(_)
+        | Item::Container(_)
+        | Item::RedapEntry(_)
+        | Item::RedapServer(_) => None,
     }
 }
 
@@ -943,58 +978,30 @@ fn visible_interactive_toggle_ui(
     query_result: &DataQueryResult,
     data_result: &DataResult,
 ) {
-    use re_types::components::Visible;
-    use re_types::Component as _;
-
     {
-        let visible_before = data_result.is_visible(ctx.viewer_ctx);
+        let visible_before = data_result.is_visible();
         let mut visible = visible_before;
-
-        let inherited_hint = if data_result.is_inherited(&query_result.tree, Visible::name()) {
-            "\n\nVisible status was inherited from a parent entity."
-        } else {
-            ""
-        };
 
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
         )
-        .on_hover_text(format!(
-            "If disabled, the entity won't be shown in the view.{inherited_hint}"
-        ));
+        .on_hover_text("If disabled, the entity won't be shown in the view.");
 
         if visible_before != visible {
-            data_result.save_recursive_override_or_clear_if_redundant(
-                ctx.viewer_ctx,
-                &query_result.tree,
-                &Visible::from(visible),
-            );
+            data_result.save_visible(ctx.viewer_ctx, &query_result.tree, visible);
         }
     }
-
     {
-        let interactive_before = data_result.is_interactive(ctx.viewer_ctx);
+        let interactive_before = data_result.is_interactive();
         let mut interactive = interactive_before;
-
-        let inherited_hint = if data_result.is_inherited(&query_result.tree, Interactive::name()) {
-            "\n\nInteractive status was inherited from a parent entity."
-        } else {
-            ""
-        };
 
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
         )
-        .on_hover_text(format!(
-            "If disabled, the entity will not react to any mouse interaction.{inherited_hint}"
-        ));
+        .on_hover_text("If disabled, the entity will not react to any mouse interaction.");
 
         if interactive_before != interactive {
-            data_result.save_recursive_override_or_clear_if_redundant(
-                ctx.viewer_ctx,
-                &query_result.tree,
-                &Interactive(interactive.into()),
-            );
+            data_result.save_interactive(ctx.viewer_ctx, &query_result.tree, interactive);
         }
     }
 }

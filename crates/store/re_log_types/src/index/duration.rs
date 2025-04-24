@@ -6,7 +6,6 @@ pub struct Duration(i64);
 impl Duration {
     pub const MAX: Self = Self(i64::MAX);
     const NANOS_PER_SEC: i64 = 1_000_000_000;
-    const NANOS_PER_MILLI: i64 = 1_000_000;
     const SEC_PER_MINUTE: i64 = 60;
     const SEC_PER_HOUR: i64 = 60 * Self::SEC_PER_MINUTE;
     const SEC_PER_DAY: i64 = 24 * Self::SEC_PER_HOUR;
@@ -17,8 +16,13 @@ impl Duration {
     }
 
     #[inline]
+    pub const fn from_micros(micros: i64) -> Self {
+        Self::from_nanos(1_000 * micros)
+    }
+
+    #[inline]
     pub const fn from_millis(millis: i64) -> Self {
-        Self(millis * Self::NANOS_PER_MILLI)
+        Self::from_nanos(1_000_000 * millis)
     }
 
     #[inline]
@@ -43,7 +47,7 @@ impl Duration {
     }
 
     /// Format as seconds, approximately.
-    pub fn format_seconds(self) -> String {
+    pub fn format_secs(self) -> String {
         let nanos = self.as_nanos();
         let secs = nanos as f64 * 1e-9;
 
@@ -66,55 +70,55 @@ impl Duration {
             self.0
         };
 
-        let whole_seconds = total_nanos / Self::NANOS_PER_SEC;
-        let nanos = total_nanos - Self::NANOS_PER_SEC * whole_seconds;
+        let whole_secs = total_nanos / Self::NANOS_PER_SEC;
+        let nanos = total_nanos - Self::NANOS_PER_SEC * whole_secs;
 
-        let mut seconds_remaining = whole_seconds;
+        let mut secs_remaining = whole_secs;
         let mut did_write = false;
 
-        let days = seconds_remaining / Self::SEC_PER_DAY;
+        let days = secs_remaining / Self::SEC_PER_DAY;
         if days > 0 {
             write!(f, "{days}d")?;
-            seconds_remaining -= days * Self::SEC_PER_DAY;
+            secs_remaining -= days * Self::SEC_PER_DAY;
             did_write = true;
         }
 
-        let hours = seconds_remaining / Self::SEC_PER_HOUR;
+        let hours = secs_remaining / Self::SEC_PER_HOUR;
         if hours > 0 {
             if did_write {
                 write!(f, " ")?;
             }
             write!(f, "{hours}h")?;
-            seconds_remaining -= hours * Self::SEC_PER_HOUR;
+            secs_remaining -= hours * Self::SEC_PER_HOUR;
             did_write = true;
         }
 
-        let minutes = seconds_remaining / Self::SEC_PER_MINUTE;
+        let minutes = secs_remaining / Self::SEC_PER_MINUTE;
         if minutes > 0 {
             if did_write {
                 write!(f, " ")?;
             }
             write!(f, "{minutes}m")?;
-            seconds_remaining -= minutes * Self::SEC_PER_MINUTE;
+            secs_remaining -= minutes * Self::SEC_PER_MINUTE;
             did_write = true;
         }
 
         const MAX_MILLISECOND_ACCURACY: bool = true;
         const MAX_MICROSECOND_ACCURACY: bool = true;
 
-        if seconds_remaining > 0 || nanos > 0 || !did_write {
+        if secs_remaining > 0 || nanos > 0 || !did_write {
             if did_write {
                 write!(f, " ")?;
             }
 
             if nanos == 0 {
-                write!(f, "{seconds_remaining}s")?;
+                write!(f, "{secs_remaining}s")?;
             } else if MAX_MILLISECOND_ACCURACY || nanos % 1_000_000 == 0 {
-                write!(f, "{}.{:03}s", seconds_remaining, nanos / 1_000_000)?;
+                write!(f, "{}.{:03}s", secs_remaining, nanos / 1_000_000)?;
             } else if MAX_MICROSECOND_ACCURACY || nanos % 1_000 == 0 {
-                write!(f, "{}.{:06}s", seconds_remaining, nanos / 1_000)?;
+                write!(f, "{}.{:06}s", secs_remaining, nanos / 1_000)?;
             } else {
-                write!(f, "{seconds_remaining}.{nanos:09}s")?;
+                write!(f, "{secs_remaining}.{nanos:09}s")?;
             }
         }
 
@@ -127,8 +131,8 @@ impl Duration {
     pub fn format_subsecond_as_relative(self) -> String {
         let ns = self.as_nanos();
 
-        let fractional_ns = ns % 1_000_000_000;
-        let is_whole_second = fractional_ns == 0;
+        let fractional_nanos = ns % 1_000_000_000;
+        let is_whole_second = fractional_nanos == 0;
 
         if is_whole_second {
             self.to_string()
@@ -136,18 +140,18 @@ impl Duration {
             // We are in the sub-second resolution.
             // Showing the full time (HH:MM:SS.XXX or 3h 2m 6s …) becomes too long,
             // so instead we switch to showing the time as milliseconds since the last whole second:
-            let ms = fractional_ns as f64 * 1e-6;
-            if fractional_ns % 1_000_000 == 0 {
+            let ms = fractional_nanos as f64 * 1e-6;
+            if fractional_nanos % 1_000_000 == 0 {
                 format!("{ms:+.0} ms")
-            } else if fractional_ns % 100_000 == 0 {
+            } else if fractional_nanos % 100_000 == 0 {
                 format!("{ms:+.1} ms")
-            } else if fractional_ns % 10_000 == 0 {
+            } else if fractional_nanos % 10_000 == 0 {
                 format!("{ms:+.2} ms")
-            } else if fractional_ns % 1_000 == 0 {
+            } else if fractional_nanos % 1_000 == 0 {
                 format!("{ms:+.3} ms")
-            } else if fractional_ns % 100 == 0 {
+            } else if fractional_nanos % 100 == 0 {
                 format!("{ms:+.4} ms")
-            } else if fractional_ns % 10 == 0 {
+            } else if fractional_nanos % 10 == 0 {
                 format!("{ms:+.5} ms")
             } else {
                 format!("{ms:+.6} ms")
@@ -180,7 +184,7 @@ impl std::ops::Neg for Duration {
 impl From<Duration> for super::TimeInt {
     #[inline]
     fn from(duration: Duration) -> Self {
-        Self::saturated_nonstatic_i64(duration.as_nanos())
+        Self::saturated_temporal_i64(duration.as_nanos())
     }
 }
 
@@ -215,6 +219,17 @@ mod tests {
     use std::str::FromStr as _;
 
     use crate::Duration;
+
+    #[test]
+    fn test_formatting_duratuon() {
+        assert_eq!(&Duration::from_micros(42_000_000).format_secs(), "+42s");
+        assert_eq!(&Duration::from_micros(69_000).format_secs(), "+0.069s");
+        assert_eq!(&Duration::from_micros(69_900).format_secs(), "+0.070s");
+        assert_eq!(
+            &Duration::from_micros(42_123_000_000).format_secs(),
+            "+42 123s"
+        );
+    }
 
     #[test]
     fn parse_duration() {

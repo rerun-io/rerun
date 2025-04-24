@@ -3,13 +3,30 @@ title: Migrating from 0.22 to 0.23
 order: 989
 ---
 
+## Reserved namespaces
+Starting with this release, the SDKs will log Rerun-related information to reserved entity path namespaces that are prefixed with `__`.
+Most notably, there is `__warnings/`, which used to be called `rerun/` and can be used to log exceptions that occurred in the SDKs.
+We also introduced `__properties/`, which stores recording-level information that is logged via the new `set_property` methods in the SDKs.
+Reserved namespaces are highlighted with a ⚙️ icon in the viewer UI.
+
 ## Timelines are uniquely identified by name
 Previously, you could (confusingly) have two timelines with the same name, as long as they had different types (sequence vs temporal).
 This is no longer possible.
 Timelines are now uniquely identified by name, and if you use different types on the same timeline, you will get a logged warning, and the _latest_ type will be used to interpret the full set of time data.
 
-## Rename some timeline-related things as "index"
-We're planning on adding support for different types of indices in the future, so to that point we're slowly migrating our API to refer to these things as _indices_ rather than _timelines_.
+## Unify the names of time units
+We have been wildly inconsistent with how we name our time units, and it is time we fixed it. So starting now, we're using:
+
+* `secs` instead of `s` or `seconds`
+* `nanos` instead of `ns` or `nanoseconds`
+* `millis` instead of `ms` or `milliseconds`
+
+All function and parameters using the old names have been deprecated, and will be removed in a future version.
+
+##### Why these names?
+* They are short without being cryptic
+* They are the ones the Rust standard library (mostly) use: https://doc.rust-lang.org/stable/std/time/struct.Duration.html
+* Anything is better than being inconsistent :)
 
 ## Differentiate between timestamps and durations
 We've added a explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a duration (e.g. `123s`).
@@ -18,96 +35,99 @@ Before, Rerun would try to guess what you meant (small values were assumed to be
 Now you need to be explicit.
 
 
-### 🦀 Rust: deprecated `RecordingStream::set_time_seconds` and `set_time_nanos`
+### 🦀 Rust: deprecated `RecordingStream::set_time_secs` and `set_time_nanos`
 Use one of these instead:
-* `set_duration_seconds`
-* `set_timestamp_seconds_since_epoch`
-* `set_index` with `std::time::Duration`
-* `set_index` with `std::time::SystemTime`
+* `set_duration_secs`
+* `set_timestamp_secs_since_epoch`
+* `set_time` with `std::time::Duration`
+* `set_time` with `std::time::SystemTime`
 
 
-### 🌊 C++: replaced `RecordingStream::set_time_*` with `set_index_*`
+### 🌊 C++
 We've deprecated the following functions, with the following replacements:
-* `set_time_sequence` -> `set_index_sequence`
-* `set_time` -> `set_index_duration` or `set_index_timestamp`
-* `set_time_seconds` -> `set_index_duration_secs` or `set_index_timestamp_seconds_since_epoch`
-* `set_time_nanos` -> `set_index_duration_nanos` or `set_index_timestamp_nanos_since_epoch`
+* `set_time` -> `set_time_duration` or `set_time_timestamp`
+* `set_time_seconds` -> `set_time_duration_secs` or `set_time_timestamp_secs_since_epoch`
+* `set_time_nanos` -> `set_time_duration_nanos` or `set_time_timestamp_nanos_since_epoch`
 
 `TimeColumn` also has deprecated functions.
 
 
-### 🐍 Python: replaced `rr.set_time_*` with `rr.set_index`
-We're moving towards a more explicit API for setting time, where you need to explicitly specify if a time is either a datetime (e.g. `2025-03-03T14:34:56.123456789`) or a timedelta (e.g. `123s`).
+### 🐍 Python: replaced `rr.set_time_*` functions with a single `rr.set_time`
+We've deprecated `rr.set_time_secs`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
+`set_time` takes either a `sequence=`, `duration=` or `timestamp=` argument.
 
-Previously we would infer the user intent at runtime based on the value: if it was large enough, it was interpreted as time since the Unix epoch, otherwise it was interpreted as a timedelta.
-
-To this end, we're deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_index`.
-`set_index` takes either a `sequence=`, `timedelta=` or `datetime=` argument.
-
-`timedelta` must be either:
+`duration` must be either:
 * seconds as `int` or `float`
 * [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta)
 * [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64)
 
-`datetime` must be either:
+`timestamp` must be either:
 * seconds since unix epoch (1970-01-01) as `int` or `float`
 * [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime)
 * [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64)
 
 #### Migrating
 ##### `rr.set_sequence("foo", 42)`
-New: `rr.set_index("foo", sequence=42)`
+New: `rr.set_time("foo", sequence=42)`
 
-##### `rr.set_time_seconds("foo", duration_seconds)`
-When using relative times (durations/timedeltas): `rr.set_index("foo", timedelta=duration_seconds)`
+##### `rr.set_time_secs("foo", duration_secs)`
+When using relative times (durations/timedeltas): `rr.set_time("foo", duration=duration_secs)`
 You can also pass in a [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta) or [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64) directly.
 
-##### `rr.set_time_seconds("foo", seconds_since_epoch)`
-New: `rr.set_index("foo", datetime=seconds_since_epoch)`
+##### `rr.set_time_secs("foo", seconds_since_epoch)`
+New: `rr.set_time("foo", timestamp=seconds_since_epoch)`
 You can also pass in a [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime) or [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64) directly.
 
 ##### `rr.set_time_nanos("foo", duration_nanos)`
 Either:
-* `rr.set_index("foo", timedelta=1e-9 * duration_nanos)`
-* `rr.set_index("foo", timedelta=np.timedelta64(duration_nanos, 'ns'))`
+* `rr.set_time("foo", duration=1e-9 * duration_nanos)`
+* `rr.set_time("foo", duration=np.timedelta64(duration_nanos, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
 
 ##### `rr.set_time_nanos("foo", nanos_since_epoch)`
 Either:
-* `rr.set_index("foo", datetime=1e-9 * nanos_since_epoch)`
-* `rr.set_index("foo", datetime=np.datetime64(nanos_since_epoch, 'ns'))`
+* `rr.set_time("foo", timestamp=1e-9 * nanos_since_epoch)`
+* `rr.set_time("foo", timestamp=np.datetime64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
 
-### 🐍 Python: replaced `rr.Time*Column` with `rr.IndexColumn`
-Similarly to the above new `set_index` API, there is also a new `IndexColumn` class that replaces `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn`.
+### 🐍 Python: replaced `rr.Time*Column` with `rr.TimeColumn`
+Similarly to the above new `set_time` API, there is also a new `TimeColumn` class that replaces `TimeSequenceColumn`, `TimeSecondsColumn`, and `TimeNanosColumn`.
 The migration is very similar to the above.
 
 #### Migration
 ##### `rr.TimeSequenceColumn("foo", values)`
-New: `rr.IndexColumn("foo", sequence=values)`
+New: `rr.TimeColumn("foo", sequence=values)`
 
-##### `rr.TimeSecondsColumn("foo", duration_seconds)`
-New: `rr.IndexColumn("foo", timedelta=duration_seconds)`
+##### `rr.TimeSecondsColumn("foo", duration_secs)`
+New: `rr.TimeColumn("foo", duration=duration_secs)`
 
 ##### `rr.TimeSecondsColumn("foo", seconds_since_epoch)`
-New: `rr.IndexColumn("foo", datetime=seconds_since_epoch)`
+New: `rr.TimeColumn("foo", timestamp=seconds_since_epoch)`
 
 ##### `rr.TimeNanosColumn("foo", duration_nanos)`
 Either:
-* `rr.IndexColumn("foo", timedelta=1e-9 * duration_nanos)`
-* `rr.IndexColumn("foo", timedelta=np.timedelta64(duration_nanos, 'ns'))`
+* `rr.TimeColumn("foo", duration=1e-9 * duration_nanos)`
+* `rr.TimeColumn("foo", duration=np.timedelta64(duration_nanos, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
 
 ##### `rr.TimeNanosColumn("foo", nanos_since_epoch)`
 Either:
-* `rr.IndexColumn("foo", timedelta=1e-9 * nanos_since_epoch)`
-* `rr.IndexColumn("foo", timedelta=np.timedelta64(nanos_since_epoch, 'ns'))`
+* `rr.TimeColumn("foo", duration=1e-9 * nanos_since_epoch)`
+* `rr.TimeColumn("foo", duration=np.timedelta64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
+
+
+### Dataloader time arguments
+The CLI API for external dataloaders has changed the following argument names:
+
+* `--sequence` -> `--time_sequence`
+* `--time` -> `--time_duration_nanos` or `--time_timestamp_nanos`
+
 
 ## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
 
@@ -209,7 +229,7 @@ rrb.TimeSeriesView(
     origin="/classification",
     overrides={
         "classification/line": [rr.components.Color([255, 255, 0]), rr.components.StrokeWidth(3.0)],
-        "classification/samples": [rrb.VisualizerOverrides("SeriesPoint")], # This ensures that the `SeriesPoint` visualizers is used for this entity.
+        "classification/samples": [rrb.VisualizerOverrides("SeriesPoints")], # This ensures that the `SeriesPoints` visualizers is used for this entity.
     },
 ),
 # …
@@ -221,16 +241,16 @@ rrb.TimeSeriesView(
     name="Trig",
     origin="/trig",
     overrides={
-        "/trig/sin": rr.SeriesLine.from_fields(color=[255, 0, 0], name="sin(0.01t)"),
-        "/trig/cos": rr.SeriesLine.from_fields(color=[0, 255, 0], name="cos(0.01t)"),
+        "/trig/sin": rr.SeriesLines.from_fields(colors=[255, 0, 0], names="sin(0.01t)"),
+        "/trig/cos": rr.SeriesLines.from_fields(colors=[0, 255, 0], names="cos(0.01t)"),
     },
 ),
 rrb.TimeSeriesView(
     name="Classification",
     origin="/classification",
     overrides={
-        "classification/line": rr.SeriesLine.from_fields(color=[255, 255, 0], width=3.0),
-        "classification/samples": rrb.VisualizerOverrides("SeriesPoint"), # This ensures that the `SeriesPoint` visualizers is used for this entity.
+        "classification/line": rr.SeriesLines.from_fields(colors=[255, 255, 0], widths=3.0),
+        "classification/samples": rrb.VisualizerOverrides("SeriesPoints"), # This ensures that the `SeriesPoints` visualizers is used for this entity.
     },
 ),
 # …
@@ -242,6 +262,45 @@ In a future release, components tagged with a different archetype or field name 
 but for the moment the Viewer is not able to make this distinction.
 For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
 
+
+### Overriding `Visible` and `Interactive` is now always recursive
+
+Previously, it was possible to override visibility individually, but not recursively.
+Also, Viewer interaction [was hampered](https://github.com/rerun-io/rerun/issues/9254) by this.
+
+Overrides for these two properties are now always recursive, and can be applied using the new `EntityBehavior` archetype.
+
+Before:
+```py
+rr.send_blueprint(
+    rrb.Spatial2DView(
+        overrides={"points": [rrb.components.Visible(False)]}
+        overrides={
+            "hidden_subtree": [rrb.components.Visible(False)],
+            "hidden_subtree/child0": [rrb.components.Visible(False)],
+            "hidden_subtree/child1": [rrb.components.Visible(False)],
+            # …
+            "non_interactive_subtree": [rrb.components.Interactive(False)],
+            "non_interactive_subtree/child0": [rrb.components.Interactive(False)],
+            "non_interactive_subtree/child1": [rrb.components.Interactive(False)],
+            # …
+        }
+    ),
+)
+```
+
+After:
+```py
+rr.send_blueprint(
+    rrb.Spatial2DView(
+        overrides={
+            "hidden_subtree": rrb.EntityBehavior(visible=False),
+            "hidden_subtree/not_hidden": rrb.EntityBehavior(visible=True),
+            "non_interactive_subtree": rrb.EntityBehavior(interactive=False),
+        }
+    )
+)
+```
 
 ### Visible time range overrides have to specify the underlying archetype
 
@@ -293,3 +352,39 @@ overrides={
 }
 # …
 ```
+
+## Types for time series plots are now plural
+
+The `Scalar`/`SeriesPoints`/`SeriesLines` archetypess have been deprecated in favor of
+`Scalars`/`SeriesPoints`/`SeriesLines` since you can now have a multiple
+scatter plots or lines on the same archetype.
+
+
+Before:
+```py
+rr.log("trig/sin", rr.SeriesLines(color=[s0, 255, 0], name="cos(0.01t)", width=4), static=True)
+
+for t in range(int(tau * 2 * 100.0)):
+    rr.set_time("step", sequence=t)
+    rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
+```
+
+After:
+```py
+rr.log("trig/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2), static=True)
+
+for t in range(int(tau * 2 * 100.0)):
+    rr.set_time("step", sequence=t)
+    rr.log("trig/sin", rr.Scalars(sin(float(t) / 100.0)))
+```
+<!-- This is trivial enough across languages why I left it at a python only example -->
+
+The old types still work for the moment but will be removed in a future release.
+
+## Consistent constructor naming of `Asset3D` across C++ and Rust
+
+We've deprecated inconsistent constructors with following replacements:
+- 🦀 Rust: `from_file` -> `from_file_path`
+- 🌊 C++:
+    - `from_file` -> `from_file_path`
+    - `from_bytes` -> `from_file_contents`

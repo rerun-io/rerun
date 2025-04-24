@@ -75,9 +75,9 @@ impl SceneBoundingBoxes {
 
             // Smooth the bounding box by moving center & size towards the current bounding box.
             let reach_this_factor = 0.9;
-            let in_this_many_seconds = 0.2;
+            let in_this_many_secs = 0.2;
             let smoothing_factor =
-                egui::emath::exponential_smooth_factor(reach_this_factor, in_this_many_seconds, dt);
+                egui::emath::exponential_smooth_factor(reach_this_factor, in_this_many_secs, dt);
 
             let current_center = self.current.center();
             let current_size = self.current.size();

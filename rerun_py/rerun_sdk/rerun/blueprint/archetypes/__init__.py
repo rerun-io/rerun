@@ -5,6 +5,7 @@ from __future__ import annotations
 from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
+from .entity_behavior import EntityBehavior
 from .force_center import ForceCenter
 from .force_collision_radius import ForceCollisionRadius
 from .force_link import ForceLink
@@ -31,6 +32,7 @@ __all__ = [
     "Background",
     "ContainerBlueprint",
     "DataframeQuery",
+    "EntityBehavior",
     "ForceCenter",
     "ForceCollisionRadius",
     "ForceLink",

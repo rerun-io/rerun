@@ -1,5 +1,6 @@
 use itertools::Itertools as _;
-use re_chunk_store::RowId;
+
+use re_log_types::hash::Hash64;
 use re_renderer::{mesh::GpuMesh, RenderContext};
 use re_types::{components::MediaType, datatypes};
 use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
@@ -229,7 +230,7 @@ fn try_get_or_create_albedo_texture(
     re_tracing::profile_function!();
 
     let image_info = ImageInfo {
-        buffer_row_id: RowId::ZERO,            // unused
+        buffer_cache_key: Hash64::ZERO,        // unused
         buffer: albedo_texture_buffer.clone(), // shallow clone
         format: *albedo_texture_format,
         kind: re_types::image::ImageKind::Color,
@@ -241,7 +242,9 @@ fn try_get_or_create_albedo_texture(
     )
     .is_some()
     {
-        re_log::warn_once!("Mesh can't yet handle encoded image formats like NV12 & YUY2 or BGR(A) formats without a channel type other than U8. Ignoring the texture at {name:?}.");
+        re_log::warn_once!(
+            "Mesh can't yet handle encoded image formats like NV12 & YUY2 or BGR(A) formats without a channel type other than U8. Ignoring the texture at {name:?}."
+        );
         return None;
     }
 

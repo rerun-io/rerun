@@ -18,7 +18,7 @@ use std::{
 
 use anyhow::Context as _;
 
-use rerun::{external::re_log, IndexCell};
+use rerun::{external::re_log, TimeCell};
 
 // --- Rerun logging ---
 
@@ -45,10 +45,10 @@ impl ArFrame {
     }
 }
 
-fn timepoint(index: usize, time: f64) -> rerun::TimePoint {
+fn timepoint(frame: usize, time: f64) -> rerun::TimePoint {
     [
-        ("time", IndexCell::from_timestamp_seconds_since_epoch(time)),
-        ("frame", IndexCell::from_sequence(index as i64)),
+        ("time", TimeCell::from_timestamp_secs_since_epoch(time)),
+        ("frame", TimeCell::from_sequence(frame as i64)),
     ]
     .into()
 }

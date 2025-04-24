@@ -45,9 +45,13 @@ impl CollapseScope {
                 Some(self.data_result(view_id, instance_path.entity_path))
             }
 
-            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::ComponentPath(_) => {
-                None
-            }
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::ComponentPath(_)
+            | Item::RedapServer(_)
+            | Item::RedapEntry(_)
+            | Item::TableId(_) => None,
         }
     }
 

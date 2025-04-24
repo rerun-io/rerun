@@ -1,0 +1,78 @@
+---
+source: crates/viewer/re_blueprint_tree/tests/view_structure_test.rs
+expression: blueprint_tree_data
+---
+root_container:
+  name:
+    Placeholder: Grid
+  kind: Grid
+  visible: true
+  default_open: true
+  children:
+    - View:
+        class_identifier: 3D
+        name:
+          Placeholder: center/way
+        visible: true
+        default_open: true
+        origin_tree:
+          kind: EntityPart
+          entity_path:
+            - center
+            - way
+          visible: true
+          label: way
+          highlight_sections: []
+          default_open: true
+          children: []
+        projection_trees:
+          - kind: EntityPart
+            entity_path:
+              - path
+              - to
+            visible: true
+            label: to
+            highlight_sections: []
+            default_open: true
+            children:
+              - kind: EntityPart
+                entity_path:
+                  - path
+                  - to
+                  - left
+                visible: true
+                label: left
+                highlight_sections: []
+                default_open: true
+                children: []
+              - kind: EntityPart
+                entity_path:
+                  - path
+                  - to
+                  - right
+                visible: true
+                label: right
+                highlight_sections: []
+                default_open: true
+                children: []
+              - kind: EntityPart
+                entity_path:
+                  - path
+                  - to
+                  - the
+                visible: true
+                label: the
+                highlight_sections: []
+                default_open: true
+                children:
+                  - kind: EntityPart
+                    entity_path:
+                      - path
+                      - to
+                      - the
+                      - void
+                    visible: true
+                    label: void
+                    highlight_sections: []
+                    default_open: true
+                    children: []

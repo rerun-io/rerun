@@ -81,6 +81,7 @@ impl FromStr for WebViewerServerPort {
 
 /// HTTP host for the Rerun Web Viewer application
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
+#[must_use = "Dropping this means stopping the server"]
 pub struct WebViewerServer {
     inner: Arc<WebViewerServerInner>,
     thread_handle: Option<std::thread::JoinHandle<()>>,
@@ -169,6 +170,14 @@ impl WebViewerServer {
             thread_handle.join().ok();
         }
     }
+
+    /// Keeps the web viewer running until the parent process shuts down.
+    pub fn detach(mut self) {
+        if let Some(thread_handle) = self.thread_handle.take() {
+            // dropping the thread handle detaches the thread.
+            drop(thread_handle);
+        }
+    }
 }
 
 impl Drop for WebViewerServer {
@@ -223,7 +232,9 @@ impl WebViewerServerInner {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
-        panic!("web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!");
+        panic!(
+            "web_server compiled with '__ci' feature, `--all-features`, or '--cfg disable_web_viewer_server'. DON'T DO THAT! It's only for the CI!"
+        );
     }
 
     #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]

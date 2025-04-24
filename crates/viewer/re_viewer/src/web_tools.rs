@@ -2,16 +2,12 @@
 
 use std::{ops::ControlFlow, sync::Arc};
 
-use re_log::ResultExt as _;
-use re_viewer_context::CommandSender;
-use re_viewer_context::SystemCommand;
-use re_viewer_context::SystemCommandSender as _;
-
 use serde::Deserialize;
-use wasm_bindgen::JsCast as _;
-use wasm_bindgen::JsError;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::Window;
+
+use re_log::ResultExt as _;
+use re_viewer_context::{CommandSender, Item, SystemCommand, SystemCommandSender as _};
 
 pub trait JsResultExt<T> {
     /// Logs an error if the result is an error and returns the result.
@@ -99,7 +95,7 @@ enum EndpointCategory {
 
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
-        if let Ok(uri) = re_uri::RedapUri::try_from(uri.as_ref()) {
+        if let Ok(uri) = uri.parse() {
             return Self::RerunGrpcStream(uri);
         }
 
@@ -133,7 +129,7 @@ pub fn url_to_receiver(
             ),
         ),
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
             let on_cmd = Box::new(move |cmd| match cmd {
                 re_grpc_client::redap::Command::SetLoopSelection {
                     recording_id,
@@ -145,20 +141,26 @@ pub fn url_to_receiver(
                     time_range,
                 }),
             });
-            Some(re_grpc_client::redap::stream_from_redap(
-                endpoint,
+            Some(re_grpc_client::redap::stream_dataset_from_redap(
+                uri,
                 on_cmd,
                 Some(ui_waker),
             ))
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
-            command_sender.send_system(SystemCommand::AddRedapServer { endpoint });
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
             None
         }
 
-        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Some(
-            re_grpc_client::message_proxy::read::stream(endpoint, Some(ui_waker)),
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => {
+            command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+            command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
+            None
+        }
+
+        EndpointCategory::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Some(
+            re_grpc_client::message_proxy::read::stream(uri, Some(ui_waker)),
         ),
 
         EndpointCategory::WebEventListener(url) => {
@@ -176,7 +178,9 @@ pub fn url_to_receiver(
                             if tx.send(msg).is_ok() {
                                 ControlFlow::Continue(())
                             } else {
-                                re_log::info_once!("Failed to send log message to viewer - closing connection to {url}");
+                                re_log::info_once!(
+                                    "Failed to send log message to viewer - closing connection to {url}"
+                                );
                                 ControlFlow::Break(())
                             }
                         }

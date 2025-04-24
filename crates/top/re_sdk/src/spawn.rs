@@ -50,6 +50,9 @@ pub struct SpawnOptions {
 
     /// Hide the welcome screen.
     pub hide_welcome_screen: bool,
+
+    /// Detach Rerun Viewer process from the application process.
+    pub detach_process: bool,
 }
 
 // NOTE: No need for .exe extension on windows.
@@ -66,6 +69,7 @@ impl Default for SpawnOptions {
             extra_args: Vec::new(),
             extra_env: Vec::new(),
             hide_welcome_screen: false,
+            detach_process: true,
         }
     }
 }
@@ -283,19 +287,22 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     rerun_bin.args(opts.extra_args.clone());
     rerun_bin.envs(opts.extra_env.clone());
 
-    // SAFETY: This code is only run in the child fork, we are not modifying any memory
-    // that is shared with the parent process.
-    #[cfg(target_family = "unix")]
-    unsafe {
-        rerun_bin.pre_exec(|| {
-            // On unix systems, we want to make sure that the child process becomes its
-            // own session leader, so that it doesn't die if the parent process crashes
-            // or is killed.
-            libc::setsid();
+    if opts.detach_process {
+        // SAFETY: This code is only run in the child fork, we are not modifying any memory
+        // that is shared with the parent process.
+        #[cfg(target_family = "unix")]
+        unsafe {
+            rerun_bin.pre_exec(|| {
+                // On unix systems, we want to make sure that the child process becomes its
+                // own session leader, so that it doesn't die if the parent process crashes
+                // or is killed.
+                libc::setsid();
 
-            Ok(())
-        })
-    };
+                Ok(())
+            })
+        };
+    }
+
     rerun_bin.spawn().map_err(map_err)?;
 
     if opts.wait_for_bind {

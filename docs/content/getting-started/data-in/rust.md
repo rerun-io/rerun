@@ -45,7 +45,7 @@ use rerun::{
 
 ## Starting the Viewer
 
-Just run `rerun` to start the [Rerun Viewer](../../reference/viewer/overview.md). It will wait for your application to log some data to it. This Viewer is in fact a server that's ready to accept data over TCP (it's listening on `0.0.0.0:9876` by default).
+Just run `rerun` to start the [Rerun Viewer](../../reference/viewer/overview.md). It will wait for your application to log some data to it. This Viewer is in fact a server that's ready to accept data over gRPC (it's listening on `0.0.0.0:9876` by default).
 
 Checkout `rerun --help` for more options.
 
@@ -241,7 +241,7 @@ Let's add our custom timeline:
 for i in 0..400 {
     let time = i as f32 * 0.01;
 
-    rec.set_index("stable_time", timedelta=time as f64);
+    rec.set_duration_secs("stable_time", time);
 
     let times = offsets.iter().map(|offset| time + offset).collect_vec();
     let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
@@ -280,7 +280,7 @@ That's because the Rerun Viewer has switched to displaying your custom timeline 
 To fix this, add this at the beginning of the main function:
 
 ```rust
-rec.set_index("stable_time", timedelta=0f64);
+rec.set_duration_secs("stable_time", 0.0);
 ```
 
 <picture>
@@ -343,7 +343,7 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 ### Spawning the Viewer from your process
 
-If the Rerun Viewer is [installed](../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over TCP.
+If the Rerun Viewer is [installed](../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over gRPC.
 If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 ```rust
@@ -373,7 +373,13 @@ let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacu
 
 // … log data to `rec` …
 
-rerun::native_viewer::show(storage.take())?;
+// Blocks until the viewer is closed.
+// For more customizations, refer to `re_viewer::run_native_app`.
+rerun::show(
+    // Show has to be called on the main thread.
+    rerun::MainThreadToken::i_promise_i_am_on_the_main_thread(),
+    storage.take(),
+)?;
 ```
 
 The Viewer will block the main thread until it is closed.

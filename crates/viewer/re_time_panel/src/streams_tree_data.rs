@@ -106,11 +106,6 @@ impl EntityData {
         hierarchy: &mut Vec<String>,
         hierarchy_highlights: &mut PathRanges,
     ) -> Option<Self> {
-        // Early out
-        if filter_matcher.matches_nothing() {
-            return None;
-        }
-
         let entity_part_ui_string = entity_tree
             .path
             .last()
@@ -171,7 +166,8 @@ impl EntityData {
                 .collect_vec();
 
             let is_this_a_match = !children.is_empty();
-            let default_open = filter_matcher.is_active() || entity_tree.path.len() <= 1;
+            let default_open = filter_matcher.is_active()
+                || (entity_tree.path.len() <= 1 && !entity_tree.path.is_reserved());
 
             NodeInfo {
                 is_leaf: false,

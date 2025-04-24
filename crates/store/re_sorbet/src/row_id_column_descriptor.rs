@@ -53,10 +53,18 @@ impl RowIdColumnDescriptor {
         let Self { is_sorted } = self;
 
         let mut metadata = std::collections::HashMap::from([
-            ("rerun.kind".to_owned(), "control".to_owned()),
+            (
+                "rerun.kind".to_owned(),
+                crate::ColumnKind::RowId.to_string(),
+            ),
             (
                 "ARROW:extension:name".to_owned(),
                 re_tuid::Tuid::ARROW_EXTENSION_NAME.to_owned(),
+            ),
+            (
+                // Storing the metadata as JSON as is the convention…
+                "ARROW:extension:metadata".to_owned(),
+                r#"{"namespace":"row"}"#.to_owned(), // for row_ prefix
             ),
         ]);
         if *is_sorted {

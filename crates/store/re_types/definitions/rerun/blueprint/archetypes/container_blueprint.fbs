@@ -3,49 +3,49 @@ namespace rerun.blueprint.archetypes;
 
 /// The description of a container.
 table ContainerBlueprint (
-    "attr.rerun.scope": "blueprint"
+  "attr.rerun.scope": "blueprint"
 ) {
-    // --- Required ---
+  // --- Required ---
 
-    /// The class of the view.
-    container_kind: rerun.blueprint.components.ContainerKind ("attr.rerun.component_required", order: 100);
+  /// The class of the view.
+  container_kind: rerun.blueprint.components.ContainerKind ("attr.rerun.component_required", order: 100);
 
-    // --- Optional ---
+  // --- Optional ---
 
-    /// The name of the container.
-    display_name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 200);
+  /// The name of the container.
+  display_name: rerun.components.Name ("attr.rerun.component_optional", nullable, order: 200);
 
-    /// `ContainerId`s or `ViewId`s that are children of this container.
-    contents: [rerun.blueprint.components.IncludedContent] ("attr.rerun.component_optional", nullable, order: 300);
+  /// `ContainerId`s or `ViewId`s that are children of this container.
+  contents: [rerun.blueprint.components.IncludedContent] ("attr.rerun.component_optional", nullable, order: 300);
 
-    /// The layout shares of each column in the container.
-    ///
-    /// For [components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
-    ///
-    /// Ignored for [components.ContainerKind.Vertical] containers.
-    col_shares: [rerun.blueprint.components.ColumnShare] ("attr.rerun.component_optional", nullable, order: 400);
+  /// The layout shares of each column in the container.
+  ///
+  /// For [components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
+  ///
+  /// Ignored for [components.ContainerKind.Vertical] containers.
+  col_shares: [rerun.blueprint.components.ColumnShare] ("attr.rerun.component_optional", nullable, order: 400);
 
-    /// The layout shares of each row of the container.
-    ///
-    /// For [components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
-    ///
-    /// Ignored for [components.ContainerKind.Horizontal] containers.
-    row_shares: [rerun.blueprint.components.RowShare] ("attr.rerun.component_optional", nullable, order: 500);
+  /// The layout shares of each row of the container.
+  ///
+  /// For [components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
+  ///
+  /// Ignored for [components.ContainerKind.Horizontal] containers.
+  row_shares: [rerun.blueprint.components.RowShare] ("attr.rerun.component_optional", nullable, order: 500);
 
-    /// Which tab is active.
-    ///
-    /// Only applies to `Tabs` containers.
-    active_tab: rerun.blueprint.components.ActiveTab ("attr.rerun.component_optional", nullable, order: 600);
+  /// Which tab is active.
+  ///
+  /// Only applies to `Tabs` containers.
+  active_tab: rerun.blueprint.components.ActiveTab ("attr.rerun.component_optional", nullable, order: 600);
 
-    /// Whether this container is visible.
-    ///
-    /// Defaults to true if not specified.
-    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 700);
+  /// Whether this container is visible.
+  ///
+  /// Defaults to true if not specified.
+  visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 700);
 
-    /// How many columns this grid should have.
-    ///
-    /// If unset, the grid layout will be auto.
-    ///
-    /// Ignored for [components.ContainerKind.Horizontal]/[components.ContainerKind.Vertical] containers.
-    grid_columns: rerun.blueprint.components.GridColumns ("attr.rerun.component_optional", nullable, order: 800);
+  /// How many columns this grid should have.
+  ///
+  /// If unset, the grid layout will be auto.
+  ///
+  /// Ignored for [components.ContainerKind.Horizontal]/[components.ContainerKind.Vertical] containers.
+  grid_columns: rerun.blueprint.components.GridColumns ("attr.rerun.component_optional", nullable, order: 800);
 }

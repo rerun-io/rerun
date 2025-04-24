@@ -203,9 +203,8 @@ impl framework::Example for Render2D {
             let y_range = 800.0..880.0;
 
             // Cycle through which line is on top.
-            let top_line = ((time.seconds_since_startup() * 6.0) as i16 % (num_lines * 2 - 1)
-                - num_lines)
-                .abs();
+            let top_line =
+                ((time.secs_since_startup() * 6.0) as i16 % (num_lines * 2 - 1) - num_lines).abs();
             for i in 0..num_lines {
                 let depth_offset = if i < top_line { i } else { top_line * 2 - i };
                 let mut batch = line_strip_builder
@@ -321,14 +320,12 @@ impl framework::Example for Render2D {
             },
             // and 3D view of the same scene to the right
             {
-                let seconds_since_startup = time.seconds_since_startup();
+                let secs_since_startup = time.secs_since_startup();
                 let camera_rotation_center = screen_size.extend(0.0) * 0.5;
-                let camera_position = glam::vec3(
-                    seconds_since_startup.sin(),
-                    0.5,
-                    seconds_since_startup.cos(),
-                ) * screen_size.x.max(screen_size.y)
-                    + camera_rotation_center;
+                let camera_position =
+                    glam::vec3(secs_since_startup.sin(), 0.5, secs_since_startup.cos())
+                        * screen_size.x.max(screen_size.y)
+                        + camera_rotation_center;
                 let mut view_builder = ViewBuilder::new(
                     re_ctx,
                     view_builder::TargetConfiguration {

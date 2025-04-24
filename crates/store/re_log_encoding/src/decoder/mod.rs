@@ -14,16 +14,12 @@ use re_log_types::LogMsg;
 use crate::codec;
 use crate::codec::file::decoder;
 use crate::FileHeader;
-use crate::VersionPolicy;
 use crate::OLD_RRD_HEADERS;
 use crate::{EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
 
-fn warn_on_version_mismatch(
-    version_policy: VersionPolicy,
-    encoded_version: [u8; 4],
-) -> Result<(), DecodeError> {
+fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError> {
     // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
     let encoded_version = if encoded_version == [0, 0, 0, 0] {
         CrateVersion::new(0, 2, 0)
@@ -31,24 +27,18 @@ fn warn_on_version_mismatch(
         CrateVersion::from_bytes(encoded_version)
     };
 
-    if encoded_version.is_compatible_with(CrateVersion::LOCAL) {
+    if encoded_version.major == 0 && encoded_version.minor < 23 {
+        // We broke compatibility for 0.23 for (hopefully) the last time.
+        Err(DecodeError::IncompatibleRerunVersion {
+            file: encoded_version,
+            local: CrateVersion::LOCAL,
+        })
+    } else if encoded_version <= CrateVersion::LOCAL {
+        // Loading old files should be fine, and if it is not, the chunk migration in re_sorbet should already log a warning.
         Ok(())
     } else {
-        match version_policy {
-            VersionPolicy::Warn => {
-                re_log::warn_once!(
-                    "Found log stream with Rerun version {encoded_version}, \
-                     which is incompatible with the local Rerun version {}. \
-                     Loading will try to continue, but might fail in subtle ways.",
-                    CrateVersion::LOCAL,
-                );
-                Ok(())
-            }
-            VersionPolicy::Error => Err(DecodeError::IncompatibleRerunVersion {
-                file: encoded_version,
-                local: CrateVersion::LOCAL,
-            }),
-        }
+        re_log::warn_once!("Found data stream with Rerun version {encoded_version} which is newer than the local Rerun version ({}). This file may contain data that is not compatible with this version of Rerun. Consider updating Rerun.", CrateVersion::LOCAL);
+        Ok(())
     }
 }
 
@@ -63,7 +53,9 @@ pub enum DecodeError {
     #[error("Data was from an old, incompatible Rerun version")]
     OldRrdVersion,
 
-    #[error("Data from Rerun version {file}, which is incompatible with the local Rerun version {local}")]
+    #[error(
+        "Data from Rerun version {file}, which is incompatible with the local Rerun version {local}"
+    )]
     IncompatibleRerunVersion {
         file: CrateVersion,
         local: CrateVersion,
@@ -96,12 +88,9 @@ pub enum DecodeError {
 
 // ----------------------------------------------------------------------------
 
-pub fn decode_bytes(
-    version_policy: VersionPolicy,
-    bytes: &[u8],
-) -> Result<Vec<LogMsg>, DecodeError> {
+pub fn decode_bytes(bytes: &[u8]) -> Result<Vec<LogMsg>, DecodeError> {
     re_tracing::profile_function!();
-    let decoder = Decoder::new(version_policy, std::io::Cursor::new(bytes))?;
+    let decoder = Decoder::new(std::io::Cursor::new(bytes))?;
     let mut msgs = vec![];
     for msg in decoder {
         msgs.push(msg?);
@@ -113,18 +102,16 @@ pub fn decode_bytes(
 
 /// Read encoding options from the beginning of the stream.
 pub fn read_options(
-    version_policy: VersionPolicy,
     reader: &mut impl std::io::Read,
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut data = [0_u8; FileHeader::SIZE];
     reader.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-    options_from_bytes(version_policy, &data)
+    options_from_bytes(&data)
 }
 
 /// Read encoding options from the beginning of the stream asynchronously.
 pub async fn read_options_async(
-    version_policy: VersionPolicy,
     reader: &mut (impl tokio::io::AsyncRead + Unpin),
 ) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut data = [0_u8; FileHeader::SIZE];
@@ -135,13 +122,10 @@ pub async fn read_options_async(
         .await
         .map_err(DecodeError::Read)?;
 
-    options_from_bytes(version_policy, &data)
+    options_from_bytes(&data)
 }
 
-pub fn options_from_bytes(
-    version_policy: VersionPolicy,
-    bytes: &[u8],
-) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
+pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut read = std::io::Cursor::new(bytes);
 
     let FileHeader {
@@ -156,7 +140,7 @@ pub fn options_from_bytes(
         return Err(DecodeError::NotAnRrd);
     }
 
-    warn_on_version_mismatch(version_policy, version)?;
+    warn_on_version_mismatch(version)?;
 
     match options.serializer {
         Serializer::Protobuf => {}
@@ -200,13 +184,13 @@ impl<R: std::io::Read> Decoder<R> {
     ///
     /// See also:
     /// * [`Decoder::new_concatenated`]
-    pub fn new(version_policy: VersionPolicy, mut read: R) -> Result<Self, DecodeError> {
+    pub fn new(mut read: R) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-        let (version, options) = options_from_bytes(version_policy, &data)?;
+        let (version, options) = options_from_bytes(&data)?;
 
         Ok(Self {
             version,
@@ -241,16 +225,13 @@ impl<R: std::io::Read> Decoder<R> {
     ///
     /// See also:
     /// * [`Decoder::new`]
-    pub fn new_concatenated(
-        version_policy: VersionPolicy,
-        mut read: std::io::BufReader<R>,
-    ) -> Result<Self, DecodeError> {
+    pub fn new_concatenated(mut read: std::io::BufReader<R>) -> Result<Self, DecodeError> {
         re_tracing::profile_function!();
 
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
-        let (version, options) = options_from_bytes(version_policy, &data)?;
+        let (version, options) = options_from_bytes(&data)?;
 
         Ok(Self {
             version,
@@ -312,7 +293,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 return Some(Err(err));
             }
 
-            let (version, options) = match options_from_bytes(VersionPolicy::Warn, &data) {
+            let (version, options) = match options_from_bytes(&data) {
                 Ok(opts) => opts,
                 Err(err) => return Some(Err(err)),
             };
@@ -371,17 +352,7 @@ mod tests {
     use super::*;
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_types::{
-        ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
-    };
-
-    // TODO(#3741): remove this once we are all in on arrow-rs
-    pub fn strip_arrow_extensions_from_log_messages(log_msg: Vec<LogMsg>) -> Vec<LogMsg> {
-        log_msg
-            .into_iter()
-            .map(LogMsg::strip_arrow_extension_types)
-            .collect()
-    }
+    use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
     pub fn fake_log_messages() -> Vec<LogMsg> {
         let store_id = StoreId::random(StoreKind::Blueprint);
@@ -391,7 +362,7 @@ mod tests {
                 re_chunk::RowId::new(),
                 re_log_types::TimePoint::default().with(
                     re_log_types::Timeline::new_sequence("blueprint"),
-                    re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::MIN),
+                    re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                 ),
                 &re_types::blueprint::archetypes::Background::new(
                     re_types::blueprint::components::BackgroundKind::SolidColor,
@@ -403,14 +374,13 @@ mod tests {
             .to_arrow_msg()
             .unwrap();
 
-        strip_arrow_extensions_from_log_messages(vec![
+        vec![
             LogMsg::SetStoreInfo(SetStoreInfo {
                 row_id: *RowId::new(),
                 info: StoreInfo {
                     application_id: ApplicationId("test".to_owned()),
                     store_id: store_id.clone(),
                     cloned_from: None,
-                    started: Time::now(),
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),
@@ -424,7 +394,7 @@ mod tests {
                 make_active: true,
                 make_default: true,
             }),
-        ])
+        ]
     }
 
     #[test]
@@ -449,12 +419,10 @@ mod tests {
             crate::encoder::encode_ref(rrd_version, options, messages.iter().map(Ok), &mut file)
                 .unwrap();
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                Decoder::new(VersionPolicy::Error, &mut file.as_slice())
-                    .unwrap()
-                    .collect::<Result<Vec<LogMsg>, DecodeError>>()
-                    .unwrap(),
-            );
+            let decoded_messages = Decoder::new(&mut file.as_slice())
+                .unwrap()
+                .collect::<Result<Vec<LogMsg>, DecodeError>>()
+                .unwrap();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -498,15 +466,10 @@ mod tests {
             }
             encoder2.finish().unwrap();
 
-            let decoder = Decoder::new_concatenated(
-                VersionPolicy::Error,
-                std::io::BufReader::new(data.as_slice()),
-            )
-            .unwrap();
+            let decoder =
+                Decoder::new_concatenated(std::io::BufReader::new(data.as_slice())).unwrap();
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap(),
-            );
+            let decoded_messages = decoder.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
 
             similar_asserts::assert_eq!(decoded_messages, [messages.clone(), messages].concat());
         }

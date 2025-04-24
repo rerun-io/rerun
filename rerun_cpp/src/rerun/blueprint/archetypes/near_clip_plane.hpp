@@ -17,6 +17,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Controls the distance to the near clip plane in 3D scene units.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct NearClipPlane {
         /// Controls the distance to the near clip plane in 3D scene units.
         ///

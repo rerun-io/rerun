@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
 #include "../components/scalar.hpp"
@@ -15,14 +16,17 @@
 #include <utility>
 #include <vector>
 
+RR_PUSH_WARNINGS
+RR_DISABLE_DEPRECATION_WARNING
+
 namespace rerun::archetypes {
     /// **Archetype**: A double-precision scalar, e.g. for use for time-series plots.
     ///
     /// The current timeline value will be used for the time/X-axis, hence scalars
-    /// cannot be static.
+    /// should not be static.
     ///
     /// When used to produce a plot, this archetype is used to provide the data that
-    /// is referenced by `archetypes::SeriesLine` or `archetypes::SeriesPoint`. You can do
+    /// is referenced by `archetypes::SeriesLines` or `archetypes::SeriesPoints`. You can do
     /// this by logging both archetypes to the same path, or alternatively configuring
     /// the plot-specific archetypes through the blueprint.
     ///
@@ -41,8 +45,8 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     for (int step = 0; step <64; ++step) {
-    ///         rec.set_index_sequence("step", step);
-    ///         rec.log("scalars", rerun::Scalar(sin(static_cast<double>(step) / 10.0)));
+    ///         rec.set_time_sequence("step", step);
+    ///         rec.log("scalars", rerun::Scalars(sin(static_cast<double>(step) / 10.0)));
     ///     }
     /// }
     /// ```
@@ -73,11 +77,14 @@ namespace rerun::archetypes {
     ///     rec.send_columns(
     ///         "scalars",
     ///         rerun::TimeColumn::from_sequence("step", std::move(times)),
-    ///         rerun::Scalar().with_many_scalar(std::move(scalar_data)).columns()
+    ///         rerun::Scalars(std::move(scalar_data)).columns()
     ///     );
     /// }
     /// ```
-    struct Scalar {
+    ///
+    /// ⚠ **Deprecated since 0.23.0**: Use `Scalars` instead.
+    ///
+    struct [[deprecated("since 0.23.0: Use `Scalars` instead.")]] Scalar {
         /// The scalar value to log.
         std::optional<ComponentBatch> scalar;
 
@@ -151,6 +158,8 @@ namespace rerun {
     /// \private
     template <typename T>
     struct AsComponents;
+    RR_PUSH_WARNINGS
+    RR_DISABLE_DEPRECATION_WARNING
 
     /// \private
     template <>
@@ -159,3 +168,5 @@ namespace rerun {
         static Result<Collection<ComponentBatch>> as_batches(const archetypes::Scalar& archetype);
     };
 } // namespace rerun
+
+RR_POP_WARNINGS

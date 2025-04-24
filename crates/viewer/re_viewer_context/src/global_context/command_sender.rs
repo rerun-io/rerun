@@ -4,6 +4,8 @@ use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
+use crate::StoreHubEntry;
+
 // ----------------------------------------------------------------------------
 
 /// Commands used by internal system components
@@ -26,9 +28,7 @@ pub enum SystemCommand {
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Add a new server to the redap browser.
-    AddRedapServer {
-        endpoint: re_uri::CatalogEndpoint,
-    },
+    AddRedapServer(re_uri::Origin),
 
     ChangeDisplayMode(crate::DisplayMode),
 
@@ -53,14 +53,14 @@ pub enum SystemCommand {
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
 
-    /// If this is a recording, switch to it.
-    ActivateRecording(StoreId),
+    /// Switch to this [`StoreHubEntry`].
+    ActivateEntry(StoreHubEntry),
 
-    /// Close a recording or blueprint (free its memory).
-    CloseStore(StoreId),
+    /// Close an [`StoreHubEntry`] and free its memory.
+    CloseEntry(StoreHubEntry),
 
     /// Close all stores and show the welcome screen again.
-    CloseAllRecordings,
+    CloseAllEntries,
 
     /// Update the blueprint with additional data
     ///
@@ -95,10 +95,11 @@ pub enum SystemCommand {
     /// Set the item selection.
     SetSelection(crate::Item),
 
-    /// Set the active timeline for the given recording.
-    SetActiveTimeline {
+    /// Set the active timeline and time for the given recording.
+    SetActiveTime {
         rec_id: StoreId,
         timeline: re_chunk::Timeline,
+        time: Option<re_log_types::TimeReal>,
     },
 
     /// Set the loop selection for the given timeline.

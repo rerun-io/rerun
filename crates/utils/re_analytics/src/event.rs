@@ -363,7 +363,9 @@ mod tests {
             Some("rerun.io".to_owned())
         );
         assert_eq!(
-            extract_root_domain("https://www.rerun.io/viewer?url=https://app.rerun.io/version/0.15.1/examples/detect_and_track_objects.rrd"),
+            extract_root_domain(
+                "https://www.rerun.io/viewer?url=https://app.rerun.io/version/0.15.1/examples/detect_and_track_objects.rrd"
+            ),
             Some("rerun.io".to_owned())
         );
 

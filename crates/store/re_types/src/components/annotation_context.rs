@@ -25,6 +25,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// annotation context. We use the *first* annotation context we find in the
 /// path-hierarchy when searching up through the ancestors of a given entity
 /// path.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AnnotationContext(
     /// List of class descriptions, mapping class indices to class names, colors etc.

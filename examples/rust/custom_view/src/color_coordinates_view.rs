@@ -1,4 +1,5 @@
 use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
+use re_viewer::external::re_log_types::ResolvedEntityPathFilter;
 use re_viewer::external::re_ui::Help;
 use re_viewer::external::{
     egui,
@@ -80,7 +81,7 @@ impl ViewClass for ColorCoordinatesView {
         &re_ui::icons::VIEW_GENERIC
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Color coordinates view")
             .markdown("A demo view that shows colors as coordinates on a 2D plane.")
     }
@@ -106,12 +107,18 @@ impl ViewClass for ColorCoordinatesView {
         Default::default()
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
-            .map_or(true, |entities| entities.is_empty())
+            .map_or(true, |entities| {
+                entities.is_empty() || entities.iter().all(|e| suggested_filter.matches(e))
+            })
         {
             ViewSpawnHeuristics::default()
         } else {

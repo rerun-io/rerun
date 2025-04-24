@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.8"
+  PYTHON_VERSION: "3.9"
 
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
@@ -50,6 +50,8 @@ jobs:
       image: rerunio/ci_docker:0.15.0
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:

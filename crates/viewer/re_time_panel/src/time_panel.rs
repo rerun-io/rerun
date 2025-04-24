@@ -17,8 +17,8 @@ use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentName;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget, icon_text, icons, list_item, ContextExt as _, DesignTokens, Help, ModifiersText,
-    UiExt as _,
+    filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
+    DesignTokens, Help, UiExt as _,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -1209,8 +1209,9 @@ impl TimePanel {
             // Only one time point - showing a slider that can't be moved is just annoying
         } else {
             let space_needed_for_current_time = match timeline.typ() {
-                re_chunk_store::TimeType::Time => 220.0,
                 re_chunk_store::TimeType::Sequence => 100.0,
+                re_chunk_store::TimeType::DurationNs => 200.0,
+                re_chunk_store::TimeType::TimestampNs => 220.0,
             };
 
             let mut time_range_rect = ui.available_rect_before_wrap();
@@ -1358,28 +1359,35 @@ fn paint_range_highlight(
     }
 }
 
+fn help(ctx: &egui::Context) -> Help {
+    Help::new("Timeline")
+        .control("Play/Pause", "Space")
+        .control(
+            "Move time cursor",
+            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag time scale"),
+        )
+        .control(
+            "Select time segment",
+            icon_text!(icons::SHIFT, "+", "drag time scale"),
+        )
+        .control(
+            "Pan",
+            icon_text!(icons::LEFT_MOUSE_CLICK, "+", "drag event canvas"),
+        )
+        .control(
+            "Zoom",
+            icon_text!(
+                modifiers_text(Modifiers::COMMAND, ctx),
+                maybe_plus(ctx),
+                icons::SCROLL
+            ),
+        )
+        .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
+}
+
 fn help_button(ui: &mut egui::Ui) {
     ui.help_hover_button().on_hover_ui(|ui| {
-        Help::new("Timeline")
-            .control("Play/Pause", icon_text!("Space"))
-            .control(
-                "Move time cursor",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag time scale"),
-            )
-            .control(
-                "Select time segment",
-                icon_text!(icons::SHIFT, "+ drag time scale"),
-            )
-            .control(
-                "Pan",
-                icon_text!(icons::LEFT_MOUSE_CLICK, "+ drag event canvas"),
-            )
-            .control(
-                "Zoom",
-                icon_text!(ModifiersText(Modifiers::COMMAND, ui.ctx()), icons::SCROLL),
-            )
-            .control("Reset view", icon_text!("double", icons::LEFT_MOUSE_CLICK))
-            .ui(ui);
+        help(ui.ctx()).ui(ui);
     });
 }
 
@@ -1787,4 +1795,9 @@ fn time_marker_ui(
         time_area_response
             .context_menu(|ui| copy_time_properties_context_menu(ui, time_ctrl, hovered_time));
     }
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(help);
 }

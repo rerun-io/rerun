@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
-        PrimitiveArray, UInt32Array,
+        new_empty_array, Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray,
+        ListArray, PrimitiveArray, UInt32Array,
     },
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},
@@ -17,17 +17,41 @@ use itertools::Itertools as _;
 pub trait ArrowArrayDowncastRef<'a>: 'a {
     /// Downcast an arrow array to another array, without having to go via `Any`.
     fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T>;
+
+    /// Similar to `downcast_array_ref`, but returns an error in case the downcast
+    /// returns `None`.
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError>;
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a dyn Array {
     fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
     }
+
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
+        self.downcast_array_ref::<T>().ok_or_else(|| {
+            ArrowError::CastError(format!(
+                "Failed to downcast array of type {} to {}",
+                self.data_type(),
+                std::any::type_name::<T>(),
+            ))
+        })
+    }
 }
 
 impl<'a> ArrowArrayDowncastRef<'a> for &'a ArrayRef {
     fn downcast_array_ref<T: Array + 'static>(self) -> Option<&'a T> {
         self.as_any().downcast_ref()
+    }
+
+    fn try_downcast_array_ref<T: Array + 'static>(self) -> Result<&'a T, ArrowError> {
+        self.downcast_array_ref::<T>().ok_or_else(|| {
+            ArrowError::CastError(format!(
+                "Failed to downcast array of type {} to {}",
+                self.data_type(),
+                std::any::type_name::<T>(),
+            ))
+        })
     }
 }
 
@@ -93,13 +117,6 @@ pub fn arrays_to_list_array_opt(arrays: &[Option<&dyn Array>]) -> Option<ListArr
         .map(|array| array.data_type().clone())
         .next()?;
     arrays_to_list_array(datatype, arrays)
-}
-
-/// An empty array of the given datatype.
-// TODO(#3741): replace with `arrow::array::new_empty_array`
-pub fn new_empty_array(datatype: &DataType) -> ArrayRef {
-    let capacity = 0;
-    arrow::array::make_builder(datatype, capacity).finish()
 }
 
 /// Create a sparse list-array out of an array of arrays.
@@ -300,7 +317,8 @@ pub fn concat_arrays(arrays: &[&dyn Array]) -> arrow::error::Result<ArrayRef> {
 /// [filter]: arrow::compute::filter
 pub fn filter_array<A: Array + Clone + 'static>(array: &A, filter: &BooleanArray) -> A {
     assert_eq!(
-        array.len(), filter.len(),
+        array.len(),
+        filter.len(),
         "the length of the filter must match the length of the array (the underlying kernel will panic otherwise)",
     );
     debug_assert!(

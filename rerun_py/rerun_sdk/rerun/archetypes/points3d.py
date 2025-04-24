@@ -69,7 +69,7 @@ class Points3D(Points3DExt, Archetype):
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
     for i in range(5):
-        rr.set_index("time", timedelta=10 + i)
+        rr.set_time("time", duration=10 + i)
         rr.log("points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i]))
     ```
     <center>
@@ -109,7 +109,7 @@ class Points3D(Points3DExt, Archetype):
 
     rr.send_columns(
         "points",
-        indexes=[rr.IndexColumn("time", timedelta=times)],
+        indexes=[rr.TimeColumn("time", duration=times)],
         columns=[
             *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
             *rr.Points3D.columns(colors=colors, radii=radii),
@@ -134,7 +134,7 @@ class Points3D(Points3DExt, Archetype):
 
     positions = [[i, 0, 0] for i in range(10)]
 
-    rr.set_index("frame", sequence=0)
+    rr.set_time("frame", sequence=0)
     rr.log("points", rr.Points3D(positions))
 
     for i in range(10):
@@ -142,11 +142,11 @@ class Points3D(Points3DExt, Archetype):
         radii = [0.6 if n < i else 0.2 for n in range(10)]
 
         # Update only the colors and radii, leaving everything else as-is.
-        rr.set_index("frame", sequence=i)
+        rr.set_time("frame", sequence=i)
         rr.log("points", rr.Points3D.from_fields(radii=radii, colors=colors))
 
     # Update the positions and radii, and clear everything else in the process.
-    rr.set_index("frame", sequence=20)
+    rr.set_time("frame", sequence=20)
     rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))
     ```
     <center>
@@ -348,10 +348,11 @@ class Points3D(Points3DExt, Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
+                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                    # `shape[1]` should be the length of the fixed sized list.
+                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                    # we have `num_rows` single element batches (each element is a fixed sized list).
                     # (This should have been already validated by conversion to the arrow_array)
                     batch_length = 1
                 else:

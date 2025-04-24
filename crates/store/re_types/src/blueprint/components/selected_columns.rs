@@ -19,6 +19,8 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Describe a component column to be selected in the dataframe view.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct SelectedColumns(pub crate::blueprint::datatypes::SelectedColumns);

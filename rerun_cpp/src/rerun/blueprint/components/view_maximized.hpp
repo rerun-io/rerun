@@ -13,6 +13,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether a view is maximized.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ViewMaximized {
         rerun::datatypes::Uuid view_id;
 

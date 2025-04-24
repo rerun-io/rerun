@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_case.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true
 re_context_menu.workspace = true

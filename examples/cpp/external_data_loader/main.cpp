@@ -10,27 +10,36 @@
 #include <string_view>
 
 void set_time_from_args(const rerun::RecordingStream& rec, cxxopts::ParseResult& args) {
-    if (args.count("time")) {
-        const auto times = args["time"].as<std::vector<std::string>>();
-        for (const auto& time_str : times) {
-            auto pos = time_str.find('=');
-            if (pos != std::string::npos) {
-                auto timeline_name = time_str.substr(0, pos);
-                int64_t time = std::stol(time_str.substr(pos + 1));
-                // TODO(#8635): update dataloaders
-                rec.set_index_duration_nanos(timeline_name, time);
-            }
-        }
-    }
-
-    if (args.count("sequence")) {
-        const auto sequences = args["sequence"].as<std::vector<std::string>>();
+    if (args.count("time_sequence")) {
+        const auto sequences = args["time_sequence"].as<std::vector<std::string>>();
         for (const auto& sequence_str : sequences) {
             auto pos = sequence_str.find('=');
             if (pos != std::string::npos) {
                 auto timeline_name = sequence_str.substr(0, pos);
                 int64_t sequence = std::stol(sequence_str.substr(pos + 1));
-                rec.set_index_sequence(timeline_name, sequence);
+                rec.set_time_sequence(timeline_name, sequence);
+            }
+        }
+    }
+    if (args.count("time_duration_nanos")) {
+        const auto times = args["time_duration_nanos"].as<std::vector<std::string>>();
+        for (const auto& time_str : times) {
+            auto pos = time_str.find('=');
+            if (pos != std::string::npos) {
+                auto timeline_name = time_str.substr(0, pos);
+                int64_t time = std::stol(time_str.substr(pos + 1));
+                rec.set_time_duration_nanos(timeline_name, time);
+            }
+        }
+    }
+    if (args.count("time_timestamp_nanos")) {
+        const auto times = args["time_timestamp_nanos"].as<std::vector<std::string>>();
+        for (const auto& time_str : times) {
+            auto pos = time_str.find('=');
+            if (pos != std::string::npos) {
+                auto timeline_name = time_str.substr(0, pos);
+                int64_t time = std::stol(time_str.substr(pos + 1));
+                rec.set_time_timestamp_nanos_since_epoch(timeline_name, time);
             }
         }
     }
@@ -71,8 +80,9 @@ file with Rerun (`rerun file.cpp`).
       ("recording-id", "Optional recommended ID for the recording", cxxopts::value<std::string>())
       ("entity-path-prefix", "Optional prefix for all entity paths", cxxopts::value<std::string>())
       ("static", "Optionally mark data to be logged as static", cxxopts::value<bool>()->default_value("false"))
-      ("time", "Optional timestamps to log at (e.g. `--time sim_time=1709203426`) (repeatable)", cxxopts::value<std::vector<std::string>>())
-      ("sequence", "Optional sequences to log at (e.g. `--sequence sim_frame=42`) (repeatable)", cxxopts::value<std::vector<std::string>>())
+      ("time_sequence", "Optional sequences to log at (e.g. `--time_sequence sim_frame=42`) (repeatable)", cxxopts::value<std::vector<std::string>>())
+      ("time_duration_nanos", "Optional durations (nanoseconds) to log at (e.g. `--time_duration_nanos sim_time=123`) (repeatable)", cxxopts::value<std::vector<std::string>>())
+      ("time_timestamp_nanos", "Optional timestamps (nanos since epoch) to log at (e.g. `--time_timestamp_nanos sim_time=1709203426123456789`) (repeatable)", cxxopts::value<std::vector<std::string>>())
     ;
     // clang-format on
 

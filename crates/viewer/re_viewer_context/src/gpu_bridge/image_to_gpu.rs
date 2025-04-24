@@ -34,14 +34,14 @@ use super::get_or_create_texture;
 fn generate_texture_key(image: &ImageInfo) -> u64 {
     // We need to inclde anything that, if changes, should result in a new texture being uploaded.
     let ImageInfo {
-        buffer_row_id: blob_row_id,
+        buffer_cache_key,
         buffer: _, // we hash `blob_row_id` instead; much faster!
 
         format,
         kind,
     } = image;
 
-    hash((blob_row_id, format, kind))
+    hash((buffer_cache_key, format, kind))
 }
 
 /// `colormap` is currently only used for depth images.
@@ -249,7 +249,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
     // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
-        let data = cast_slice_to_cow(image.buffer.as_slice());
+        let data = cast_slice_to_cow(&image.buffer);
         let coefficients = match pixel_format.yuv_matrix_coefficients() {
             re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
             re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,

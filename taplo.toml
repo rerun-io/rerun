@@ -9,6 +9,7 @@ include = [
   "rerun_notebook/*.toml",
   "rerun_py/*.toml",
   "tests/rust/**/*.toml",
+  "docs/snippets/**/*.toml",
 ]
 
 [formatting]

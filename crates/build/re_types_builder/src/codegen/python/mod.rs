@@ -15,10 +15,11 @@ use crate::{
         common::{collect_snippets_for_api_docs, Example},
         StringExt as _,
     },
+    data_type::{AtomicDataType, DataType, Field, UnionMode},
     format_path,
-    objects::ObjectClass,
-    ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
-    ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    objects::{ObjectClass, State},
+    CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    Reporter, Type, TypeRegistry, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use self::views::code_for_view;
@@ -43,6 +44,17 @@ const FIELD_CONVERTER_SUFFIX: &str = "__field_converter_override";
 
 // ---
 
+fn classmethod_decorators(obj: &Object) -> String {
+    // We need to decorate all class methods as deprecated
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        format!(r#"@deprecated("""{deprecation_summary}""")"#)
+    } else {
+        Default::default()
+    }
+}
+
+// ---
+
 /// Python-specific helpers for [`Object`].
 trait PythonObjectExt {
     /// Returns `true` if the object is a delegating component.
@@ -60,7 +72,7 @@ trait PythonObjectExt {
 
 impl PythonObjectExt for Object {
     fn is_delegating_component(&self) -> bool {
-        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object(_))
+        self.kind == ObjectKind::Component && matches!(self.fields[0].typ, Type::Object { .. })
     }
 
     fn is_non_delegating_component(&self) -> bool {
@@ -70,8 +82,8 @@ impl PythonObjectExt for Object {
     fn delegate_datatype<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
         self.is_delegating_component()
             .then(|| {
-                if let Type::Object(name) = &self.fields[0].typ {
-                    Some(&objects[name])
+                if let Type::Object { fqname } = &self.fields[0].typ {
+                    Some(&objects[fqname])
                 } else {
                     None
                 }
@@ -99,7 +111,7 @@ impl CodeGenerator for PythonCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
     ) -> GeneratedFiles {
         let mut files_to_write = GeneratedFiles::default();
 
@@ -107,7 +119,7 @@ impl CodeGenerator for PythonCodeGenerator {
             self.generate_folder(
                 reporter,
                 objects,
-                arrow_registry,
+                type_registry,
                 object_kind,
                 &mut files_to_write,
             );
@@ -297,7 +309,7 @@ impl PythonCodeGenerator {
         &self,
         reporter: &Reporter,
         objects: &Objects,
-        arrow_registry: &ArrowRegistry,
+        type_registry: &TypeRegistry,
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
@@ -469,14 +481,14 @@ impl PythonCodeGenerator {
                     if obj.kind == ObjectKind::View {
                         code_for_view(reporter, objects, &ext_class, obj)
                     } else {
-                        code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                        code_for_struct(reporter, type_registry, &ext_class, objects, obj)
                     }
                 }
                 crate::objects::ObjectClass::Enum => {
-                    code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
+                    code_for_enum(reporter, type_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
-                    code_for_union(reporter, arrow_registry, &ext_class, objects, obj)
+                    code_for_union(reporter, type_registry, &ext_class, objects, obj)
                 }
             };
 
@@ -562,7 +574,7 @@ fn lib_source_code(archetype_names: &[String]) -> String {
 
 fn code_for_struct(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -634,8 +646,8 @@ fn code_for_struct(
         superclasses.push("ComponentMixin".to_owned());
     }
 
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
 
     if !obj.is_delegating_component() {
@@ -768,7 +780,7 @@ fn code_for_struct(
 
             // Generating docs for all the fields creates A LOT of visual noise in the API docs.
             let show_fields_in_docs = false;
-            let doc_lines = lines_from_docs(reporter, objects, &field.docs, false);
+            let doc_lines = lines_from_docs(reporter, objects, &field.docs, &field.state);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
                     code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -805,7 +817,7 @@ fn code_for_struct(
         ObjectKind::Component => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
 
@@ -821,7 +833,7 @@ fn code_for_struct(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -835,7 +847,7 @@ fn code_for_struct(
 
 fn code_for_enum(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -854,8 +866,8 @@ fn code_for_enum(
 
     code.push_unindented("from enum import Enum", 2);
 
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
 
     let superclasses = {
@@ -884,7 +896,7 @@ fn code_for_enum(
 
         // Generating docs for all the fields creates A LOT of visual noise in the API docs.
         let show_fields_in_docs = true;
-        let doc_lines = lines_from_docs(reporter, objects, &variant.docs, false);
+        let doc_lines = lines_from_docs(reporter, objects, &variant.docs, &variant.state);
         if !doc_lines.is_empty() {
             if show_fields_in_docs {
                 code.push_indented(1, quote_doc_lines(doc_lines), 0);
@@ -909,7 +921,9 @@ fn code_for_enum(
     code.push_indented(
         1,
         format!(
-            r#"@classmethod
+            r#"
+@classmethod
+{extra_decorators}
 def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
     '''Best-effort converter, including a case-insensitive string matcher.'''
     if isinstance(val, {enum_name}):
@@ -924,7 +938,8 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
             if variant.name.lower() == val_lower:
                 return variant
     raise ValueError(f"Cannot convert {{val}} to {{cls.__name__}}")
-        "#
+        "#,
+            extra_decorators = classmethod_decorators(obj)
         ),
         1,
     );
@@ -976,7 +991,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
         ObjectKind::Component | ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -990,7 +1005,7 @@ def auto(cls, val: str | int | {enum_name}) -> {enum_name}:
 
 fn code_for_union(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -1030,8 +1045,8 @@ fn code_for_union(
         }
     };
 
-    if let Some(deprecation_notice) = obj.deprecation_notice() {
-        code.push_unindented(format!(r#"@deprecated("""{deprecation_notice}""")"#), 1);
+    if let Some(deprecation_summary) = obj.deprecation_summary() {
+        code.push_unindented(format!(r#"@deprecated("""{deprecation_summary}""")"#), 1);
     }
 
     code.push_unindented(
@@ -1142,7 +1157,7 @@ fn code_for_union(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
+                quote_arrow_support_from_obj(reporter, type_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -1211,7 +1226,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
 
 /// Ends with double newlines, unless empty.
 fn quote_obj_docs(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
-    let mut lines = lines_from_docs(reporter, objects, &obj.docs, obj.is_experimental());
+    let mut lines = lines_from_docs(reporter, objects, &obj.docs, &obj.state);
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
@@ -1225,15 +1240,13 @@ fn lines_from_docs(
     reporter: &Reporter,
     objects: &Objects,
     docs: &Docs,
-    is_experimental: bool,
+    state: &State,
 ) -> Vec<String> {
     let mut lines = docs.lines_for(reporter, objects, Target::Python);
 
-    if is_experimental {
+    if let Some(docline_summary) = state.docline_summary() {
         lines.push(String::new());
-        lines.push(
-            "⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**".to_owned(),
-        );
+        lines.push(docline_summary);
     }
 
     let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap_or_else(|err| {
@@ -1531,10 +1544,10 @@ fn quote_import_clauses_from_field(
             length: _,
         }
         | Type::Vector { elem_type } => match elem_type {
-            ElementType::Object(fqname) => Some(fqname),
+            ElementType::Object { fqname } => Some(fqname),
             _ => None,
         },
-        Type::Object(fqname) => Some(fqname),
+        Type::Object { fqname } => Some(fqname),
         _ => None,
     };
 
@@ -1630,7 +1643,7 @@ fn quote_field_type_from_field(
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
             ElementType::String => "list[str]".to_owned(),
-            ElementType::Object(_) => {
+            ElementType::Object { .. } => {
                 let typ = quote_type_from_element_type(elem_type);
                 if unwrap {
                     unwrapped = true;
@@ -1640,7 +1653,9 @@ fn quote_field_type_from_field(
                 }
             }
         },
-        Type::Object(fqname) => quote_type_from_element_type(&ElementType::Object(fqname.clone())),
+        Type::Object { fqname } => quote_type_from_element_type(&ElementType::Object {
+            fqname: fqname.clone(),
+        }),
     };
 
     (typ, unwrapped)
@@ -1714,8 +1729,10 @@ fn quote_field_converter_from_field(
             ElementType::Float64 => "to_np_float64".to_owned(),
             _ => String::new(),
         },
-        Type::Object(fqname) => {
-            let typ = quote_type_from_element_type(&ElementType::Object(fqname.clone()));
+        Type::Object { fqname } => {
+            let typ = quote_type_from_element_type(&ElementType::Object {
+                fqname: fqname.clone(),
+            });
             let field_obj = &objects[fqname];
 
             // we generate a default converter only if the field's type can be constructed with a
@@ -1803,7 +1820,7 @@ fn quote_type_from_type(typ: &Type) -> String {
         Type::Bool => "bool".to_owned(),
         Type::Float16 | Type::Float32 | Type::Float64 => "float".to_owned(),
         Type::String => "str".to_owned(),
-        Type::Object(fqname) => fqname_to_type(fqname),
+        Type::Object { fqname } => fqname_to_type(fqname),
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             format!(
                 "list[{}]",
@@ -1823,7 +1840,7 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
     reporter: &Reporter,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
@@ -1861,14 +1878,14 @@ fn quote_arrow_support_from_obj(
         batch_superclasses.push("ComponentBatchMixin".to_owned());
     }
 
-    let datatype = quote_arrow_datatype(&arrow_registry.get(fqname));
+    let datatype = quote_arrow_datatype(&type_registry.get(fqname));
     let extension_batch = format!("{name}Batch");
 
     let native_to_pa_array_impl = match quote_arrow_serialization(
         reporter,
         objects,
         obj,
-        arrow_registry,
+        type_registry,
     ) {
         Ok(automatic_arrow_serialization) => {
             if ext_class.has_native_to_pa_array {
@@ -1959,9 +1976,11 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
         Type::Float16 => Some("np.float16"),
         Type::Float32 => Some("np.float32"),
         Type::Float64 => Some("np.float64"),
-        Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(_) => {
-            None
-        }
+        Type::Unit
+        | Type::String
+        | Type::Array { .. }
+        | Type::Vector { .. }
+        | Type::Object { .. } => None,
     }
 }
 
@@ -1970,7 +1989,7 @@ fn quote_arrow_serialization(
     reporter: &Reporter,
     objects: &Objects,
     obj: &Object,
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
 
@@ -2055,7 +2074,9 @@ fn quote_arrow_serialization(
                             "We lack codegen for arrow-serialization of general structs".to_owned()
                         );
                     }
-                    Type::Object(field_fqname) => {
+                    Type::Object {
+                        fqname: field_fqname,
+                    } => {
                         let field_obj = &objects[field_fqname];
                         let field_type_name = &field_obj.name;
 
@@ -2063,8 +2084,9 @@ fn quote_arrow_serialization(
 
                         // Type checker struggles with this occasionally, exact pattern is unclear.
                         // Tried casting the array earlier via `cast(Sequence[{name}], data)` but to no avail.
-                        let field_fwd =
-                            format!("{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]");
+                        let field_fwd = format!(
+                            "{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]"
+                        );
                         code.push_indented(2, &field_fwd, 1);
                     }
                 }
@@ -2155,7 +2177,7 @@ return pa.array(pa_data, type=data_type)
 
                 // Converting the variant list to a pa array.
                 let variant_list_to_pa_array = match &field.typ {
-                    Type::Object(fqname) => {
+                    Type::Object { fqname } => {
                         let field_type_name = &objects[fqname].name;
                         format!("{field_type_name}Batch({variant_kind_list}).as_arrow_array()")
                     }
@@ -2175,7 +2197,7 @@ return pa.array(pa_data, type=data_type)
                     | Type::Float32
                     | Type::Float64
                     | Type::String => {
-                        let datatype = quote_arrow_datatype(&arrow_registry.get(&field.fqname));
+                        let datatype = quote_arrow_datatype(&type_registry.get(&field.fqname));
                         format!("pa.array({variant_kind_list}, type={datatype})")
                     }
                     Type::Array { .. } | Type::Vector { .. } => {
@@ -2256,7 +2278,10 @@ fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
     let mut code = String::new();
 
     for field in fields {
-        let Type::Object(field_fqname) = &field.typ else {
+        let Type::Object {
+            fqname: field_fqname,
+        } = &field.typ
+        else {
             continue;
         };
         if let Some(last_dot) = field_fqname.rfind('.') {
@@ -2482,12 +2507,14 @@ fn quote_clear_methods(obj: &Object) -> String {
             )
 
         @classmethod
+        {extra_decorators}
         def _clear(cls) -> {classname}:
             """Produce an empty {classname}, bypassing `__init__`."""
             inst = cls.__new__(cls)
             inst.__attrs_clear__()
             return inst
-        "#
+        "#,
+        extra_decorators = classmethod_decorators(obj)
     ))
 }
 
@@ -2538,6 +2565,7 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
     unindent(&format!(
         r#"
         @classmethod
+        {extra_decorators}
         def from_fields(
             cls,
             *,
@@ -2564,7 +2592,8 @@ fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Obj
         def cleared(cls) -> {name}:
             """Clear all the fields of a `{name}`."""
             return cls.from_fields(clear_unset=True)
-        "#
+        "#,
+        extra_decorators = classmethod_decorators(obj)
     ))
 }
 
@@ -2625,6 +2654,7 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
     unindent(&format!(
         r#"
         @classmethod
+        {extra_decorators}
         def columns(
             cls,
             *,
@@ -2653,10 +2683,11 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
                 if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                     param = kwargs[batch.component_descriptor().archetype_field_name] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                    if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                        # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                        # `shape[1]` should be the length of the fixed sized list.
+                    if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                        # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # we have `num_rows` single element batches (each element is a fixed sized list).
                         # (This should have been already validated by conversion to the arrow_array)
                         batch_length = 1
                     else:
@@ -2672,34 +2703,32 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
 
             indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
             return ComponentColumnList([indicator_column] + columns)
-        "#
+        "#,
+        extra_decorators = classmethod_decorators(obj)
     ))
 }
 
 // --- Arrow registry code generators ---
-use arrow2::datatypes::{DataType, Field, UnionMode};
 
 fn quote_arrow_datatype(datatype: &DataType) -> String {
     match datatype {
-        DataType::Null => "pa.null()".to_owned(),
-        DataType::Boolean => "pa.bool_()".to_owned(),
-        DataType::Int8 => "pa.int8()".to_owned(),
-        DataType::Int16 => "pa.int16()".to_owned(),
-        DataType::Int32 => "pa.int32()".to_owned(),
-        DataType::Int64 => "pa.int64()".to_owned(),
-        DataType::UInt8 => "pa.uint8()".to_owned(),
-        DataType::UInt16 => "pa.uint16()".to_owned(),
-        DataType::UInt32 => "pa.uint32()".to_owned(),
-        DataType::UInt64 => "pa.uint64()".to_owned(),
-        DataType::Float16 => "pa.float16()".to_owned(),
-        DataType::Float32 => "pa.float32()".to_owned(),
-        DataType::Float64 => "pa.float64()".to_owned(),
-        DataType::Date32 => "pa.date32()".to_owned(),
-        DataType::Date64 => "pa.date64()".to_owned(),
+        DataType::Atomic(AtomicDataType::Null) => "pa.null()".to_owned(),
+        DataType::Atomic(AtomicDataType::Boolean) => "pa.bool_()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int8) => "pa.int8()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int16) => "pa.int16()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int32) => "pa.int32()".to_owned(),
+        DataType::Atomic(AtomicDataType::Int64) => "pa.int64()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt8) => "pa.uint8()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt16) => "pa.uint16()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt32) => "pa.uint32()".to_owned(),
+        DataType::Atomic(AtomicDataType::UInt64) => "pa.uint64()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float16) => "pa.float16()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float32) => "pa.float32()".to_owned(),
+        DataType::Atomic(AtomicDataType::Float64) => "pa.float64()".to_owned(),
+
         DataType::Binary => "pa.binary()".to_owned(),
-        DataType::LargeBinary => "pa.large_binary()".to_owned(),
+
         DataType::Utf8 => "pa.utf8()".to_owned(),
-        DataType::LargeUtf8 => "pa.large_utf8()".to_owned(),
 
         DataType::List(field) => {
             let field = quote_arrow_field(field);
@@ -2711,7 +2740,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
             format!("pa.list_({field}, {length})")
         }
 
-        DataType::Union(fields, _, mode) => {
+        DataType::Union(fields, mode) => {
             let fields = fields
                 .iter()
                 .map(quote_arrow_field)
@@ -2732,9 +2761,7 @@ fn quote_arrow_datatype(datatype: &DataType) -> String {
             format!("pa.struct([{fields}])")
         }
 
-        DataType::Extension(_, datatype, _) => quote_arrow_datatype(datatype),
-
-        _ => unimplemented!("{datatype:#?}"),
+        DataType::Object { datatype, .. } => quote_arrow_datatype(datatype),
     }
 }
 

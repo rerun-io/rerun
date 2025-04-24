@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .. import components, datatypes
 from .._baseclasses import (
@@ -21,6 +22,7 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["SeriesLine"]
 
 
+@deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
 @define(str=False, repr=False, init=False)
 class SeriesLine(Archetype):
     """
@@ -28,7 +30,9 @@ class SeriesLine(Archetype):
 
     This archetype only provides styling information and should be logged as static
     when possible. The underlying data needs to be logged to the same entity-path using
-    [`archetypes.Scalar`][rerun.archetypes.Scalar].
+    [`archetypes.Scalars`][rerun.archetypes.Scalars].
+
+    ⚠️ **Deprecated since 0.23.0**: Use `SeriesLines` instead.
 
     Example
     -------
@@ -43,15 +47,15 @@ class SeriesLine(Archetype):
     # Set up plot styling:
     # They are logged as static as they don't change over time and apply to all timelines.
     # Log two lines series under a shared root so that they show in the same plot by default.
-    rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)", width=2), static=True)
-    rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)", width=4), static=True)
+    rr.log("trig/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2), static=True)
+    rr.log("trig/cos", rr.SeriesLines(colors=[0, 255, 0], names="cos(0.01t)", widths=4), static=True)
 
     # Log the data on a timeline called "step".
     for t in range(int(tau * 2 * 100.0)):
-        rr.set_index("step", sequence=t)
+        rr.set_time("step", sequence=t)
 
-        rr.log("trig/sin", rr.Scalar(sin(float(t) / 100.0)))
-        rr.log("trig/cos", rr.Scalar(cos(float(t) / 100.0)))
+        rr.log("trig/sin", rr.Scalars(sin(float(t) / 100.0)))
+        rr.log("trig/cos", rr.Scalars(cos(float(t) / 100.0)))
     ```
     <center>
     <picture>
@@ -125,6 +129,7 @@ class SeriesLine(Archetype):
         )
 
     @classmethod
+    @deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
     def _clear(cls) -> SeriesLine:
         """Produce an empty SeriesLine, bypassing `__init__`."""
         inst = cls.__new__(cls)
@@ -132,6 +137,7 @@ class SeriesLine(Archetype):
         return inst
 
     @classmethod
+    @deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
     def from_fields(
         cls,
         *,
@@ -197,6 +203,7 @@ class SeriesLine(Archetype):
         return cls.from_fields(clear_unset=True)
 
     @classmethod
+    @deprecated("""since 0.23.0: Use `SeriesLines` instead.""")
     def columns(
         cls,
         *,
@@ -269,10 +276,11 @@ class SeriesLine(Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
+                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                    # `shape[1]` should be the length of the fixed sized list.
+                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                    # we have `num_rows` single element batches (each element is a fixed sized list).
                     # (This should have been already validated by conversion to the arrow_array)
                     batch_length = 1
                 else:

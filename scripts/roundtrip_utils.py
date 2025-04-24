@@ -51,6 +51,9 @@ def run(
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     env = os.environ.copy()
 
+    # raise exception on warnings, e.g. when using a @deprecated function:
+    env["PYTHONWARNINGS"] = "error"
+
     # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
     # the batcher will happily insert uninitialized padding bytes as needed!
     env["RERUN_FLUSH_NUM_ROWS"] = "0"

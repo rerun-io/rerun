@@ -1,1 +1,3 @@
 src/v0/** linguist-generated=true
+src/v1alpha1/** linguist-generated=true
+src/v1alpha1/**/*.ext.rs linguist-generated=false

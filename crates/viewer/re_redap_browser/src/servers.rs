@@ -1,55 +1,105 @@
+use egui::{Frame, Margin, RichText};
+use re_log_types::EntryId;
+use re_ui::{icons, list_item, UiExt as _};
+use re_viewer_context::{
+    AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
+};
 use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
-use re_ui::{list_item, UiExt as _};
-use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
-
 use crate::add_server_modal::AddServerModal;
-use crate::collections::{Collection, CollectionId, Collections};
 use crate::context::Context;
+use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
 
 struct Server {
     origin: re_uri::Origin,
 
-    collections: Collections,
+    entries: Entries,
 }
 
 impl Server {
     fn new(runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        //let default_catalog = FetchCollectionTask::new(runtime, origin.clone());
+        let entries = Entries::new(runtime, egui_ctx, origin.clone());
 
-        let mut collections = Collections::default();
-
-        //TODO(ab): For now, we just auto-download the default collection
-        collections.fetch(runtime, egui_ctx, origin.clone());
-
-        Self {
-            origin,
-            collections,
-        }
+        Self { origin, entries }
     }
 
-    //TODO(ab): this should take a collection id in the future
-    fn refresh_default_collection(
-        &mut self,
-        runtime: &AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
-    ) {
-        self.collections
-            .fetch(runtime, egui_ctx, self.origin.clone());
+    fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
     }
 
     fn on_frame_start(&mut self) {
-        self.collections.on_frame_start();
+        self.entries.on_frame_start();
     }
 
-    fn find_collection(&self, collection_id: CollectionId) -> Option<&Collection> {
-        self.collections.find(collection_id)
+    fn find_dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
+        self.entries.find_dataset(entry_id)
     }
 
-    fn panel_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
-        let content = list_item::LabelContent::new(self.origin.to_string())
-            .with_buttons(|ui| {
+    /// Central panel UI for when a server is selected.
+    fn server_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
+        Frame::new()
+            .inner_margin(Margin {
+                top: 16,
+                bottom: 12,
+                left: 16,
+                right: 16,
+            })
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.heading(RichText::new("Catalog").strong());
+                    if ui.small_icon_button(&icons::RESET).clicked() {
+                        let _ = ctx
+                            .command_sender
+                            .send(Command::RefreshCollection(self.origin.clone()));
+                    }
+                });
+
+                ui.add_space(12.0);
+
+                ui.list_item_scope(
+                    egui::Id::new(&self.origin).with("catalog server ui"),
+                    |ui| {
+                        ui.list_item_flat_noninteractive(
+                            list_item::PropertyContent::new("Address").value_fn(|ui, _| {
+                                ui.strong(self.origin.to_string());
+                            }),
+                        );
+
+                        ui.list_item_flat_noninteractive(
+                            list_item::PropertyContent::new("Datasets").value_fn(|ui, _| {
+                                match self.entries.dataset_count() {
+                                    None => ui.label("loading…"),
+                                    Some(Ok(count)) => ui.strong(format!("{count}")),
+                                    Some(Err(err)) => ui
+                                        .error_label("could not load entries")
+                                        .on_hover_text(err.to_string()),
+                                };
+                            }),
+                        );
+
+                        ui.list_item_flat_noninteractive(
+                            list_item::PropertyContent::new("Tables").value_fn(|ui, _| {
+                                ui.strong(format!("{}", self.entries.table_count()));
+                            }),
+                        );
+                    },
+                );
+            });
+    }
+
+    fn panel_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        recordings: Option<DatasetRecordings<'_>>,
+    ) {
+        let item = Item::RedapServer(self.origin.clone());
+        let is_selected = viewer_ctx.selection().contains_item(&item);
+
+        let content =
+            list_item::LabelContent::header(self.origin.host.to_string()).with_buttons(|ui| {
                 let response = ui
                     .small_icon_button(&re_ui::icons::REMOVE)
                     .on_hover_text("Remove server");
@@ -61,20 +111,33 @@ impl Server {
                 }
 
                 response
-            })
-            .always_show_buttons(true);
+            });
 
-        ui.list_item()
-            .interactive(false)
+        let item_response = ui
+            .list_item()
+            .header()
+            .selected(is_selected)
             .show_hierarchical_with_children(
                 ui,
                 egui::Id::new(&self.origin).with("server_item"),
                 true,
                 content,
                 |ui| {
-                    self.collections.panel_ui(ctx, ui);
+                    self.entries.panel_ui(viewer_ctx, ctx, ui, recordings);
                 },
-            );
+            )
+            .item_response
+            .on_hover_text(self.origin.to_string());
+
+        viewer_ctx.handle_select_hover_drag_interactions(&item_response, item, false);
+
+        if item_response.clicked() {
+            viewer_ctx
+                .command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                    self.origin.clone(),
+                )));
+        }
     }
 }
 
@@ -82,7 +145,9 @@ impl Server {
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
-    selected_collection: Option<CollectionId>,
+    /// When deserializing we can't construct the [`Server`]s right away
+    /// so they get queued here.
+    pending_servers: Vec<re_uri::Origin>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -110,12 +175,12 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
     {
         let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
 
-        let servers = Self::default();
+        let mut servers = Self::default();
 
         // We cannot create `Server` right away, because we need an async handle and an
         // `egui::Context` for that, so we just queue commands to be processed early next frame.
         for origin in origins {
-            let _ = servers.command_sender.send(Command::AddServer(origin));
+            servers.pending_servers.push(origin);
         }
 
         Ok(servers)
@@ -128,7 +193,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
-            selected_collection: None,
+            pending_servers: Default::default(),
             command_sender,
             command_receiver,
             add_server_modal_ui: Default::default(),
@@ -137,14 +202,22 @@ impl Default for RedapServers {
 }
 
 pub enum Command {
-    SelectCollection(CollectionId),
-    DeselectCollection,
+    OpenAddServerModal,
     AddServer(re_uri::Origin),
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
 }
 
 impl RedapServers {
+    pub fn is_empty(&self) -> bool {
+        self.servers.is_empty() && self.pending_servers.is_empty()
+    }
+
+    /// Whether we already know about a given server (or have it queued to be added).
+    pub fn has_server(&self, origin: &re_uri::Origin) -> bool {
+        self.servers.contains_key(origin) || self.pending_servers.contains(origin)
+    }
+
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         let _ = self.command_sender.send(Command::AddServer(origin));
@@ -155,6 +228,9 @@ impl RedapServers {
     /// - Process commands from the queue.
     /// - Update all servers.
     pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
+        self.pending_servers.drain(..).for_each(|origin| {
+            let _ = self.command_sender.send(Command::AddServer(origin));
+        });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(runtime, egui_ctx, command);
         }
@@ -171,11 +247,9 @@ impl RedapServers {
         command: Command,
     ) {
         match command {
-            Command::SelectCollection(collection_handle) => {
-                self.selected_collection = Some(collection_handle);
+            Command::OpenAddServerModal => {
+                self.add_server_modal_ui.open();
             }
-
-            Command::DeselectCollection => self.selected_collection = None,
 
             Command::AddServer(origin) => {
                 if !self.servers.contains_key(&origin) {
@@ -184,8 +258,10 @@ impl RedapServers {
                         Server::new(runtime, egui_ctx, origin.clone()),
                     );
                 } else {
-                    re_log::warn!(
-                        "Tried to add pre-existing sever at {:?}",
+                    // Since we persist the server list on disk this happens quite often.
+                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
+                    re_log::debug!(
+                        "Tried to add pre-existing server at {:?}",
                         origin.to_string()
                     );
                 }
@@ -197,80 +273,70 @@ impl RedapServers {
 
             Command::RefreshCollection(origin) => {
                 self.servers.entry(origin).and_modify(|server| {
-                    server.refresh_default_collection(runtime, egui_ctx);
+                    server.refresh_entries(runtime, egui_ctx);
                 });
             }
         }
     }
 
-    pub fn server_panel_ui(&mut self, ui: &mut egui::Ui) {
-        ui.panel_content(|ui| {
-            ui.panel_title_bar_with_buttons(
-                "Servers",
-                Some("These are the currently connected Redap servers."),
-                |ui| {
-                    if ui
-                        .small_icon_button(&re_ui::icons::ADD)
-                        .on_hover_text("Add a server")
-                        .clicked()
-                    {
-                        self.add_server_modal_ui.open();
-                    }
-                },
-            );
-        });
-
-        egui::ScrollArea::both()
-            .id_salt("servers_scroll_area")
-            .auto_shrink([false, true])
-            .show(ui, |ui| {
-                ui.panel_content(|ui| {
-                    re_ui::list_item::list_item_scope(ui, "server panel", |ui| {
-                        self.server_list_ui(ui);
-                    });
-                });
+    pub fn server_central_panel_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        origin: &re_uri::Origin,
+    ) {
+        if let Some(server) = self.servers.get(origin) {
+            self.with_ctx(|ctx| {
+                server.server_ui(ctx, ui);
             });
+        } else {
+            viewer_ctx
+                .command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(
+                    DisplayMode::LocalRecordings,
+                ));
+        }
     }
 
-    fn server_list_ui(&self, ui: &mut egui::Ui) {
+    pub fn server_list_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        mut remote_recordings: RemoteRecordings<'_>,
+    ) {
         self.with_ctx(|ctx| {
             for server in self.servers.values() {
-                server.panel_ui(ctx, ui);
+                let recordings = remote_recordings.remove(&server.origin);
+                server.panel_ui(viewer_ctx, ctx, ui, recordings);
             }
         });
     }
 
-    pub fn ui(&mut self, viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        self.add_server_modal_ui(ui);
+    pub fn open_add_server_modal(&self) {
+        let _ = self.command_sender.send(Command::OpenAddServerModal);
+    }
 
-        //TODO(ab): we should display something even if no catalog is currently selected.
+    pub fn entry_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        active_entry: EntryId,
+    ) {
+        for server in self.servers.values() {
+            if let Some(dataset) = server.find_dataset(active_entry) {
+                self.with_ctx(|ctx| {
+                    super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
+                });
 
-        if let Some(selected_collection) = self.selected_collection.as_ref() {
-            for server in self.servers.values() {
-                let collection = server.find_collection(*selected_collection);
-
-                if let Some(collection) = collection {
-                    self.with_ctx(|ctx| {
-                        super::collection_ui::collection_ui(
-                            viewer_ctx,
-                            ctx,
-                            ui,
-                            &server.origin,
-                            collection,
-                        );
-                    });
-
-                    return;
-                }
+                return;
             }
         }
     }
 
-    fn add_server_modal_ui(&mut self, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selected_collection,
         };
 
         self.add_server_modal_ui.ui(&ctx, ui);
@@ -280,7 +346,6 @@ impl RedapServers {
     fn with_ctx<R>(&self, func: impl FnOnce(&Context<'_>) -> R) -> R {
         let ctx = Context {
             command_sender: &self.command_sender,
-            selected_collection: &self.selected_collection,
         };
 
         func(&ctx)

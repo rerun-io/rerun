@@ -1,5 +1,5 @@
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{ComponentPath, DataPath, EntityPath};
+use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId, TableId};
 use re_types::ComponentDescriptor;
 
 use crate::{ContainerId, Contents, ViewId};
@@ -18,6 +18,9 @@ pub enum Item {
     /// A recording (or blueprint)
     StoreId(re_log_types::StoreId),
 
+    /// A table (i.e. a dataframe)
+    TableId(TableId),
+
     /// An entity or instance from the chunk store.
     InstancePath(InstancePath),
 
@@ -32,16 +35,25 @@ pub enum Item {
 
     /// An entity or instance in the context of a view's data results.
     DataResult(ViewId, InstancePath),
+
+    /// A dataset or table.
+    RedapEntry(EntryId),
+
+    /// A Redap server.
+    RedapServer(re_uri::Origin),
 }
 
 impl Item {
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
             Self::AppId(_)
+            | Self::TableId(_)
             | Self::DataSource(_)
             | Self::View(_)
             | Self::Container(_)
-            | Self::StoreId(_) => None,
+            | Self::StoreId(_)
+            | Self::RedapServer(_)
+            | Self::RedapEntry(_) => None,
 
             Self::ComponentPath(component_path) => Some(&component_path.entity_path),
 
@@ -122,6 +134,7 @@ impl std::fmt::Debug for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::AppId(app_id) => app_id.fmt(f),
+            Self::TableId(table_id) => table_id.fmt(f),
             Self::DataSource(data_source) => data_source.fmt(f),
             Self::StoreId(store_id) => store_id.fmt(f),
             Self::ComponentPath(s) => s.fmt(f),
@@ -131,6 +144,8 @@ impl std::fmt::Debug for Item {
                 write!(f, "({view_id:?}, {instance_path}")
             }
             Self::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
+            Self::RedapEntry(entry_id) => write!(f, "{entry_id}"),
+            Self::RedapServer(server) => write!(f, "{server}"),
         }
     }
 }
@@ -139,6 +154,7 @@ impl Item {
     pub fn kind(&self) -> &'static str {
         match self {
             Self::AppId(_) => "Application",
+            Self::TableId(_) => "Table",
             Self::DataSource(_) => "Data source",
             Self::StoreId(store_id) => match store_id.kind {
                 re_log_types::StoreKind::Recording => "Recording ID",
@@ -155,6 +171,8 @@ impl Item {
                     "Data result entity"
                 }
             }
+            Self::RedapEntry(_) => "Redap entry",
+            Self::RedapServer(_) => "Redap server",
         }
     }
 }
@@ -175,11 +193,14 @@ pub fn resolve_mono_instance_path_item(
             resolve_mono_instance_path(entity_db, query, instance_path),
         ),
         Item::AppId(_)
+        | Item::TableId(_)
         | Item::DataSource(_)
         | Item::StoreId(_)
         | Item::ComponentPath(_)
         | Item::View(_)
-        | Item::Container(_) => item.clone(),
+        | Item::Container(_)
+        | Item::RedapEntry(_)
+        | Item::RedapServer(_) => item.clone(),
     }
 }
 

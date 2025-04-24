@@ -4,15 +4,28 @@ use once_cell::sync::OnceCell;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, StoreId};
 use re_types::{
+    archetypes,
     components::{Blob, ImageFormat, MediaType},
     external::image,
     Component as _, Loggable as _,
 };
 
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, Default)]
+    pub struct ImageTypes: u8 {
+        const IMAGE = 0b0001;
+        const ENCODED_IMAGE = 0b0010;
+        const SEGMENTATION_IMAGE = 0b0100;
+        const DEPTH_IMAGE = 0b1000;
+        const VIDEO = 0b10000;
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct MaxDimensions {
     pub width: u32,
     pub height: u32,
+    pub image_types: ImageTypes,
 }
 
 /// The size of the largest image and/or video at a given entity path.
@@ -61,10 +74,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             }
 
             // Handle `Image`, `DepthImage`, `SegmentationImage`…
-            if let Some(all_dimensions) = event
-                .diff
-                .chunk
-                .components()
+            let components = event.diff.chunk.components();
+            if let Some(all_dimensions) = components
                 .get(&ImageFormat::name())
                 .and_then(|per_desc| per_desc.values().next())
             {
@@ -83,6 +94,32 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     max_dim.height = max_dim.height.max(new_dim.height);
                 }
             }
+            // TODO(andreas): this should be part of the ImageFormat component's tag instead.
+            if components.contains_key(&archetypes::Image::descriptor_indicator().component_name) {
+                self.max_dimensions
+                    .entry(event.diff.chunk.entity_path().clone())
+                    .or_default()
+                    .image_types
+                    .insert(ImageTypes::IMAGE);
+            }
+            if components
+                .contains_key(&archetypes::SegmentationImage::descriptor_indicator().component_name)
+            {
+                self.max_dimensions
+                    .entry(event.diff.chunk.entity_path().clone())
+                    .or_default()
+                    .image_types
+                    .insert(ImageTypes::SEGMENTATION_IMAGE);
+            }
+            if components
+                .contains_key(&archetypes::DepthImage::descriptor_indicator().component_name)
+            {
+                self.max_dimensions
+                    .entry(event.diff.chunk.entity_path().clone())
+                    .or_default()
+                    .image_types
+                    .insert(ImageTypes::DEPTH_IMAGE);
+            }
 
             // Handle `ImageEncoded`, `AssetVideo`…
             let blobs = event.diff.chunk.iter_slices::<&[u8]>(Blob::name());
@@ -91,16 +128,26 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 itertools::izip!(blobs, media_types.map(Some).chain(std::iter::repeat(None)))
             {
                 if let Some(blob) = blob.first() {
-                    if let Some([width, height]) = size_from_blob(
-                        blob,
-                        media_type.and_then(|v| v.first().map(|v| MediaType(v.clone().into()))),
-                    ) {
+                    let media_type =
+                        media_type.and_then(|v| v.first().map(|v| MediaType(v.clone().into())));
+                    let Some(media_type) = MediaType::or_guess_from_data(media_type, blob) else {
+                        continue;
+                    };
+
+                    if let Some([width, height]) = size_from_blob(blob, &media_type) {
                         let max_dim = self
                             .max_dimensions
                             .entry(event.diff.chunk.entity_path().clone())
                             .or_default();
                         max_dim.width = max_dim.width.max(width);
                         max_dim.height = max_dim.height.max(height);
+
+                        // TODO(andreas): this should be part of the Blob component's tag instead.
+                        if media_type.is_image() {
+                            max_dim.image_types.insert(ImageTypes::ENCODED_IMAGE);
+                        } else if media_type.is_video() {
+                            max_dim.image_types.insert(ImageTypes::VIDEO);
+                        }
                     }
                 }
             }
@@ -108,10 +155,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
     }
 }
 
-fn size_from_blob(blob: &[u8], media_type: Option<MediaType>) -> Option<[u32; 2]> {
+fn size_from_blob(blob: &[u8], media_type: &MediaType) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
-
-    let media_type = MediaType::or_guess_from_data(media_type, blob)?;
 
     if media_type.is_image() {
         re_tracing::profile_scope!("image");
@@ -134,7 +179,7 @@ fn size_from_blob(blob: &[u8], media_type: Option<MediaType>) -> Option<[u32; 2]
         reader.into_dimensions().ok().map(|size| size.into())
     } else if media_type.is_video() {
         re_tracing::profile_scope!("video");
-        re_video::VideoData::load_from_bytes(blob, &media_type)
+        re_video::VideoData::load_from_bytes(blob, media_type)
             .ok()
             .map(|video| video.dimensions())
     } else {

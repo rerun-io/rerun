@@ -26,7 +26,7 @@ By using COLMAP in combination with Rerun, a highly-detailed reconstruction of t
 
 ## Used Rerun types
 
-[`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines?speculative-link), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 ## Logging and visualizing with Rerun
 
@@ -38,7 +38,7 @@ All data logged using Rerun in the following sections is connected to a specific
 Rerun assigns a frame id to each piece of logged data, and these frame ids are associated with a [`timeline`](https://www.rerun.io/docs/concepts/timelines).
 
  ```python
-rr.set_index("frame", sequence=frame_idx)
+rr.set_time("frame", sequence=frame_idx)
  ```
 
 ### Images
@@ -58,7 +58,7 @@ This defines how to go from the 3D camera frame to the 2D image plane. The extri
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) to the `camera` entity.
 
 ```python
-rr.log("camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True))
+rr.log("camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), relation=rr.TransformRelation.ChildFromParent))
 ```
 
 ```python
@@ -73,11 +73,11 @@ rr.log(
 ```
 
 ### Reprojection error
-For each image a [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype containing the average reprojection error of the keypoints is logged to the
+For each image a [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link) archetype containing the average reprojection error of the keypoints is logged to the
 `plot/avg_reproj_err` entity.
 
 ```python
-rr.log("plot/avg_reproj_err", rr.Scalar(np.mean(point_errors)))
+rr.log("plot/avg_reproj_err", rr.Scalars(np.mean(point_errors)))
 ```
 
 ### 2D points

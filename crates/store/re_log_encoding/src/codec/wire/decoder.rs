@@ -1,7 +1,6 @@
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
 use re_protos::common::v1alpha1::RerunChunk;
-use re_protos::remote_store::v1alpha1::DataframePart;
 
 use crate::codec::arrow::read_arrow_from_bytes;
 use crate::codec::CodecError;
@@ -29,14 +28,18 @@ pub trait Decode {
     fn decode(&self) -> Result<ArrowRecordBatch, CodecError>;
 }
 
-impl Decode for DataframePart {
+impl Decode for RerunChunk {
     fn decode(&self) -> Result<ArrowRecordBatch, CodecError> {
         decode(self.encoder_version(), &self.payload)
     }
 }
 
-impl Decode for RerunChunk {
+impl Decode for re_protos::common::v1alpha1::DataframePart {
     fn decode(&self) -> Result<ArrowRecordBatch, CodecError> {
-        decode(self.encoder_version(), &self.payload)
+        let payload = self
+            .payload
+            .as_ref()
+            .ok_or(CodecError::MissingRecordBatch)?;
+        decode(self.encoder_version(), payload)
     }
 }

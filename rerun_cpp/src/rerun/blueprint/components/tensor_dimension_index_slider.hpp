@@ -12,6 +12,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Show a slider for the index of some dimension of a slider.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct TensorDimensionIndexSlider {
         rerun::blueprint::datatypes::TensorDimensionIndexSlider selection;
 

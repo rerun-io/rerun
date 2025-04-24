@@ -18,6 +18,7 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
+mod entry_id;
 pub mod example_components;
 pub mod hash;
 mod index;
@@ -31,15 +32,17 @@ mod vec_deque_ext;
 
 use std::sync::Arc;
 
+use arrow::array::RecordBatch as ArrowRecordBatch;
+
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
+    entry_id::{EntryId, EntryIdOrName},
     index::{
-        Duration, IndexCell, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, Time, TimeInt,
-        TimePoint, TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat,
-        TryFromIntError,
+        Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, TimeCell, TimeInt, TimePoint,
+        TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,
     },
     instance::Instance,
     path::*,
@@ -112,7 +115,7 @@ impl StoreId {
     pub fn random(kind: StoreKind) -> Self {
         Self {
             kind,
-            id: Arc::new(uuid::Uuid::new_v4().to_string()),
+            id: Arc::new(uuid::Uuid::new_v4().simple().to_string()),
         }
     }
 
@@ -125,7 +128,7 @@ impl StoreId {
     pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
             kind,
-            id: Arc::new(uuid.to_string()),
+            id: Arc::new(uuid.simple().to_string()),
         }
     }
 
@@ -189,10 +192,50 @@ impl ApplicationId {
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
+
+    /// A randomly generated app id
+    pub fn random() -> Self {
+        Self(format!("app_{}", uuid::Uuid::new_v4().simple()))
+    }
 }
 
 impl std::fmt::Display for ApplicationId {
     #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Either the user-chosen name of a table, or an id that is created by the catalog server.
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TableId(Arc<String>);
+
+impl TableId {
+    pub fn new(id: String) -> Self {
+        Self(Arc::new(id))
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl From<&str> for TableId {
+    fn from(s: &str) -> Self {
+        Self(Arc::new(s.into()))
+    }
+}
+
+impl From<String> for TableId {
+    fn from(s: String) -> Self {
+        Self(Arc::new(s))
+    }
+}
+
+impl std::fmt::Display for TableId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
@@ -210,7 +253,6 @@ impl std::fmt::Display for ApplicationId {
 ///   by specifying whether the blueprint should be immediately activated, or only
 ///   become the default for future activations.
 #[derive(Clone, Debug, PartialEq, Eq)] // `PartialEq` used for tests in another crate
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct BlueprintActivationCommand {
     /// The blueprint this command refers to.
     pub blueprint_id: StoreId,
@@ -253,9 +295,12 @@ impl BlueprintActivationCommand {
 }
 
 /// The most general log message sent from the SDK to the server.
+///
+/// Note: this does not contain tables sent via [`TableMsg`], as these concepts are fundamentally
+/// different and should not be handled uniformly. For example, we don't want to store tables in
+/// `.rrd` files.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[allow(clippy::large_enum_variant)]
 // TODO(#8631): Remove `LogMsg`
 pub enum LogMsg {
@@ -299,18 +344,6 @@ impl LogMsg {
             }
         }
     }
-
-    // TODO(#3741): remove this once we are all in on arrow-rs
-    /// USE ONLY FOR TESTS
-    pub fn strip_arrow_extension_types(self) -> Self {
-        match self {
-            Self::ArrowMsg(store_id, mut arrow_msg) => {
-                strip_arrow_extension_types_from_batch(&mut arrow_msg.batch);
-                Self::ArrowMsg(store_id, arrow_msg)
-            }
-            other => other,
-        }
-    }
 }
 
 impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);
@@ -324,7 +357,6 @@ impl_into_enum!(
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct SetStoreInfo {
     /// A time-based UID that is only used to help keep track of when these `StoreInfo` originated
     /// and how they fit in the global ordering of events.
@@ -339,7 +371,6 @@ pub struct SetStoreInfo {
 
 /// Information about a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct StoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: ApplicationId,
@@ -357,18 +388,12 @@ pub struct StoreInfo {
     /// This means all active blueprints are clones.
     pub cloned_from: Option<StoreId>,
 
-    /// When the recording started.
-    ///
-    /// Should be an absolute time, i.e. relative to Unix Epoch.
-    pub started: Time,
-
     pub store_source: StoreSource,
 
     /// The Rerun version used to encoded the RRD data.
     ///
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
-    #[cfg_attr(feature = "serde", serde(skip))]
     pub store_version: Option<CrateVersion>,
 }
 
@@ -381,7 +406,6 @@ impl StoreInfo {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct PythonVersion {
     /// e.g. 3
     pub major: u8,
@@ -476,7 +500,6 @@ pub enum PythonVersionParseError {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum FileSource {
     Cli,
 
@@ -486,38 +509,32 @@ pub enum FileSource {
     DragAndDrop {
         /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_application_id: Option<ApplicationId>,
 
         /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_recording_id: Option<StoreId>,
 
         /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
         ///
         /// Only useful when creating a recording just-in-time directly in the viewer (which is what
         /// happens when importing things into the welcome screen).
-        #[cfg_attr(feature = "serde", serde(skip))]
         force_store_info: bool,
     },
 
     FileDialog {
         /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_application_id: Option<ApplicationId>,
 
         /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
-        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_recording_id: Option<StoreId>,
 
         /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
         ///
         /// Only useful when creating a recording just-in-time directly in the viewer (which is what
         /// happens when importing things into the welcome screen).
-        #[cfg_attr(feature = "serde", serde(skip))]
         force_store_info: bool,
     },
 
@@ -571,7 +588,6 @@ impl FileSource {
 
 /// The source of a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum StoreSource {
     Unknown,
 
@@ -624,9 +640,29 @@ impl std::fmt::Display for StoreSource {
 
 // ---
 
+/// A table, encoded as a dataframe of Arrow record batches.
+///
+/// Tables have a [`TableId`], but don't belong to an application and therefore don't have an [`ApplicationId`].
+/// For now, the table is always sent as a whole, i.e. tables can't be streamed.
+///
+/// It's important to note that tables are not sent via the smart channel of [`LogMsg`], but use a separate `crossbeam`
+/// channel. The reasoning behind this is that tables are fundamentally different from recordings. For example,
+/// we don't want to store tables in `.rrd` files, as there are much better formats out there.
+#[must_use]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TableMsg {
+    /// The id of the table.
+    pub id: TableId,
+
+    /// The table stored as an [`ArrowRecordBatch`].
+    pub data: ArrowRecordBatch,
+}
+
+// ---
+
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
-pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
+pub fn build_log_time(log_time: Timestamp) -> (Timeline, TimeInt) {
     (
         Timeline::log_time(),
         TimeInt::new_temporal(log_time.nanos_since_epoch()),
@@ -638,7 +674,7 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
     (
         Timeline::new("frame_nr", TimeType::Sequence),
-        TimeInt::saturated_nonstatic(frame_nr),
+        TimeInt::saturated_temporal(frame_nr),
     )
 }
 
@@ -716,7 +752,6 @@ impl SizeBytes for StoreInfo {
             application_id,
             store_id,
             cloned_from: _,
-            started: _,
             store_source,
             store_version,
         } = self;
@@ -770,33 +805,6 @@ impl SizeBytes for LogMsg {
                 blueprint_activation_command.heap_size_bytes()
             }
         }
-    }
-}
-
-/// USE ONLY FOR TESTS
-// TODO(#3741): remove once <https://github.com/apache/arrow-rs/issues/6803> is released
-use arrow::array::RecordBatch as ArrowRecordBatch;
-
-pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
-    use arrow::datatypes::{Field, Schema};
-
-    fn strip_arrow_extensions_from_field(field: &Field) -> Field {
-        let mut metadata = field.metadata().clone();
-        metadata.retain(|key, _| !key.starts_with("ARROW:extension"));
-        field.clone().with_metadata(metadata)
-    }
-
-    let old_schema = batch.schema();
-    let new_fields: arrow::datatypes::Fields = old_schema
-        .fields()
-        .iter()
-        .map(|field| strip_arrow_extensions_from_field(field))
-        .collect();
-    let new_schema = Schema::new_with_metadata(new_fields, old_schema.metadata().clone());
-
-    #[allow(clippy::unwrap_used)] // The invariants of the input aren't changed
-    {
-        *batch = ArrowRecordBatch::try_new(new_schema.into(), batch.columns().to_vec()).unwrap();
     }
 }
 

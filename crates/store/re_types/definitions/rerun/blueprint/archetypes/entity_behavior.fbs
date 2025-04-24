@@ -1,0 +1,29 @@
+namespace rerun.blueprint.archetypes;
+
+/// General visualization behavior of an entity.
+///
+/// TODO(#6541): Fields of this archetype currently only have an effect when logged in the blueprint store.
+///
+/// \example archetypes/entity_behavior missing="cpp,rs" image="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/1200w.png"
+table EntityBehavior (
+  "attr.docs.category": "General",
+  "attr.docs.unreleased",
+  "attr.rerun.scope": "blueprint",
+  "attr.rerun.state": "stable"
+) {
+    /// Whether the entity can be interacted with.
+    ///
+    /// This property is propagated down the entity hierarchy until another child entity
+    /// sets `interactive` to a different value at which point propagation continues with that value instead.
+    ///
+    /// Defaults to parent's `interactive` value or true if there is no parent.
+    interactive: rerun.components.Interactive ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// Whether the entity is visible.
+    ///
+    /// This property is propagated down the entity hierarchy until another child entity
+    /// sets `visible` to a different value at which point propagation continues with that value instead.
+    ///
+    /// Defaults to parent's `visible` value or true if there is no parent.
+    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 200);
+}

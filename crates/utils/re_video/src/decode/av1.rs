@@ -28,8 +28,10 @@ impl SyncDecoder for SyncDav1dDecoder {
 
         self.decoder.flush();
 
-        debug_assert!(matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
-            "There should be no pending pictures, since we output them directly after submitting a chunk.");
+        debug_assert!(
+            matches!(self.decoder.get_picture(), Err(dav1d::Error::Again)),
+            "There should be no pending pictures, since we output them directly after submitting a chunk."
+        );
     }
 }
 
@@ -88,7 +90,10 @@ impl SyncDav1dDecoder {
         ) {
             Ok(()) => {}
             Err(err) => {
-                debug_assert!(err != dav1d::Error::Again, "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away");
+                debug_assert!(
+                    err != dav1d::Error::Again,
+                    "Bug in AV1 decoder: send_data returned `Error::Again`. This shouldn't happen, since we process all images in a chunk right away"
+                );
                 on_output(Err(Error::Dav1d(err)));
             }
         };
@@ -320,7 +325,9 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
         | dav1d::pixel::MatrixCoefficients::ICtCp
         | dav1d::pixel::MatrixCoefficients::ST2085 => {
             // TODO(#7594): HDR support (we'll probably only care about `BT2020NonConstantLuminance`?)
-            re_log::warn_once!("Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
+            re_log::warn_once!(
+                "Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible."
+            );
             YuvMatrixCoefficients::Bt709
         }
 
@@ -328,9 +335,9 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
         | dav1d::pixel::MatrixCoefficients::ChromaticityDerivedConstantLuminance
         | dav1d::pixel::MatrixCoefficients::YCgCo => {
             re_log::warn_once!(
-                 "Video {debug_name:?} specified unsupported matrix coefficients {:?}. Color artifacts may be visible.",
-                 picture.matrix_coefficients()
-             );
+                "Video {debug_name:?} specified unsupported matrix coefficients {:?}. Color artifacts may be visible.",
+                picture.matrix_coefficients()
+            );
             YuvMatrixCoefficients::Bt709
         }
     }

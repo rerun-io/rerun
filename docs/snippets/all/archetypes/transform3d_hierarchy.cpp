@@ -10,7 +10,7 @@ int main() {
 
     // TODO(#5521): log two views as in the python example
 
-    rec.set_index_duration_secs("sim_time", 0.0);
+    rec.set_time_duration_secs("sim_time", 0.0);
 
     // Planetary motion is typically in the XY plane.
     rec.log_static("/", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
@@ -52,7 +52,7 @@ int main() {
     // Movement via transforms.
     for (int i = 0; i < 6 * 120; i++) {
         float time = static_cast<float>(i) / 120.0f;
-        rec.set_index_duration_secs("sim_time", time);
+        rec.set_time_duration_secs("sim_time", time);
         float r_moon = time * 5.0f;
         float r_planet = time * 2.0f;
 

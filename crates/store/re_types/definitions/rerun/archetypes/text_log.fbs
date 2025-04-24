@@ -6,9 +6,10 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/text_log_integration text="Logging text directly or via a logger" image="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png"
 table TextLog (
-  "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Text",
-  "attr.docs.view_types": "TextLogView"
+  "attr.docs.view_types": "TextLogView",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq"
 ) {
   /// The body of the message.
   text: rerun.components.Text ("attr.rerun.component_required", order: 100);

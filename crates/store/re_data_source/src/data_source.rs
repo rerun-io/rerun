@@ -15,7 +15,7 @@ pub enum DataSource {
     /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
-    RrdHttpUrl { url: String, follow: bool },
+    RrdHttpUrl { uri: String, follow: bool },
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
@@ -37,7 +37,8 @@ pub enum DataSource {
 // TODO(#9058): Temporary hack, see issue for how to fix this.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
-    CatalogData { endpoint: re_uri::CatalogEndpoint },
+    CatalogUri(re_uri::CatalogUri),
+    EntryUri(re_uri::EntryUri),
 }
 
 impl DataSource {
@@ -102,20 +103,17 @@ impl DataSource {
             }
         }
 
-        if let Ok(endpoint) = re_uri::RedapUri::try_from(uri.as_str()) {
-            return Self::RerunGrpcStream(endpoint);
+        if let Ok(uri) = uri.as_str().parse::<re_uri::RedapUri>() {
+            return Self::RerunGrpcStream(uri);
         }
 
         // by default, we just assume an rrd over http
-        Self::RrdHttpUrl {
-            url: uri,
-            follow: false,
-        }
+        Self::RrdHttpUrl { uri, follow: false }
     }
 
     pub fn file_name(&self) -> Option<String> {
         match self {
-            Self::RrdHttpUrl { url, .. } => url.split('/').last().map(|r| r.to_owned()),
+            Self::RrdHttpUrl { uri: url, .. } => url.split('/').last().map(|r| r.to_owned()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
@@ -145,7 +143,7 @@ impl DataSource {
         re_tracing::profile_function!();
 
         match self {
-            Self::RrdHttpUrl { url, follow } => Ok(StreamSource::LogMessages(
+            Self::RrdHttpUrl { uri: url, follow } => Ok(StreamSource::LogMessages(
                 re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                     url, follow, on_msg,
                 ),
@@ -229,18 +227,10 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Recording(endpoint)) => {
-                re_log::debug!(
-                    "Loading recording `{}` from `{}`…",
-                    endpoint.recording_id,
-                    endpoint.origin
-                );
-
-                let url = endpoint.to_string();
-
+            Self::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream { url: url.clone() },
+                    re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
                 );
 
                 let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
@@ -256,12 +246,16 @@ impl DataSource {
                 });
 
                 spawn_future(async move {
-                    if let Err(err) =
-                        re_grpc_client::redap::stream_recording_async(tx, endpoint, on_cmd, on_msg)
-                            .await
+                    if let Err(err) = re_grpc_client::redap::stream_partition_async(
+                        tx,
+                        uri.clone(),
+                        on_cmd,
+                        on_msg,
+                    )
+                    .await
                     {
                         re_log::warn!(
-                            "Error while streaming {url}: {}",
+                            "Error while streaming {uri}: {}",
                             re_error::format_ref(&err)
                         );
                     }
@@ -269,13 +263,15 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(endpoint)) => {
-                Ok(StreamSource::CatalogData { endpoint })
+            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
+                Ok(StreamSource::CatalogUri(uri))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(endpoint)) => Ok(
-                StreamSource::LogMessages(message_proxy::stream(endpoint, on_msg)),
-            ),
+            Self::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => Ok(StreamSource::EntryUri(uri)),
+
+            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Ok(StreamSource::LogMessages(
+                message_proxy::stream(uri, on_msg),
+            )),
         }
     }
 }

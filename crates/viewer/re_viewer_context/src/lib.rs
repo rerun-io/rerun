@@ -7,7 +7,6 @@ mod async_runtime_handle;
 mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
-mod callback;
 mod collapsed_id;
 mod component_fallbacks;
 mod contents;
@@ -19,11 +18,14 @@ mod maybe_mut_ref;
 mod query_context;
 mod query_range;
 mod selection_state;
+mod storage_context;
+mod store_bundle;
 mod store_context;
 pub mod store_hub;
+mod table_context;
+mod tables;
 mod tensor;
 mod time_control;
-mod time_drag_value;
 mod typed_entity_collections;
 mod undo;
 mod utils;
@@ -43,7 +45,6 @@ pub use self::{
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
-    callback::{CallbackSelectionItem, Callbacks},
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
@@ -66,11 +67,14 @@ pub use self::{
         ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
         ItemContext, SelectionChange, SelectionHighlight,
     },
+    storage_context::StorageContext,
+    store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
-    store_hub::StoreHub,
+    store_hub::{StoreHub, StoreHubEntry},
+    table_context::TableContext,
+    tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
-    time_control::{Looping, PlayState, TimeControl, TimeView},
-    time_drag_value::TimeDragValue,
+    time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
     typed_entity_collections::{
         IndicatedEntities, MaybeVisualizableEntities, PerVisualizer, VisualizableEntities,
     },

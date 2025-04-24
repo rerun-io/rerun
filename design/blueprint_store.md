@@ -141,7 +141,7 @@ Data that is a *query* from the recording store references an entity path used s
 ```python
 # Log data
 for t in range(100):
-    rr.set_time('step', t)
+    rr.set_time('step', sequence=t)
     rr.log("world/points", rr.Points3D(points))
 …
 # Construct blueprint

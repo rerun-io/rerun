@@ -34,9 +34,13 @@ impl ContextMenuAction for CollapseExpandAllAction {
         // TODO(ab): in an ideal world, we'd check the fully expended/collapsed state of the item to
         // avoid showing a command that wouldn't have an effect but that's lots of added complexity.
         match item {
-            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::ComponentPath(_) => {
-                false
-            }
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::ComponentPath(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_)
+            | Item::TableId(_) => false,
 
             Item::View(_) | Item::Container(_) | Item::InstancePath(_) => true,
 

@@ -13,7 +13,7 @@ use re_chunk_store::{
 use re_log_types::{
     build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoint},
-    EntityPath, ResolvedTimeRange, Time,
+    EntityPath, ResolvedTimeRange, Timestamp,
 };
 use re_types::testing::build_some_large_structs;
 use re_types_core::Component as _;
@@ -428,7 +428,11 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     let indices2 = MyIndex::from_iter(0..3);
     let chunk2 = Arc::new(
         Chunk::builder(entity_path1.clone())
-            .with_component_batches(row_id2, [build_log_time(Time::now())], [&indices2 as _])
+            .with_component_batches(
+                row_id2,
+                [build_log_time(Timestamp::now())],
+                [&indices2 as _],
+            )
             .build()?,
     );
 
@@ -446,7 +450,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
         Chunk::builder(entity_path2.clone())
             .with_component_batches(
                 row_id4,
-                [build_frame_nr(42), build_log_time(Time::now())],
+                [build_frame_nr(42), build_log_time(Timestamp::now())],
                 [&indices4 as _],
             )
             .build()?,

@@ -17,6 +17,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Shared state for the 3 collapsible panels.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct PanelBlueprint {
         /// Current state of the panels.
         std::optional<ComponentBatch> state;

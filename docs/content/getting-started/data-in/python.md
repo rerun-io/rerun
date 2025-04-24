@@ -121,7 +121,7 @@ archetypes altogether.
 
 For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/entity-component.md).
 
-Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.data.build_color_spiral) in this example are vanilla `numpy` arrays.
+Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.build_color_spiral) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D) in this case).
 
 ### Entities & hierarchies
@@ -204,7 +204,7 @@ time_offsets = np.random.rand(NUM_POINTS)
 
 for i in range(400):
     time = i * 0.01
-    rr.set_index("stable_time", timedelta=time)
+    rr.set_time("stable_time", duration=time)
 
     times = np.repeat(time, NUM_POINTS) + time_offsets
     beads = [bounce_lerp(points1[n], points2[n], times[n]) for n in range(NUM_POINTS)]
@@ -215,7 +215,7 @@ for i in range(400):
     )
 ```
 
-A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_seconds) will create our new `Timeline` and make sure that any logging calls that follow gets assigned that time.
+A call to [`set_time`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time) will create our new `Timeline` and make sure that any logging calls that follow gets assigned that time.
 
 ⚠️ If you run this code as is, the result will be… surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
 
@@ -236,7 +236,7 @@ To fix this, go back to the top of the file and add:
 
 ```python
 rr.spawn()
-rr.set_index("stable_time", timedelta=0)
+rr.set_time("stable_time", duration=0)
 ```
 
 <picture>
@@ -265,7 +265,7 @@ simply add a second loop like this:
 ```python
 for i in range(400):
     time = i * 0.01
-    rr.set_index("stable_time", timedelta=time)
+    rr.set_time("stable_time", duration=time)
     rr.log(
         "dna/structure",
         rr.Transform3D(rotation=rr.RotationAxisAngle(axis=[0, 0, 1], radians=time / 4.0 * tau)),
@@ -286,9 +286,9 @@ Rerun offers several solutions for such use cases.
 
 ### Logging data over the network
 
-At any time, you can start a Rerun Viewer by running `rerun`. This Viewer is in fact a server that's ready to accept data over TCP (it's listening on `0.0.0.0:9876` by default).
+At any time, you can start a Rerun Viewer by running `rerun`. This Viewer is in fact a server that's ready to accept data over gRPC (it's listening on `0.0.0.0:9876` by default).
 
-On the logger side, simply use [`rr.connect`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect) instead of [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) to start sending the data over to any TCP address.
+On the logger side, simply use [`rr.connect`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect) instead of [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) to start sending the data over to any gRPC address.
 
 Checkout `rerun --help` for more options.
 

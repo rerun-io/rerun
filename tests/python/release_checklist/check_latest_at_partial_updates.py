@@ -70,35 +70,35 @@ def log_readme() -> None:
 
 
 def log_points() -> None:
-    rr.set_index("frame", sequence=42)
+    rr.set_time("frame", sequence=42)
     rr.log(
         "expected",
         rr.TextDocument(FRAME_42, media_type=rr.MediaType.MARKDOWN),
     )
     rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
 
-    rr.set_index("frame", sequence=43)
+    rr.set_time("frame", sequence=43)
     rr.log(
         "expected",
         rr.TextDocument(FRAME_43, media_type=rr.MediaType.MARKDOWN),
     )
     rr.log("points", rr.Points3D.from_fields(radii=-20))
 
-    rr.set_index("frame", sequence=44)
+    rr.set_time("frame", sequence=44)
     rr.log(
         "expected",
         rr.TextDocument(FRAME_44, media_type=rr.MediaType.MARKDOWN),
     )
     rr.log("points", rr.Points3D.from_fields(colors=[0, 0, 255]))
 
-    rr.set_index("frame", sequence=45)
+    rr.set_time("frame", sequence=45)
     rr.log(
         "expected",
         rr.TextDocument(FRAME_45, media_type=rr.MediaType.MARKDOWN),
     )
     rr.log("points", rr.Points3D([[0, 0, 1], [1, 1, 0]]))
 
-    rr.set_index("frame", sequence=46)
+    rr.set_time("frame", sequence=46)
     rr.log(
         "expected",
         rr.TextDocument(FRAME_46, media_type=rr.MediaType.MARKDOWN),

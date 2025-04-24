@@ -37,10 +37,10 @@ def log_some_scalar_entities() -> None:
         ("line_curve", times / 100 + 0.2),
     ]
 
-    time_column = rr.IndexColumn("frame", sequence=times)
+    time_column = rr.TimeColumn("frame", sequence=times)
 
     for path, curve in curves:
-        rr.send_columns(path, indexes=[time_column], columns=rr.Scalar.columns(scalar=curve))
+        rr.send_columns(path, indexes=[time_column], columns=rr.Scalars.columns(scalars=curve))
 
 
 def run(args: Namespace) -> None:

@@ -91,8 +91,8 @@ message StoreInfo {
   reserved 3;
   reserved "is_official_example";
 
-  // When the recording started.
-  rerun.common.v1alpha1.Time started = 4;
+  reserved 4;
+  reserved "started";
 
   // Where the recording came from.
   StoreSource store_source = 5;

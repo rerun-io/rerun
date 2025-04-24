@@ -40,8 +40,6 @@ impl crate::DataLoader for RrdLoader {
             "Loading rrd data from filesystem…",
         );
 
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
-
         match extension.as_str() {
             "rbl" => {
                 // We assume .rbl is not streamed and no retrying after seeing EOF is needed.
@@ -52,7 +50,7 @@ impl crate::DataLoader for RrdLoader {
                     .with_context(|| format!("Failed to open file {filepath:?}"))?;
                 let file = std::io::BufReader::new(file);
 
-                let decoder = Decoder::new(version_policy, file)?;
+                let decoder = Decoder::new(file)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -80,7 +78,7 @@ impl crate::DataLoader for RrdLoader {
                 let retryable_reader = RetryableFileReader::new(&filepath).with_context(|| {
                     format!("failed to create retryable file reader for {filepath:?}")
                 })?;
-                let decoder = Decoder::new(version_policy, retryable_reader)?;
+                let decoder = Decoder::new(retryable_reader)?;
 
                 // NOTE: This is IO bound, it must run on a dedicated thread, not the shared rayon thread pool.
                 std::thread::Builder::new()
@@ -118,9 +116,8 @@ impl crate::DataLoader for RrdLoader {
             return Err(crate::DataLoaderError::Incompatible(filepath));
         }
 
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
         let contents = std::io::Cursor::new(contents);
-        let decoder = match re_log_encoding::decoder::Decoder::new(version_policy, contents) {
+        let decoder = match re_log_encoding::decoder::Decoder::new(contents) {
             Ok(decoder) => decoder,
             Err(err) => match err {
                 // simply not interested
@@ -308,9 +305,9 @@ impl RetryableFileReader {
 mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_encoding::{encoder::DroppableEncoder, VersionPolicy};
+    use re_log_encoding::encoder::DroppableEncoder;
     use re_log_types::{
-        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+        ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
 
     use super::*;
@@ -353,7 +350,6 @@ mod tests {
                     application_id: ApplicationId("test".to_owned()),
                     store_id: StoreId::random(StoreKind::Recording),
                     cloned_from: None,
-                    started: Time::now(),
                     store_source: StoreSource::RustSdk {
                         rustc_version: String::new(),
                         llvm_version: String::new(),
@@ -371,7 +367,7 @@ mod tests {
         encoder.flush_blocking().expect("failed to flush messages");
 
         let reader = RetryableFileReader::new(&rrd_file_path).unwrap();
-        let mut decoder = Decoder::new(VersionPolicy::Warn, reader).unwrap();
+        let mut decoder = Decoder::new(reader).unwrap();
 
         // we should be able to read 5 messages that we wrote
         let decoded_messages = (0..5)

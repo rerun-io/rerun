@@ -499,7 +499,7 @@ pub trait UiExt {
                 ui.paint_collapsing_triangle(
                     openness,
                     icon_rect.center(),
-                    ui.style().interact(&icon_response),
+                    ui.style().interact(&icon_response).fg_stroke.color,
                 );
             }
 
@@ -554,12 +554,7 @@ pub trait UiExt {
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
     /// painted with a fixed size.
-    fn paint_collapsing_triangle(
-        &self,
-        openness: f32,
-        center: egui::Pos2,
-        visuals: &egui::style::WidgetVisuals,
-    ) {
+    fn paint_collapsing_triangle(&self, openness: f32, center: egui::Pos2, color: Color32) {
         // This value is hard coded because, from a UI perspective, the size of the triangle is
         // given and fixed, and shouldn't vary based on the area it's in.
         static TRIANGLE_SIZE: f32 = 8.0;
@@ -584,9 +579,7 @@ pub trait UiExt {
             *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
         }
 
-        self.ui()
-            .painter()
-            .line(points, (1.0, visuals.fg_stroke.color));
+        self.ui().painter().line(points, (1.0, color));
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.

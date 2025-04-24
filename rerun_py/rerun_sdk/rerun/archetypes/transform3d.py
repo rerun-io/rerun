@@ -81,12 +81,14 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.init("rerun_example_transform3d_hierarchy", spawn=True)
 
-    # One space with the sun in the center, and another one with the planet.
-    rr.send_blueprint(
-        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
-    )
+    if False:
+        # One space with the sun in the center, and another one with the planet.
+        # TODO(#5521): enable this once we have it in Rust too, so that the snippets compare equally
+        rr.send_blueprint(
+            rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
+        )
 
-    rr.set_index("sim_time", timedelta=0)
+    rr.set_time("sim_time", duration=0)
 
     # Planetary motion is typically in the XY plane.
     rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
@@ -108,7 +110,7 @@ class Transform3D(Transform3DExt, Archetype):
     # Movement via transforms.
     for i in range(6 * 120):
         time = i / 120.0
-        rr.set_index("sim_time", timedelta=time)
+        rr.set_time("sim_time", duration=time)
         r_moon = time * 5.0
         r_planet = time * 2.0
 
@@ -123,7 +125,7 @@ class Transform3D(Transform3DExt, Archetype):
             "sun/planet/moon",
             rr.Transform3D(
                 translation=[np.cos(r_moon) * d_moon, np.sin(r_moon) * d_moon, 0.0],
-                from_parent=True,
+                relation=rr.TransformRelation.ChildFromParent,
             ),
         )
     ```
@@ -150,7 +152,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.init("rerun_example_transform3d_row_updates", spawn=True)
 
-    rr.set_index("tick", sequence=0)
+    rr.set_time("tick", sequence=0)
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
@@ -158,7 +160,7 @@ class Transform3D(Transform3DExt, Archetype):
     )
 
     for t in range(100):
-        rr.set_index("tick", sequence=t + 1)
+        rr.set_time("tick", sequence=t + 1)
         rr.log(
             "box",
             rr.Transform3D(
@@ -191,7 +193,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.init("rerun_example_transform3d_column_updates", spawn=True)
 
-    rr.set_index("tick", sequence=0)
+    rr.set_time("tick", sequence=0)
     rr.log(
         "box",
         rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
@@ -200,7 +202,7 @@ class Transform3D(Transform3DExt, Archetype):
 
     rr.send_columns(
         "box",
-        indexes=[rr.IndexColumn("tick", sequence=range(1, 101))],
+        indexes=[rr.TimeColumn("tick", sequence=range(1, 101))],
         columns=rr.Transform3D.columns(
             translation=[[0, 0, t / 10.0] for t in range(100)],
             rotation_axis_angle=[
@@ -447,10 +449,11 @@ class Transform3D(Transform3DExt, Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
+                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                    # `shape[1]` should be the length of the fixed sized list.
+                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                    # we have `num_rows` single element batches (each element is a fixed sized list).
                     # (This should have been already validated by conversion to the arrow_array)
                     batch_length = 1
                 else:

@@ -32,7 +32,7 @@ The visualizations in this example were created with the following Rerun code.
 For each processed video frame, all data sent to Rerun is associated with the [`timelines`](https://www.rerun.io/docs/concepts/timelines) `frame_idx`.
 
 ```python
-rr.set_index("frame", sequence=frame_idx)
+rr.set_time("frame", sequence=frame_idx)
 ```
 
 ### Video
@@ -40,7 +40,7 @@ The input video is logged as a static [`AssetVideo`](https://www.rerun.io/docs/r
 
 ```python
 video_asset = rr.AssetVideo(path=video_path)
-frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
 
 rr.log("video", video_asset, static=True)
 ```

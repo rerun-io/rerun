@@ -10,6 +10,7 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from .. import components, datatypes
 from .._baseclasses import (
@@ -21,18 +22,21 @@ from ..error_utils import catch_and_log_exceptions
 __all__ = ["Scalar"]
 
 
+@deprecated("""since 0.23.0: Use `Scalars` instead.""")
 @define(str=False, repr=False, init=False)
 class Scalar(Archetype):
     """
     **Archetype**: A double-precision scalar, e.g. for use for time-series plots.
 
     The current timeline value will be used for the time/X-axis, hence scalars
-    cannot be static.
+    should not be static.
 
     When used to produce a plot, this archetype is used to provide the data that
-    is referenced by [`archetypes.SeriesLine`][rerun.archetypes.SeriesLine] or [`archetypes.SeriesPoint`][rerun.archetypes.SeriesPoint]. You can do
+    is referenced by [`archetypes.SeriesLines`][rerun.archetypes.SeriesLines] or [`archetypes.SeriesPoints`][rerun.archetypes.SeriesPoints]. You can do
     this by logging both archetypes to the same path, or alternatively configuring
     the plot-specific archetypes through the blueprint.
+
+    ⚠️ **Deprecated since 0.23.0**: Use `Scalars` instead.
 
     Examples
     --------
@@ -47,8 +51,8 @@ class Scalar(Archetype):
     rr.init("rerun_example_scalar_row_updates", spawn=True)
 
     for step in range(64):
-        rr.set_index("step", sequence=step)
-        rr.log("scalars", rr.Scalar(math.sin(step / 10.0)))
+        rr.set_time("step", sequence=step)
+        rr.log("scalars", rr.Scalars(math.sin(step / 10.0)))
     ```
     <center>
     <picture>
@@ -74,8 +78,8 @@ class Scalar(Archetype):
 
     rr.send_columns(
         "scalars",
-        indexes=[rr.IndexColumn("step", sequence=times)],
-        columns=rr.Scalar.columns(scalar=scalars),
+        indexes=[rr.TimeColumn("step", sequence=times)],
+        columns=rr.Scalars.columns(scalars=scalars),
     )
     ```
     <center>
@@ -114,6 +118,7 @@ class Scalar(Archetype):
         )
 
     @classmethod
+    @deprecated("""since 0.23.0: Use `Scalars` instead.""")
     def _clear(cls) -> Scalar:
         """Produce an empty Scalar, bypassing `__init__`."""
         inst = cls.__new__(cls)
@@ -121,6 +126,7 @@ class Scalar(Archetype):
         return inst
 
     @classmethod
+    @deprecated("""since 0.23.0: Use `Scalars` instead.""")
     def from_fields(
         cls,
         *,
@@ -160,6 +166,7 @@ class Scalar(Archetype):
         return cls.from_fields(clear_unset=True)
 
     @classmethod
+    @deprecated("""since 0.23.0: Use `Scalars` instead.""")
     def columns(
         cls,
         *,
@@ -200,10 +207,11 @@ class Scalar(Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
+                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                    # `shape[1]` should be the length of the fixed sized list.
+                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                    # we have `num_rows` single element batches (each element is a fixed sized list).
                     # (This should have been already validated by conversion to the arrow_array)
                     batch_length = 1
                 else:

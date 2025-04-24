@@ -9,9 +9,10 @@ namespace rerun.archetypes;
 /// \example archetypes/line_strips2d_batch image="https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/1200w.png"
 /// \example archetypes/line_strips2d_ui_radius title="Lines with scene & UI radius each" image="https://static.rerun.io/line_strip2d_ui_radius/d3d7d5bd36278564ee37e2ed6932963ec16f5131/1200w.png
 table LineStrips2D (
-  "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Spatial 2D",
-  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

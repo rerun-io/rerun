@@ -37,7 +37,7 @@ rr.connect()  # Connect to a remote viewer
 # rr.save("recording.rrd")  # Stream all logs to disk
 
 # Associate subsequent data with 42 on the “frame” timeline
-rr.set_index("frame", sequence=42)
+rr.set_time("frame", sequence=42)
 
 # Log colored 3D points to the entity at `path/to/points`
 rr.log("path/to/points", rr.Points3D(positions, colors=colors))
@@ -64,7 +64,7 @@ To stream log data over the network or load our `.rrd` data files you also need 
 It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli --locked --features nasm` (see note below).
 Note that only the Python SDK comes bundled with the Viewer whereas C++ & Rust always rely on a separate install.
 
-**Note**: the `nasm` Cargo feature requires the [`nasm`](https://www.nasm.us) CLI to be installed and available in your path.
+**Note**: the `nasm` Cargo feature requires the [`nasm`](https://github.com/netwide-assembler/nasm) CLI to be installed and available in your path.
 Alternatively, you may skip enabling this feature, but this may result in inferior video decoding performance.
 
 You should now be able to run `rerun --help` in any terminal.
@@ -87,11 +87,12 @@ There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
 Some shortcomings:
-* [Multi-million point clouds are slow](https://github.com/rerun-io/rerun/issues/1136)
 * [The viewer slows down when there are too many entities](https://github.com/rerun-io/rerun/issues/7115)
+* [We don't support transparency yet](https://github.com/rerun-io/rerun/issues/1611)
 * The data you want to visualize must fit in RAM
   - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
   - We plan on having a disk-based data store some time in the future.
+* [Multi-million point clouds can be slow](https://github.com/rerun-io/rerun/issues/1136)
 
 
 ## What is Rerun for?

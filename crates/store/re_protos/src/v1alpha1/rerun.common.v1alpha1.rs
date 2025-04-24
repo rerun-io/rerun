@@ -8,6 +8,7 @@ pub struct RerunChunk {
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// Data payload is Arrow IPC encoded RecordBatch
+    /// TODO(zehiko) make this optional (#9285)
     #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
@@ -35,6 +36,22 @@ impl ::prost::Name for RecordingId {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.RecordingId".into()
+    }
+}
+/// uniquely identifies a table
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TableId {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TableId {
+    const NAME: &'static str = "TableId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TableId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TableId".into()
     }
 }
 /// A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
@@ -75,8 +92,8 @@ impl ::prost::Name for TimeRange {
 /// arrow IPC serialized schema
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Schema {
-    #[prost(bytes = "vec", tag = "1")]
-    pub arrow_schema: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "1")]
+    pub arrow_schema: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
 }
 impl ::prost::Name for Schema {
     const NAME: &'static str = "Schema";
@@ -88,6 +105,7 @@ impl ::prost::Name for Schema {
         "/rerun.common.v1alpha1.Schema".into()
     }
 }
+/// TODO(cmc): can we kill this?
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Query {
     /// The subset of the database that the query will run on: a set of EntityPath(s) and their
@@ -426,31 +444,15 @@ impl ::prost::Name for StoreId {
         "/rerun.common.v1alpha1.StoreId".into()
     }
 }
-/// A date-time represented as nanoseconds since unix epoch
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct Time {
-    #[prost(int64, tag = "1")]
-    pub nanos_since_epoch: i64,
-}
-impl ::prost::Name for Time {
-    const NAME: &'static str = "Time";
-    const PACKAGE: &'static str = "rerun.common.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.common.v1alpha1.Time".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.common.v1alpha1.Time".into()
-    }
-}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
-    #[prost(fixed64, tag = "1")]
-    pub time_ns: u64,
-    /// Initialized to something random on each thread,
-    /// then incremented for each new `Tuid` being allocated.
-    #[prost(fixed64, tag = "2")]
-    pub inc: u64,
+    #[prost(fixed64, optional, tag = "1")]
+    pub time_ns: ::core::option::Option<u64>,
+    /// Initialized to something random on each thread, then incremented for each
+    /// new `Tuid` being allocated.
+    #[prost(fixed64, optional, tag = "2")]
+    pub inc: ::core::option::Option<u64>,
 }
 impl ::prost::Name for Tuid {
     const NAME: &'static str = "Tuid";
@@ -460,6 +462,193 @@ impl ::prost::Name for Tuid {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.Tuid".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct EntryId {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<Tuid>,
+}
+impl ::prost::Name for EntryId {
+    const NAME: &'static str = "EntryId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.EntryId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.EntryId".into()
+    }
+}
+/// Entry point for all ManifestRegistryService APIs
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DatasetHandle {
+    /// Unique entry identifier (for debug purposes)
+    #[prost(message, optional, tag = "1")]
+    pub entry_id: ::core::option::Option<EntryId>,
+    /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
+    #[prost(string, optional, tag = "2")]
+    pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for DatasetHandle {
+    const NAME: &'static str = "DatasetHandle";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DatasetHandle".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DatasetHandle".into()
+    }
+}
+/// DataframePart is arrow IPC encoded RecordBatch
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DataframePart {
+    /// encoder version used to encode the data
+    #[prost(enumeration = "EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    /// Data payload is Arrow IPC encoded RecordBatch
+    #[prost(bytes = "vec", optional, tag = "2")]
+    pub payload: ::core::option::Option<::prost::alloc::vec::Vec<u8>>,
+}
+impl ::prost::Name for DataframePart {
+    const NAME: &'static str = "DataframePart";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.DataframePart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.DataframePart".into()
+    }
+}
+/// Generic parameters that will influence the behavior of the Lance scanner.
+///
+/// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
+/// one way or another.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParameters {
+    /// List of columns to project. If empty, all columns will be projected.
+    #[prost(string, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(enumeration = "IfMissingBehavior", tag = "2")]
+    pub on_missing_columns: i32,
+    /// An arbitrary filter expression that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.filter(filter)
+    /// ```
+    #[prost(string, optional, tag = "3")]
+    pub filter: ::core::option::Option<::prost::alloc::string::String>,
+    /// An arbitrary offset that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(_, limit_offset)
+    /// ```
+    #[prost(int64, optional, tag = "4")]
+    pub limit_offset: ::core::option::Option<i64>,
+    /// An arbitrary limit that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.limit(limit_len, _)
+    /// ```
+    #[prost(int64, optional, tag = "5")]
+    pub limit_len: ::core::option::Option<i64>,
+    /// An arbitrary order clause that will be passed to the Lance scanner as-is.
+    ///
+    /// ```text
+    /// scanner.order_by(…)
+    /// ```
+    #[prost(message, optional, tag = "6")]
+    pub order_by: ::core::option::Option<ScanParametersOrderClause>,
+    /// If set, the output of `scanner.explain_plan` will be dumped to the server's log.
+    #[prost(bool, tag = "7")]
+    pub explain_plan: bool,
+    /// If set, the final `scanner.filter` will be dumped to the server's log.
+    #[prost(bool, tag = "8")]
+    pub explain_filter: bool,
+}
+impl ::prost::Name for ScanParameters {
+    const NAME: &'static str = "ScanParameters";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ScanParameters".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ScanParameters".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ScanParametersOrderClause {
+    #[prost(bool, tag = "1")]
+    pub descending: bool,
+    #[prost(bool, tag = "2")]
+    pub nulls_last: bool,
+    #[prost(string, optional, tag = "3")]
+    pub column_name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ScanParametersOrderClause {
+    const NAME: &'static str = "ScanParametersOrderClause";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ScanParametersOrderClause".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ScanParametersOrderClause".into()
+    }
+}
+/// Unique identifier for a partition. Can be user defined
+/// which means it can be of any type. For simplicity we start
+/// with a string, but we will probably revisit this.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PartitionId {
+    #[prost(string, optional, tag = "1")]
+    pub id: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for PartitionId {
+    const NAME: &'static str = "PartitionId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.PartitionId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.PartitionId".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ComponentDescriptor {
+    /// Optional name of the `Archetype` associated with this data.
+    #[prost(string, optional, tag = "1")]
+    pub archetype_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Optional name of the field within `Archetype` associated with this data.
+    #[prost(string, optional, tag = "2")]
+    pub archetype_field_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Semantic name associated with this data.
+    #[prost(string, optional, tag = "3")]
+    pub component_name: ::core::option::Option<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ComponentDescriptor {
+    const NAME: &'static str = "ComponentDescriptor";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.ComponentDescriptor".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.ComponentDescriptor".into()
+    }
+}
+/// Unique identifier of a task submitted in the redap
+/// tasks subsystem
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TaskId {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for TaskId {
+    const NAME: &'static str = "TaskId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TaskId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TaskId".into()
     }
 }
 /// supported encoder versions for encoding data
@@ -545,6 +734,72 @@ impl StoreKind {
             "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "STORE_KIND_RECORDING" => Some(Self::Recording),
             "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum IfMissingBehavior {
+    Unspecified = 0,
+    Skip = 1,
+    Error = 2,
+}
+impl IfMissingBehavior {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "IF_MISSING_BEHAVIOR_UNSPECIFIED",
+            Self::Skip => "IF_MISSING_BEHAVIOR_SKIP",
+            Self::Error => "IF_MISSING_BEHAVIOR_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "IF_MISSING_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "IF_MISSING_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "IF_MISSING_BEHAVIOR_ERROR" => Some(Self::Error),
+            _ => None,
+        }
+    }
+}
+/// Specify how the relevant creation call behaves
+/// in case of previously created (duplicate) items
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum IfDuplicateBehavior {
+    Unspecified = 0,
+    /// Overwrite the existing item
+    Overwrite = 1,
+    /// Skip if the item already exists
+    Skip = 2,
+    /// Return an error if the item already exists
+    Error = 3,
+}
+impl IfDuplicateBehavior {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED",
+            Self::Overwrite => "IF_DUPLICATE_BEHAVIOR_OVERWRITE",
+            Self::Skip => "IF_DUPLICATE_BEHAVIOR_SKIP",
+            Self::Error => "IF_DUPLICATE_BEHAVIOR_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "IF_DUPLICATE_BEHAVIOR_UNSPECIFIED" => Some(Self::Unspecified),
+            "IF_DUPLICATE_BEHAVIOR_OVERWRITE" => Some(Self::Overwrite),
+            "IF_DUPLICATE_BEHAVIOR_SKIP" => Some(Self::Skip),
+            "IF_DUPLICATE_BEHAVIOR_ERROR" => Some(Self::Error),
             _ => None,
         }
     }

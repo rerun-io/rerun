@@ -56,6 +56,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
 /// The last rule matching `/world` is `- /world`, so it is excluded.
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct ViewContents {
     /// The `QueryExpression` that populates the contents for the view.

@@ -1,21 +1,26 @@
-#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
+#![allow(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
+#![allow(deprecated)] // False positive due to macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use std::{
     collections::{BTreeMap, BTreeSet},
     str::FromStr as _,
+    sync::Arc,
 };
 
 use arrow::{
     array::{make_array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
     pyarrow::PyArrowType,
 };
+use datafusion::catalog::TableProvider;
+use datafusion_ffi::table_provider::FFI_TableProvider;
 use numpy::PyArrayMethods as _;
 use pyo3::{
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
-    types::{PyDict, PyTuple},
+    types::{PyCapsule, PyDict, PyTuple},
+    IntoPyObjectExt as _,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -25,12 +30,11 @@ use re_chunk_store::{
     SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
-use re_log_encoding::VersionPolicy;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
 
-use crate::remote::PyRemoteRecording;
+use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -43,6 +47,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
     m.add_class::<PyRecordingView>()?;
+    m.add_class::<PyDataFusionTable>()?;
 
     m.add_function(wrap_pyfunction!(crate::dataframe::load_archive, m)?)?;
     m.add_function(wrap_pyfunction!(crate::dataframe::load_recording, m)?)?;
@@ -50,12 +55,12 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-fn py_rerun_warn(msg: &str) -> PyResult<()> {
+fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
     Python::with_gil(|py| {
-        let warning_type = PyModule::import_bound(py, "rerun")?
+        let warning_type = PyModule::import(py, "rerun")?
             .getattr("error_utils")?
             .getattr("RerunWarning")?;
-        PyErr::warn_bound(py, &warning_type, msg, 0)?;
+        PyErr::warn(py, &warning_type, msg, 0)?;
         Ok(())
     })
 }
@@ -304,7 +309,7 @@ impl AnyColumn {
 
 /// A type alias for any component-column-like object.
 #[derive(FromPyObject)]
-enum AnyComponentColumn {
+pub(crate) enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
     Name(String),
     #[pyo3(transparent, annotation = "component_descriptor")]
@@ -315,7 +320,7 @@ enum AnyComponentColumn {
 
 impl AnyComponentColumn {
     #[allow(dead_code)]
-    fn into_selector(self) -> PyResult<ComponentColumnSelector> {
+    pub(crate) fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
             Self::Name(name) => {
                 let component_path =
@@ -338,7 +343,7 @@ impl AnyComponentColumn {
 ///
 /// This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
 #[derive(FromPyObject)]
-enum IndexValuesLike<'py> {
+pub(crate) enum IndexValuesLike<'py> {
     PyArrow(PyArrowType<ArrayData>),
     NumPy(numpy::PyArrayLike1<'py, i64>),
 
@@ -348,7 +353,7 @@ enum IndexValuesLike<'py> {
 }
 
 impl IndexValuesLike<'_> {
-    fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
+    pub(crate) fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
         match self {
             Self::PyArrow(array) => {
                 let array = make_array(array.0.clone());
@@ -397,7 +402,7 @@ impl IndexValuesLike<'_> {
                 // If any has the `.chunks` attribute, we can try to try each chunk as pyarrow array
                 if let Ok(chunks) = any.getattr("chunks") {
                     let mut values = BTreeSet::new();
-                    for chunk in chunks.iter()? {
+                    for chunk in chunks.try_iter()? {
                         let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
                         let array = make_array(chunk.0.clone());
 
@@ -477,6 +482,7 @@ impl SchemaIterator {
 
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
+//TODO(#9457): improve this object and use it for `Dataset.schema()`.
 pub struct PySchema {
     pub schema: SorbetColumnDescriptors,
 }
@@ -496,12 +502,12 @@ impl PySchema {
                 .indices_and_components()
                 .into_iter()
                 .map(|col| match col {
-                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
+                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py_any(py),
                     ColumnDescriptor::Component(col) => {
-                        PyComponentColumnDescriptor(col).into_py(py)
+                        PyComponentColumnDescriptor(col).into_py_any(py)
                     }
                 })
-                .collect::<Vec<PyObject>>()
+                .collect::<PyResult<Vec<_>>>()?
                 .into_iter(),
         };
         Py::new(slf.py(), iter)
@@ -574,7 +580,8 @@ pub struct PyRecording {
 #[derive(Clone)]
 pub enum PyRecordingHandle {
     Local(std::sync::Arc<Py<PyRecording>>),
-    Remote(std::sync::Arc<Py<PyRemoteRecording>>),
+    // TODO(rerun-io/dataplatform#405): interface with remote data needs to be reimplemented
+    //Remote(std::sync::Arc<Py<PyRemoteRecording>>),
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -645,7 +652,7 @@ impl PyRecordingView {
     ///
     /// This schema will only contain the columns that are included in the view via
     /// the view contents.
-    fn schema(&self, py: Python<'_>) -> PyResult<PySchema> {
+    fn schema(&self, py: Python<'_>) -> PySchema {
         match &self.recording {
             PyRecordingHandle::Local(recording) => {
                 let borrowed: PyRef<'_, PyRecording> = recording.borrow(py);
@@ -656,13 +663,10 @@ impl PyRecordingView {
 
                 let query_handle = engine.query(query_expression);
 
-                Ok(PySchema {
+                PySchema {
                     schema: query_handle.view_contents().clone(),
-                })
+                }
             }
-            PyRecordingHandle::Remote(_) => Err::<_, PyErr>(PyRuntimeError::new_err(
-                "Schema is not implemented for remote recordings yet.",
-            )),
         }
     }
 
@@ -738,7 +742,7 @@ impl PyRecordingView {
                     && all_contents_are_static
                     && any_selected_data_is_static
                 {
-                    py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+                    py_rerun_warn(c"RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
                 }
 
                 let schema = query_handle.schema().clone();
@@ -746,14 +750,6 @@ impl PyRecordingView {
                 let reader =
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
                 Ok(PyArrowType(Box::new(reader)))
-            }
-            PyRecordingHandle::Remote(recording) => {
-                let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
-                borrowed_client.exec_query(
-                    borrowed_recording.store_info.store_id.clone(),
-                    query_expression,
-                )
             }
         }
     }
@@ -800,7 +796,7 @@ impl PyRecordingView {
             .transpose()
             .unwrap_or_else(|| {
                 Ok(self
-                    .schema(py)?
+                    .schema(py)
                     .schema
                     .components
                     .iter()
@@ -836,14 +832,6 @@ impl PyRecordingView {
                     RecordBatchIterator::new(query_handle.into_batch_iter().map(Ok), schema);
 
                 Ok(PyArrowType(Box::new(reader)))
-            }
-            PyRecordingHandle::Remote(recording) => {
-                let borrowed_recording = recording.borrow(py);
-                let mut borrowed_client = borrowed_recording.client.borrow_mut(py);
-                borrowed_client.exec_query(
-                    borrowed_recording.store_info.store_id.clone(),
-                    query_expression,
-                )
             }
         }
     }
@@ -939,7 +927,7 @@ impl PyRecordingView {
     ///     A new view containing only the data within the specified range.
     ///
     ///     The original view will not be modified.
-    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
+    fn filter_range_secs(&self, start: f64, end: f64) -> PyResult<Self> {
         match self.query_expression.filtered_index.as_ref() {
             // TODO(#9084): do we need this check? If so, how can we accomplish it?
             // Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
@@ -957,8 +945,8 @@ impl PyRecordingView {
             }
         }
 
-        let start = re_sdk::Time::from_seconds_since_epoch(start);
-        let end = re_sdk::Time::from_seconds_since_epoch(end);
+        let start = re_log_types::Timestamp::from_secs_since_epoch(start);
+        let end = re_log_types::Timestamp::from_secs_since_epoch(end);
 
         let resolved = ResolvedTimeRange::new(start, end);
 
@@ -971,8 +959,14 @@ impl PyRecordingView {
         })
     }
 
+    /// DEPRECATED: Renamed to `filter_range_secs`.
+    #[deprecated(since = "0.23.0", note = "Renamed to `filter_range_secs`")]
+    fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
+        self.filter_range_secs(start, end)
+    }
+
     #[allow(rustdoc::private_doc_tests)]
-    /// Filter the view to only include data between the given index values expressed as seconds.
+    /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
     ///
@@ -1009,8 +1003,8 @@ impl PyRecordingView {
             }
         }
 
-        let start = re_sdk::Time::from_ns_since_epoch(start);
-        let end = re_sdk::Time::from_ns_since_epoch(end);
+        let start = re_log_types::Timestamp::from_nanos_since_epoch(start);
+        let end = re_log_types::Timestamp::from_nanos_since_epoch(end);
 
         let resolved = ResolvedTimeRange::new(start, end);
 
@@ -1463,14 +1457,65 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
 ///     The loaded archive.
 #[pyfunction]
 pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
-    let stores =
-        ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .into_iter()
-            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-            .collect();
+    let stores = ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .into_iter()
+        .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+        .collect();
 
     let archive = PyRRDArchive { datasets: stores };
 
     Ok(archive)
+}
+
+#[pyclass(frozen, name = "DataFusionTable")]
+pub struct PyDataFusionTable {
+    pub provider: Arc<dyn TableProvider + Send>,
+    pub name: String,
+    pub client: Py<PyCatalogClient>,
+}
+
+#[pymethods]
+impl PyDataFusionTable {
+    /// Returns a DataFusion table provider capsule.
+    fn __datafusion_table_provider__<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Bound<'py, PyCapsule>> {
+        let capsule_name = cr"datafusion_table_provider".into();
+
+        let runtime = get_tokio_runtime().handle().clone();
+        let provider = FFI_TableProvider::new(Arc::clone(&self.provider), false, Some(runtime));
+
+        PyCapsule::new(py, provider, Some(capsule_name))
+    }
+
+    /// Register this view to the global DataFusion context and return a DataFrame.
+    fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
+        let py = self_.py();
+
+        let client = self_.client.borrow(py);
+
+        let ctx = client.ctx(py)?;
+        let ctx = ctx.bind(py);
+
+        drop(client);
+
+        let name = self_.name.clone();
+
+        // We're fine with this failing.
+        ctx.call_method1("deregister_table", (name.clone(),))?;
+
+        ctx.call_method1("register_table_provider", (name.clone(), self_))?;
+
+        let df = ctx.call_method1("table", (name.clone(),))?;
+
+        Ok(df)
+    }
+
+    /// Name of this table.
+    #[getter]
+    fn name(&self) -> String {
+        self.name.clone()
+    }
 }

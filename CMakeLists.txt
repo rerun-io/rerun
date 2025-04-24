@@ -26,6 +26,8 @@ function(rerun_strict_warning_settings target)
         # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
 
+        target_compile_options(${target} PRIVATE /we4996) # Using deprecated functions is an error
+
         if(BUILD_SHARED_LIBS)
             # If we are building as shared libs, we are going to have to disable the C4251
             # warning, as it would trigger for any datatype derived from a STL class
@@ -51,6 +53,7 @@ function(rerun_strict_warning_settings target)
             -Wall
             -Wcast-align
             -Wcast-qual
+            -Werror=deprecated-declarations
             -Wextra
             -Wformat=2
             -Wmissing-include-dirs
@@ -65,6 +68,7 @@ function(rerun_strict_warning_settings target)
         )
 
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
+            # TODO(emilk): enable some hardening flags from https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
                 -Wc++20-compat-pedantic

@@ -33,6 +33,6 @@ while True:
 
     value += np.random.normal()
 
-    rr.set_index("time", datetime=cur_time)
+    rr.set_time("time", timestamp=cur_time)
 
-    rr.log("random_walk", rr.Scalar(value))
+    rr.log("random_walk", rr.Scalars(value))

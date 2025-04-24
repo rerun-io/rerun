@@ -1,6 +1,6 @@
 //! Example of an external data-loader executable plugin for the Rerun Viewer.
 
-use rerun::{IndexCell, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
+use rerun::EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE;
 
 // The Rerun Viewer will always pass at least these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
@@ -45,13 +45,17 @@ struct Args {
     #[argh(arg_name = "static", switch)]
     static_: bool,
 
-    /// optional timestamps to log at (e.g. `--time sim_time=1709203426`) (repeatable)
+    /// optional sequences to log at (e.g. `--time_sequence sim_frame=42`) (repeatable)
     #[argh(option)]
-    time: Vec<String>,
+    time_sequence: Vec<String>,
 
-    /// optional sequences to log at (e.g. `--sequence sim_frame=42`) (repeatable)
+    /// optional duration(s) (in nanoseconds) to log at (e.g. `--time_duration_nanos sim_time=123`) (repeatable)
     #[argh(option)]
-    sequence: Vec<String>,
+    time_duration_nanos: Vec<String>,
+
+    /// optional timestamp(s) (in nanoseconds since epochj) to log at (e.g. `--time_timestamp_nanos sim_time=1709203426123456789`) (repeatable)
+    #[argh(option)]
+    time_timestamp_nanos: Vec<String>,
 }
 
 fn extension(path: &std::path::Path) -> String {
@@ -110,26 +114,36 @@ fn main() -> anyhow::Result<()> {
 
 fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
     let mut timepoint = rerun::TimePoint::default();
-    {
-        for time_str in &args.time {
-            let Some((timeline_name, time)) = time_str.split_once('=') else {
-                continue;
-            };
-            timepoint.insert_index(
-                timeline_name,
-                IndexCell::from_duration_nanos(time.parse::<i64>()?),
-            );
-        }
 
-        for seq_str in &args.sequence {
-            let Some((seqline_name, seq)) = seq_str.split_once('=') else {
-                continue;
-            };
-            timepoint.insert_index(
-                seqline_name,
-                rerun::IndexCell::from_sequence(seq.parse::<i64>()?),
-            );
-        }
+    for seq_str in &args.time_sequence {
+        let Some((seqline_name, seq)) = seq_str.split_once('=') else {
+            continue;
+        };
+        timepoint.insert_cell(
+            seqline_name,
+            rerun::TimeCell::from_sequence(seq.parse::<i64>()?),
+        );
     }
+
+    for duration_nanos_str in &args.time_duration_nanos {
+        let Some((seqline_name, duration_nd)) = duration_nanos_str.split_once('=') else {
+            continue;
+        };
+        timepoint.insert_cell(
+            seqline_name,
+            rerun::TimeCell::from_duration_nanos(duration_nd.parse::<i64>()?),
+        );
+    }
+
+    for timestamp_nanos_str in &args.time_timestamp_nanos {
+        let Some((seqline_name, timestamp_nd)) = timestamp_nanos_str.split_once('=') else {
+            continue;
+        };
+        timepoint.insert_cell(
+            seqline_name,
+            rerun::TimeCell::from_timestamp_nanos_since_epoch(timestamp_nd.parse::<i64>()?),
+        );
+    }
+
     Ok(timepoint)
 }

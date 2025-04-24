@@ -1,14 +1,13 @@
 namespace rerun.archetypes;
 
-
 /// An image made up of integer [components.ClassId]s.
 ///
-/// Each pixel corresponds to a [components.ClassId] that will be mapped to a color based on annotation context.
+/// Each pixel corresponds to a [components.ClassId] that will be mapped to a color based on [archetypes.AnnotationContext].
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest
 /// integer value.
 ///
-/// See also [archetypes.AnnotationContext] to associate each class with a color and a label.
+/// Use [archetypes.AnnotationContext] to associate each class with a color and a label.
 ///
 /// \cpp Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
@@ -16,10 +15,11 @@ namespace rerun.archetypes;
 ///
 /// \example archetypes/segmentation_image_simple title="Simple segmentation image" image="https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/1200w.png"
 table SegmentationImage (
-  "attr.rust.derive": "PartialEq",
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Image & tensor",
-  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
+  "attr.rerun.state": "stable",
+  "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 

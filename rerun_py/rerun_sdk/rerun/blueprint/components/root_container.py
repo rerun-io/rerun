@@ -16,7 +16,11 @@ __all__ = ["RootContainer", "RootContainerBatch"]
 
 
 class RootContainer(datatypes.Uuid, ComponentMixin):
-    """**Component**: The container that sits at the root of a viewport."""
+    """
+    **Component**: The container that sits at the root of a viewport.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of RootContainerExt in root_container_ext.py

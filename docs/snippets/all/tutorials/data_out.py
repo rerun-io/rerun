@@ -32,8 +32,8 @@ rr.connect_grpc()
 # log the jaw open state signal as a scalar
 rr.send_columns(
     "/jaw_open_state",
-    indexes=[rr.IndexColumn("frame_nr", sequence=df["frame_nr"])],
-    columns=rr.Scalar.columns(scalar=df["jawOpenState"]),
+    indexes=[rr.TimeColumn("frame_nr", sequence=df["frame_nr"])],
+    columns=rr.Scalars.columns(scalars=df["jawOpenState"]),
 )
 
 # log a `Label` component to the face bounding box entity
@@ -41,6 +41,6 @@ target_entity = "/video/detector/faces/0/bbox"
 rr.log(target_entity, rr.Boxes2D.from_fields(show_labels=True), static=True)
 rr.send_columns(
     target_entity,
-    indexes=[rr.IndexColumn("frame_nr", sequence=df["frame_nr"])],
+    indexes=[rr.TimeColumn("frame_nr", sequence=df["frame_nr"])],
     columns=rr.Boxes2D.columns(labels=np.where(df["jawOpenState"], "OPEN", "CLOSE")),
 )

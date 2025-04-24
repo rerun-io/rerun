@@ -3,6 +3,7 @@ use itertools::Itertools as _;
 use re_chunk::{ComponentName, RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_entity_db::EntityDb;
+use re_log_types::hash::Hash64;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -271,7 +272,7 @@ fn visualizer_components(
                             ctx.recording(),
                             &data_result.entity_path,
                             component_name,
-                            current_value_row_id,
+                            current_value_row_id.map(Hash64::hash),
                             raw_current_value.as_ref(),
                         );
                         return;
@@ -428,7 +429,7 @@ fn editable_blueprint_component_list_item(
                     query_ctx.viewer_ctx.blueprint_db(),
                     blueprint_path,
                     component,
-                    row_id,
+                    row_id.map(Hash64::hash),
                     raw_override,
                     allow_multiline,
                 );

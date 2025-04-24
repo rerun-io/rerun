@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, TimelineName};
+use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimelineName};
 use re_types::View as _;
 use re_types::{components::TextLogLevel, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
@@ -55,7 +55,7 @@ impl ViewClass for TextView {
         &re_ui::icons::VIEW_LOG
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Text log view")
             .docs_link("https://rerun.io/docs/reference/types/views/text_log_view")
             .markdown(
@@ -84,7 +84,11 @@ Filter message types and toggle column visibility in a selection panel.",
         re_viewer_context::ViewClassLayoutPriority::Low
     }
 
-    fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> re_viewer_context::ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        ctx: &ViewerContext<'_>,
+        suggested_filter: &ResolvedEntityPathFilter,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         // Spawn a single log view at the root if there's any text logs around anywhere.
@@ -92,7 +96,9 @@ Filter message types and toggle column visibility in a selection panel.",
         if ctx
             .indicated_entities_per_visualizer
             .get(&TextLogSystem::identifier())
-            .map_or(true, |entities| entities.is_empty())
+            .map_or(true, |entities| {
+                entities.is_empty() || entities.iter().all(|e| suggested_filter.matches(e))
+            })
         {
             ViewSpawnHeuristics::default()
         } else {
@@ -441,4 +447,9 @@ fn calc_row_height(entry: &Entry) -> f32 {
     let num_newlines = entry.body.bytes().filter(|&c| c == b'\n').count();
     let num_rows = 1 + num_newlines;
     num_rows as f32 * re_ui::DesignTokens::table_line_height()
+}
+
+#[test]
+fn test_help_view() {
+    re_viewer_context::test_context::TestContext::test_help_view(|ctx| TextView.help(ctx));
 }

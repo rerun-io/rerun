@@ -152,7 +152,7 @@ class View:
                 raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
 
         for path, components in self.overrides.items():
-            log_path = f"{self.blueprint_path()}/ViewContents/individual_overrides/{path}"
+            log_path = f"{self.blueprint_path()}/ViewContents/overrides/{path}"
             if isinstance(components, Iterable):
                 components_list = list(components)
 
@@ -621,7 +621,7 @@ class Blueprint:
                 default_enabled=True,
             ),
         )
-        blueprint_stream.set_index("blueprint", sequence=0)
+        blueprint_stream.set_time("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.connect_grpc_blueprint(url, make_active, make_default, blueprint_stream.to_native())
@@ -651,7 +651,7 @@ class Blueprint:
                 default_enabled=True,
             ),
         )
-        blueprint_stream.set_index("blueprint", sequence=0)
+        blueprint_stream.set_time("blueprint", sequence=0)
         self._log_to_stream(blueprint_stream)
 
         bindings.save_blueprint(path, blueprint_stream.to_native())
@@ -662,6 +662,7 @@ class Blueprint:
         port: int = 9876,
         memory_limit: str = "75%",
         hide_welcome_screen: bool = False,
+        detach_process: bool = True,
     ) -> None:
         """
         Spawn a Rerun viewer with this blueprint.
@@ -679,9 +680,13 @@ class Blueprint:
             Example: `16GB` or `50%` (of system total).
         hide_welcome_screen:
             Hide the normal Rerun welcome screen.
+        detach_process:
+            Detach Rerun Viewer process from the application process.
 
         """
-        _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
+        _spawn_viewer(
+            port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen, detach_process=detach_process
+        )
         self.connect_grpc(application_id=application_id, url=f"rerun+http://127.0.0.1:{port}/proxy")
 
 
@@ -712,7 +717,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         ),
     )
 
-    blueprint_stream.set_index("blueprint", sequence=0)
+    blueprint_stream.set_time("blueprint", sequence=0)
 
     blueprint._log_to_stream(blueprint_stream)
 

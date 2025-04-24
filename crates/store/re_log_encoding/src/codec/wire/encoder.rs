@@ -1,5 +1,4 @@
 use re_protos::common::v1alpha1::RerunChunk;
-use re_protos::remote_store::v1alpha1::DataframePart;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
@@ -29,22 +28,22 @@ pub trait Encode<O> {
     fn encode(&self) -> Result<O, CodecError>;
 }
 
-impl Encode<DataframePart> for ArrowRecordBatch {
-    fn encode(&self) -> Result<DataframePart, CodecError> {
-        let payload = encode(re_protos::common::v1alpha1::EncoderVersion::V0, self)?;
-        Ok(DataframePart {
-            encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0 as i32,
-            payload,
-        })
-    }
-}
-
 impl Encode<RerunChunk> for ArrowRecordBatch {
     fn encode(&self) -> Result<RerunChunk, CodecError> {
         let payload = encode(re_protos::common::v1alpha1::EncoderVersion::V0, self)?;
         Ok(RerunChunk {
             encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0 as i32,
             payload,
+        })
+    }
+}
+
+impl Encode<re_protos::common::v1alpha1::DataframePart> for ArrowRecordBatch {
+    fn encode(&self) -> Result<re_protos::common::v1alpha1::DataframePart, CodecError> {
+        let payload = encode(re_protos::common::v1alpha1::EncoderVersion::V0, self)?;
+        Ok(re_protos::common::v1alpha1::DataframePart {
+            encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0 as i32,
+            payload: Some(payload),
         })
     }
 }

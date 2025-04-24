@@ -291,7 +291,7 @@ Replace the section that logs the beads with a loop that logs the beads at diffe
 for (int t = 0; t < 400; t++) {
     auto time = std::chrono::duration<float>(t) * 0.01f;
 
-    rec.set_time("stable_time");
+    rec.set_time_duration("stable_time", time);
 
     for (size_t i = 0; i < lines.size(); ++i) {
         float time_offset = time.count() + offsets[i];
@@ -312,7 +312,7 @@ for (int t = 0; t < 400; t++) {
 }
 ```
 
-First we use [`RecordingStream::set_time_seconds`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad735156502aea8eecd0a5eb2f6678d55) to declare our own custom `Timeline` and set the current timestamp.
+First we use [`RecordingStream::set_time_secs`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad735156502aea8eecd0a5eb2f6678d55) to declare our own custom `Timeline` and set the current timestamp.
 You can add as many timelines and timestamps as you want when logging data.
 
 ⚠️ If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
@@ -327,7 +327,7 @@ That's because the Rerun Viewer has switched to displaying your custom timeline 
 To fix this, go back to the top of your main and initialize your timeline before logging the initial structure:
 
 ```cpp
-rec.set_time_seconds("stable_time", 0.0f);
+rec.set_time_secs("stable_time", 0.0f);
 
 rec.log(
     "dna/structure/left",

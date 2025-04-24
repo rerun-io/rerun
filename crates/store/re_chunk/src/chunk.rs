@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
+use anyhow::Context as _;
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
@@ -129,6 +130,30 @@ impl ChunkComponents {
         self,
     ) -> impl Iterator<Item = (ComponentDescriptor, ArrowListArray)> {
         self.0.into_values().flatten()
+    }
+
+    /// Approximate equal, that ignores small numeric differences.
+    ///
+    /// Returns `Ok` if similar.
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
+    ///
+    /// Useful for tests.
+    pub fn ensure_similar(left: &Self, right: &Self) -> anyhow::Result<()> {
+        anyhow::ensure!(left.len() == right.len());
+        for (comp_name, left_comp_map) in left.iter() {
+            let Some(right_map) = right.get(comp_name) else {
+                anyhow::bail!("rhs is missing {comp_name:?}");
+            };
+            for (descr, left_array) in left_comp_map {
+                let Some(right_array) = right_map.get(descr) else {
+                    anyhow::bail!("rhs {comp_name:?} is missing {descr:?}");
+                };
+                re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
+                    .with_context(|| format!("Component {comp_name:?}"))?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -267,12 +292,16 @@ impl Chunk {
         self
     }
 
-    /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
+    /// Returns `Ok` if two [`Chunk`]s are _similar_, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as `log_time` timestamps.
+    /// It also forgives small numeric inaccuracies in floating point buffers.
+    ///
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
     ///
     /// Useful for tests.
-    pub fn are_similar(lhs: &Self, rhs: &Self) -> bool {
+    pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
         let Self {
             id: _,
             entity_path,
@@ -283,23 +312,66 @@ impl Chunk {
             components,
         } = lhs;
 
-        *entity_path == rhs.entity_path
-            && timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec()
-            && {
-                let timelines: IntMap<_, _> = timelines
-                    .iter()
-                    .map(|(timeline, time_column)| (*timeline, time_column))
-                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-                    .collect();
-                let rhs_timelines: IntMap<_, _> = rhs
-                    .timelines
-                    .iter()
-                    .map(|(timeline, time_column)| (*timeline, time_column))
-                    .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-                    .collect();
-                timelines == rhs_timelines
+        anyhow::ensure!(*entity_path == rhs.entity_path);
+
+        anyhow::ensure!(timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec());
+
+        for (timeline, left_time_col) in timelines {
+            let right_time_col = rhs
+                .timelines
+                .get(timeline)
+                .ok_or_else(|| anyhow::format_err!("right is missing timeline {timeline:?}"))?;
+            if timeline == &TimelineName::log_time() {
+                continue; // We expect this to differ
             }
-            && *components == rhs.components
+            if timeline == "sim_time" {
+                continue; // Small numeric differences
+            }
+            anyhow::ensure!(
+                left_time_col == right_time_col,
+                "Timeline differs: {timeline:?}"
+            );
+        }
+
+        // Handle edge case: recording time on partition properties should ignore start time.
+        if entity_path == &EntityPath::recording_properties() {
+            // We're going to filter out some components on both lhs and rhs.
+            // Therefore, it's important that we first check that the number of components is the same.
+            anyhow::ensure!(components.len() == rhs.components.len());
+
+            // Copied from `rerun.archetypes.RecordingProperties`.
+            let recording_time_descriptor = ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
+                archetype_field_name: Some("start_time".into()),
+                component_name: "rerun.components.Timestamp".into(),
+            };
+
+            // Filter out the recording time component from both lhs and rhs.
+            let lhs_components = components
+                .values() // `keys` is `ComponentName`, don't care since we use full descriptors directly.
+                .cloned()
+                .flat_map(|per_desc| {
+                    per_desc
+                        .into_iter()
+                        .filter(|(desc, _)| desc != &recording_time_descriptor)
+                })
+                .collect::<IntMap<_, _>>();
+            let rhs_components = rhs
+                .components
+                .values() // `keys` is `ComponentName`, don't care since we use full descriptors directly.
+                .cloned()
+                .flat_map(|per_desc| {
+                    per_desc
+                        .into_iter()
+                        .filter(|(desc, _)| desc != &recording_time_descriptor)
+                })
+                .collect::<IntMap<_, _>>();
+
+            anyhow::ensure!(lhs_components == rhs_components);
+            Ok(())
+        } else {
+            ChunkComponents::ensure_similar(components, &rhs.components)
+        }
     }
 
     // Only used for tests atm
@@ -937,7 +1009,7 @@ impl TimeColumn {
     }
 
     /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    pub fn new_duration_seconds(
+    pub fn new_duration_secs(
         name: impl Into<re_log_types::TimelineName>,
         seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
@@ -949,7 +1021,7 @@ impl TimeColumn {
                 re_log::warn!(
                     illegal_value = nanos,
                     new_value = clamped.get(),
-                    "TimeColumn::new_duration_seconds() called with out-of-range value. Clamped to valid range."
+                    "TimeColumn::new_duration_secs() called with out-of-range value. Clamped to valid range."
                 );
             }
             clamped.get()
@@ -957,13 +1029,13 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::DurationNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
 
     /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    pub fn new_timestamp_seconds_since_epoch(
+    pub fn new_timestamp_secs_since_epoch(
         name: impl Into<re_log_types::TimelineName>,
         seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
@@ -975,7 +1047,7 @@ impl TimeColumn {
                 re_log::warn!(
                     illegal_value = nanos,
                     new_value = clamped.get(),
-                    "TimeColumn::new_timestamp_seconds_since_epoch() called with out-of-range value. Clamped to valid range."
+                    "TimeColumn::new_timestamp_secs_since_epoch() called with out-of-range value. Clamped to valid range."
                 );
             }
             clamped.get()
@@ -983,18 +1055,18 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::TimestampNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
 
     /// Creates a new [`TimeColumn`] of duration type, in seconds.
-    #[deprecated = "Use `TimeColumn::new_duration_seconds` or `new_timestamp_seconds_since_epoch` instead"]
+    #[deprecated = "Use `TimeColumn::new_duration_secs` or `new_timestamp_secs_since_epoch` instead"]
     pub fn new_seconds(
         name: impl Into<re_log_types::TimelineName>,
         seconds: impl IntoIterator<Item = impl Into<f64>>,
     ) -> Self {
-        Self::new_duration_seconds(name, seconds)
+        Self::new_duration_secs(name, seconds)
     }
 
     /// Creates a new [`TimeColumn`] measuring duration in nanoseconds.
@@ -1021,7 +1093,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::DurationNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -1050,7 +1122,7 @@ impl TimeColumn {
 
         Self::new(
             None,
-            Timeline::new(name, TimeType::Time),
+            Timeline::new(name, TimeType::TimestampNs),
             ArrowScalarBuffer::from(time_vec),
         )
     }
@@ -1522,7 +1594,8 @@ impl Chunk {
                     reason: format!(
                         "All timelines in a chunk must have the same number of timestamps, matching the number of row IDs. \
                          Found {} row IDs but {} timestamps for timeline '{timeline_name}'",
-                        row_ids.len(), time_column.times.len(),
+                        row_ids.len(),
+                        time_column.times.len(),
                     ),
                 });
             }
@@ -1553,7 +1626,8 @@ impl Chunk {
                         reason: format!(
                             "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
-                            row_ids.len(), list_array.len(),
+                            row_ids.len(),
+                            list_array.len(),
                         ),
                     });
                 }

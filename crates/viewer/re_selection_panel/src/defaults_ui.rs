@@ -5,6 +5,7 @@ use itertools::Itertools as _;
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
+use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
 use re_types_core::{ComponentDescriptor, ComponentName, ComponentNameSet};
 use re_ui::{list_item::LabelContent, UiExt as _};
@@ -136,7 +137,7 @@ fn active_default_ui(
                         db,
                         &view.defaults_path,
                         component_name,
-                        row_id,
+                        row_id.map(Hash64::hash),
                         Some(&*component_array),
                         visualizer.fallback_provider(),
                     );

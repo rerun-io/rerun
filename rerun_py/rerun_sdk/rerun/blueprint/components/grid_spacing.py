@@ -16,7 +16,11 @@ __all__ = ["GridSpacing", "GridSpacingBatch"]
 
 
 class GridSpacing(datatypes.Float32, ComponentMixin):
-    """**Component**: Space between grid lines of one line to the next in scene units."""
+    """
+    **Component**: Space between grid lines of one line to the next in scene units.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GridSpacingExt in grid_spacing_ext.py

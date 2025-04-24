@@ -73,12 +73,12 @@ def main() -> None:
         if sleep_for < -0.1:
             print(f"Warning: missed logging window by {-sleep_for:.2f} seconds")
 
-        rr.set_index("time", datetime=cur_time)
+        rr.set_time("time", timestamp=cur_time)
 
         # Output each series based on its generator
         for plot_idx, plot_path in enumerate(plot_paths):
             for series_idx, series_path in enumerate(series_paths):
-                rr.log(f"{plot_path}/{series_path}", rr.Scalar(next(values[plot_idx][series_idx])))
+                rr.log(f"{plot_path}/{series_path}", rr.Scalars(next(values[plot_idx][series_idx])))
 
     rr.script_teardown(args)
 

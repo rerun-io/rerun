@@ -136,14 +136,14 @@ impl<T: BlueprintIdRegistry> From<BlueprintId<T>> for re_types::datatypes::Uuid 
 impl<T: BlueprintIdRegistry> std::fmt::Display for BlueprintId<T> {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({})", T::registry_name(), self.id)
+        write!(f, "{}({})", T::registry_name(), self.id.simple())
     }
 }
 
 impl<T: BlueprintIdRegistry> std::fmt::Debug for BlueprintId<T> {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({})", T::registry_name(), self.id)
+        write!(f, "{}({})", T::registry_name(), self.id.simple())
     }
 }
 

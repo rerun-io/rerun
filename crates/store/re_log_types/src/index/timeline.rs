@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use crate::{ResolvedTimeRange, TimeType, TimestampFormat};
 
 re_string_interner::declare_new_type!(
@@ -69,7 +67,7 @@ impl Timeline {
     pub fn new_duration(name: impl Into<TimelineName>) -> Self {
         Self {
             name: name.into(),
-            typ: TimeType::Time,
+            typ: TimeType::DurationNs,
         }
     }
 
@@ -78,7 +76,7 @@ impl Timeline {
     pub fn new_timestamp(name: impl Into<TimelineName>) -> Self {
         Self {
             name: name.into(),
-            typ: TimeType::Time,
+            typ: TimeType::TimestampNs,
         }
     }
 
@@ -107,7 +105,7 @@ impl Timeline {
     /// which point the data was logged (according to the client's wall-clock).
     #[inline]
     pub fn log_time() -> Self {
-        Self::new(TimelineName::log_time(), TimeType::Time)
+        Self::new(TimelineName::log_time(), TimeType::TimestampNs)
     }
 
     /// The log tick timeline to which all API functions will always log.
@@ -166,23 +164,5 @@ impl std::hash::Hash for Timeline {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_u64(self.name.hash() ^ self.typ.hash());
-    }
-}
-
-// TODO(#9084): Remove this crutch
-impl std::borrow::Borrow<TimelineName> for Timeline {
-    #[inline]
-    fn borrow(&self) -> &TimelineName {
-        &self.name
-    }
-}
-
-// TODO(#9084): Remove this crutch
-impl Deref for Timeline {
-    type Target = TimelineName;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.name
     }
 }

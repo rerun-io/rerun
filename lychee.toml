@@ -68,6 +68,8 @@ exclude_path = [
   "scripts/screenshot_compare/assets/templates/",
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
   "crates/utils/re_uri/src/lib.rs",                # Contains some malformed URLs, but they are not actual links.
+  "crates/utils/re_uri/src/redap_uri.rs",          # Same as above.
+  "docs/snippets/INDEX.md",                        # The snippet index is guaranteed should be correct by design.
 ]
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
@@ -119,6 +121,9 @@ exclude = [
   'http://foo.zip',
   'https://foo.zip',
   'https://redap.rerun.io',
+  'http://wrong-scheme',
+  'rerun\+http://localhost:\{grpc_port\}/proxy',
+  '.*scheme:/.*',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -134,6 +139,7 @@ exclude = [
   'https://vimeo.com/',                                                # Gives 403 forbidden on CI.
   'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
   'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
+  'https://claude.site/artifacts/',                                    # Giving a 500, but only from CI
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
@@ -144,23 +150,17 @@ exclude = [
   'https://eu.posthog.com/project/',                      # Requires to be logged in on PostHog.
   'https://github.com/rerun-io/internal-test-assets/\.*',
   'https://github.com/google/mediapipe/issues/5188',      # For some reason that link has always failed.
+  'https://www.figma.com/.*',
 
   # Temporarily down or not accessible.
   'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
   'https://pyo3.rs',                                                # Temporarily down, should remove this again once it is up again.
+  'https://dl.acm.org/doi/10.1145/3638550.3643617',                 # We might be getting rate-limited here.
 
   # Works but is really slow at times:
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
   'https://anaconda.org/conda-forge/arrow-cpp',
 
   # '^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
-
-  # Snippets that haven't been released yet.
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.rs",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.rs",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.cpp",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.cpp",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_row_updates.py",
-  "https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/archetypes/arrows3d_column_updates.py",
 ]

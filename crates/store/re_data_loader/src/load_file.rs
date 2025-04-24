@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use ahash::{HashMap, HashMapExt as _};
-use re_log_types::{FileSource, LogMsg};
+use re_log_types::{ApplicationId, FileSource, LogMsg};
 use re_smart_channel::Sender;
 
 use crate::{DataLoader as _, DataLoaderError, LoadedData, RrdLoader};
@@ -100,7 +100,6 @@ pub(crate) fn prepare_store_info(
             application_id,
             store_id: store_id.clone(),
             cloned_from: None,
-            started: re_log_types::Time::now(),
             store_source,
             store_version: Some(re_build_info::CrateVersion::LOCAL),
         },
@@ -339,7 +338,7 @@ pub(crate) fn send(
                     let app_id = settings
                         .opened_application_id
                         .clone()
-                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string().into());
+                        .unwrap_or_else(ApplicationId::random);
                     let store_info = prepare_store_info(app_id, &store_id, file_source.clone());
                     tx.send(store_info).ok();
                 }

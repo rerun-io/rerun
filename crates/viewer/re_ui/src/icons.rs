@@ -84,6 +84,7 @@ pub const EDIT: Icon = icon_from_path!("../data/icons/edit.png");
 pub const MORE: Icon = icon_from_path!("../data/icons/more.png");
 
 pub const CLOSE: Icon = icon_from_path!("../data/icons/close.png");
+pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.png");
 
 /// Used for HTTP URLs that lead out of the app.
 ///
@@ -113,6 +114,8 @@ pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.png")
 pub const GROUP: Icon = icon_from_path!("../data/icons/group.png");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.png");
 pub const ENTITY_EMPTY: Icon = icon_from_path!("../data/icons/entity_empty.png");
+pub const ENTITY_RESERVED: Icon = icon_from_path!("../data/icons/entity_reserved.png");
+pub const ENTITY_RESERVED_EMPTY: Icon = icon_from_path!("../data/icons/entity_reserved_empty.png");
 
 /// Link within the viewer
 pub const INTERNAL_LINK: Icon = icon_from_path!("../data/icons/link.png");
@@ -122,6 +125,8 @@ pub const COMPONENT_STATIC: Icon = icon_from_path!("../data/icons/component_stat
 
 pub const APPLICATION: Icon = icon_from_path!("../data/icons/application.png");
 pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.png");
+pub const TABLE: Icon = icon_from_path!("../data/icons/table.png");
+pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.png");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
 
@@ -133,14 +138,19 @@ pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
 pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.png");
 pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.png");
 pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.png");
+pub const DND_HANDLE: Icon = icon_from_path!("../data/icons/dnd_handle.png");
 
 /// `>`
 pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrumbs_separator.png");
 
 pub const SEARCH: Icon = icon_from_path!("../data/icons/search.png");
+pub const SETTINGS: Icon = icon_from_path!("../data/icons/settings.png");
 
 /// Shortcut icons
 pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.png");
 pub const RIGHT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/rmc.png");
 pub const SCROLL: Icon = icon_from_path!("../data/icons/scroll.png");
 pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.png");
+pub const CONTROL: Icon = icon_from_path!("../data/icons/control.png");
+pub const COMMAND: Icon = icon_from_path!("../data/icons/command.png");
+pub const OPTION: Icon = icon_from_path!("../data/icons/option.png");

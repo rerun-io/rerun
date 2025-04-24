@@ -68,9 +68,9 @@ def log(
     objects.
 
     When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
-    for identifying the data. Note that the path prefix "rerun/" is considered reserved for use by the Rerun SDK
+    for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
     itself and should not be used for logging user data. This is where Rerun will log additional information
-    such as warnings.
+    such as properties and warnings.
 
     The most common way to log is with one of the rerun archetypes, all of which implement
     the `AsComponents` interface.
@@ -121,7 +121,7 @@ def log(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -206,7 +206,7 @@ def _log_components(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -286,7 +286,7 @@ def log_file_from_path(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -340,7 +340,7 @@ def log_file_from_contents(
         any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
-        Additional timelines set by [`rerun.set_index`][] will also be included.
+        Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,

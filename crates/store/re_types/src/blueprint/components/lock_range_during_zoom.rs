@@ -21,6 +21,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Indicate whether the range should be locked when zooming in on the data.
 ///
 /// Default is `false`, i.e. zoom will change the visualized range.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct LockRangeDuringZoom(pub crate::datatypes::Bool);

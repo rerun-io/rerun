@@ -25,6 +25,8 @@ class DepthMeter(datatypes.Float32, ComponentMixin):
 
     Note that the only effect on 2D views is the physical depth values shown when hovering the image.
     In 3D views on the other hand, this affects where the points of the point cloud are placed.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
     _BATCH_TYPE = None

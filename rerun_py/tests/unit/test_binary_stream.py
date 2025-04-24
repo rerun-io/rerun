@@ -16,7 +16,7 @@ import rerun.blueprint as rrb
 
 
 @rr.thread_local_stream("rerun_example_binary_stream")
-def job(name: str) -> Iterator[tuple[str, bytes]]:
+def job(name: str) -> Iterator[tuple[str, bytes | None]]:
     stream = rr.binary_stream()
 
     blueprint = rrb.Blueprint(rrb.TextLogView(name="My Logs", origin="test"))
@@ -40,7 +40,7 @@ def test_binary_stream() -> None:
     prev_flush_num_rows = os.environ.get("RERUN_FLUSH_NUM_ROWS")
     os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
 
-    results_queue: queue.Queue[tuple[str, bytes]] = queue.Queue()
+    results_queue: queue.Queue[tuple[str, bytes | None]] = queue.Queue()
 
     threads = [
         threading.Thread(target=queue_results, args=(job("A"), results_queue)),
@@ -55,16 +55,20 @@ def test_binary_stream() -> None:
         while not results_queue.empty():
             name, data = results_queue.get()
 
+            assert data is not None
+
             # Bump this value down when we have less overhead.
             assert len(data) > 1000
 
             with open(f"{tmpdir}/output_{name}.rrd", "a+b") as f:
                 f.write(data)
 
-        subprocess.run(
-            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"],
-            check=True,
+        process = subprocess.run(
+            ["rerun", "rrd", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"], capture_output=True
         )
+        if process.returncode != 0:
+            print(process.stderr.decode("utf-8"))
+            raise Exception("Rerun failed")
 
     # Restore the previous value of RERUN_FLUSH_NUM_ROWS
     if prev_flush_num_rows is not None:

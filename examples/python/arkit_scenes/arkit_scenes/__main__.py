@@ -141,7 +141,7 @@ def read_camera_from_world(traj_string: str) -> tuple[str, rr.Transform3D]:
     camera_from_world = rr.Transform3D(
         translation=translation,
         rotation=rr.Quaternion(xyzw=rotation.as_quat()),
-        from_parent=True,
+        relation=rr.TransformRelation.ChildFromParent,
     )
 
     return (ts, camera_from_world)
@@ -224,7 +224,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     print("Processing frames…")
     for frame_timestamp in tqdm(lowres_frame_ids):
         # frame_id is equivalent to timestamp
-        rr.set_index("time", timedelta=float(frame_timestamp))
+        rr.set_time("time", duration=float(frame_timestamp))
         # load the lowres image and depth
         bgr = cv2.imread(f"{lowres_image_dir}/{video_id}_{frame_timestamp}.png")
         depth = cv2.imread(f"{lowres_depth_dir}/{video_id}_{frame_timestamp}.png", cv2.IMREAD_ANYDEPTH)
@@ -246,7 +246,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
 
         # log the high res camera
         if high_res_exists:
-            rr.set_index("time high resolution", timedelta=float(frame_timestamp))
+            rr.set_time("time high resolution", duration=float(frame_timestamp))
             # only low res camera has a trajectory, high res does not so need to find the closest low res frame id
             closest_lowres_frame_id = find_closest_frame_id(frame_timestamp, camera_from_world_dict)
             highres_intri_path = intrinsics_dir / f"{video_id}_{frame_timestamp}.pincam"

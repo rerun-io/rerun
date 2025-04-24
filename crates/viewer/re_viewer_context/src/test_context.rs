@@ -2,20 +2,22 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 use ahash::HashMap;
+use egui::Context;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
+use crate::{
+    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, DataQueryResult, DisplayMode, GlobalContext, ItemCollection,
+    RecordingConfig, StorageContext, StoreContext, SystemCommand, ViewClass, ViewClassRegistry,
+    ViewId, ViewStates, ViewerContext,
+};
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, StoreKind, Timeline};
 use re_types_core::reflection::Reflection;
-
-use crate::{
-    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
-    StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
-};
+use re_ui::Help;
 
 pub trait HarnessExt {
     /// Fails the test iff more than `broken_percent_threshold`% pixels are broken.
@@ -117,6 +119,11 @@ impl Default for TestContext {
 
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
+
+        recording_config
+            .time_ctrl
+            .write()
+            .set_timeline(Timeline::log_tick());
 
         Self {
             recording_store,
@@ -301,14 +308,16 @@ impl TestContext {
             blueprint: &self.blueprint_store,
             default_blueprint: None,
             recording: &self.recording_store,
-            bundle: &Default::default(),
             caches: &Default::default(),
-            hub: &Default::default(),
             should_enable_heuristics: false,
         };
+
         let indicated_entities_per_visualizer = self
             .view_class_registry
             .indicated_entities_per_visualizer(&store_context.recording.store_id());
+        let maybe_visualizable_entities_per_visualizer = self
+            .view_class_registry
+            .maybe_visualizable_entities_for_visualizer_systems(&self.recording_store.store_id());
 
         let drag_and_drop_manager = crate::DragAndDropManager::new(ItemCollection::default());
 
@@ -333,9 +342,15 @@ impl TestContext {
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
+                display_mode: &DisplayMode::LocalRecordings,
             },
             store_context: &store_context,
-            maybe_visualizable_entities_per_visualizer: &Default::default(),
+            storage_context: &StorageContext {
+                hub: &Default::default(),
+                bundle: &Default::default(),
+                tables: &Default::default(),
+            },
+            maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             rec_cfg: &self.recording_config,
@@ -450,17 +465,24 @@ impl TestContext {
                     *self.focused_item.lock() = Some(item);
                 }
 
-                SystemCommand::SetActiveTimeline { rec_id, timeline } => {
+                SystemCommand::SetActiveTime {
+                    rec_id,
+                    timeline,
+                    time,
+                } => {
                     assert_eq!(rec_id, self.recording_store.store_id());
-                    self.recording_config
-                        .time_ctrl
-                        .write()
-                        .set_timeline(timeline);
+                    let mut time_ctrl = self.recording_config.time_ctrl.write();
+                    time_ctrl.set_timeline(timeline);
+                    if let Some(time) = time {
+                        time_ctrl.set_time(time);
+                    }
                 }
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
+                | SystemCommand::ActivateEntry(_)
                 | SystemCommand::CloseApp(_)
+                | SystemCommand::CloseEntry(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }
@@ -469,11 +491,9 @@ impl TestContext {
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
-                | SystemCommand::ActivateRecording(_)
-                | SystemCommand::CloseStore(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
-                | SystemCommand::CloseAllRecordings
+                | SystemCommand::CloseAllEntries
                 | SystemCommand::SetLoopSelection { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
@@ -486,6 +506,23 @@ impl TestContext {
             if !handled {
                 eprintln!("Ignored system command: {command_name:?}",);
             }
+        }
+    }
+
+    pub fn test_help_view(help: impl Fn(&Context) -> Help) {
+        use egui::os::OperatingSystem;
+        for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
+            let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
+                ui.ctx().set_os(os);
+                re_ui::apply_style_and_install_loaders(ui.ctx());
+                help(ui.ctx()).ui(ui);
+            });
+            let help_view = help(&harness.ctx);
+            let name = format!("help_view_{}_{os:?}", help_view.title())
+                .replace(' ', "_")
+                .to_lowercase();
+            harness.fit_contents();
+            harness.snapshot(&name);
         }
     }
 }

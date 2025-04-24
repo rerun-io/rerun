@@ -17,7 +17,11 @@ __all__ = ["VisualBounds2D", "VisualBounds2DBatch"]
 
 
 class VisualBounds2D(VisualBounds2DExt, datatypes.Range2D, ComponentMixin):
-    """**Component**: Visual bounds in 2D space used for `Spatial2DView`."""
+    """
+    **Component**: Visual bounds in 2D space used for `Spatial2DView`.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # __init__ can be found in visual_bounds2d_ext.py

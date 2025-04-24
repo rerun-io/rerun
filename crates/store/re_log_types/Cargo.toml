@@ -18,7 +18,7 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-[package.metadata.cargo-machete]
+[package.metadata.cargo-shear]
 ignored = [
   "num-traits", # Needed for `num-derive`'s macros to work.
   "half",       # Needed so that `fixed` is pinned at the right version.
@@ -55,9 +55,7 @@ re_types_core.workspace = true
 
 # External
 ahash.workspace = true
-anyhow.workspace = true
 arrow = { workspace = true, features = ["ipc"] }
-arrow2 = { workspace = true, features = ["arrow", "io_ipc"] }
 backtrace.workspace = true
 bytemuck.workspace = true
 clean-path.workspace = true

@@ -11,7 +11,7 @@ use arrow::{
 };
 use itertools::Itertools as _;
 
-use re_chunk::TimelineName;
+use re_chunk::{LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
     ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor, SorbetColumnDescriptors,
@@ -297,7 +297,7 @@ pub struct QueryExpression {
     /// ```text
     /// view_contents = {
     ///   "world/points": [rr.Position3D, rr.Radius],
-    ///   "metrics": [rr.Scalar]
+    ///   "metrics": [rr.Scalars]
     /// }
     /// ```
     pub view_contents: Option<ViewContentsSelector>,
@@ -398,6 +398,62 @@ pub struct QueryExpression {
     //
     // TODO(cmc): the selection has to be on the QueryHandle, otherwise it's hell to use.
     pub selection: Option<Vec<ColumnSelector>>,
+}
+
+impl QueryExpression {
+    pub fn min_latest_at(&self) -> Option<LatestAtQuery> {
+        let index = self.filtered_index?;
+
+        if let Some(using_index_values) = &self.using_index_values {
+            return Some(LatestAtQuery::new(
+                index,
+                using_index_values.first().copied()?,
+            ));
+        }
+
+        if let Some(filtered_index_values) = &self.filtered_index_values {
+            return Some(LatestAtQuery::new(
+                index,
+                filtered_index_values.first().copied()?,
+            ));
+        }
+
+        if let Some(filtered_index_range) = &self.filtered_index_range {
+            return Some(LatestAtQuery::new(index, filtered_index_range.min()));
+        }
+
+        None
+    }
+
+    pub fn max_range(&self) -> Option<RangeQuery> {
+        let index = self.filtered_index?;
+
+        if let Some(using_index_values) = &self.using_index_values {
+            return Some(RangeQuery::new(
+                index,
+                ResolvedTimeRange::new(
+                    using_index_values.first().copied()?,
+                    using_index_values.last().copied()?,
+                ),
+            ));
+        }
+
+        if let Some(filtered_index_values) = &self.filtered_index_values {
+            return Some(RangeQuery::new(
+                index,
+                ResolvedTimeRange::new(
+                    filtered_index_values.first().copied()?,
+                    filtered_index_values.last().copied()?,
+                ),
+            ));
+        }
+
+        if let Some(filtered_index_range) = &self.filtered_index_range {
+            return Some(RangeQuery::new(index, *filtered_index_range));
+        }
+
+        None
+    }
 }
 
 // ---

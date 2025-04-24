@@ -25,6 +25,7 @@ mod error;
 mod index_column_descriptor;
 mod ipc;
 mod metadata;
+mod migration;
 mod row_id_column_descriptor;
 mod sorbet_batch;
 mod sorbet_columns;
@@ -35,7 +36,7 @@ pub use self::{
     chunk_schema::ChunkSchema,
     column_descriptor::{ColumnDescriptor, ColumnError},
     column_descriptor_ref::ColumnDescriptorRef,
-    column_kind::ColumnKind,
+    column_kind::{ColumnKind, UnknownColumnKind},
     component_column_descriptor::ComponentColumnDescriptor,
     error::SorbetError,
     index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType},
@@ -44,6 +45,7 @@ pub use self::{
         ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata,
         MissingMetadataKey,
     },
+    migration::migrate_record_batch,
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
     sorbet_batch::SorbetBatch,
     sorbet_columns::SorbetColumnDescriptors,

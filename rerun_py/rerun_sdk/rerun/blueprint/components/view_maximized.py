@@ -16,7 +16,11 @@ __all__ = ["ViewMaximized", "ViewMaximizedBatch"]
 
 
 class ViewMaximized(datatypes.Uuid, ComponentMixin):
-    """**Component**: Whether a view is maximized."""
+    """
+    **Component**: Whether a view is maximized.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ViewMaximizedExt in view_maximized_ext.py

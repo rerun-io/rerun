@@ -25,6 +25,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// If no visual bounds are set, it will be determined automatically,
 /// based on the bounding-box of the data or other camera information present in the view.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default)]
 pub struct VisualBounds2D {
     /// Controls the visible range of a 2D view.

@@ -25,6 +25,8 @@ class DataframeView(View):
 
     Any data from the store can be shown, using a flexibly, user-configurable query.
 
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+
     Example
     -------
     ### Use a blueprint to customize a DataframeView.:
@@ -38,13 +40,13 @@ class DataframeView(View):
 
     # Log some data.
     for t in range(int(math.pi * 4 * 100.0)):
-        rr.set_index("t", timedelta=t)
-        rr.log("trig/sin", rr.Scalar(math.sin(float(t) / 100.0)))
-        rr.log("trig/cos", rr.Scalar(math.cos(float(t) / 100.0)))
+        rr.set_time("t", duration=t)
+        rr.log("trig/sin", rr.Scalars(math.sin(float(t) / 100.0)))
+        rr.log("trig/cos", rr.Scalars(math.cos(float(t) / 100.0)))
 
         # some sparse data
         if t % 5 == 0:
-            rr.log("trig/tan_sparse", rr.Scalar(math.tan(float(t) / 100.0)))
+            rr.log("trig/tan_sparse", rr.Scalars(math.tan(float(t) / 100.0)))
 
     # Create a Dataframe View
     blueprint = rrb.Blueprint(

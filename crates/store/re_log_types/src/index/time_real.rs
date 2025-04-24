@@ -2,6 +2,8 @@ use fixed::{traits::LossyInto as _, FixedI128};
 
 use crate::TimeInt;
 
+use super::NonMinI64;
+
 /// Either nanoseconds or sequence numbers.
 ///
 /// Must be matched with a [`crate::TimeType`] to know what.
@@ -57,7 +59,7 @@ impl TimeReal {
     }
 
     #[inline]
-    pub fn from_seconds(v: f64) -> Self {
+    pub fn from_secs(v: f64) -> Self {
         Self::from(v * 1_000_000_000f64)
     }
 
@@ -73,6 +75,13 @@ impl From<i64> for TimeReal {
     #[inline]
     fn from(integer: i64) -> Self {
         Self(integer.into())
+    }
+}
+
+impl From<NonMinI64> for TimeReal {
+    #[inline]
+    fn from(integer: NonMinI64) -> Self {
+        Self(integer.get().into())
     }
 }
 
@@ -123,20 +132,6 @@ impl From<crate::Duration> for TimeReal {
     #[inline]
     fn from(duration: crate::Duration) -> Self {
         Self::from(duration.as_nanos())
-    }
-}
-
-impl From<crate::Time> for TimeReal {
-    #[inline]
-    fn from(time: crate::Time) -> Self {
-        Self::from(time.nanos_since_epoch())
-    }
-}
-
-impl From<TimeReal> for crate::Time {
-    #[inline]
-    fn from(int: TimeReal) -> Self {
-        Self::from_ns_since_epoch(int.round().as_i64())
     }
 }
 

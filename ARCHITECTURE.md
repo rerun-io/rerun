@@ -19,7 +19,7 @@ It all starts with logging. You can log rich data (point clouds, images, etc) wi
 
 The logging SDK:s encodes the data using Apache Arrow (see more below).
 
-The logging data can be written to disk as `.rrd` files, or transmitted over TCP to either a Rerun Viewer or a Rerun Server.
+The logging data can be written to disk as `.rrd` files, or transmitted over gRPC to either a Rerun Viewer or a Rerun Server.
 
 ### Rerun Viewer
 
@@ -35,7 +35,7 @@ You can try running the Viewer in a browser using `rr.serve()` in Python, or usi
 
 The web viewer consists of just a few small files - a thin `.html`, a `.wasm` blob, and an auto-generated `.js` bridge for the wasm. These files are served using the [`re_web_viewer_server`](https://github.com/rerun-io/rerun/tree/latest/crates/viewer/re_web_viewer_server) crate.
 
-The web viewer can load `.rrd` files (just drag-drop them into the browser), or read logging data streamed over WebSockets.
+The web viewer can load `.rrd` files (just drag-drop them into the browser), or read logging data streamed over gRPC.
 
 ### `.rrd` files
 
@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/11c582753b2b233d1dc97aa1c2306b9801dfb805/1200w.png">
+  <img src="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -134,11 +134,12 @@ Update instructions:
 ##### UI crates
 
 | Crate                 | Description                                                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+|-----------------------|------------------------------------------------------------------------------------------------------------|
 | re_blueprint_tree     | The UI for the blueprint tree in the left panel.                                                           |
 | re_redap_browser      | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
 | re_component_ui       | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
+| re_dataframe_ui       | Rich table widget over DataFusion.                                                                         |
 | re_selection_panel    | The UI for the selection panel.                                                                            |
 | re_view               | Types & utilities for defining View classes and communicating with the Viewport.                           |
 | re_view_bar_chart     | A View that shows a single bar chart.                                                                      |
@@ -170,6 +171,7 @@ Update instructions:
 | Crate           | Description                                                     |
 | --------------- | --------------------------------------------------------------- |
 | re_dataframe    | The Rerun public data APIs.                                     |
+| re_datafusion   | DataFusion interfaces to Rerun gRPC queries                     |
 | re_entity_db    | In-memory storage of Rerun entities                             |
 | re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
 | re_protos       | Rerun remote store gRPC API types                               |

@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{text_selection::LabelSelectionState, NumExt as _, Ui};
+use egui::{text_selection::LabelSelectionState, NumExt as _};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -9,11 +9,13 @@ use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
+use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
-    DisplayMode, DragAndDropManager, GlobalContext, PlayState, RecordingConfig, SelectionChange,
-    StoreContext, StoreHub, SystemCommand, SystemCommandSender as _, ViewClassExt as _,
-    ViewClassRegistry, ViewStates, ViewerContext,
+    DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState, RecordingConfig,
+    SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableContext, ViewClassExt as _, ViewClassRegistry, ViewStates,
+    ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -21,6 +23,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
     app_blueprint::AppBlueprint,
+    event::ViewerEventDispatcher,
     ui::{recordings_panel_ui, settings_screen_ui},
 };
 
@@ -80,7 +83,7 @@ pub struct AppState {
     /// The focused item is cleared every frame, but views may react with side-effects
     /// that last several frames.
     #[serde(skip)]
-    pub(crate) focused_item: Option<re_viewer_context::Item>,
+    pub(crate) focused_item: Option<Item>,
 }
 
 impl Default for AppState {
@@ -97,7 +100,7 @@ impl Default for AppState {
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
             redap_servers: Default::default(),
-            display_mode: DisplayMode::LocalRecordings,
+            display_mode: DisplayMode::RedapServer(re_redap_browser::EXAMPLES_ORIGIN.clone()),
             show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
@@ -127,6 +130,19 @@ impl AppState {
         &mut self.app_options
     }
 
+    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
+        if !self.redap_servers.has_server(&origin) {
+            command_sender.send_system(SystemCommand::AddRedapServer(origin));
+        }
+    }
+
+    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
+        // make sure the server exists
+        self.add_redap_server(command_sender, uri.origin.clone());
+
+        command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
+    }
+
     /// Currently selected section of time, if any.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     pub fn loop_selection(
@@ -150,14 +166,15 @@ impl AppState {
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
         store_context: &StoreContext<'_>,
+        storage_context: &StorageContext<'_>,
         reflection: &re_types_core::reflection::Reflection,
         component_ui_registry: &ComponentUiRegistry,
         view_class_registry: &ViewClassRegistry,
-        rx: &ReceiveSet<LogMsg>,
+        rx_log: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
-        callbacks: Option<&re_viewer_context::Callbacks>,
+        event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
     ) {
         re_tracing::profile_function!();
 
@@ -209,29 +226,30 @@ impl AppState {
 
         let selection_change = selection_state.on_frame_start(
             |item| {
-                if let re_viewer_context::Item::StoreId(store_id) = item {
+                if let Item::StoreId(store_id) = item {
                     if store_id.is_empty_recording() {
                         return false;
                     }
                 }
 
-                viewport_ui.blueprint.is_item_valid(store_context, item)
+                viewport_ui.blueprint.is_item_valid(storage_context, item)
             },
-            Some(re_viewer_context::Item::StoreId(
-                store_context.recording.store_id().clone(),
-            )),
+            Some(Item::StoreId(store_context.recording.store_id().clone())),
         );
 
         if let SelectionChange::SelectionChanged(selection) = selection_change {
-            if let Some(callbacks) = callbacks {
-                callbacks.on_selection_change(selection);
+            if let Some(event_dispatcher) = event_dispatcher {
+                event_dispatcher.on_selection_change(
+                    store_context.recording,
+                    selection,
+                    &viewport_ui.blueprint,
+                );
             }
         }
 
         // The root container cannot be dragged.
-        let drag_and_drop_manager = DragAndDropManager::new(re_viewer_context::Item::Container(
-            viewport_ui.blueprint.root_container,
-        ));
+        let drag_and_drop_manager =
+            DragAndDropManager::new(Item::Container(viewport_ui.blueprint.root_container));
 
         let recording = store_context.recording;
 
@@ -266,7 +284,6 @@ impl AppState {
                             store_context,
                             view_class_registry,
                             &blueprint_query,
-                            view.id,
                             &visualizable_entities,
                         ),
                     )
@@ -274,8 +291,7 @@ impl AppState {
                 .collect::<_>()
         };
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
+        let rec_cfg = recording_config_entry(recording_configs, recording);
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             global_context: GlobalContext {
@@ -286,8 +302,10 @@ impl AppState {
                 egui_ctx: &egui_ctx,
                 render_ctx,
                 command_sender,
+                display_mode,
             },
             store_context,
+            storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
@@ -308,7 +326,7 @@ impl AppState {
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.
-        move_time(&ctx, recording, rx, callbacks);
+        move_time(&ctx, recording, rx_log, event_dispatcher);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
         viewport_ui.on_frame_start(&ctx);
@@ -366,8 +384,10 @@ impl AppState {
                 egui_ctx: &egui_ctx,
                 render_ctx,
                 command_sender,
+                display_mode: &display_mode.clone(),
             },
             store_context,
+            storage_context,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
@@ -484,10 +504,6 @@ impl AppState {
                     ui.ctx().screen_rect().width(),
                 ));
 
-            //TODO(ab): this should better be handled as a specific `DisplayMode`
-            let show_welcome =
-                store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
-
             left_panel.show_animated_inside(
                 ui,
                 app_blueprint.blueprint_panel_state().is_expanded(),
@@ -496,11 +512,13 @@ impl AppState {
                     // before drawing the blueprint panel.
                     ui.spacing_mut().item_spacing.y = 0.0;
 
-                    display_mode_toggle_ui(ui, display_mode);
-
                     match display_mode {
-                        DisplayMode::LocalRecordings => {
-                            let resizable = ctx.store_context.bundle.recordings().count() > 3;
+                        DisplayMode::LocalRecordings
+                        | DisplayMode::RedapEntry(..)
+                        | DisplayMode::RedapServer(..) => {
+                            let show_blueprints = *display_mode == DisplayMode::LocalRecordings;
+                            let resizable = ctx.storage_context.bundle.recordings().count() > 3
+                                && show_blueprints;
 
                             if resizable {
                                 // Don't shrink either recordings panel or blueprint panel below this height
@@ -514,21 +532,29 @@ impl AppState {
                                     .default_height(210.0)
                                     .max_height(ui.available_height() - min_height_each)
                                     .show_inside(ui, |ui| {
-                                        recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                        recordings_panel_ui(
+                                            &ctx,
+                                            rx_log,
+                                            ui,
+                                            welcome_screen_state,
+                                            redap_servers,
+                                        );
                                     });
                             } else {
-                                recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
+                                recordings_panel_ui(
+                                    &ctx,
+                                    rx_log,
+                                    ui,
+                                    welcome_screen_state,
+                                    redap_servers,
+                                );
                             }
 
                             ui.add_space(4.0);
 
-                            if !show_welcome {
+                            if show_blueprints {
                                 blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
                             }
-                        }
-
-                        DisplayMode::RedapBrowser => {
-                            redap_servers.server_panel_ui(ui);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // handled above
@@ -550,7 +576,39 @@ impl AppState {
                 .show_inside(ui, |ui| {
                     match display_mode {
                         DisplayMode::LocalRecordings => {
-                            if show_welcome {
+                            if let Some(table_id) = ctx.storage_context.hub.active_table_id() {
+                                if let Some(store) = ctx.storage_context.tables.get(table_id) {
+                                    let context = TableContext {
+                                        table_id: table_id.clone(),
+                                        store,
+                                    };
+                                    crate::ui::table_ui(&ctx, ui, &context);
+                                } else {
+                                    re_log::error_once!(
+                                        "Could not find batch store for table id {}",
+                                        table_id
+                                    );
+                                }
+                            } else {
+                                // If we are here and the "default" app id is selected,
+                                // we should instead switch to the welcome screen.
+                                if ctx.store_context.app_id == StoreHub::welcome_screen_app_id() {
+                                    ctx.command_sender().send_system(
+                                        SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
+                                            re_redap_browser::EXAMPLES_ORIGIN.clone(),
+                                        )),
+                                    );
+                                }
+                                viewport_ui.viewport_ui(ui, &ctx, view_states);
+                            }
+                        }
+
+                        DisplayMode::RedapEntry(entry) => {
+                            redap_servers.entry_ui(&ctx, ui, *entry);
+                        }
+
+                        DisplayMode::RedapServer(origin) => {
+                            if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
                                 welcome_screen.ui(
                                     ui,
                                     command_sender,
@@ -558,12 +616,8 @@ impl AppState {
                                     is_history_enabled,
                                 );
                             } else {
-                                viewport_ui.viewport_ui(ui, &ctx, view_states);
+                                redap_servers.server_central_panel_ui(&ctx, ui, origin);
                             }
-                        }
-
-                        DisplayMode::RedapBrowser => {
-                            redap_servers.ui(&ctx, ui);
                         }
 
                         DisplayMode::ChunkStoreBrowser => {} // Handled above
@@ -574,6 +628,8 @@ impl AppState {
         //
         // Other UI things
         //
+
+        redap_servers.modals_ui(ui);
 
         add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
         drag_and_drop_manager.payload_cursor_ui(ctx.egui_ctx());
@@ -590,18 +646,20 @@ impl AppState {
 
         // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
-            selection_state.clear_selection();
+            self.selection_state.clear_selection();
         }
 
         // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
         if !LabelSelectionState::load(ui.ctx()).has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
-            selection_state.selected_items().copy_to_clipboard(ui.ctx());
+            self.selection_state
+                .selected_items()
+                .copy_to_clipboard(ui.ctx());
         }
 
         // Reset the focused item.
-        *focused_item = None;
+        self.focused_item = None;
     }
 
     #[cfg(target_arch = "wasm32")] // Only used in Wasm
@@ -609,8 +667,8 @@ impl AppState {
         self.recording_configs.get(rec_id)
     }
 
-    pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
-        self.recording_configs.get_mut(rec_id)
+    pub fn recording_config_mut(&mut self, entity_db: &EntityDb) -> &mut RecordingConfig {
+        recording_config_entry(&mut self.recording_configs, entity_db)
     }
 
     pub fn cleanup(&mut self, store_hub: &StoreHub) {
@@ -651,7 +709,7 @@ fn move_time(
     ctx: &ViewerContext<'_>,
     recording: &EntityDb,
     rx: &ReceiveSet<LogMsg>,
-    callbacks: Option<&re_viewer_context::Callbacks>,
+    events: Option<&ViewerEventDispatcher>,
 ) {
     let dt = ctx.egui_ctx().input(|i| i.stable_dt);
 
@@ -662,20 +720,32 @@ fn move_time(
         false
     };
 
-    let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+    let should_diff_time_ctrl = ctx.has_active_recording();
+    let recording_time_ctrl_response = ctx.rec_cfg.time_ctrl.write().update(
         recording.times_per_timeline(),
         dt,
         more_data_is_coming,
-        callbacks,
+        // The state diffs are used to trigger callbacks if they are configured.
+        // Unless we have a real recording open, we should not actually trigger any callbacks.
+        should_diff_time_ctrl,
     );
 
+    handle_time_ctrl_event(recording, events, &recording_time_ctrl_response);
+
+    let recording_needs_repaint = recording_time_ctrl_response.needs_repaint;
+
     let blueprint_needs_repaint = if ctx.app_options().inspect_blueprint_timeline {
-        ctx.blueprint_cfg.time_ctrl.write().update(
-            ctx.store_context.blueprint.times_per_timeline(),
-            dt,
-            more_data_is_coming,
-            None,
-        )
+        let should_diff_time_ctrl = false; /* we don't need state diffing here */
+        ctx.blueprint_cfg
+            .time_ctrl
+            .write()
+            .update(
+                ctx.store_context.blueprint.times_per_timeline(),
+                dt,
+                more_data_is_coming,
+                should_diff_time_ctrl,
+            )
+            .needs_repaint
     } else {
         re_viewer_context::NeedsRepaint::No
     };
@@ -687,45 +757,30 @@ fn move_time(
     }
 }
 
-fn display_mode_toggle_ui(ui: &mut Ui, display_mode: &mut DisplayMode) {
-    ui.allocate_ui_with_layout(
-        egui::vec2(
-            ui.available_width(),
-            re_ui::DesignTokens::title_bar_height(),
-        ),
-        egui::Layout::left_to_right(egui::Align::Center),
-        |ui| {
-            egui::Frame::new()
-                .inner_margin(re_ui::DesignTokens::panel_margin())
-                .show(ui, |ui| {
-                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.expansion = 0.0;
-                    ui.visuals_mut().widgets.inactive.expansion = 0.0;
+fn handle_time_ctrl_event(
+    recording: &EntityDb,
+    events: Option<&ViewerEventDispatcher>,
+    response: &re_viewer_context::TimeControlResponse,
+) {
+    let Some(events) = events else {
+        return;
+    };
 
-                    ui.visuals_mut().selection.bg_fill = ui.visuals_mut().widgets.inactive.bg_fill;
-                    ui.visuals_mut().selection.stroke = ui.visuals_mut().widgets.inactive.fg_stroke;
-                    ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+    if let Some(playing) = response.playing_change {
+        events.on_play_state_change(recording, playing);
+    }
 
-                    ui.visuals_mut().widgets.hovered.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.active.fg_stroke.color =
-                        ui.visuals().widgets.inactive.fg_stroke.color;
-                    ui.visuals_mut().widgets.inactive.fg_stroke.color =
-                        ui.visuals().widgets.noninteractive.fg_stroke.color;
+    if let Some((timeline, time)) = response.timeline_change {
+        events.on_timeline_change(recording, timeline, time);
+    }
 
-                    ui.spacing_mut().button_padding = egui::vec2(6.0, 2.0);
-                    ui.spacing_mut().item_spacing.x = 3.0;
-
-                    ui.selectable_value(display_mode, DisplayMode::LocalRecordings, "Local");
-                    ui.selectable_value(display_mode, DisplayMode::RedapBrowser, "Servers");
-                });
-        },
-    );
+    if let Some(time) = response.time_change {
+        events.on_time_update(recording, time);
+    }
 }
 
 pub(crate) fn recording_config_entry<'cfgs>(
     configs: &'cfgs mut HashMap<StoreId, RecordingConfig>,
-    id: StoreId,
     entity_db: &'_ EntityDb,
 ) -> &'cfgs mut RecordingConfig {
     fn new_recording_config(entity_db: &'_ EntityDb) -> RecordingConfig {
@@ -760,7 +815,7 @@ pub(crate) fn recording_config_entry<'cfgs>(
     }
 
     configs
-        .entry(id)
+        .entry(entity_db.store_id().clone())
         .or_insert_with(|| new_recording_config(entity_db))
 }
 
@@ -780,46 +835,19 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     ctx.egui_ctx().output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                let is_rerun_url = re_uri::RedapUri::try_from(open_url.url.as_ref()).is_ok();
+                if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
+                    let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
 
-                if is_rerun_url {
-                    let data_source = re_data_source::DataSource::from_uri(
-                        re_log_types::FileSource::Uri,
-                        open_url.url.clone(),
-                    );
+                    ctx.command_sender()
+                        .send_system(SystemCommand::LoadDataSource(
+                            re_data_source::DataSource::RerunGrpcStream(uri),
+                        ));
 
-                    let command_sender = ctx.command_sender().clone();
-                    let on_cmd = Box::new(move |cmd| match cmd {
-                        re_data_source::DataSourceCommand::SetLoopSelection {
-                            recording_id,
-                            timeline,
-                            time_range,
-                        } => command_sender.send_system(SystemCommand::SetLoopSelection {
-                            rec_id: recording_id,
-                            timeline,
-                            time_range,
-                        }),
-                    });
-
-                    match data_source.stream(on_cmd, None) {
-                        Ok(re_data_source::StreamSource::LogMessages(rx)) => {
-                            ctx.command_sender()
-                                .send_system(SystemCommand::AddReceiver(rx));
-
-                            if !open_url.new_tab {
-                                ctx.command_sender()
-                                    .send_system(SystemCommand::ChangeDisplayMode(
-                                        DisplayMode::LocalRecordings,
-                                    ));
-                            }
-                        }
-
-                        Ok(re_data_source::StreamSource::CatalogData { endpoint }) => ctx
-                            .command_sender()
-                            .send_system(SystemCommand::AddRedapServer { endpoint }),
-                        Err(err) => {
-                            re_log::warn!("Could not handle url {:?}: {err}", open_url.url);
-                        }
+                    if is_dataset_uri && !open_url.new_tab {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::ChangeDisplayMode(
+                                DisplayMode::LocalRecordings,
+                            ));
                     }
                     return false;
                 } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
@@ -835,7 +863,7 @@ fn check_for_clicked_hyperlinks(ctx: &ViewerContext<'_>) {
     });
 
     if let Some(path) = recording_path {
-        match path.parse::<re_viewer_context::Item>() {
+        match path.parse::<Item>() {
             Ok(item) => {
                 ctx.selection_state.set_selection(item);
             }

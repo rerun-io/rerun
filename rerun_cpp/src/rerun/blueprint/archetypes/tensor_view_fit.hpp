@@ -17,6 +17,9 @@
 
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configures how a selected tensor slice is shown on screen.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct TensorViewFit {
         /// How the image is scaled to fit the view.
         std::optional<ComponentBatch> scaling;

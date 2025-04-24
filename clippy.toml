@@ -56,14 +56,6 @@ disallowed-methods = [
 
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
 
-  # Specify both `arrow2` and `re_arrow2` -- clippy gets lost in all the package renaming happening.
-  { path = "arrow2::compute::concatenate::concatenate", reason = "Use `re_arrow_util::arrow2_util::concat_arrays` instead, which has proper early outs" },
-  { path = "arrow2::compute::filter::filter", reason = "Use `re_arrow_util::arrow2_util::filter_array` instead, which has proper early outs" },
-  { path = "arrow2::compute::take::take", reason = "Use `re_arrow_util::arrow2_util::take_array` instead, which has proper early outs" },
-  { path = "re_arrow2::compute::concatenate::concatenate", reason = "Use `re_arrow_util::arrow2_util::concat_arrays` instead, which has proper early outs" },
-  { path = "re_arrow2::compute::filter::filter", reason = "Use `re_arrow_util::arrow2_util::filter_array` instead, which has proper early outs" },
-  { path = "re_arrow2::compute::take::take", reason = "Use `re_arrow_util::arrow2_util::take_array` instead, which has proper early outs" },
-
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)
   # so we do that in `clippy_wasm.toml` instead.
@@ -74,7 +66,6 @@ disallowed-names = []
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
-  { path = "arrow::ipc::writer::StreamWriter", reason = "Wait until https://github.com/apache/arrow-rs/pull/6805 has been released" },
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },

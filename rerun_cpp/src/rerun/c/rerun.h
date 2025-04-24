@@ -132,6 +132,9 @@ typedef struct rr_spawn_options {
     /// Hide the normal Rerun welcome screen.
     bool hide_welcome_screen;
 
+    /// Detach Rerun Viewer process from the application process.
+    bool detach_process;
+
     /// Specifies the name of the Rerun executable.
     ///
     /// You can omit the `.exe` suffix on Windows.
@@ -368,11 +371,11 @@ typedef struct rr_error {
 extern const char* rr_version_string(void);
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
-/// listen for incoming TCP connections.
+/// listen for incoming gRPC connections.
 ///
 /// `spawn_opts` can be set to NULL to use the recommended defaults.
 ///
-/// If a Rerun Viewer is already listening on this TCP port, this does nothing.
+/// If a Rerun Viewer is already listening on this gRPC port, this does nothing.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
 /// Registers a new component type to be used in `rr_component_batch`.
@@ -433,8 +436,18 @@ extern void rr_recording_stream_connect_grpc(
     rr_recording_stream stream, rr_string url, float flush_timeout_sec, rr_error* error
 );
 
+/// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
+///
+/// The gRPC server will buffer all log data in memory so that late connecting viewers will get all the data.
+/// You can limit the amount of data buffered by the gRPC server with the `server_memory_limit` argument.
+/// Once reached, the earliest logged data will be dropped. Static data is never dropped.
+extern void rr_recording_stream_serve_grpc(
+    rr_recording_stream stream, rr_string bind_ip, uint16_t port, rr_string server_memory_limit,
+    rr_error* error
+);
+
 /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
-/// over TCP.
+/// over gRPC.
 ///
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
@@ -483,7 +496,7 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 ///
 /// For example:
 /// `rr_recording_stream_set_time_sequence(stream, "frame_nr", RR_TIME_TYPE_SEQUENCE, frame_nr, &err)`.
-extern void rr_recording_stream_set_index(
+extern void rr_recording_stream_set_time(
     rr_recording_stream stream, rr_string timeline_name, rr_time_type time_type, int64_t value,
     rr_error* error
 );
@@ -553,17 +566,19 @@ extern void rr_recording_stream_log_file_from_contents(
 /// Note that this API ignores any stateful time set on the log stream via the
 /// `rr_recording_stream_set_time_sequence`/`rr_recording_stream_set_time_nanos`/etc. APIs.
 /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+///
+/// The contents of `time_columns` and `component_columns` AFTER this call is undefined.
 extern void rr_recording_stream_send_columns(
-    rr_recording_stream stream, rr_string entity_path,                            //
-    const rr_time_column* time_columns, uint32_t num_time_columns,                //
-    const rr_component_column* component_columns, uint32_t num_component_columns, //
+    rr_recording_stream stream, rr_string entity_path,                      //
+    rr_time_column* time_columns, uint32_t num_time_columns,                //
+    rr_component_column* component_columns, uint32_t num_component_columns, //
     rr_error* error
 );
 
 // ----------------------------------------------------------------------------
 // Other utilities
 
-/// Allocation method for `rr_video_asset_read_frame_timestamps_ns`.
+/// Allocation method for `rr_video_asset_read_frame_timestamps_nanos`.
 typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timestamps);
 
 /// Determines the presentation timestamps of all frames inside the video.
@@ -575,7 +590,7 @@ typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timest
 /// \param alloc_func
 /// Function used to allocate memory for the returned timestamps.
 /// Guaranteed to be called exactly once with the `alloc_context` pointer as argument.
-extern int64_t* rr_video_asset_read_frame_timestamps_ns(
+extern int64_t* rr_video_asset_read_frame_timestamps_nanos(
     const uint8_t* video_bytes, uint64_t video_bytes_len, rr_string media_type, void* alloc_context,
     rr_alloc_timestamps alloc_timestamps, rr_error* error
 );

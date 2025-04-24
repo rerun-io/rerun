@@ -28,6 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
 /// (`/world/**` matches both `/world` and `/world/car/driver`).
 /// Other uses of `*` are not (yet) supported.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct QueryExpression(pub crate::datatypes::Utf8);

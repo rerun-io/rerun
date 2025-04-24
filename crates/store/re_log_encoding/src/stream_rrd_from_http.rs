@@ -71,8 +71,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {
-        let version_policy = crate::VersionPolicy::Warn;
-        let decoder = RefCell::new(StreamDecoder::new(version_policy));
+        let decoder = RefCell::new(StreamDecoder::new());
         move |part| match part {
             Ok(part) => match part {
                 ehttp::streaming::Part::Response(ehttp::PartialResponse {
@@ -113,7 +112,7 @@ pub fn stream_rrd_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                             Err(err) => {
                                 return on_msg(HttpMessage::Failure(
                                     format!("Failed to fetch .rrd file from {url}: {err}").into(),
-                                ))
+                                ));
                             }
                         }
                     }
@@ -184,8 +183,7 @@ pub mod web_decode {
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         let mut last_yield = web_time::Instant::now();
 
-        let version_policy = crate::VersionPolicy::Warn;
-        match crate::decoder::Decoder::new(version_policy, rrd_bytes.as_slice()) {
+        match crate::decoder::Decoder::new(rrd_bytes.as_slice()) {
             Ok(decoder) => {
                 for msg in decoder {
                     match msg {

@@ -163,7 +163,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: "/boxes".into(),
-                query_filter: "+ $origin/**".try_into().unwrap(),
+                query_filter: "+ $origin/**".parse().unwrap(),
             },
         );
 
@@ -171,7 +171,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> (ViewId, ViewId) {
             re_view_spatial::SpatialView3D::identifier(),
             RecommendedView {
                 origin: "/spheres".into(),
-                query_filter: "+ $origin/**".try_into().unwrap(),
+                query_filter: "+ $origin/**".parse().unwrap(),
             },
         );
 
@@ -250,7 +250,7 @@ fn run_view_ui_and_save_snapshot(
                 modifiers: egui::Modifiers::default(),
             });
             harness.run_steps(10);
-            let broken_percent_threshold = 0.0036;
+            let broken_percent_threshold = 0.0037;
             let num_pixels = (size.x * size.y).ceil() as u64;
 
             use re_viewer_context::test_context::HarnessExt as _;

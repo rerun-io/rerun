@@ -104,18 +104,18 @@ brand_colors = {
 }
 
 
-def style_plot(symbol: str) -> rr.SeriesLine:
-    return rr.SeriesLine(
-        color=brand_colors[symbol],
-        name=symbol,
+def style_plot(symbol: str) -> rr.SeriesLines:
+    return rr.SeriesLines(
+        colors=brand_colors[symbol],
+        names=symbol,
     )
 
 
-def style_peak(symbol: str) -> rr.SeriesPoint:
-    return rr.SeriesPoint(
-        color=0xFF0000FF,
-        name=f"{symbol} (peak)",
-        marker="up",
+def style_peak(symbol: str) -> rr.SeriesPoints:
+    return rr.SeriesPoints(
+        colors=0xFF0000FF,
+        names=f"{symbol} (peak)",
+        markers="up",
     )
 
 
@@ -209,10 +209,10 @@ def main() -> None:
             peak = hist.High.idxmax()
 
             for row in hist.itertuples():
-                rr.set_index("time", timedelta=row.Index)
-                rr.log(f"stocks/{symbol}/{day}", rr.Scalar(row.High))
+                rr.set_time("time", duration=row.Index)
+                rr.log(f"stocks/{symbol}/{day}", rr.Scalars(row.High))
                 if row.Index == peak:
-                    rr.log(f"stocks/{symbol}/peaks/{day}", rr.Scalar(row.High))
+                    rr.log(f"stocks/{symbol}/peaks/{day}", rr.Scalars(row.High))
 
     rr.script_teardown(args)
 

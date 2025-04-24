@@ -10,8 +10,8 @@ use arrow::{
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptorRef, ComponentColumnDescriptor, IndexColumnDescriptor,
-    RowIdColumnDescriptor, SorbetError, SorbetSchema,
+    ArrowBatchMetadata, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
+    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError, SorbetSchema,
 };
 
 /// Any rerun-compatible [`ArrowRecordBatch`].
@@ -155,6 +155,8 @@ impl From<&SorbetBatch> for ArrowRecordBatch {
 
 impl SorbetBatch {
     /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    ///
+    /// Will also migrate old types to new types.
     pub fn try_from_record_batch(
         batch: &ArrowRecordBatch,
         batch_type: crate::BatchType,
@@ -162,6 +164,7 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         let batch = make_all_data_columns_list_arrays(batch);
+        let batch = crate::migrate_record_batch(&batch);
 
         let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
 
@@ -202,10 +205,8 @@ fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBat
 
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
         let is_list_array = array.downcast_array_ref::<ArrowListArray>().is_some();
-        let is_data_column = field
-            .metadata()
-            .get("rerun.kind")
-            .is_some_and(|kind| kind == "data");
+        let is_data_column =
+            ColumnKind::try_from(field.as_ref()).is_ok_and(|kind| kind == ColumnKind::Component);
         if is_data_column && !is_list_array {
             let (field, array) = re_arrow_util::wrap_in_list_array(field, array.clone());
             fields.push(field.into());

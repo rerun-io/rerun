@@ -62,5 +62,6 @@ the relationship between that entity and its direct parent.
 
 ### Reserved paths
 
-The path prefix `rerun/` is considered reserved for use by the Rerun SDK itself and should not be used for logging
-user data. This is where Rerun will log additional information such as warnings.
+The path prefix `__` is considered reserved for use by the Rerun SDK itself and should not be used for logging
+user data. This is where Rerun will log additional information such as properties (`__properties`) and warnings
+(`__warnings`).

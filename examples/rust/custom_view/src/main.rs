@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx, _) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         "75%".parse()?,
         re_grpc_server::shutdown::never(),
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "Could not get a runtime handle from the current Tokio runtime or Wasm bindgen.",
                 ),
             );
-            app.add_receiver(rx);
+            app.add_log_receiver(rx);
 
             // Register the custom view
             app.add_view_class::<color_coordinates_view::ColorCoordinatesView>()

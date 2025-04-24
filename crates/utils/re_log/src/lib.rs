@@ -76,6 +76,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "h2",
     "hyper",
     "prost_build",
+    "tower",
     "ureq",
     // only let rustls log in debug mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(debug_assertions)]
@@ -94,8 +95,9 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
 /// Web: `debug` since web console allows arbitrary filtering.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn default_log_filter() -> String {
-    let base_log_filter = if false {
-        //cfg!(debug_assertions) {
+    let base_log_filter = if cfg!(debug_assertions) {
+        // We want the DEBUG level to be useful yet not too spammy.
+        // This is a good way to enforce that.
         "debug"
     } else {
         // Important to keep the default at (at least) "info",
@@ -220,12 +222,17 @@ fn shorten_file_path(file_path: &str) -> &str {
 #[test]
 fn test_shorten_file_path() {
     for (before, after) in [
-        ("/Users/emilk/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.24.1/src/runtime/runtime.rs", "tokio-1.24.1/src/runtime/runtime.rs"),
+        (
+            "/Users/emilk/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-1.24.1/src/runtime/runtime.rs",
+            "tokio-1.24.1/src/runtime/runtime.rs",
+        ),
         ("crates/rerun/src/main.rs", "rerun/src/main.rs"),
-        ("/rustc/d5a82bbd26e1ad8b7401f6a718a9c57c96905483/library/core/src/ops/function.rs", "core/src/ops/function.rs"),
+        (
+            "/rustc/d5a82bbd26e1ad8b7401f6a718a9c57c96905483/library/core/src/ops/function.rs",
+            "core/src/ops/function.rs",
+        ),
         ("/weird/path/file.rs", "/weird/path/file.rs"),
-        ]
-    {
+    ] {
         assert_eq!(shorten_file_path(before), after);
     }
 }

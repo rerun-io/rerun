@@ -91,7 +91,9 @@ impl CamerasVisualizer {
         let Some(twod_in_threed_info) = &transform_info.twod_in_threed_info else {
             // This implies that the transform context didn't see the pinhole transform.
             // Should be impossible!
-            re_log::error_once!("Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!");
+            re_log::error_once!(
+                "Transform context didn't register the pinhole transform, but `CamerasVisualizer` is trying to display it!"
+            );
             return;
         };
         if &twod_in_threed_info.parent_pinhole != ent_path {
@@ -232,7 +234,7 @@ impl VisualizerSystem for CamerasVisualizer {
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let latest_at = query.latest_at_query();
             let query_ctx = ctx.query_context(data_result, &latest_at);
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);

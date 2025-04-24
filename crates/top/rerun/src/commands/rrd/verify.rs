@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use arrow::array::AsArray as _;
 
+use itertools::Itertools as _;
 use re_log_types::LogMsg;
 use re_types::reflection::Reflection;
 
@@ -21,9 +22,7 @@ impl VerifyCommand {
 
         let Self { path_to_input_rrds } = self;
 
-        // TODO(cmc): might want to make this configurable at some point.
-        let version_policy = re_log_encoding::VersionPolicy::Warn;
-        let (rx, _) = read_rrd_streams_from_file_or_stdin(version_policy, path_to_input_rrds);
+        let (rx, _) = read_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
         let mut seen_files = std::collections::HashSet::new();
 
@@ -123,6 +122,12 @@ impl Verifier {
                 .get(component_name)
                 .ok_or_else(|| anyhow::anyhow!("Unknown component"))?;
 
+            if let Some(deprecation_summary) = component_reflection.deprecation_summary {
+                anyhow::bail!(
+                    "Component is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation notice: {deprecation_summary:?}"
+                );
+            }
+
             let list_array = column.as_list_opt::<i32>().ok_or_else(|| {
                 anyhow::anyhow!("Expected list array, found {:?}", column.data_type())
             })?;
@@ -145,6 +150,12 @@ impl Verifier {
                     .get(archetype_name)
                     .ok_or_else(|| anyhow::anyhow!("Unknown archetype: {archetype_name:?}"))?;
 
+                if let Some(deprecation_summary) = archetype_reflection.deprecation_summary {
+                    anyhow::bail!(
+                        "Archetype {archetype_name:?} is deprecated. Deprecated types should be migrated on ingestion in re_sorbet. Deprecation summary: {deprecation_summary:?}"
+                    );
+                }
+
                 if let Some(archetype_field_name) = archetype_field_name {
                     // Verify archetype field.
                     // We may want to have a flag to allow some of this?
@@ -152,8 +163,8 @@ impl Verifier {
                         .get_field(archetype_field_name)
                         .ok_or_else(|| {
                             anyhow::anyhow!(
-                                "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {:?}",
-                                archetype_reflection.fields.iter().map(|field| field.name)
+                                "Input column referred to the archetype field name {archetype_field_name:?} of {archetype_name:?}, which only has the fields: {}",
+                                archetype_reflection.fields.iter().map(|field| field.name).join(" ")
                             )
                         })?;
 

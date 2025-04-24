@@ -47,7 +47,7 @@ fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: 
             };
 
             let time_range = db
-                .time_range_for(&timeline)
+                .time_range_for(timeline.name())
                 .unwrap_or(ResolvedTimeRange::EMPTY);
             let time_ranges_ui =
                 TimeRangesUi::new(row_rect.x_range(), time_range.into(), &[time_range]);
@@ -114,7 +114,7 @@ fn add_data(
             re_chunk_store::RowId::new(),
             re_log_types::TimePoint::default().with(
                 timeline,
-                re_log_types::TimeInt::from_milliseconds(re_log_types::NonMinI64::ZERO),
+                re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::ZERO),
             ),
             &re_types::archetypes::Points3D::new([(10.0, 10.0, 10.0)]),
         );
@@ -125,9 +125,7 @@ fn add_data(
                 re_chunk_store::RowId::new(),
                 re_log_types::TimePoint::default().with(
                     timeline,
-                    re_log_types::TimeInt::from_milliseconds(
-                        (*time).try_into().unwrap_or_default(),
-                    ),
+                    re_log_types::TimeInt::from_millis((*time).try_into().unwrap_or_default()),
                 ),
                 &component,
             );

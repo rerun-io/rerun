@@ -33,22 +33,22 @@ pub use self::recording_stream::{
     RecordingStreamResult,
 };
 
-/// The default port of a Rerun gRPC server.
-pub const DEFAULT_SERVER_PORT: u16 = 9876;
+/// The default port of a Rerun gRPC /proxy server.
+pub const DEFAULT_SERVER_PORT: u16 = re_uri::DEFAULT_PROXY_PORT;
 
-/// The default URL of a Rerun gRPC server.
+/// The default URL of a Rerun gRPC /proxy server.
 ///
 /// This isn't used to _host_ the server, only to _connect_ to it.
 pub const DEFAULT_CONNECT_URL: &str =
     const_format::concatcp!("rerun+http://127.0.0.1:", DEFAULT_SERVER_PORT, "/proxy");
 
-/// The default address of a Rerun TCP server which an SDK connects to.
+/// The default address of a Rerun gRPC server which an SDK connects to.
 #[deprecated(since = "0.22.0", note = "migrate to connect_grpc")]
 pub fn default_server_addr() -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], DEFAULT_SERVER_PORT))
 }
 
-/// The default amount of time to wait for the TCP connection to resume during a flush
+/// The default amount of time to wait for the gRPC connection to resume during a flush
 #[allow(clippy::unnecessary_wraps)]
 pub fn default_flush_timeout() -> Option<std::time::Duration> {
     // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
@@ -58,8 +58,8 @@ pub fn default_flush_timeout() -> Option<std::time::Duration> {
 pub use re_log_types::{
     entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
 };
-
 pub use re_memory::MemoryLimit;
+pub use re_types::archetypes::RecordingProperties;
 
 pub use global::cleanup_if_forked_child;
 
@@ -83,9 +83,7 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// This is how you select whether the log stream ends up
 /// sent over gRPC, written to file, etc.
 pub mod sink {
-    pub use crate::binary_stream_sink::{
-        BinaryStreamSink, BinaryStreamSinkError, BinaryStreamStorage,
-    };
+    pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
     pub use crate::log_sink::{BufferedSink, CallbackSink, LogSink, MemorySink, MemorySinkStorage};
 
     pub use crate::log_sink::GrpcSink;
@@ -105,11 +103,11 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{IndexCell, Time, TimeInt, TimePoint, TimeType, Timeline};
+    pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
 }
-pub use time::{IndexCell, Time, TimePoint, Timeline};
+pub use time::{TimeCell, TimePoint, Timeline};
 
-pub use re_types_core::{
+pub use re_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
     ComponentName, DatatypeName, DeserializationError, DeserializationResult,
     GenericIndicatorComponent, Loggable, LoggableBatch, NamedIndicatorComponent,
@@ -124,6 +122,10 @@ pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, Loaded
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;
+
+/// Method for spawning a gRPC server and streaming the SDK log stream to it.
+#[cfg(feature = "server")]
+pub mod grpc_server;
 
 /// Re-exports of other crates.
 pub mod external {
@@ -140,6 +142,9 @@ pub mod external {
     #[cfg(feature = "data_loaders")]
     pub use re_data_loader;
 }
+
+#[cfg(feature = "web_viewer")]
+pub use web_viewer::serve_web_viewer;
 
 // -----
 // Misc:
@@ -208,7 +213,6 @@ pub fn new_store_info(
         application_id: application_id.into(),
         store_id: StoreId::random(StoreKind::Recording),
         cloned_from: None,
-        started: re_log_types::Time::now(),
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),

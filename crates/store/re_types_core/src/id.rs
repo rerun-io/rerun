@@ -11,6 +11,11 @@ use crate::Loggable as _;
 ///
 /// There is no relationship whatsoever between a [`ChunkId`] and the [`RowId`]s within that chunk.
 ///
+/// ### String format
+/// Example: `chunk_182342300C5F8C327a7b4a6e5a379ac4`.
+/// The "chunk_" prefix is optional when parsing.
+/// See [`re_tuid`] docs for explanations of TUID namespaces.
+///
 /// ### Uniqueness
 ///
 /// [`ChunkId`] are assumed unique within a single Recording.
@@ -35,15 +40,33 @@ pub struct ChunkId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for ChunkId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        write!(f, "chunk_{}", self.0)
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid ChunkId: {0}")]
+pub struct InvalidChunkIdError(String);
+
 impl std::str::FromStr for ChunkId {
-    type Err = std::num::ParseIntError;
+    type Err = InvalidChunkIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        re_tuid::Tuid::from_str(s).map(Self)
+        let tuid_str = if let Some((namespace, tuid_str)) = s.split_once('_') {
+            if namespace == "chunk" {
+                tuid_str
+            } else {
+                return Err(InvalidChunkIdError(format!(
+                    "Expected chunk_ prefix, got {s:?}"
+                )));
+            }
+        } else {
+            s
+        };
+
+        re_tuid::Tuid::from_str(tuid_str)
+            .map(Self)
+            .map_err(|err| InvalidChunkIdError(format!("Invalid TUID: {err}")))
     }
 }
 
@@ -56,6 +79,16 @@ impl ChunkId {
     #[inline]
     pub fn new() -> Self {
         Self(re_tuid::Tuid::new())
+    }
+
+    #[inline]
+    pub fn from_tuid(tuid: re_tuid::Tuid) -> Self {
+        Self(tuid)
+    }
+
+    #[inline]
+    pub fn as_tuid(&self) -> re_tuid::Tuid {
+        self.0
     }
 
     /// Returns the next logical [`ChunkId`].
@@ -123,6 +156,11 @@ crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the
 ///
 /// There is no relationship whatsoever between a [`ChunkId`] and the [`RowId`]s within that chunk.
 ///
+/// ### String format
+/// Example: `row_182342300C5F8C327a7b4a6e5a379ac4`.
+/// The "row_" prefix is optional when parsing.
+/// See [`re_tuid`] docs for explanations of TUID namespaces.
+///
 /// ### Uniqueness
 ///
 /// Duplicated [`RowId`]s within a single recording is considered undefined behavior.
@@ -140,7 +178,7 @@ crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the
 ///
 /// In pseudo-code:
 /// ```text
-/// rr.set_index("frame", sequence=10)
+/// rr.set_time("frame", sequence=10)
 ///
 /// rr.log("my_entity", point1, row_id=#1)
 /// rr.log("my_entity", point2, row_id=#0)
@@ -176,15 +214,33 @@ pub struct RowId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for RowId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
+        write!(f, "row_{}", self.0)
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+#[error("Invalid RowId: {0}")]
+pub struct InvalidRowIdError(String);
+
 impl std::str::FromStr for RowId {
-    type Err = std::num::ParseIntError;
+    type Err = InvalidRowIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        re_tuid::Tuid::from_str(s).map(Self)
+        let tuid_str = if let Some((namespace, tuid_str)) = s.split_once('_') {
+            if namespace == "row" {
+                tuid_str
+            } else {
+                return Err(InvalidRowIdError(format!(
+                    "Expected row_ prefix, got {s:?}"
+                )));
+            }
+        } else {
+            s
+        };
+
+        re_tuid::Tuid::from_str(tuid_str)
+            .map(Self)
+            .map_err(|err| InvalidRowIdError(format!("Invalid TUID: {err}")))
     }
 }
 
@@ -202,6 +258,11 @@ impl RowId {
     #[inline]
     pub fn from_tuid(tuid: re_tuid::Tuid) -> Self {
         Self(tuid)
+    }
+
+    #[inline]
+    pub fn as_tuid(&self) -> re_tuid::Tuid {
+        self.0
     }
 
     /// Returns the next logical [`RowId`].
@@ -272,3 +333,31 @@ impl std::ops::DerefMut for RowId {
 }
 
 crate::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
+
+#[test]
+fn test_row_id_parse() {
+    let tuid: re_tuid::Tuid = "182342300C5F8C327a7b4a6e5a379ac4".parse().unwrap();
+
+    assert_eq!(
+        RowId(tuid).to_string(),
+        "row_182342300C5F8C327a7b4a6e5a379ac4"
+    );
+
+    assert_eq!(
+        "182342300C5F8C327a7b4a6e5a379ac4"
+            .parse::<RowId>()
+            .unwrap()
+            .0,
+        tuid
+    );
+    assert_eq!(
+        "row_182342300C5F8C327a7b4a6e5a379ac4"
+            .parse::<RowId>()
+            .unwrap()
+            .0,
+        tuid
+    );
+    assert!("chunk_182342300C5F8C327a7b4a6e5a379ac4"
+        .parse::<RowId>()
+        .is_err());
+}

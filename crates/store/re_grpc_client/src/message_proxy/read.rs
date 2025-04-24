@@ -10,19 +10,18 @@ use crate::TonicStatusError;
 use crate::MAX_DECODING_MESSAGE_SIZE;
 
 pub fn stream(
-    endpoint: re_uri::ProxyEndpoint,
+    uri: re_uri::ProxyUri,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
-    re_log::debug!("Loading {endpoint} via gRPC…");
+    re_log::debug!("Loading {uri} via gRPC…");
 
-    let url = format!("{endpoint}");
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::MessageProxy { url: url.clone() },
-        re_smart_channel::SmartChannelSource::MessageProxy { url },
+        re_smart_channel::SmartMessageSource::MessageProxy(uri.clone()),
+        re_smart_channel::SmartChannelSource::MessageProxy(uri.clone()),
     );
 
     crate::spawn_future(async move {
-        if let Err(err) = stream_async(endpoint, &tx, on_msg).await {
+        if let Err(err) = stream_async(uri, &tx, on_msg).await {
             tx.quit(Some(Box::new(err))).ok();
         }
     });
@@ -31,12 +30,12 @@ pub fn stream(
 }
 
 async fn stream_async(
-    endpoint: re_uri::ProxyEndpoint,
+    uri: re_uri::ProxyUri,
     tx: &re_smart_channel::Sender<LogMsg>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
     let mut client = {
-        let url = endpoint.origin.as_url();
+        let url = uri.origin.as_url();
 
         #[cfg(target_arch = "wasm32")]
         let tonic_client = {
@@ -49,12 +48,11 @@ async fn stream_async(
         #[cfg(not(target_arch = "wasm32"))]
         let tonic_client = { tonic::transport::Endpoint::new(url)?.connect().await? };
 
-        // TODO(#8411): figure out the right size for this
         MessageProxyServiceClient::new(tonic_client)
             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
     };
 
-    re_log::debug!("Streaming messages from gRPC endpoint {endpoint}");
+    re_log::debug!("Streaming messages from gRPC endpoint {uri}");
 
     let mut stream = client
         .read_messages(ReadMessagesRequest {})

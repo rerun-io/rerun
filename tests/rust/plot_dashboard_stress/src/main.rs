@@ -136,7 +136,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     #[allow(clippy::unchecked_duration_subtraction)]
     for offset in offsets {
         if args.temporal_batch_size.is_none() {
-            rec.set_duration_seconds("sim_time", sim_times[offset]);
+            rec.set_duration_secs("sim_time", sim_times[offset]);
         }
 
         // Log
@@ -152,16 +152,14 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
                     let values = series_values.iter().skip(offset).take(temporal_batch_size);
                     rec.send_columns(
                         path,
-                        [rerun::TimeColumn::new_duration_seconds(
+                        [rerun::TimeColumn::new_duration_secs(
                             "sim_time",
                             seconds.copied(),
                         )],
-                        rerun::Scalar::update_fields()
-                            .with_many_scalar(values.copied())
-                            .columns_of_unit_batches()?,
+                        rerun::Scalars::new(values.copied()).columns_of_unit_batches()?,
                     )?;
                 } else {
-                    rec.log(path, &rerun::Scalar::new(series_values[offset]))?;
+                    rec.log(path, &rerun::Scalars::single(series_values[offset]))?;
                 }
             }
         }
@@ -197,11 +195,11 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         let total_elapsed = total_start_time.elapsed();
         if total_elapsed.as_secs_f64() >= 1.0 {
             println!(
-                        "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
-                        total_elapsed,
-                        total_num_scalars as f64 / total_elapsed.as_secs_f64(),
-                        max_load * 100.0,
-                    );
+                "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
+                total_elapsed,
+                total_num_scalars as f64 / total_elapsed.as_secs_f64(),
+                max_load * 100.0,
+            );
 
             let elapsed_debt =
                 std::time::Duration::from_secs_f64(total_elapsed.as_secs_f64().fract());
@@ -214,11 +212,11 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     if total_num_scalars > 0 {
         let total_elapsed = total_start_time.elapsed();
         println!(
-        "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
-        total_elapsed,
-        total_num_scalars as f64 / total_elapsed.as_secs_f64(),
-        max_load * 100.0,
-    );
+            "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
+            total_elapsed,
+            total_num_scalars as f64 / total_elapsed.as_secs_f64(),
+            max_load * 100.0,
+        );
     }
 
     Ok(())

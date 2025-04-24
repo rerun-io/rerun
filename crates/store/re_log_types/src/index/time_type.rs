@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arrow::datatypes::DataType as ArrowDataType;
 
-use crate::{ResolvedTimeRange, Time, TimestampFormat};
+use crate::{ResolvedTimeRange, TimestampFormat};
 
 use super::TimeInt;
 
@@ -10,18 +10,22 @@ use super::TimeInt;
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum TimeType {
-    /// Normal wall time, encoded as nanoseconds.
-    Time,
-
     /// Used e.g. for frames in a film.
     Sequence,
+
+    /// Duration measured in nanoseconds.
+    DurationNs,
+
+    /// Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
+    TimestampNs,
 }
 
 impl std::fmt::Display for TimeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Time => f.write_str("time"),
             Self::Sequence => f.write_str("sequence"),
+            Self::DurationNs => f.write_str("duration"),
+            Self::TimestampNs => f.write_str("timestamp"),
         }
     }
 }
@@ -30,8 +34,9 @@ impl TimeType {
     #[inline]
     pub(crate) fn hash(&self) -> u64 {
         match self {
-            Self::Time => 0,
-            Self::Sequence => 1,
+            Self::Sequence => 0,
+            Self::DurationNs => 1,
+            Self::TimestampNs => 2,
         }
     }
 
@@ -59,20 +64,31 @@ impl TimeType {
             "∞" | "+∞" | "inf" | "infinity" => Some(TimeInt::MAX),
             _ => {
                 match self {
-                    Self::Time => {
-                        if let Some(int) = re_format::parse_i64(s) {
-                            // If it's just numbers, interpret it as a raw time int.
-                            TimeInt::try_from(int).ok()
-                        } else {
-                            // Otherwise, try to make sense of the time string depending on the timezone setting.
-                            TimeInt::try_from(Time::parse(s, timestamp_format)?).ok()
-                        }
-                    }
                     Self::Sequence => {
                         if let Some(s) = s.strip_prefix('#') {
                             TimeInt::try_from(re_format::parse_i64(s)?).ok()
                         } else {
                             TimeInt::try_from(re_format::parse_i64(s)?).ok()
+                        }
+                    }
+                    Self::DurationNs => {
+                        if let Some(nanos) = re_format::parse_i64(s) {
+                            // If it's just numbers, interpret it as a raw nanoseconds
+                            nanos.try_into().ok()
+                        } else {
+                            s.parse::<super::Duration>()
+                                .ok()
+                                .map(|duration| duration.into())
+                        }
+                    }
+                    Self::TimestampNs => {
+                        if let Some(nanos) = re_format::parse_i64(s) {
+                            // If it's just numbers, interpret it as a raw nanoseconds since epoch
+                            nanos.try_into().ok()
+                        } else {
+                            // Otherwise, try to make sense of the time string depending on the timezone setting:
+                            super::Timestamp::parse_with_format(s, timestamp_format)
+                                .map(|timestamp| timestamp.into())
                         }
                     }
                 }
@@ -91,8 +107,9 @@ impl TimeType {
             TimeInt::MIN => "−∞".into(),
             TimeInt::MAX => "+∞".into(),
             _ => match self {
-                Self::Time => Time::from(time_int).format(timestamp_format),
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
+                Self::DurationNs => super::Duration::from(time_int).format_secs(),
+                Self::TimestampNs => super::Timestamp::from(time_int).format(timestamp_format),
             },
         }
     }
@@ -124,17 +141,33 @@ impl TimeType {
     #[inline]
     pub fn datatype(self) -> ArrowDataType {
         match self {
-            Self::Time => ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None),
             Self::Sequence => ArrowDataType::Int64,
+            Self::DurationNs => ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond),
+            Self::TimestampNs => {
+                // TODO(zehiko) add back timezone support (#9310)
+                ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, None)
+            }
         }
     }
 
     pub fn from_arrow_datatype(datatype: &ArrowDataType) -> Option<Self> {
         match datatype {
-            // TODO(#8635): differentiate between absolute and relative time
-            ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, _)
-            | ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond) => Some(Self::Time),
             ArrowDataType::Int64 => Some(Self::Sequence),
+            ArrowDataType::Duration(arrow::datatypes::TimeUnit::Nanosecond) => {
+                Some(Self::DurationNs)
+            }
+            ArrowDataType::Timestamp(arrow::datatypes::TimeUnit::Nanosecond, timezone) => {
+                // If the timezone is empty/None, it means we don't know the epoch.
+                // But we will assume it's UTC anyway.
+                if timezone.as_ref().is_none_or(|tz| tz.is_empty()) {
+                    // TODO(#9310): warn when timezone is missing
+                } else {
+                    // Regardless of the timezone, that actual values are in UTC (per arrow standard)
+                    // The timezone is mostly a hint on how to _display_ the time, and we currently ignore that.
+                }
+
+                Some(Self::TimestampNs)
+            }
             _ => None,
         }
     }
@@ -146,8 +179,10 @@ impl TimeType {
     ) -> arrow::array::ArrayRef {
         let times = times.into();
         match self {
-            Self::Time => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
             Self::Sequence => Arc::new(arrow::array::Int64Array::new(times, None)),
+            Self::DurationNs => Arc::new(arrow::array::DurationNanosecondArray::new(times, None)),
+            // TODO(zehiko) add back timezone support (#9310)
+            Self::TimestampNs => Arc::new(arrow::array::TimestampNanosecondArray::new(times, None)),
         }
     }
 
@@ -157,18 +192,6 @@ impl TimeType {
         times: impl Iterator<Item = TimeInt>,
     ) -> arrow::array::ArrayRef {
         match self {
-            Self::Time => Arc::new(
-                times
-                    .map(|time| {
-                        if time.is_static() {
-                            None
-                        } else {
-                            Some(time.as_i64())
-                        }
-                    })
-                    .collect::<arrow::array::TimestampNanosecondArray>(),
-            ),
-
             Self::Sequence => Arc::new(
                 times
                     .map(|time| {
@@ -179,6 +202,31 @@ impl TimeType {
                         }
                     })
                     .collect::<arrow::array::Int64Array>(),
+            ),
+
+            Self::DurationNs => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    .collect::<arrow::array::DurationNanosecondArray>(),
+            ),
+
+            Self::TimestampNs => Arc::new(
+                times
+                    .map(|time| {
+                        if time.is_static() {
+                            None
+                        } else {
+                            Some(time.as_i64())
+                        }
+                    })
+                    // TODO(zehiko) add back timezone support (#9310)
+                    .collect::<arrow::array::TimestampNanosecondArray>(),
             ),
         }
     }

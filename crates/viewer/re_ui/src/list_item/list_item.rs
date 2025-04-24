@@ -1,10 +1,11 @@
 //! Core list item functionality.
 
 use egui::emath::GuiRounding as _;
-use egui::{NumExt as _, Response, Shape, Ui};
+use egui::style::Widgets;
+use egui::{Color32, NumExt as _, Response, Shape, Ui};
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::{DesignTokens, UiExt as _};
+use crate::{design_tokens, DesignTokens, Scale, UiExt as _};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -43,12 +44,14 @@ pub struct ShowCollapsingResponse<R> {
 pub struct ListItem {
     pub interactive: bool,
     pub selected: bool,
+    pub active: bool,
     pub draggable: bool,
     pub drag_target: bool,
     pub force_hovered: bool,
     force_background: Option<egui::Color32>,
     pub collapse_openness: Option<f32>,
     height: f32,
+    y_offset: f32,
     render_offscreen: bool,
 }
 
@@ -57,13 +60,93 @@ impl Default for ListItem {
         Self {
             interactive: true,
             selected: false,
+            active: false,
             draggable: false,
             drag_target: false,
             force_hovered: false,
             force_background: None,
             collapse_openness: None,
             height: DesignTokens::list_item_height(),
+            y_offset: 0.0,
             render_offscreen: true,
+        }
+    }
+}
+
+/// Implemented after <https://www.figma.com/design/04eHlTWW361rIs3YesfTJo/Data-platform?node-id=813-9806&t=Kofxiju5Tn4DszG2-1>
+#[derive(Debug, Clone, Copy)]
+pub struct ListVisuals {
+    hovered: bool,
+    selected: bool,
+    active: bool,
+    interactive: bool,
+}
+
+impl ListVisuals {
+    pub fn bg_color(self) -> Option<Color32> {
+        if self.selected {
+            Some(design_tokens().color_table.blue(Scale::S350))
+        } else if self.hovered {
+            Some(design_tokens().color_table.gray(Scale::S250))
+        } else if self.active {
+            Some(design_tokens().color_table.gray(Scale::S200))
+        } else {
+            None
+        }
+    }
+
+    pub fn text_color(self) -> Color32 {
+        if self.selected {
+            design_tokens().color_table.blue(Scale::S800)
+        } else if self.active {
+            design_tokens().color_table.gray(Scale::S1000)
+        } else if !self.interactive {
+            design_tokens().color_table.gray(Scale::S550)
+        } else if self.hovered {
+            design_tokens().color_table.gray(Scale::S800)
+        } else {
+            design_tokens().color_table.gray(Scale::S700)
+        }
+    }
+
+    pub fn icon_tint(self) -> Color32 {
+        if self.selected {
+            design_tokens().color_table.blue(Scale::S600)
+        } else if self.active {
+            design_tokens().color_table.gray(Scale::S800)
+        } else if self.hovered {
+            design_tokens().color_table.gray(Scale::S600)
+        } else {
+            design_tokens().color_table.gray(Scale::S500)
+        }
+    }
+
+    pub fn interactive_icon_tint(self, icon_hovered: bool) -> Color32 {
+        if self.selected && icon_hovered {
+            design_tokens().color_table.blue(Scale::S800)
+        } else if icon_hovered {
+            design_tokens().color_table.gray(Scale::S800)
+        } else {
+            self.icon_tint()
+        }
+    }
+
+    fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
+        if !self.hovered && !self.selected && !self.active && !icon_hovered {
+            design_tokens().color_table.gray(Scale::S700)
+        } else {
+            self.interactive_icon_tint(icon_hovered)
+        }
+    }
+
+    fn apply_visuals(self, visuals: &mut Widgets) {
+        if self.selected {
+            visuals.hovered.bg_fill = design_tokens().color_table.blue(Scale::S400);
+            visuals.hovered.weak_bg_fill = design_tokens().color_table.blue(Scale::S400);
+            visuals.hovered.fg_stroke.color = design_tokens().color_table.blue(Scale::S800);
+            visuals.active.bg_fill = design_tokens().color_table.blue(Scale::S450);
+            visuals.active.weak_bg_fill = design_tokens().color_table.blue(Scale::S450);
+            visuals.active.fg_stroke.color = design_tokens().color_table.blue(Scale::S850);
         }
     }
 }
@@ -90,6 +173,13 @@ impl ListItem {
     #[inline]
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
+        self
+    }
+
+    /// Set the active state of the item.
+    #[inline]
+    pub fn active(mut self, active: bool) -> Self {
+        self.active = active;
         self
     }
 
@@ -139,6 +229,24 @@ impl ListItem {
     #[inline]
     pub fn with_height(mut self, height: f32) -> Self {
         self.height = height;
+        self
+    }
+
+    /// Set the item's vertical offset.
+    ///
+    /// NOTE: Can only be positive.
+    /// Default is 0.0.
+    #[inline]
+    pub fn with_y_offset(mut self, y_offset: f32) -> Self {
+        self.y_offset = y_offset;
+        self
+    }
+
+    /// Set the item's vertical offset to `DesignTokens::list_header_vertical_offset()`.
+    /// For best results, use this with [`super::LabelContent::header`].
+    #[inline]
+    pub fn header(mut self) -> Self {
+        self.y_offset = DesignTokens::list_header_vertical_offset();
         self
     }
 
@@ -282,14 +390,21 @@ impl ListItem {
         let Self {
             interactive,
             selected,
+            active,
             draggable,
             drag_target,
             force_hovered,
             force_background,
             collapse_openness,
-            height,
+            mut height,
+            y_offset,
             render_offscreen,
         } = self;
+
+        if y_offset != 0.0 {
+            ui.add_space(y_offset);
+            height -= y_offset;
+        }
 
         let collapse_extra = if collapse_openness.is_some() {
             DesignTokens::collapsing_triangle_area().x + DesignTokens::text_to_icon_padding()
@@ -359,9 +474,17 @@ impl ListItem {
             style_response.flags |= egui::response::Flags::HOVERED;
         }
 
-        let mut collapse_response = None;
+        let visuals = ListVisuals {
+            hovered: (style_response.hovered() || style_response.contains_pointer())
+                && interactive
+                && !drag_target
+                && !egui::DragAndDrop::has_any_payload(ui.ctx()),
+            selected,
+            active,
+            interactive,
+        };
 
-        let visuals = ui.style().interact_selectable(&style_response, selected);
+        let mut collapse_response = None;
 
         let background_frame = ui.painter().add(egui::Shape::Noop);
 
@@ -379,11 +502,10 @@ impl ListItem {
                 id.unwrap_or(ui.id()).with("collapsing_triangle"),
                 egui::Sense::click(),
             );
-            ui.paint_collapsing_triangle(
-                openness,
-                triangle_rect.center(),
-                ui.style().interact(&triangle_response),
-            );
+
+            let color = visuals.collapse_button_color(triangle_response.hovered());
+
+            ui.paint_collapsing_triangle(openness, triangle_rect.center(), color);
             collapse_response = Some(triangle_response);
         }
 
@@ -399,8 +521,13 @@ impl ListItem {
             response: &style_response,
             list_item: &self,
             layout_info,
+            visuals,
         };
+
+        let prev_widgets = ui.style_mut().visuals.widgets.clone();
+        visuals.apply_visuals(&mut ui.style_mut().visuals.widgets);
         content.ui(ui, &content_ctx);
+        ui.style_mut().visuals.widgets = prev_widgets;
 
         if ui.is_rect_visible(bg_rect) {
             // Ensure the background highlight is drawn over round pixel coordinates. Otherwise,
@@ -421,32 +548,7 @@ impl ListItem {
                 );
             }
 
-            let bg_fill = force_background.or_else(|| {
-                if !drag_target && interactive {
-                    if !response.hovered()
-                        && ui.rect_contains_pointer(bg_rect)
-                        && !egui::DragAndDrop::has_any_payload(ui.ctx())
-                    {
-                        // if some part of the content is active and hovered, our background should
-                        // become dimmer
-                        Some(visuals.bg_fill)
-                    } else if selected
-                        || style_response.hovered()
-                        || style_response.highlighted()
-                        || style_response.has_focus()
-                    {
-                        Some(visuals.weak_bg_fill)
-                    } else {
-                        None
-                    }
-                } else if selected {
-                    Some(visuals.weak_bg_fill)
-                } else {
-                    None
-                }
-            });
-
-            if let Some(bg_fill) = bg_fill {
+            if let Some(bg_fill) = force_background.or_else(|| visuals.bg_color()) {
                 ui.painter().set(
                     background_frame,
                     Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),

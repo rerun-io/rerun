@@ -18,6 +18,12 @@
 [snippets_ref]
 features = [
   [
+    "Setting recording properties",
+    [
+      "concepts/recording_properties",
+    ],
+  ],
+  [
     "Update rows",
     [
       "archetypes/arrows3d_row_updates",
@@ -68,6 +74,9 @@ features = [
   ],
 ]
 
+
+# --------------------------------------------------------------------------------------------------
+
 # These entries won't run at all.
 #
 # NOTE: Non-runnable python snippets will have to also be added the `rerun_py/pyproject.toml`
@@ -76,7 +85,11 @@ features = [
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
-"__init__" = ["py"] # That init file is to make mypy happy.
+"./__init__" = [ # That init file is to make mypy happy.
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = [ # python-specific check
   "cpp",
   "rust",
@@ -85,6 +98,11 @@ features = [
   "py",
   "cpp",
   "rust",
+]
+"concepts/send_recording" = [
+  "py",   # Requires context (an RRD file to be exported by the user)
+  "cpp",  # Not implemented for C++
+  "rust", # Requires context (an RRD file to be exported by the user)
 ]
 "concepts/static/log_static" = [ # pseudo-code
   "py",
@@ -131,6 +149,11 @@ features = [
   "cpp",
   "rust",
 ]
+"howto/send_table" = [
+  "py",   # Requires a server to connect to
+  "cpp",  # Doesn't exist
+  "rust", # Doesn't exist
+]
 "views" = [
   "cpp",  # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented
@@ -138,6 +161,10 @@ features = [
 "archetypes/image_advanced" = [
   "cpp",  # Missing examples
   "rust", # Missing examples
+]
+"archetypes/entity_behavior" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
@@ -209,11 +236,18 @@ features = [
   "rust", # Not implemented
 ]
 
+# --------------------------------------------------------------------------------------------------
+
 # These entries will run but their results won't be compared to the baseline.
 #
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
+"./__init__" = [ # That init file is to make mypy happy.
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = ["cpp", "rust"] # Only python
 "concepts/how_helix_was_logged" = ["cpp", "rust"] # Only python
 "concepts/different_data_per_timeline" = [
@@ -246,24 +280,15 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "rust",
 ]
 "archetypes/arrows3d_simple" = [
-  "py",  # Python uses doubles
-  "cpp", # Trigonometry doesn't work out the same with all C++ toolchains (*some* Windows machines yield a different result)
+  "py", # Python has different colors. TODO(emilk): fix that
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
-]
-"archetypes/capsules3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
-  "cpp",
-  "py",
-  "rust",
 ]
 "archetypes/ellipsoids3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
-]
-"archetypes/mesh3d_partial_updates" = [ # Python uses doubles
-  "py",
 ]
 "archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
@@ -280,9 +305,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
-  "cpp",
-]
 "archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -293,31 +315,12 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"archetypes/transform3d_axes" = [ # TODO(#3235): Degree to radian conversion is slightly different.
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
-  "py",
-]
-"archetypes/instance_poses3d_combined" = [ # TODO(#3235): Slight floating point differences in point grid.
-  "cpp",
-  "py",
-  "rust",
-]
-"archetypes/mesh3d_instancing" = [ # Python uses doubles
-  "py",
-]
-"archetypes/series_line_style" = [
-  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
-]
-"archetypes/series_point_style" = [
-  "cpp", # somehow, C++ yields a different result, see <https://github.com/rerun-io/rerun/pull/8851>
-]
+
+# -----------------------------------------------------------------------------
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
+"concepts/send_recording" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
 "archetypes/video_auto_frames" = [

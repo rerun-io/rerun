@@ -3,6 +3,7 @@
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
+use re_log_types::TableId;
 use re_viewer_context::{
     ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
 };
@@ -23,6 +24,7 @@ use actions::{
     show_hide::{HideAction, ShowAction},
     CopyEntityPathToClipboard,
 };
+
 use sub_menu::SubMenu;
 
 /// Controls how [`context_menu_ui_for_item`] should handle the current selection state.
@@ -358,6 +360,7 @@ trait ContextMenuAction {
         for (item, _) in ctx.selection.iter() {
             match item {
                 Item::AppId(app_id) => self.process_app_id(ctx, app_id),
+                Item::TableId(table_id) => self.process_table_id(ctx, table_id),
                 Item::DataSource(data_source) => self.process_data_source(ctx, data_source),
                 Item::StoreId(store_id) => self.process_store_id(ctx, store_id),
                 Item::ComponentPath(component_path) => {
@@ -369,6 +372,8 @@ trait ContextMenuAction {
                     self.process_data_result(ctx, view_id, instance_path);
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
+                Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
+                Item::RedapEntry(entry_id) => self.process_redap_entry(ctx, entry_id),
             }
         }
     }
@@ -386,8 +391,22 @@ trait ContextMenuAction {
     /// Process a single recording.
     fn process_store_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &re_log_types::StoreId) {}
 
+    /// Process a table.
+    fn process_table_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &TableId) {}
+
     /// Process a single container.
     fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
+
+    /// Process a single redap server.
+    fn process_redap_server(&self, _ctx: &ContextMenuContext<'_>, _origin: &re_uri::Origin) {}
+
+    /// Process a single redap entry.
+    fn process_redap_entry(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _entry_id: &re_log_types::EntryId,
+    ) {
+    }
 
     /// Process a single view.
     fn process_view(&self, _ctx: &ContextMenuContext<'_>, _view_id: &ViewId) {}

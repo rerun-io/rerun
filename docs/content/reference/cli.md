@@ -8,7 +8,7 @@ order: 0
 
 The Rerun command-line interface:
 * Spawn viewers to visualize Rerun recordings and other supported formats.
-* Start TCP and WebSocket servers to share recordings over the network, on native or web.
+* Start gRPC servers to share recordings over the network, on native or web.
 * Inspect, edit and filter Rerun recordings.
 
 
@@ -25,7 +25,7 @@ The Rerun command-line interface:
 
 * `<URL_OR_PATHS>`
 > Any combination of:
-> - A WebSocket url to a Rerun server
+> - A gRPC url to a Rerun server
 > - A path to a Rerun .rrd recording
 > - A path to a Rerun .rbl blueprint
 > - An HTTP(S) URL to an .rrd or .rbl file to load
@@ -55,7 +55,7 @@ The Rerun command-line interface:
 > [Default: `75%`]
 
 * `--server-memory-limit <SERVER_MEMORY_LIMIT>`
-> An upper limit on how much memory the WebSocket server should use.
+> An upper limit on how much memory the gRPC server should use.
 > The server buffers log messages for the benefit of late-arriving viewers.
 > When this limit is reached, Rerun will drop the oldest data.
 > Example: `16GB` or `50%` (of system total).
@@ -72,7 +72,7 @@ The Rerun command-line interface:
 > [Default: `true`]
 
 * `--port <PORT>`
-> What TCP port do we listen to for SDKs to connect to.
+> What port do we listen to for SDKs to connect to over gRPC.
 >
 > [Default: `9876`]
 
@@ -91,12 +91,18 @@ The Rerun command-line interface:
 > Deprecated: use `--serve-web` instead.
 
 * `--serve-web <SERVE_WEB>`
-> Serve the recordings over WebSocket to one or more Rerun Viewers.
+> Serve the recordings over gRPC to one or more Rerun Viewers.
 >
-> This will also host a web-viewer over HTTP that can connect to the WebSocket address, but you can also connect with the native binary.
+> This will also host a web-viewer over HTTP that can connect to the gRPC address, but you can also connect with the native binary.
 >
-> `rerun --serve-web` will act like a proxy, listening for incoming TCP connection from logging SDKs, and forwarding it to Rerun viewers.
+> `rerun --serve-web` will act like a proxy, listening for incoming gRPC connection from logging SDKs, and forwarding it to Rerun viewers.
 >
+> [Default: `false`]
+
+* `--serve-grpc <SERVE_GRPC>`
+> Serve the recordings over gRPC to one or more Rerun Viewers.
+>
+> `rerun --serve-grpc` will act like a proxy, listening for incoming gRPC connection from logging SDKs, and forwarding it to Rerun viewers.
 > [Default: `false`]
 
 * `--expect-data-soon <EXPECT_DATA_SOON>`
@@ -141,13 +147,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--detach-process <DETACH_PROCESS>`
+> Detach Rerun Viewer process from the application process.
+>
+> [Default: `true`]
+
 * `--window-size <WINDOW_SIZE>`
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
-
-* `--ws-server-port <WS_SERVER_PORT>`
-> What port do we listen to for incoming websocket connections from the viewer. A port of 0 will pick a random port.
->
-> [Default: `9877`]
 
 * `--renderer <RENDERER>`
 > Override the default graphics backend and for a specific one instead.

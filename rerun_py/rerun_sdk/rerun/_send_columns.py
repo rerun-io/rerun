@@ -27,11 +27,11 @@ class TimeColumnLike(Protocol):
         ...
 
 
-class IndexColumn(TimeColumnLike):
+class TimeColumn(TimeColumnLike):
     """
     A column of index (time) values.
 
-    Columnar equivalent to [`rerun.set_index`][].
+    Columnar equivalent to [`rerun.set_time`][].
     """
 
     # These overloads ensures that mypy can catch errors that would otherwise not be caught until runtime.
@@ -43,7 +43,7 @@ class IndexColumn(TimeColumnLike):
         self,
         timeline: str,
         *,
-        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64],
+        duration: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64],
     ) -> None: ...
 
     @overload
@@ -51,7 +51,7 @@ class IndexColumn(TimeColumnLike):
         self,
         timeline: str,
         *,
-        datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64],
+        timestamp: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64],
     ) -> None: ...
 
     def __init__(
@@ -59,17 +59,17 @@ class IndexColumn(TimeColumnLike):
         timeline: str,
         *,
         sequence: Iterable[int] | None = None,
-        timedelta: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
-        datetime: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64] | None = None,
+        duration: Iterable[int] | Iterable[float] | Iterable[timedelta] | Iterable[np.timedelta64] | None = None,
+        timestamp: Iterable[int] | Iterable[float] | Iterable[datetime] | Iterable[np.datetime64] | None = None,
     ):
         """
         Create a column of index values.
 
         There is no requirement of monotonicity. You can move the time backwards if you like.
 
-        You are expected to set exactly ONE of the arguments `sequence`, `timedelta`, or `datetime`.
-        You may NOT change the type of a timeline, so if you use `timedelta` for a specific timeline,
-        you must only use `timedelta` for that timeline going forward.
+        You are expected to set exactly ONE of the arguments `sequence`, `duration`, or `timestamp`.
+        You may NOT change the type of a timeline, so if you use `duration` for a specific timeline,
+        you must only use `duration` for that timeline going forward.
 
         Parameters
         ----------
@@ -78,41 +78,57 @@ class IndexColumn(TimeColumnLike):
         sequence:
             Used for sequential indices, like `frame_nr`.
             Must be integers.
-        timedelta:
+        duration:
             Used for relative times, like `time_since_start`.
             Must either be in seconds, [`datetime.timedelta`][], or [`numpy.timedelta64`][].
-        datetime:
+        timestamp:
             Used for absolute time indices, like `capture_time`.
             Must either be in seconds since Unix epoch, [`datetime.datetime`][], or [`numpy.datetime64`][].
 
         """
-        if sum(x is not None for x in (sequence, timedelta, datetime)) != 1:
+        if sum(x is not None for x in (sequence, duration, timestamp)) != 1:
             raise ValueError(
-                "IndexColumn: Exactly one of `sequence`, `timedelta`, and `datetime` must be set (timeline='{timeline}')",
+                "TimeColumn: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
             )
 
         self.timeline = timeline
 
         if sequence is not None:
-            self.type = pa.int64()
-            self.times = sequence
-        elif timedelta is not None:
-            self.type = pa.duration("ns")
-            self.times = [to_nanos(td) for td in timedelta]
-        elif datetime is not None:
-            self.type = pa.timestamp("ns")
-            self.times = [to_nanos_since_epoch(dt) for dt in datetime]
+            self.times = pa.array(sequence, pa.int64())
+        elif duration is not None:
+            if isinstance(duration, np.ndarray):
+                if np.issubdtype(duration.dtype, np.timedelta64):
+                    # Already a timedelta array, just ensure it's in nanoseconds
+                    self.times = pa.array(duration.astype("timedelta64[ns]"), pa.duration("ns"))
+                elif np.issubdtype(duration.dtype, np.number):
+                    # Numeric array that needs conversion to nanoseconds
+                    self.times = pa.array((duration * 1e9).astype("timedelta64[ns]"), pa.duration("ns"))
+                else:
+                    raise TypeError(f"Unsupported numpy array dtype: {duration.dtype}")
+            else:
+                self.times = pa.array(
+                    [np.int64(to_nanos(duration)).astype("timedelta64[ns]") for duration in duration], pa.duration("ns")
+                )
+        elif timestamp is not None:
+            # TODO(zehiko) add back timezone support (#9310)
+            if isinstance(timestamp, np.ndarray):
+                self.times = pa.array(timestamp.astype("datetime64[ns]"), pa.timestamp("ns"))
+            else:
+                self.times = pa.array(
+                    [np.int64(to_nanos_since_epoch(timestamp)).astype("datetime64[ns]") for timestamp in timestamp],
+                    pa.timestamp("ns"),
+                )
 
     def timeline_name(self) -> str:
         """Returns the name of the timeline."""
         return self.timeline
 
     def as_arrow_array(self) -> pa.Array:
-        return pa.array(self.times, type=self.type)
+        return self.times
 
 
 @deprecated(
-    """Use `rr.IndexColumn` instead.
+    """Use `rr.TimeColumn` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSequenceColumn(TimeColumnLike):
@@ -146,7 +162,7 @@ class TimeSequenceColumn(TimeColumnLike):
 
 
 @deprecated(
-    """Use `rr.IndexColumn` instead.
+    """Use `rr.TimeColumn` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeSecondsColumn(TimeColumnLike):
@@ -180,7 +196,7 @@ class TimeSecondsColumn(TimeColumnLike):
 
 
 @deprecated(
-    """Use `rr.IndexColumn` instead.
+    """Use `rr.TimeColumn` instead.
     See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
 )
 class TimeNanosColumn(TimeColumnLike):
@@ -233,7 +249,7 @@ def send_columns(
     data that shares the same index across the different columns will act as a single logical row,
     equivalent to a single call to `rr.log()`.
 
-    Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+    Note that this API ignores any stateful time set on the log stream via [`rerun.set_time`][].
     Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 
     Parameters
@@ -244,7 +260,7 @@ def send_columns(
         See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     indexes:
         The time values of this batch of data. Each `TimeColumnLike` object represents a single column
-        of timestamps. You usually want to use [`rerun.IndexColumn`][] for this.
+        of timestamps. You usually want to use [`rerun.TimeColumn`][] for this.
     columns:
         The columns of components to log. Each object represents a single column of data.
 

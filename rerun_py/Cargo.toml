@@ -22,7 +22,7 @@ extra = []
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "nasm", "web_viewer"]
+pypi = ["extension-module", "nasm", "web_viewer", "server"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -32,7 +32,7 @@ pypi = ["extension-module", "nasm", "web_viewer"]
 extension-module = ["pyo3/extension-module"]
 
 ## Enable faster native video decoding with assembly.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["re_video/nasm"]
 
 ## Support serving a web viewer over HTTP with `serve()`.
@@ -45,6 +45,7 @@ web_viewer = [
   "dep:re_grpc_server",
 ]
 
+server = ["re_sdk/server", "dep:re_grpc_server"]
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -52,6 +53,7 @@ re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_dataframe.workspace = true
+re_datafusion.workspace = true
 re_grpc_client.workspace = true
 re_grpc_server = { workspace = true, optional = true }
 re_log = { workspace = true, features = ["setup"] }
@@ -60,30 +62,39 @@ re_log_types.workspace = true
 re_memory.workspace = true
 re_sdk = { workspace = true, features = ["data_loaders"] }
 re_sorbet.workspace = true
+re_tuid.workspace = true
 re_uri.workspace = true
 re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 
 arrow = { workspace = true, features = ["pyarrow"] }
+chrono.workspace = true #TODO(#9317): migrate to jiff when upgrading to pyo3 0.24
 crossbeam.workspace = true
+datafusion.workspace = true
+datafusion-ffi.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 infer.workspace = true
-mimalloc = { version = "0.1.43", features = ["local_dynamic_tls"] }
+mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
 numpy.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-pyo3 = { workspace = true, features = ["abi3-py38"] }
+pyo3 = { workspace = true, features = [
+  "abi3-py39", # Require at least Python 3.9
+  "chrono",    #TODO(#9317): migrate to jiff when upgrading to pyo3 0.24
+] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
 
 # Deps for remote feature
 object_store = { workspace = true, features = ["aws"] }
-re_protos.workspace = true
-tokio.workspace = true
+re_protos = { workspace = true, features = ["py"] }
+prost-types.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 tokio-stream.workspace = true
 tonic = { workspace = true, default-features = false, features = ["transport"] }
 url.workspace = true
+thiserror.workspace = true
 
 
 [build-dependencies]

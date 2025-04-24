@@ -231,7 +231,7 @@ class MeasurementLogger:
         ]
 
     def process_measurement(self, measurement: Measurement) -> None:
-        rr.set_index("unix_time", datetime=measurement.timestamp)
+        rr.set_time("unix_time", timestamp=measurement.timestamp)
 
         if self._raw:
             metadata = dataclasses.asdict(measurement)
@@ -270,8 +270,8 @@ class MeasurementLogger:
         if measurement.barometric_altitude is not None:
             rr.log(
                 entity_path + "/barometric_altitude",
-                rr.Scalar(measurement.barometric_altitude),
-                rr.SeriesLine(color=color),
+                rr.Scalars(measurement.barometric_altitude),
+                rr.SeriesLines(colors=color),
             )
 
     def flush(self) -> None:
@@ -326,10 +326,10 @@ class MeasurementBatchLogger:
                 # rr.GeoPoints.from_fields(colors=color),
                 static=True,
             )
-            rr.log(entity_path + "/barometric_altitude", rr.SeriesLine.from_fields(color=color), static=True)
+            rr.log(entity_path + "/barometric_altitude", rr.SeriesLines.from_fields(colors=color), static=True)
             self._position_indicators.add(icao_id)
 
-        timestamps = rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())
+        timestamps = rr.TimeColumn("unix_time", timestamp=df["timestamp"].to_numpy())
         pos = self._proj.transform(df["longitude"], df["latitude"], df["barometric_altitude"])
 
         raw_coordinates = rr.AnyValues(
@@ -351,14 +351,14 @@ class MeasurementBatchLogger:
         rr.send_columns(
             entity_path + "/barometric_altitude",
             [timestamps],
-            rr.Scalar.columns(scalar=df["barometric_altitude"].to_numpy()),
+            rr.Scalars.columns(scalars=df["barometric_altitude"].to_numpy()),
         )
 
     def log_ground_status(self, df: polars.DataFrame, icao_id: str) -> None:
         entity_path = f"aircraft/{icao_id}"
         df = df["timestamp", "ground_status"].drop_nulls()
 
-        timestamps = rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())
+        timestamps = rr.TimeColumn("unix_time", timestamp=df["timestamp"].to_numpy())
         columns = rr.AnyValues.columns(ground_status=df["ground_status"].to_numpy())
 
         rr.send_columns(entity_path, [timestamps], columns)
@@ -375,7 +375,7 @@ class MeasurementBatchLogger:
 
         rr.send_columns(
             entity_path,
-            [rr.IndexColumn("unix_time", datetime=df["timestamp"].to_numpy())],
+            [rr.TimeColumn("unix_time", timestamp=df["timestamp"].to_numpy())],
             metadata,
         )
 

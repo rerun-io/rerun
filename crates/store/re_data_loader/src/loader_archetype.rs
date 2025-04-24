@@ -67,28 +67,28 @@ impl DataLoader for ArchetypeLoader {
         // TODO(cmc): log these once heuristics (I think?) are fixed
         if false {
             if let Ok(metadata) = filepath.metadata() {
-                use re_log_types::IndexCell;
+                use re_log_types::TimeCell;
 
                 if let Some(created) = metadata
                     .created()
                     .ok()
-                    .and_then(|t| IndexCell::try_from(t).ok())
+                    .and_then(|t| TimeCell::try_from(t).ok())
                 {
-                    timepoint.insert_index("created_at", created);
+                    timepoint.insert_cell("created_at", created);
                 }
                 if let Some(modified) = metadata
                     .modified()
                     .ok()
-                    .and_then(|t| IndexCell::try_from(t).ok())
+                    .and_then(|t| TimeCell::try_from(t).ok())
                 {
-                    timepoint.insert_index("modified_at", modified);
+                    timepoint.insert_cell("modified_at", modified);
                 }
                 if let Some(accessed) = metadata
                     .accessed()
                     .ok()
-                    .and_then(|t| IndexCell::try_from(t).ok())
+                    .and_then(|t| TimeCell::try_from(t).ok())
                 {
-                    timepoint.insert_index("accessed_at", accessed);
+                    timepoint.insert_cell("accessed_at", accessed);
                 }
             }
         }
@@ -184,26 +184,30 @@ fn load_video(
     re_tracing::profile_function!();
 
     let video_timeline = re_log_types::Timeline::new_duration("video");
-    timepoint.insert_index(
+    timepoint.insert_cell(
         *video_timeline.name(),
-        re_log_types::IndexCell::ZERO_DURATION,
+        re_log_types::TimeCell::ZERO_DURATION,
     );
 
     let video_asset = AssetVideo::new(contents);
 
-    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_ns() {
-        Ok(frame_timestamps_ns) => {
+    let video_frame_reference_chunk = match video_asset.read_frame_timestamps_nanos() {
+        Ok(frame_timestamps_nanos) => {
             // Time column.
             let is_sorted = Some(true);
-            let frame_timestamps_ns: arrow::buffer::ScalarBuffer<i64> = frame_timestamps_ns.into();
-            let time_column =
-                re_chunk::TimeColumn::new(is_sorted, video_timeline, frame_timestamps_ns.clone());
+            let frame_timestamps_nanos: arrow::buffer::ScalarBuffer<i64> =
+                frame_timestamps_nanos.into();
+            let time_column = re_chunk::TimeColumn::new(
+                is_sorted,
+                video_timeline,
+                frame_timestamps_nanos.clone(),
+            );
 
             // VideoTimestamp component column.
-            let video_timestamps = frame_timestamps_ns
+            let video_timestamps = frame_timestamps_nanos
                 .iter()
                 .copied()
-                .map(VideoTimestamp::from_nanoseconds)
+                .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
             let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
             let video_timestamp_list_array = video_timestamp_batch

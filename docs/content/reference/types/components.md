@@ -37,6 +37,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.
 * [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
+* [`Interactive`](components/interactive.md): Whether the entity can be interacted with.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LatLon`](components/lat_lon.md): A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 * [`Length`](components/length.md): Length, or one-dimensional size.
@@ -74,6 +75,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
+* [`Timestamp`](components/timestamp.md): When the recording started.
 * [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.

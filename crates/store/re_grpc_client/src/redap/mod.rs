@@ -1,23 +1,14 @@
-use arrow::array::RecordBatch as ArrowRecordBatch;
-use re_protos::remote_store::v1alpha1::{
-    storage_node_service_client::StorageNodeServiceClient, CatalogEntry, GetChunksRangeRequest,
-};
-use re_uri::{Origin, RecordingEndpoint};
-use tokio_stream::StreamExt as _;
+use tokio_stream::{Stream, StreamExt as _};
 
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
-use re_log_types::{
-    ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
-};
+use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
+use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
+use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
 use re_protos::{
-    common::v1alpha1::{IndexColumnSelector, RecordingId},
-    remote_store::v1alpha1::{
-        CatalogFilter, FetchRecordingRequest, QueryCatalogRequest, CATALOG_APP_ID_FIELD_NAME,
-        CATALOG_START_TIME_FIELD_NAME,
-    },
+    catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
 };
+use re_uri::{DatasetDataUri, Origin};
 
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
 
@@ -32,26 +23,22 @@ pub enum Command {
 /// Stream an rrd file or metadata catalog over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
-pub fn stream_from_redap(
-    endpoint: RecordingEndpoint,
+pub fn stream_dataset_from_redap(
+    uri: DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
-    re_log::debug!("Loading {endpoint}…");
+    re_log::debug!("Loading {uri}…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RerunGrpcStream {
-            url: endpoint.to_string(),
-        },
-        re_smart_channel::SmartChannelSource::RedapGrpcStream {
-            url: endpoint.to_string(),
-        },
+        re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
+        re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_recording_async(tx, endpoint.clone(), on_cmd, on_msg).await {
+        if let Err(err) = stream_partition_async(tx, uri.clone(), on_cmd, on_msg).await {
             re_log::error!(
-                "Error while streaming {endpoint}: {}",
+                "Error while streaming {uri}: {}",
                 re_error::format_ref(&err)
             );
         }
@@ -129,19 +116,25 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
+pub type Client = FrontendServiceClient<tonic_web_wasm_client::Client>;
+
+#[cfg(target_arch = "wasm32")]
 pub async fn client(
     origin: Origin,
-) -> Result<StorageNodeServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
+) -> Result<FrontendServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(StorageNodeServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(FrontendServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+pub type Client = FrontendServiceClient<tonic::transport::Channel>;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn client(
     origin: Origin,
-) -> Result<StorageNodeServiceClient<tonic::transport::Channel>, ConnectionError> {
+) -> Result<FrontendServiceClient<tonic::transport::Channel>, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(StorageNodeServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+    Ok(FrontendServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -149,125 +142,96 @@ pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
     origin: Origin,
     interceptor: I,
 ) -> Result<
-    StorageNodeServiceClient<
+    FrontendServiceClient<
         tonic::service::interceptor::InterceptedService<tonic::transport::Channel, I>,
     >,
     ConnectionError,
 > {
     let channel = channel(origin).await?;
     Ok(
-        StorageNodeServiceClient::with_interceptor(channel, interceptor)
+        FrontendServiceClient::with_interceptor(channel, interceptor)
             .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE),
     )
 }
 
-pub async fn stream_recording_async(
+/// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
+//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
+//TODO(#9497): This is a hack to extract the partition id from the record batch before they are lost to
+//the `Chunk` conversion. The chunks should instead include that information.
+pub fn get_chunks_response_to_chunk_and_partition_id(
+    response: tonic::Streaming<re_protos::manifest_registry::v1alpha1::GetChunksResponse>,
+) -> impl Stream<Item = Result<(Chunk, Option<String>), StreamError>> {
+    response.map(|resp| {
+        resp.map_err(Into::into).and_then(|r| {
+            let batch = r.chunk.ok_or(StreamError::MissingChunkData)?.decode()?;
+
+            let partition_id = batch.schema().metadata().get("rerun.partition_id").cloned();
+            let chunk = Chunk::from_record_batch(&batch).map_err(Into::<StreamError>::into)?;
+
+            Ok((chunk, partition_id))
+        })
+    })
+}
+
+pub async fn stream_partition_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    endpoint: re_uri::RecordingEndpoint,
+    uri: re_uri::DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    re_log::debug!("Connecting to {}…", endpoint.origin);
-    let mut client = client(endpoint.origin).await?;
+    let re_uri::DatasetDataUri {
+        origin,
+        dataset_id,
+        partition_id,
+        time_range,
+        fragment: _, // Only affects the viewer
+    } = uri;
 
-    re_log::debug!("Fetching catalog data for {}…", endpoint.recording_id);
+    re_log::debug!("Connecting to {}…", origin);
+    let mut client = client(origin).await?;
+
+    re_log::debug!("Fetching catalog data for partition {partition_id} of dataset {dataset_id}…");
+
+    let read_dataset_response: ReadDatasetEntryResponse = client
+        .read_dataset_entry(ReadDatasetEntryRequest {
+            id: Some(dataset_id.into()),
+        })
+        .await?
+        .into_inner()
+        .try_into()?;
+
+    let dataset_name = read_dataset_response.dataset_entry.details.name;
 
     let catalog_chunk_stream = client
-        .query_catalog(QueryCatalogRequest {
-            entry: Some(CatalogEntry {
-                name: "default".to_owned(), /* TODO(zehiko) 9116 */
-            }),
-            column_projection: None, // fetch all columns
-            filter: Some(CatalogFilter {
-                recording_ids: vec![RecordingId {
-                    id: endpoint.recording_id.clone(),
-                }],
-            }),
+        .get_chunks(GetChunksRequest {
+            dataset_id: Some(dataset_id.into()),
+            partition_ids: vec![partition_id.clone().into()],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            query: None,
         })
         .await?
         .into_inner();
 
-    let catalog_chunks = catalog_chunk_stream
-        .map(|resp| {
-            resp.and_then(|r| {
-                r.data
-                    .ok_or_else(|| {
-                        tonic::Status::internal("missing DataframePart in QueryCatalogResponse")
-                    })?
-                    .decode()
-                    .map_err(|err| tonic::Status::internal(err.to_string()))
-            })
-        })
-        .collect::<Result<Vec<_>, tonic::Status>>()
-        .await?;
-
-    if catalog_chunks.len() != 1 || catalog_chunks[0].num_rows() != 1 {
-        return Err(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!(
-                "expected exactly one recording with id {}, got {}",
-                endpoint.recording_id,
-                catalog_chunks.len()
-            ),
-        }));
-    }
-
-    let store_info =
-        store_info_from_catalog_chunk(&catalog_chunks[0].clone(), &endpoint.recording_id)?;
-    let store_id = store_info.store_id.clone();
-
-    re_log::debug!("Fetching {}…", endpoint.recording_id);
-
-    let mut chunk_stream = if let Some(time_range) = &endpoint.time_range {
-        let stream = client
-            .get_chunks_range(GetChunksRangeRequest {
-                entry: Some(CatalogEntry {
-                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
-                }),
-                recording_id: Some(RecordingId {
-                    id: endpoint.recording_id.clone(),
-                }),
-                time_index: Some(IndexColumnSelector {
-                    timeline: Some(time_range.timeline.into()),
-                }),
-                time_range: Some(
-                    re_log_types::ResolvedTimeRange::new(
-                        // min.floor()..min.ceil() should cover the entire requested range
-                        time_range.range.min.floor(),
-                        time_range.range.max.ceil(),
-                    )
-                    .into(),
-                ),
-            })
-            .await?
-            .into_inner()
-            .map(|res| res.map(|v| v.chunk));
-        futures::future::Either::Left(stream)
-    } else {
-        let stream = client
-            .fetch_recording(FetchRecordingRequest {
-                entry: Some(CatalogEntry {
-                    name: "default".to_owned(), /* TODO(zehiko) 9116 */
-                }),
-                recording_id: Some(RecordingId {
-                    id: endpoint.recording_id.clone(),
-                }),
-            })
-            .await?
-            .into_inner()
-            .map(|res| res.map(|v| v.chunk));
-        futures::future::Either::Right(stream)
-    }
-    .map(|resp| {
-        resp.and_then(|r| {
-            r.ok_or_else(|| tonic::Status::internal("missing Chunk in Response"))?
-                .decode()
-                .map_err(|err| tonic::Status::internal(err.to_string()))
-        })
-    });
-
     drop(client);
 
-    // We need a whole StoreInfo here.
+    let store_id = StoreId::from_string(StoreKind::Recording, partition_id.clone());
+    let store_info = StoreInfo {
+        application_id: dataset_name.into(),
+        store_id: store_id.clone(),
+        cloned_from: None,
+        store_source: StoreSource::Unknown,
+        store_version: None,
+    };
+
+    if let Some(time_range) = time_range {
+        on_cmd(Command::SetLoopSelection {
+            recording_id: store_id.clone(),
+            timeline: time_range.timeline,
+            time_range: time_range.into(),
+        });
+    }
+
     if tx
         .send(LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *re_chunk::RowId::new(),
@@ -279,17 +243,10 @@ pub async fn stream_recording_async(
         return Ok(());
     }
 
-    if let Some(time_range) = endpoint.time_range {
-        on_cmd(Command::SetLoopSelection {
-            recording_id: StoreId::from_string(StoreKind::Recording, endpoint.recording_id),
-            timeline: time_range.timeline,
-            time_range: time_range.range,
-        });
-    }
+    let mut chunk_stream = get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
 
-    while let Some(result) = chunk_stream.next().await {
-        let batch = result?;
-        let chunk = Chunk::from_record_batch(&batch)?;
+    while let Some(chunk) = chunk_stream.next().await {
+        let (chunk, _partition_id) = chunk?;
 
         if tx
             .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
@@ -305,50 +262,4 @@ pub async fn stream_recording_async(
     }
 
     Ok(())
-}
-
-pub fn store_info_from_catalog_chunk(
-    record_batch: &ArrowRecordBatch,
-    recording_id: &str,
-) -> Result<StoreInfo, StreamError> {
-    let store_id = StoreId::from_string(StoreKind::Recording, recording_id.to_owned());
-
-    let data = record_batch
-        .column_by_name(CATALOG_APP_ID_FIELD_NAME)
-        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!("no {CATALOG_APP_ID_FIELD_NAME} field found"),
-        }))?;
-    let app_id = data
-        .downcast_array_ref::<arrow::array::StringArray>()
-        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!(
-                "{CATALOG_APP_ID_FIELD_NAME} must be a utf8 array: {:?}",
-                record_batch.schema_ref()
-            ),
-        }))?
-        .value(0);
-
-    let data = record_batch
-        .column_by_name(CATALOG_START_TIME_FIELD_NAME)
-        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!("no {CATALOG_START_TIME_FIELD_NAME} field found"),
-        }))?;
-    let start_time = data
-        .downcast_array_ref::<arrow::array::TimestampNanosecondArray>()
-        .ok_or(StreamError::ChunkError(re_chunk::ChunkError::Malformed {
-            reason: format!(
-                "{CATALOG_START_TIME_FIELD_NAME} must be a Timestamp array: {:?}",
-                record_batch.schema_ref()
-            ),
-        }))?
-        .value(0);
-
-    Ok(StoreInfo {
-        application_id: ApplicationId::from(app_id),
-        store_id: store_id.clone(),
-        cloned_from: None,
-        started: Time::from_ns_since_epoch(start_time),
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    })
 }

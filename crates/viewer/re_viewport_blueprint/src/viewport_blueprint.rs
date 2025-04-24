@@ -2,7 +2,7 @@ use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use parking_lot::Mutex;
-use re_log_types::EntityPathSubs;
+use re_log_types::{EntityPathSubs, ResolvedEntityPathFilter};
 use smallvec::SmallVec;
 use std::ops::ControlFlow;
 use std::{
@@ -241,20 +241,23 @@ impl ViewportBlueprint {
     /// of its descendent are always considered valid.
     pub fn is_item_valid(
         &self,
-        store_context: &re_viewer_context::StoreContext<'_>,
+        storage_ctx: &re_viewer_context::StorageContext<'_>,
         item: &Item,
     ) -> bool {
         match item {
-            Item::AppId(app_id) => store_context
+            Item::AppId(app_id) => storage_ctx
                 .hub
                 .store_bundle()
                 .entity_dbs()
                 .any(|db| db.app_id() == Some(app_id)),
 
             Item::DataSource(_)
+            | Item::TableId(_)
             | Item::StoreId(_)
             | Item::ComponentPath(_)
-            | Item::InstancePath(_) => true,
+            | Item::InstancePath(_)
+            | Item::RedapEntry(_)
+            | Item::RedapServer(_) => true,
 
             Item::View(view_id) => self.view(view_id).is_some(),
 
@@ -300,7 +303,13 @@ impl ViewportBlueprint {
 
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
-            let mut recommended_views = entry.class.spawn_heuristics(ctx).into_vec();
+
+            let suggested_filter = ResolvedEntityPathFilter::properties();
+
+            let mut recommended_views = entry
+                .class
+                .spawn_heuristics(ctx, &suggested_filter)
+                .into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
 

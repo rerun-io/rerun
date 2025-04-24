@@ -8,16 +8,20 @@ use arrow::datatypes::{
 };
 
 use re_log_types::EntityPath;
+use re_types_core::ComponentName;
 
-use crate::{ComponentColumnDescriptor, IndexColumnDescriptor, MetadataExt as _};
+use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ColumnError {
     #[error(transparent)]
     MissingFieldMetadata(#[from] crate::MissingFieldMetadata),
 
+    #[error(transparent)]
+    UnknownColumnKind(#[from] crate::UnknownColumnKind),
+
     #[error("Unsupported column rerun.kind: {kind:?}. Expected one of: index, data")]
-    UnsupportedColumnKind { kind: String },
+    UnsupportedColumnKind { kind: ColumnKind },
 
     #[error(transparent)]
     UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
@@ -51,6 +55,14 @@ impl ColumnDescriptor {
         match self {
             Self::Time(_) => None,
             Self::Component(descr) => Some(&descr.entity_path),
+        }
+    }
+
+    #[inline]
+    pub fn component_name(&self) -> Option<&ComponentName> {
+        match self {
+            Self::Time(_) => None,
+            Self::Component(descr) => Some(&descr.component_name),
         }
     }
 
@@ -114,17 +126,16 @@ impl ColumnDescriptor {
         chunk_entity_path: Option<&EntityPath>,
         field: &ArrowField,
     ) -> Result<Self, ColumnError> {
-        let kind = field.get_or_err("rerun.kind")?;
-        match kind {
-            "index" | "time" => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
+        match ColumnKind::try_from(field)? {
+            ColumnKind::RowId => Err(ColumnError::UnsupportedColumnKind {
+                kind: ColumnKind::RowId,
+            }),
 
-            "data" => Ok(Self::Component(
+            ColumnKind::Index => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
+
+            ColumnKind::Component => Ok(Self::Component(
                 ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field),
             )),
-
-            _ => Err(ColumnError::UnsupportedColumnKind {
-                kind: kind.to_owned(),
-            }),
         }
     }
 }

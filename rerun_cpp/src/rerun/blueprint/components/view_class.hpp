@@ -14,6 +14,9 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: The class identifier of view, e.g. `"2D"`, `"TextLog"`, ….
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ViewClass {
         rerun::datatypes::Utf8 value;
 

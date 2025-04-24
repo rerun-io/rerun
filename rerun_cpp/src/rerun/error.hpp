@@ -44,6 +44,7 @@ namespace rerun {
         InvalidArchetypeField,
         FileRead,
         InvalidServerUrl,
+        InvalidMemoryLimit,
 
         // Recording stream errors
         _CategoryRecordingStream = 0x0000'0100,
@@ -53,6 +54,7 @@ namespace rerun {
         RecordingStreamStdoutFailure,
         RecordingStreamSpawnFailure,
         RecordingStreamChunkValidationFailure,
+        RecordingStreamServeGrpcFailure,
 
         // Arrow data processing errors.
         _CategoryArrow = 0x0000'1000,

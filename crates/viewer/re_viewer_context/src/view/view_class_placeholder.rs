@@ -1,3 +1,4 @@
+use re_log_types::ResolvedEntityPathFilter;
 use re_types::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 
@@ -23,7 +24,7 @@ impl ViewClass for ViewClassPlaceholder {
         &re_ui::icons::VIEW_UNKNOWN
     }
 
-    fn help(&self, _egui_ctx: &egui::Context) -> Help<'_> {
+    fn help(&self, _egui_ctx: &egui::Context) -> Help {
         Help::new("Placeholder view").markdown("Placeholder view for unknown view class")
     }
 
@@ -42,7 +43,11 @@ impl ViewClass for ViewClassPlaceholder {
         crate::ViewClassLayoutPriority::Low
     }
 
-    fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> ViewSpawnHeuristics {
+    fn spawn_heuristics(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _suggested_filter: &ResolvedEntityPathFilter,
+    ) -> ViewSpawnHeuristics {
         ViewSpawnHeuristics::empty()
     }
 

@@ -21,6 +21,9 @@ namespace rerun::datatypes {
     /// **Datatype**: A helper type for mapping `datatypes::ClassId`s to class descriptions.
     ///
     /// This is internal to `components::AnnotationContext`.
+    ///
+    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    ///
     struct ClassDescriptionMapElem {
         /// The key: the `components::ClassId`.
         rerun::datatypes::ClassId class_id;

@@ -41,7 +41,7 @@ rr.log(
     rr.Transform3D(
         translation=calibrated_sensor["translation"],
         rotation=rr.Quaternion(xyzw=rotation_xyzw),
-        from_parent=False,
+        relation=rr.TransformRelation.ParentFromChild,
     ),
     static=True,
 )
@@ -65,7 +65,7 @@ All data logged using Rerun in the following sections is initially connected to 
 Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with [`timelines`](https://www.rerun.io/docs/concepts/timelines).
 
 ```python
-rr.set_index("timestamp", datetime=sample_data["timestamp"] * 1e-6)
+rr.set_time("timestamp", timestamp=sample_data["timestamp"] * 1e-6)
 ```
 
 
@@ -78,7 +78,7 @@ rr.log(
     rr.Transform3D(
         translation=ego_pose["translation"],
         rotation=rr.Quaternion(xyzw=rotation_xyzw),
-        from_parent=False,
+        relation=rr.TransformRelation.ParentFromChild,
     ),
 )
 ```

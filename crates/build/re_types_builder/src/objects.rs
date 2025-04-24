@@ -10,9 +10,10 @@ use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 
 use crate::{
-    root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE,
+    data_type::LazyDatatype, root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField,
+    FbsKeyValue, FbsObject, FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL,
+    ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_DEPRECATED_NOTICE,
+    ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE, ATTR_RERUN_STATE,
 };
 
 // ---
@@ -254,6 +255,68 @@ pub enum ObjectKind {
     View,
 }
 
+/// Must be set on all archetypes and components
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum State {
+    /// Used for types that are likely to be removed or changed significantly,
+    /// and in a way that the data won't be backwards compatible.
+    Unstable,
+
+    /// Used for types that are unlikely to be removed or changed significantly.
+    /// If they are changed, we will make sure that the old data can still be read.
+    Stable,
+
+    /// Marks something as deprecated followed by a (mandatory!) migration note.
+    ///
+    /// If specified on an object (struct/enum/union), it becomes deprecated such
+    /// that using the object should emit a warning in all target languages.
+    /// Furthermore, documentation will mention that the object is deprecated and display
+    /// the specified migration note.
+    Deprecated { since: String, notice: String },
+}
+
+impl State {
+    pub fn from_attrs(attrs: &Attributes) -> Result<Self, String> {
+        if let Some(state) = attrs.get_string(ATTR_RERUN_STATE) {
+            match state.as_str() {
+                "unstable" => Ok(Self::Unstable),
+                "stable" => Ok(Self::Stable),
+                "deprecated" => {
+                    if let (Some(since), Some(notice)) = (
+                        attrs.get_string(ATTR_RERUN_DEPRECATED_SINCE),
+                        attrs.get_string(ATTR_RERUN_DEPRECATED_NOTICE),
+                    ) {
+                        Ok(Self::Deprecated {
+                            since: since.clone(),
+                            notice: notice.clone(),
+                        })
+                    } else {
+                        Err(format!(
+                            "Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"
+                        ))
+                    }
+                }
+                unknown => Err(format!("Unknown value for {ATTR_RERUN_STATE:?}: {unknown}")),
+            }
+        } else {
+            Err(format!("Missing attribute {ATTR_RERUN_STATE:?}"))
+        }
+    }
+
+    /// Add noteworthy information on a single line, if any.
+    pub fn docline_summary(&self) -> Option<String> {
+        match self {
+            Self::Unstable => {
+                Some("⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**".to_owned())
+            }
+            Self::Stable => { None }
+            Self::Deprecated { since, notice } => {
+                Some(format!("⚠️ **Deprecated since {since}**: {notice}"))
+            }
+        }
+    }
+}
+
 impl ObjectKind {
     pub const ALL: [Self; 4] = [Self::Datatype, Self::Component, Self::Archetype, Self::View];
 
@@ -344,6 +407,9 @@ pub struct Object {
     /// The object's attributes.
     pub attrs: Attributes,
 
+    /// Experimental, stable, deprecated, …?
+    pub state: State,
+
     /// The object's inner fields, which can be either struct members or union/emum variants.
     ///
     /// These are ordered using their `order` attribute (structs),
@@ -357,7 +423,7 @@ pub struct Object {
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    pub datatype: Option<crate::LazyDatatype>,
+    pub datatype: Option<LazyDatatype>,
 }
 
 impl PartialEq for Object {
@@ -415,6 +481,44 @@ impl Object {
         let attrs = Attributes::from_raw_attrs(obj.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
+        let scope = attrs
+            .get_string(crate::ATTR_RERUN_SCOPE)
+            .or_else(|| (kind == ObjectKind::View).then(|| "blueprint".to_owned()));
+
+        let state = if attrs.has(ATTR_RERUN_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(&virtpath, &fqname, &err);
+                State::Stable
+            })
+        } else if is_testing_fqname(&fqname) {
+            State::Stable
+        } else if scope == Some("blueprint".to_owned()) {
+            State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
+        } else {
+            match kind {
+                ObjectKind::Datatype | ObjectKind::Component => {
+                    if false {
+                        // TODO(#9427): make ATTR_RERUN_STATE attribute mandatory
+                        reporter.warn(
+                            &virtpath,
+                            &fqname,
+                            format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                        );
+                    }
+                    State::Stable
+                }
+                ObjectKind::Archetype => {
+                    reporter.error(
+                        &virtpath,
+                        &fqname,
+                        format!("Missing attribute '{ATTR_RERUN_STATE}'"),
+                    );
+                    State::Stable
+                }
+                ObjectKind::View => State::Unstable,
+            }
+        };
+
         let fields: Vec<_> = {
             let mut fields: Vec<_> = obj
                 .fields()
@@ -467,6 +571,7 @@ impl Object {
             name,
             docs,
             kind,
+            state,
             attrs,
             fields,
             class: ObjectClass::Struct,
@@ -501,6 +606,18 @@ impl Object {
         let docs = Docs::from_raw_docs(reporter, &virtpath, enm.name(), enm.documentation());
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
+        let state = if attrs.has(ATTR_RERUN_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(
+                    &virtpath,
+                    &fqname,
+                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
+                );
+                State::Stable
+            })
+        } else {
+            State::Stable
+        };
 
         let is_enum = enm.underlying_type().base_type() != FbsBaseType::UType;
 
@@ -556,6 +673,7 @@ impl Object {
             name,
             docs,
             kind,
+            state,
             attrs,
             fields,
             class: if is_enum {
@@ -653,17 +771,23 @@ impl Object {
         is_testing_fqname(&self.fqname)
     }
 
+    /// e.g. `blueprint`
     pub fn scope(&self) -> Option<String> {
         self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
             .or_else(|| (self.kind == ObjectKind::View).then(|| "blueprint".to_owned()))
     }
 
-    pub fn deprecation_notice(&self) -> Option<String> {
-        self.try_get_attr::<String>(crate::ATTR_RERUN_DEPRECATED)
+    pub fn is_deprecated(&self) -> bool {
+        matches!(self.state, State::Deprecated { .. })
     }
 
-    pub fn is_experimental(&self) -> bool {
-        self.is_attr_set(crate::ATTR_RERUN_EXPERIMENTAL)
+    /// If deprecated, returns a string describing since when, and what to do instead.
+    pub fn deprecation_summary(&self) -> Option<String> {
+        if let State::Deprecated { since, notice } = &self.state {
+            Some(format!("since {since}: {notice}"))
+        } else {
+            None
+        }
     }
 
     pub fn doc_category(&self) -> Option<String> {
@@ -753,6 +877,9 @@ pub struct ObjectField {
     /// The field's multiple layers of documentation.
     pub docs: Docs,
 
+    /// Experimental, stable, deprecated, …?
+    pub state: State,
+
     /// The field's type.
     pub typ: Type,
 
@@ -770,7 +897,7 @@ pub struct ObjectField {
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
     /// will be `None` until then.
-    pub datatype: Option<crate::LazyDatatype>,
+    pub datatype: Option<LazyDatatype>,
 }
 
 impl ObjectField {
@@ -799,6 +926,18 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
+        let state = if attrs.has(ATTR_RERUN_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(
+                    &virtpath,
+                    &fqname,
+                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
+                );
+                State::Stable
+            })
+        } else {
+            State::Stable
+        };
 
         let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs, &fqname);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
@@ -811,7 +950,7 @@ impl ObjectField {
                 &fqname,
                 format!(
                     "Use {} attribute for deprecation instead",
-                    crate::ATTR_RERUN_DEPRECATED
+                    crate::ATTR_RERUN_STATE
                 ),
             );
         }
@@ -826,6 +965,7 @@ impl ObjectField {
             name,
             enum_value,
             docs,
+            state,
             typ,
             attrs,
             order,
@@ -859,6 +999,18 @@ impl ObjectField {
         let docs = Docs::from_raw_docs(reporter, &virtpath, val.name(), val.documentation());
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
+        let state = if attrs.has(ATTR_RERUN_STATE) {
+            State::from_attrs(&attrs).unwrap_or_else(|err| {
+                reporter.error(
+                    &virtpath,
+                    &fqname,
+                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
+                );
+                State::Stable
+            })
+        } else {
+            State::Stable
+        };
 
         // NOTE: Unwrapping is safe, we never resolve enums without union types.
         let field_type = val.union_type().unwrap();
@@ -888,6 +1040,7 @@ impl ObjectField {
             pkg_name,
             name,
             enum_value,
+            state,
             docs,
             typ,
             attrs,
@@ -956,11 +1109,25 @@ impl ObjectField {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FieldKind {
     Required,
     Recommended,
     Optional,
+}
+
+impl FieldKind {
+    pub const ALL: [Self; 3] = [Self::Required, Self::Recommended, Self::Optional];
+}
+
+impl std::fmt::Display for FieldKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Required => "Required".fmt(f),
+            Self::Recommended => "Recommended".fmt(f),
+            Self::Optional => "Optional".fmt(f),
+        }
+    }
 }
 
 /// The underlying type of an [`ObjectField`].
@@ -993,7 +1160,9 @@ pub enum Type {
     Vector {
         elem_type: ElementType,
     },
-    Object(String), // fqname
+    Object {
+        fqname: String,
+    },
 }
 
 impl From<ElementType> for Type {
@@ -1012,7 +1181,7 @@ impl From<ElementType> for Type {
             ElementType::Float32 => Self::Float32,
             ElementType::Float64 => Self::Float64,
             ElementType::String => Self::String,
-            ElementType::Object(fqname) => Self::Object(fqname),
+            ElementType::Object { fqname } => Self::Object { fqname },
         }
     }
 }
@@ -1032,37 +1201,18 @@ impl Type {
             match (typ, type_override.as_str()) {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
-                },
+                }
                 (FbsBaseType::Array | FbsBaseType::Vector, "float16") => {}
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {typ:#?}->{type_override}"
+                ),
             }
         }
 
-        let is_int = matches!(
-            typ,
-            FbsBaseType::Byte
-                | FbsBaseType::UByte
-                | FbsBaseType::Short
-                | FbsBaseType::UShort
-                | FbsBaseType::Int
-                | FbsBaseType::UInt
-                | FbsBaseType::Long
-                | FbsBaseType::ULong
-        );
-        if is_int {
-            // Hack needed because enums get `typ == FbsBaseType::Byte`,
-            // or whatever integer type the enum was assigned to.
-            let enum_index = field_type.index() as usize;
-            if enum_index < enums.len() {
-                // It is an enum.
-                assert!(
-                    typ == FbsBaseType::UByte,
-                    "{virtpath}: For consistency, enums must be declared as the `ubyte` type"
-                );
-
-                let enum_ = &enums[field_type.index() as usize];
-                return Self::Object(enum_.name().to_owned());
-            }
+        if let Some(enum_fqname) = try_get_enum_fqname(enums, field_type, typ, virtpath) {
+            return Self::Object {
+                fqname: enum_fqname,
+            };
         }
 
         match typ {
@@ -1085,12 +1235,16 @@ impl Type {
                 if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
                     Self::Unit
                 } else {
-                    Self::Object(obj.name().to_owned())
+                    Self::Object {
+                        fqname: obj.name().to_owned(),
+                    }
                 }
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];
-                Self::Object(union.name().to_owned())
+                Self::Object {
+                    fqname: union.name().to_owned(),
+                }
             }
             FbsBaseType::Array => Self::Array {
                 elem_type: ElementType::from_raw_base_type(
@@ -1099,6 +1253,7 @@ impl Type {
                     field_type,
                     field_type.element(),
                     attrs,
+                    virtpath,
                 ),
                 length: field_type.fixed_length() as usize,
             },
@@ -1109,6 +1264,7 @@ impl Type {
                     field_type,
                     field_type.element(),
                     attrs,
+                    virtpath,
                 ),
             },
             FbsBaseType::UType | FbsBaseType::Vector64 => {
@@ -1167,8 +1323,10 @@ impl Type {
             Self::String => Some(Self::Vector {
                 elem_type: ElementType::String,
             }),
-            Self::Object(obj) => Some(Self::Vector {
-                elem_type: ElementType::Object(obj.clone()),
+            Self::Object { fqname } => Some(Self::Vector {
+                elem_type: ElementType::Object {
+                    fqname: fqname.clone(),
+                },
             }),
 
             Self::Unit => None,
@@ -1203,7 +1361,7 @@ impl Type {
             | Self::Float32
             | Self::Float64
             | Self::String
-            | Self::Object(_) => None,
+            | Self::Object { .. } => None,
         }
     }
 
@@ -1215,7 +1373,7 @@ impl Type {
     /// `Some(fqname)` if this is an `Object` or an `Array`/`Vector` of `Object`s.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Object { fqname } => Some(fqname.as_str()),
             Self::Array {
                 elem_type,
                 length: _,
@@ -1246,12 +1404,12 @@ impl Type {
 
             Self::Array { elem_type, .. } => elem_type.has_default_destructor(objects),
 
-            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
+            Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
         }
     }
 
     pub fn is_union(&self, objects: &Objects) -> bool {
-        if let Self::Object(fqname) = self {
+        if let Self::Object { fqname } = self {
             let obj = &objects[fqname];
             if obj.is_arrow_transparent() {
                 obj.fields[0].typ.is_union(objects)
@@ -1262,6 +1420,44 @@ impl Type {
             false
         }
     }
+}
+
+fn try_get_enum_fqname(
+    enums: &[FbsEnum<'_>],
+    field_type: FbsType<'_>,
+    typ: FbsBaseType,
+    virtpath: &str,
+) -> Option<String> {
+    if is_int(typ) {
+        // Hack needed because enums get `typ == FbsBaseType::Byte`,
+        // or whatever integer type the enum was assigned to.
+        let enum_index = field_type.index() as usize;
+        if enum_index < enums.len() {
+            // It is an enum.
+            assert!(
+                typ == FbsBaseType::UByte,
+                "{virtpath}: For consistency, enums must be declared as the `ubyte` type"
+            );
+
+            let enum_ = &enums[field_type.index() as usize];
+            return Some(enum_.name().to_owned());
+        }
+    }
+    None
+}
+
+fn is_int(typ: FbsBaseType) -> bool {
+    matches!(
+        typ,
+        FbsBaseType::Byte
+            | FbsBaseType::UByte
+            | FbsBaseType::Short
+            | FbsBaseType::UShort
+            | FbsBaseType::Int
+            | FbsBaseType::UInt
+            | FbsBaseType::Long
+            | FbsBaseType::ULong
+    )
 }
 
 /// The underlying element type for arrays/vectors/maps.
@@ -1283,7 +1479,7 @@ pub enum ElementType {
     Float32,
     Float64,
     String,
-    Object(String), // fqname
+    Object { fqname: String },
 }
 
 impl ElementType {
@@ -1293,7 +1489,14 @@ impl ElementType {
         outer_type: FbsType<'_>,
         inner_type: FbsBaseType,
         attrs: &Attributes,
+        virtpath: &str,
     ) -> Self {
+        if let Some(enum_fqname) = try_get_enum_fqname(enums, outer_type, inner_type, virtpath) {
+            return Self::Object {
+                fqname: enum_fqname,
+            };
+        }
+
         // TODO(jleibs): Clean up fqname plumbing
         let fqname = "???";
         if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
@@ -1301,7 +1504,9 @@ impl ElementType {
                 (FbsBaseType::UShort, "float16") => {
                     return Self::Float16;
                 }
-                _ => unreachable!("UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"),
+                _ => unreachable!(
+                    "UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"
+                ),
             }
         }
 
@@ -1321,11 +1526,15 @@ impl ElementType {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[outer_type.index() as usize];
-                Self::Object(obj.name().to_owned())
+                Self::Object {
+                    fqname: obj.name().to_owned(),
+                }
             }
             FbsBaseType::Union => {
                 let enm = &enums[outer_type.index() as usize];
-                Self::Object(enm.name().to_owned())
+                Self::Object {
+                    fqname: enm.name().to_owned(),
+                }
             }
             FbsBaseType::None
             | FbsBaseType::UType
@@ -1340,7 +1549,7 @@ impl ElementType {
     /// `Some(fqname)` if this is an `Object`.
     pub fn fqname(&self) -> Option<&str> {
         match self {
-            Self::Object(fqname) => Some(fqname.as_str()),
+            Self::Object { fqname } => Some(fqname.as_str()),
             _ => None,
         }
     }
@@ -1363,14 +1572,14 @@ impl ElementType {
 
             Self::String => false,
 
-            Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
+            Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
         }
     }
 
     /// Is this type directly backed by a native arrow `Buffer`. This means the data can
-    /// be returned using a `re_types::ArrowBuffer` which facilitates direct zero-copy access to
+    /// be returned using a `ScalarBuffer` which facilitates direct zero-copy access to
     /// a slice representation.
-    pub fn backed_by_arrow_buffer(&self) -> bool {
+    pub fn backed_by_scalar_buffer(&self) -> bool {
         match self {
             Self::UInt8
             | Self::UInt16
@@ -1383,12 +1592,12 @@ impl ElementType {
             | Self::Float16
             | Self::Float32
             | Self::Float64 => true,
-            Self::Bool | Self::Object(_) | Self::String => false,
+            Self::Bool | Self::Object { .. } | Self::String => false,
         }
     }
 
     pub fn is_union(&self, objects: &Objects) -> bool {
-        if let Self::Object(fqname) = self {
+        if let Self::Object { fqname } = self {
             let obj = &objects[fqname];
             if obj.is_arrow_transparent() {
                 obj.fields[0].typ.is_union(objects)
@@ -1451,6 +1660,10 @@ impl Attributes {
                 )
             })
             .unwrap()
+    }
+
+    pub fn get_string(&self, name: &str) -> Option<String> {
+        self.0.get(name).cloned().flatten()
     }
 
     pub fn try_get<T>(&self, owner_fqname: impl AsRef<str>, name: impl AsRef<str>) -> Option<T>

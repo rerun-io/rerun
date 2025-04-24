@@ -107,52 +107,105 @@ export interface AppOptions extends WebViewerOptions {
   panel_state_overrides?: Partial<{
     [K in Panel]: PanelState;
   }>;
-  callbacks?: Callbacks;
+  on_viewer_event?: (event_json: string) => void;
   fullscreen?: FullscreenOptions;
   enable_history?: boolean;
 }
 
-/** Selected an (entire) entity. */
-export type EntityItem = { type: "entity"; entity_path: string };
+// Types are based on `crates/viewer/re_viewer/src/event.rs`.
+/** An event produced in the Viewer. */
+export type ViewerEvent =
+  | PlayEvent
+  | PauseEvent
+  | TimeUpdateEvent
+  | TimelineChangeEvent
+  | SelectionChangeEvent;
 
-/** Selected an instance within an entity. */
-export type InstanceItem = {
-  type: "instance";
+type ViewerEventBase = {
+  application_id: string;
+  recording_id: string;
+}
+
+export type PlayEvent = ViewerEventBase & {
+  type: "play";
+};
+
+export type PauseEvent = ViewerEventBase & {
+  type: "pause";
+}
+
+export type TimeUpdateEvent = ViewerEventBase & {
+  type: "time_update";
+  time: number;
+}
+
+export type TimelineChangeEvent = ViewerEventBase & {
+  type: "timeline_change";
+  timeline: string;
+  time: number;
+}
+
+export type SelectionChangeEvent = ViewerEventBase & {
+  type: "selection_change";
+  items: SelectionChangeItem[];
+}
+
+// A bit of TypeScript metaprogramming to automatically produce a
+// mapping of event names to event payloads given the above type
+// definitions.
+
+// Yield the event with type `K`.
+type _GetViewerEvent<K> =
+  Extract<ViewerEvent, { type: K }>;
+
+// `ViewerEvent` is a union of all events, so its `type` field
+// is a union of all `type` fields.
+type _ViewerEventNames = ViewerEvent["type"];
+
+// For every event, get its payload type.
+type ViewerEventMap = {
+  [K in _ViewerEventNames]: _GetViewerEvent<K>
+}
+
+/**
+ * Selected an entity, or an instance of an entity.
+ *
+ * If the entity was selected within a view, then this also
+ * includes the view's name.
+ *
+ * If the entity was selected within a 2D or 3D space view,
+ * then this also includes the position.
+ */
+export type EntityItem = {
+  type: "entity";
+
   entity_path: string;
-  instance_id: number;
+  instance_id?: number;
+  view_name?: string;
+  position?: [number, number, number];
 };
 
 /** Selected a view. */
-export type ViewItem = { type: "view"; view_id: string };
+export type ViewItem = { type: "view"; view_id: string; view_name: string };
 
 /** Selected a container. */
-export type ContainerItem = { type: "container"; container_id: string };
+export type ContainerItem = {
+  type: "container";
+  container_id: string;
+  container_name: string;
+};
 
 /** A single item in a selection. */
-export type SelectionItem = EntityItem | InstanceItem | ViewItem | ContainerItem;
-
-interface Callbacks {
-  on_selectionchange: (selection: SelectionItem[]) => void;
-  on_timelinechange: (timeline: string, time: number) => void;
-  on_timeupdate: (time: number) => void;
-  on_pause: () => void;
-  on_play: () => void;
-}
+export type SelectionChangeItem = EntityItem | ViewItem | ContainerItem;
 
 interface FullscreenOptions {
   get_state: () => boolean;
   on_toggle: () => void;
 }
 
-interface WebViewerEvents {
+interface WebViewerEvents extends ViewerEventMap {
   fullscreen: boolean;
   ready: void;
-
-  selectionchange: [SelectionItem[]];
-  timelinechange: [timeline_name: string, time: number];
-  timeupdate: number;
-  play: void;
-  pause: void;
 }
 
 // This abomination is a mapped type with key filtering, and is used to split the events
@@ -196,7 +249,7 @@ export class WebViewer {
   /**
    * Start the viewer.
    *
-   * @param rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param parent The element to attach the canvas onto.
    * @param options Whether to hide the welcome screen.
    */
@@ -233,21 +286,24 @@ export class WebViewer {
       }
       : undefined;
 
-    const callbacks = {
-      on_selectionchange: (items: SelectionItem[]) => {
-        this.#dispatch_event("selectionchange", items);
-      },
-      on_timelinechange: (timeline: string, time: number) =>
-        this.#dispatch_event("timelinechange", timeline, time),
-      on_timeupdate: (time: number) => this.#dispatch_event("timeupdate", time),
-      on_pause: () => this.#dispatch_event("pause"),
-      on_play: () => this.#dispatch_event("play"),
-    };
+    const on_viewer_event = (event_json: string) => {
+      // for notebooks/gradio, we can avoid a whole layer
+      // of serde by sending over the raw json directly,
+      // which will be deserialized in Python instead
+      this.#_dispatch_raw_event(event_json);
+
+      // for JS users, we dispatch the parsed event
+      let event: ViewerEvent = JSON.parse(event_json);
+      this.#dispatch_event(
+        event.type as any,
+        event,
+      );
+    }
 
     this.#handle = new WebHandle_class({
       ...options,
       fullscreen,
-      callbacks,
+      on_viewer_event,
     });
     try {
       await this.#handle.start(this.#canvas);
@@ -265,6 +321,25 @@ export class WebViewer {
     }
 
     return;
+  }
+
+  #_raw_events: Set<(event_json: string) => void> = new Set();
+
+  #_dispatch_raw_event(event_json: string) {
+    for (const callback of this.#_raw_events) {
+      callback(event_json);
+    }
+  }
+
+  /** Internal interface */
+  // NOTE: Callbacks passed to this function must NOT invoke any viewer methods!
+  //       The `setTimeout` is omitted to avoid the 1-tick delay, as it is unnecessary,
+  //       because this is only meant to be used for sending events to Jupyter/Gradio.
+  // 
+  // Do not change this without searching for grepping for usage!
+  private _on_raw_event(callback: (event: string) => void): Cancel {
+    this.#_raw_events.add(callback);
+    return () => this.#_raw_events.delete(callback);
   }
 
   #event_map: Map<
@@ -375,7 +450,7 @@ export class WebViewer {
    *
    * The viewer must have been started via `WebViewer.start`.
    *
-   * @param rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param options
    *        - follow_if_http: Whether Rerun should open the resource in "Following" mode when streaming
    *        from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
@@ -401,7 +476,7 @@ export class WebViewer {
    *
    * The viewer must have been started via `WebViewer.start`.
    *
-   * @param rrd URLs to `.rrd` files or WebSocket connections to our SDK.
+   * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    */
   close(rrd: string | string[]) {
     if (!this.#handle) {
@@ -486,6 +561,21 @@ export class WebViewer {
       }
     };
 
+    const on_send_table = (/** @type {Uint8Array} */ data: Uint8Array) => {
+      if (!this.#handle) {
+        throw new Error(
+          `attempted to send data through channel \"${channel_name}\" to a stopped web viewer`,
+        );
+      }
+
+      try {
+        this.#handle.send_table_to_channel(id, data);
+      } catch (e) {
+        this.stop();
+        throw e;
+      }
+    }
+
     const on_close = () => {
       if (!this.#handle) {
         throw new Error(
@@ -503,7 +593,7 @@ export class WebViewer {
 
     const get_state = () => this.#state;
 
-    return new LogChannel(on_send, on_close, get_state);
+    return new LogChannel(on_send, on_send_table, on_close, get_state);
   }
 
   /**
@@ -782,6 +872,7 @@ export class WebViewer {
 
 export class LogChannel {
   #on_send;
+  #on_send_table;
   #on_close;
   #get_state;
   #closed = false;
@@ -793,10 +884,12 @@ export class LogChannel {
    */
   constructor(
     on_send: (data: Uint8Array) => void,
+    on_send_table: (data: Uint8Array) => void,
     on_close: () => void,
     get_state: () => "ready" | "starting" | "stopped",
   ) {
     this.#on_send = on_send;
+    this.#on_send_table = on_send_table;
     this.#on_close = on_close;
     this.#get_state = get_state;
   }
@@ -815,6 +908,11 @@ export class LogChannel {
   send_rrd(rrd_bytes: Uint8Array) {
     if (!this.ready) return;
     this.#on_send(rrd_bytes);
+  }
+
+  send_table(table_bytes: Uint8Array) {
+    if (!this.ready) return;
+    this.#on_send_table(table_bytes)
   }
 
   /**

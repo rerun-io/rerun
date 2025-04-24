@@ -5,15 +5,19 @@ title: "GeoPoints"
 
 Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 
-## Components
+## Fields
+### Required
+* `positions`: [`LatLon`](../components/lat_lon.md)
 
-**Required**: [`LatLon`](../components/lat_lon.md)
+### Recommended
+* `radii`: [`Radius`](../components/radius.md)
+* `colors`: [`Color`](../components/color.md)
 
-**Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
+### Optional
+* `class_ids`: [`ClassId`](../components/class_id.md)
 
-**Optional**: [`ClassId`](../components/class_id.md)
 
-## Shown in
+## Can be shown in
 * [MapView](../views/map_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

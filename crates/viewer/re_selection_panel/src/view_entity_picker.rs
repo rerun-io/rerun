@@ -42,13 +42,15 @@ impl ViewEntityPicker {
             egui_ctx,
             || {
                 re_ui::modal::ModalWrapper::new("Add/remove Entities")
-                    .default_height(640.0)
+                    .min_height(f32::min(160.0, egui_ctx.screen_rect().height() * 0.8))
                     .full_span_content(true)
                     // we set the scroll area ourselves
                     .set_side_margin(false)
                     .scrollable([false, false])
             },
             |ui| {
+                // 80%, never more than 500px
+                ui.set_max_height(f32::min(ui.ctx().screen_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     ui.close();
                     return;
@@ -65,22 +67,12 @@ impl ViewEntityPicker {
                 });
                 ui.add_space(5.0);
 
-                let max_height = 0.85 * ui.ctx().screen_rect().height();
-                egui::ScrollArea::new([false, true])
-                    .min_scrolled_height(max_height)
-                    .max_height(max_height)
-                    .show(ui, |ui| {
-                        ui.panel_content(|ui| {
-                            let matcher = self.filter_state.filter();
-                            add_entities_ui(
-                                ctx,
-                                ui,
-                                view,
-                                &matcher,
-                                self.filter_state.session_id(),
-                            );
-                        });
+                egui::ScrollArea::new([false, true]).show(ui, |ui| {
+                    ui.panel_content(|ui| {
+                        let matcher = self.filter_state.filter();
+                        add_entities_ui(ctx, ui, view, &matcher, self.filter_state.session_id());
                     });
+                });
             },
         );
     }
@@ -123,6 +115,8 @@ fn add_entities_ui(
                 filter_session_id,
             );
         });
+    } else {
+        ui.label("No entities match the filter.");
     }
 }
 
@@ -239,18 +233,46 @@ fn add_entities_line_ui(
     //TODO(ab): use `CustomContent` support for action button to implement this.
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         if entity_path_filter.contains_rule_for_exactly(entity_path) {
-            // Reset-button
-            // Shows when an entity is explicitly excluded or included
-            let response = ui.small_icon_button(&re_ui::icons::RESET);
+            if ResolvedEntityPathFilter::properties().matches(entity_path) {
+                let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
-            if response.clicked() {
-                view.contents.remove_filter_rule_for(ctx, entity_path);
-            }
+                ui.add_enabled_ui(enabled, |ui| {
+                    let response = ui.small_icon_button(&re_ui::icons::ADD);
 
-            if is_explicitly_excluded {
-                response.on_hover_text("Stop excluding this entity path.");
-            } else if is_explicitly_included {
-                response.on_hover_text("Stop including this entity path.");
+                    if response.clicked() {
+                        view.contents.remove_filter_rule_for(ctx, entity_path);
+                        view.contents.raw_add_entity_inclusion(
+                            ctx,
+                            ResolvedEntityPathRule::including_subtree(entity_path),
+                        );
+                    }
+
+                    if enabled {
+                        if add_info.can_add.is_compatible_and_missing() {
+                            response.on_hover_text(
+                                "Include this entity and all its descendants in the view",
+                            );
+                        } else {
+                            response.on_hover_text("Add descendants of this entity to the view");
+                        }
+                    } else if let CanAddToView::No { reason } = &add_info.can_add {
+                        response.on_disabled_hover_text(reason);
+                    }
+                });
+            } else {
+                // Reset-button
+                // Shows when an entity is explicitly excluded or included
+                let response = ui.small_icon_button(&re_ui::icons::RESET);
+
+                if response.clicked() {
+                    view.contents.remove_filter_rule_for(ctx, entity_path);
+                }
+
+                if is_explicitly_excluded {
+                    response.on_hover_text("Stop excluding this entity path.");
+                } else if is_explicitly_included {
+                    response.on_hover_text("Stop including this entity path.");
+                }
             }
         } else if is_included {
             // Remove-button
@@ -315,11 +337,6 @@ impl EntityPickerEntryData {
         hierarchy: &mut Vec<String>,
         hierarchy_highlights: &mut PathRanges,
     ) -> Option<Self> {
-        // Early out
-        if filter_matcher.matches_nothing() {
-            return None;
-        }
-
         let entity_part_ui_string = entity_tree
             .path
             .last()

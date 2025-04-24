@@ -2,6 +2,7 @@
   // See https://go.microsoft.com/fwlink/?LinkId=827846
   // for the documentation about the extensions.json format
   "recommendations": [
+    "bufbuild.vscode-buf",
     "charliermarsh.ruff",
     "esbenp.prettier-vscode",
     "fill-labs.dependi",
@@ -21,6 +22,5 @@
     "wayou.vscode-todo-highlight",
     "webfreak.debug",
     "xaver.clang-format", // C++ formatter
-    "zxh404.vscode-proto3",
   ]
 }

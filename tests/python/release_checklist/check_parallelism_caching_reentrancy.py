@@ -76,7 +76,7 @@ def log_readme() -> None:
 
 def log_text_logs() -> None:
     for t in range(100):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
         rr.log("text", rr.TextLog("Something good happened", level=rr.TextLogLevel.INFO))
         rr.log("text", rr.TextLog("Something bad happened", level=rr.TextLogLevel.ERROR))
 
@@ -84,22 +84,22 @@ def log_text_logs() -> None:
 def log_plots() -> None:
     from math import cos, sin, tau
 
-    rr.log("plots/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
-    rr.log("plots/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)
+    rr.log("plots/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)"), static=True)
+    rr.log("plots/cos", rr.SeriesLines(colors=[0, 255, 0], names="cos(0.01t)"), static=True)
 
     for t in range(int(tau * 2 * 10.0)):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
 
         sin_of_t = sin(float(t) / 10.0)
-        rr.log("plots/sin", rr.Scalar(sin_of_t))
+        rr.log("plots/sin", rr.Scalars(sin_of_t))
 
         cos_of_t = cos(float(t) / 10.0)
-        rr.log("plots/cos", rr.Scalar(cos_of_t))
+        rr.log("plots/cos", rr.Scalars(cos_of_t))
 
 
 def log_spatial() -> None:
     for t in range(100):
-        rr.set_index("frame_nr", sequence=t)
+        rr.set_time("frame_nr", sequence=t)
 
         positions3d = [
             [math.sin((i + t) * 0.2) * 5, math.cos((i + t) * 0.2) * 5 - 10.0, i * 0.4 - 5.0] for i in range(100)

@@ -19,6 +19,8 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A 2D map view to display geospatial primitives.
+///
+/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug)]
 pub struct MapView {
     /// Configures the zoom level of the map view.

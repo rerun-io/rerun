@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package rerun.common.v1alpha1;
 
+// TODO(cmc): aren't most of the definitions in here dead code?
+
 // supported encoder versions for encoding data
 // See `RerunData` and `RerunChunkData` for its usage
 enum EncoderVersion {
@@ -17,11 +19,17 @@ message RerunChunk {
   EncoderVersion encoder_version = 1;
 
   // Data payload is Arrow IPC encoded RecordBatch
+  // TODO(zehiko) make this optional (#9285)
   bytes payload = 2;
 }
 
 // unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
 message RecordingId {
+  string id = 1;
+}
+
+// uniquely identifies a table
+message TableId {
   string id = 1;
 }
 
@@ -39,9 +47,10 @@ message TimeRange {
 
 // arrow IPC serialized schema
 message Schema {
-  bytes arrow_schema = 1;
+  optional bytes arrow_schema = 1;
 }
 
+// TODO(cmc): can we kill this?
 message Query {
   // The subset of the database that the query will run on: a set of EntityPath(s) and their
   // associated Component(s)
@@ -101,6 +110,9 @@ message Query {
 
   // Specifies how null values should be filled in the returned dataframe.
   SparseFillStrategy sparse_fill_strategy = 11;
+
+  reserved 12;
+  reserved "include_properties_entity";
 }
 
 message ColumnSelection {
@@ -196,16 +208,129 @@ message StoreId {
   string id = 2;
 }
 
-// A date-time represented as nanoseconds since unix epoch
-message Time {
-  int64 nanos_since_epoch = 1;
-}
-
 message Tuid {
   // Approximate nanoseconds since epoch.
-  fixed64 time_ns = 1;
+  optional fixed64 time_ns = 1;
 
-  // Initialized to something random on each thread,
-  // then incremented for each new `Tuid` being allocated.
-  fixed64 inc = 2;
+  // Initialized to something random on each thread, then incremented for each
+  // new `Tuid` being allocated.
+  optional fixed64 inc = 2;
+}
+
+message EntryId {
+  Tuid id = 1;
+}
+
+// Entry point for all ManifestRegistryService APIs
+message DatasetHandle {
+  // Unique entry identifier (for debug purposes)
+  EntryId entry_id = 1;
+
+  // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
+  optional string dataset_url = 2;
+}
+
+// DataframePart is arrow IPC encoded RecordBatch
+message DataframePart {
+  // encoder version used to encode the data
+  EncoderVersion encoder_version = 1;
+
+  // Data payload is Arrow IPC encoded RecordBatch
+  optional bytes payload = 2;
+}
+
+// Generic parameters that will influence the behavior of the Lance scanner.
+//
+// TODO(zehiko, cmc): This should be available for every endpoint that queries data in
+// one way or another.
+message ScanParameters {
+  // List of columns to project. If empty, all columns will be projected.
+  repeated string columns = 1;
+
+  IfMissingBehavior on_missing_columns = 2;
+
+  // An arbitrary filter expression that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.filter(filter)
+  // ```
+  optional string filter = 3;
+
+  // An arbitrary offset that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.limit(_, limit_offset)
+  // ```
+  optional int64 limit_offset = 4;
+
+  // An arbitrary limit that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.limit(limit_len, _)
+  // ```
+  optional int64 limit_len = 5;
+
+  // An arbitrary order clause that will be passed to the Lance scanner as-is.
+  //
+  // ```text
+  // scanner.order_by(…)
+  // ```
+  ScanParametersOrderClause order_by = 6;
+
+  // If set, the output of `scanner.explain_plan` will be dumped to the server's log.
+  bool explain_plan = 7;
+
+  // If set, the final `scanner.filter` will be dumped to the server's log.
+  bool explain_filter = 8;
+}
+
+enum IfMissingBehavior {
+  IF_MISSING_BEHAVIOR_UNSPECIFIED = 0;
+  IF_MISSING_BEHAVIOR_SKIP = 1;
+  IF_MISSING_BEHAVIOR_ERROR = 2;
+}
+
+// Specify how the relevant creation call behaves
+// in case of previously created (duplicate) items
+enum IfDuplicateBehavior {
+  IF_DUPLICATE_BEHAVIOR_UNSPECIFIED = 0;
+
+  // Overwrite the existing item
+  IF_DUPLICATE_BEHAVIOR_OVERWRITE = 1;
+
+  // Skip if the item already exists
+  IF_DUPLICATE_BEHAVIOR_SKIP = 2;
+
+  // Return an error if the item already exists
+  IF_DUPLICATE_BEHAVIOR_ERROR = 3;
+}
+
+message ScanParametersOrderClause {
+  bool descending = 1;
+  bool nulls_last = 2;
+  optional string column_name = 3;
+}
+
+// Unique identifier for a partition. Can be user defined
+// which means it can be of any type. For simplicity we start
+// with a string, but we will probably revisit this.
+message PartitionId {
+  optional string id = 1;
+}
+
+message ComponentDescriptor {
+  // Optional name of the `Archetype` associated with this data.
+  optional string archetype_name = 1;
+
+  // Optional name of the field within `Archetype` associated with this data.
+  optional string archetype_field_name = 2;
+
+  // Semantic name associated with this data.
+  optional string component_name = 3;
+}
+
+// Unique identifier of a task submitted in the redap
+// tasks subsystem
+message TaskId {
+  string id = 1;
 }

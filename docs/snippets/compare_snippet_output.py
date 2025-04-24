@@ -8,10 +8,12 @@ import argparse
 import glob
 import multiprocessing
 import os
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import tomlkit
 from tomlkit.container import Container
@@ -21,10 +23,10 @@ from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
 config_path = Path(__file__).parent / "snippets.toml"
 config = tomlkit.loads(config_path.read_text())
-assert isinstance(config["opt_out"], Container)
 
-OPT_OUT_ENTIRELY: dict[str, Any] = config["opt_out"]["run"].value
-OPT_OUT_COMPARE = config["opt_out"]["compare"].value
+OPT_OUT: dict[str, Any] = cast(Container, config["opt_out"])
+OPT_OUT_ENTIRELY: dict[str, Any] = OPT_OUT["run"].value
+OPT_OUT_COMPARE = OPT_OUT["compare"].value
 EXTRA_ARGS = config["extra_args"].value
 
 
@@ -55,6 +57,15 @@ class Example:
 
     def output_path(self, language: str) -> str:
         return f"docs/snippets/all/{self.subdir}/{self.name}_{language}.rrd"
+
+    def backwards_compatibility_path(self) -> Path:
+        """
+        Files checked in to CI that tests backwards compatibility.
+
+        We use this path as a source for comparison ("are old files correctly migrated?")
+        and as a destination when these files need updating using --write-missing-backward-assets.
+        """
+        return Path(f"tests/assets/rrd/snippets/{self.subdir}/{self.name}.rrd")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Example):
@@ -89,7 +100,12 @@ def main() -> None:
     parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
-    parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified examples")
+    parser.add_argument(
+        "--write-missing-backward-assets",
+        action="store_true",
+        help="Add any missing asset files to tests/assets/rrd/snippets",
+    )
+    parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified example(s)")
 
     args = parser.parse_args()
 
@@ -126,6 +142,8 @@ def main() -> None:
         dir = os.path.join(os.path.dirname(__file__), "all")
         for file in glob.glob(dir + "/**", recursive=True):
             name = os.path.basename(file)
+            if name == "__init__.py":
+                continue
             name, extension = os.path.splitext(name)
             if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs":
                 subdir = os.path.relpath(os.path.dirname(file), dir)
@@ -161,10 +179,11 @@ def main() -> None:
     print(f"Active languages: {active_languages}")
     print(f"Comparing {len(examples)} examples…")
 
+    errors = []
+
     for example in examples:
         print()
-        print("----------------------------------------------------------")
-        print(f"Comparing example '{example}'…")
+        print(f"Comparing '{example}'…")
 
         example_opt_out_entirely = example.opt_out_entirely()
         example_opt_out_compare = example.opt_out_compare()
@@ -173,9 +192,24 @@ def main() -> None:
             print("SKIPPED: Missing Rust baseline to compare against")
             continue
 
+        backwards_path = example.backwards_compatibility_path()
         cpp_output_path = example.output_path("cpp")
         python_output_path = example.output_path("python")
         rust_output_path = example.output_path("rust")
+
+        if args.write_missing_backward_assets:
+            if not backwards_path.exists():
+                print(f"Writing new backwards-compatibility file to {backwards_path}…")
+                backwards_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(rust_output_path, backwards_path)
+                subprocess.call(["git", "add", "-f", backwards_path])
+        else:
+            try:
+                # Compare old snippet files checked in to git lfs, to the newly generated ones.
+                # They should be the same!
+                run_comparison(backwards_path, rust_output_path, args.full_dump)
+            except Exception as e:
+                errors.append((example, "old-rrd-files", e))
 
         if "cpp" in active_languages:
             if "cpp" in example_opt_out_entirely:
@@ -183,7 +217,10 @@ def main() -> None:
             elif "cpp" in example_opt_out_compare:
                 print("Skipping cpp compare")
             else:
-                run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+                try:
+                    run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+                except Exception as e:
+                    errors.append((example, "C++", e))
 
         if "py" in active_languages:
             if "py" in example_opt_out_entirely:
@@ -191,11 +228,33 @@ def main() -> None:
             elif "py" in example_opt_out_compare:
                 print("Skipping py compare")
             else:
-                run_comparison(python_output_path, rust_output_path, args.full_dump)
+                try:
+                    run_comparison(python_output_path, rust_output_path, args.full_dump)
+                except Exception as e:
+                    errors.append((example, "Python", e))
 
-    print()
-    print("----------------------------------------------------------")
-    print("All tests passed!")
+    if len(errors) == 0:
+        print("All tests passed!")
+    else:
+        print(f"{len(errors)} errors found:")
+
+        for example, comparison, _error in errors:
+            print(f"❌ {example} - {comparison} differs from Rust baseline")
+
+        for example, comparison, error in errors:
+            print()
+            print(f"❌ {example} - {comparison} differs from Rust baseline:")
+            print(error)
+            print("--------------------------------------")
+
+        print()
+        print("----------------------------------------------------------")
+        print()
+
+        for example, comparison, _error in errors:
+            print(f"❌ {example} - {comparison} differs from Rust baseline")
+
+        sys.exit(1)
 
 
 def run_example(example: Example, language: str, args: argparse.Namespace) -> None:

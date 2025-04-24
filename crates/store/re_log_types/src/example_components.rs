@@ -10,7 +10,7 @@ use re_types_core::{
 
 // ----------------------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MyPoints {
     pub points: Option<SerializedComponentBatch>,
     pub colors: Option<SerializedComponentBatch>,
@@ -62,6 +62,12 @@ impl MyPoints {
             )),
         }
     }
+
+    #[inline]
+    pub fn with_labels(mut self, labels: impl IntoIterator<Item = impl Into<MyLabel>>) -> Self {
+        self.labels = re_types_core::try_serialize_field(Self::descriptor_labels(), labels);
+        self
+    }
 }
 
 impl re_types_core::Archetype for MyPoints {
@@ -93,6 +99,22 @@ impl re_types_core::Archetype for MyPoints {
             MyLabel::descriptor(),
         ]
         .into()
+    }
+}
+
+impl ::re_types_core::AsComponents for MyPoints {
+    #[inline]
+    fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
+        use ::re_types_core::Archetype as _;
+        [
+            Some(Self::indicator()),
+            self.colors.clone(),
+            self.labels.clone(),
+            self.points.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 

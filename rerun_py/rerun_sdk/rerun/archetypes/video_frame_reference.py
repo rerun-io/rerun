@@ -50,12 +50,12 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     rr.log("video", video_asset, static=True)
 
     # Send automatically determined video frame timestamps.
-    frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+    frame_timestamps_ns = video_asset.read_frame_timestamps_nanos()
     rr.send_columns(
         "video",
         # Note timeline values don't have to be the same as the video timestamps.
-        indexes=[rr.IndexColumn("video_time", timedelta=1e-9 * frame_timestamps_ns)],
-        columns=rr.VideoFrameReference.columns_nanoseconds(frame_timestamps_ns),
+        indexes=[rr.TimeColumn("video_time", duration=1e-9 * frame_timestamps_ns)],
+        columns=rr.VideoFrameReference.columns_nanos(frame_timestamps_ns),
     )
     ```
     <center>
@@ -70,8 +70,6 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
 
     ### Demonstrates manual use of video frame references:
     ```python
-    # TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
-
     import sys
 
     import rerun as rr
@@ -246,10 +244,11 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().archetype_field_name]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
+                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
 
-                if pa.types.is_fixed_size_list(arrow_array.type) and len(shape) <= 2:
-                    # If shape length is 2 or less, we have `num_rows` single element batches (each element is a fixed sized list).
-                    # `shape[1]` should be the length of the fixed sized list.
+                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
+                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                    # we have `num_rows` single element batches (each element is a fixed sized list).
                     # (This should have been already validated by conversion to the arrow_array)
                     batch_length = 1
                 else:

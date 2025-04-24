@@ -3,7 +3,7 @@ use std::sync::Arc;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
-use re_chunk::{Chunk, ChunkResult, RowId, TimeInt, Timeline, TimelineName};
+use re_chunk::{Chunk, ChunkResult, LatestAtQuery, RowId, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
     ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
@@ -140,13 +140,27 @@ impl EntityDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
+    pub fn recording_property<C: re_types_core::Component>(&self) -> Option<C> {
+        self.latest_at_component::<C>(
+            &EntityPath::recording_properties(),
+            &LatestAtQuery::latest(TimelineName::log_tick()),
+        )
+        .map(|(_, value)| value)
+    }
+
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
         self.storage_engine()
             .store()
             .time_column_type(timeline_name)
             .unwrap_or_else(|| {
-                re_log::warn_once!("Timeline {timeline_name:?} not found");
-                TimeType::Sequence
+                if timeline_name == &TimelineName::log_time() {
+                    Timeline::log_time().typ()
+                } else if timeline_name == &TimelineName::log_tick() {
+                    Timeline::log_tick().typ()
+                } else {
+                    re_log::warn_once!("Timeline {timeline_name:?} not found");
+                    TimeType::Sequence
+                }
             })
     }
 
@@ -557,12 +571,6 @@ impl EntityDb {
         tree.on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
     }
 
-    /// Key used for sorting recordings in the UI.
-    pub fn sort_key(&self) -> impl Ord + '_ {
-        self.store_info()
-            .map(|info| (info.application_id.0.as_str(), info.started))
-    }
-
     /// Export the contents of the current database to a sequence of messages.
     ///
     /// If `time_selection` is specified, then only data for that specific timeline over that
@@ -835,8 +843,7 @@ impl IngestionStatistics {
             let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
 
             // This only makes sense if the clocks are very good, i.e. if the recording was on the same machine!
-            if let Some(nanos_since_log) =
-                nanos_since_epoch.checked_sub(row_id.nanoseconds_since_epoch())
+            if let Some(nanos_since_log) = nanos_since_epoch.checked_sub(row_id.nanos_since_epoch())
             {
                 let now = nanos_since_epoch as f64 / 1e9;
                 let sec_since_log = nanos_since_log as f32 / 1e9;

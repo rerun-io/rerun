@@ -1,5 +1,4 @@
 //! Log a video asset using manually created frame references.
-//! TODO(#7298): ⚠️ Video is currently only supported in the Rerun web viewer.
 
 use rerun::external::anyhow;
 
@@ -19,12 +18,12 @@ fn main() -> anyhow::Result<()> {
     // Create two entities, showing the same video frozen at different times.
     rec.log(
         "frame_1s",
-        &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(1.0))
+        &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_secs(1.0))
             .with_video_reference("video_asset"),
     )?;
     rec.log(
         "frame_2s",
-        &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(2.0))
+        &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_secs(2.0))
             .with_video_reference("video_asset"),
     )?;
 

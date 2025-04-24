@@ -168,13 +168,13 @@ int main(int argc, char** argv) {
     for (auto offset : offsets) {
         std::optional<rerun::TimeColumn> time_column;
         if (temporal_batch_size.has_value()) {
-            time_column = rerun::TimeColumn::from_duration_seconds(
+            time_column = rerun::TimeColumn::from_duration_secs(
                 "sim_time",
                 rerun::borrow(sim_times.data() + offset, *temporal_batch_size),
                 rerun::SortingStatus::Sorted
             );
         } else {
-            rec.set_index_duration_secs("sim_time", sim_times[offset]);
+            rec.set_time_duration_secs("sim_time", sim_times[offset]);
         }
 
         // Log
@@ -189,15 +189,13 @@ int main(int argc, char** argv) {
                     rec.send_columns(
                         path,
                         *time_column,
-                        rerun::Scalar::update_fields()
-                            .with_many_scalar(rerun::borrow(
-                                series_values.data() + time_step,
-                                *temporal_batch_size
-                            ))
+                        rerun::Scalars(
+                            rerun::borrow(series_values.data() + time_step, *temporal_batch_size)
+                        )
                             .columns()
                     );
                 } else {
-                    rec.log(path, rerun::Scalar(series_values[time_step]));
+                    rec.log(path, rerun::Scalars(series_values[time_step]));
                 }
             }
         }

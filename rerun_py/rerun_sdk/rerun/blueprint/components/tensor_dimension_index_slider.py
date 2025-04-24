@@ -16,7 +16,11 @@ __all__ = ["TensorDimensionIndexSlider", "TensorDimensionIndexSliderBatch"]
 
 
 class TensorDimensionIndexSlider(blueprint_datatypes.TensorDimensionIndexSlider, ComponentMixin):
-    """**Component**: Show a slider for the index of some dimension of a slider."""
+    """
+    **Component**: Show a slider for the index of some dimension of a slider.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of TensorDimensionIndexSliderExt in tensor_dimension_index_slider_ext.py

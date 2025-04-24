@@ -16,7 +16,11 @@ __all__ = ["ZoomLevel", "ZoomLevelBatch"]
 
 
 class ZoomLevel(datatypes.Float64, ComponentMixin):
-    """**Component**: A zoom level determines how much of the world is visible on a map."""
+    """
+    **Component**: A zoom level determines how much of the world is visible on a map.
+
+    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of ZoomLevelExt in zoom_level_ext.py

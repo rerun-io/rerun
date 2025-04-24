@@ -7,21 +7,21 @@ use re_entity_db::entity_db::EntityDb;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
-use crate::GlobalContext;
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
     MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
     ViewClassRegistry, ViewId,
 };
+use crate::{GlobalContext, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
 
-    /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
+    pub storage_context: &'a StorageContext<'a>,
 
     /// Mapping from class and system to entities for the store
     ///
@@ -263,7 +263,9 @@ impl ViewerContext<'_> {
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
                 .unwrap_or_else(|| {
-                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    if !component.is_indicator_component() {
+                        re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    }
                     arrow::datatypes::DataType::Null
                 })
         };
@@ -290,6 +292,16 @@ impl ViewerContext<'_> {
         }
 
         is_safari_browser_inner().unwrap_or(false)
+    }
+
+    /// This returns `true` if we have an active recording.
+    ///
+    /// It excludes the globally hardcoded welcome screen app ID.
+    pub fn has_active_recording(&self) -> bool {
+        self.recording().app_id().is_some_and(|active_app_id| {
+            active_app_id != &StoreHub::welcome_screen_app_id()
+                && active_app_id != &StoreHub::table_app_id()
+        })
     }
 }
 

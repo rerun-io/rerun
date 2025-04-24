@@ -1,4 +1,4 @@
-use re_entity_db::{StoreBundle, StoreLoadError};
+use re_viewer_context::{StoreBundle, StoreLoadError};
 
 #[derive(thiserror::Error, Debug)]
 enum BlueprintLoadError {
@@ -20,11 +20,7 @@ pub fn load_blueprint_file(path: &std::path::Path) -> Option<StoreBundle> {
         let file = std::fs::File::open(path)?;
         let file = std::io::BufReader::new(file);
 
-        // Blueprint files change often. Be strict about the version, and then ignore any errors.
-        // See https://github.com/rerun-io/rerun/issues/2830
-        let version_policy = re_log_encoding::VersionPolicy::Error;
-
-        Ok(StoreBundle::from_rrd(version_policy, file)?)
+        Ok(StoreBundle::from_rrd(file)?)
     }
 
     match load_file_path_impl(path) {

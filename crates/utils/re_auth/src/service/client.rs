@@ -6,7 +6,7 @@ use crate::Jwt;
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct AuthDecorator {
     jwt: Option<Jwt>,
 }

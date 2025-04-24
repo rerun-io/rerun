@@ -35,13 +35,13 @@ See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for
 
 This release introduces new Python APIs to set component overrides, visualizer overrides, and component defaults from code. Depending on your use-case, these new APIs become the preferred way of styling views.
 
-For example, setting color and enabling the `SeriesPoint` visualizer was previously done using `rr.log()`:
+For example, setting color and enabling the `SeriesPoints` visualizer was previously done using `rr.log()`:
 
 ```python
-rr.log("data", rr.SeriesPoint(color=[255, 255, 0]), static=True)
+rr.log("data", rr.SeriesPoints(colors=[255, 255, 0]), static=True)
 
 for t in range(1000):
-    rr.set_index("frame_nr", sequence=t)
+    rr.set_time_sequence("frame_nr", t)
     rr.log("data",rr.Scalar(get_data(t))),
 
 rr.send_blueprint(
@@ -53,7 +53,7 @@ Now the override can be specified from the blueprint, removing the need to inclu
 
 ```python
 for t in range(1000):
-    rr.set_index("frame_nr", sequence=t)
+    rr.set_time_sequence("frame_nr", t)
     rr.log("data",rr.Scalar(get_data(t))),
 
 rr.send_blueprint(
@@ -61,7 +61,7 @@ rr.send_blueprint(
         origin="data",
         overrides={
             "data": [
-                rr.blueprint.VisualizerOverrides("SeriesPoint"),
+                rr.blueprint.VisualizerOverrides("SeriesPoints"),
                 rr.components.Color([255, 255, 0])
             ]
         },

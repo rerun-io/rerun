@@ -31,7 +31,9 @@ pub enum TensorImageLoadError {
     #[error(transparent)]
     Image(std::sync::Arc<image::ImageError>),
 
-    #[error("Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha.")]
+    #[error(
+        "Unsupported color type: {0:?}. We support 8-bit, 16-bit, and f32 images, and RGB, RGBA, Luminance, and Luminance-Alpha."
+    )]
     UnsupportedImageColorType(image::ColorType),
 
     #[error("Failed to load file: {0}")]

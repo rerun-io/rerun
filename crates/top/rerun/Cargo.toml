@@ -21,7 +21,6 @@ workspace = true
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
-
 [features]
 default = [
   "analytics",
@@ -77,7 +76,7 @@ ecolor = ["re_types?/ecolor"]
 log = ["dep:env_filter", "dep:log"]
 
 ## Enable faster native video decoding with assembly.
-## You need to install [nasm](https://nasm.us/) to compile with this feature.
+## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["re_video/nasm"]
 
 ## Support spawning a native viewer.
@@ -102,7 +101,7 @@ run = [
 ]
 
 ## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
-server = ["dep:re_grpc_server"]
+server = ["dep:re_grpc_server", "re_sdk/server", "tokio/signal"]
 
 ## Embed the Rerun SDK & built-in types and re-export all of their public symbols.
 sdk = ["dep:re_sdk", "dep:re_types"]
@@ -140,6 +139,7 @@ re_video.workspace = true
 
 anyhow.workspace = true
 arrow.workspace = true
+crossbeam.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 similar-asserts.workspace = true
@@ -173,6 +173,6 @@ unindent = { workspace = true, optional = true }
 re_build_tools.workspace = true
 
 
-[package.metadata.cargo-machete]
+[package.metadata.cargo-shear]
 # We only depend on re_video so we can enable extra features for it
-ignored = ["re_video"]
+ignored = ["re_video", "puffin"]

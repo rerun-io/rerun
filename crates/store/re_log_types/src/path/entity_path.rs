@@ -112,6 +112,31 @@ impl EntityPath {
         Self::from(vec![])
     }
 
+    /// The reserved namespace for properties.
+    #[inline]
+    pub fn properties() -> Self {
+        Self::from(vec![EntityPathPart::properties()])
+    }
+
+    /// The reserved namespace for the `RecordingProperties` that are specific to the Rerun viewer.
+    #[inline]
+    pub fn recording_properties() -> Self {
+        Self::from(vec![
+            EntityPathPart::properties(),
+            EntityPathPart::recording(),
+        ])
+    }
+
+    /// Returns `true` if the [`EntityPath`] belongs to a reserved namespace.
+    ///
+    /// Returns `true` iff the root entity starts with `__`.
+    #[inline]
+    pub fn is_reserved(&self) -> bool {
+        self.iter()
+            .next()
+            .is_some_and(|part| part.unescaped_str().starts_with(RESERVED_NAMESPACE_PREFIX))
+    }
+
     #[inline]
     pub fn new(parts: Vec<EntityPathPart>) -> Self {
         Self::from(parts)
@@ -419,6 +444,8 @@ where
 
 use re_types_core::Loggable;
 
+use super::entity_path_part::RESERVED_NAMESPACE_PREFIX;
+
 re_types_core::macros::impl_into_cow!(EntityPath);
 
 impl Loggable for EntityPath {
@@ -547,6 +574,25 @@ impl std::fmt::Display for EntityPath {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_root() {
+        assert_eq!(EntityPath::root(), EntityPath::from("/"));
+    }
+
+    #[test]
+    fn test_properties() {
+        let path = EntityPath::properties();
+        assert_eq!(path, EntityPath::from("/__properties"));
+        assert!(path.is_reserved());
+    }
+
+    #[test]
+    fn test_recording_properties() {
+        let path = EntityPath::recording_properties();
+        assert_eq!(path, EntityPath::from("/__properties/recording"),);
+        assert!(path.is_reserved());
+    }
 
     #[test]
     fn test_incremental_walk() {

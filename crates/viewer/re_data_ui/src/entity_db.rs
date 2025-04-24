@@ -41,7 +41,6 @@ impl crate::DataUi for EntityDb {
                     application_id,
                     store_id,
                     cloned_from,
-                    started,
                     store_source,
                     store_version,
                 } = store_info;
@@ -73,17 +72,13 @@ impl crate::DataUi for EntityDb {
                 ui.grid_left_hand_label("Kind");
                 ui.label(store_id.kind.to_string());
                 ui.end_row();
-
-                ui.grid_left_hand_label("Created");
-                ui.label(started.format(ctx.app_options().timestamp_format));
-                ui.end_row();
             }
 
             if let Some(latest_row_id) = self.latest_row_id() {
                 if let Ok(nanos_since_epoch) =
-                    i64::try_from(latest_row_id.nanoseconds_since_epoch())
+                    i64::try_from(latest_row_id.nanos_since_epoch())
                 {
-                    let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
+                    let time = re_log_types::Timestamp::from_nanos_since_epoch(nanos_since_epoch);
                     ui.grid_left_hand_label("Modified");
                     ui.label(time.format(ctx.app_options().timestamp_format));
                     ui.end_row();
@@ -161,14 +156,14 @@ impl crate::DataUi for EntityDb {
             }
         });
 
-        let hub = ctx.store_context.hub;
+        let hub = ctx.storage_context.hub;
         let store_id = Some(self.store_id());
 
         match self.store_kind() {
             StoreKind::Recording => {
                 if store_id.as_ref() == hub.active_recording_id() {
                     ui.add_space(8.0);
-                    ui.label("This is the active recording");
+                    ui.label("This is the active recording.");
                 }
             }
             StoreKind::Blueprint => {

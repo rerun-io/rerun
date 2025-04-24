@@ -1,5 +1,5 @@
 use egui::Vec2;
-
+use egui_kittest::SnapshotOptions;
 use re_ui::{list_item, UiExt as _};
 
 #[test]
@@ -9,6 +9,10 @@ pub fn test_list_items_should_match_snapshot() {
     let mut color = [255, 255, 0, 255];
 
     let mut test_code = |ui: &mut egui::Ui| {
+        ui.list_item()
+            .header()
+            .show_hierarchical(ui, list_item::LabelContent::header("Header item"));
+
         ui.list_item()
             .show_hierarchical(ui, list_item::LabelContent::new("Default"));
 
@@ -35,6 +39,24 @@ pub fn test_list_items_should_match_snapshot() {
                         .with_icon(&re_ui::icons::VIEW_TEXT),
                 );
 
+                ui.list_item().active(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + active")
+                        .with_icon(&re_ui::icons::VIEW_TEXT),
+                );
+
+                ui.list_item().selected(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + selected")
+                        .with_icon(&re_ui::icons::VIEW_TEXT),
+                );
+
+                ui.list_item().force_hovered(true).show_hierarchical(
+                    ui,
+                    list_item::LabelContent::new("LabelContent with icon + hovered")
+                        .with_icon(&re_ui::icons::VIEW_TEXT),
+                );
+
                 ui.list_item().show_hierarchical(
                     ui,
                     list_item::LabelContent::new("LabelContent with custom icon code")
@@ -42,7 +64,7 @@ pub fn test_list_items_should_match_snapshot() {
                             ui.painter().circle(
                                 rect.center(),
                                 rect.width() / 2.0,
-                                visuals.fg_stroke.color,
+                                visuals.icon_tint(),
                                 egui::Stroke::NONE,
                             );
                         }),
@@ -208,5 +230,5 @@ pub fn test_list_items_should_match_snapshot() {
         });
 
     harness.run();
-    harness.snapshot("list_items");
+    harness.snapshot_options("list_items", &SnapshotOptions::new().threshold(1.3));
 }

@@ -3,9 +3,17 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
+import numpy as np
 import rerun as rr
 from rerun.components import Position3DBatch, Vector3DBatch
-from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec3DArrayLike
+from rerun.datatypes import (
+    ClassIdArrayLike,
+    Float32ArrayLike,
+    Float64ArrayLike,
+    Rgba32ArrayLike,
+    Utf8ArrayLike,
+    Vec3DArrayLike,
+)
 
 from .common_arrays import (
     class_ids_arrays,
@@ -72,6 +80,29 @@ def test_arrows3d() -> None:
         assert arch.colors == colors_expected(colors)
         assert arch.labels == labels_expected(labels)
         assert arch.class_ids == class_ids_expected(class_ids)
+
+
+CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
+    (
+        [],
+        [],
+    ),
+    (
+        [[1.0, 1.0, 1.0]],
+        [[[1.0, 1.0, 1.0]]],
+    ),
+    ([[[1.0, 1.0, 1.0]] for _ in range(3)], [[[1.0, 1.0, 1.0]] for _ in range(3)]),
+    ([[2.1, 3.2, 4.3] for _ in range(333)], [[[2.1, 3.2, 4.3]] for _ in range(333)]),
+    (np.ones((30, 3)), np.ones((30, 1, 3)).tolist()),
+    (np.ones((3, 1, 3)), np.ones((3, 1, 3)).tolist()),
+    (np.ones((1, 3)), np.ones((1, 1, 3)).tolist()),
+]
+
+
+def test_arrows3d_columnar() -> None:
+    for input, expected in CASES:
+        data = [*rr.Arrows3D.columns(vectors=input, origins=np.zeros_like(input))]
+        assert np.allclose(np.asarray(data[1].as_arrow_array().to_pylist()), np.asarray(expected))
 
 
 if __name__ == "__main__":

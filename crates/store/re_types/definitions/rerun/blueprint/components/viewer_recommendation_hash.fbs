@@ -6,11 +6,11 @@ namespace rerun.blueprint.components;
 ///
 /// The formation of this hash is considered an internal implementation detail of the viewer.
 table ViewerRecommendationHash  (
-    "attr.arrow.transparent",
-    "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "str",
-    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent"
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "str",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
 ) {
-    value: rerun.datatypes.UInt64 (order: 100);
+  value: rerun.datatypes.UInt64 (order: 100);
 }

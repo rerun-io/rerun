@@ -6,8 +6,7 @@ import os
 import pathlib
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
 import anywidget
 import jupyter_ui_poll
@@ -37,7 +36,12 @@ CSS_PATH = pathlib.Path(__file__).parent / "static" / "widget.css"
 ASSET_MAGIC_SERVE = "serve-local"
 ASSET_MAGIC_INLINE = "inline"
 
-ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", f"https://app.rerun.io/version/{__version__}/widget.js")
+ASSET_ENV = os.environ.get("RERUN_NOTEBOOK_ASSET", None)
+if ASSET_ENV is None:
+    if "RERUN_DEV_ENVIRONMENT" in os.environ:
+        ASSET_ENV = "serve-local"
+    else:
+        ASSET_ENV = "https://app.rerun.io/version/{__version__}/widget.js"
 
 if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
@@ -50,100 +54,6 @@ else:
     ESM_MOD = ASSET_ENV
     if not (ASSET_ENV.startswith(("http://", "https://"))):
         raise ValueError(f"RERUN_NOTEBOOK_ASSET should be a URL starting with http or https. Found: {ASSET_ENV}")
-
-
-# If you add a callback here, you should also update the `callbacks.ipynb` notebook to showcase it.
-class ViewerCallbacks:
-    """
-    Base class for Viewer callback definitions.
-
-    You should inherit from this class, override the callback methods you need,
-    and then pass an instance to `Viewer.register_callbacks`.
-    """
-
-    def on_selection_change(self, selection: list[SelectionItem]) -> None:
-        """Fired when the selection changes."""
-
-    def on_timeline_change(self, timeline: str, time: float) -> None:
-        """Fired when a different timeline is selected."""
-
-    def on_time_update(self, time: float) -> None:
-        """Fired when the timepoint changes."""
-
-
-@dataclass
-class EntitySelection:
-    """
-    Selected an (entire) entity.
-
-    Examples:
-    * A full point cloud.
-    * A mesh.
-
-    """
-
-    @property
-    def kind(self) -> Literal["entity"]:
-        return "entity"
-
-    entity_path: str
-
-
-@dataclass
-class InstanceSelection:
-    """
-    Selected an instance within an entity.
-
-    Examples:
-    * A single point in a point cloud.
-
-    """
-
-    @property
-    def kind(self) -> Literal["instance"]:
-        return "instance"
-
-    entity_path: str
-    instance_id: int
-
-
-@dataclass
-class ViewSelection:
-    """Selected a view."""
-
-    @property
-    def kind(self) -> Literal["view"]:
-        return "view"
-
-    view_id: str
-
-
-@dataclass
-class ContainerSelection:
-    """Selected a container."""
-
-    @property
-    def kind(self) -> Literal["container"]:
-        return "container"
-
-    container_id: str
-
-
-SelectionItem = EntitySelection | InstanceSelection | ViewSelection | ContainerSelection
-"""A single item in a selection."""
-
-
-def _selection_item_from_json(json: Any) -> SelectionItem:
-    if json["type"] == "entity":
-        return EntitySelection(entity_path=json["entity_path"])
-    if json["type"] == "instance":
-        return InstanceSelection(entity_path=json["entity_path"], instance_id=json["instance_id"])
-    if json["type"] == "view":
-        return ViewSelection(view_id=json["view_id"])
-    if json["type"] == "container":
-        return ContainerSelection(container_id=json["container_id"])
-    else:
-        raise NotImplementedError(f"selection item kind {json[type]} is not handled")
 
 
 class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
@@ -163,6 +73,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
     _ready = False
     _data_queue: list[bytes]
+    _table_queue: list[bytes]
 
     _time_ctrl = traitlets.Tuple(
         traitlets.Unicode(allow_none=True),
@@ -172,7 +83,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
     ).tag(sync=True)
     _recording_id = traitlets.Unicode(allow_none=True).tag(sync=True)
 
-    _callbacks: list[ViewerCallbacks] = []
+    _raw_event_callbacks: list[Callable[[str], None]] = []
 
     def __init__(
         self,
@@ -189,6 +100,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         self._height = height
         self._url = url
         self._data_queue = []
+        self._table_queue = []
 
         from ipywidgets import widgets
 
@@ -198,31 +110,25 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
             self.update_panel_states(panel_states)
 
         def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
-            if isinstance(content, str) and content == "ready":
-                self._on_ready()
-            elif not isinstance(content, str) and "event" in content:
-                # Event names here come from `widget.ts`.
-                if content["event"] == "selectionchange":
-                    selection = [_selection_item_from_json(item) for item in content["payload"]]
-                    for callback in self._callbacks:
-                        callback.on_selection_change(selection)
-                elif content["event"] == "timelinechange":
-                    timeline = content["payload"]["timeline"]
-                    time = content["payload"]["time"]
-                    for callback in self._callbacks:
-                        callback.on_timeline_change(timeline, time)
-                elif content["event"] == "timeupdate":
-                    time = content["payload"]
-                    for callback in self._callbacks:
-                        callback.on_time_update(time)
+            if isinstance(content, str):
+                if content == "ready":
+                    self._on_ready()
+                else:
+                    for callback in self._raw_event_callbacks:
+                        callback(content)
 
         self.on_msg(handle_msg)
 
     def _on_ready(self) -> None:
         self._ready = True
+
         for data in self._data_queue:
             self.send_rrd(data)
         self._data_queue.clear()
+
+        for data in self._table_queue:
+            self.send_table(data)
+        self._table_queue.clear()
 
     def send_rrd(self, data: bytes) -> None:
         """Send a recording to the viewer."""
@@ -233,7 +139,14 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
         self.send({"type": "rrd"}, buffers=[data])
 
-    def block_until_ready(self, timeout: float = 5.0) -> None:
+    def send_table(self, data: bytes) -> None:
+        if not self._ready:
+            self._table_queue.append(data)
+            return
+
+        self.send({"type": "table"}, buffers=[data])
+
+    def block_until_ready(self, timeout: float = 10.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()
@@ -265,7 +178,7 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
     def set_active_recording(self, recording_id: str) -> None:
         self._recording_id = recording_id
 
-    def register_callbacks(self, callbacks: ViewerCallbacks) -> None:
+    def _on_raw_event(self, callback: Callable[[str], None]) -> None:
         """Register a set of callbacks with this instance of the Viewer."""
         # TODO(jan): maybe allow unregister by making this a map instead
-        self._callbacks.append(callbacks)
+        self._raw_event_callbacks.append(callback)

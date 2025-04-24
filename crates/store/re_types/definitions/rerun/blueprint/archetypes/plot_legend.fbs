@@ -2,19 +2,19 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the legend of a plot.
 table PlotLegend (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default",
-    "attr.python.aliases": "blueprint_components.Corner2D"
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Default",
+  "attr.python.aliases": "blueprint_components.Corner2D"
 ) {
-    // --- Optional ---
+  // --- Optional ---
 
-    /// To what corner the legend is aligned.
-    ///
-    /// Defaults to the right bottom corner.
-    corner: rerun.blueprint.components.Corner2D ("attr.rerun.component_optional", nullable, order: 2100);
+  /// To what corner the legend is aligned.
+  ///
+  /// Defaults to the right bottom corner.
+  corner: rerun.blueprint.components.Corner2D ("attr.rerun.component_optional", nullable, order: 2100);
 
-    /// Whether the legend is shown at all.
-    ///
-    /// True by default.
-    visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 2200);
+  /// Whether the legend is shown at all.
+  ///
+  /// True by default.
+  visible: rerun.components.Visible ("attr.rerun.component_optional", nullable, order: 2200);
 }

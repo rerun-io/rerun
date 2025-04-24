@@ -72,6 +72,37 @@ The `notebook_show()` method also takes optional arguments for specifying the wi
 rr.notebook_show(width=400, height=400)
 ```
 
+## Reacting to events in the Viewer
+
+It is possible to register a callback to be triggered when certain Viewer events happen.
+
+For example, here is how you can track which entities are currently selected in the Viewer:
+
+```python
+from rerun.notebook import Viewer, ViewerEvent
+
+selected_entities = []
+
+def on_event(event: ViewerEvent):
+  global selected_entities
+  selected_entities = [] # clear the list
+
+  if event.type == "selection_change":
+    for item in event.items:
+      if item.type == "entity":
+        selected_entities.append(item.entity_path)
+
+viewer = Viewer()
+viewer.on_event(on_event)
+
+display(viewer)
+```
+
+Whenever an entity is selected in the Viewer, `selected_entities.value` changes. The payload includes other useful information,
+such as the position of the selection within a 2D or 3D view.
+
+For a more complete example, see [callbacks.ipynb](https://github.com/rerun-io/rerun/blob/main/rerun_notebook/callbacks.ipynb).
+
 ## Working with blueprints
 
 [Blueprints](../visualization/configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
@@ -143,7 +174,7 @@ STEPS = 100
 twists = math.pi * np.sin(np.linspace(0, math.tau, STEPS)) / 4
 for t in range(STEPS):
     sleep(0.05)  # delay to simulate a long-running computation
-    rr.set_index("step", sequence=t)
+    rr.set_time("step", sequence=t)
     cube = build_color_grid(10, 10, 10, twist=twists[t])
     rr.log("cube", rr.Points3D(cube.positions, colors=cube.colors, radii=0.5))
 ```

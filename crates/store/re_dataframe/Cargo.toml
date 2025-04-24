@@ -31,7 +31,6 @@ re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_format_arrow.workspace = true
 re_log.workspace = true
-re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
 re_sorbet.workspace = true
@@ -53,4 +52,3 @@ insta.workspace = true
 similar-asserts.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true
-unindent.workspace = true
