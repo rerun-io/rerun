@@ -241,7 +241,14 @@ class Viewer:
         """
         Send a file to the viewer.
 
-        TODO: describe
+        This sends a local file, specified by `file_path`, directly to the Viewer. It is equivalent to
+        opening the file via the viewer's file picker or drag-and-drop.
+
+        Parameters
+        ----------
+        file_path : str | Path
+            The path to the file to send to the viewer.
+
         """
         bindings.dataloader_bytes_from_path_to_callback(Path(file_path), self._flush_hook)
 
