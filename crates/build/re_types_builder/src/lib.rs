@@ -325,7 +325,9 @@ fn generate_gitattributes_for_generated_files(files_to_write: &mut GeneratedFile
                 format_path(
                     filepath
                         .strip_prefix(&dirpath)
-                        .context("Failed to make {filepath} relative to {dirpath}.")
+                        .with_context(|| {
+                            format!("Failed to make {filepath} relative to {dirpath}.")
+                        })
                         .unwrap(),
                 )
             }))

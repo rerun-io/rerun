@@ -312,7 +312,7 @@ impl std::str::FromStr for ImportClause {
 
             return s
                 .parse()
-                .with_context(|| "couldn't parse {s:?} as PathBuf")
+                .with_context(|| format!("couldn't parse {s:?} as PathBuf"))
                 .map(|path| Self { path });
         }
 
