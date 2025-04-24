@@ -784,7 +784,7 @@ impl QuotedObject {
         //   -> this means that there's no non-move constructors/assignments
         // * we really want to make sure that the object is movable, therefore creating a move ctor
         //   -> this means that there's no implicit move assignment.
-        // Therefore, we have to define all five move/copy  constructors/assignments.
+        // Therefore, we have to define all five move/copy constructors/assignments.
         let hpp = quote! {
             #hpp_includes
 
