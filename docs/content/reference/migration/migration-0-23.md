@@ -388,3 +388,23 @@ We've deprecated inconsistent constructors with following replacements:
 - 🌊 C++:
     - `from_file` -> `from_file_path`
     - `from_bytes` -> `from_file_contents`
+
+## Notebooks
+
+### Explicit `Viewer` imports
+
+We've removed `notebook` from the root `rerun` namespace. `Viewer` must now be imported directly:
+
+Before:
+```python
+viewer = rr.notebook.Viewer(recording=rec)
+viewer.display()
+```
+
+After:
+```python
+from rerun.notebook import Viewer
+
+viewer = Viewer(recording=rec)
+display(viewer)
+```
