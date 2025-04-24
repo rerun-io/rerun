@@ -397,7 +397,7 @@ We've removed `notebook` from the root `rerun` namespace. `Viewer` must now be i
 
 Before:
 ```python
-viewer = rr.notebook.Viewer(recording=rec)
+viewer = rr.notebook.Viewer()
 viewer.display()
 ```
 
@@ -405,6 +405,8 @@ After:
 ```python
 from rerun.notebook import Viewer
 
-viewer = Viewer(recording=rec)
+viewer = Viewer()
 display(viewer)
 ```
+
+`rr.notebook_show` is still available in the root `rerun` namespace.
