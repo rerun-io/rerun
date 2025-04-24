@@ -206,6 +206,9 @@ jobs:
               - [ ] Populate the release with the changelog and a nice header video/picture, check `Set as latest release`, then click `Publish release`.
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
               - [ ] Update landing's version of the web viewer (@jprochazk)
+              - [ ] Update the draft release with the contents of the changelog. Copy the header from the previous release.
+              - [ ] Hit publish on the GitHub release. The release artifacts should now appear
+              - [ ] Merge the Release PR
 
           A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
           [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls).
