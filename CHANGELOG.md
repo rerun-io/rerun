@@ -15,7 +15,7 @@
 * ⚙️ [New APIs for attaching properties (metadata) to recordings](https://github.com/rerun-io/rerun/blob/0.23.0/docs/snippets/all/concepts/recording_properties.py)
 * 🧮 [Experimental support for tables and dataframes](https://rerun.io/docs/howto/logging/send-table)
 
-#### Multiple Scalars under a single entity
+#### Multiple scalars under a single entity
 
 In this release we have added support for logging scalar data with multiple signals, under the same entity. This allow you to log data that inherently belongs together, such as the action values in a LeRobot dataset or gyroscope measurements, under the same entity path.
 
@@ -48,7 +48,12 @@ The `SeriesLine` and `SeriesPoints` archetypes now include a `visible_series` co
 
 #### Recording properties
 
-For this release, we have improved Rerun's logging capabilities. There is a new _recording properties_ concept in all of our APIs. Recording properties allow you to attach metadata to a recording. For example, you can now change the name of your recording via `.send_recording_name("My episode")`, which will show up in the recording panel of the viewer as well. You can also log arbitrary data via the the general `.send_property()` method. Properties are logged as static data and will therefore show up in the timeline as well. Also, the side-panel shows an overview of the properties when a recording is selected.
+For this release, we have improved Rerun's logging capabilities. There is a new _recording properties_ concept in all of our APIs.
+Recording properties allow you to attach metadata to a recording.
+For example, you can now change the name of your recording via `.send_recording_name("My episode")`, which will show up in the recording panel of the viewer as well.
+You can also log arbitrary data via the general `.send_property()` method.
+Properties are logged as static data and will therefore show up in the timeline as well.
+Also, the side-panel shows an overview of the properties when a recording is selected.
 
 <img width="284" alt="Image" src="https://github.com/user-attachments/assets/1d67cb7f-76ac-4cb3-8e1d-84fc570a9442" />
 
