@@ -191,6 +191,48 @@ class Viewer:
         # Create new record batch with updated schema
         return RecordBatch.from_arrays(record_batch.columns, schema=schema)
 
+    def set_application_blueprint(
+        self, application_id: str, blueprint: BlueprintLike, make_active: bool = True, make_default: bool = True
+    ) -> None:
+        """
+        Set the blueprint for the given application.
+
+        Parameters
+        ----------
+        application_id: str
+            The ID of the application to set the blueprint for.
+        blueprint: BlueprintLike
+            The blueprint to set for the application.
+        make_active: bool
+            Whether to make the blueprint active.
+            If `True`, the blueprint will be set as the active blueprint for the application.
+        make_default: bool
+            Whether to make the blueprint the default blueprint for the application.
+            If `True`, the blueprint will be set as the default blueprint for the application.
+
+        """
+
+        blueprint = blueprint.to_blueprint()
+
+        blueprint_stream = RecordingStream._from_native(
+            bindings.new_blueprint(
+                application_id=application_id,
+                make_default=False,
+                make_thread_default=False,
+                default_enabled=True,
+            ),
+        )
+
+        blueprint_stream.set_time("blueprint", sequence=0)
+        blueprint._log_to_stream(blueprint_stream)
+
+        bindings.set_callback_sink_blueprint(
+            callback=self._flush_hook,
+            make_active=make_active,
+            make_default=make_default,
+            blueprint_stream=blueprint_stream.to_native(),
+        )
+
     def send_table(
         self,
         id: str,
