@@ -46,6 +46,13 @@ The `SeriesLine` and `SeriesPoints` archetypes now include a `visible_series` co
 ![Image](https://github.com/user-attachments/assets/8a645f6e-787b-4671-8534-40b97cfc77a3)
 
 
+#### Callbacks API for notebooks and JavaScript
+We've added a (limited) API with callbacks, useable from JavaScript and from Notebooks (but not yet from out logging SDKs).
+
+With this you can easily write simple annotations tools.
+We've created an example for this using [Gradio](https://www.gradio.app/) at <https://github.com/rerun-io/annotation-example>.
+
+
 #### Recording properties
 
 For this release, we have improved Rerun's logging capabilities. There is a new _recording properties_ concept in all of our APIs.
