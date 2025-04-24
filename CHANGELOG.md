@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0) - Backwards compatible `.rrd` and multi-scalar logging
+## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0) - 2025-04-24 - Backwards compatible `.rrd` and multi-scalar logging
 
 * 📖 [Release blogpost](https://rerun.io/blog/release-0.23)
 * 🧳 [Migration guide](https://rerun.io/docs/reference/migration/migration-0-23)
