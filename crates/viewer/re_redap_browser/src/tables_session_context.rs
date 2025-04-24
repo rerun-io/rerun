@@ -6,12 +6,13 @@ use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
 
 use re_dataframe_ui::RequestedObject;
-use re_datafusion::TableEntryTableProvider;
+use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_grpc_client::redap;
 use re_grpc_client::redap::ConnectionError;
 use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
 use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
+use re_protos::external::prost;
 use re_protos::TypeConversionError;
 use re_viewer_context::AsyncRuntimeHandle;
 
@@ -37,7 +38,8 @@ pub struct Table {
     pub name: String,
 }
 
-/// Wrapper over a [`SessionContext`] that contains all the tables registered in the remote server.
+/// Wrapper over a [`SessionContext`] that contains all the tables registered in the remote server,
+/// including the table entries and the partition tables of the dataset entries.
 //TODO(ab): add support for local caching of table data
 pub struct TablesSessionContext {
     runtime: AsyncRuntimeHandle,
@@ -99,7 +101,7 @@ async fn register_all_table_entries(
             filter: Some(EntryFilter {
                 id: None,
                 name: None,
-                entry_kind: Some(EntryKind::Table as i32),
+                entry_kind: None,
             }),
         })
         .await?
@@ -112,20 +114,43 @@ async fn register_all_table_entries(
     let mut registered_tables = vec![];
 
     for entry in entries {
-        ctx.register_table(
-            &entry.name,
-            TableEntryTableProvider::new(
-                re_grpc_client::redap::client(origin.clone()).await?,
-                entry.id,
-            )
-            .into_provider()
-            .await?,
-        )?;
+        let table_provider = match entry.kind {
+            EntryKind::Dataset => Some(
+                PartitionTableProvider::new(
+                    re_grpc_client::redap::client(origin.clone()).await?,
+                    entry.id,
+                )
+                .into_provider()
+                .await?,
+            ),
 
-        registered_tables.push(Table {
-            entry_id: entry.id,
-            name: entry.name,
-        });
+            EntryKind::Table => Some(
+                TableEntryTableProvider::new(
+                    re_grpc_client::redap::client(origin.clone()).await?,
+                    entry.id,
+                )
+                .into_provider()
+                .await?,
+            ),
+
+            // TODO(ab): these do not exist yet
+            EntryKind::DatasetView | EntryKind::TableView => None,
+
+            EntryKind::Unspecified => {
+                return Err(
+                    TypeConversionError::from(prost::UnknownEnumValue(entry.kind as i32)).into(),
+                );
+            }
+        };
+
+        if let Some(table_provider) = table_provider {
+            ctx.register_table(&entry.name, table_provider)?;
+
+            registered_tables.push(Table {
+                entry_id: entry.id,
+                name: entry.name,
+            });
+        }
     }
 
     Ok(registered_tables)

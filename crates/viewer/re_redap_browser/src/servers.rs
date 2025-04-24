@@ -116,18 +116,15 @@ impl Server {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
             egui::Id::new(&self.origin),
-            "__entries",
+            "lerobot",
         )
+        .column_renamer(|desc| {
+            let name = desc.name();
+            name.strip_prefix("rerun_")
+                .unwrap_or(name)
+                .replace('_', " ")
+        })
         .show(viewer_ctx, &self.runtime, ui);
-        // )
-        // re_dataframe_ui::table_ui(
-        //     viewer_ctx,
-        //     &self.runtime,
-        //     ui,
-        //     &self.tables_session_ctx.ctx,
-        //     &self.origin,
-        //     "__entries",
-        // );
     }
 
     fn panel_ui(

@@ -50,12 +50,15 @@ impl Columns<'_> {
     }
 }
 
+type ColumnRenamerFn = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'static>>;
+
 pub struct DataFusionTableWidget {
     session_ctx: Arc<SessionContext>,
     id: egui::Id,
     table_ref: TableReference,
 
-    //TODO: handle that
+    column_renamer: ColumnRenamerFn,
+
     refresh: bool,
 }
 
@@ -69,8 +72,18 @@ impl DataFusionTableWidget {
             session_ctx,
             id: id.into(),
             table_ref: table_ref.into(),
+            column_renamer: None,
             refresh: false,
         }
+    }
+
+    pub fn column_renamer(
+        mut self,
+        renamer: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'static,
+    ) -> Self {
+        self.column_renamer = Some(Box::new(renamer));
+
+        self
     }
 
     pub fn refresh(mut self, refresh: bool) -> Self {
@@ -89,6 +102,7 @@ impl DataFusionTableWidget {
             session_ctx,
             id,
             table_ref,
+            column_renamer,
             refresh,
         } = self;
 
@@ -107,7 +121,7 @@ impl DataFusionTableWidget {
         // so we add that to the id.
         let id = id
             .with((&table_ref, session_ctx.session_id()))
-            .with("__table_ui_table_stateaédflkasdéf");
+            .with("__table_ui_table_state");
 
         let table_state = DataFusionAdapter::get(runtime, ui, &session_ctx, table_ref, id, refresh);
 
@@ -180,14 +194,21 @@ impl DataFusionTableWidget {
         };
 
         //TODO: force refresh
-        let table_config = TableConfig::get_with_columns(
+        let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
             columns.descriptors().map(|c| {
-                //TODO(ab): we should remove this name facility if we don't use it
-                ColumnConfig::new(Id::new(c), "unused".to_owned())
+                let name = if let Some(renamer) = &column_renamer {
+                    renamer(c)
+                } else {
+                    c.name().to_owned()
+                };
+
+                ColumnConfig::new(Id::new(c), name)
             }),
         );
+
+        table_config.button_ui(ui);
 
         apply_table_style_fixes(ui.style_mut());
 
@@ -197,6 +218,7 @@ impl DataFusionTableWidget {
             ctx: viewer_ctx,
             display_record_batches: &display_record_batches,
             columns: &columns,
+            column_renamer: &column_renamer,
             blueprint: &table_state.query,
             new_blueprint: &mut new_blueprint,
             table_config,
@@ -217,8 +239,8 @@ impl DataFusionTableWidget {
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
 
+        table_delegate.table_config.store(ui.ctx());
         drop(dataframe);
-
         table_state.update_query(runtime, ui, new_blueprint);
     }
 }
@@ -227,6 +249,7 @@ struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
+    column_renamer: &'a ColumnRenamerFn,
     blueprint: &'a DataFusionQuery,
     new_blueprint: &'a mut DataFusionQuery,
     table_config: TableConfig,
@@ -239,7 +262,11 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
         if let Some(desc) = self.columns.descriptor_from_id(id) {
-            let name = desc.name();
+            let name = if let Some(renamer) = self.column_renamer {
+                renamer(desc)
+            } else {
+                desc.name().to_owned()
+            };
 
             let sort_direction_icon = self
                 .blueprint
@@ -252,7 +279,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 egui::Sides::new().show(
                     ui,
                     |ui| {
-                        ui.label(egui::RichText::new(name).strong().monospace());
+                        ui.label(egui::RichText::new(&name).strong().monospace());
 
                         if let Some(dir_icon) = sort_direction_icon {
                             ui.add_space(-5.0);
