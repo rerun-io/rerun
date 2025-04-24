@@ -54,7 +54,7 @@ impl Columns<'_> {
     }
 }
 
-type ColumnRenamerFn = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'static>>;
+type ColumnRenamerFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
 
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
@@ -71,7 +71,7 @@ pub struct DataFusionTableWidget<'a> {
     /// Closure used to determine the display name of the column.
     ///
     /// Defaults to using [`ColumnDescriptorRef::name`].
-    column_renamer: ColumnRenamerFn,
+    column_renamer: ColumnRenamerFn<'a>,
 
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
@@ -113,7 +113,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn column_renamer(
         mut self,
-        renamer: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'static,
+        renamer: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'a,
     ) -> Self {
         self.column_renamer = Some(Box::new(renamer));
 
@@ -342,7 +342,7 @@ struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
-    column_renamer: &'a ColumnRenamerFn,
+    column_renamer: &'a ColumnRenamerFn<'a>,
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
