@@ -844,7 +844,7 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
     });
 }
 
-/// Special bindinging for set callback sink for blueprint streams.
+/// Set callback sink for blueprint.
 #[pyfunction]
 #[pyo3(signature = (callback, make_active, make_default, blueprint_stream))]
 fn set_callback_sink_blueprint(
