@@ -839,6 +839,8 @@ impl QuotedObject {
                 struct AsComponents<#quoted_namespace::#archetype_type_ident> {
                     #serialize_hpp
                 };
+
+                #deprecation_ignore_end
             }
 
             #deprecation_ignore_end

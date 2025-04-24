@@ -167,6 +167,8 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(const archetypes::Scalar& archetype);
     };
+
+    RR_POP_WARNINGS
 } // namespace rerun
 
 RR_POP_WARNINGS

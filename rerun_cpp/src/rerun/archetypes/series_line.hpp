@@ -271,6 +271,8 @@ namespace rerun {
         static Result<Collection<ComponentBatch>> as_batches(const archetypes::SeriesLine& archetype
         );
     };
+
+    RR_POP_WARNINGS
 } // namespace rerun
 
 RR_POP_WARNINGS

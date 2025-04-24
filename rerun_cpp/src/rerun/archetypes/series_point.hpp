@@ -262,6 +262,8 @@ namespace rerun {
             const archetypes::SeriesPoint& archetype
         );
     };
+
+    RR_POP_WARNINGS
 } // namespace rerun
 
 RR_POP_WARNINGS
