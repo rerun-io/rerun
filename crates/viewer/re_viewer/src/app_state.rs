@@ -192,6 +192,8 @@ impl AppState {
                 }
             }
 
+            // TODO(grtlr,ab): This needs to be further cleaned up and split into separately handled
+            // display modes. See https://www.notion.so/rerunio/Major-refactor-of-re_viewer-1d8b24554b198085a02dfe441db330b4
             _ => {
                 let blueprint_query = self.blueprint_query_for_viewer(store_context.blueprint);
 
