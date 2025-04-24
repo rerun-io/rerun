@@ -600,7 +600,7 @@ def test_lint_workspace_deps() -> None:
         name = "clock"
         version = "0.6.0-alpha.0"
         edition = "2021"
-        rust-version = "1.84"
+        rust-version = "1.85"
         license = "MIT OR Apache-2.0"
         publish = false
 
