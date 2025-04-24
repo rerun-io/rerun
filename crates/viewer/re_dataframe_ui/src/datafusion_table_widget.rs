@@ -355,6 +355,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
         if let Some(desc) = self.columns.descriptor_from_id(id) {
+            let column_name = desc.name();
             let name = if let Some(renamer) = self.column_renamer {
                 renamer(desc)
             } else {
@@ -365,14 +366,16 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 .blueprint
                 .sort_by
                 .as_ref()
-                .and_then(|sort_by| (sort_by.column.as_str() == name).then_some(&sort_by.direction))
+                .and_then(|sort_by| {
+                    (sort_by.column.as_str() == column_name).then_some(&sort_by.direction)
+                })
                 .map(SortDirection::icon);
 
             header_ui(ui, |ui| {
                 egui::Sides::new().show(
                     ui,
                     |ui| {
-                        ui.label(egui::RichText::new(&name).strong().monospace());
+                        ui.label(egui::RichText::new(name).strong().monospace());
 
                         if let Some(dir_icon) = sort_direction_icon {
                             ui.add_space(-5.0);
@@ -392,7 +395,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             |ui| {
                                 if ui.button("Ascending").clicked() {
                                     self.new_blueprint.sort_by = Some(SortBy {
-                                        column: name.clone(),
+                                        column: column_name.to_owned(),
                                         direction: SortDirection::Ascending,
                                     });
                                     ui.close_menu();
@@ -400,7 +403,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
                                 if ui.button("Descending").clicked() {
                                     self.new_blueprint.sort_by = Some(SortBy {
-                                        column: name.clone(),
+                                        column: column_name.to_owned(),
                                         direction: SortDirection::Descending,
                                     });
 

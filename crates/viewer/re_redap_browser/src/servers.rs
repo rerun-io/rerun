@@ -141,6 +141,40 @@ impl Server {
         .show(viewer_ctx, &self.runtime, ui);
     }
 
+    fn dataset_entry_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        dataset: &Dataset,
+    ) {
+        //TODO: don't attempt to draw this until the session context is fully registered
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.ctx.clone(),
+            egui::Id::new(&self.origin),
+            dataset.name(),
+        )
+        .title(dataset.name())
+        .title_button(ItemActionButton::new(&re_ui::icons::RESET, || {
+            let _ = ctx
+                .command_sender
+                .send(Command::RefreshCollection(self.origin.clone()));
+        }))
+        .column_renamer(|desc| {
+            let name = desc.name();
+            name.strip_prefix("rerun_")
+                .unwrap_or(name)
+                .replace('_', " ")
+        })
+        .generate_partition_links(
+            "recording link",
+            DATASET_MANIFEST_ID_FIELD_NAME,
+            self.origin.clone(),
+            EntryId::new(),
+        )
+        .show(viewer_ctx, &self.runtime, ui);
+    }
+
     fn panel_ui(
         &self,
         viewer_ctx: &ViewerContext<'_>,
@@ -378,7 +412,7 @@ impl RedapServers {
         for server in self.servers.values() {
             if let Some(dataset) = server.find_dataset(active_entry) {
                 self.with_ctx(|ctx| {
-                    super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
+                    server.dataset_entry_ui(viewer_ctx, ctx, ui, dataset);
                 });
 
                 return;
