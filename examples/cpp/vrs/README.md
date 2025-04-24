@@ -40,25 +40,19 @@ void IMUPlayer::log_accelerometer(const std::array<float, 3>& accelMSec2) {
 ```cpp
 void IMUPlayer::log_accelerometer(const std::array<float, 3>& accelMSec2) {
     // … existing code for Arrows3D …
-    _rec->log(_entity_path + "/accelerometer/x", rerun::Scalars(accelMSec2[0]));
-    _rec->log(_entity_path + "/accelerometer/y", rerun::Scalars(accelMSec2[1]));
-    _rec->log(_entity_path + "/accelerometer/z", rerun::Scalars(accelMSec2[2]));
+    _rec->log(_entity_path + "/accelerometer", rerun::Scalars(accelMSec2));
 }
 ```
 
 ```cpp
 void IMUPlayer::log_gyroscope(const std::array<float, 3>& gyroRadSec) {
-    _rec->log(_entity_path + "/gyroscope/x", rerun::Scalars(gyroRadSec[0]));
-    _rec->log(_entity_path + "/gyroscope/y", rerun::Scalars(gyroRadSec[1]));
-    _rec->log(_entity_path + "/gyroscope/z", rerun::Scalars(gyroRadSec[2]));
+    _rec->log(_entity_path + "/gyroscope", rerun::Scalars(gyroRadSec));
 }
 ```
 
 ```cpp
 void IMUPlayer::log_magnetometer(const std::array<float, 3>& magTesla) {
-    _rec->log(_entity_path + "/magnetometer/x", rerun::Scalars(magTesla[0]));
-    _rec->log(_entity_path + "/magnetometer/y", rerun::Scalars(magTesla[1]));
-    _rec->log(_entity_path + "/magnetometer/z", rerun::Scalars(magTesla[2]));
+    _rec->log(_entity_path + "/magnetometer", rerun::Scalars(magTesla));
 }
 ```
 
