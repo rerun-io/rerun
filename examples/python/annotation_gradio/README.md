@@ -2,8 +2,8 @@
 title = "Interactive 3D Annotation App with Rerun and Gradio"
 tags = ["2D", "3D", "Pinhole camera", "Time series", "SAM", "Segmentation"]
 source = "https://github.com/rerun-io/annotation-example"
-thumbnail = "https://static.rerun.io/square-thumbnail/56b091d93d23c4353f6a919bf789493da19893e6/480w.png"
-thumbnail_dimensions = [480, 474]
+thumbnail = "https://static.rerun.io/square-thumbnail/931d51df4f2cfd84293c5c9212e5e84cecbd79b4/480w.png"
+thumbnail_dimensions = [480, 344]
 -->
 
 https://vimeo.com/1078165216?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2802:1790
