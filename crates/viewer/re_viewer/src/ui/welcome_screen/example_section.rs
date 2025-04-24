@@ -344,7 +344,7 @@ impl ExampleSection {
                                     example.rect,
                                     THUMBNAIL_RADIUS,
                                     //TODO(ab): as per figma, use design tokens instead
-                                    egui::Color32::WHITE.gamma_multiply(0.04),
+                                    egui::Color32::BLACK.gamma_multiply(0.05),
                                 );
 
                                 if response.clicked() {
@@ -413,7 +413,7 @@ impl ExampleSection {
                                         example.rect,
                                         THUMBNAIL_RADIUS,
                                         //TODO(ab): use design tokens
-                                        egui::Color32::from_additive_luminance(25),
+                                        egui::Color32::from_black_alpha(20),
                                     );
                                 }
                             }
@@ -542,7 +542,7 @@ impl ExampleDescLayout {
                         )
                         .sense(egui::Sense::hover())
                         .corner_radius(6)
-                        .fill(egui::Color32::from_rgb(26, 29, 30))
+                        .fill(egui::Color32::from_rgb(219, 222, 228))
                         .stroke(egui::Stroke::new(
                             1.0,
                             egui::Color32::WHITE.gamma_multiply(0.086),

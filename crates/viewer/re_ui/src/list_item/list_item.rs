@@ -85,11 +85,11 @@ pub struct ListVisuals {
 impl ListVisuals {
     pub fn bg_color(self) -> Option<Color32> {
         if self.selected {
-            Some(design_tokens().color_table.blue(Scale::S350))
+            Some(design_tokens().color_table.blue(Scale::S450))
         } else if self.hovered {
-            Some(design_tokens().color_table.gray(Scale::S250))
+            Some(design_tokens().color_table.gray(Scale::S900))
         } else if self.active {
-            Some(design_tokens().color_table.gray(Scale::S200))
+            Some(design_tokens().color_table.gray(Scale::S800))
         } else {
             None
         }
@@ -99,13 +99,13 @@ impl ListVisuals {
         if self.selected {
             design_tokens().color_table.blue(Scale::S800)
         } else if self.active {
-            design_tokens().color_table.gray(Scale::S1000)
+            design_tokens().color_table.gray(Scale::S0)
         } else if !self.interactive {
             design_tokens().color_table.gray(Scale::S550)
         } else if self.hovered {
-            design_tokens().color_table.gray(Scale::S800)
+            design_tokens().color_table.gray(Scale::S250)
         } else {
-            design_tokens().color_table.gray(Scale::S700)
+            design_tokens().color_table.gray(Scale::S250)
         }
     }
 
@@ -117,7 +117,7 @@ impl ListVisuals {
         } else if self.hovered {
             design_tokens().color_table.gray(Scale::S600)
         } else {
-            design_tokens().color_table.gray(Scale::S500)
+            design_tokens().color_table.gray(Scale::S700)
         }
     }
 
@@ -133,7 +133,7 @@ impl ListVisuals {
 
     fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
         if !self.hovered && !self.selected && !self.active && !icon_hovered {
-            design_tokens().color_table.gray(Scale::S700)
+            design_tokens().color_table.gray(Scale::S250)
         } else {
             self.interactive_icon_tint(icon_hovered)
         }
