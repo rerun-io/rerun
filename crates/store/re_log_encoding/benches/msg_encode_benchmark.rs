@@ -51,8 +51,7 @@ fn encode_log_msgs(
 }
 
 fn decode_log_msgs(mut bytes: &[u8]) -> Vec<LogMsg> {
-    let version_policy = re_log_encoding::VersionPolicy::Error;
-    let messages = re_log_encoding::decoder::Decoder::new(version_policy, &mut bytes)
+    let messages = re_log_encoding::decoder::Decoder::new(&mut bytes)
         .unwrap()
         .collect::<Result<Vec<LogMsg>, _>>()
         .unwrap();

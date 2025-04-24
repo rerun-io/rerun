@@ -141,6 +141,11 @@ impl StoreHub {
         "Welcome screen".into()
     }
 
+    /// App ID used as a marker to display tables.
+    pub fn table_app_id() -> ApplicationId {
+        "table".into()
+    }
+
     /// Blueprint ID used for the default welcome screen blueprint
     fn welcome_screen_blueprint_id() -> StoreId {
         StoreId::from_string(
@@ -331,6 +336,11 @@ impl StoreHub {
         self.store_bundle.insert(entity_db);
     }
 
+    /// Inserts a new table into the store (potentially overwriting an existing entry).
+    pub fn insert_table_store(&mut self, id: TableId, store: TableStore) -> Option<TableStore> {
+        self.table_stores.insert(id, store)
+    }
+
     fn remove_store(&mut self, store_id: &StoreId) {
         _ = self.caches_per_recording.remove(store_id);
         let removed_store = self.store_bundle.remove(store_id);
@@ -391,7 +401,7 @@ impl StoreHub {
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
-    pub fn clear_recordings(&mut self) {
+    pub fn clear_entries(&mut self) {
         // Keep only the welcome screen:
         let mut store_ids_retained = HashSet::default();
         self.store_bundle.retain(|db| {
@@ -405,14 +415,21 @@ impl StoreHub {
         self.caches_per_recording
             .retain(|store_id, _| store_ids_retained.contains(store_id));
 
-        self.active_entry = None;
+        self.table_stores.clear();
+
+        if self.active_table_id().is_none() {
+            self.active_entry = None;
+        }
         self.active_application_id = Some(Self::welcome_screen_app_id());
     }
 
     // ---------------------
     // Active app
 
-    /// Change the active [`ApplicationId`]
+    /// Change the active [`ApplicationId`].
+    ///
+    /// Will ignore this request if the application id has no matching recording,
+    /// unless no app id has been set yet at all so far.
     #[allow(clippy::needless_pass_by_value)]
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
@@ -427,8 +444,15 @@ impl StoreHub {
             return;
         }
 
-        self.active_application_id = Some(app_id.clone());
-        self.active_entry = None;
+        // If this is the welcome screen, or we didn't have any app id at all so far,
+        // we set the active application_id even if we don't find a matching recording.
+        // (otherwise we don't, because we don't want to leave towards a state without any recording if we don't have to)
+        if Self::welcome_screen_app_id() == app_id
+            || (self.active_application_id.is_none() && self.active_table_id().is_none())
+        {
+            self.active_application_id = Some(app_id.clone());
+            self.active_entry = None;
+        }
 
         // Find any matching recording and activate it
         for rec in self
@@ -437,6 +461,7 @@ impl StoreHub {
             .sorted_by_key(|entity_db| entity_db.recording_property::<Timestamp>())
         {
             if rec.app_id() == Some(&app_id) {
+                self.active_application_id = Some(app_id.clone());
                 self.active_entry = Some(StoreHubEntry::Recording {
                     store_id: rec.store_id().clone(),
                 });
@@ -465,7 +490,9 @@ impl StoreHub {
 
         if self.active_application_id.as_ref() == Some(app_id) {
             self.active_application_id = None;
-            self.active_entry = None;
+            if self.active_table_id().is_none() {
+                self.active_entry = None;
+            }
         }
 
         self.default_blueprint_by_app_id.remove(app_id);
@@ -499,6 +526,11 @@ impl StoreHub {
     #[inline]
     pub fn active_table_id(&self) -> Option<&TableId> {
         self.active_entry.as_ref().and_then(|e| e.table_ref())
+    }
+
+    /// Currently active entry if any.
+    pub fn active_entry(&self) -> Option<&StoreHubEntry> {
+        self.active_entry.as_ref()
     }
 
     /// Directly access the [`Caches`] for the active recording.
@@ -565,6 +597,7 @@ impl StoreHub {
     /// Activate a recording by its [`TableId`].
     fn set_activate_table(&mut self, table_id: TableId) {
         self.active_entry = Some(StoreHubEntry::Table { table_id });
+        self.active_application_id = Some(Self::table_app_id());
     }
 
     // ---------------------
@@ -793,8 +826,8 @@ impl StoreHub {
             // - don't point at the given `uri`
             match data_source {
                 re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-                re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint) => {
-                    endpoint.to_string() != uri
+                re_smart_channel::SmartChannelSource::RedapGrpcStream(redap_uri) => {
+                    redap_uri.to_string() != uri
                 }
                 _ => true,
             }

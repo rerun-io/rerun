@@ -64,7 +64,7 @@ To stream log data over the network or load our `.rrd` data files you also need 
 It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli --locked --features nasm` (see note below).
 Note that only the Python SDK comes bundled with the Viewer whereas C++ & Rust always rely on a separate install.
 
-**Note**: the `nasm` Cargo feature requires the [`nasm`](https://www.nasm.us) CLI to be installed and available in your path.
+**Note**: the `nasm` Cargo feature requires the [`nasm`](https://github.com/netwide-assembler/nasm) CLI to be installed and available in your path.
 Alternatively, you may skip enabling this feature, but this may result in inferior video decoding performance.
 
 You should now be able to run `rerun --help` in any terminal.

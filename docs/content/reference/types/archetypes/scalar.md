@@ -10,15 +10,16 @@ The current timeline value will be used for the time/X-axis, hence scalars
 should not be static.
 
 When used to produce a plot, this archetype is used to provide the data that
-is referenced by [`archetypes.SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) or [`archetypes.SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points?speculative-link). You can do
+is referenced by [`archetypes.SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines) or [`archetypes.SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points). You can do
 this by logging both archetypes to the same path, or alternatively configuring
 the plot-specific archetypes through the blueprint.
 
-## Components
+## Fields
+### Required
+* `scalar`: [`Scalar`](../components/scalar.md)
 
-**Required**: [`Scalar`](../components/scalar.md)
 
-## Shown in
+## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

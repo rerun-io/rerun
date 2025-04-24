@@ -129,7 +129,7 @@ class TimeColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeSequenceColumn(TimeColumnLike):
     """
@@ -163,7 +163,7 @@ class TimeSequenceColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeSecondsColumn(TimeColumnLike):
     """
@@ -197,7 +197,7 @@ class TimeSecondsColumn(TimeColumnLike):
 
 @deprecated(
     """Use `rr.TimeColumn` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 class TimeNanosColumn(TimeColumnLike):
     """
@@ -249,7 +249,7 @@ def send_columns(
     data that shares the same index across the different columns will act as a single logical row,
     equivalent to a single call to `rr.log()`.
 
-    Note that this API ignores any stateful time set on the log stream via the `rerun.set_time_*` APIs.
+    Note that this API ignores any stateful time set on the log stream via [`rerun.set_time`][].
     Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
 
     Parameters

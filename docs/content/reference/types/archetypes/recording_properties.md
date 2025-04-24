@@ -5,17 +5,19 @@ title: "RecordingProperties"
 
 A list of properties associated with a recording.
 
-## Components
+## Fields
+### Optional
+* `start_time`: [`Timestamp`](../components/timestamp.md)
+* `name`: [`Name`](../components/name.md)
 
-**Optional**: [`Timestamp`](../components/timestamp.md), [`Name`](../components/name.md)
 
-## Shown in
+## Can be shown in
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `RecordingProperties`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1RecordingProperties.html?speculative-link)
- * 🐍 [Python API docs for `RecordingProperties`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.RecordingProperties)
- * 🦀 [Rust API docs for `RecordingProperties`](https://docs.rs/rerun/latest/rerun/archetypes/struct.RecordingProperties.html?speculative-link)
+ * 🌊 [C++ API docs for `RecordingProperties`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1RecordingProperties.html)
+ * 🐍 [Python API docs for `RecordingProperties`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.RecordingProperties)
+ * 🦀 [Rust API docs for `RecordingProperties`](https://docs.rs/rerun/latest/rerun/archetypes/struct.RecordingProperties.html)
 
 ## Example
 

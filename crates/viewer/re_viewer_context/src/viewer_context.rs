@@ -4,7 +4,6 @@ use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::TableId;
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
@@ -23,9 +22,6 @@ pub struct ViewerContext<'a> {
 
     pub store_context: &'a StoreContext<'a>,
     pub storage_context: &'a StorageContext<'a>,
-
-    /// If `active_table` is `Some(...)`, we have a table in the context, otherwise it's a regular store.
-    pub active_table: Option<TableId>,
 
     /// Mapping from class and system to entities for the store
     ///
@@ -267,7 +263,9 @@ impl ViewerContext<'_> {
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_engine().store().lookup_datatype(&component))
                 .unwrap_or_else(|| {
-                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    if !component.is_indicator_component() {
+                        re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    }
                     arrow::datatypes::DataType::Null
                 })
         };
@@ -300,9 +298,10 @@ impl ViewerContext<'_> {
     ///
     /// It excludes the globally hardcoded welcome screen app ID.
     pub fn has_active_recording(&self) -> bool {
-        self.recording()
-            .app_id()
-            .is_some_and(|active_app_id| active_app_id != &StoreHub::welcome_screen_app_id())
+        self.recording().app_id().is_some_and(|active_app_id| {
+            active_app_id != &StoreHub::welcome_screen_app_id()
+                && active_app_id != &StoreHub::table_app_id()
+        })
     }
 }
 

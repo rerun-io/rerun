@@ -552,7 +552,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <GammaCorrection as Component>::name(),
             ComponentReflection {
-                docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nValid range is from 0 (excluding) to max float.\nDefaults to 1.0 unless otherwise specified.",
+                docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nMust be a positive number.\nDefaults to 1.0 unless otherwise specified.",
                 deprecation_summary: None,
                 custom_placeholder: Some(GammaCorrection::default().to_arrow()?),
                 datatype: GammaCorrection::arrow_datatype(),
@@ -932,7 +932,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SeriesVisible as Component>::name(),
             ComponentReflection {
-                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link) since it would conflict with the entity-wide visibility state.",
+                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: SeriesVisible::arrow_datatype(),

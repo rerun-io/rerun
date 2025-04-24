@@ -47,7 +47,9 @@ else()
         )
     endif()
 
-    find_package(Arrow REQUIRED)
+    include(CMakeFindDependencyMacro)
+
+    find_dependency(Arrow)
 
     message(STATUS "Rerun is using a system installed libArrow.")
 

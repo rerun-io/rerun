@@ -32,12 +32,14 @@ mod vec_deque_ext;
 
 use std::sync::Arc;
 
+use arrow::array::RecordBatch as ArrowRecordBatch;
+
 use re_build_info::CrateVersion;
 use re_byte_size::SizeBytes;
 
 pub use self::{
     arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback},
-    entry_id::EntryId,
+    entry_id::{EntryId, EntryIdOrName},
     index::{
         Duration, NonMinI64, ResolvedTimeRange, ResolvedTimeRangeF, TimeCell, TimeInt, TimePoint,
         TimeReal, TimeType, Timeline, TimelineName, Timestamp, TimestampFormat, TryFromIntError,
@@ -113,7 +115,7 @@ impl StoreId {
     pub fn random(kind: StoreKind) -> Self {
         Self {
             kind,
-            id: Arc::new(uuid::Uuid::new_v4().to_string()),
+            id: Arc::new(uuid::Uuid::new_v4().simple().to_string()),
         }
     }
 
@@ -126,7 +128,7 @@ impl StoreId {
     pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
             kind,
-            id: Arc::new(uuid.to_string()),
+            id: Arc::new(uuid.simple().to_string()),
         }
     }
 
@@ -190,6 +192,11 @@ impl ApplicationId {
     pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
+
+    /// A randomly generated app id
+    pub fn random() -> Self {
+        Self(format!("app_{}", uuid::Uuid::new_v4().simple()))
+    }
 }
 
 impl std::fmt::Display for ApplicationId {
@@ -201,6 +208,7 @@ impl std::fmt::Display for ApplicationId {
 
 // ----------------------------------------------------------------------------
 
+/// Either the user-chosen name of a table, or an id that is created by the catalog server.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TableId(Arc<String>);
@@ -287,6 +295,10 @@ impl BlueprintActivationCommand {
 }
 
 /// The most general log message sent from the SDK to the server.
+///
+/// Note: this does not contain tables sent via [`TableMsg`], as these concepts are fundamentally
+/// different and should not be handled uniformly. For example, we don't want to store tables in
+/// `.rrd` files.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
 #[allow(clippy::large_enum_variant)]
@@ -330,18 +342,6 @@ impl LogMsg {
             Self::BlueprintActivationCommand(cmd) => {
                 cmd.blueprint_id = new_store_id;
             }
-        }
-    }
-
-    // TODO(#3741): remove this once we are all in on arrow-rs
-    /// USE ONLY FOR TESTS
-    pub fn strip_arrow_extension_types(self) -> Self {
-        match self {
-            Self::ArrowMsg(store_id, mut arrow_msg) => {
-                strip_arrow_extension_types_from_batch(&mut arrow_msg.batch);
-                Self::ArrowMsg(store_id, arrow_msg)
-            }
-            other => other,
         }
     }
 }
@@ -640,6 +640,26 @@ impl std::fmt::Display for StoreSource {
 
 // ---
 
+/// A table, encoded as a dataframe of Arrow record batches.
+///
+/// Tables have a [`TableId`], but don't belong to an application and therefore don't have an [`ApplicationId`].
+/// For now, the table is always sent as a whole, i.e. tables can't be streamed.
+///
+/// It's important to note that tables are not sent via the smart channel of [`LogMsg`], but use a separate `crossbeam`
+/// channel. The reasoning behind this is that tables are fundamentally different from recordings. For example,
+/// we don't want to store tables in `.rrd` files, as there are much better formats out there.
+#[must_use]
+#[derive(Clone, Debug, PartialEq)]
+pub struct TableMsg {
+    /// The id of the table.
+    pub id: TableId,
+
+    /// The table stored as an [`ArrowRecordBatch`].
+    pub data: ArrowRecordBatch,
+}
+
+// ---
+
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
 pub fn build_log_time(log_time: Timestamp) -> (Timeline, TimeInt) {
@@ -785,33 +805,6 @@ impl SizeBytes for LogMsg {
                 blueprint_activation_command.heap_size_bytes()
             }
         }
-    }
-}
-
-/// USE ONLY FOR TESTS
-// TODO(#3741): remove once <https://github.com/apache/arrow-rs/issues/6803> is released
-use arrow::array::RecordBatch as ArrowRecordBatch;
-
-pub fn strip_arrow_extension_types_from_batch(batch: &mut ArrowRecordBatch) {
-    use arrow::datatypes::{Field, Schema};
-
-    fn strip_arrow_extensions_from_field(field: &Field) -> Field {
-        let mut metadata = field.metadata().clone();
-        metadata.retain(|key, _| !key.starts_with("ARROW:extension"));
-        field.clone().with_metadata(metadata)
-    }
-
-    let old_schema = batch.schema();
-    let new_fields: arrow::datatypes::Fields = old_schema
-        .fields()
-        .iter()
-        .map(|field| strip_arrow_extensions_from_field(field))
-        .collect();
-    let new_schema = Schema::new_with_metadata(new_fields, old_schema.metadata().clone());
-
-    #[allow(clippy::unwrap_used)] // The invariants of the input aren't changed
-    {
-        *batch = ArrowRecordBatch::try_new(new_schema.into(), batch.columns().to_vec()).unwrap();
     }
 }
 

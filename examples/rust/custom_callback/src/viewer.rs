@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_smart_channel::Receiver`.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx_log, rx_table) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9877".parse()?,
         "75%".parse()?,
         re_grpc_server::shutdown::never(),
@@ -66,7 +66,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
 
-            rerun_app.add_receiver(rx);
+            rerun_app.add_log_receiver(rx_log);
+            rerun_app.add_table_receiver(rx_table);
 
             Ok(Box::new(Control::new(rerun_app, handle)))
         }),

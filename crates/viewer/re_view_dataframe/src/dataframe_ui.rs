@@ -9,12 +9,12 @@ use itertools::Itertools as _;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
+use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
 use re_viewer_context::{SystemCommandSender as _, ViewId, ViewerContext};
 
-use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
 /// Ui actions triggered by the dataframe UI to be handled by the calling code.
@@ -318,9 +318,10 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                             ColumnDescriptor::Time(descr) => {
                                 if response.clicked() {
                                     self.ctx.command_sender().send_system(
-                                        re_viewer_context::SystemCommand::SetActiveTimeline {
+                                        re_viewer_context::SystemCommand::SetActiveTime {
                                             rec_id: self.ctx.recording_id().clone(),
                                             timeline: descr.timeline(),
+                                            time: None,
                                         },
                                     );
                                 }

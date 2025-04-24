@@ -1,3 +1,4 @@
+use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::SegmentationImage,
     components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
@@ -101,7 +102,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     let buffer = buffers.first()?;
                     Some(SegmentationImageComponentData {
                         image: ImageInfo {
-                            buffer_row_id: index.1,
+                            buffer_cache_key: Hash64::hash(index.1),
                             buffer: buffer.clone().into(),
                             format: first_copied(formats.as_deref())?.0,
                             kind: ImageKind::Segmentation,

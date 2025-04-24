@@ -1,31 +1,28 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
 use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
     create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
     Python,
 };
-use tokio::sync::Mutex;
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use tokio_stream::StreamExt as _;
 
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{client, get_chunks_response_to_chunk_and_partition_id};
+use re_grpc_client::redap::{get_chunks_response_to_chunk_and_partition_id, RedapClient};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::common::v1alpha1::IfDuplicateBehavior;
-use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-use re_protos::frontend::v1alpha1::{GetDatasetSchemaRequest, RegisterWithDatasetRequest};
-use re_protos::manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange};
 use re_protos::{
     catalog::v1alpha1::{
         ext::{DatasetEntry, EntryDetails, TableEntry},
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
         ReadTableEntryRequest,
     },
-    frontend::v1alpha1::GetChunksRequest,
+    common::v1alpha1::{IfDuplicateBehavior, TaskId},
+    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest},
+    manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
 };
 
 use crate::catalog::to_py_err;
@@ -39,23 +36,18 @@ pub struct ConnectionHandle {
     origin: re_uri::Origin,
 
     /// The actual tonic connection.
-    client: FrontendServiceClient<tonic::transport::Channel>,
-
-    schema_cache: std::sync::Arc<Mutex<HashMap<EntryId, ArrowSchema>>>,
+    client: RedapClient,
 }
 
 impl ConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, client(origin.clone())).map_err(to_py_err)?;
+        let client = wait_for_future(py, re_grpc_client::redap::client(origin.clone()))
+            .map_err(to_py_err)?;
 
-        Ok(Self {
-            origin,
-            client,
-            schema_cache: Default::default(),
-        })
+        Ok(Self { origin, client })
     }
 
-    pub fn client(&self) -> FrontendServiceClient<tonic::transport::Channel> {
+    pub fn client(&self) -> RedapClient {
         self.client.clone()
     }
 
@@ -156,14 +148,7 @@ impl ConnectionHandle {
         entry_id: EntryId,
     ) -> PyResult<ArrowSchema> {
         wait_for_future(py, async {
-            let mut cache = self.schema_cache.lock().await;
-
-            // TODO(rerun-io/dataplatform#521): Remove this cache once the response is faster
-            if let Some(schema) = cache.get(&entry_id) {
-                return Ok(schema.clone());
-            }
-            let schema = self
-                .client
+            self.client
                 .get_dataset_schema(GetDatasetSchemaRequest {
                     dataset_id: Some(entry_id.into()),
                 })
@@ -171,11 +156,7 @@ impl ConnectionHandle {
                 .map_err(to_py_err)?
                 .into_inner()
                 .schema()
-                .map_err(to_py_err)?;
-
-            cache.insert(entry_id, schema.clone());
-
-            Ok(schema)
+                .map_err(to_py_err)
         })
     }
 
@@ -184,9 +165,10 @@ impl ConnectionHandle {
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uri: String,
-    ) -> PyResult<()> {
+    ) -> PyResult<TaskId> {
         wait_for_future(py, async {
-            self.client
+            let response = self
+                .client
                 .register_with_dataset(RegisterWithDatasetRequest {
                     dataset_id: Some(dataset_id.into()),
                     data_sources: vec![DataSource::new_rrd(recording_uri)
@@ -196,9 +178,70 @@ impl ConnectionHandle {
                     on_duplicate: IfDuplicateBehavior::Error as i32,
                 })
                 .await
-                .map_err(to_py_err)?;
+                .map_err(to_py_err)?
+                .into_inner();
 
-            Ok(())
+            response
+                .id
+                .ok_or_else(|| PyValueError::new_err("received response without task id"))
+        })
+    }
+
+    pub fn wait_for_task(
+        &mut self,
+        py: Python<'_>,
+        task_id: &TaskId,
+        timeout: std::time::Duration,
+    ) -> PyResult<()> {
+        wait_for_future(py, async {
+            let timeout: prost_types::Duration = timeout.try_into().map_err(|err| {
+                PyValueError::new_err(format!(
+                    "failed to convert timeout to serialized duration: {err}"
+                ))
+            })?;
+            let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
+                ids: vec![task_id.clone()],
+                timeout: Some(timeout),
+            };
+            let mut response_stream = self
+                .client
+                .query_tasks_on_completion(request)
+                .await
+                .map_err(to_py_err)?
+                .into_inner();
+
+            // we know there is only one item in the stream
+            let task_status = if let Some(response) = response_stream.next().await {
+                response
+                    .map_err(to_py_err)?
+                    .data
+                    .ok_or_else(|| PyValueError::new_err("received response without data"))?
+                    .decode()
+                    .map_err(to_py_err)?
+            } else {
+                return Err(PyValueError::new_err("no response from task"));
+            };
+
+            // TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather
+            // than a nicely typed object should be revisited.
+
+            let exec_status = task_status
+                .column_by_name("exec_status")
+                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
+                .and_then(|arr| arr.value(0).into())
+                .ok_or_else(|| PyValueError::new_err("couldn't read exec_status column"))?;
+
+            let msgs = task_status
+                .column_by_name("msgs")
+                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
+                .and_then(|arr| arr.value(0).into())
+                .ok_or_else(|| PyValueError::new_err("couldn't read msgs column"))?;
+
+            if exec_status == "success" {
+                Ok(())
+            } else {
+                Err(PyValueError::new_err(format!("task failed: {msgs}",)))
+            }
         })
     }
 

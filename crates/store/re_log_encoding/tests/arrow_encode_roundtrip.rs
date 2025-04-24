@@ -2,9 +2,7 @@ use similar_asserts::assert_eq;
 
 use re_build_info::CrateVersion;
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-use re_log_encoding::{
-    decoder::decode_bytes, encoder::encode_as_bytes, EncodingOptions, VersionPolicy,
-};
+use re_log_encoding::{decoder::decode_bytes, encoder::encode_as_bytes, EncodingOptions};
 use re_log_types::{LogMsg, StoreId};
 use re_types::archetypes::Points3D;
 
@@ -44,19 +42,10 @@ fn encode_roundtrip() {
     let option = EncodingOptions::PROTOBUF_COMPRESSED;
     let crate_version = CrateVersion::LOCAL;
     let encoded = encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
-    let decoded = decode_bytes(VersionPolicy::Error, &encoded).unwrap();
+    let decoded = decode_bytes(&encoded).unwrap();
     similar_asserts::assert_eq!(
-        strip_arrow_extensions_from_log_messages(&decoded),
-        strip_arrow_extensions_from_log_messages(&messages),
+        decoded,
+        messages,
         "Failed to roundtrip chunk with option {option:?}"
     );
-}
-
-// TODO(#3741): remove this once we are all in on arrow-rs
-fn strip_arrow_extensions_from_log_messages(log_msg: &[LogMsg]) -> Vec<LogMsg> {
-    log_msg
-        .iter()
-        .cloned()
-        .map(LogMsg::strip_arrow_extension_types)
-        .collect()
 }

@@ -1,4 +1,5 @@
 use re_chunk_store::{LatestAtQuery, RowId};
+use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Tensor,
     components::{TensorData, ValueRange},
@@ -82,11 +83,9 @@ impl VisualizerSystem for TensorSystem {
                             .map(|range| ValueRange(range.into()))
                     })
                     .unwrap_or_else(|| {
-                        let tensor_stats = ctx
-                            .viewer_ctx
-                            .store_context
-                            .caches
-                            .entry(|c: &mut TensorStatsCache| c.entry(tensor_row_id, tensor));
+                        let tensor_stats = ctx.viewer_ctx.store_context.caches.entry(
+                            |c: &mut TensorStatsCache| c.entry(Hash64::hash(tensor_row_id), tensor),
+                        );
                         tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
                     });
 
@@ -149,7 +148,7 @@ impl TypedComponentFallbackProvider<re_types::components::ValueRange> for Tensor
                 .viewer_ctx
                 .store_context
                 .caches
-                .entry(|c: &mut TensorStatsCache| c.entry(row_id, &tensor));
+                .entry(|c: &mut TensorStatsCache| c.entry(Hash64::hash(row_id), &tensor));
             tensor_data_range_heuristic(&tensor_stats, tensor.dtype())
         } else {
             ValueRange::new(0.0, 1.0)

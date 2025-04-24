@@ -29,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, PartialEq)]
 pub struct TensorData {
     /// The shape of the tensor, i.e. the length of each dimension.
-    pub shape: ::re_types_core::ArrowBuffer<u64>,
+    pub shape: ::arrow::buffer::ScalarBuffer<u64>,
 
     /// The names of the dimensions of the tensor (optional).
     ///
@@ -141,14 +141,15 @@ impl ::re_types_core::Loggable for TensorData {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets =
-                                arrow::buffer::OffsetBuffer::<i32>::from_lengths(shape.iter().map(
-                                    |opt| opt.as_ref().map_or(0, |datum| datum.num_instances()),
-                                ));
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                shape
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                            );
                             let shape_inner_data: ScalarBuffer<_> = shape
                                 .iter()
                                 .flatten()
-                                .map(|b| b.as_slice())
+                                .map(|b| b as &[_])
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
@@ -321,7 +322,6 @@ impl ::re_types_core::Loggable for TensorData {
                                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                         let data =
                                             arrow_data_inner.clone().slice(start, end - start);
-                                        let data = ::re_types_core::ArrowBuffer::from(data);
                                         Ok(data)
                                     })
                                     .transpose()
@@ -489,7 +489,7 @@ impl ::re_byte_size::SizeBytes for TensorData {
 
     #[inline]
     fn is_pod() -> bool {
-        <::re_types_core::ArrowBuffer<u64>>::is_pod()
+        <::arrow::buffer::ScalarBuffer<u64>>::is_pod()
             && <Option<Vec<::re_types_core::ArrowString>>>::is_pod()
             && <crate::datatypes::TensorBuffer>::is_pod()
     }

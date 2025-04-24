@@ -4,22 +4,24 @@ use arrow::array::{
     Array as _, ArrayRef, ListArray as ArrowListArray, StringArray as ArrowStringArray,
 };
 use arrow::datatypes::{DataType as ArrowDataType, Field as ArrowField};
-use egui::{Frame, Margin, RichText};
+use egui::{Frame, Id, Margin, RichText};
 use egui_table::{CellInfo, HeaderCellInfo};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_dataframe_ui::table_utils::{
+    apply_table_style_fixes, cell_ui, header_title, ColumnConfig, TableConfig, CELL_MARGIN,
+};
+use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, EntryId, TimelineName};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor, SorbetBatch};
 use re_types_core::arrow_helpers::as_array_ref;
 use re_ui::{icons, UiExt as _};
-use re_view_dataframe::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_viewer_context::ViewerContext;
 
 use super::servers::Command;
 use crate::context::Context;
 use crate::entries::Dataset;
-use crate::table_utils::{apply_table_style_fixes, cell_ui, header_title, CELL_MARGIN};
 
 #[derive(thiserror::Error, Debug)]
 enum CollectionUiError {
@@ -80,10 +82,24 @@ pub fn dataset_ui(
         }
     };
 
+    let table_config = TableConfig::get_with_columns(
+        ui.ctx(),
+        table_id_salt,
+        columns.iter().map(|c| {
+            let name = c.name();
+            let name = name
+                .strip_prefix("rerun_")
+                .unwrap_or(name.as_str())
+                .replace('_', " ");
+            ColumnConfig::new(Id::new(c), name)
+        }),
+    );
+
     let mut table_delegate = CollectionTableDelegate {
         ctx: viewer_ctx,
         display_record_batches: &display_record_batches,
         selected_columns: &columns,
+        table_config,
     };
 
     Frame::new()
@@ -94,14 +110,20 @@ pub fn dataset_ui(
             right: 16,
         })
         .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading(RichText::new(dataset.name()).strong());
-                if ui.small_icon_button(&icons::RESET).clicked() {
-                    let _ = ctx
-                        .command_sender
-                        .send(Command::RefreshCollection(origin.clone()));
-                }
-            });
+            egui::Sides::new().show(
+                ui,
+                |ui| {
+                    ui.heading(RichText::new(dataset.name()).strong());
+                    if ui.small_icon_button(&icons::RESET).clicked() {
+                        let _ = ctx
+                            .command_sender
+                            .send(Command::RefreshCollection(origin.clone()));
+                    }
+                },
+                |ui| {
+                    table_delegate.table_config.button_ui(ui);
+                },
+            );
         });
 
     apply_table_style_fixes(ui.style_mut());
@@ -109,13 +131,10 @@ pub fn dataset_ui(
     egui_table::Table::new()
         .id_salt(table_id_salt)
         .columns(
-            columns
-                .iter()
-                .map(|field| {
-                    egui_table::Column::new(200.0)
-                        .resizable(true)
-                        .id(egui::Id::new(field))
-                })
+            table_delegate
+                .table_config
+                .visible_column_ids()
+                .map(|id| egui_table::Column::new(200.0).resizable(true).id(id))
                 .collect::<Vec<_>>(),
         )
         .headers(vec![egui_table::HeaderRow::new(
@@ -123,6 +142,8 @@ pub fn dataset_ui(
         )])
         .num_rows(num_rows)
         .show(ui, &mut table_delegate);
+
+    table_delegate.table_config.store(ui.ctx());
 }
 
 /// Descriptor for the generated `RecordingUri` component.
@@ -215,19 +236,21 @@ struct CollectionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     selected_columns: &'a Vec<ColumnDescriptorRef<'a>>,
+    table_config: TableConfig,
 }
 
 impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
     fn header_cell_ui(&mut self, ui: &mut egui::Ui, cell: &HeaderCellInfo) {
         ui.set_truncate_style();
 
-        let name = self.selected_columns[cell.group_index].name();
-        let name = name
-            .strip_prefix("rerun_")
-            .unwrap_or(name.as_str())
-            .replace('_', " ");
+        let name = self
+            .table_config
+            .visible_column_names()
+            .nth(cell.group_index);
 
-        header_title(ui, name);
+        if let Some(name) = name {
+            header_title(ui, name);
+        }
     }
 
     fn cell_ui(&mut self, ui: &mut egui::Ui, cell: &CellInfo) {
@@ -237,27 +260,37 @@ impl egui_table::TableDelegate for CollectionTableDelegate<'_> {
 
             ui.set_truncate_style();
 
-            for display_record_batch in self.display_record_batches {
-                let row_count = display_record_batch.num_rows();
-                if row_index < row_count {
-                    // this is the one
-                    let column = &display_record_batch.columns()[cell.col_nr];
+            let id = self.table_config.visible_column_ids().nth(cell.col_nr);
+            if let Some(id) = id {
+                if let Some((col_idx, _)) = self
+                    .selected_columns
+                    .iter()
+                    .enumerate()
+                    .find(|(_, c)| Id::new(c) == id)
+                {
+                    for display_record_batch in self.display_record_batches {
+                        let row_count = display_record_batch.num_rows();
+                        if row_index < row_count {
+                            // this is the one
+                            let column = &display_record_batch.columns()[col_idx];
 
-                    // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
-                    // avoiding doing so needs significant refactoring work.
-                    column.data_ui(
-                        self.ctx,
-                        ui,
-                        &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
-                            TimelineName::new("unknown"),
-                        ),
-                        row_index,
-                        None,
-                    );
+                            // TODO(#9029): it is _very_ unfortunate that we must provide a fake timeline, but
+                            // avoiding doing so needs significant refactoring work.
+                            column.data_ui(
+                                self.ctx,
+                                ui,
+                                &re_viewer_context::external::re_chunk_store::LatestAtQuery::latest(
+                                    TimelineName::new("unknown"),
+                                ),
+                                row_index,
+                                None,
+                            );
 
-                    break;
-                } else {
-                    row_index -= row_count;
+                            break;
+                        } else {
+                            row_index -= row_count;
+                        }
+                    }
                 }
             }
         });

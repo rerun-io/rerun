@@ -83,7 +83,28 @@ pub fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow::array
             } else {
                 format!("{instance_count_str} items")
             };
-            ui_layout.label(ui, string);
+            ui_layout.label(ui, string).on_hover_ui(|ui| {
+                const MAX_INSTANCE: usize = 40;
+
+                let list_string = format!(
+                    "[{}{}]{}",
+                    (0..instance_count.min(MAX_INSTANCE))
+                        .map(array_formatter)
+                        .join(", "),
+                    if instance_count > MAX_INSTANCE {
+                        ", …"
+                    } else {
+                        ""
+                    },
+                    if instance_count > MAX_INSTANCE {
+                        format!(" ({} items omitted)", instance_count - MAX_INSTANCE)
+                    } else {
+                        String::new()
+                    }
+                );
+
+                UiLayout::Tooltip.data_label(ui, list_string);
+            });
         }
     });
 }

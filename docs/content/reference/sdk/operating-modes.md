@@ -12,11 +12,11 @@ Before reading this document, you might want to familiarize yourself with the [R
 
 ## Operating modes
 
-The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve`, and `save`.
+The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve_grpc`, and `save`.
 
 All four of them are optional: when none of these modes are active, the client will simply buffer the logged data in memory, waiting for one of these modes to be enabled so that it can flush it.
 
-### Spawn
+### `spawn`
 
 This is the default behavior you get when running all of our C++/Python/Rust examples, and is generally the most convenient when you're experimenting.
 
@@ -30,7 +30,7 @@ Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_
 [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 
-### Connect
+### `connect`
 
 Connects to a remote Rerun Viewer and streams all the data via gRPC.
 
@@ -46,31 +46,28 @@ You will need to start a stand-alone Viewer first by typing `rerun` in your term
 [`RecordingStream::connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.connect)
 
 
-### Serve
+### `serve_grpc`
+Calling `serve_grpc` will start a Rerun gRPC server in your process, and stream logged data to it.
+This gRPC server can then be connected to from the Rerun Viewer, e.g. by running `rerun --connect`.
+The gRPC server acts as a proxy, buffering and forwarding log data to the Rerun Viewer.
 
-There are two kinds of `serve` calls:
-
-* `serve_web`
-* `serve_grpc`
-
-Both will start a Rerun gRPC server in your process, and stream logged data to it.
-
-The `serve_web` call starts an additional server which hosts the assets required to run the Rerun Viewer in your browser.
+You can also connect to the gRPC server from a Rerun Web Viewer.
+To host a Rerun Web Viewer, you can use the `serve_web_viewer` function.
 
 #### C++
 * [`RecordingStream::serve_grpc`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html).
-* `serve_web` is not available.
+* `serve_web_viewer` is not available.
 
 #### Python
-* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc?speculative-link)
-* [`rr.serve_web`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_web)
+* [`rr.serve_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_grpc)
+* [`rr.serve_web_viewer`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve_web_viewer)
 
 #### Rust
-* [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc?speculative-link)
-* [`RecordingStream::serve_web`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web?speculative-link)
+* [`RecordingStream::serve_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_grpc)
+* [`RecordingStream::serve_web_viewer`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve_web_viewer)
 
 
-### Save
+### `save`
 
 Streams all logging data into an `.rrd` file on disk, which can then be loaded into a stand-alone viewer.
 

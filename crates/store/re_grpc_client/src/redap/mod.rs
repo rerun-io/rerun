@@ -3,12 +3,12 @@ use tokio_stream::{Stream, StreamExt as _};
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
 use re_protos::catalog::v1alpha1::ReadDatasetEntryRequest;
 use re_protos::frontend::v1alpha1::frontend_service_client::FrontendServiceClient;
-use re_protos::frontend::v1alpha1::FetchPartitionRequest;
-use re_protos::manifest_registry::v1alpha1::FetchPartitionResponse;
-use re_uri::{DatasetDataEndpoint, Origin};
+use re_protos::{
+    catalog::v1alpha1::ext::ReadDatasetEntryResponse, frontend::v1alpha1::GetChunksRequest,
+};
+use re_uri::{DatasetDataUri, Origin};
 
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
 
@@ -24,21 +24,21 @@ pub enum Command {
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_dataset_from_redap(
-    endpoint: DatasetDataEndpoint,
+    uri: DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
-    re_log::debug!("Loading {endpoint}…");
+    re_log::debug!("Loading {uri}…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RedapGrpcStream(endpoint.clone()),
-        re_smart_channel::SmartChannelSource::RedapGrpcStream(endpoint.clone()),
+        re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
+        re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_partition_async(tx, endpoint.clone(), on_cmd, on_msg).await {
+        if let Err(err) = stream_partition_async(tx, uri.clone(), on_cmd, on_msg).await {
             re_log::error!(
-                "Error while streaming {endpoint}: {}",
+                "Error while streaming {uri}: {}",
                 re_error::format_ref(&err)
             );
         }
@@ -116,7 +116,7 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type Client = FrontendServiceClient<tonic_web_wasm_client::Client>;
+pub type RedapClient = FrontendServiceClient<tonic_web_wasm_client::Client>;
 
 #[cfg(target_arch = "wasm32")]
 pub async fn client(
@@ -127,45 +127,33 @@ pub async fn client(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub type Client = FrontendServiceClient<tonic::transport::Channel>;
+pub type RedapClient = FrontendServiceClient<tonic::transport::Channel>;
+// TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
+// pub type RedapClient = FrontendServiceClient<
+//     tower_http::trace::Trace<
+//         tonic::service::interceptor::InterceptedService<
+//             tonic::transport::Channel,
+//             redap_telemetry::TracingInjectorInterceptor,
+//         >,
+//         tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
+//     >,
+// >;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn client(
-    origin: Origin,
-) -> Result<FrontendServiceClient<tonic::transport::Channel>, ConnectionError> {
+pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(FrontendServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
-}
 
-#[cfg(not(target_arch = "wasm32"))]
-pub async fn client_with_interceptor<I: tonic::service::Interceptor>(
-    origin: Origin,
-    interceptor: I,
-) -> Result<
-    FrontendServiceClient<
-        tonic::service::interceptor::InterceptedService<tonic::transport::Channel, I>,
-    >,
-    ConnectionError,
-> {
-    let channel = channel(origin).await?;
-    Ok(
-        FrontendServiceClient::with_interceptor(channel, interceptor)
-            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE),
-    )
-}
+    let middlewares = tower::ServiceBuilder::new()
+        // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
+        // .layer(redap_telemetry::new_grpc_tracing_layer())
+        // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
+        .into_inner();
 
-/// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
-//TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-pub fn fetch_partition_response_to_chunk(
-    response: tonic::Streaming<FetchPartitionResponse>,
-) -> impl Stream<Item = Result<Chunk, StreamError>> {
-    response.map(|resp| {
-        resp.map_err(Into::into).and_then(|r| {
-            let batch = r.chunk.ok_or(StreamError::MissingChunkData)?.decode()?;
+    let svc = tower::ServiceBuilder::new()
+        .layer(middlewares)
+        .service(channel);
 
-            Chunk::from_record_batch(&batch).map_err(Into::into)
-        })
-    })
+    Ok(FrontendServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 /// Converts a `FetchPartitionResponse` stream into a stream of `Chunk`s.
@@ -189,22 +177,26 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 
 pub async fn stream_partition_async(
     tx: re_smart_channel::Sender<LogMsg>,
-    endpoint: re_uri::DatasetDataEndpoint,
+    uri: re_uri::DatasetDataUri,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
-    re_log::debug!("Connecting to {}…", endpoint.origin);
-    let mut client = client(endpoint.origin).await?;
+    let re_uri::DatasetDataUri {
+        origin,
+        dataset_id,
+        partition_id,
+        time_range,
+        fragment: _, // Only affects the viewer
+    } = uri;
 
-    re_log::debug!(
-        "Fetching catalog data for partition {} of dataset {}…",
-        endpoint.partition_id,
-        endpoint.dataset_id
-    );
+    re_log::debug!("Connecting to {}…", origin);
+    let mut client = client(origin).await?;
+
+    re_log::debug!("Fetching catalog data for partition {partition_id} of dataset {dataset_id}…");
 
     let read_dataset_response: ReadDatasetEntryResponse = client
         .read_dataset_entry(ReadDatasetEntryRequest {
-            id: Some(endpoint.dataset_id.into()),
+            id: Some(dataset_id.into()),
         })
         .await?
         .into_inner()
@@ -213,17 +205,19 @@ pub async fn stream_partition_async(
     let dataset_name = read_dataset_response.dataset_entry.details.name;
 
     let catalog_chunk_stream = client
-        //TODO(rerun-io/dataplatform#474): filter chunks by time range
-        .fetch_partition(FetchPartitionRequest {
-            dataset_id: Some(endpoint.dataset_id.into()),
-            partition_id: Some(endpoint.partition_id.clone().into()),
+        .get_chunks(GetChunksRequest {
+            dataset_id: Some(dataset_id.into()),
+            partition_ids: vec![partition_id.clone().into()],
+            chunk_ids: vec![],
+            entity_paths: vec![],
+            query: None,
         })
         .await?
         .into_inner();
 
     drop(client);
 
-    let store_id = StoreId::from_string(StoreKind::Recording, endpoint.partition_id.clone());
+    let store_id = StoreId::from_string(StoreKind::Recording, partition_id.clone());
     let store_info = StoreInfo {
         application_id: dataset_name.into(),
         store_id: store_id.clone(),
@@ -232,11 +226,11 @@ pub async fn stream_partition_async(
         store_version: None,
     };
 
-    if let Some(time_range) = endpoint.time_range {
+    if let Some(time_range) = time_range {
         on_cmd(Command::SetLoopSelection {
             recording_id: store_id.clone(),
             timeline: time_range.timeline,
-            time_range: time_range.range,
+            time_range: time_range.into(),
         });
     }
 
@@ -251,10 +245,10 @@ pub async fn stream_partition_async(
         return Ok(());
     }
 
-    let mut chunk_stream = fetch_partition_response_to_chunk(catalog_chunk_stream);
+    let mut chunk_stream = get_chunks_response_to_chunk_and_partition_id(catalog_chunk_stream);
 
     while let Some(chunk) = chunk_stream.next().await {
-        let chunk = chunk?;
+        let (chunk, _partition_id) = chunk?;
 
         if tx
             .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))

@@ -10,22 +10,23 @@ should not be static.
 Number of scalars per timestamp is expected to be the same over time.
 
 When used to produce a plot, this archetype is used to provide the data that
-is referenced by [`archetypes.SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines?speculative-link) or [`archetypes.SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points?speculative-link). You can do
+is referenced by [`archetypes.SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines) or [`archetypes.SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points). You can do
 this by logging both archetypes to the same path, or alternatively configuring
 the plot-specific archetypes through the blueprint.
 
-## Components
+## Fields
+### Required
+* `scalars`: [`Scalar`](../components/scalar.md)
 
-**Required**: [`Scalar`](../components/scalar.md)
 
-## Shown in
+## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Scalars`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Scalars.html?speculative-link)
- * 🐍 [Python API docs for `Scalars`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Scalars)
- * 🦀 [Rust API docs for `Scalars`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Scalars.html?speculative-link)
+ * 🌊 [C++ API docs for `Scalars`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Scalars.html)
+ * 🐍 [Python API docs for `Scalars`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Scalars)
+ * 🦀 [Rust API docs for `Scalars`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Scalars.html)
 
 ## Examples
 

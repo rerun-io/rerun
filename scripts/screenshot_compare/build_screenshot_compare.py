@@ -245,7 +245,8 @@ def serve_files() -> None:
         os.environ["RUST_LOG"] = "rerun=warn"
 
         rr.init("rerun_example_screenshot_compare")
-        rr.serve_web(open_browser=False)
+        connect_to = rr.serve_grpc()
+        rr.serve_web_viewer(open_browser=False, connect_to=connect_to)
 
     threading.Thread(target=serve, daemon=True).start()
 

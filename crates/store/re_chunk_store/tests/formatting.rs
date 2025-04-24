@@ -42,7 +42,7 @@ fn format_chunk_store() -> anyhow::Result<()> {
             .build()?,
     ))?;
 
-    insta::assert_snapshot!("format_chunk_store", format!("{:200}", store));
+    insta::assert_snapshot!("format_chunk_store", format!("{:240}", store));
 
     Ok(())
 }

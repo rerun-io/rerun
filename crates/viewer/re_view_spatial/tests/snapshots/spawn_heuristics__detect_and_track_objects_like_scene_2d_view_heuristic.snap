@@ -6,23 +6,15 @@ ViewSpawnHeuristics {
     recommended_views: [
         RecommendedView {
             origin: /segmentation,
-            query_filter: EntityPathFilter {
-                rules: {
-                    EntityPathRule(
-                        "$origin/**",
-                    ): Include,
-                },
-            },
+            query_filter: [
+                "+ $origin/**",
+            ],
         },
         RecommendedView {
             origin: /video,
-            query_filter: EntityPathFilter {
-                rules: {
-                    EntityPathRule(
-                        "$origin/**",
-                    ): Include,
-                },
-            },
+            query_filter: [
+                "+ $origin/**",
+            ],
         },
     ],
 }

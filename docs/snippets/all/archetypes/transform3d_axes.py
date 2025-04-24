@@ -14,8 +14,9 @@ for deg in range(360):
     rr.set_time("step", sequence=deg)
     rr.log(
         "base/rotated",
-        rr.Transform3D(
-            rotation=rr.RotationAxisAngle(
+        rr.Transform3D.from_fields(
+            clear_unset=True,
+            rotation_axis_angle=rr.RotationAxisAngle(
                 axis=[1.0, 1.0, 1.0],
                 degrees=deg,
             ),
@@ -24,7 +25,8 @@ for deg in range(360):
     )
     rr.log(
         "base/rotated/translated",
-        rr.Transform3D(
+        rr.Transform3D.from_fields(
+            clear_unset=True,
             translation=[2.0, 0, 0],
             axis_length=0.5,
         ),

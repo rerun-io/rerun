@@ -8,13 +8,18 @@ Define the style properties for a point series in a chart.
 
 This archetype only provides styling information and should be logged as static
 when possible. The underlying data needs to be logged to the same entity-path using
-[`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-link).
+[`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars).
 
-## Components
+## Fields
+### Optional
+* `color`: [`Color`](../components/color.md)
+* `marker`: [`MarkerShape`](../components/marker_shape.md)
+* `name`: [`Name`](../components/name.md)
+* `visible_series`: [`SeriesVisible`](../components/series_visible.md)
+* `marker_size`: [`MarkerSize`](../components/marker_size.md)
 
-**Optional**: [`Color`](../components/color.md), [`MarkerShape`](../components/marker_shape.md), [`Name`](../components/name.md), [`SeriesVisible`](../components/series_visible.md), [`MarkerSize`](../components/marker_size.md)
 
-## Shown in
+## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

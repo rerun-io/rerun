@@ -112,7 +112,7 @@ impl CodeGenerator for SnippetsRefCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        _arrow_registry: &crate::ArrowRegistry,
+        _type_registry: &crate::TypeRegistry,
     ) -> GeneratedFiles {
         match self.generate_fallible(objects) {
             Ok(files) => files,

@@ -1,12 +1,14 @@
-use arrow2::datatypes::DataType;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::{ArrowRegistry, Object, Objects};
+use crate::{
+    data_type::{AtomicDataType, DataType, UnionMode},
+    Object, Objects, TypeRegistry,
+};
 
 use super::{
     arrow::{
-        is_backed_by_arrow_buffer, quote_fqname_as_type_path, quoted_arrow_primitive_type,
+        is_backed_by_scalar_buffer, quote_fqname_as_type_path, quoted_arrow_primitive_type,
         ArrowFieldTokenizer,
     },
     util::{is_tuple_struct_from_obj, quote_comment},
@@ -15,12 +17,12 @@ use super::{
 // ---
 
 pub fn quote_arrow_serializer(
-    arrow_registry: &ArrowRegistry,
+    type_registry: &TypeRegistry,
     objects: &Objects,
     obj: &Object,
     data_src: &proc_macro2::Ident,
 ) -> TokenStream {
-    let datatype = &arrow_registry.get(&obj.fqname);
+    let datatype = &type_registry.get(&obj.fqname);
 
     let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
@@ -110,7 +112,7 @@ pub fn quote_arrow_serializer(
             quote!(#quoted_data_dst)
         };
 
-        let datatype = &arrow_registry.get(&obj_field.fqname);
+        let datatype = &type_registry.get(&obj_field.fqname);
         let elements_are_nullable = true;
 
         let quoted_serializer = quote_arrow_field_serializer(
@@ -157,7 +159,7 @@ pub fn quote_arrow_serializer(
                     let data_dst = format_ident!("{}", obj_field.name);
                     let validity_dst = format_ident!("{data_dst}_validity");
 
-                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let inner_datatype = &type_registry.get(&obj_field.fqname);
                     let elements_are_nullable = true;
 
                     let quoted_serializer = quote_arrow_field_serializer(
@@ -218,7 +220,7 @@ pub fn quote_arrow_serializer(
                 }}
             }
 
-            DataType::Union(fields, _, arrow2::datatypes::UnionMode::Sparse) => {
+            DataType::Union(fields, UnionMode::Sparse) => {
                 // We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
                 let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
@@ -274,7 +276,7 @@ pub fn quote_arrow_serializer(
                 }}
             }
 
-            DataType::Union(fields, _, arrow2::datatypes::UnionMode::Dense) => {
+            DataType::Union(fields, UnionMode::Dense) => {
                 let quoted_field_type_ids = (0..fields.len()).map(Literal::usize_unsuffixed);
                 let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
                 let quoted_data_collect = quote! {
@@ -308,7 +310,7 @@ pub fn quote_arrow_serializer(
                     let elements_are_nullable = false;
                     let validity_dst = format_ident!("{}_validity", data_dst);
 
-                    let inner_datatype = &arrow_registry.get(&obj_field.fqname);
+                    let inner_datatype = &type_registry.get(&obj_field.fqname);
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
@@ -447,9 +449,9 @@ pub fn quote_arrow_serializer(
 
 #[derive(Copy, Clone)]
 enum InnerRepr {
-    /// The inner elements of the field will come from an `ArrowBuffer<T>`
-    /// This is only applicable when T is an arrow primitive
-    ArrowBuffer,
+    /// The inner elements of the field will come from an `ScalarBuffer<T>`
+    /// This is only applicable when T implements [`ArrowNativeType`](https://docs.rs/arrow/latest/arrow/datatypes/trait.ArrowNativeType.html).
+    ScalarBuffer,
 
     /// The inner elements of the field will come from an iterable of T
     NativeIterable,
@@ -473,7 +475,7 @@ fn quote_arrow_field_serializer(
     data_src: &proc_macro2::Ident,
     inner_repr: InnerRepr,
 ) -> TokenStream {
-    let inner_obj = if let DataType::Extension(fqname, _, _) = datatype {
+    let inner_obj = if let DataType::Object { fqname, .. } = datatype {
         Some(&objects[fqname])
     } else {
         None
@@ -499,18 +501,13 @@ fn quote_arrow_field_serializer(
     let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
 
     match datatype.to_logical_type() {
-        DataType::Boolean
-        | DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Float16
-        | DataType::Float32
-        | DataType::Float64 => {
+        DataType::Atomic(AtomicDataType::Null) => {
+            panic!(
+                "Null fields should only occur within enums and unions where they are handled separately."
+            );
+        }
+
+        DataType::Atomic(atomic) => {
             // NOTE: We need values for all slots, regardless of what the validity says,
             // hence `unwrap_or_default` (unless elements_are_nullable is false)
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
@@ -549,7 +546,7 @@ fn quote_arrow_field_serializer(
                 quote! {}
             };
 
-            if datatype.to_logical_type() == &DataType::Boolean {
+            if atomic == &AtomicDataType::Boolean {
                 quote! {
                     as_array_ref(BooleanArray::new(
                         BooleanBuffer::from(#data_src.into_iter() #quoted_transparent_mapping .collect::<Vec<_>>()),
@@ -562,7 +559,7 @@ fn quote_arrow_field_serializer(
                 match inner_repr {
                     // A primitive that's an inner element of a list will already have been mapped
                     // to a buffer type.
-                    InnerRepr::ArrowBuffer => quote! {
+                    InnerRepr::ScalarBuffer => quote! {
                         as_array_ref(PrimitiveArray::<#arrow_primitive_type>::new(
                             #data_src,
                             #validity_src,
@@ -576,12 +573,6 @@ fn quote_arrow_field_serializer(
                     },
                 }
             }
-        }
-
-        DataType::Null => {
-            panic!(
-                "Null fields should only occur within enums and unions where they are handled separately."
-            );
         }
 
         DataType::Utf8 => {
@@ -675,16 +666,16 @@ fn quote_arrow_field_serializer(
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
             let inner_datatype = inner_field.data_type();
 
-            // Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
-            // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
+            // Note: We only use the ScalarBuffer optimization for `Lists` but not `FixedSizeList`.
+            // This is because the `ScalarBuffer` has a dynamic length, which would add more overhead
             // to simple fixed-sized types like `Position2D`.
             //
-            // TODO(jleibs): If we need to support large FixedSizeList types where the `ArrowBuffer`
+            // TODO(jleibs): If we need to support large FixedSizeList types where the `ScalarBuffer`
             // optimization would be significant, we can introduce a new attribute to force this.
-            let inner_repr = if is_backed_by_arrow_buffer(inner_field.data_type())
+            let inner_repr = if is_backed_by_scalar_buffer(inner_field.data_type())
                 && matches!(datatype, DataType::List(_))
             {
-                InnerRepr::ArrowBuffer
+                InnerRepr::ScalarBuffer
             } else {
                 InnerRepr::NativeIterable
             };
@@ -752,13 +743,13 @@ fn quote_arrow_field_serializer(
                 };
 
                 match inner_repr {
-                    InnerRepr::ArrowBuffer => {
+                    InnerRepr::ScalarBuffer => {
                         // TODO(emilk): this can probably be optimized
                         quote! {
                             #data_src
                                 .iter()
                                 #flatten_if_needed
-                                .map(|b| b.as_slice())
+                                .map(|b| b as &[_])
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into()
@@ -797,16 +788,11 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            let quoted_num_instances = match inner_repr {
-                InnerRepr::ArrowBuffer => quote!(num_instances()),
-                InnerRepr::NativeIterable => quote!(len()),
-            };
-
             let quoted_declare_offsets = if let DataType::List(_) = datatype {
                 let map_to_length = if elements_are_nullable {
-                    quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum. #quoted_num_instances)) }
+                    quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum.len())) }
                 } else {
-                    quote! { map(|datum| datum. #quoted_num_instances) }
+                    quote! { map(|datum| datum.len()) }
                 };
 
                 quote! {
@@ -879,7 +865,7 @@ fn quote_arrow_field_serializer(
             };
 
             match inner_repr {
-                InnerRepr::ArrowBuffer => {
+                InnerRepr::ScalarBuffer => {
                     quote! {{
                         #quoted_declare_offsets
 
@@ -907,9 +893,9 @@ fn quote_arrow_field_serializer(
             }
         }
 
-        DataType::Struct(_) | DataType::Union(_, _, _) => {
+        DataType::Struct(_) | DataType::Union { .. } => {
             // NOTE: We always wrap objects with full extension metadata.
-            let DataType::Extension(fqname, _, _) = datatype else {
+            let DataType::Object { fqname, .. } = datatype else {
                 unreachable!()
             };
             let fqname_use = quote_fqname_as_type_path(fqname);

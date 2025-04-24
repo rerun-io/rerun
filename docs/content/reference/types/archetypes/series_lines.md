@@ -9,21 +9,26 @@ This archetype only provides styling information.
 Changes over time are supported for most but not all its fields (see respective fields for details),
 it's generally recommended to log this type as static.
 
-The underlying data needs to be logged to the same entity-path using [`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-link).
+The underlying data needs to be logged to the same entity-path using [`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars).
 Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 
-## Components
+## Fields
+### Optional
+* `colors`: [`Color`](../components/color.md)
+* `widths`: [`StrokeWidth`](../components/stroke_width.md)
+* `names`: [`Name`](../components/name.md)
+* `visible_series`: [`SeriesVisible`](../components/series_visible.md)
+* `aggregation_policy`: [`AggregationPolicy`](../components/aggregation_policy.md)
 
-**Optional**: [`Color`](../components/color.md), [`StrokeWidth`](../components/stroke_width.md), [`Name`](../components/name.md), [`SeriesVisible`](../components/series_visible.md), [`AggregationPolicy`](../components/aggregation_policy.md)
 
-## Shown in
+## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `SeriesLines`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesLines.html?speculative-link)
- * 🐍 [Python API docs for `SeriesLines`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.SeriesLines)
- * 🦀 [Rust API docs for `SeriesLines`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesLines.html?speculative-link)
+ * 🌊 [C++ API docs for `SeriesLines`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesLines.html)
+ * 🐍 [Python API docs for `SeriesLines`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SeriesLines)
+ * 🦀 [Rust API docs for `SeriesLines`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesLines.html)
 
 ## Example
 

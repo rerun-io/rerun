@@ -10,15 +10,24 @@ at (0, 0, 0) and (0, 0, length), that is, extending along the positive direction
 Capsules in other orientations may be produced by applying a rotation to the entity or
 instances.
 
-## Components
+## Fields
+### Required
+* `lengths`: [`Length`](../components/length.md)
+* `radii`: [`Radius`](../components/radius.md)
 
-**Required**: [`Length`](../components/length.md), [`Radius`](../components/radius.md)
+### Recommended
+* `translations`: [`PoseTranslation3D`](../components/pose_translation3d.md)
+* `colors`: [`Color`](../components/color.md)
 
-**Recommended**: [`PoseTranslation3D`](../components/pose_translation3d.md), [`Color`](../components/color.md)
+### Optional
+* `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
+* `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `labels`: [`Text`](../components/text.md)
+* `show_labels`: [`ShowLabels`](../components/show_labels.md)
+* `class_ids`: [`ClassId`](../components/class_id.md)
 
-**Optional**: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`ClassId`](../components/class_id.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

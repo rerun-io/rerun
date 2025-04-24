@@ -18,11 +18,16 @@ Check archetype documentations for details - if not otherwise specified, only th
 Some visualizers like the mesh visualizer used for [`archetypes.Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d),
 will draw an object for every pose, a behavior also known as "instancing".
 
-## Components
+## Fields
+### Optional
+* `translations`: [`PoseTranslation3D`](../components/pose_translation3d.md)
+* `rotation_axis_angles`: [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md)
+* `quaternions`: [`PoseRotationQuat`](../components/pose_rotation_quat.md)
+* `scales`: [`PoseScale3D`](../components/pose_scale3d.md)
+* `mat3x3`: [`PoseTransformMat3x3`](../components/pose_transform_mat3x3.md)
 
-**Optional**: [`PoseTranslation3D`](../components/pose_translation3d.md), [`PoseRotationAxisAngle`](../components/pose_rotation_axis_angle.md), [`PoseRotationQuat`](../components/pose_rotation_quat.md), [`PoseScale3D`](../components/pose_scale3d.md), [`PoseTransformMat3x3`](../components/pose_transform_mat3x3.md)
 
-## Shown in
+## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)

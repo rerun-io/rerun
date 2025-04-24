@@ -79,9 +79,18 @@ impl FilterState {
             .map(|state| state.filter_query.as_str())
     }
 
-    /// Return the current session ID of the filter widget, if active.
+    /// Return the current session ID of the filter widget.
+    ///
+    /// This returns `Some` value iff the filter is active AND the query is non-empty.
+    ///
+    /// Rationale: this is primarily used to keep track of a different collapse state while a search
+    /// session is ongoing. When the filter is active but the query is empty, we display all
+    /// entities without filtering, so the collapse state is the same as when the filter is
+    /// inactive.
     pub fn session_id(&self) -> Option<egui::Id> {
-        self.inner_state.as_ref().map(|state| state.session_id)
+        self.inner_state
+            .as_ref()
+            .and_then(|state| (!state.filter_query.is_empty()).then_some(state.session_id))
     }
 
     /// Return a filter matcher for the current query.
@@ -265,31 +274,15 @@ impl FilterMatcher {
         self.keywords.is_some()
     }
 
-    /// Is the filter set to match everything?
-    ///
-    /// Can be used by client code to short-circuit more expansive matching logic.
-    pub fn matches_everything(&self) -> bool {
-        self.keywords.is_none()
-    }
-
-    /// Is the filter set to match nothing?
-    ///
-    /// Can be used by client code to short-circuit more expansive matching logic.
-    pub fn matches_nothing(&self) -> bool {
-        self.keywords
-            .as_ref()
-            .is_some_and(|keywords| keywords.is_empty())
-    }
-
     /// Match a path and return the highlight ranges if any.
     ///
     /// `None`: the filter is active, but the path didn't match the keyword
     /// `Some(ranges)`: either the filter is inactive (i.e., it matches everything), or it is active
-    /// and all keywords matched at least once.
+    /// all keywords matched at least once (including when there are no keywords at all).
     pub fn match_path<'a>(&self, path: impl IntoIterator<Item = &'a str>) -> Option<PathRanges> {
         match self.keywords.as_deref() {
-            None => Some(PathRanges::default()),
-            Some([]) => None,
+            None | Some([]) => Some(PathRanges::default()),
+
             Some(keywords) => {
                 let path = path.into_iter().map(str::to_lowercase).collect_vec();
 

@@ -8,13 +8,18 @@ Define the style properties for a line series in a chart.
 
 This archetype only provides styling information and should be logged as static
 when possible. The underlying data needs to be logged to the same entity-path using
-[`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars?speculative-link).
+[`archetypes.Scalars`](https://rerun.io/docs/reference/types/archetypes/scalars).
 
-## Components
+## Fields
+### Optional
+* `color`: [`Color`](../components/color.md)
+* `width`: [`StrokeWidth`](../components/stroke_width.md)
+* `name`: [`Name`](../components/name.md)
+* `visible_series`: [`SeriesVisible`](../components/series_visible.md)
+* `aggregation_policy`: [`AggregationPolicy`](../components/aggregation_policy.md)
 
-**Optional**: [`Color`](../components/color.md), [`StrokeWidth`](../components/stroke_width.md), [`Name`](../components/name.md), [`SeriesVisible`](../components/series_visible.md), [`AggregationPolicy`](../components/aggregation_policy.md)
 
-## Shown in
+## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
 

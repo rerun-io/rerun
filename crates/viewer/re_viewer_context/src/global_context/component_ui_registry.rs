@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
-use re_chunk::{RowId, UnitChunkShared};
+use re_chunk::UnitChunkShared;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
+use re_log_types::hash::Hash64;
 use re_log_types::Instance;
 use re_types::ComponentName;
 use re_ui::{UiExt as _, UiLayout};
@@ -33,7 +34,7 @@ type LegacyDisplayComponentUiCallback = Box<
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
-            Option<RowId>,
+            Option<Hash64>,
             &dyn arrow::array::Array,
         ) + Send
         + Sync,
@@ -283,7 +284,7 @@ impl ComponentUiRegistry {
             db,
             entity_path,
             component_name,
-            unit.row_id(),
+            unit.row_id().map(Hash64::hash),
             component_raw.as_ref(),
         );
     }
@@ -299,7 +300,7 @@ impl ComponentUiRegistry {
         db: &EntityDb,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        row_id: Option<RowId>,
+        cache_key: Option<Hash64>,
         component_raw: &dyn arrow::array::Array,
     ) {
         re_tracing::profile_function!(component_name.full_name());
@@ -312,7 +313,7 @@ impl ComponentUiRegistry {
                 query,
                 db,
                 entity_path,
-                row_id,
+                cache_key,
                 component_raw,
             );
             return;
@@ -327,7 +328,7 @@ impl ComponentUiRegistry {
                 query,
                 db,
                 entity_path,
-                row_id,
+                cache_key,
                 component_raw,
             );
             return;
@@ -354,7 +355,7 @@ impl ComponentUiRegistry {
             query,
             db,
             entity_path,
-            row_id,
+            cache_key,
             component_raw,
         );
     }
@@ -372,7 +373,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        row_id: Option<RowId>,
+        cache_key: Option<Hash64>,
         component_array: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
@@ -383,7 +384,7 @@ impl ComponentUiRegistry {
             origin_db,
             blueprint_write_path,
             component_name,
-            row_id,
+            cache_key,
             component_array,
             fallback_provider,
             multiline,
@@ -403,7 +404,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        row_id: Option<RowId>,
+        cache_key: Option<Hash64>,
         component_query_result: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
@@ -414,7 +415,7 @@ impl ComponentUiRegistry {
             origin_db,
             blueprint_write_path,
             component_name,
-            row_id,
+            cache_key,
             component_query_result,
             fallback_provider,
             multiline,
@@ -429,7 +430,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        row_id: Option<RowId>,
+        cache_key: Option<Hash64>,
         component_array: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
@@ -443,7 +444,7 @@ impl ComponentUiRegistry {
                 origin_db,
                 blueprint_write_path,
                 component_name,
-                row_id,
+                cache_key,
                 array,
                 allow_multiline,
             );
@@ -466,7 +467,7 @@ impl ComponentUiRegistry {
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
-        row_id: Option<RowId>,
+        cache_key: Option<Hash64>,
         component_raw: &dyn arrow::array::Array,
         allow_multiline: bool,
     ) {
@@ -487,7 +488,7 @@ impl ComponentUiRegistry {
                 origin_db,
                 ctx.target_entity_path,
                 component_name,
-                row_id,
+                cache_key,
                 component_raw,
             );
         }

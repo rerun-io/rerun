@@ -21,7 +21,6 @@
 pub const DEFAULT_DISPLAY_DECIMALS: usize = 3;
 
 mod archetype;
-mod arrow_buffer;
 pub mod arrow_helpers;
 mod arrow_string;
 pub mod arrow_zip_validity;
@@ -40,7 +39,6 @@ pub use self::{
         Archetype, ArchetypeFieldName, ArchetypeName, ArchetypeReflectionMarker,
         GenericIndicatorComponent, NamedIndicatorComponent,
     },
-    arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
     as_components::AsComponents,
     component_descriptor::ComponentDescriptor,

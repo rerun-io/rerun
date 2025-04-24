@@ -28,6 +28,11 @@ message RecordingId {
   string id = 1;
 }
 
+// uniquely identifies a table
+message TableId {
+  string id = 1;
+}
+
 // A recording can have multiple timelines, each is identified by a name, for example `log_tick`, `log_time`, etc.
 message Timeline {
   string name = 1;
@@ -322,4 +327,10 @@ message ComponentDescriptor {
 
   // Semantic name associated with this data.
   optional string component_name = 3;
+}
+
+// Unique identifier of a task submitted in the redap
+// tasks subsystem
+message TaskId {
+  string id = 1;
 }

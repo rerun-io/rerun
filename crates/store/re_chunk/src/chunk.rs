@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::HashMap;
+use anyhow::Context as _;
 use arrow::{
     array::{
         Array as ArrowArray, ArrayRef as ArrowArrayRef, FixedSizeBinaryArray,
@@ -129,6 +130,30 @@ impl ChunkComponents {
         self,
     ) -> impl Iterator<Item = (ComponentDescriptor, ArrowListArray)> {
         self.0.into_values().flatten()
+    }
+
+    /// Approximate equal, that ignores small numeric differences.
+    ///
+    /// Returns `Ok` if similar.
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
+    ///
+    /// Useful for tests.
+    pub fn ensure_similar(left: &Self, right: &Self) -> anyhow::Result<()> {
+        anyhow::ensure!(left.len() == right.len());
+        for (comp_name, left_comp_map) in left.iter() {
+            let Some(right_map) = right.get(comp_name) else {
+                anyhow::bail!("rhs is missing {comp_name:?}");
+            };
+            for (descr, left_array) in left_comp_map {
+                let Some(right_array) = right_map.get(descr) else {
+                    anyhow::bail!("rhs {comp_name:?} is missing {descr:?}");
+                };
+                re_arrow_util::ensure_similar(&left_array.to_data(), &right_array.to_data())
+                    .with_context(|| format!("Component {comp_name:?}"))?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -267,12 +292,16 @@ impl Chunk {
         self
     }
 
-    /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
+    /// Returns `Ok` if two [`Chunk`]s are _similar_, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as `log_time` timestamps.
+    /// It also forgives small numeric inaccuracies in floating point buffers.
+    ///
+    /// If there is a difference, a description of that difference is returned in `Err`.
+    /// We use [`anyhow`] to provide context.
     ///
     /// Useful for tests.
-    pub fn are_similar(lhs: &Self, rhs: &Self) -> bool {
+    pub fn ensure_similar(lhs: &Self, rhs: &Self) -> anyhow::Result<()> {
         let Self {
             id: _,
             entity_path,
@@ -283,36 +312,32 @@ impl Chunk {
             components,
         } = lhs;
 
-        if *entity_path != rhs.entity_path {
-            return false;
-        }
+        anyhow::ensure!(*entity_path == rhs.entity_path);
 
-        if timelines.keys().collect_vec() != rhs.timelines.keys().collect_vec() {
-            return false;
-        }
+        anyhow::ensure!(timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec());
 
-        let timelines: IntMap<_, _> = timelines
-            .iter()
-            .map(|(timeline, time_column)| (*timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-            .collect();
-        let rhs_timelines: IntMap<_, _> = rhs
-            .timelines
-            .iter()
-            .map(|(timeline, time_column)| (*timeline, time_column))
-            .filter(|(timeline, _time_column)| timeline != &TimelineName::log_time())
-            .collect();
-        if timelines != rhs_timelines {
-            return false;
+        for (timeline, left_time_col) in timelines {
+            let right_time_col = rhs
+                .timelines
+                .get(timeline)
+                .ok_or_else(|| anyhow::format_err!("right is missing timeline {timeline:?}"))?;
+            if timeline == &TimelineName::log_time() {
+                continue; // We expect this to differ
+            }
+            if timeline == "sim_time" {
+                continue; // Small numeric differences
+            }
+            anyhow::ensure!(
+                left_time_col == right_time_col,
+                "Timeline differs: {timeline:?}"
+            );
         }
 
         // Handle edge case: recording time on partition properties should ignore start time.
         if entity_path == &EntityPath::recording_properties() {
             // We're going to filter out some components on both lhs and rhs.
             // Therefore, it's important that we first check that the number of components is the same.
-            if components.len() != rhs.components.len() {
-                return false;
-            }
+            anyhow::ensure!(components.len() == rhs.components.len());
 
             // Copied from `rerun.archetypes.RecordingProperties`.
             let recording_time_descriptor = ComponentDescriptor {
@@ -342,14 +367,11 @@ impl Chunk {
                 })
                 .collect::<IntMap<_, _>>();
 
-            if lhs_components != rhs_components {
-                return false;
-            }
-        } else if *components != rhs.components {
-            return false;
+            anyhow::ensure!(lhs_components == rhs_components);
+            Ok(())
+        } else {
+            ChunkComponents::ensure_similar(components, &rhs.components)
         }
-
-        true
     }
 
     // Only used for tests atm

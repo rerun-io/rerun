@@ -192,7 +192,7 @@ impl VideoFrameReferenceVisualizer {
                         ctx.viewer_ctx.render_ctx(),
                         player_stream_id,
                         video_timestamp.as_secs(),
-                        video_data.as_slice(),
+                        &video_data,
                     ) {
                         Ok(VideoFrameTexture {
                             texture,
@@ -405,7 +405,7 @@ fn latest_at_query_video_from_datastore(
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,
-            blob_row_id,
+            Hash64::hash(blob_row_id),
             &blob,
             media_type.as_ref(),
             ctx.app_options().video_decoder_settings(),

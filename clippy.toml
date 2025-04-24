@@ -56,14 +56,6 @@ disallowed-methods = [
 
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
 
-  # Specify both `arrow2` and `re_arrow2` -- clippy gets lost in all the package renaming happening.
-  { path = "arrow2::compute::concatenate::concatenate", reason = "Use `re_arrow_util::arrow2_util::concat_arrays` instead, which has proper early outs" },
-  { path = "arrow2::compute::filter::filter", reason = "Use `re_arrow_util::arrow2_util::filter_array` instead, which has proper early outs" },
-  { path = "arrow2::compute::take::take", reason = "Use `re_arrow_util::arrow2_util::take_array` instead, which has proper early outs" },
-  { path = "re_arrow2::compute::concatenate::concatenate", reason = "Use `re_arrow_util::arrow2_util::concat_arrays` instead, which has proper early outs" },
-  { path = "re_arrow2::compute::filter::filter", reason = "Use `re_arrow_util::arrow2_util::filter_array` instead, which has proper early outs" },
-  { path = "re_arrow2::compute::take::take", reason = "Use `re_arrow_util::arrow2_util::take_array` instead, which has proper early outs" },
-
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)
   # so we do that in `clippy_wasm.toml` instead.

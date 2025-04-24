@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let analytics = Analytics::new(Duration::from_secs(3))?;
     let application_id = "end_to_end_example".to_owned();
-    let recording_id = uuid::Uuid::new_v4().to_string();
+    let recording_id = uuid::Uuid::new_v4().simple().to_string();
 
     println!("any non-empty line written here will be sent as an analytics datapoint");
     loop {

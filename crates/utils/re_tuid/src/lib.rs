@@ -2,6 +2,35 @@
 //!
 //! Time-ordered unique 128-bit identifiers.
 //!
+//! ## Format
+//! The default string format is big-endian hex, e.g. `182342300C5F8C327a7b4a6e5a379ac4`.
+//! This means the string representation sorts the same.
+//!
+//! ## Namespace prefix
+//! It is common to prefix an TUID with a _namespace_. This is done as:
+//! `{namespace}_{tuid}` where `namespace` can be anything but is _recommended_ to be:
+//! * Lowercase
+//! * ASCII
+//! * Short ("row", "user", "chunk", …)
+//!
+//! For instance, `user_182342300C5F8C327a7b4a6e5a379ac4`.
+//!
+//! The idiomatic way of implementing this is to wrap [`Tuid`] in a newtype struct
+//! (e.g. `struct UserId(Tuid)`) and implement the prefix there.
+//!
+//! It is recommended that
+//! * Finding the wrong prefix is an error
+//! * A missing prefix is NOT an error
+//!
+//! Thus, `user_182342300C5F8C327a7b4a6e5a379ac4` and `182342300C5F8C327a7b4a6e5a379ac4`
+//! are both valid `UserId`:s, but `chunk_182342300C5F8C327a7b4a6e5a379ac4` is NOT.
+//!
+//! The namespace if ONLY part of the _string_ representation, and is there to help
+//! a user identify what would otherwise be just random hex.
+//! In other words, it's mainly for _debugging_ purposes.
+//!
+//! When storing the TUID in e.g. an Arrow column, use 16 bytes for each id.
+//!
 //! ## Feature flags
 #![doc = document_features::document_features!()]
 //!

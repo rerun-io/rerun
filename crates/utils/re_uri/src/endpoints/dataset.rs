@@ -1,6 +1,6 @@
-use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
+use re_log_types::StoreId;
 
-//TODO(ab): add `DatasetTableEndpoint`, the URI pointing at the "table view" of the dataset (aka. its partition table).
+use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
 
 /// URI pointing at the data underlying a dataset.
 ///
@@ -10,7 +10,7 @@ use crate::{Error, Fragment, Origin, RedapUri, TimeRange};
 /// `partition_id` is currently mandatory, and `time_range` is optional.
 /// In the future we will add richer queries.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct DatasetDataEndpoint {
+pub struct DatasetDataUri {
     pub origin: Origin,
     pub dataset_id: re_tuid::Tuid,
 
@@ -23,7 +23,7 @@ pub struct DatasetDataEndpoint {
     pub fragment: Fragment,
 }
 
-impl std::fmt::Display for DatasetDataEndpoint {
+impl std::fmt::Display for DatasetDataUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             origin,
@@ -53,7 +53,7 @@ impl std::fmt::Display for DatasetDataEndpoint {
     }
 }
 
-impl DatasetDataEndpoint {
+impl DatasetDataUri {
     pub fn new(origin: Origin, dataset_id: re_tuid::Tuid, url: &url::Url) -> Result<Self, Error> {
         let mut partition_id = None;
         let mut time_range = None;
@@ -90,7 +90,7 @@ impl DatasetDataEndpoint {
         })
     }
 
-    /// Returns a [`DatasetDataEndpoint`] without any (optional) `?query` or `#fragment`.
+    /// Returns [`Self`] without any (optional) `?query` or `#fragment`.
     pub fn without_query_and_fragment(mut self) -> Self {
         let Self {
             origin: _,       // Mandatory
@@ -105,16 +105,23 @@ impl DatasetDataEndpoint {
 
         self
     }
+
+    pub fn recording_id(&self) -> StoreId {
+        StoreId::from_string(
+            re_log_types::StoreKind::Recording,
+            self.partition_id.clone(),
+        )
+    }
 }
 
-impl std::str::FromStr for DatasetDataEndpoint {
+impl std::str::FromStr for DatasetDataUri {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match RedapUri::from_str(s)? {
-            RedapUri::DatasetData(endpoint) => Ok(endpoint),
-            RedapUri::Catalog(endpoint) => Err(Error::UnexpectedEndpoint(format!("/{endpoint}"))),
-            RedapUri::Proxy(endpoint) => Err(Error::UnexpectedEndpoint(format!("/{endpoint}"))),
+        if let RedapUri::DatasetData(uri) = RedapUri::from_str(s)? {
+            Ok(uri)
+        } else {
+            Err(Error::UnexpectedUri(s.to_owned()))
         }
     }
 }
@@ -122,7 +129,7 @@ impl std::str::FromStr for DatasetDataEndpoint {
 // --------------------------------
 
 // Serialize as string:
-impl serde::Serialize for DatasetDataEndpoint {
+impl serde::Serialize for DatasetDataUri {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -131,7 +138,7 @@ impl serde::Serialize for DatasetDataEndpoint {
     }
 }
 
-impl<'de> serde::Deserialize<'de> for DatasetDataEndpoint {
+impl<'de> serde::Deserialize<'de> for DatasetDataUri {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,

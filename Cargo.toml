@@ -31,7 +31,7 @@ include = [
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.84"
-version = "0.23.0-alpha.1+dev"
+version = "0.24.0-alpha.1+dev"
 
 [workspace.metadata.cargo-shear]
 ignored = [
@@ -56,83 +56,84 @@ ignored = [
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 
 # crates/build:
-re_build_info = { path = "crates/build/re_build_info", version = "=0.23.0-alpha.1", default-features = false }
-re_build_tools = { path = "crates/build/re_build_tools", version = "=0.23.0-alpha.1", default-features = false }
-re_dev_tools = { path = "crates/build/re_dev_tools", version = "=0.23.0-alpha.1", default-features = false }
-re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.23.0-alpha.1", default-features = false }
-re_types_builder = { path = "crates/build/re_types_builder", version = "=0.23.0-alpha.1", default-features = false }
+re_build_info = { path = "crates/build/re_build_info", version = "=0.24.0-alpha.1", default-features = false }
+re_build_tools = { path = "crates/build/re_build_tools", version = "=0.24.0-alpha.1", default-features = false }
+re_dev_tools = { path = "crates/build/re_dev_tools", version = "=0.24.0-alpha.1", default-features = false }
+re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.24.0-alpha.1", default-features = false }
+re_types_builder = { path = "crates/build/re_types_builder", version = "=0.24.0-alpha.1", default-features = false }
 
 # crates/store:
-re_chunk = { path = "crates/store/re_chunk", version = "=0.23.0-alpha.1", default-features = false }
-re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.23.0-alpha.1", default-features = false }
-re_data_loader = { path = "crates/store/re_data_loader", version = "=0.23.0-alpha.1", default-features = false }
-re_data_source = { path = "crates/store/re_data_source", version = "=0.23.0-alpha.1", default-features = false }
-re_dataframe = { path = "crates/store/re_dataframe", version = "=0.23.0-alpha.1", default-features = false }
-re_datafusion = { path = "crates/store/re_datafusion", version = "=0.23.0-alpha.1", default-features = false }
-re_entity_db = { path = "crates/store/re_entity_db", version = "=0.23.0-alpha.1", default-features = false }
-re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.23.0-alpha.1", default-features = false }
-re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.23.0-alpha.1", default-features = false }
-re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.23.0-alpha.1", default-features = false }
-re_protos = { path = "crates/store/re_protos", version = "=0.23.0-alpha.1", default-features = false }
-re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.23.0-alpha.1", default-features = false }
-re_log_types = { path = "crates/store/re_log_types", version = "=0.23.0-alpha.1", default-features = false }
-re_query = { path = "crates/store/re_query", version = "=0.23.0-alpha.1", default-features = false }
-re_sorbet = { path = "crates/store/re_sorbet", version = "=0.23.0-alpha.1", default-features = false }
-re_types = { path = "crates/store/re_types", version = "=0.23.0-alpha.1", default-features = false }
-re_types_core = { path = "crates/store/re_types_core", version = "=0.23.0-alpha.1", default-features = false }
+re_chunk = { path = "crates/store/re_chunk", version = "=0.24.0-alpha.1", default-features = false }
+re_chunk_store = { path = "crates/store/re_chunk_store", version = "=0.24.0-alpha.1", default-features = false }
+re_data_loader = { path = "crates/store/re_data_loader", version = "=0.24.0-alpha.1", default-features = false }
+re_data_source = { path = "crates/store/re_data_source", version = "=0.24.0-alpha.1", default-features = false }
+re_dataframe = { path = "crates/store/re_dataframe", version = "=0.24.0-alpha.1", default-features = false }
+re_datafusion = { path = "crates/store/re_datafusion", version = "=0.24.0-alpha.1", default-features = false }
+re_entity_db = { path = "crates/store/re_entity_db", version = "=0.24.0-alpha.1", default-features = false }
+re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.24.0-alpha.1", default-features = false }
+re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.24.0-alpha.1", default-features = false }
+re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.24.0-alpha.1", default-features = false }
+re_protos = { path = "crates/store/re_protos", version = "=0.24.0-alpha.1", default-features = false }
+re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.24.0-alpha.1", default-features = false }
+re_log_types = { path = "crates/store/re_log_types", version = "=0.24.0-alpha.1", default-features = false }
+re_query = { path = "crates/store/re_query", version = "=0.24.0-alpha.1", default-features = false }
+re_sorbet = { path = "crates/store/re_sorbet", version = "=0.24.0-alpha.1", default-features = false }
+re_types = { path = "crates/store/re_types", version = "=0.24.0-alpha.1", default-features = false }
+re_types_core = { path = "crates/store/re_types_core", version = "=0.24.0-alpha.1", default-features = false }
 
 # crates/top:
-re_sdk = { path = "crates/top/re_sdk", version = "=0.23.0-alpha.1", default-features = false }
-rerun = { path = "crates/top/rerun", version = "=0.23.0-alpha.1", default-features = false }
-rerun_c = { path = "crates/top/rerun_c", version = "=0.23.0-alpha.1", default-features = false }
-rerun-cli = { path = "crates/top/rerun-cli", version = "=0.23.0-alpha.1", default-features = false }
+re_sdk = { path = "crates/top/re_sdk", version = "=0.24.0-alpha.1", default-features = false }
+rerun = { path = "crates/top/rerun", version = "=0.24.0-alpha.1", default-features = false }
+rerun_c = { path = "crates/top/rerun_c", version = "=0.24.0-alpha.1", default-features = false }
+rerun-cli = { path = "crates/top/rerun-cli", version = "=0.24.0-alpha.1", default-features = false }
 
 # crates/utils:
-re_analytics = { path = "crates/utils/re_analytics", version = "=0.23.0-alpha.1", default-features = false }
-re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.23.0-alpha.1", default-features = false }
-re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.23.0-alpha.1", default-features = false }
-re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.23.0-alpha.1", default-features = false }
-re_case = { path = "crates/utils/re_case", version = "=0.23.0-alpha.1", default-features = false }
-re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.23.0-alpha.1", default-features = false }
-re_error = { path = "crates/utils/re_error", version = "=0.23.0-alpha.1", default-features = false }
-re_format = { path = "crates/utils/re_format", version = "=0.23.0-alpha.1", default-features = false }
-re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.23.0-alpha.1", default-features = false }
-re_log = { path = "crates/utils/re_log", version = "=0.23.0-alpha.1", default-features = false }
-re_memory = { path = "crates/utils/re_memory", version = "=0.23.0-alpha.1", default-features = false }
-re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.23.0-alpha.1", default-features = false }
-re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.23.0-alpha.1", default-features = false }
-re_tracing = { path = "crates/utils/re_tracing", version = "=0.23.0-alpha.1", default-features = false }
-re_tuid = { path = "crates/utils/re_tuid", version = "=0.23.0-alpha.1", default-features = false }
-re_uri = { path = "crates/utils/re_uri", version = "=0.23.0-alpha.1", default-features = false }
-re_video = { path = "crates/utils/re_video", version = "=0.23.0-alpha.1", default-features = false }
+re_analytics = { path = "crates/utils/re_analytics", version = "=0.24.0-alpha.1", default-features = false }
+re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.24.0-alpha.1", default-features = false }
+re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.24.0-alpha.1", default-features = false }
+re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.24.0-alpha.1", default-features = false }
+re_case = { path = "crates/utils/re_case", version = "=0.24.0-alpha.1", default-features = false }
+re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.24.0-alpha.1", default-features = false }
+re_error = { path = "crates/utils/re_error", version = "=0.24.0-alpha.1", default-features = false }
+re_format = { path = "crates/utils/re_format", version = "=0.24.0-alpha.1", default-features = false }
+re_int_histogram = { path = "crates/utils/re_int_histogram", version = "=0.24.0-alpha.1", default-features = false }
+re_log = { path = "crates/utils/re_log", version = "=0.24.0-alpha.1", default-features = false }
+re_memory = { path = "crates/utils/re_memory", version = "=0.24.0-alpha.1", default-features = false }
+re_smart_channel = { path = "crates/utils/re_smart_channel", version = "=0.24.0-alpha.1", default-features = false }
+re_string_interner = { path = "crates/utils/re_string_interner", version = "=0.24.0-alpha.1", default-features = false }
+re_tracing = { path = "crates/utils/re_tracing", version = "=0.24.0-alpha.1", default-features = false }
+re_tuid = { path = "crates/utils/re_tuid", version = "=0.24.0-alpha.1", default-features = false }
+re_uri = { path = "crates/utils/re_uri", version = "=0.24.0-alpha.1", default-features = false }
+re_video = { path = "crates/utils/re_video", version = "=0.24.0-alpha.1", default-features = false }
 
 # crates/viewer:
-re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.23.0-alpha.1", default-features = false }
-re_redap_browser = { path = "crates/viewer/re_redap_browser", version = "=0.23.0-alpha.1", default-features = false }
-re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.23.0-alpha.1", default-features = false }
-re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.23.0-alpha.1", default-features = false }
-re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.23.0-alpha.1", default-features = false }
-re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.23.0-alpha.1", default-features = false }
-re_renderer = { path = "crates/viewer/re_renderer", version = "=0.23.0-alpha.1", default-features = false }
-re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.23.0-alpha.1", default-features = false }
-re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.23.0-alpha.1", default-features = false }
-re_time_panel = { path = "crates/viewer/re_time_panel", version = "=0.23.0-alpha.1", default-features = false }
-re_ui = { path = "crates/viewer/re_ui", version = "=0.23.0-alpha.1", default-features = false }
-re_view = { path = "crates/viewer/re_view", version = "=0.23.0-alpha.1", default-features = false }
-re_view_bar_chart = { path = "crates/viewer/re_view_bar_chart", version = "=0.23.0-alpha.1", default-features = false }
-re_view_spatial = { path = "crates/viewer/re_view_spatial", version = "=0.23.0-alpha.1", default-features = false }
-re_view_dataframe = { path = "crates/viewer/re_view_dataframe", version = "=0.23.0-alpha.1", default-features = false }
-re_view_graph = { path = "crates/viewer/re_view_graph", version = "=0.23.0-alpha.1", default-features = false }
-re_view_map = { path = "crates/viewer/re_view_map", version = "=0.23.0-alpha.1", default-features = false }
-re_view_tensor = { path = "crates/viewer/re_view_tensor", version = "=0.23.0-alpha.1", default-features = false }
-re_view_text_document = { path = "crates/viewer/re_view_text_document", version = "=0.23.0-alpha.1", default-features = false }
-re_view_text_log = { path = "crates/viewer/re_view_text_log", version = "=0.23.0-alpha.1", default-features = false }
-re_view_time_series = { path = "crates/viewer/re_view_time_series", version = "=0.23.0-alpha.1", default-features = false }
-re_viewer = { path = "crates/viewer/re_viewer", version = "=0.23.0-alpha.1", default-features = false }
-re_viewer_context = { path = "crates/viewer/re_viewer_context", version = "=0.23.0-alpha.1", default-features = false }
-re_viewport = { path = "crates/viewer/re_viewport", version = "=0.23.0-alpha.1", default-features = false }
-re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version = "=0.23.0-alpha.1", default-features = false }
-re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.23.0-alpha.1", default-features = false }
+re_blueprint_tree = { path = "crates/viewer/re_blueprint_tree", version = "=0.24.0-alpha.1", default-features = false }
+re_redap_browser = { path = "crates/viewer/re_redap_browser", version = "=0.24.0-alpha.1", default-features = false }
+re_component_ui = { path = "crates/viewer/re_component_ui", version = "=0.24.0-alpha.1", default-features = false }
+re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.24.0-alpha.1", default-features = false }
+re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.24.0-alpha.1", default-features = false }
+re_dataframe_ui = { path = "crates/viewer/re_dataframe_ui", version = "=0.24.0-alpha.1", default-features = false }
+re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.24.0-alpha.1", default-features = false }
+re_renderer = { path = "crates/viewer/re_renderer", version = "=0.24.0-alpha.1", default-features = false }
+re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.24.0-alpha.1", default-features = false }
+re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.24.0-alpha.1", default-features = false }
+re_time_panel = { path = "crates/viewer/re_time_panel", version = "=0.24.0-alpha.1", default-features = false }
+re_ui = { path = "crates/viewer/re_ui", version = "=0.24.0-alpha.1", default-features = false }
+re_view = { path = "crates/viewer/re_view", version = "=0.24.0-alpha.1", default-features = false }
+re_view_bar_chart = { path = "crates/viewer/re_view_bar_chart", version = "=0.24.0-alpha.1", default-features = false }
+re_view_spatial = { path = "crates/viewer/re_view_spatial", version = "=0.24.0-alpha.1", default-features = false }
+re_view_dataframe = { path = "crates/viewer/re_view_dataframe", version = "=0.24.0-alpha.1", default-features = false }
+re_view_graph = { path = "crates/viewer/re_view_graph", version = "=0.24.0-alpha.1", default-features = false }
+re_view_map = { path = "crates/viewer/re_view_map", version = "=0.24.0-alpha.1", default-features = false }
+re_view_tensor = { path = "crates/viewer/re_view_tensor", version = "=0.24.0-alpha.1", default-features = false }
+re_view_text_document = { path = "crates/viewer/re_view_text_document", version = "=0.24.0-alpha.1", default-features = false }
+re_view_text_log = { path = "crates/viewer/re_view_text_log", version = "=0.24.0-alpha.1", default-features = false }
+re_view_time_series = { path = "crates/viewer/re_view_time_series", version = "=0.24.0-alpha.1", default-features = false }
+re_viewer = { path = "crates/viewer/re_viewer", version = "=0.24.0-alpha.1", default-features = false }
+re_viewer_context = { path = "crates/viewer/re_viewer_context", version = "=0.24.0-alpha.1", default-features = false }
+re_viewport = { path = "crates/viewer/re_viewport", version = "=0.24.0-alpha.1", default-features = false }
+re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version = "=0.24.0-alpha.1", default-features = false }
+re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.24.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
 re_math = "0.20.0"
@@ -158,9 +159,10 @@ egui = { version = "0.31.1", features = [
   "rayon",
 ] }
 egui_commonmark = { version = "0.20.0", default-features = false }
+egui_dnd = { version = "0.12.0" }
 egui_extras = { version = "0.31.1", features = ["http", "image", "serde"] }
 egui_kittest = { version = "0.31.1", features = ["wgpu", "snapshot", "eframe"] }
-egui_plot = "0.31.0" # https://github.com/emilk/egui_plot
+egui_plot = "0.32.1" # https://github.com/emilk/egui_plot
 egui_table = "0.3.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.12.0" # https://github.com/rerun-io/egui_tiles
 egui-wgpu = "0.31.1"
@@ -172,7 +174,6 @@ anyhow = { version = "1.0", default-features = false }
 argh = "0.1.12"
 array-init = "2.1"
 arrow = { version = "54.3.1", default-features = false }
-arrow2 = { package = "re_arrow2", version = "0.19.0", features = ["arrow"] }
 async-stream = "0.3"
 backtrace = "0.3"
 base64 = "0.22"
@@ -197,7 +198,6 @@ const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
-crossbeam-channel = "0.5"
 datafusion = "46"
 datafusion-ffi = "46"
 directories = "5"
@@ -311,7 +311,7 @@ time = { version = "0.3.36", default-features = false, features = [
 tiny_http = { version = "0.12", default-features = false }
 tinystl = { version = "0.0.3", default-features = false }
 tobj = "4.0"
-tokio = { version = "1.40.0", default-features = false }
+tokio = { version = "1.44.2", default-features = false }
 tokio-stream = "0.1.16"
 tokio-util = { version = "0.7.12", default-features = false }
 toml = { version = "0.8.10", default-features = false }
@@ -319,6 +319,7 @@ tonic = { version = "0.12.3", default-features = false }
 tonic-build = { version = "0.12.3", default-features = false }
 tonic-web = "0.12"
 tonic-web-wasm-client = "0.6"
+tower = "0.5"
 tower-http = "0.5"
 tracing = { version = "0.1", default-features = false }
 type-map = "0.5"
@@ -329,7 +330,7 @@ url = "2.3"
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
-walkers = "0.34.0"
+walkers = "0.36.0"
 # TODO(#8766): `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
@@ -607,31 +608,31 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 
 [patch.crates-io]
 # https://github.com/rerun-io/arrow-datafusion/pull/1 - workaround for https://github.com/rerun-io/rerun/issues/9440 :
-datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
-datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-catalog-listing = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-common-runtime = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-datasource = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-doc = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-execution = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-ffi = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-aggregate = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-aggregate-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-nested = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-table = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-window = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-functions-window-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-macros = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-expr = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-expr-common = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-optimizer = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-physical-plan = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
+# datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "emilk/patch-duration" }
 
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.
 # If you do patch always prefer to patch to the trunk branch of the upstream repo (i.e. `main`, `master`, …).
@@ -658,7 +659,7 @@ datafusion-sql = { git = "https://github.com/rerun-io/arrow-datafusion.git", bra
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 
-egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } # 2025-02-20 - everything is id identified, allowing for instance reading out hidden items reliable
+# egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
@@ -671,5 +672,3 @@ egui_plot = { git = "https://github.com/emilk/egui_plot.git", branch = "main" } 
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
-
-# re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2.git", branch = "main" }

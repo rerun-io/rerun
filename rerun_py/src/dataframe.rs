@@ -30,7 +30,6 @@ use re_chunk_store::{
     SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
-use re_log_encoding::VersionPolicy;
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::SorbetColumnDescriptors;
@@ -967,7 +966,7 @@ impl PyRecordingView {
     }
 
     #[allow(rustdoc::private_doc_tests)]
-    /// Filter the view to only include data between the given index values expressed as seconds.
+    /// Filter the view to only include data between the given index values expressed as nanoseconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
     ///
@@ -1458,12 +1457,11 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
 ///     The loaded archive.
 #[pyfunction]
 pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
-    let stores =
-        ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-            .into_iter()
-            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-            .collect();
+    let stores = ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd)
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+        .into_iter()
+        .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+        .collect();
 
     let archive = PyRRDArchive { datasets: stores };
 
@@ -1479,6 +1477,7 @@ pub struct PyDataFusionTable {
 
 #[pymethods]
 impl PyDataFusionTable {
+    /// Returns a DataFusion table provider capsule.
     fn __datafusion_table_provider__<'py>(
         &self,
         py: Python<'py>,
@@ -1491,6 +1490,7 @@ impl PyDataFusionTable {
         PyCapsule::new(py, provider, Some(capsule_name))
     }
 
+    /// Register this view to the global DataFusion context and return a DataFrame.
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 
@@ -1513,6 +1513,7 @@ impl PyDataFusionTable {
         Ok(df)
     }
 
+    /// Name of this table.
     #[getter]
     fn name(&self) -> String {
         self.name.clone()

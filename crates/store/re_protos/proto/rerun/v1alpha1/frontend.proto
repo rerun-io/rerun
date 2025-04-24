@@ -5,6 +5,7 @@ package rerun.frontend.v1alpha1;
 import "rerun/v1alpha1/catalog.proto";
 import "rerun/v1alpha1/common.proto";
 import "rerun/v1alpha1/manifest_registry.proto";
+import "rerun/v1alpha1/tasks.proto";
 
 // TODO(cmc): I've decided to re-use the underlying response types for now, in the name of expediency.
 // This is bad in the long term (breaking changes to the internal APIs should not result in breaking
@@ -94,17 +95,21 @@ service FrontendService {
   // To fetch only the actual chunk IDs rather than the chunks themselves, see `QueryDataset`.
   rpc GetChunks(GetChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.GetChunksResponse) {}
 
-  /* HACKS */
-
-  // Fetch an entire partition from the server, without any pre- or post-processing.
-  //
-  // This is a temporary hack while we get everything up and running.
-  rpc FetchPartition(FetchPartitionRequest) returns (stream rerun.manifest_registry.v1alpha1.FetchPartitionResponse) {}
   // --- Table Apis ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
   rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
   rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
+
+  // --- Tasks service ---
+  // Query the status of submitted tasks
+  rpc QueryTasks(rerun.redap_tasks.v1alpha1.QueryTasksRequest) returns (rerun.redap_tasks.v1alpha1.QueryTasksResponse) {}
+
+  // Fetch the output of a completed task
+  rpc FetchTaskOutput(rerun.redap_tasks.v1alpha1.FetchTaskOutputRequest) returns (rerun.redap_tasks.v1alpha1.FetchTaskOutputResponse) {}
+
+  // Query the status of submitted tasks as soon as they are no longer pending
+  rpc QueryTasksOnCompletion(rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse) {}
 }
 
 // --- Manifest Registry ---
@@ -211,11 +216,6 @@ message GetChunksRequest {
 
   // Query details
   rerun.manifest_registry.v1alpha1.Query query = 5;
-}
-
-message FetchPartitionRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
-  rerun.common.v1alpha1.PartitionId partition_id = 2;
 }
 
 // --- Table Apis ---

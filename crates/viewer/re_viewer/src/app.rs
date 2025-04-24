@@ -6,24 +6,27 @@ use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
-use re_entity_db::entity_db::EntityDb;
-use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
+use re_entity_db::{entity_db::EntityDb, InstancePath};
+use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
+use re_uri::Origin;
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DisplayMode, PlayState, StorageContext, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewClassRegistryError,
+    ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
+    StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
+    ViewClassRegistry, ViewClassRegistryError,
 };
 
+use crate::startup_options::StartupOptions;
 use crate::{
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
-    callback::Callbacks,
+    event::ViewerEventDispatcher,
     AppState,
 };
 // ----------------------------------------------------------------------------
@@ -35,125 +38,6 @@ enum TimeControlCommand {
     StepForward,
     Restart,
     Follow,
-}
-
-// ----------------------------------------------------------------------------
-
-/// Settings set once at startup (e.g. via command-line options) and not serialized.
-#[derive(Clone)]
-pub struct StartupOptions {
-    /// When the total process RAM reaches this limit, we GC old data.
-    pub memory_limit: re_memory::MemoryLimit,
-
-    pub persist_state: bool,
-
-    /// Whether or not the app is running in the context of a Jupyter Notebook.
-    pub is_in_notebook: bool,
-
-    /// Set to identify the web page the viewer is running on.
-    #[cfg(target_arch = "wasm32")]
-    pub location: Option<eframe::Location>,
-
-    /// Take a screenshot of the app and quit.
-    /// We use this to generate screenshots of our examples.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub screenshot_to_path_then_quit: Option<std::path::PathBuf>,
-
-    /// A user has specifically requested the welcome screen be hidden.
-    pub hide_welcome_screen: bool,
-
-    /// Detach Rerun Viewer process from the application process.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub detach_process: bool,
-
-    /// Set the screen resolution in logical points.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub resolution_in_points: Option<[f32; 2]>,
-
-    /// This is a hint that we expect a recording to stream in very soon.
-    ///
-    /// This is set by the `spawn()` method in our logging SDK.
-    ///
-    /// The viewer will respond by fading in the welcome screen,
-    /// instead of showing it directly.
-    /// This ensures that it won't blink for a few frames before switching to the recording.
-    pub expect_data_soon: Option<bool>,
-
-    /// Forces wgpu backend to use the specified graphics API, e.g. `webgl` or `webgpu`.
-    pub force_wgpu_backend: Option<String>,
-
-    /// Overwrites hardware acceleration option for video decoding.
-    ///
-    /// By default uses the last provided setting, which is `auto` if never configured.
-    /// This also can be changed in the viewer's option menu.
-    pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
-
-    /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
-    pub callbacks: Option<Callbacks>,
-
-    /// Fullscreen is handled by JS on web.
-    ///
-    /// This holds some callbacks which we use to communicate
-    /// about fullscreen state to JS.
-    #[cfg(target_arch = "wasm32")]
-    pub fullscreen_options: Option<crate::web::FullscreenOptions>,
-
-    /// Default overrides for state of top/side/bottom panels.
-    pub panel_state_overrides: PanelStateOverrides,
-
-    /// Whether or not to enable usage of the `History` API on web.
-    ///
-    /// It is disabled by default.
-    ///
-    /// This should only be enabled when it is acceptable for `rerun`
-    /// to push its own entries into browser history.
-    ///
-    /// That only makes sense if it has "taken over" a page, and is
-    /// the only thing on that page. If you are embedding multiple
-    /// viewers onto the same page, then it's better to turn this off.
-    ///
-    /// We use browser history in a limited way to track the currently
-    /// open example recording, see [`crate::history`].
-    #[cfg(target_arch = "wasm32")]
-    pub enable_history: bool,
-}
-
-impl Default for StartupOptions {
-    fn default() -> Self {
-        Self {
-            memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.75),
-            persist_state: true,
-            is_in_notebook: false,
-
-            #[cfg(target_arch = "wasm32")]
-            location: None,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            screenshot_to_path_then_quit: None,
-
-            hide_welcome_screen: false,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            detach_process: true,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            resolution_in_points: None,
-
-            expect_data_soon: None,
-            force_wgpu_backend: None,
-            video_decoder_hw_acceleration: None,
-
-            callbacks: Default::default(),
-
-            #[cfg(target_arch = "wasm32")]
-            fullscreen_options: Default::default(),
-
-            panel_state_overrides: Default::default(),
-
-            #[cfg(target_arch = "wasm32")]
-            enable_history: false,
-        }
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -170,6 +54,8 @@ struct PendingFilePromise {
     force_store_info: bool,
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
+
+type ReceiveSetTable = parking_lot::Mutex<Vec<crossbeam::channel::Receiver<TableMsg>>>;
 
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
@@ -193,7 +79,8 @@ pub struct App {
 
     component_ui_registry: ComponentUiRegistry,
 
-    rx: ReceiveSet<LogMsg>,
+    rx_log: ReceiveSet<LogMsg>,
+    rx_table: ReceiveSetTable,
 
     #[cfg(target_arch = "wasm32")]
     open_files_promise: Option<PendingFilePromise>,
@@ -236,7 +123,7 @@ pub struct App {
     reflection: re_types_core::reflection::Reflection,
 
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
-    pub callbacks: Option<Callbacks>,
+    pub event_dispatcher: Option<ViewerEventDispatcher>,
 
     /// The async runtime that should be used for all asynchronous operations.
     ///
@@ -372,7 +259,10 @@ impl App {
             Default::default()
         });
 
-        let callbacks = startup_options.callbacks.clone();
+        let event_dispatcher = startup_options
+            .on_event
+            .clone()
+            .map(ViewerEventDispatcher::new);
 
         if !state.redap_servers.is_empty() {
             command_sender.send_ui(UICommand::ExpandBlueprintPanel);
@@ -395,7 +285,8 @@ impl App {
 
             text_log_rx,
             component_ui_registry,
-            rx: Default::default(),
+            rx_log: Default::default(),
+            rx_table: Default::default(),
             #[cfg(target_arch = "wasm32")]
             open_files_promise: Default::default(),
             state,
@@ -428,7 +319,7 @@ impl App {
 
             reflection,
 
-            callbacks,
+            event_dispatcher,
             async_runtime: tokio_runtime,
         }
     }
@@ -460,16 +351,35 @@ impl App {
     }
 
     #[allow(clippy::needless_pass_by_ref_mut)]
-    pub fn add_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
+    pub fn add_log_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
         let rx = crate::wake_up_ui_thread_on_each_msg(rx, self.egui_ctx.clone());
 
-        self.rx.add(rx);
+        // Add unknown redap servers.
+        //
+        // Otherwise we end up in a situation where we have a data from an unknown server,
+        // which is unnecessary and can get us into a strange ui state.
+        if let SmartChannelSource::RedapGrpcStream(uri) = rx.source() {
+            self.add_redap_server(uri.origin.clone());
+
+            self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
+        }
+
+        self.rx_log.add(rx);
+    }
+
+    #[allow(clippy::needless_pass_by_ref_mut)]
+    pub fn add_table_receiver(&mut self, rx: crossbeam::channel::Receiver<TableMsg>) {
+        // Make sure we wake up when a message is sent.
+        #[cfg(not(target_arch = "wasm32"))]
+        let rx = crate::wake_up_ui_thread_on_each_msg_crossbeam(rx, self.egui_ctx.clone());
+
+        self.rx_table.lock().push(rx);
     }
 
     pub fn msg_receive_set(&self) -> &ReceiveSet<LogMsg> {
-        &self.rx
+        &self.rx_log
     }
 
     /// Adds a new view class to the viewer.
@@ -512,6 +422,7 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateApp(app_id) => {
+                self.state.display_mode = DisplayMode::LocalRecordings;
                 store_hub.set_active_app(app_id);
             }
 
@@ -520,26 +431,24 @@ impl App {
             }
 
             SystemCommand::ActivateEntry(entry) => {
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(
-                        DisplayMode::LocalRecordings,
-                    ));
+                self.state.display_mode = DisplayMode::LocalRecordings;
                 store_hub.set_active_entry(entry);
             }
 
             SystemCommand::CloseEntry(entry) => {
+                // TODO(#9464): Find a better successor here.
                 store_hub.remove(&entry);
             }
 
-            SystemCommand::CloseAllRecordings => {
-                store_hub.clear_recordings();
+            SystemCommand::CloseAllEntries => {
+                store_hub.clear_entries();
 
                 // Stop receiving into the old recordings.
                 // This is most important when going back to the example screen by using the "Back"
                 // button in the browser, and there is still a connection downloading an .rrd.
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
-                self.rx.retain(|r| match r.source() {
+                self.rx_log.retain(|r| match r.source() {
                     SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
 
                     SmartChannelSource::JsChannel { .. }
@@ -552,29 +461,36 @@ impl App {
             }
 
             SystemCommand::ClearSourceAndItsStores(source) => {
-                self.rx.retain(|r| r.source() != &source);
+                self.rx_log.retain(|r| r.source() != &source);
                 store_hub.retain_recordings(|db| db.data_source.as_ref() != Some(&source));
             }
 
             SystemCommand::AddReceiver(rx) => {
                 re_log::debug!("Received AddReceiver");
-                self.add_receiver(rx);
+                self.add_log_receiver(rx);
             }
 
             SystemCommand::ChangeDisplayMode(display_mode) => {
                 self.state.display_mode = display_mode;
             }
-            SystemCommand::AddRedapServer { endpoint } => {
-                let re_uri::CatalogEndpoint { origin } = endpoint;
-                self.state.redap_servers.add_server(origin);
+            SystemCommand::AddRedapServer(origin) => {
+                self.state.redap_servers.add_server(origin.clone());
+
+                if self
+                    .store_hub
+                    .as_ref()
+                    .is_none_or(|store_hub| store_hub.active_entry().is_none())
+                {
+                    self.state.display_mode = DisplayMode::RedapServer(origin);
+                }
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
-                self.command_sender
-                    .send_system(SystemCommand::ChangeDisplayMode(
-                        DisplayMode::LocalRecordings,
-                    ));
+                // Note that we *do not* change the display mode here.
+                // For instance if the datasource is a blueprint for a dataset that may be loaded later,
+                // we don't want to switch out to it while the user browses a server.
+
                 let egui_ctx = egui_ctx.clone();
                 // On native, `add_receiver` spawns a thread that wakes up the ui thread
                 // on any new message. On web we cannot spawn threads, so instead we need
@@ -598,12 +514,17 @@ impl App {
                     }),
                 });
 
-                match data_source.stream(on_cmd, Some(waker)) {
-                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_receiver(rx),
-                    Ok(re_data_source::StreamSource::CatalogData { endpoint }) => {
-                        self.command_sender
-                            .send_system(SystemCommand::AddRedapServer { endpoint });
+                match data_source.clone().stream(on_cmd, Some(waker)) {
+                    Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
+
+                    Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
+                        self.add_redap_server(uri.origin.clone());
                     }
+
+                    Ok(re_data_source::StreamSource::EntryUri(uri)) => {
+                        self.select_redap_entry(&uri);
+                    }
+
                     Err(err) => {
                         re_log::error!("Failed to open data source: {}", re_error::format(err));
                     }
@@ -673,12 +594,50 @@ impl App {
             }
 
             SystemCommand::SetSelection(item) => {
+                match &item {
+                    Item::RedapEntry(entry_id) => {
+                        self.state.display_mode = DisplayMode::RedapEntry(*entry_id);
+                    }
+
+                    Item::RedapServer(origin) => {
+                        self.state.display_mode = DisplayMode::RedapServer(origin.clone());
+                    }
+
+                    Item::AppId(_)
+                    | Item::DataSource(_)
+                    | Item::StoreId(_)
+                    | Item::TableId(_)
+                    | Item::InstancePath(_)
+                    | Item::ComponentPath(_)
+                    | Item::Container(_)
+                    | Item::View(_)
+                    | Item::DataResult(_, _) => {
+                        self.state.display_mode = DisplayMode::LocalRecordings;
+                    }
+                }
+
                 self.state.selection_state.set_selection(item);
             }
 
-            SystemCommand::SetActiveTimeline { rec_id, timeline } => {
-                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
-                    rec_cfg.time_ctrl.write().set_timeline(timeline);
+            SystemCommand::SetActiveTime {
+                rec_id,
+                timeline,
+                time,
+            } => {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
+                    let mut time_ctrl = rec_cfg.time_ctrl.write();
+
+                    time_ctrl.set_timeline(timeline);
+
+                    if let Some(time) = time {
+                        time_ctrl.set_time(time);
+                    }
+
+                    time_ctrl.pause();
+                } else {
+                    re_log::debug!(
+                        "SystemCommand::SetActiveTime ignored: unknown recording ID '{rec_id}'"
+                    );
                 }
             }
 
@@ -687,11 +646,15 @@ impl App {
                 timeline,
                 time_range,
             } => {
-                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                if let Some(rec_cfg) = self.recording_config_mut(store_hub, &rec_id) {
                     let mut guard = rec_cfg.time_ctrl.write();
                     guard.set_timeline(timeline);
                     guard.set_loop_selection(time_range);
                     guard.set_looping(re_viewer_context::Looping::Selection);
+                } else {
+                    re_log::debug!(
+                        "SystemCommand::SetLoopSelection ignored: unknown recording ID '{rec_id}'"
+                    );
                 }
             }
 
@@ -705,6 +668,41 @@ impl App {
                     re_log::error!("Failed to save file: {err}");
                 }
             }
+        }
+    }
+
+    fn go_to_uri_fragment(&self, rec_id: re_log_types::StoreId, fragment: re_uri::Fragment) {
+        let re_uri::Fragment { focus, when } = fragment;
+
+        if let Some(focus) = focus {
+            let re_log_types::DataPath {
+                entity_path,
+                instance,
+                component_name,
+            } = focus;
+
+            let item = if let Some(component_name) = component_name {
+                Item::from(re_log_types::ComponentPath::new(
+                    entity_path,
+                    component_name,
+                ))
+            } else if let Some(instance) = instance {
+                Item::from(InstancePath::instance(entity_path, instance))
+            } else {
+                Item::from(entity_path)
+            };
+
+            self.command_sender
+                .send_system(SystemCommand::SetFocus(item));
+        }
+
+        if let Some((timeline, timecell)) = when {
+            self.command_sender
+                .send_system(SystemCommand::SetActiveTime {
+                    rec_id,
+                    timeline: re_chunk::Timeline::new(timeline, timecell.typ()),
+                    time: Some(timecell.as_i64().into()),
+                });
         }
     }
 
@@ -725,7 +723,7 @@ impl App {
             .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
-            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
+            .or_else(|| Some(ApplicationId::random()));
         let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
             // When we're on the welcome screen, there is no recording ID to recommend.
             // But we want one, otherwise multiple things being dropped simultaneously on the
@@ -833,9 +831,9 @@ impl App {
                         .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
                 }
             }
-            UICommand::CloseAllRecordings => {
+            UICommand::CloseAllEntries => {
                 self.command_sender
-                    .send_system(SystemCommand::CloseAllRecordings);
+                    .send_system(SystemCommand::CloseAllEntries);
             }
 
             UICommand::Undo => {
@@ -1058,10 +1056,7 @@ impl App {
         let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             return;
         };
-        let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
-            return;
-        };
+        let rec_cfg = self.state.recording_config_mut(entity_db);
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let times_per_timeline = entity_db.times_per_timeline();
@@ -1144,17 +1139,13 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut endpoint)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStream(mut uri)) = entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
         };
 
-        let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
-            re_log::warn!("Could not copy time range link: Failed to get recording config");
-            return;
-        };
+        let rec_cfg = self.state.recording_config_mut(entity_db);
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let Some(range) = time_ctrl.loop_selection() else {
@@ -1165,9 +1156,10 @@ impl App {
             return;
         };
 
-        endpoint.time_range = Some(re_uri::TimeRange {
+        uri.time_range = Some(re_uri::TimeRange {
             timeline: *time_ctrl.timeline(),
-            range,
+            min: range.min.floor().into(),
+            max: range.max.ceil().into(),
         });
 
         // On web we can produce a link to the web viewer,
@@ -1183,7 +1175,7 @@ impl App {
                 return;
             };
 
-            let time_range_url = endpoint.to_string();
+            let time_range_url = uri.to_string();
             // %-encode the time range URL, because it's a url-within-a-url.
             // This results in VERY ugly links.
             // TODO(jan): Tweak the asciiset used here.
@@ -1199,7 +1191,7 @@ impl App {
         };
 
         #[cfg(not(target_arch = "wasm32"))]
-        let url = endpoint.to_string();
+        let url = uri.to_string();
 
         self.egui_ctx.copy_text(url.clone());
         self.notifications
@@ -1333,14 +1325,14 @@ impl App {
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.view_class_registry,
-                            &self.rx,
+                            &self.rx_log,
                             &self.command_sender,
                             &WelcomeScreenState {
                                 hide: self.startup_options.hide_welcome_screen,
                                 opacity: self.welcome_screen_opacity(egui_ctx),
                             },
                             is_history_enabled,
-                            self.callbacks.as_ref(),
+                            self.event_dispatcher.as_ref(),
                         );
                         render_ctx.before_submit();
                     }
@@ -1362,9 +1354,50 @@ impl App {
     fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
+        // TODO(grtlr): Should we bring back analytics for this too?
+        self.rx_table.lock().retain(|rx| match rx.try_recv() {
+            Ok(table) => {
+
+                match re_sorbet::SorbetBatch::try_from_record_batch(&table.data, re_sorbet::BatchType::Dataframe)  {
+                    Ok(sorbet_batch) => {
+                        // TODO(grtlr): For now we don't append anything to existing stores and always replace.
+                        let store = TableStore::default();
+                        store.add_batch(sorbet_batch);
+
+                        if store_hub.insert_table_store(table.id.clone(), store).is_some() {
+                            re_log::debug!("Overwritten table store with id: `{}`", table.id);
+                        } else {
+                            re_log::debug!("Inserted table store with id: `{}`", table.id);
+                        };
+                        store_hub.set_active_entry(table.id.clone().into());
+
+
+                        // Also select the new recording:
+                        self.command_sender.send_system(SystemCommand::SetSelection(
+                            re_viewer_context::Item::TableId(table.id.clone()),
+                        ));
+
+                        // If the viewer is in the background, tell the user that it has received something new.
+                        egui_ctx.send_viewport_cmd(
+                            egui::ViewportCommand::RequestUserAttention(
+                                egui::UserAttentionType::Informational,
+                            ),
+                        );
+                    },
+                    Err(err) => {
+                        re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
+                    }
+                }
+
+                true
+            }
+            Err(crossbeam::channel::TryRecvError::Empty) => true,
+            Err(_) => false,
+        });
+
         let start = web_time::Instant::now();
 
-        while let Some((channel_source, msg)) = self.rx.try_recv() {
+        while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
             let msg = match msg.payload {
@@ -1398,12 +1431,13 @@ impl App {
             // everything and some of it is mutable and some not… it's really not pretty, but it
             // does the job for now.
 
-            {
+            let was_empty = {
                 let entity_db = store_hub.entity_db_mut(store_id);
                 if entity_db.data_source.is_none() {
                     entity_db.data_source = Some((*channel_source).clone());
                 }
-            }
+                entity_db.is_empty()
+            };
 
             match store_hub.entity_db_mut(store_id).add(&msg) {
                 Ok(store_events) => {
@@ -1420,6 +1454,14 @@ impl App {
             }
 
             let entity_db = store_hub.entity_db_mut(store_id);
+
+            if was_empty && !entity_db.is_empty() {
+                // Hack: we cannot go to a specific timeline or entity until we know about it.
+                // Now we _hopefully_ do.
+                if let SmartChannelSource::RedapGrpcStream(uri) = channel_source.as_ref() {
+                    self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
+                }
+            }
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
@@ -1626,6 +1668,19 @@ impl App {
             .and_then(|store_hub| store_hub.active_recording())
     }
 
+    pub fn recording_config_mut(
+        &mut self,
+        store_hub: &StoreHub,
+        rec_id: &StoreId,
+    ) -> Option<&mut RecordingConfig> {
+        if let Some(entity_db) = store_hub.store_bundle().get(rec_id) {
+            Some(self.state.recording_config_mut(entity_db))
+        } else {
+            re_log::debug!("Failed to find recording '{rec_id}' in store hub");
+            None
+        }
+    }
+
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
     // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
@@ -1650,7 +1705,7 @@ impl App {
             .cloned()
             // If we don't have any application ID to recommend (which means we are on the welcome screen),
             // then just generate a new one using a UUID.
-            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
+            .or_else(|| Some(ApplicationId::random()));
         let active_recording_id = storage_ctx.hub.active_recording_id().cloned().or_else(|| {
             // When we're on the welcome screen, there is no recording ID to recommend.
             // But we want one, otherwise multiple things being dropped simultaneously on the
@@ -1707,7 +1762,7 @@ impl App {
         // flickering quickly before receiving some data.
         // So: if we expect data very soon, we do a fade-in.
 
-        for source in self.rx.sources() {
+        for source in self.rx_log.sources() {
             #[allow(clippy::match_same_arms)]
             match &*source {
                 SmartChannelSource::File(_)
@@ -1855,9 +1910,12 @@ impl App {
         }
     }
 
-    pub fn add_redap_server(&self, endpoint: re_uri::CatalogEndpoint) {
-        self.command_sender
-            .send_system(SystemCommand::AddRedapServer { endpoint });
+    pub fn add_redap_server(&self, origin: Origin) {
+        self.state.add_redap_server(&self.command_sender, origin);
+    }
+
+    pub fn select_redap_entry(&self, uri: &re_uri::EntryUri) {
+        self.state.select_redap_entry(&self.command_sender, uri);
     }
 }
 
@@ -2096,6 +2154,22 @@ impl eframe::App for App {
                 .collect();
             if let Some(app_id) = apps.first().copied() {
                 store_hub.set_active_app(app_id.clone());
+                // set_active_app will also activate a new entry.
+                // Select this entry so it's more obvious to the user which recording
+                // is now active.
+                match store_hub.active_entry() {
+                    Some(StoreHubEntry::Recording { store_id }) => {
+                        self.state
+                            .selection_state
+                            .set_selection(Item::StoreId(store_id.clone()));
+                    }
+                    Some(StoreHubEntry::Table { table_id }) => {
+                        self.state
+                            .selection_state
+                            .set_selection(Item::TableId(table_id.clone()));
+                    }
+                    None => {}
+                }
             } else {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
             }

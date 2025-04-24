@@ -374,11 +374,6 @@ impl DataResultData {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        // Early out.
-        if filter_matcher.matches_nothing() {
-            return None;
-        }
-
         let entity_path = data_result_or_path.path().clone();
         let data_result_node = data_result_or_path.data_result_node();
         let visible = data_result_node.is_some_and(|node| node.data_result.is_visible());

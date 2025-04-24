@@ -1,10 +1,12 @@
+use arrow::buffer::ScalarBuffer;
+
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
 use re_types::{
     archetypes::Asset3D,
     components::{AlbedoFactor, Blob, MediaType},
-    ArrowBuffer, ArrowString, Component as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
@@ -34,7 +36,7 @@ struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
 
-    blob: ArrowBuffer<u8>,
+    blob: ScalarBuffer<u8>,
     media_type: Option<ArrowString>,
     albedo_factor: Option<&'a AlbedoFactor>,
 }
@@ -75,7 +77,7 @@ impl Asset3DVisualizer {
                         key.clone(),
                         AnyMesh::Asset {
                             asset: crate::mesh_loader::NativeAsset3D {
-                                bytes: data.blob.as_slice(),
+                                bytes: &data.blob,
                                 media_type: data.media_type.clone().map(Into::into),
                                 albedo_factor: data.albedo_factor.map(|a| a.0.into()),
                             },
@@ -170,7 +172,7 @@ impl VisualizerSystem for Asset3DVisualizer {
                     blobs.first().map(|blob| Asset3DComponentData {
                         index,
                         query_result_hash,
-                        blob: blob.clone().into(),
+                        blob: blob.clone(),
                         media_type: media_types
                             .and_then(|media_types| media_types.first().cloned()),
                         albedo_factor: albedo_factors

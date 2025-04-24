@@ -5,13 +5,12 @@ order: 0
 
 The Rerun distribution comes with numerous moving pieces:
 * The **SDKs** (Python, Rust & C++), for logging data and querying it back. These are libraries running directly in the end user's process.
-* The **Native Viewer**: the Rerun GUI application for native platforms (Linux, macOS, Windows).
-* The **Web Viewer**, which packs the **Native Viewer** into a WASM application that can run on the Web and its derivatives (notebooks, etc).
+* The **Viewer**: the Rerun GUI application for native platforms (Linux, macOS, Windows) and web. This is where logged data is visualized.
 * The **gRPC server**, which receives data from the **SDKs** and forwards it to the **Native Viewer** and/or **Web Viewer**. The communication is unidirectional: clients push data into the connection, never the other way around.
-* The **Web/HTTP Server**, for serving the web page that hosts the **Web Viewer**.
+* The **Web/HTTP Server**, for serving the web page that hosts the **Viewer** running as a Wasm application.
 * The **CLI**, which allows you to control all the pieces above as well as manipulate RRD files.
 
-The **Native Viewer** always includes:
+The **Viewer** always includes:
   * A **Chunk Store**: an in-memory database that stores the logged data.
   * A **Renderer**: a 3D engine that renders the contents of the **Chunk Store**.
 
@@ -22,17 +21,25 @@ This is a lot to take in at first, but as we'll see these different pieces are g
 
 The first thing to understand is what process do each of these things run in.
 
-The **CLI**, **Native Viewer**, **gRPC server**, and **Web/HTTP Server** are all part of the same binary: `rerun`.
+The **CLI**, **Viewer**, **gRPC server**, and **Web/HTTP Server** are all part of the same binary: `rerun`.
 Some of them can be enabled or disabled on demand using the appropriate flags but, no matter what, all these pieces are part of the same binary and execute in the same process.
-Keep in mind that even the **Native Viewer** can be disabled (headless mode).
+Keep in mind that even the **Viewer** can be disabled (headless mode).
 
 The **SDKs** are vanilla software libraries and therefore always executes in the same context as the end-user's code.
 
-Finally, the **Web Viewer** is a WASM application and therefore has its own dedicated `.wasm` artifact, and always runs in isolation in the end-user's web browser.
+The **Viewer** can be executed either:
+* Natively, which we call the **Native Viewer** in all our documentation, or
+* On the Web as a Wasm application, which we refer to as the **Web Viewer**.
 
-The best way to make sense of it all it to look at some of the most common scenarios when:
-* Logging and visualizing data on native.
-* Logging data on native and visualizing it on the web.
+Both the Native Viewer and Web Viewer may also be extended in various ways:
+* The Native Viewer may be extended through its [Rust API](../howto/visualization/extend-ui.md)
+* The Web Viewer can be [embedded in web applications](../howto/integrations/embed-web.md), and used in [Jupyter Notebooks](../howto/integrations/embed-notebooks.md)
+
+The **Web Viewer** has its own dedicated `.wasm` artifact, and always runs in isolation in the end-user's web browser.
+Running the **Web Viewer** comes with [some performance limitations](#web-viewer-limitations), so you should always prefer to run the Viewer natively if it makes sense.
+
+
+The best way to make sense of it all is to look at some of the most common scenarios when logging and visualizing data.
 
 
 ## Logging and visualizing data on native
@@ -44,8 +51,8 @@ There are two common sub-scenarios when working natively:
 
 ### Synchronous workflow
 
-This is the most common kind of Rerun deployment, and also the simplest: one or more **SDKs**, embedded into the user's process, are logging data directly to a **gRPC server**, which in turns feeds the **Native Viewer**.
-Both the **Native Viewer** and the **gRPC server** are running in the same `rerun` process.
+This is the most common kind of Rerun deployment, and also the simplest: one or more **SDKs**, embedded into the user's process, are logging data directly to a **gRPC server**, which in turns feeds the **Viewer**.
+Both the **Viewer** and the **gRPC server** are running in the same `rerun` process.
 
 Logging script:
 
@@ -89,9 +96,9 @@ Reference:
 ### Asynchronous workflow
 
 The asynchronous native workflow is similarly simple: one or more **SDKs**, embedded into the user's process, are logging data directly to one or more files.
-The user will then manually start the **Native Viewer** at some later point, in order to visualize these files.
+The user will then manually start the **Viewer** at some later point, in order to visualize these files.
 
-Note: the `rerun` process still embeds both a **Native Viewer** and a **gRPC server**. For each **Native Viewer**, there is **always** an accompanying **gRPC server**, no exception.
+Note: the `rerun` process still embeds both a **Viewer** and a **gRPC server**.
 
 Logging script:
 
@@ -133,6 +140,18 @@ Logging data on native and visualizing it on the web.
 TODO(#8046): incoming.
 -->
 
+
+### Web Viewer limitations
+
+When running on the web as a Wasm application, the browser severely limits how much memory and compute the Viewer can use.
+
+We currently only distribute the Viewer Wasm as 32-bit, which means it can only ever use at most 4 GiB of memory.
+In practice, browsers restrict this down to around 2 GiB. When the Viewer runs out of memory, it begins to drop the oldest data in any open recordings.
+This means you can't visualize larger recordings in full. Visualizing data which does not fit in RAM is [something we're actively working on](https://rerun.io/blog/physical-ai-data).
+
+Multi-threaded Wasm is not yet generally available, and where it is available it is very inconvenient to use.
+As a result, the Viewer currently runs fully single-threaded on the web. This makes it very slow compared to the native Viewer,
+which can use multiple cores to ingest, process, and visualize your data.
 
 ## FAQ
 

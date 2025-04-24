@@ -7,8 +7,11 @@ import "rerun/v1alpha1/common.proto";
 service ManifestRegistryService {
   // --- Write data ---
 
-  // Register new partitions with the Dataset
+  // Register new partitions with the Dataset (asynchronously)
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
+
+  // Register new partitions with the Dataset (blocking)
+  rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
 
   // Unimplemented.
   rpc WriteChunks(stream WriteChunksRequest) returns (stream WriteChunksResponse) {}
@@ -93,11 +96,6 @@ service ManifestRegistryService {
   // --- Developer/Debug APIs ---
   // Unstable APIs that are not exposed by the Frontend.
 
-  // Fetch an entire partition from the server, without any pre- or post-processing.
-  //
-  // This is a temporary hack while we get everything up and running.
-  rpc FetchPartition(FetchPartitionRequest) returns (stream FetchPartitionResponse) {}
-
   // Retrieves the chunk manifest for a specific index.
   rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 
@@ -133,6 +131,19 @@ message RegisterWithDatasetRequest {
 }
 
 message RegisterWithDatasetResponse {
+  rerun.common.v1alpha1.TaskId id = 1;
+}
+
+// TODO(andrea): This is a copy of RegisterWithDatasetRequest.
+// Eventually we _may_ get rid of the sync version; until then,
+// we should make sure that the two objects are in sync.
+message RegisterWithDatasetBlockingRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  repeated DataSource data_sources = 2;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+}
+
+message RegisterWithDatasetBlockingResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
@@ -463,16 +474,6 @@ message FetchPartitionManifestRequest {
 // TODO(cmc): this should have response extensions too.
 message FetchPartitionManifestResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message FetchPartitionRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-  rerun.common.v1alpha1.PartitionId partition_id = 2;
-}
-
-message FetchPartitionResponse {
-  // Chunks as arrow RecordBatch
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message FetchChunkManifestRequest {

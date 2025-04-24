@@ -1,6 +1,7 @@
 use egui::{color_picker, Vec2};
 use itertools::Itertools as _;
-
+use re_log_types::hash::Hash64;
+use re_log_types::EntityPath;
 use re_types::components::AnnotationContext;
 use re_types::datatypes::{
     AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
@@ -16,8 +17,8 @@ impl crate::EntityDataUi for re_types::components::ClassId {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        entity_path: &re_log_types::EntityPath,
-        _row_id: Option<re_chunk_store::RowId>,
+        entity_path: &EntityPath,
+        _cache_key: Option<Hash64>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -62,8 +63,8 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        entity_path: &re_log_types::EntityPath,
-        _row_id: Option<re_chunk_store::RowId>,
+        entity_path: &EntityPath,
+        _cache_key: Option<Hash64>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {

@@ -262,12 +262,7 @@ pub fn show_decoded_frame_info(
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(
-        render_ctx,
-        player_stream_id,
-        timestamp_in_secs,
-        blob.as_slice(),
-    ) {
+    match video.frame_at(render_ctx, player_stream_id, timestamp_in_secs, blob) {
         Ok(VideoFrameTexture {
             texture,
             is_pending,
@@ -380,7 +375,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     fn value_fn_for_time(
         time: re_video::Time,
         video_data: &re_video::VideoData,
-    ) -> impl FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + '_ {
+    ) -> impl FnOnce(&mut egui::Ui, list_item::ListVisuals) + '_ {
         move |ui, _| {
             timestamp_ui(ui, video_data, time);
         }

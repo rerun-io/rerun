@@ -1,5 +1,7 @@
 //! Checks that inter- and intra-timestamp partial updates are properly handled by range queries,
 
+#![expect(clippy::unnecessary_fallible_conversions)]
+
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
 use re_types::{archetypes::Points2D, datatypes::VisibleTimeRange, Archetype as _};

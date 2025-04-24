@@ -350,7 +350,6 @@ impl TestContext {
                 bundle: &Default::default(),
                 tables: &Default::default(),
             },
-            active_table: None,
             maybe_visualizable_entities_per_visualizer: &maybe_visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
@@ -466,12 +465,17 @@ impl TestContext {
                     *self.focused_item.lock() = Some(item);
                 }
 
-                SystemCommand::SetActiveTimeline { rec_id, timeline } => {
+                SystemCommand::SetActiveTime {
+                    rec_id,
+                    timeline,
+                    time,
+                } => {
                     assert_eq!(rec_id, self.recording_store.store_id());
-                    self.recording_config
-                        .time_ctrl
-                        .write()
-                        .set_timeline(timeline);
+                    let mut time_ctrl = self.recording_config.time_ctrl.write();
+                    time_ctrl.set_timeline(timeline);
+                    if let Some(time) = time {
+                        time_ctrl.set_time(time);
+                    }
                 }
 
                 // not implemented
@@ -489,7 +493,7 @@ impl TestContext {
                 | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
-                | SystemCommand::CloseAllRecordings
+                | SystemCommand::CloseAllEntries
                 | SystemCommand::SetLoopSelection { .. } => handled = false,
 
                 #[cfg(debug_assertions)]

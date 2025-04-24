@@ -134,7 +134,7 @@ pub fn test_draw_order() {
         });
 
         // 2D arrow sandwitched across
-        test_context.log_entity("2d_layering/arrow2_between".into(), |builder| {
+        test_context.log_entity("2d_layering/arrow2d_between".into(), |builder| {
             builder.with_archetype(
                 RowId::new(),
                 TimePoint::default(),

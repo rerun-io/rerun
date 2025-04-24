@@ -9,7 +9,7 @@ use tokio_stream::Stream;
 
 use crate::{
     codec::file::{self},
-    EncodingOptions, VersionPolicy,
+    EncodingOptions,
 };
 
 use super::{options_from_bytes, DecodeError, FileHeader};
@@ -66,7 +66,7 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
 }
 
 impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
-    pub async fn new(version_policy: VersionPolicy, mut reader: R) -> Result<Self, DecodeError> {
+    pub async fn new(mut reader: R) -> Result<Self, DecodeError> {
         let mut data = [0_u8; FileHeader::SIZE];
 
         reader
@@ -74,7 +74,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             .await
             .map_err(DecodeError::Read)?;
 
-        let (version, options) = options_from_bytes(version_policy, &data)?;
+        let (version, options) = options_from_bytes(&data)?;
 
         Ok(Self {
             version,
@@ -162,7 +162,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                 let data = &unprocessed_bytes[..FileHeader::SIZE];
                 // We've found another file header in the middle of the stream, it's time to switch
                 // gears and start over on this new file.
-                match options_from_bytes(VersionPolicy::Warn, data) {
+                match options_from_bytes(data) {
                     Ok((version, options)) => {
                         self.version = CrateVersion::max(self.version, version);
                         self.options = options;
@@ -256,11 +256,8 @@ mod tests {
     use tokio_stream::StreamExt as _;
 
     use crate::{
-        decoder::{
-            streaming::StreamingDecoder,
-            tests::{fake_log_messages, strip_arrow_extensions_from_log_messages},
-        },
-        Compression, EncodingOptions, Serializer, VersionPolicy,
+        decoder::{streaming::StreamingDecoder, tests::fake_log_messages},
+        Compression, EncodingOptions, Serializer,
     };
 
     #[tokio::test]
@@ -291,17 +288,13 @@ mod tests {
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            let decoder = StreamingDecoder::new(VersionPolicy::Error, buf_reader)
+            let decoder = StreamingDecoder::new(buf_reader).await.unwrap();
+
+            let decoded_messages = decoder
+                .map(|res| res.map(|msg| msg.inner))
+                .collect::<Result<Vec<_>, _>>()
                 .await
                 .unwrap();
-
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder
-                    .map(|res| res.map(|msg| msg.inner))
-                    .collect::<Result<Vec<_>, _>>()
-                    .await
-                    .unwrap(),
-            );
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -331,17 +324,13 @@ mod tests {
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data));
 
-            let decoder = StreamingDecoder::new(VersionPolicy::Error, buf_reader)
+            let decoder = StreamingDecoder::new(buf_reader).await.unwrap();
+
+            let decoded_messages = decoder
+                .map(|res| res.map(|msg| msg.inner))
+                .collect::<Result<Vec<_>, _>>()
                 .await
                 .unwrap();
-
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoder
-                    .map(|res| res.map(|msg| msg.inner))
-                    .collect::<Result<Vec<_>, _>>()
-                    .await
-                    .unwrap(),
-            );
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
@@ -371,9 +360,7 @@ mod tests {
 
             let buf_reader = tokio::io::BufReader::new(std::io::Cursor::new(data.clone()));
 
-            let decoder = StreamingDecoder::new(VersionPolicy::Error, buf_reader)
-                .await
-                .unwrap();
+            let decoder = StreamingDecoder::new(buf_reader).await.unwrap();
 
             let decoded_messages = decoder.collect::<Result<Vec<_>, _>>().await.unwrap();
 
@@ -400,13 +387,11 @@ mod tests {
                 }
             }
 
-            let decoded_messages = strip_arrow_extensions_from_log_messages(
-                decoded_messages
-                    .clone()
-                    .into_iter()
-                    .map(|msg| msg.inner)
-                    .collect::<Vec<_>>(),
-            );
+            let decoded_messages = decoded_messages
+                .clone()
+                .into_iter()
+                .map(|msg| msg.inner)
+                .collect::<Vec<_>>();
 
             similar_asserts::assert_eq!(decoded_messages, messages);
         }
