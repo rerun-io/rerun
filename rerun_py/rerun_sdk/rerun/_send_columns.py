@@ -88,7 +88,7 @@ class TimeColumn(TimeColumnLike):
         """
         if sum(x is not None for x in (sequence, duration, timestamp)) != 1:
             raise ValueError(
-                "TimeColumn: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
+                f"TimeColumn: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
             )
 
         self.timeline = timeline

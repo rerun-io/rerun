@@ -160,7 +160,7 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
     ) -> None:
         crate = crates[name]
         for dependency in crate_deps(crate.manifest):
-            assert dependency.name != name, "Crate {name} had itself as a dependency"
+            assert dependency.name != name, f"Crate {name} had itself as a dependency"
             if dependency.name not in crates:
                 continue
             if dependency.name in visited:
