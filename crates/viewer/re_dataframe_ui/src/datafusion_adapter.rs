@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use datafusion::common::{DataFusionError, TableReference};
-use datafusion::logical_expr::col;
+use datafusion::functions::expr_fn::concat;
+use datafusion::logical_expr::{col, lit};
 use datafusion::prelude::SessionContext;
 use parking_lot::Mutex;
-
+use re_log_types::EntryId;
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
@@ -35,22 +36,48 @@ pub struct SortBy {
     pub direction: SortDirection,
 }
 
-/// The full description of a query against a datafusion context, to be executed asynchronously.
-//TODO(ab): when we have table blueprint, that query should be derived from it.
+/// Information required to generate a partition link column.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PartitionLinksSpec {
+    /// Name of the column to generate.
+    pub column_name: String,
+
+    /// Name of the existing column containing the partition id.
+    pub partition_id_column_name: String,
+
+    /// Origin to use for the links.
+    pub origin: re_uri::Origin,
+
+    /// The id of the dataset to use for the links.
+    pub dataset_id: EntryId,
+}
+
+/// The "blueprint" for a table, a.k.a the specification of how it should look.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TableBlueprint {
+    pub sort_by: Option<SortBy>,
+    pub partition_links: Option<PartitionLinksSpec>,
+}
+
+/// A table blueprint along with the context required to execute the corresponding datafusion query.
 #[derive(Clone)]
 pub struct DataFusionQuery {
     session_ctx: Arc<SessionContext>,
     table_ref: TableReference,
 
-    pub sort_by: Option<SortBy>,
+    blueprint: TableBlueprint,
 }
 
 impl DataFusionQuery {
-    pub fn new(session_ctx: Arc<SessionContext>, table_ref: TableReference) -> Self {
+    pub fn new(
+        session_ctx: Arc<SessionContext>,
+        table_ref: TableReference,
+        blueprint: TableBlueprint,
+    ) -> Self {
         Self {
             session_ctx,
             table_ref,
-            sort_by: None,
+            blueprint,
         }
     }
 
@@ -61,10 +88,31 @@ impl DataFusionQuery {
     async fn execute(self) -> Result<Vec<SorbetBatch>, DataFusionError> {
         let mut dataframe = self.session_ctx.table(self.table_ref).await?;
 
-        if let Some(sort_by) = &self.sort_by {
+        let TableBlueprint {
+            sort_by,
+            partition_links, //TODO
+        } = &self.blueprint;
+
+        if let Some(sort_by) = sort_by {
             dataframe = dataframe.sort(vec![
                 col(&sort_by.column).sort(sort_by.direction.is_ascending(), true)
             ])?;
+        }
+
+        if let Some(partition_links) = partition_links {
+            //TODO(ab): we should get this from `re_uri::DatasetDataUri` instead of hardcoding
+            let uri = format!(
+                "{}/dataset/{}/data?partition_id=",
+                partition_links.origin, partition_links.dataset_id
+            );
+
+            dataframe = dataframe.with_column(
+                &partition_links.column_name,
+                concat(vec![
+                    lit(uri),
+                    col(&partition_links.partition_id_column_name),
+                ]),
+            )?;
         }
 
         // collect
@@ -87,13 +135,13 @@ impl PartialEq for DataFusionQuery {
     fn eq(&self, other: &Self) -> bool {
         let Self {
             session_ctx,
-            table_ref: table_name,
-            sort_by,
+            table_ref,
+            blueprint,
         } = self;
 
         Arc::ptr_eq(session_ctx, &other.session_ctx)
-            && table_name == &other.table_ref
-            && sort_by == &other.sort_by
+            && table_ref == &other.table_ref
+            && blueprint == &other.blueprint
     }
 }
 
@@ -104,7 +152,7 @@ pub struct DataFusionAdapter {
     id: egui::Id,
 
     /// The query used to produce the dataframe.
-    pub query: DataFusionQuery,
+    query: DataFusionQuery,
 
     // Used to have something to display while the new dataframe is being queried.
     pub last_dataframe: Option<Vec<SorbetBatch>>,
@@ -120,6 +168,7 @@ impl DataFusionAdapter {
         session_ctx: &Arc<SessionContext>,
         table_ref: TableReference,
         id: egui::Id,
+        initial_blueprint: TableBlueprint,
         force_refresh: bool,
     ) -> Self {
         let adapter = if force_refresh {
@@ -129,7 +178,7 @@ impl DataFusionAdapter {
         };
 
         let adapter = adapter.unwrap_or_else(|| {
-            let query = DataFusionQuery::new(Arc::clone(session_ctx), table_ref);
+            let query = DataFusionQuery::new(Arc::clone(session_ctx), table_ref, initial_blueprint);
 
             let table_state = Self {
                 id,
@@ -154,6 +203,10 @@ impl DataFusionAdapter {
         adapter
     }
 
+    pub fn blueprint(&self) -> &TableBlueprint {
+        &self.query.blueprint
+    }
+
     /// Clear from egui's memory (force refresh on the next frame).
     pub fn clear(&self, ui: &egui::Ui) {
         ui.data_mut(|data| {
@@ -169,10 +222,10 @@ impl DataFusionAdapter {
         mut self,
         runtime: &AsyncRuntimeHandle,
         ui: &egui::Ui,
-        new_query: DataFusionQuery,
+        new_blueprint: TableBlueprint,
     ) {
-        if self.query != new_query {
-            self.query = new_query;
+        if self.query.blueprint != new_blueprint {
+            self.query.blueprint = new_blueprint;
 
             let mut dataframe = self.dataframe.lock();
 

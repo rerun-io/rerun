@@ -4,6 +4,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use egui::{Frame, Margin, RichText};
 
 use re_log_types::EntryId;
+use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
@@ -124,6 +125,12 @@ impl Server {
                 .unwrap_or(name)
                 .replace('_', " ")
         })
+        .generate_partition_links(
+            "recording link",
+            DATASET_MANIFEST_ID_FIELD_NAME,
+            self.origin.clone(),
+            EntryId::new(),
+        )
         .show(viewer_ctx, &self.runtime, ui);
     }
 

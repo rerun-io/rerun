@@ -6,17 +6,18 @@ use egui::Id;
 use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
-use re_log_types::TimelineName;
+use re_log_types::{EntryId, TimelineName};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::UiExt as _;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQuery, SortBy, SortDirection};
+use crate::datafusion_adapter::{
+    DataFusionAdapter, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+};
 use crate::table_utils::{
     apply_table_style_fixes, cell_ui, header_ui, ColumnConfig, TableConfig, CELL_MARGIN,
 };
 use crate::DisplayRecordBatch;
-
 /// Keep track of the columns in a sorbet batch, indexed by id.
 struct Columns<'a> {
     /// Column index and descriptor from id
@@ -57,8 +58,16 @@ pub struct DataFusionTableWidget {
     id: egui::Id,
     table_ref: TableReference,
 
+    // options
+    /// Closure used to determine the display name of the column.
+    ///
+    /// Defaults to using [`ColumnDescriptorRef::name`].
     column_renamer: ColumnRenamerFn,
 
+    /// The blueprint used the first time the table is queried.
+    initial_blueprint: TableBlueprint,
+
+    /// If `true`, force invalidating all caches and refreshing the queries.
     refresh: bool,
 }
 
@@ -73,6 +82,7 @@ impl DataFusionTableWidget {
             id: id.into(),
             table_ref: table_ref.into(),
             column_renamer: None,
+            initial_blueprint: Default::default(),
             refresh: false,
         }
     }
@@ -82,6 +92,23 @@ impl DataFusionTableWidget {
         renamer: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'static,
     ) -> Self {
         self.column_renamer = Some(Box::new(renamer));
+
+        self
+    }
+
+    pub fn generate_partition_links(
+        mut self,
+        column_name: impl Into<String>,
+        partition_id_column_name: impl Into<String>,
+        origin: re_uri::Origin,
+        dataset_id: EntryId,
+    ) -> Self {
+        self.initial_blueprint.partition_links = Some(PartitionLinksSpec {
+            column_name: column_name.into(),
+            partition_id_column_name: partition_id_column_name.into(),
+            origin,
+            dataset_id,
+        });
 
         self
     }
@@ -103,6 +130,7 @@ impl DataFusionTableWidget {
             id,
             table_ref,
             column_renamer,
+            initial_blueprint,
             refresh,
         } = self;
 
@@ -123,7 +151,15 @@ impl DataFusionTableWidget {
             .with((&table_ref, session_ctx.session_id()))
             .with("__table_ui_table_state");
 
-        let table_state = DataFusionAdapter::get(runtime, ui, &session_ctx, table_ref, id, refresh);
+        let table_state = DataFusionAdapter::get(
+            runtime,
+            ui,
+            &session_ctx,
+            table_ref,
+            id,
+            initial_blueprint,
+            refresh,
+        );
 
         let dataframe = table_state.dataframe.lock();
 
@@ -212,14 +248,14 @@ impl DataFusionTableWidget {
 
         apply_table_style_fixes(ui.style_mut());
 
-        let mut new_blueprint = table_state.query.clone();
+        let mut new_blueprint = table_state.blueprint().clone();
 
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
             display_record_batches: &display_record_batches,
             columns: &columns,
             column_renamer: &column_renamer,
-            blueprint: &table_state.query,
+            blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
         };
@@ -250,8 +286,8 @@ struct DataFusionTableDelegate<'a> {
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
     column_renamer: &'a ColumnRenamerFn,
-    blueprint: &'a DataFusionQuery,
-    new_blueprint: &'a mut DataFusionQuery,
+    blueprint: &'a TableBlueprint,
+    new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
 }
 
@@ -299,7 +335,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             |ui| {
                                 if ui.button("Ascending").clicked() {
                                     self.new_blueprint.sort_by = Some(SortBy {
-                                        column: name.to_owned(),
+                                        column: name.clone(),
                                         direction: SortDirection::Ascending,
                                     });
                                     ui.close_menu();
@@ -307,7 +343,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
                                 if ui.button("Descending").clicked() {
                                     self.new_blueprint.sort_by = Some(SortBy {
-                                        column: name.to_owned(),
+                                        column: name.clone(),
                                         direction: SortDirection::Descending,
                                     });
 
