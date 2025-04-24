@@ -127,7 +127,7 @@ This is what the `send_columns` API is for: it lets you efficiently update the s
 >
 > In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
 
-snippet: archetypes/scalar_column_updates
+snippet: archetypes/scalars_column_updates
 
 See also the reference:
 * [🐍 Python `send_columns`](https://ref.rerun.io/docs/python/0.21.0/common/columnar_api/#rerun.send_columns)
