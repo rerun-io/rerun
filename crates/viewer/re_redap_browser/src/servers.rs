@@ -62,7 +62,7 @@ impl Server {
     }
 
     /// Central panel UI for when a server is selected.
-    fn server_ui(&self, viewer_ctx: &ViewerContext<'_>, ctx: &Context<'_>, ui: &mut egui::Ui) {
+    fn server_ui(&self, ctx: &Context<'_>, ui: &mut egui::Ui) {
         Frame::new()
             .inner_margin(Margin {
                 top: 16,
@@ -111,34 +111,6 @@ impl Server {
                     },
                 );
             });
-
-        // draw the entries table
-        //TODO: clean that!
-        //TODO: don't attempt to draw this until the session context is fully registered
-        re_dataframe_ui::DataFusionTableWidget::new(
-            self.tables_session_ctx.ctx.clone(),
-            egui::Id::new(&self.origin),
-            "lerobot",
-        )
-        .title("lerobot")
-        .title_button(ItemActionButton::new(&re_ui::icons::RESET, || {
-            let _ = ctx
-                .command_sender
-                .send(Command::RefreshCollection(self.origin.clone()));
-        }))
-        .column_renamer(|desc| {
-            let name = desc.name();
-            name.strip_prefix("rerun_")
-                .unwrap_or(name)
-                .replace('_', " ")
-        })
-        .generate_partition_links(
-            "recording link",
-            DATASET_MANIFEST_ID_FIELD_NAME,
-            self.origin.clone(),
-            EntryId::new(),
-        )
-        .show(viewer_ctx, &self.runtime, ui);
     }
 
     fn dataset_entry_ui(
@@ -374,7 +346,7 @@ impl RedapServers {
     ) {
         if let Some(server) = self.servers.get(origin) {
             self.with_ctx(|ctx| {
-                server.server_ui(viewer_ctx, ctx, ui);
+                server.server_ui(ctx, ui);
             });
         } else {
             viewer_ctx

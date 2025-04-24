@@ -3,7 +3,6 @@
 
 mod add_server_modal;
 mod context;
-mod dataset_ui;
 mod entries;
 mod servers;
 mod tables_session_context;

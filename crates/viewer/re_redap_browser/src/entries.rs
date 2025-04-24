@@ -58,6 +58,8 @@ pub struct Dataset {
 
     pub origin: re_uri::Origin,
 
+    //TODO: do we still need this?
+    #[expect(dead_code)]
     pub partition_table: Vec<SorbetBatch>,
 }
 
