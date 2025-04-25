@@ -2,24 +2,21 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
-use tokio_stream::StreamExt as _;
 
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_data_ui::DataUi as _;
 use re_dataframe_ui::RequestedObject;
 use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{redap, StreamError};
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::CodecError;
 use re_log_types::{natural_ordering, ApplicationId, EntryId, StoreKind};
 use re_protos::catalog::v1alpha1::{
     ext::{DatasetEntry, EntryDetails},
     EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
 };
-use re_protos::frontend::v1alpha1::ScanPartitionTableRequest;
 use re_protos::TypeConversionError;
 use re_smart_channel::SmartChannelSource;
-use re_sorbet::{BatchType, SorbetBatch, SorbetError};
+use re_sorbet::SorbetError;
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, UiExt as _, UiLayout};
 use re_viewer_context::{
@@ -57,10 +54,6 @@ pub struct Dataset {
     pub dataset_entry: DatasetEntry,
 
     pub origin: re_uri::Origin,
-
-    //TODO: do we still need this?
-    #[expect(dead_code)]
-    pub partition_table: Vec<SorbetBatch>,
 }
 
 impl Dataset {
@@ -393,44 +386,13 @@ async fn fetch_dataset_entries(
             .ok_or(EntryError::FieldNotSet("dataset"))?
             .try_into()?;
 
-        let partition_table = fetch_partition_table(&mut client, entry_details.id).await?;
-
         let entry = Dataset {
             dataset_entry,
             origin: origin.clone(),
-            partition_table,
         };
 
         datasets.insert(entry.id(), entry);
     }
 
     Ok(datasets)
-}
-
-async fn fetch_partition_table(
-    client: &mut redap::RedapClient,
-    entry_id: EntryId,
-) -> Result<Vec<SorbetBatch>, EntryError> {
-    let mut response = client
-        .scan_partition_table(ScanPartitionTableRequest {
-            dataset_id: Some(entry_id.into()),
-            scan_parameters: None,
-        })
-        .await?
-        .into_inner();
-
-    let mut sorbet_batches = Vec::new();
-
-    while let Some(result) = response.next().await {
-        let record_batch = result?
-            .data
-            .ok_or(EntryError::FieldNotSet("data"))?
-            .decode()?;
-
-        let sorbet_batch = SorbetBatch::try_from_record_batch(&record_batch, BatchType::Dataframe)?;
-
-        sorbet_batches.push(sorbet_batch);
-    }
-
-    Ok(sorbet_batches)
 }
