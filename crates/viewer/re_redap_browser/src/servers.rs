@@ -120,7 +120,6 @@ impl Server {
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
-        //TODO: don't attempt to draw this until the session context is fully registered
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
             egui::Id::new(&self.origin),

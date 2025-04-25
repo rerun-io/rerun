@@ -106,7 +106,7 @@ impl DataFusionQuery {
 
         let TableBlueprint {
             sort_by,
-            partition_links, //TODO
+            partition_links,
         } = &self.blueprint;
 
         if let Some(sort_by) = sort_by {

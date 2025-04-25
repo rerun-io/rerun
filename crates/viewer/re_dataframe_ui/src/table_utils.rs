@@ -112,8 +112,13 @@ impl TableConfig {
         ctx: &Context,
         persisted_id: Id,
         columns: impl Iterator<Item = ColumnConfig>,
+        reset: bool,
     ) -> Self {
         ctx.data_mut(|data| {
+            if reset {
+                data.insert_persisted(persisted_id, Self::new(persisted_id));
+            }
+
             let config: &mut Self =
                 data.get_persisted_mut_or_insert_with(persisted_id, || Self::new(persisted_id));
 

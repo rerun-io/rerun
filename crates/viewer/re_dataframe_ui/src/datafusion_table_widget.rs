@@ -21,7 +21,6 @@ use crate::table_utils::{
 use crate::DisplayRecordBatch;
 
 /// Keep track of the columns in a sorbet batch, indexed by id.
-//TODO(ab): this, `TableConfig` and `DatafusionAdapter` should somehow be merged
 struct Columns<'a> {
     /// Column index and descriptor from id
     inner: IntMap<egui::Id, (usize, ColumnDescriptorRef<'a>)>,
@@ -164,8 +163,10 @@ impl<'a> DataFusionTableWidget<'a> {
             .table_exist(table_ref.clone())
             .unwrap_or_default()
         {
-            ui.error_label(format!(
-                "Table `{}` does not exist in the provided context.",
+            // Let's not be too intrusive here, as this can often happen temporarily while the table
+            // providers are being registered to the session context after refreshing.
+            ui.label(format!(
+                "Loading table… (table `{}` not found in session context)",
                 &table_ref
             ));
             return;
@@ -214,7 +215,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             (None, None) => {
                 // still processing, nothing yet to show
-                ui.label("Loading table...");
+                ui.label("Loading table…");
                 return;
             }
         };
@@ -255,7 +256,6 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        //TODO: force refresh
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
@@ -268,6 +268,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
                 ColumnConfig::new(Id::new(c), name)
             }),
+            refresh,
         );
 
         if let Some(title) = title {
