@@ -362,14 +362,9 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 desc.name().to_owned()
             };
 
-            let sort_direction_icon = self
-                .blueprint
-                .sort_by
-                .as_ref()
-                .and_then(|sort_by| {
-                    (sort_by.column.as_str() == column_name).then_some(&sort_by.direction)
-                })
-                .map(SortDirection::icon);
+            let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
+                (sort_by.column.as_str() == column_name).then_some(&sort_by.direction)
+            });
 
             header_ui(ui, |ui| {
                 egui::Sides::new().show(
@@ -377,7 +372,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                     |ui| {
                         ui.label(egui::RichText::new(name).strong().monospace());
 
-                        if let Some(dir_icon) = sort_direction_icon {
+                        if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
                             ui.add_space(-5.0);
                             ui.small_icon(
                                 dir_icon,
@@ -393,21 +388,23 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             ui,
                             ui.small_icon_button_widget(&re_ui::icons::MORE),
                             |ui| {
-                                if ui.button("Ascending").clicked() {
-                                    self.new_blueprint.sort_by = Some(SortBy {
-                                        column: column_name.to_owned(),
-                                        direction: SortDirection::Ascending,
-                                    });
-                                    ui.close_menu();
-                                }
+                                for sort_direction in SortDirection::iter() {
+                                    let already_sorted =
+                                        Some(&sort_direction) == current_sort_direction;
 
-                                if ui.button("Descending").clicked() {
-                                    self.new_blueprint.sort_by = Some(SortBy {
-                                        column: column_name.to_owned(),
-                                        direction: SortDirection::Descending,
-                                    });
-
-                                    ui.close_menu();
+                                    if ui
+                                        .add_enabled_ui(!already_sorted, |ui| {
+                                            sort_direction.menu_button(ui)
+                                        })
+                                        .inner
+                                        .clicked()
+                                    {
+                                        self.new_blueprint.sort_by = Some(SortBy {
+                                            column: column_name.to_owned(),
+                                            direction: sort_direction,
+                                        });
+                                        ui.close_menu();
+                                    }
                                 }
                             },
                         );

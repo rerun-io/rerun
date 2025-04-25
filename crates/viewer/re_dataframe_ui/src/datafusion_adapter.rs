@@ -18,6 +18,10 @@ pub enum SortDirection {
 }
 
 impl SortDirection {
+    pub fn iter() -> impl Iterator<Item = Self> {
+        [Self::Ascending, Self::Descending].into_iter()
+    }
+
     pub fn is_ascending(&self) -> bool {
         matches!(self, Self::Ascending)
     }
@@ -27,6 +31,18 @@ impl SortDirection {
             Self::Ascending => &re_ui::icons::ARROW_DOWN,
             Self::Descending => &re_ui::icons::ARROW_UP,
         }
+    }
+
+    pub fn menu_button(&self, ui: &mut egui::Ui) -> egui::Response {
+        ui.add(egui::Button::image_and_text(
+            self.icon()
+                .as_image()
+                .fit_to_exact_size(re_ui::DesignTokens::small_icon_size()),
+            match self {
+                Self::Ascending => "Ascending",
+                Self::Descending => "Descending",
+            },
+        ))
     }
 }
 
