@@ -206,13 +206,15 @@ impl ComponentName {
     }
 
     /// If this is an indicator component, for which archetype?
-    pub fn indicator_component_archetype(&self) -> Option<String> {
-        self.strip_suffix("Indicator").map(|name| name.to_owned())
+    pub fn indicator_component_archetype_short_name(&self) -> Option<String> {
+        self.short_name()
+            .strip_suffix("Indicator")
+            .map(|name| name.to_owned())
     }
 
     /// Web URL to the Rerun documentation for this component.
     pub fn doc_url(&self) -> Option<String> {
-        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype() {
+        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype_short_name() {
             // Link indicator components to their archetype.
             // This code should be correct as long as this url passes our link checker:
             // https://rerun.io/docs/reference/types/archetypes/line_strips3d

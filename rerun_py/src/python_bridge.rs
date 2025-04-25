@@ -156,6 +156,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
+    m.add_function(wrap_pyfunction!(set_callback_sink_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(serve_grpc, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web_viewer, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web, m)?)?;
@@ -841,6 +842,45 @@ fn set_callback_sink(callback: PyObject, recording: Option<&PyRecordingStream>, 
         rec.set_sink(Box::new(CallbackSink::new(callback)));
         flush_garbage_queue();
     });
+}
+
+/// Set callback sink for blueprint.
+#[pyfunction]
+#[pyo3(signature = (callback, make_active, make_default, blueprint_stream))]
+fn set_callback_sink_blueprint(
+    callback: PyObject,
+    make_active: bool,
+    make_default: bool,
+    blueprint_stream: &PyRecordingStream,
+    py: Python<'_>,
+) {
+    if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
+        let callback = move |msgs: &[LogMsg]| {
+            Python::with_gil(|py| {
+                let data = encode_ref_as_bytes_local(msgs.iter().map(Ok)).ok_or_log_error()?;
+                let bytes = PyBytes::new(py, &data);
+                callback.bind(py).call1((bytes,)).ok_or_log_error()?;
+                Some(())
+            });
+        };
+
+        // The call to `set_sink` may internally flush.
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            blueprint_stream.flush_blocking();
+
+            let activation_cmd = BlueprintActivationCommand {
+                blueprint_id,
+                make_active,
+                make_default,
+            };
+
+            blueprint_stream.record_msg(activation_cmd.into());
+
+            blueprint_stream.set_sink(Box::new(CallbackSink::new(callback)));
+            flush_garbage_queue();
+        });
+    }
 }
 
 /// Create a new binary stream sink, and return the associated binary stream.

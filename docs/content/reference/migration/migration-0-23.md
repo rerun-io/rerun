@@ -1,6 +1,6 @@
 ---
 title: Migrating from 0.22 to 0.23
-order: 989
+order: 987
 ---
 
 ## Reserved namespaces
@@ -388,3 +388,25 @@ We've deprecated inconsistent constructors with following replacements:
 - 🌊 C++:
     - `from_file` -> `from_file_path`
     - `from_bytes` -> `from_file_contents`
+
+## Jupyter notebooks
+
+### Explicit `Viewer` imports
+
+We've removed `notebook` from the root `rerun` namespace. `Viewer` must now be imported directly:
+
+Before:
+```python
+viewer = rr.notebook.Viewer()
+viewer.display()
+```
+
+After:
+```python
+from rerun.notebook import Viewer
+
+viewer = Viewer()
+viewer.display()
+```
+
+`rr.notebook_show` is still available in the root `rerun` namespace.
