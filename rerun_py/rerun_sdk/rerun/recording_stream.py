@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 @deprecated(
     """Please migrate to `rr.RecordingStream(…)`.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 def new_recording(
     application_id: str,
@@ -960,7 +960,7 @@ class RecordingStream:
 
     @deprecated(
         """Use `RecordingStream.set_time(sequence=…)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
     )
     def set_time_sequence(self, timeline: str, sequence: int) -> None:
         """
@@ -994,7 +994,7 @@ class RecordingStream:
 
     @deprecated(
         """Use `RecordingStream.set_time(timestamp=seconds)` or `RecordingStream.set_time(duration=seconds)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
     )
     def set_time_seconds(self, timeline: str, seconds: float) -> None:
         """
@@ -1035,7 +1035,7 @@ class RecordingStream:
 
     @deprecated(
         """Use `RecordingStream.set_time(timestamp=1e-9 * nanos)` or `RecordingStream.set_time(duration=1e-9 * nanos)` instead.
-        See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+        See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
     )
     def set_time_nanos(self, timeline: str, nanos: int) -> None:
         """

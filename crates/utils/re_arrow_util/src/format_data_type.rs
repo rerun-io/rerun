@@ -90,7 +90,7 @@ impl std::fmt::Display for DisplayDatatype<'_> {
             DataType::LargeBinary => "LargeBinary",
             DataType::Utf8 => "Utf8",
             DataType::LargeUtf8 => "LargeUtf8",
-            DataType::List(ref field) => {
+            DataType::List(field) => {
                 let s = format!("List[{}]", Self(field.data_type()));
                 return f.write_str(&s);
             }

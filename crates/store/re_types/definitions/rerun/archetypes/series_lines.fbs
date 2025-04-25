@@ -12,7 +12,6 @@ namespace rerun.archetypes;
 /// \example archetypes/series_lines_style title="Line series" image="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png"
 table SeriesLines (
   "attr.docs.category": "Plotting",
-  "attr.docs.unreleased",
   "attr.docs.view_types": "TimeSeriesView",
   "attr.rerun.state": "stable"
 ) {

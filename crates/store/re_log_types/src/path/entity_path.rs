@@ -257,7 +257,7 @@ impl EntityPath {
         end: &'a Self,
     ) -> impl Iterator<Item = Self> + 'a {
         re_tracing::profile_function!();
-        if start.map_or(true, |start| end.is_descendant_of(start)) {
+        if start.is_none_or(|start| end.is_descendant_of(start)) {
             let first_ind = start.map_or(0, |start| start.len() + 1);
             let parts = end.as_slice();
             itertools::Either::Left((first_ind..=end.len()).map(|i| Self::from(&parts[0..i])))

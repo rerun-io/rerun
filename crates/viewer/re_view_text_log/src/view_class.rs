@@ -96,7 +96,7 @@ Filter message types and toggle column visibility in a selection panel.",
         if ctx
             .indicated_entities_per_visualizer
             .get(&TextLogSystem::identifier())
-            .map_or(true, |entities| {
+            .is_none_or(|entities| {
                 entities.is_empty() || entities.iter().all(|e| suggested_filter.matches(e))
             })
         {
@@ -175,7 +175,7 @@ Filter message types and toggle column visibility in a selection panel.",
             .filter(|te| {
                 te.level
                     .as_ref()
-                    .map_or(true, |lvl| state.filters.is_log_level_visible(lvl))
+                    .is_none_or(|lvl| state.filters.is_log_level_visible(lvl))
             })
             .collect::<Vec<_>>();
 

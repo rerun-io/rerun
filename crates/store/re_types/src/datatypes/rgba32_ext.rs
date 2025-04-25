@@ -20,7 +20,7 @@ impl Rgba32 {
     #[inline]
     pub const fn from_unmultiplied_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
         let [r, g, b, a] = [r as u32, g as u32, b as u32, a as u32];
-        Self(r << 24 | g << 16 | b << 8 | a)
+        Self((r << 24) | (g << 16) | (b << 8) | a)
     }
 
     /// From linear-space sRGB values in 0-1 range, with a separate/unmultiplied alpha.

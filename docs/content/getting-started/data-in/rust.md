@@ -61,7 +61,7 @@ Checkout `rerun --help` for more options.
 
 To get going we want to create a [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html):
 We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new) function which allows us to name the dataset we're working on by setting its [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html).
-We then connect it to the already running Viewer via [`connect_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect_grpc?speculative-link), returning the `RecordingStream` upon success.
+We then connect it to the already running Viewer via [`connect_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect_grpc), returning the `RecordingStream` upon success.
 
 ```rust
 fn main() -> Result<(), Box<dyn std::error::Error>> {

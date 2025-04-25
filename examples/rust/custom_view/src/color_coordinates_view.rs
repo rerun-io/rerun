@@ -1,18 +1,18 @@
 use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
-use re_viewer::external::re_log_types::ResolvedEntityPathFilter;
-use re_viewer::external::re_ui::Help;
 use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
     re_entity_db::InstancePath,
-    re_log_types::EntityPath,
+    re_log_types::{EntityPath, ResolvedEntityPathFilter},
     re_types::ViewClassIdentifier,
-    re_ui,
+    re_ui::{self, Help},
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SystemExecutionOutput,
-        UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-        ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-        ViewSystemRegistrator, ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item,
+        MaybeVisualizableEntities, PerVisualizer, SelectionHighlight, SmallVisualizerSet,
+        SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority,
+        ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+        ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+        VisualizableEntities,
     },
 };
 
@@ -116,13 +116,35 @@ impl ViewClass for ColorCoordinatesView {
         if ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
-            .map_or(true, |entities| {
+            .is_none_or(|entities| {
                 entities.is_empty() || entities.iter().all(|e| suggested_filter.matches(e))
             })
         {
             ViewSpawnHeuristics::default()
         } else {
             ViewSpawnHeuristics::root()
+        }
+    }
+
+    /// Make the viewer use the `ColorCoordinatesVisualizerSystem` by default.
+    ///
+    /// The default implementation of `choose_default_visualizers` activates visualizers only
+    /// if the respective indicator is present.
+    /// We want to enable the visualizer here though for any visualizable entity instead!
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet {
+        if visualizable_entities_per_visualizer
+            .get(&InstanceColorSystem::identifier())
+            .is_some_and(|entities| entities.contains(entity_path))
+        {
+            SmallVisualizerSet::from_slice(&[InstanceColorSystem::identifier()])
+        } else {
+            SmallVisualizerSet::new()
         }
     }
 

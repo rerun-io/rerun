@@ -129,6 +129,12 @@ pub fn blob_preview_and_save_ui(
             .ok();
 
         if let Some(image) = &image {
+            if !ui_layout.is_single_line() {
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Image format").value_text(image.format.to_string()),
+                );
+            }
+
             let colormap = None; // TODO(andreas): Rely on default here for now.
             image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
         } else {
