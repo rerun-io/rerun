@@ -18,17 +18,11 @@ use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
     origin: re_uri::Origin,
-
     entries: Entries,
 
-    // /// Session context which holds all the table-like entries of the server.
-    // session_ctx: Arc<SessionContext>,
+    /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: TablesSessionContext,
 
-    /// Names of the table entries successfully registered in the session context.
-    ///
-    /// This can serve as an indicator of `session_ctx`'s current state.
-    //entries_names: RequestedObject<Result<Vec<Table>, SessionContextError>>,
     runtime: AsyncRuntimeHandle,
 }
 

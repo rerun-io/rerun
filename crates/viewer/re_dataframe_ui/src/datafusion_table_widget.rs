@@ -12,15 +12,15 @@ use re_ui::list_item::ItemButton;
 use re_ui::UiExt as _;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-use crate::datafusion_adapter::{
-    DataFusionAdapter, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
-};
+use crate::datafusion_adapter::DataFusionAdapter;
+use crate::table_blueprint::{PartitionLinksSpec, SortBy, SortDirection, TableBlueprint};
 use crate::table_utils::{
     apply_table_style_fixes, cell_ui, header_ui, ColumnConfig, TableConfig, CELL_MARGIN,
 };
 use crate::DisplayRecordBatch;
 
 /// Keep track of the columns in a sorbet batch, indexed by id.
+//TODO(ab): merge this into `TableConfig` when table config is no longer used elsewhere.
 struct Columns<'a> {
     /// Column index and descriptor from id
     inner: IntMap<egui::Id, (usize, ColumnDescriptorRef<'a>)>,
