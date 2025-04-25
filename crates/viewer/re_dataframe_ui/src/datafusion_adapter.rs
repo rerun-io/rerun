@@ -109,12 +109,8 @@ impl DataFusionQuery {
             partition_links,
         } = &self.blueprint;
 
-        if let Some(sort_by) = sort_by {
-            dataframe = dataframe.sort(vec![
-                col(&sort_by.column).sort(sort_by.direction.is_ascending(), true)
-            ])?;
-        }
-
+        // Important: the needs to happen first, in case we sort/filter/etc. based on that
+        // particular column.
         if let Some(partition_links) = partition_links {
             //TODO(ab): we should get this from `re_uri::DatasetDataUri` instead of hardcoding
             let uri = format!(
@@ -129,6 +125,12 @@ impl DataFusionQuery {
                     col(&partition_links.partition_id_column_name),
                 ]),
             )?;
+        }
+
+        if let Some(sort_by) = sort_by {
+            dataframe = dataframe.sort(vec![
+                col(&sort_by.column).sort(sort_by.direction.is_ascending(), true)
+            ])?;
         }
 
         // collect
