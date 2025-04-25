@@ -1,5 +1,26 @@
 # Rerun changelog
 
+## [0.23.1](https://github.com/rerun-io/rerun/compare/0.23.0...0.23.1) - 2025-04-25 - Fix notebooks
+
+#### 🪳 Bug fixes
+- Use correct URL for `RERUN_NOTEBOOK_ASSET` [#9800](https://github.com/rerun-io/rerun/pull/9800)
+
+#### 🌊 C++ API
+- C++: Emit warnings when using deprecated Rerun types [#9801](https://github.com/rerun-io/rerun/pull/9801)
+
+#### 🐍 Python API
+- Direct API for setting blueprint on a notebook-embedded viewer [#9804](https://github.com/rerun-io/rerun/pull/9804)
+
+#### 🌁 Viewer improvements
+- Fix doclinks to archetypes [#9791](https://github.com/rerun-io/rerun/pull/9791)
+
+#### 🧑‍🏫 Examples
+- Add link to Gradio annotation example [#9790](https://github.com/rerun-io/rerun/pull/9790) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+
+#### 🖼 UI improvements
+- Show image format (resolution etc) of image blobs [#9792](https://github.com/rerun-io/rerun/pull/9792)
+
+
 ## [0.23.0](https://github.com/rerun-io/rerun/compare/0.22.1...0.23.0) - 2025-04-24 - Backwards compatible `.rrd` and multi-scalar logging
 
 * 📖 [Release blogpost](https://rerun.io/blog/release-0.23)
