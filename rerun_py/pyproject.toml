@@ -151,6 +151,7 @@ lint.select = [
   "PIE",     # flake8-pic: various idomatic python lints
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
   "YTT",     # Various checks on the use of `sys.version_info` and related.
+  "RUF027",  # Ensure that strings which look like format-strings have the `f` prefix
 ]
 
 lint.unfixable = [

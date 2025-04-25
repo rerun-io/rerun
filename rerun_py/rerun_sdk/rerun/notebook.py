@@ -407,7 +407,7 @@ class Viewer:
 
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
             raise ValueError(
-                "set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
+                f"set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
             )
 
         if sequence is not None:

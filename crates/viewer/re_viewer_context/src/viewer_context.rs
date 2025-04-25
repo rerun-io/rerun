@@ -4,6 +4,7 @@ use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
+use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
@@ -20,7 +21,6 @@ pub struct ViewerContext<'a> {
     /// Global context shared across all parts of the viewer.
     pub global_context: GlobalContext<'a>,
 
-    pub store_context: &'a StoreContext<'a>,
     pub storage_context: &'a StorageContext<'a>,
 
     /// Mapping from class and system to entities for the store
@@ -57,6 +57,15 @@ pub struct ViewerContext<'a> {
 
     /// Helper object to manage drag-and-drop operations.
     pub drag_and_drop_manager: &'a DragAndDropManager,
+
+    // -- Everything that is concerned with the current active recording/table.
+    /// The current active Redap entry id, if any.
+    pub active_redap_entry: Option<&'a EntryId>,
+
+    /// The current active local table, if any.
+    pub active_table_id: Option<&'a TableId>,
+
+    pub store_context: &'a StoreContext<'a>,
 }
 
 // Forwarding of `GlobalContext` methods to `ViewerContext`. Leaving this as a
@@ -298,10 +307,9 @@ impl ViewerContext<'_> {
     ///
     /// It excludes the globally hardcoded welcome screen app ID.
     pub fn has_active_recording(&self) -> bool {
-        self.recording().app_id().is_some_and(|active_app_id| {
-            active_app_id != &StoreHub::welcome_screen_app_id()
-                && active_app_id != &StoreHub::table_app_id()
-        })
+        self.recording()
+            .app_id()
+            .is_some_and(|active_app_id| active_app_id != &StoreHub::welcome_screen_app_id())
     }
 }
 

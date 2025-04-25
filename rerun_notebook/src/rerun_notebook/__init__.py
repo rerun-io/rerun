@@ -41,7 +41,7 @@ if ASSET_ENV is None:
     if "RERUN_DEV_ENVIRONMENT" in os.environ:
         ASSET_ENV = "serve-local"
     else:
-        ASSET_ENV = "https://app.rerun.io/version/{__version__}/widget.js"
+        ASSET_ENV = f"https://app.rerun.io/version/{__version__}/widget.js"
 
 if ASSET_ENV == ASSET_MAGIC_SERVE:
     from .asset_server import serve_assets
