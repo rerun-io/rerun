@@ -198,7 +198,7 @@ const_format = "0.2"
 convert_case = "0.6"
 criterion = "0.5"
 crossbeam = "0.8"
-datafusion = "46"
+datafusion = { version = "46", default-features = false }
 datafusion-ffi = "46"
 directories = "5"
 document-features = "0.2.8"

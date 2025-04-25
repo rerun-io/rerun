@@ -35,14 +35,14 @@ re_protos.workspace = true
 # External dependencies:
 anyhow.workspace = true
 arrow.workspace = true
-async-trait = "0.1.83"
 async-stream.workspace = true
+async-trait = "0.1.83"
 datafusion.workspace = true
 futures-util.workspace = true
 itertools.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true
 tonic.workspace = true
 
 [dev-dependencies]
 re_tuid.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
