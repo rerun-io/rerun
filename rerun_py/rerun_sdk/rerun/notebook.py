@@ -199,14 +199,14 @@ class Viewer:
 
         Parameters
         ----------
-        application_id: str
+        application_id:
             The ID of the application to set the blueprint for.
-        blueprint: BlueprintLike
+        blueprint:
             The blueprint to set for the application.
-        make_active: bool
+        make_active:
             Whether to make the blueprint active.
             If `True`, the blueprint will be set as the active blueprint for the application.
-        make_default: bool
+        make_default:
             Whether to make the blueprint the default blueprint for the application.
             If `True`, the blueprint will be set as the default blueprint for the application.
 
