@@ -1585,10 +1585,12 @@ impl App {
         for event in store_events {
             let chunk = &event.diff.chunk;
             for component in chunk.component_names() {
-                if let Some(archetype_name) = component.indicator_component_archetype() {
+                if let Some(short_archetype_name) =
+                    component.indicator_component_archetype_short_name()
+                {
                     if let Some(archetype) = self
                         .reflection
-                        .archetype_reflection_from_short_name(&archetype_name)
+                        .archetype_reflection_from_short_name(&short_archetype_name)
                     {
                         for &view_type in archetype.view_types {
                             if !cfg!(feature = "map_view") && view_type == "MapView" {
@@ -1598,7 +1600,7 @@ impl App {
                             }
                         }
                     } else {
-                        re_log::debug_once!("Unknown archetype: {archetype_name}");
+                        re_log::debug_once!("Unknown archetype: {short_archetype_name}");
                     }
                 }
             }
