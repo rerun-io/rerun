@@ -192,6 +192,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_class::<crate::datafusion_utils::PyBoundedImageExtractionUdf>()?;
     m.add_class::<crate::datafusion_utils::PyDepthImageToPointCloudUdf>()?;
+    m.add_class::<crate::datafusion_utils::PySetEntityPathUdf>()?;
 
     use crate::video::asset_video_read_frame_timestamps_nanos;
     m.add_function(wrap_pyfunction!(

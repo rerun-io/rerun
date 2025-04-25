@@ -4,18 +4,17 @@ use arrow::datatypes::{DataType, Field, Fields};
 use arrow_array::builder::{GenericListBuilder, NullBuilder};
 use arrow_array::{Array, ArrayRef, StructArray};
 use datafusion::common::{
-    exec_datafusion_err, exec_err, DataFusionError, ExprSchema, Result as DataFusionResult,
+    exec_datafusion_err, exec_err, DataFusionError, Result as DataFusionResult,
 };
 use datafusion::logical_expr::{
     ColumnarValue, ReturnFieldArgs, ScalarFunctionArgs, ScalarUDFImpl, Signature, TypeSignature,
     Volatility,
 };
 use itertools::multizip;
-use re_dataframe::external::re_chunk::ArrowArray as _;
 use re_types::components::ImageFormat;
 use re_types::components::{DepthMeter, ImageBuffer, PinholeProjection, Position3D, Resolution};
 use re_types::datatypes::{ChannelDatatype, ColorModel};
-use re_types_core::{ComponentBatch, Loggable as _, LoggableBatch as _, LoggableBatch};
+use re_types_core::{ComponentBatch, Loggable as _};
 use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -181,7 +180,7 @@ fn compute_points(
         .map(|(x, y)| {
             let idx = y * image_format.width + x;
 
-            let image_space = glam::Vec3::new(x as f32, y as f32, image_f32[idx as usize] * depth);
+            let image_space = glam::Vec3::new(x as f32, y as f32, image_f32[idx as usize] / depth);
             pinhole_projection.unproject(image_space).into()
         })
         .collect::<Vec<_>>();
@@ -373,7 +372,7 @@ impl ScalarUDFImpl for DepthImageToPointCloudUdf {
         let values = if valid_arrays.is_empty() {
             arrow::array::new_empty_array(&Position3D::arrow_datatype())
         } else {
-            re_arrow_util::concat_arrays(&valid_arrays).unwrap()
+            re_arrow_util::concat_arrays(&valid_arrays)?
         };
 
         // let lengths = result
