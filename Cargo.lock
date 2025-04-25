@@ -7355,13 +7355,9 @@ name = "re_redap_browser"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "arrow",
  "datafusion",
  "egui",
- "egui_table",
  "itertools 0.14.0",
- "once_cell",
- "re_arrow_util",
  "re_data_ui",
  "re_dataframe_ui",
  "re_datafusion",
@@ -7373,13 +7369,11 @@ dependencies = [
  "re_smart_channel",
  "re_sorbet",
  "re_types",
- "re_types_core",
  "re_ui",
  "re_uri",
  "re_viewer_context",
  "serde",
  "thiserror 1.0.65",
- "tokio-stream",
  "tonic",
  "url",
 ]
