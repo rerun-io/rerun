@@ -203,9 +203,16 @@ jobs:
                 - [ ] pip install: does it install and run?
                 - [ ] cargo install of cli tool: does it install and run?
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
-              - [ ] Populate the release with the changelog and a nice header video/picture, check `Set as latest release`, then click `Publish release`.
+              - [ ] Edit and publish the GitHub release:
+                - Do NOT create a GitHub release draft yourself! Let the release job do it.
+                - Populate the release with the changelog and a nice header video/picture
+                - Make sure `Set as latest release` is checked
+                - Click `Publish release`
+                - Once published, the release assets will sync to it automatically.
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
               - [ ] Update landing's version of the web viewer (@jprochazk)
+              - [ ] Release a new version of gradio (@oxkitsune, @jprochazk)
+              - [ ] Merge the Release PR
 
           A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
           [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls).
@@ -498,7 +505,7 @@ jobs:
           cpp_sdk_zip_link="https://build.rerun.io/commit/$short_commit_hash/rerun_cpp_sdk.zip"
 
           pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
-          cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
+          cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }} --locked"
           npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
 
           cat <<EOF > comment-body.txt

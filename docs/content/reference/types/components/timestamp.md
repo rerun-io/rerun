@@ -17,11 +17,11 @@ int64
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `Timestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Timestamp.html?speculative-link)
- * 🐍 [Python API docs for `Timestamp`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Timestamp)
- * 🦀 [Rust API docs for `Timestamp`](https://docs.rs/rerun/latest/rerun/components/struct.Timestamp.html?speculative-link)
+ * 🌊 [C++ API docs for `Timestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Timestamp.html)
+ * 🐍 [Python API docs for `Timestamp`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Timestamp)
+ * 🦀 [Rust API docs for `Timestamp`](https://docs.rs/rerun/latest/rerun/components/struct.Timestamp.html)
 
 
 ## Used by
 
-* [`RecordingProperties`](../archetypes/recording_properties.md?speculative-link)
+* [`RecordingProperties`](../archetypes/recording_properties.md)
