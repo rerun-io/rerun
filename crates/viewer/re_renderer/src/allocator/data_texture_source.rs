@@ -84,7 +84,7 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     pub fn is_empty(&self) -> bool {
         self.buffers
             .first()
-            .map_or(true, |first_buffer| first_buffer.is_empty())
+            .is_none_or(|first_buffer| first_buffer.is_empty())
     }
 
     /// The number of elements written so far.

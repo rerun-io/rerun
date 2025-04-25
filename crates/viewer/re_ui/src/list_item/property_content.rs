@@ -328,10 +328,7 @@ impl ListItemContent for PropertyContent<'_> {
         ui.painter().galley(text_pos, galley, visuals.text_color());
 
         // Draw value
-        let is_completely_collapsed = context
-            .list_item
-            .collapse_openness
-            .map_or(true, |o| o == 0.0);
+        let is_completely_collapsed = context.list_item.collapse_openness.is_none_or(|o| o == 0.0);
         let should_show_value = if show_only_when_collapsed {
             is_completely_collapsed
         } else {
