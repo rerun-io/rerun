@@ -20,7 +20,7 @@ impl DataUi for ComponentPath {
 
         let engine = db.storage_engine();
 
-        if let Some(archetype_name) = component_name.indicator_component_archetype() {
+        if let Some(archetype_name) = component_name.indicator_component_archetype_short_name() {
             ui.label(format!(
                 "Indicator component for the {archetype_name} archetype"
             ));

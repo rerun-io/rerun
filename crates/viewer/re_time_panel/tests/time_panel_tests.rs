@@ -180,6 +180,28 @@ pub fn test_various_entity_kinds_in_time_panel() {
     }
 }
 
+#[test]
+pub fn test_focused_item_is_focused() {
+    TimePanel::ensure_registered_subscribers();
+
+    let mut test_context = TestContext::default();
+
+    log_data_for_various_entity_kinds_tests(&mut test_context);
+
+    *test_context.focused_item.lock() =
+        Some(EntityPath::from("/parent_with_data/of/entity").into());
+
+    let time_panel = TimePanel::default();
+
+    run_time_panel_and_save_snapshot(
+        test_context,
+        time_panel,
+        200.0,
+        false,
+        "focused_item_is_focused",
+    );
+}
+
 pub fn log_data_for_various_entity_kinds_tests(test_context: &mut TestContext) {
     let timeline_a = "timeline_a";
     let timeline_b = "timeline_b";

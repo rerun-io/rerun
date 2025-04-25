@@ -1,6 +1,4 @@
-use rerun::{
-    ChunkStore, ChunkStoreConfig, ComponentBatch as _, ComponentDescriptor, VersionPolicy,
-};
+use rerun::{ChunkStore, ChunkStoreConfig, ComponentBatch as _, ComponentDescriptor};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
     let positions = rerun::components::Position3D::new(1.0, 2.0, 3.0)
@@ -40,12 +38,8 @@ fn check_tags(rec: &rerun::RecordingStream) {
     if let Ok(path_to_rrd) = std::env::var("_RERUN_TEST_FORCE_SAVE") {
         rec.flush_blocking();
 
-        let stores = ChunkStore::from_rrd_filepath(
-            &ChunkStoreConfig::ALL_DISABLED,
-            path_to_rrd,
-            VersionPolicy::Warn,
-        )
-        .unwrap();
+        let stores =
+            ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, path_to_rrd).unwrap();
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();

@@ -96,11 +96,6 @@ service ManifestRegistryService {
   // --- Developer/Debug APIs ---
   // Unstable APIs that are not exposed by the Frontend.
 
-  // Fetch an entire partition from the server, without any pre- or post-processing.
-  //
-  // This is a temporary hack while we get everything up and running.
-  rpc FetchPartition(FetchPartitionRequest) returns (stream FetchPartitionResponse) {}
-
   // Retrieves the chunk manifest for a specific index.
   rpc FetchChunkManifest(FetchChunkManifestRequest) returns (stream FetchChunkManifestResponse) {}
 
@@ -479,16 +474,6 @@ message FetchPartitionManifestRequest {
 // TODO(cmc): this should have response extensions too.
 message FetchPartitionManifestResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
-}
-
-message FetchPartitionRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
-  rerun.common.v1alpha1.PartitionId partition_id = 2;
-}
-
-message FetchPartitionResponse {
-  // Chunks as arrow RecordBatch
-  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message FetchChunkManifestRequest {
