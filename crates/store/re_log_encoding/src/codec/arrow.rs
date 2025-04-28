@@ -33,27 +33,58 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
 }
 
 #[cfg(feature = "encoder")]
-pub(crate) struct Payload {
+pub(crate) struct Payload<'a> {
     pub uncompressed_size: usize,
-    pub data: Vec<u8>,
+    // NOTE: This is a `&mut` to ensure exclusivity
+    pub data: &'a mut Vec<u8>,
 }
 
 #[cfg(feature = "encoder")]
-pub(crate) fn encode_arrow(
+pub(crate) struct ArrowEncodingContext {
+    uncompressed: Vec<u8>,
+    compressed: Vec<u8>,
+}
+
+#[cfg(feature = "encoder")]
+impl ArrowEncodingContext {
+    pub fn new() -> Self {
+        Self {
+            uncompressed: Vec::new(),
+            compressed: Vec::new(),
+        }
+    }
+}
+
+#[cfg(feature = "encoder")]
+pub(crate) fn encode_arrow_with_ctx<'a>(
+    arrow_ctx: &'a mut ArrowEncodingContext,
     batch: &ArrowRecordBatch,
     compression: crate::Compression,
-) -> Result<Payload, crate::encoder::EncodeError> {
-    let mut uncompressed = Vec::new();
-    write_arrow_to_bytes(&mut uncompressed, batch)?;
+) -> Result<Payload<'a>, crate::encoder::EncodeError> {
+    let ArrowEncodingContext {
+        uncompressed,
+        compressed,
+    } = arrow_ctx;
+
+    uncompressed.clear();
+    write_arrow_to_bytes(uncompressed, batch)?;
     let uncompressed_size = uncompressed.len();
 
     let data = match compression {
-        crate::Compression::Off => uncompressed,
-        crate::Compression::LZ4 => lz4_flex::block::compress(&uncompressed),
+        crate::Compression::Off => &mut *uncompressed,
+        crate::Compression::LZ4 => {
+            compressed.resize(
+                lz4_flex::block::get_maximum_output_size(uncompressed.len()),
+                0,
+            );
+            lz4_flex::block::compress_into(&uncompressed, compressed)?;
+            &mut *compressed
+        }
     };
 
     Ok(Payload {
         uncompressed_size,
+        // TODO(jan): can this memcpy be removed?
         data,
     })
 }

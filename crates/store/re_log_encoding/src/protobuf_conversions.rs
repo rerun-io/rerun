@@ -74,11 +74,12 @@ pub fn log_msg_to_proto(
     message: re_log_types::LogMsg,
     compression: crate::Compression,
 ) -> Result<re_protos::log_msg::v1alpha1::LogMsg, crate::encoder::EncodeError> {
-    use crate::codec::arrow::encode_arrow;
+    use crate::codec::arrow::{encode_arrow_with_ctx, ArrowEncodingContext};
     use re_protos::log_msg::v1alpha1::{
         ArrowMsg, BlueprintActivationCommand, LogMsg as ProtoLogMsg, SetStoreInfo,
     };
 
+    let mut arrow_ctx = ArrowEncodingContext::new();
     let proto_msg = match message {
         re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
             let set_store_info: SetStoreInfo = set_store_info.into();
@@ -89,7 +90,7 @@ pub fn log_msg_to_proto(
             }
         }
         re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
-            let payload = encode_arrow(&arrow_msg.batch, compression)?;
+            let payload = encode_arrow_with_ctx(&mut arrow_ctx, &arrow_msg.batch, compression)?;
             let arrow_msg = ArrowMsg {
                 store_id: Some(store_id.into()),
                 compression: match compression {
@@ -102,7 +103,8 @@ pub fn log_msg_to_proto(
                 },
                 uncompressed_size: payload.uncompressed_size as i32,
                 encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
-                payload: payload.data,
+                // TODO(jan): can this memcpy be removed?
+                payload: payload.data.to_vec(),
             };
             ProtoLogMsg {
                 msg: Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(

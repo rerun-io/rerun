@@ -1,6 +1,7 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
 use crate::codec;
+use crate::codec::arrow::ArrowEncodingContext;
 use crate::codec::file::{self, encoder};
 use crate::FileHeader;
 use crate::Serializer;
@@ -120,6 +121,7 @@ pub struct Encoder<W: std::io::Write> {
     compression: Compression,
     write: W,
     scratch: Vec<u8>,
+    arrow_ctx: ArrowEncodingContext,
 }
 
 impl<W: std::io::Write> Encoder<W> {
@@ -140,6 +142,7 @@ impl<W: std::io::Write> Encoder<W> {
             compression: options.compression,
             write,
             scratch: Vec::new(),
+            arrow_ctx: ArrowEncodingContext::new(),
         })
     }
 
@@ -150,7 +153,12 @@ impl<W: std::io::Write> Encoder<W> {
         self.scratch.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                encoder::encode(&mut self.scratch, message, self.compression)?;
+                encoder::encode(
+                    &mut self.scratch,
+                    &mut self.arrow_ctx,
+                    message,
+                    self.compression,
+                )?;
 
                 self.write
                     .write_all(&self.scratch)
