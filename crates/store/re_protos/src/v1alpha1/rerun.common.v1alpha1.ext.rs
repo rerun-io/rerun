@@ -231,20 +231,6 @@ impl TryFrom<crate::common::v1alpha1::EntityPath> for re_log_types::EntityPath {
     }
 }
 
-impl From<re_log_types::TimeInt> for crate::common::v1alpha1::TimeInt {
-    fn from(value: re_log_types::TimeInt) -> Self {
-        Self {
-            time: value.as_i64(),
-        }
-    }
-}
-
-impl From<crate::common::v1alpha1::TimeInt> for re_log_types::TimeInt {
-    fn from(value: crate::common::v1alpha1::TimeInt) -> Self {
-        Self::new_temporal(value.time)
-    }
-}
-
 impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::TimeRange {
     fn from(value: re_log_types::ResolvedTimeRange) -> Self {
         Self {
@@ -378,25 +364,6 @@ impl From<re_log_types::StoreId> for crate::common::v1alpha1::StoreId {
         let kind: crate::common::v1alpha1::StoreKind = value.kind.into();
         Self {
             kind: kind as i32,
-            id: String::clone(&*value.id),
-        }
-    }
-}
-
-impl From<crate::common::v1alpha1::RecordingId> for re_log_types::StoreId {
-    #[inline]
-    fn from(value: crate::common::v1alpha1::RecordingId) -> Self {
-        Self {
-            kind: re_log_types::StoreKind::Recording,
-            id: Arc::new(value.id),
-        }
-    }
-}
-
-impl From<re_log_types::StoreId> for crate::common::v1alpha1::RecordingId {
-    #[inline]
-    fn from(value: re_log_types::StoreId) -> Self {
-        Self {
             id: String::clone(&*value.id),
         }
     }
@@ -937,14 +904,6 @@ mod tests {
     }
 
     #[test]
-    fn time_int_conversion() {
-        let time_int = re_log_types::TimeInt::new_temporal(123456789);
-        let proto_time_int: crate::common::v1alpha1::TimeInt = time_int.into();
-        let time_int2: re_log_types::TimeInt = proto_time_int.into();
-        assert_eq!(time_int, time_int2);
-    }
-
-    #[test]
     fn time_range_conversion() {
         let time_range = re_log_types::ResolvedTimeRange::new(
             re_log_types::TimeInt::new_temporal(123456789),
@@ -1002,17 +961,6 @@ mod tests {
         );
         let proto_store_id: crate::common::v1alpha1::StoreId = store_id.clone().into();
         let store_id2: re_log_types::StoreId = proto_store_id.into();
-        assert_eq!(store_id, store_id2);
-    }
-
-    #[test]
-    fn recording_id_conversion() {
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            "test_recording".to_owned(),
-        );
-        let proto_recording_id: crate::common::v1alpha1::RecordingId = store_id.clone().into();
-        let store_id2: re_log_types::StoreId = proto_recording_id.into();
         assert_eq!(store_id, store_id2);
     }
 
