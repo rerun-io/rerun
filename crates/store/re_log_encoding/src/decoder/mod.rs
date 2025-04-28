@@ -11,11 +11,11 @@ use std::io::Read as _;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::codec;
 use crate::codec::file::decoder;
 use crate::FileHeader;
 use crate::MessageHeader;
 use crate::OLD_RRD_HEADERS;
+use crate::{codec, legacy::LegacyLogMsg};
 use crate::{Compression, EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
@@ -30,10 +30,8 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
 
     if encoded_version.major == 0 && encoded_version.minor < 23 {
         // We broke compatibility for 0.23 for (hopefully) the last time.
-        Err(DecodeError::IncompatibleRerunVersion {
-            file: encoded_version,
-            local: CrateVersion::LOCAL,
-        })
+        re_log::warn_once!("Attempting to load .rrd file from {encoded_version}…");
+        Ok(())
     } else if encoded_version <= CrateVersion::LOCAL {
         // Loading old files should be fine, and if it is not, the chunk migration in re_sorbet should already log a warning.
         Ok(())
@@ -88,6 +86,9 @@ pub enum DecodeError {
 
     #[error("Codec error: {0}")]
     Codec(#[from] codec::CodecError),
+
+    #[error("Migration error: {0}")]
+    Migration(#[from] crate::migrator::MigrationError),
 }
 
 // ----------------------------------------------------------------------------
@@ -213,6 +214,8 @@ impl<R: std::io::Read> Decoder<R> {
             version,
             options,
             read: Reader::Raw(read),
+            uncompressed: vec![],
+            compressed: vec![],
             size_bytes: FileHeader::SIZE as _,
         }
     }
@@ -389,8 +392,15 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                         let data = &self.uncompressed[..uncompressed_len];
                         {
                             re_tracing::profile_scope!("MsgPack deser");
-                            match rmp_serde::from_slice::<LogMsg>(data) {
-                                Ok(msg) => Some(msg),
+                            re_log::info_once!(
+                                "Loading legacy .rrd file from Rerun {}…",
+                                self.version
+                            );
+                            match rmp_serde::from_slice::<LegacyLogMsg>(data) {
+                                Ok(legacy_msg) => match legacy_msg.migrate() {
+                                    Ok(msg) => Some(msg),
+                                    Err(err) => return Some(Err(err.into())),
+                                },
                                 Err(err) => return Some(Err(err.into())),
                             }
                         }

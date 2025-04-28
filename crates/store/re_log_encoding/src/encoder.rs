@@ -124,7 +124,6 @@ pub struct Encoder<W: std::io::Write> {
     compression: Compression,
     write: W,
     uncompressed: Vec<u8>,
-    compressed: Vec<u8>,
 }
 
 impl<W: std::io::Write> Encoder<W> {
@@ -145,7 +144,6 @@ impl<W: std::io::Write> Encoder<W> {
             compression: options.compression,
             write,
             uncompressed: Vec::new(),
-            compressed: Vec::new(),
         })
     }
 
@@ -164,41 +162,7 @@ impl<W: std::io::Write> Encoder<W> {
                     .map_err(EncodeError::Write)
             }
             Serializer::MsgPack => {
-                rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
-
-                match self.compression {
-                    Compression::Off => {
-                        MessageHeader::Data {
-                            uncompressed_len: self.uncompressed.len() as u32,
-                            compressed_len: self.uncompressed.len() as u32,
-                        }
-                        .encode(&mut self.write)?;
-                        self.write
-                            .write_all(&self.uncompressed)
-                            .map(|_| self.uncompressed.len() as _)
-                            .map_err(EncodeError::Write)
-                    }
-
-                    Compression::LZ4 => {
-                        let max_len =
-                            lz4_flex::block::get_maximum_output_size(self.uncompressed.len());
-                        self.compressed.resize(max_len, 0);
-                        let compressed_len = lz4_flex::block::compress_into(
-                            &self.uncompressed,
-                            &mut self.compressed,
-                        )
-                        .map_err(EncodeError::Lz4)?;
-                        MessageHeader::Data {
-                            uncompressed_len: self.uncompressed.len() as u32,
-                            compressed_len: compressed_len as u32,
-                        }
-                        .encode(&mut self.write)?;
-                        self.write
-                            .write_all(&self.compressed[..compressed_len])
-                            .map(|_| compressed_len as _)
-                            .map_err(EncodeError::Write)
-                    }
-                }
+                unimplemented!("Encoding using MsgPack")
             }
         }
     }

@@ -9,6 +9,7 @@ use tokio_stream::Stream;
 
 use crate::{
     codec::file::{self},
+    legacy::LegacyLogMsg,
     Compression, EncodingOptions,
 };
 
@@ -96,6 +97,7 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             version,
             options,
             reader,
+            uncompressed: Vec::new(),
             unprocessed_bytes: BytesMut::new(),
             expect_more_data: false,
             num_bytes_read: FileHeader::SIZE as _,
@@ -248,10 +250,17 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                             };
 
                             // decode the message
-                            let msg = rmp_serde::from_slice::<LogMsg>(data);
+                            let msg = rmp_serde::from_slice::<LegacyLogMsg>(data);
 
                             match msg {
-                                Ok(msg) => (Some(msg), length + header_size),
+                                Ok(legacy_msg) => match legacy_msg.migrate() {
+                                    Ok(msg) => (Some(msg), length + header_size),
+                                    Err(err) => {
+                                        return std::task::Poll::Ready(Some(Err(
+                                            DecodeError::Migration(err),
+                                        )));
+                                    }
+                                },
                                 Err(err) => {
                                     return std::task::Poll::Ready(Some(Err(
                                         DecodeError::MsgPack(err),

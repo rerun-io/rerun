@@ -47,10 +47,10 @@ fn encode_roundtrip() {
         let crate_version = CrateVersion::LOCAL;
         let encoded =
             encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
-        let decoded = decode_bytes(VersionPolicy::Error, &encoded).unwrap();
+        let decoded = decode_bytes(&encoded).unwrap();
         similar_asserts::assert_eq!(
-            strip_arrow_extensions_from_log_messages(&decoded),
-            strip_arrow_extensions_from_log_messages(&messages),
+            decoded,
+            messages,
             "Failed to roundtrip chunk with option {option:?}"
         );
     }
