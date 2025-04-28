@@ -41,7 +41,7 @@ pub(crate) fn encode(
             // running on a Ryzen 9 7950x + Linux 6.13.2 (Fedora 41):
             // * The system time is reduced by ~15% (due to fewer page faults, roughly 1/10th as many),
             // * The total runtime is reduced by ~5%.
-            // * Most importantly, the maximum memory usage (resident set size) goes from ~7 GiB to ~1 GiB
+            // * Most importantly, the maximum resident set size (physical memory usage) goes from ~7 GiB to ~1 GiB.
             //
             // The entire block is marked `unsafe`, because it contains unsafe code that depends on technically
             // safe code for its soundness. We control both the unsafe and safe parts, so we can still be sure
