@@ -10447,10 +10447,7 @@ name = "viewer_callbacks"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
- "re_crash_handler",
- "re_grpc_server",
- "re_viewer",
- "tokio",
+ "rerun",
 ]
 
 [[package]]
