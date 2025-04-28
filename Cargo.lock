@@ -6745,7 +6745,6 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_protos",
  "re_sorbet",
  "re_tracing",
  "re_types",
