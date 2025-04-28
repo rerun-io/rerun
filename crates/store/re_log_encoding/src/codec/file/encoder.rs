@@ -60,20 +60,11 @@ pub(crate) fn encode(
                     // SAFETY: For this to be safe, we have to ensure the resulting `vec` is not resized, as that could trigger
                     // an allocation and cause the original `Vec` held in `arrow_ctx` to then contain a dangling pointer.
                     //
-                    // * We have an exclusive (`&mut`) reference to `payload.data`, so we can control all mutation during
-                    //   the entire lifetime of the resulting `Vec`.
                     // * The variable binding for `ArrowMsg` is immutable, so only a shared (`&self`) reference may be
                     //   produced from it and to the `Vec` being constructed here, so the payload can never be resized.
                     // * We `mem::forget` the payload once we've encoded the `ArrowMsg` to avoid its `Drop` call.
                     //   * Without this, the `Vec` would free its backing storage, which we need to avoid.
-                    payload: unsafe {
-                        Vec::from_raw_parts(
-                            payload.data.as_ptr() as *mut _,
-                            payload.data.len(),
-                            payload.data.capacity(),
-                        )
-                    },
-                    // payload: payload.data.to_vec(),
+                    payload: unsafe { payload.to_fake_temp_vec() },
                 };
                 let header = MessageHeader {
                     kind: MessageKind::ArrowMsg,

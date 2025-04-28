@@ -35,8 +35,30 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
 #[cfg(feature = "encoder")]
 pub(crate) struct Payload<'a> {
     pub uncompressed_size: usize,
-    // NOTE: This is a `&mut` to ensure exclusivity
-    pub data: &'a mut Vec<u8>,
+    data: &'a [u8],
+    capacity: usize,
+}
+
+impl<'a> Payload<'a> {
+    /// This version does not copy the data, but instead produces the `Vec`
+    /// from raw parts. The returned `Vec` must NOT be dropped!
+    ///
+    /// The safe version of this is [`Payload::to_vec`].
+    #[allow(unsafe_code)]
+    pub(crate) unsafe fn to_fake_temp_vec(&self) -> Vec<u8> {
+        unsafe {
+            Vec::from_raw_parts(
+                self.data.as_ptr().cast_mut(),
+                self.data.len(),
+                self.capacity,
+            )
+        }
+    }
+
+    /// Copy the data to a `Vec`.
+    pub(crate) fn to_vec(&self) -> Vec<u8> {
+        self.data.to_vec()
+    }
 }
 
 #[cfg(feature = "encoder")]
@@ -55,6 +77,7 @@ impl ArrowEncodingContext {
     }
 }
 
+// NOTE: Externally, `Payload`'s borrow of `'a` is treated as if it was `&'a mut`.
 #[cfg(feature = "encoder")]
 pub(crate) fn encode_arrow_with_ctx<'a>(
     arrow_ctx: &'a mut ArrowEncodingContext,
@@ -67,24 +90,26 @@ pub(crate) fn encode_arrow_with_ctx<'a>(
     } = arrow_ctx;
 
     uncompressed.clear();
+
     write_arrow_to_bytes(uncompressed, batch)?;
     let uncompressed_size = uncompressed.len();
 
-    let data = match compression {
-        crate::Compression::Off => &mut *uncompressed,
+    let (capacity, data) = match compression {
+        crate::Compression::Off => (uncompressed.capacity(), &uncompressed[..]),
         crate::Compression::LZ4 => {
-            compressed.resize(
-                lz4_flex::block::get_maximum_output_size(uncompressed.len()),
-                0,
-            );
-            lz4_flex::block::compress_into(&uncompressed, compressed)?;
-            &mut *compressed
+            dbg!(uncompressed.len());
+            let max_len = lz4_flex::block::get_maximum_output_size(uncompressed.len());
+            dbg!(max_len);
+            compressed.resize(max_len, 0);
+            let written_bytes = lz4_flex::block::compress_into(uncompressed, compressed)?;
+            (compressed.capacity(), &compressed[..written_bytes])
         }
     };
 
     Ok(Payload {
         uncompressed_size,
         data,
+        capacity,
     })
 }
 

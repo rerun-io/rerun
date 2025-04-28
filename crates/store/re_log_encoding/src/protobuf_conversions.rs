@@ -103,8 +103,7 @@ pub fn log_msg_to_proto(
                 },
                 uncompressed_size: payload.uncompressed_size as i32,
                 encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
-                // TODO(jan): can this memcpy be removed?
-                payload: payload.data.to_vec(),
+                payload: payload.to_vec(),
             };
             ProtoLogMsg {
                 msg: Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
