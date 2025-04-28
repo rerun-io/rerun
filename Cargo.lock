@@ -2061,9 +2061,7 @@ name = "custom_view"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
- "re_grpc_server",
  "rerun",
- "tokio",
 ]
 
 [[package]]

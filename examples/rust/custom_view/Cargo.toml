@@ -14,28 +14,10 @@ analytics = ["rerun/analytics"]
 
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
-  "data_loaders",
-  "dataframe",
-  "glam",
-  "log",
   "native_viewer",
   "sdk",
   "server",
 ] }
 
-# We need re_grpc_server to receive log events from an SDK:
-re_grpc_server = { path = "../../../crates/store/re_grpc_server" }
-
 # mimalloc is a much faster allocator:
 mimalloc = "0.1.43"
-
-# We need `tokio` to be able to run `re_grpc_server`:
-tokio = { version = "1.14.0", features = [
-  "macros",
-  "rt-multi-thread",
-  "time",
-  "net",
-  "io-util",
-  "sync",
-  "signal",
-] }
