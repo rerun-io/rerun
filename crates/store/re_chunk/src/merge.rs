@@ -243,7 +243,7 @@ impl Chunk {
     pub fn same_descriptors(&self, rhs: &Self) -> bool {
         self.components.keys().all(|lhs_desc| {
             if rhs.components.contains_key(lhs_desc) {
-                return true;
+                true
             } else {
                 rhs.components
                     .get_by_component_name(lhs_desc.component_name)
