@@ -39,13 +39,19 @@ pub(crate) struct Payload<'a> {
     capacity: usize,
 }
 
-impl<'a> Payload<'a> {
+#[cfg(feature = "encoder")]
+impl Payload<'_> {
     /// This version does not copy the data, but instead produces the `Vec`
-    /// from raw parts. The returned `Vec` must NOT be dropped!
+    /// from raw parts.
     ///
     /// The safe version of this is [`Payload::to_vec`].
+    ///
+    /// # Safety
+    ///
+    /// The returned `Vec` must NOT be dropped! Pass it to `mem::forget` before that happens.
     #[allow(unsafe_code)]
     pub(crate) unsafe fn to_fake_temp_vec(&self) -> Vec<u8> {
+        // SAFETY: User is required to uphold safety invariants.
         unsafe {
             Vec::from_raw_parts(
                 self.data.as_ptr().cast_mut(),
@@ -97,9 +103,7 @@ pub(crate) fn encode_arrow_with_ctx<'a>(
     let (capacity, data) = match compression {
         crate::Compression::Off => (uncompressed.capacity(), &uncompressed[..]),
         crate::Compression::LZ4 => {
-            dbg!(uncompressed.len());
             let max_len = lz4_flex::block::get_maximum_output_size(uncompressed.len());
-            dbg!(max_len);
             compressed.resize(max_len, 0);
             let written_bytes = lz4_flex::block::compress_into(uncompressed, compressed)?;
             (compressed.capacity(), &compressed[..written_bytes])

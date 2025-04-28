@@ -46,6 +46,8 @@ pub(crate) fn encode(
             // The entire block is marked `unsafe`, because it contains unsafe code that depends on technically
             // safe code for its soundness. We control both the unsafe and safe parts, so we can still be sure
             // we're correct here. Unsafe operations are further marked with their own `unsafe` blocks.
+            //
+            // SAFETY: See safety comment on `payload` below.
             #[allow(unsafe_code, unused_unsafe)]
             unsafe {
                 let arrow_msg = ArrowMsg {
@@ -73,7 +75,8 @@ pub(crate) fn encode(
                 header.encode(buf)?;
                 arrow_msg.encode(buf)?;
 
-                // See `SAFETY` comment above before touching this line.
+                // See `SAFETY` comment on `payload` above.
+                #[allow(clippy::mem_forget)]
                 std::mem::forget(arrow_msg.payload);
             };
         }
