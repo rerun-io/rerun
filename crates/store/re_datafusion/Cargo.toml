@@ -55,6 +55,7 @@ itertools.workspace = true
 parking_lot.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
+log = "0.4.22"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 futures.workspace = true
