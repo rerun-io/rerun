@@ -107,6 +107,9 @@ service ManifestRegistryService {
 
   // Fetch the internal state of a Partition Manifest.
   rpc FetchPartitionManifest(FetchPartitionManifestRequest) returns (stream FetchPartitionManifestResponse) {}
+
+  // Fetch the internal state of a Partition Schema Manifest.
+  rpc FetchPartitionSchemaManifest(FetchPartitionSchemaManifestRequest) returns (stream FetchPartitionSchemaManifestResponse) {}
 }
 
 // --- Write data ---
@@ -471,8 +474,17 @@ message FetchPartitionManifestRequest {
   rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
 }
 
-// TODO(cmc): this should have response extensions too.
 message FetchPartitionManifestResponse {
+  rerun.common.v1alpha1.DataframePart data = 1;
+}
+
+message FetchPartitionSchemaManifestRequest {
+  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.PartitionId id = 2;
+  rerun.common.v1alpha1.ScanParameters scan_parameters = 3;
+}
+
+message FetchPartitionSchemaManifestResponse {
   rerun.common.v1alpha1.DataframePart data = 1;
 }
 
