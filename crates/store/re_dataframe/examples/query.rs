@@ -6,7 +6,6 @@ use re_dataframe::{
     ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
     SparseFillStrategy, StoreKind, TimeInt,
 };
-use re_format_arrow::format_record_batch;
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();
@@ -57,7 +56,16 @@ fn main() -> anyhow::Result<()> {
         let query_handle = engine.query(query.clone());
         // eprintln!("{:#?}", query_handle.selected_contents());
         for batch in query_handle.into_batch_iter() {
-            eprintln!("{}", format_record_batch(&batch));
+            eprintln!(
+                "{}",
+                re_format_arrow::format_record_batch_opts(
+                    &batch,
+                    &re_format_arrow::RecordBatchFormatOpts {
+                        transposed: true,
+                        ..Default::default()
+                    }
+                )
+            );
         }
     }
 
