@@ -28,6 +28,8 @@ decoder = [
   "dep:bytes",
   "dep:lz4_flex",
   "dep:rmp-serde",
+  "dep:serde",
+  "dep:serde_bytes",
   "dep:tokio",
   "dep:tokio-stream",
 ]
@@ -66,7 +68,9 @@ thiserror.workspace = true
 bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
 lz4_flex = { workspace = true, optional = true }
-rmp-serde = { workspace = true, optional = true }
+rmp-serde = { workspace = true, optional = true }                       # For loading legacy (pre 0.22) .rrd files
+serde = { workspace = true, optional = true }                           # For loading legacy (pre 0.22) .rrd files
+serde_bytes = { workspace = true, optional = true }                     # For loading legacy (pre 0.22) .rrd files
 tokio = { workspace = true, optional = true, features = ["io-util"] }
 tokio-stream = { workspace = true, optional = true }
 web-time = { workspace = true, optional = true }
