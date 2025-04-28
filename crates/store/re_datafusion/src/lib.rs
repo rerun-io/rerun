@@ -6,6 +6,7 @@ mod grpc_streaming_provider;
 mod partition_table;
 mod search_provider;
 mod table_entry_provider;
+mod wasm_wrapper;
 
 pub use dataframe_query_provider::DataframeQueryTableProvider;
 pub use datafusion_connector::DataFusionConnector;

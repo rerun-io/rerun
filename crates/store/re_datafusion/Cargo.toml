@@ -43,6 +43,15 @@ itertools.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+futures.workspace = true
+wasm-bindgen-futures.workspace = true
+
+# These are used by Datafusion but the required features are not set for wasm build.
+chrono = { workspace = true, features = ["wasmbind"] }
+getrandom = { workspace = true, features = ["js"] }
+
+
 [dev-dependencies]
 re_tuid.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

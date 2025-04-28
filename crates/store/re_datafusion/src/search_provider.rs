@@ -16,6 +16,7 @@ use re_protos::{
 };
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::wasm_wrapper::wasm_wrapper;
 
 #[derive(Debug, Clone)]
 pub struct SearchResultsTableProvider {
@@ -54,25 +55,31 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
             ..Default::default()
         });
 
-        let schema = self
-            .client
-            .search_dataset(request)
-            .await
-            .map_err(|err| DataFusionError::External(Box::new(err)))?
-            .into_inner()
-            .next()
-            .await
-            .ok_or(DataFusionError::Execution(
-                "Empty stream from search results".to_owned(),
-            ))?
-            .map_err(|err| DataFusionError::External(Box::new(err)))?
-            .data
-            .ok_or(DataFusionError::Execution(
-                "Empty data from search results".to_owned(),
-            ))?
-            .decode()
-            .map_err(|err| DataFusionError::External(Box::new(err)))?
-            .schema();
+        let mut client = self.client.clone();
+
+        let schema = wasm_wrapper(async move {
+            Ok::<_, DataFusionError>(
+                client
+                    .search_dataset(request)
+                    .await
+                    .map_err(|err| DataFusionError::External(Box::new(err)))?
+                    .into_inner()
+                    .next()
+                    .await,
+            )
+        })
+        .await?
+        .ok_or(DataFusionError::Execution(
+            "Empty stream from search results".to_owned(),
+        ))?
+        .map_err(|err| DataFusionError::External(Box::new(err)))?
+        .data
+        .ok_or(DataFusionError::Execution(
+            "Empty data from search results".to_owned(),
+        ))?
+        .decode()
+        .map_err(|err| DataFusionError::External(Box::new(err)))?
+        .schema();
 
         Ok(schema)
     }
@@ -82,9 +89,10 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
         let request = self.request.clone();
 
-        self.client
-            .search_dataset(request)
-            .await
+        let mut client = self.client.clone();
+
+        wasm_wrapper(async move { Ok(client.search_dataset(request).await) })
+            .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 

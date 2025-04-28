@@ -16,6 +16,7 @@ use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
 use re_protos::frontend::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::wasm_wrapper::wasm_wrapper;
 
 #[derive(Debug, Clone)]
 pub struct TableEntryTableProvider {
@@ -49,28 +50,33 @@ impl TableEntryTableProvider {
             EntryIdOrName::Id(entry_id) => *entry_id,
 
             EntryIdOrName::Name(table_name) => {
-                let entry_details: EntryDetails = self
-                    .client
-                    .find_entries(FindEntriesRequest {
-                        filter: Some(EntryFilter {
-                            id: None,
-                            name: Some(table_name.clone()),
-                            entry_kind: Some(EntryKind::Table as i32),
-                        }),
-                    })
-                    .await
-                    .map_err(|err| DataFusionError::External(Box::new(err)))?
-                    .into_inner()
-                    .entries
-                    .first()
-                    .ok_or_else(|| {
-                        DataFusionError::External(
-                            format!("No entry found with name: {table_name}").into(),
-                        )
-                    })?
-                    .clone()
-                    .try_into()
-                    .map_err(|err| DataFusionError::External(Box::new(err)))?;
+                let mut client = self.client.clone();
+                let table_name_copy = table_name.clone();
+
+                let entry_details: EntryDetails = wasm_wrapper(async move {
+                    Ok(client
+                        .find_entries(FindEntriesRequest {
+                            filter: Some(EntryFilter {
+                                id: None,
+                                name: Some(table_name_copy),
+                                entry_kind: Some(EntryKind::Table as i32),
+                            }),
+                        })
+                        .await)
+                })
+                .await?
+                .map_err(|err| DataFusionError::External(Box::new(err)))?
+                .into_inner()
+                .entries
+                .first()
+                .ok_or_else(|| {
+                    DataFusionError::External(
+                        format!("No entry found with name: {table_name}").into(),
+                    )
+                })?
+                .clone()
+                .try_into()
+                .map_err(|err| DataFusionError::External(Box::new(err)))?;
 
                 entry_details.id
             }
@@ -90,10 +96,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             table_id: Some(self.table_id().await?.into()),
         };
 
+        let mut client = self.client.clone();
+
         Ok(Arc::new(
-            self.client
-                .get_table_schema(request)
-                .await
+            wasm_wrapper(async move { Ok(client.get_table_schema(request).await) })
+                .await?
                 .map_err(|err| DataFusionError::External(Box::new(err)))?
                 .into_inner()
                 .schema
@@ -111,9 +118,10 @@ impl GrpcStreamToTable for TableEntryTableProvider {
             table_id: Some(self.table_id().await?.into()),
         };
 
-        self.client
-            .scan_table(request)
-            .await
+        let mut client = self.client.clone();
+
+        wasm_wrapper(async move { Ok(client.scan_table(request).await) })
+            .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 
