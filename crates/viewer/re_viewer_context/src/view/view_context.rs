@@ -92,6 +92,11 @@ impl<'a> ViewContext<'a> {
     }
 
     #[inline]
+    pub fn render_ctx(&self) -> &re_renderer::RenderContext {
+        self.viewer_ctx.render_ctx()
+    }
+
+    #[inline]
     pub fn save_blueprint_array(
         &self,
         entity_path: &EntityPath,

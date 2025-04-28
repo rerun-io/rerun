@@ -2065,6 +2065,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_visualizer"
+version = "0.24.0-alpha.3+dev"
+dependencies = [
+ "bytemuck",
+ "mimalloc",
+ "rerun",
+]
+
+[[package]]
 name = "darling"
 version = "0.20.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7375,7 +7384,6 @@ dependencies = [
  "anyhow",
  "bitflags 2.8.0",
  "bytemuck",
- "cfg-if",
  "cfg_aliases",
  "clean-path",
  "crossbeam",
