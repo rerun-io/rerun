@@ -49,11 +49,15 @@ fn main() -> anyhow::Result<()> {
             ),
             filtered_index_range: Some(ResolvedTimeRange::new(time_from, time_to)),
             sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+            include_per_column_indexes: true,
             ..Default::default()
         };
         eprintln!("{query:#?}:");
 
         let query_handle = engine.query(query.clone());
+        dbg!(query_handle.schema());
+        std::process::exit(0);
+
         // eprintln!("{:#?}", query_handle.selected_contents());
         for batch in query_handle.into_batch_iter() {
             eprintln!(
@@ -66,6 +70,7 @@ fn main() -> anyhow::Result<()> {
                     }
                 )
             );
+            std::process::exit(0);
         }
     }
 

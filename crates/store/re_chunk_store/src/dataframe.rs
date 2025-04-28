@@ -324,6 +324,9 @@ pub struct QueryExpression {
     /// `Clear`: [`re_types_core::archetypes::Clear`]
     pub include_tombstone_columns: bool,
 
+    // TODO: should we compute and return individual timestamps?
+    pub include_per_column_indexes: bool,
+
     /// The index used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 column contains non-null data at that index will be kept in the
@@ -640,6 +643,8 @@ impl ChunkStore {
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
+    //
+    // TODO: explain what happens if include_per_column_indexes is set
     pub fn schema_for_query(&self, query: &QueryExpression) -> SorbetColumnDescriptors {
         re_tracing::profile_function!();
 
@@ -648,7 +653,8 @@ impl ChunkStore {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
-            filtered_index: _,
+            include_per_column_indexes,
+            filtered_index,
             filtered_index_range: _,
             filtered_index_values: _,
             using_index_values: _,
@@ -683,6 +689,30 @@ impl ChunkStore {
                 && passes_tombstone_check()
         };
 
-        self.schema().filter_components(filter)
+        let mut descriptors = self.schema().filter_components(filter);
+
+        if *include_per_column_indexes {
+            if let Some(filtered_index) = filtered_index.as_ref() {
+                if let Some(filtered_index) = descriptors
+                    .indices
+                    .iter()
+                    .find(|index| index.timeline_name() == *filtered_index)
+                {
+                    descriptors.components = descriptors
+                        .components
+                        .into_iter()
+                        .flat_map(|descr| {
+                            // TODO: what else we should do remains to be seen.
+                            let mut dedicated_index_descr = descr.clone();
+                            dedicated_index_descr.store_datatype =
+                                filtered_index.datatype().clone();
+                            [descr, dedicated_index_descr]
+                        })
+                        .collect();
+                }
+            }
+        }
+
+        descriptors
     }
 }

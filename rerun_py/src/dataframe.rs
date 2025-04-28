@@ -1335,6 +1335,7 @@ impl PyRecording {
             include_semantically_empty_columns,
             include_indicator_columns,
             include_tombstone_columns,
+            include_per_column_indexes: false, // TODO
             filtered_index: Some(*time_column.timeline().name()),
             filtered_index_range: None,
             filtered_index_values: None,

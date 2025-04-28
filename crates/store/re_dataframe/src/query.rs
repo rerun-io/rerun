@@ -182,6 +182,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         //
         // The caller might have selected columns that do not exist in the view: they should
         // still appear in the results.
+        //
+        // TODO: what should we do about this?
         let selected_contents: Vec<(_, _)> = if let Some(selection) = self.query.selection.as_ref()
         {
             self.compute_user_selection(&view_contents, selection)
@@ -885,7 +887,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             /// Data retrofilled through an extra query.
             ///
             /// See [`QueryExpression::sparse_fill_strategy`].
-            Retrofilled(UnitChunkShared),
+            Retrofilled(TimeInt, UnitChunkShared),
         }
 
         // Although that's a synchronous lock, we probably don't need to worry about it until
@@ -999,8 +1001,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
         // Static always wins, no matter what.
         for (selected_idx, static_state) in state.selected_static_values.iter().enumerate() {
-            if let static_state @ Some(_) =
-                static_state.clone().map(StreamingJoinState::Retrofilled)
+            if let static_state @ Some(_) = static_state
+                .clone()
+                .map(|unit| StreamingJoinState::Retrofilled(TimeInt::STATIC, unit))
             {
                 let Some(view_idx) = state
                     .selected_contents
@@ -1058,10 +1061,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         [ComponentDescriptor::from(descr.clone())],
                     );
 
-                    *streaming_state = results
-                        .components
-                        .get(&descr.component_name)
-                        .map(|unit| StreamingJoinState::Retrofilled(unit.clone()));
+                    *streaming_state = results.components.get(&descr.component_name).map(|unit| {
+                        StreamingJoinState::Retrofilled(results.index().0, unit.clone())
+                    });
                 }
             }
         }
@@ -1092,14 +1094,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 .flat_map(|streaming_state| {
                     match streaming_state {
                         StreamingJoinState::StreamingJoinState(s) => s.chunk.timelines(),
-                        StreamingJoinState::Retrofilled(unit) => unit.timelines(),
+                        StreamingJoinState::Retrofilled(_, unit) => unit.timelines(),
                     }
                     .values()
                     // NOTE: Cannot fail, just want to stay away from unwraps.
                     .filter_map(move |time_column| {
                         let cursor = match streaming_state {
                             StreamingJoinState::StreamingJoinState(s) => s.cursor as usize,
-                            StreamingJoinState::Retrofilled(_) => 0,
+                            StreamingJoinState::Retrofilled(_, _) => 0,
                         };
                         time_column
                             .times_raw()
@@ -1139,6 +1141,69 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             }
         }
 
+        // TODO: only if the setting is set.
+        // let mut per_column_indexes: IntMap<ComponentDescriptor, TimeInt> = IntMap::default();
+        // {
+        //     view_streaming_state
+        //         .iter()
+        //         .enumerate()
+        //         .flatten()
+        //         .map(|streaming_state| {
+        //             match streaming_state {
+        //                 StreamingJoinState::StreamingJoinState(s) => s.cursor
+        //                 StreamingJoinState::Retrofilled(_, unit) => unit.timelines(),
+        //             }
+        //         })
+        //         .flat_map(|streaming_state| {
+        //             match streaming_state {
+        //                 StreamingJoinState::StreamingJoinState(s) => s.chunk.timelines(),
+        //                 StreamingJoinState::Retrofilled(_, unit) => unit.timelines(),
+        //             }
+        //             .values()
+        //             // NOTE: Cannot fail, just want to stay away from unwraps.
+        //             .filter_map(move |time_column| {
+        //                 let cursor = match streaming_state {
+        //                     StreamingJoinState::StreamingJoinState(s) => s.cursor as usize,
+        //                     StreamingJoinState::Retrofilled(_, _) => 0,
+        //                 };
+        //                 time_column
+        //                     .times_raw()
+        //                     .get(cursor)
+        //                     .copied()
+        //                     .map(TimeInt::new_temporal)
+        //                     .map(|time| {
+        //                         (
+        //                             *time_column.timeline(),
+        //                             (time, time_column.times_buffer().slice(cursor, 1)),
+        //                         )
+        //                     })
+        //             })
+        //         })
+        //         .for_each(|(timeline, (time, time_sliced))| {
+        //             max_value_per_index
+        //                 .entry(*timeline.name())
+        //                 .and_modify(|(max_time, max_time_sliced)| {
+        //                     if time > *max_time {
+        //                         *max_time = time;
+        //                         *max_time_sliced = time_sliced.clone();
+        //                     }
+        //                 })
+        //                 .or_insert((time, time_sliced));
+        //         });
+        //
+        //     if !cur_index_value.is_static() {
+        //         // The current index value (if temporal) should be the one returned for the
+        //         // queried index, no matter what.
+        //         max_value_per_index.insert(
+        //             state.filtered_index,
+        //             (
+        //                 *cur_index_value,
+        //                 ArrowScalarBuffer::from(vec![cur_index_value.as_i64()]),
+        //             ),
+        //         );
+        //     }
+        // }
+
         // NOTE: Non-component entries have no data to slice, hence the optional layer.
         //
         // TODO(cmc): no point in slicing arrays that are not selected.
@@ -1164,7 +1229,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                         }
 
-                        StreamingJoinState::Retrofilled(unit) => {
+                        StreamingJoinState::Retrofilled(index, unit) => {
                             let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| match col {
                                 ColumnDescriptor::Component(descr) => {
                                     descr.component_name.sanity_check();
@@ -1233,7 +1298,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let row = self.next_row()?;
         match ArrowRecordBatch::try_new_with_options(
             self.schema().clone(),
-            row,
+            dbg!(row),
             // Explicitly setting row-count to one means it works even when there are no columns (e.g. due to heavy filtering)
             &arrow::array::RecordBatchOptions::new().with_row_count(Some(1)),
         ) {
