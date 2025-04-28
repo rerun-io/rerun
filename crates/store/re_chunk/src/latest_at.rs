@@ -78,7 +78,7 @@ impl Chunk {
 
         re_tracing::profile_function!(format!("{query:?}"));
 
-        let Some(component_list_array) = self.get_first_component(&component_name) else {
+        let Some(component_list_array) = self.get_first_component(component_name) else {
             return self.emptied();
         };
 

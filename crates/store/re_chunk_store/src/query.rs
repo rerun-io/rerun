@@ -771,8 +771,10 @@ impl ChunkStore {
                     .is_some_and(|time_column| {
                         time_column
                             .time_range_per_component(chunk.components())
-                            .get(&component_name)
-                            .and_then(|per_desc| per_desc.values().next())
+                            .iter()
+                            .find_map(|(desc, time_range)| {
+                                (desc.component_name == component_name).then_some(time_range)
+                            })
                             .is_some_and(|time_range| time_range.intersects(query.range()))
                     })
             })

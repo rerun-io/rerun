@@ -752,7 +752,7 @@ impl PendingRow {
         for (component_desc, array) in components {
             let list_array = arrays_to_list_array_opt(&[Some(&*array as _)]);
             if let Some(list_array) = list_array {
-                per_name.insert_descriptor(component_desc, list_array);
+                per_name.insert(component_desc, list_array);
             }
         }
 
@@ -901,7 +901,7 @@ impl PendingRow {
                                     {
                                         let list_array = arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
-                                            per_name.insert_descriptor(component_desc, list_array);
+                                            per_name.insert(component_desc, list_array);
                                         }
                                     }
                                     per_name
@@ -946,7 +946,7 @@ impl PendingRow {
                         for (component_desc, arrays) in components {
                             let list_array = arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
-                                per_name.insert_descriptor(component_desc, list_array);
+                                per_name.insert(component_desc, list_array);
                             }
                         }
                         per_name
