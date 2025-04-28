@@ -3,6 +3,7 @@
 use crate::codec;
 use crate::codec::file::{self, encoder};
 use crate::FileHeader;
+use crate::MessageHeader;
 use crate::Serializer;
 use crate::{Compression, EncodingOptions};
 use re_build_info::CrateVersion;
@@ -19,6 +20,9 @@ pub enum EncodeError {
 
     #[error("lz4 error: {0}")]
     Lz4(#[from] lz4_flex::block::CompressError),
+
+    #[error("MsgPack error: {0}")]
+    MsgPack(#[from] rmp_serde::encode::Error),
 
     #[error("Protobuf error: {0}")]
     Protobuf(#[from] re_protos::external::prost::EncodeError),
@@ -119,7 +123,8 @@ pub struct Encoder<W: std::io::Write> {
     serializer: Serializer,
     compression: Compression,
     write: W,
-    scratch: Vec<u8>,
+    uncompressed: Vec<u8>,
+    compressed: Vec<u8>,
 }
 
 impl<W: std::io::Write> Encoder<W> {
@@ -139,7 +144,8 @@ impl<W: std::io::Write> Encoder<W> {
             serializer: options.serializer,
             compression: options.compression,
             write,
-            scratch: Vec::new(),
+            uncompressed: Vec::new(),
+            compressed: Vec::new(),
         })
     }
 
@@ -147,15 +153,52 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
         re_tracing::profile_function!();
 
-        self.scratch.clear();
+        self.uncompressed.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                encoder::encode(&mut self.scratch, message, self.compression)?;
+                encoder::encode(&mut self.uncompressed, message, self.compression)?;
 
                 self.write
-                    .write_all(&self.scratch)
-                    .map(|_| self.scratch.len() as _)
+                    .write_all(&self.uncompressed)
+                    .map(|_| self.uncompressed.len() as _)
                     .map_err(EncodeError::Write)
+            }
+            Serializer::MsgPack => {
+                rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
+
+                match self.compression {
+                    Compression::Off => {
+                        MessageHeader::Data {
+                            uncompressed_len: self.uncompressed.len() as u32,
+                            compressed_len: self.uncompressed.len() as u32,
+                        }
+                        .encode(&mut self.write)?;
+                        self.write
+                            .write_all(&self.uncompressed)
+                            .map(|_| self.uncompressed.len() as _)
+                            .map_err(EncodeError::Write)
+                    }
+
+                    Compression::LZ4 => {
+                        let max_len =
+                            lz4_flex::block::get_maximum_output_size(self.uncompressed.len());
+                        self.compressed.resize(max_len, 0);
+                        let compressed_len = lz4_flex::block::compress_into(
+                            &self.uncompressed,
+                            &mut self.compressed,
+                        )
+                        .map_err(EncodeError::Lz4)?;
+                        MessageHeader::Data {
+                            uncompressed_len: self.uncompressed.len() as u32,
+                            compressed_len: compressed_len as u32,
+                        }
+                        .encode(&mut self.write)?;
+                        self.write
+                            .write_all(&self.compressed[..compressed_len])
+                            .map(|_| compressed_len as _)
+                            .map_err(EncodeError::Write)
+                    }
+                }
             }
         }
     }
@@ -165,6 +208,9 @@ impl<W: std::io::Write> Encoder<W> {
     #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         match self.serializer {
+            Serializer::MsgPack => {
+                MessageHeader::EndOfStream.encode(&mut self.write)?;
+            }
             Serializer::Protobuf => {
                 file::MessageHeader {
                     kind: file::MessageKind::End,
