@@ -6,6 +6,7 @@ use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
 use crate::decoder::options_from_bytes;
+use crate::Compression;
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
@@ -28,6 +29,9 @@ pub struct StreamDecoder {
     /// Incoming chunks are stored here
     chunks: ChunkBuffer,
 
+    /// The uncompressed bytes are stored in this buffer before being read by `rmp_serde`
+    uncompressed: Vec<u8>,
+
     /// The stream state
     state: State,
 }
@@ -42,7 +46,7 @@ pub struct StreamDecoder {
 /// |           |
 /// ---Message<--
 /// ```
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 enum State {
     /// The beginning of the stream.
     ///
@@ -53,14 +57,29 @@ enum State {
     /// will only ever switch between `MessageHeader` and `Message`
     StreamHeader,
 
+    /// The beginning of a `MsgPack` message.
+    ///
+    /// The message header contains the number of bytes in the
+    /// compressed message, and the number of bytes in the
+    /// uncompressed message.
+    MsgPackMessageHeader,
+
+    // TODO(jan): remove this once we decide to completely break it off.
+    /// The message content, serialized using `MsgPack`.
+    ///
+    /// We need to know the full length of the message before attempting
+    /// to read it, otherwise the call to `decompress_into` or the
+    /// `MsgPack` deserialization may block or even fail.
+    MsgPackMessage(crate::MessageHeader),
+
     /// The beginning of a Protobuf message.
-    MessageHeader,
+    ProtobufMessageHeader,
 
     /// The message content, serialized using `Protobuf`.
     ///
     /// Compression is only applied to individual `ArrowMsg`s, instead of
     /// the entire stream.
-    Message(crate::codec::file::MessageHeader),
+    ProtobufMessage(crate::codec::file::MessageHeader),
 }
 
 impl StreamDecoder {
@@ -70,8 +89,9 @@ impl StreamDecoder {
             version: None,
             // Note: `options` are filled in once we read `FileHeader`,
             // so this value does not matter.
-            options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
+            options: EncodingOptions::MSGPACK_UNCOMPRESSED,
             chunks: ChunkBuffer::new(),
+            uncompressed: Vec::with_capacity(1024),
             state: State::StreamHeader,
         }
     }
@@ -90,7 +110,8 @@ impl StreamDecoder {
                     self.options = options;
 
                     match self.options.serializer {
-                        Serializer::Protobuf => self.state = State::MessageHeader,
+                        Serializer::MsgPack => self.state = State::MsgPackMessageHeader,
+                        Serializer::Protobuf => self.state = State::ProtobufMessageHeader,
                     }
 
                     // we might have data left in the current chunk,
@@ -99,24 +120,69 @@ impl StreamDecoder {
                 }
             }
 
-            State::MessageHeader => {
-                if let Some(bytes) = self
-                    .chunks
-                    .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
-                {
-                    let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
-                    self.state = State::Message(header);
+            State::MsgPackMessageHeader => {
+                if let Some(mut bytes) = self.chunks.try_read(crate::MessageHeader::SIZE) {
+                    let header = crate::MessageHeader::decode(&mut bytes)?;
+                    self.state = State::MsgPackMessage(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
                     return self.try_read();
                 }
             }
-            State::Message(header) => {
+            State::MsgPackMessage(header) => {
+                match header {
+                    crate::MessageHeader::Data {
+                        compressed_len,
+                        uncompressed_len,
+                    } => {
+                        if let Some(bytes) = self.chunks.try_read(compressed_len as usize) {
+                            let bytes = match self.options.compression {
+                                Compression::Off => bytes,
+                                Compression::LZ4 => {
+                                    self.uncompressed.resize(uncompressed_len as usize, 0);
+                                    lz4_flex::block::decompress_into(bytes, &mut self.uncompressed)
+                                        .map_err(DecodeError::Lz4)?;
+                                    &self.uncompressed
+                                }
+                            };
+
+                            // read the message from the uncompressed bytes
+                            let mut message =
+                                rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
+
+                            self.state = State::MsgPackMessageHeader;
+
+                            propagate_version(&mut message, self.version);
+                            return Ok(Some(message));
+                        }
+                    }
+                    crate::MessageHeader::EndOfStream => {
+                        // We've reached the end of the stream, but there might be concatenated streams
+                        // hence we set the state as if we are about to see another new stream
+                        self.state = State::StreamHeader;
+                        return self.try_read();
+                    }
+                }
+            }
+
+            State::ProtobufMessageHeader => {
+                if let Some(bytes) = self
+                    .chunks
+                    .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
+                {
+                    let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
+                    self.state = State::ProtobufMessage(header);
+                    // we might have data left in the current chunk,
+                    // immediately try to read the message content
+                    return self.try_read();
+                }
+            }
+            State::ProtobufMessage(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
                     let message = crate::codec::file::decoder::decode_bytes(header.kind, bytes)?;
                     if let Some(mut message) = message {
                         propagate_version(&mut message, self.version);
-                        self.state = State::MessageHeader;
+                        self.state = State::ProtobufMessageHeader;
                         return Ok(Some(message));
                     } else {
                         // `None` means end of stream, but there might be concatenated streams,
@@ -290,6 +356,158 @@ mod tests {
     }
 
     #[test]
+    fn stream_whole_chunks_uncompressed() {
+        let (input, data) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+
+        assert_message_incomplete!(decoder.try_read());
+
+        decoder.push_chunk(data);
+
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn stream_byte_chunks_uncompressed() {
+        let (input, data) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+
+        assert_message_incomplete!(decoder.try_read());
+
+        for chunk in data.chunks(1) {
+            decoder.push_chunk(chunk.to_vec());
+        }
+
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn two_concatenated_streams() {
+        let (input1, data1) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
+        let (input2, data2) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
+        let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+
+        assert_message_incomplete!(decoder.try_read());
+
+        decoder.push_chunk(data1);
+        decoder.push_chunk(data2);
+
+        let decoded_messages: Vec<_> = (0..32)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn stream_whole_chunks_compressed() {
+        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+
+        assert_message_incomplete!(decoder.try_read());
+
+        decoder.push_chunk(data);
+
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn stream_byte_chunks_compressed() {
+        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+
+        assert_message_incomplete!(decoder.try_read());
+
+        for chunk in data.chunks(1) {
+            decoder.push_chunk(chunk.to_vec());
+        }
+
+        let decoded_messages: Vec<_> = (0..16)
+            .map(|_| assert_message_ok!(decoder.try_read()))
+            .collect();
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn stream_3x16_chunks() {
+        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoded_messages = vec![];
+
+        // keep pushing 3 chunks of 16 bytes at a time, and attempting to read messages
+        // until there are no more chunks
+        let mut chunks = data.chunks(16).peekable();
+        while chunks.peek().is_some() {
+            for _ in 0..3 {
+                if let Some(chunk) = chunks.next() {
+                    decoder.push_chunk(chunk.to_vec());
+                } else {
+                    break;
+                }
+            }
+
+            if let Some(message) = decoder.try_read().unwrap() {
+                decoded_messages.push(message);
+            }
+        }
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
+    fn stream_irregular_chunks() {
+        // this attempts to stress-test `try_read` with chunks of various sizes
+
+        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+        let mut data = Cursor::new(data);
+
+        let mut decoder = StreamDecoder::new(VersionPolicy::Error);
+        let mut decoded_messages = vec![];
+
+        // read chunks 2xN bytes at a time, where `N` comes from a regular pattern
+        // this is slightly closer to using random numbers while still being
+        // fully deterministic
+
+        let pattern = [0, 3, 4, 70, 31];
+        let mut pattern_index = 0;
+        let mut temp = [0_u8; 71];
+
+        while data.position() < data.get_ref().len() as u64 {
+            for _ in 0..2 {
+                let n = data.read(&mut temp[..pattern[pattern_index]]).unwrap();
+                pattern_index = (pattern_index + 1) % pattern.len();
+                decoder.push_chunk(temp[..n].to_vec());
+            }
+
+            if let Some(message) = decoder.try_read().unwrap() {
+                decoded_messages.push(message);
+            }
+        }
+
+        assert_eq!(input, decoded_messages);
+    }
+
+    #[test]
     fn stream_whole_chunks_uncompressed_protobuf() {
         let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
@@ -433,7 +651,7 @@ mod tests {
                 decoder.push_chunk(temp[..n].to_vec());
             }
 
-            while let Some(message) = decoder.try_read().unwrap() {
+            if let Some(message) = decoder.try_read().unwrap() {
                 decoded_messages.push(message);
             }
         }

@@ -14,8 +14,9 @@ use re_log_types::LogMsg;
 use crate::codec;
 use crate::codec::file::decoder;
 use crate::FileHeader;
+use crate::MessageHeader;
 use crate::OLD_RRD_HEADERS;
-use crate::{EncodingOptions, Serializer};
+use crate::{Compression, EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
 
@@ -82,6 +83,9 @@ pub enum DecodeError {
     #[error("Arrow error: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
 
+    #[error("MsgPack error: {0}")]
+    MsgPack(#[from] rmp_serde::decode::Error),
+
     #[error("Codec error: {0}")]
     Codec(#[from] codec::CodecError),
 }
@@ -143,7 +147,7 @@ pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions
     warn_on_version_mismatch(version)?;
 
     match options.serializer {
-        Serializer::Protobuf => {}
+        Serializer::MsgPack | Serializer::Protobuf => {}
     }
 
     Ok((CrateVersion::from_bytes(version), options))
@@ -168,6 +172,8 @@ pub struct Decoder<R: std::io::Read> {
     version: CrateVersion,
     options: EncodingOptions,
     read: Reader<R>,
+    uncompressed: Vec<u8>, // scratch space
+    compressed: Vec<u8>,   // scratch space
 
     /// The size in bytes of the data that has been decoded up to now.
     size_bytes: u64,
@@ -196,6 +202,8 @@ impl<R: std::io::Read> Decoder<R> {
             version,
             options,
             read: Reader::Raw(read),
+            uncompressed: vec![],
+            compressed: vec![],
             size_bytes: FileHeader::SIZE as _,
         })
     }
@@ -237,6 +245,8 @@ impl<R: std::io::Read> Decoder<R> {
             version,
             options,
             read: Reader::Buffered(read),
+            uncompressed: vec![],
+            compressed: vec![],
             size_bytes: FileHeader::SIZE as _,
         })
     }
@@ -316,6 +326,78 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                     _ => return Some(Err(err)),
                 },
             },
+            Serializer::MsgPack => {
+                let header = match MessageHeader::decode(&mut self.read) {
+                    Ok(header) => header,
+                    Err(err) => match err {
+                        DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                            return None;
+                        }
+                        other => return Some(Err(other)),
+                    },
+                };
+                self.size_bytes += MessageHeader::SIZE as u64;
+
+                match header {
+                    MessageHeader::Data {
+                        compressed_len,
+                        uncompressed_len,
+                    } => {
+                        let uncompressed_len = uncompressed_len as usize;
+                        let compressed_len = compressed_len as usize;
+
+                        self.uncompressed
+                            .resize(self.uncompressed.len().max(uncompressed_len), 0);
+
+                        match self.options.compression {
+                            Compression::Off => {
+                                re_tracing::profile_scope!("read uncompressed");
+                                if let Err(err) = self
+                                    .read
+                                    .read_exact(&mut self.uncompressed[..uncompressed_len])
+                                {
+                                    return Some(Err(DecodeError::Read(err)));
+                                }
+                                self.size_bytes += uncompressed_len as u64;
+                            }
+
+                            Compression::LZ4 => {
+                                self.compressed
+                                    .resize(self.compressed.len().max(compressed_len), 0);
+
+                                {
+                                    re_tracing::profile_scope!("read compressed");
+                                    if let Err(err) =
+                                        self.read.read_exact(&mut self.compressed[..compressed_len])
+                                    {
+                                        return Some(Err(DecodeError::Read(err)));
+                                    }
+                                }
+
+                                re_tracing::profile_scope!("lz4");
+                                if let Err(err) = lz4_flex::block::decompress_into(
+                                    &self.compressed[..compressed_len],
+                                    &mut self.uncompressed[..uncompressed_len],
+                                ) {
+                                    return Some(Err(DecodeError::Lz4(err)));
+                                }
+
+                                self.size_bytes += compressed_len as u64;
+                            }
+                        }
+
+                        let data = &self.uncompressed[..uncompressed_len];
+                        {
+                            re_tracing::profile_scope!("MsgPack deser");
+                            match rmp_serde::from_slice::<LogMsg>(data) {
+                                Ok(msg) => Some(msg),
+                                Err(err) => return Some(Err(err.into())),
+                            }
+                        }
+                    }
+                    MessageHeader::EndOfStream => None,
+                }
+            }
         };
 
         let Some(mut msg) = msg else {
@@ -346,8 +428,6 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 #[cfg(all(test, feature = "decoder", feature = "encoder"))]
 mod tests {
     #![allow(clippy::unwrap_used)] // acceptable for tests
-
-    use crate::Compression;
 
     use super::*;
     use re_build_info::CrateVersion;
@@ -406,6 +486,14 @@ mod tests {
         let options = [
             EncodingOptions {
                 compression: Compression::Off,
+                serializer: Serializer::MsgPack,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::MsgPack,
+            },
+            EncodingOptions {
+                compression: Compression::Off,
                 serializer: Serializer::Protobuf,
             },
             EncodingOptions {
@@ -431,6 +519,14 @@ mod tests {
     #[test]
     fn test_concatenated_streams() {
         let options = [
+            EncodingOptions {
+                compression: Compression::Off,
+                serializer: Serializer::MsgPack,
+            },
+            EncodingOptions {
+                compression: Compression::LZ4,
+                serializer: Serializer::MsgPack,
+            },
             EncodingOptions {
                 compression: Compression::Off,
                 serializer: Serializer::Protobuf,
