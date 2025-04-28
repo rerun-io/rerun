@@ -84,7 +84,6 @@ pub(crate) fn encode_arrow_with_ctx<'a>(
 
     Ok(Payload {
         uncompressed_size,
-        // TODO(jan): can this memcpy be removed?
         data,
     })
 }
