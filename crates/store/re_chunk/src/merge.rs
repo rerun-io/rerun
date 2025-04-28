@@ -242,10 +242,13 @@ impl Chunk {
     #[inline]
     pub fn same_descriptors(&self, rhs: &Self) -> bool {
         self.components.keys().all(|lhs_desc| {
-            if let Some(rhs_desc) = rhs.components.keys().next() {
-                lhs_desc == rhs_desc
+            if rhs.components.contains_key(lhs_desc) {
+                return true;
             } else {
-                true
+                rhs.components
+                    .get_by_component_name(lhs_desc.component_name)
+                    .next()
+                    .is_none()
             }
         })
     }
