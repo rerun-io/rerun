@@ -91,22 +91,29 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     max_dim.height = max_dim.height.max(new_dim.height);
                 }
             }
+
             // TODO(andreas): this should be part of the ImageFormat component's tag instead.
-            if components.contains_key(&archetypes::Image::descriptor_indicator()) {
+            if components
+                .contains_component_name(archetypes::Image::descriptor_indicator().component_name)
+            {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::IMAGE);
             }
-            if components.contains_key(&archetypes::SegmentationImage::descriptor_indicator()) {
+            if components.contains_component_name(
+                archetypes::SegmentationImage::descriptor_indicator().component_name,
+            ) {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::SEGMENTATION_IMAGE);
             }
-            if components.contains_key(&archetypes::DepthImage::descriptor_indicator()) {
+            if components.contains_component_name(
+                archetypes::DepthImage::descriptor_indicator().component_name,
+            ) {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
