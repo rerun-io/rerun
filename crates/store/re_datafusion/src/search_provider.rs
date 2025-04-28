@@ -16,7 +16,7 @@ use re_protos::{
 };
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
-use crate::wasm_wrapper::wasm_wrapper;
+use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct SearchResultsTableProvider {
@@ -57,7 +57,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
 
         let mut client = self.client.clone();
 
-        let schema = wasm_wrapper(async move {
+        let schema = make_future_send(async move {
             Ok::<_, DataFusionError>(
                 client
                     .search_dataset(request)
@@ -91,7 +91,7 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
 
         let mut client = self.client.clone();
 
-        wasm_wrapper(async move { Ok(client.search_dataset(request).await) })
+        make_future_send(async move { Ok(client.search_dataset(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }

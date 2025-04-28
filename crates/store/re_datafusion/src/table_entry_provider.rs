@@ -16,7 +16,7 @@ use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
 use re_protos::frontend::v1alpha1::{GetTableSchemaRequest, ScanTableRequest, ScanTableResponse};
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
-use crate::wasm_wrapper::wasm_wrapper;
+use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct TableEntryTableProvider {
@@ -53,7 +53,7 @@ impl TableEntryTableProvider {
                 let mut client = self.client.clone();
                 let table_name_copy = table_name.clone();
 
-                let entry_details: EntryDetails = wasm_wrapper(async move {
+                let entry_details: EntryDetails = make_future_send(async move {
                     Ok(client
                         .find_entries(FindEntriesRequest {
                             filter: Some(EntryFilter {
@@ -99,7 +99,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         let mut client = self.client.clone();
 
         Ok(Arc::new(
-            wasm_wrapper(async move { Ok(client.get_table_schema(request).await) })
+            make_future_send(async move { Ok(client.get_table_schema(request).await) })
                 .await?
                 .map_err(|err| DataFusionError::External(Box::new(err)))?
                 .into_inner()
@@ -120,7 +120,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 
         let mut client = self.client.clone();
 
-        wasm_wrapper(async move { Ok(client.scan_table(request).await) })
+        make_future_send(async move { Ok(client.scan_table(request).await) })
             .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
