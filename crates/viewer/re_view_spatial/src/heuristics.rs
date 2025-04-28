@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::ViewClassIdentifier;
 use re_viewer_context::ViewerContext;
 
@@ -15,7 +15,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
     ctx: &ViewerContext<'_>,
     view_class_identifier: ViewClassIdentifier,
     visualizer_kind: SpatialViewKind,
-    suggested_filter: &ResolvedEntityPathFilter,
+    include_entity: &dyn Fn(&EntityPath) -> bool,
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
 
@@ -36,7 +36,7 @@ pub fn default_visualized_entities_for_visualizer_kind(
             }
         })
         .flatten()
-        .filter(|e| !suggested_filter.matches(e))
+        .filter(|e| include_entity(e))
         .cloned()
         .collect()
 }
