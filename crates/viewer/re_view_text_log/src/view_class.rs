@@ -173,7 +173,7 @@ Filter message types and toggle column visibility in a selection panel.",
             .filter(|te| {
                 te.level
                     .as_ref()
-                    .map_or(true, |lvl| state.filters.is_log_level_visible(lvl))
+                    .is_none_or(|lvl| state.filters.is_log_level_visible(lvl))
             })
             .collect::<Vec<_>>();
 

@@ -78,6 +78,7 @@ examples = [
   # display order, most interesting first
   "detect_and_track_objects",
   "face_tracking",
+  "annotation_gradio",
   "prompt_depth_anything",
   "sam2_depthanything",
   "human_pose_tracking",

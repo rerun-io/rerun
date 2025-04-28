@@ -264,7 +264,7 @@ impl TensorView {
         if slice_selection
             .slider
             .as_ref()
-            .map_or(true, |s| !s.is_empty())
+            .is_none_or(|s| !s.is_empty())
         {
             egui::Frame {
                 inner_margin: egui::Margin::symmetric(16, 8),

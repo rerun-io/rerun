@@ -30,11 +30,11 @@ To learn more about the concepts behind the columnar APIs, and the Rerun data mo
 
 Consider this snippet, using the row-oriented `log` API:
 
-snippet: archetypes/scalar_row_updates
+snippet: archetypes/scalars_row_updates
 
 which can be translated to the column-oriented `send_columns` API as such:
 
-snippet: archetypes/scalar_column_updates
+snippet: archetypes/scalars_column_updates
 
 <picture data-inline-viewer="snippets/scalar_column_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/480w.png">

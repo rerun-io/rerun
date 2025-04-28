@@ -284,7 +284,7 @@ impl ViewData {
         }
 
         let default_open = filter_matcher.is_active()
-            || origin_tree.as_ref().map_or(true, |data_result_data| {
+            || origin_tree.as_ref().is_none_or(|data_result_data| {
                 default_open_for_data_result(data_result_data.children.len())
             });
 

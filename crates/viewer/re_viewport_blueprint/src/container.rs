@@ -111,7 +111,7 @@ impl ContainerBlueprint {
 
         let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 
-        let visible = visible.map_or(true, |v| **v);
+        let visible = visible.is_none_or(|v| **v);
         let grid_columns = grid_columns.map(|v| **v);
 
         Some(Self {

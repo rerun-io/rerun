@@ -17,7 +17,7 @@ Use the [MediaPipe](https://github.com/google-ai-edge/mediapipe) Face Detector a
 </picture>
 
 ## Used Rerun types
-[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars?speculative-link)
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars)
 
 ## Background
 The face and face landmark detection technology aims to give the ability of the devices to interpret face movements and facial expressions as commands or inputs.

@@ -93,7 +93,7 @@
 //! ```
 //!
 //! ```ignore
-//! cargo install rerun
+//! cargo install rerun --locked
 //! rerun --help
 //! ```
 //!

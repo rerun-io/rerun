@@ -332,7 +332,7 @@ impl DisplayColumn {
 
                 let is_valid = time_nulls
                     .as_ref()
-                    .map_or(true, |nulls| nulls.is_valid(row_index));
+                    .is_none_or(|nulls| nulls.is_valid(row_index));
 
                 if let (true, Some(value)) = (is_valid, time_data.get(row_index)) {
                     match TimeInt::try_from(*value) {
