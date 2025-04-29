@@ -125,6 +125,7 @@ pub trait Component: Loggable {
 pub type UnorderedComponentNameSet = IntSet<ComponentName>;
 
 pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
+pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.

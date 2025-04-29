@@ -10,7 +10,8 @@ use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
-    ComponentDescriptor, ComponentName, ComponentNameSet, UnorderedComponentNameSet,
+    ComponentDescriptor, ComponentDescriptorSet, ComponentName, ComponentNameSet,
+    UnorderedComponentNameSet,
 };
 
 use crate::{store::ChunkIdSetPerTime, ChunkStore};
@@ -57,7 +58,7 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`ComponentName`]s in the store.
-    pub fn all_components(&self) -> IntSet<ComponentName> {
+    pub fn all_components(&self) -> IntSet<ComponentDescriptor> {
         self.static_chunk_ids_per_entity
             .values()
             .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
@@ -72,12 +73,12 @@ impl ChunkStore {
                         )
                     }),
             )
-            .map(|descr| descr.component_name)
+            .cloned()
             .collect()
     }
 
-    /// Retrieve all [`ComponentName`]s in the store.
-    pub fn all_components_sorted(&self) -> ComponentNameSet {
+    /// Retrieve all [`ComponentDescriptor`]s in the store.
+    pub fn all_components_sorted(&self) -> ComponentDescriptorSet {
         self.static_chunk_ids_per_entity
             .values()
             .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
@@ -92,7 +93,7 @@ impl ChunkStore {
                         )
                     }),
             )
-            .map(|descr| descr.component_name)
+            .cloned()
             .collect()
     }
 

@@ -133,7 +133,7 @@ impl DatastoreUi {
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_descr,
                 query: ChunkListQueryMode::LatestAt(at),
                 ..
             } => Either::Right(
@@ -141,14 +141,14 @@ impl DatastoreUi {
                     .latest_at_relevant_chunks(
                         &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
-                        *component_name,
+                        component_descr,
                     )
                     .into_iter(),
             ),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_descr,
                 query: ChunkListQueryMode::Range(range),
                 ..
             } => Either::Right(
@@ -156,7 +156,7 @@ impl DatastoreUi {
                     .range_relevant_chunks(
                         &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
-                        *component_name,
+                        component_descr,
                     )
                     .into_iter(),
             ),

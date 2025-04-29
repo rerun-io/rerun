@@ -44,7 +44,7 @@ pub use self::{
     component_descriptor::ComponentDescriptor,
     id::{ChunkId, RowId},
     loggable::{
-        Component, ComponentName, ComponentNameSet, DatatypeName, Loggable,
+        Component, ComponentDescriptorSet, ComponentName, ComponentNameSet, DatatypeName, Loggable,
         UnorderedComponentNameSet,
     },
     loggable_batch::{
