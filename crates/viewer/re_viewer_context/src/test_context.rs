@@ -84,7 +84,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                 } => {
                     let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
                     re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
-                    if broken_percent <= broken_percent_threshold {
+                    if broken_percent >= broken_percent_threshold {
                         eprintln!(
                         "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}");
                         return false;
