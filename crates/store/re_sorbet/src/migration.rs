@@ -16,6 +16,7 @@ use re_types_core::{arrow_helpers::as_array_ref, Loggable as _};
 
 use crate::ColumnKind;
 
+/// Migrate TUID:s with the pre-0.23 encoding.
 pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     re_tracing::profile_function!();
 
@@ -39,31 +40,33 @@ pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     .expect("Can't fail")
 }
 
+/// Migrate TUID:s with the pre-0.23 encoding.
 fn migrate_tuid_column(
     field: ArrowFieldRef,
     array: ArrowArrayRef,
 ) -> (ArrowFieldRef, ArrowArrayRef) {
-    // TODO: check for arrow extension first
+    if field.extension_type_name() != Some("rerun.datatypes.TUID") {
+        return (field, array); // Not a Tuid
+    }
+
     if let Some(struct_array) = array.as_struct_opt() {
         re_tracing::profile_function!();
 
         // Maybe legacy struct (from Rerun 0.22 or earlier):
         let [nanos, counters] = struct_array.columns() else {
-            re_log::debug_once!("Wrong number of columns.");
             return (field, array);
         };
 
         let Some(nanos) = nanos.as_primitive_opt::<arrow::datatypes::UInt64Type>() else {
-            re_log::debug_once!("Wrong nano type.");
             return (field, array);
         };
 
         let Some(counters) = counters.as_primitive_opt::<arrow::datatypes::UInt64Type>() else {
-            re_log::debug_once!("Wrong inc type.");
             return (field, array);
         };
 
-        re_log::debug_once!("Migrated legacy TUID");
+        re_tracing::profile_function!();
+
         let tuids: Vec<Tuid> = itertools::izip!(nanos.values(), counters.values())
             .map(|(&nanos, &inc)| Tuid::from_nanos_and_inc(nanos, inc))
             .collect();
@@ -71,6 +74,8 @@ fn migrate_tuid_column(
         let new_field = ArrowField::new(field.name(), Tuid::arrow_datatype(), false)
             .with_metadata(field.metadata().clone());
         let new_array = re_types_core::tuids_to_arrow(&tuids);
+
+        re_log::debug_once!("Migrated legacy TUID encoding of column {}", field.name());
 
         (new_field.into(), as_array_ref(new_array))
     } else {
