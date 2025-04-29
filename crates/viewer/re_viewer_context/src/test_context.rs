@@ -35,9 +35,7 @@ pub trait HarnessExt {
         name: &str,
         num_pixels: u64,
         broken_percent_threshold: f64,
-    ) -> bool {
-        todo!()
-    }
+    ) -> bool;
 }
 
 impl HarnessExt for egui_kittest::Harness<'_> {
