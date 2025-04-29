@@ -22,11 +22,11 @@ fn query_latest_component<C: re_types_core::Component>(
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, C::name())
+        .latest_at_relevant_chunks(query, entity_path, &C::descriptor())
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at(query, C::name())
+                .latest_at(query, &C::descriptor())
                 .into_unit()
                 .and_then(|unit| unit.index(&query.timeline()).map(|index| (index, unit)))
         })
@@ -270,7 +270,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
-            MyIndex::name(),
+            &MyIndex::descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -280,7 +280,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
-            MyIndex::name(),
+            &MyIndex::descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -290,7 +290,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            MyIndex::name(),
+            &MyIndex::descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -300,7 +300,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            MyIndex::name(),
+            &MyIndex::descriptor(),
         );
         assert!(chunks.is_empty());
     }

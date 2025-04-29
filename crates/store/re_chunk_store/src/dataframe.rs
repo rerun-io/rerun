@@ -16,7 +16,7 @@ use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
     ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor, SorbetColumnDescriptors,
 };
-use re_types_core::ComponentName;
+use re_types_core::{ComponentDescriptor, ComponentName};
 use tap::Tap as _;
 
 use crate::{ChunkStore, ColumnMetadata};
@@ -485,8 +485,7 @@ impl ChunkStore {
                 })
             })
             .filter_map(|(entity_path, component_descr)| {
-                let metadata =
-                    self.lookup_column_metadata(entity_path, &component_descr.component_name)?;
+                let metadata = self.lookup_column_metadata(entity_path, component_descr)?;
                 let datatype = self.lookup_datatype(&component_descr.component_name)?;
 
                 Some(((entity_path, component_descr), (metadata, datatype)))
@@ -571,13 +570,11 @@ impl ChunkStore {
             })
             .and_then(|per_descr| per_descr.iter().next());
 
-        let component_descr = column_info.map(|(descr, _metadata)| descr);
-        let _column_metadata = column_info.map(|(_descr, metadata)| metadata).cloned();
-
-        let component_name =
-            component_descr.map_or(selected_component_name, |descr| descr.component_name);
-
-        component_name.sanity_check();
+        let component_descr = column_info.map_or(
+            ComponentDescriptor::new(selected_component_name),
+            |(descr, _metadata)| descr.clone(),
+        );
+        component_descr.component_name.sanity_check();
 
         let ColumnMetadata {
             is_static,
@@ -585,7 +582,7 @@ impl ChunkStore {
             is_tombstone,
             is_semantically_empty,
         } = self
-            .lookup_column_metadata(&selector.entity_path, &component_name)
+            .lookup_column_metadata(&selector.entity_path, &component_descr)
             .unwrap_or(ColumnMetadata {
                 is_static: false,
                 is_indicator: false,
@@ -594,14 +591,14 @@ impl ChunkStore {
             });
 
         let datatype = self
-            .lookup_datatype(&component_name)
+            .lookup_datatype(&component_descr.component_name)
             .unwrap_or(ArrowDatatype::Null);
 
         ComponentColumnDescriptor {
             entity_path: selector.entity_path.clone(),
-            archetype_name: component_descr.and_then(|descr| descr.archetype_name),
-            archetype_field_name: component_descr.and_then(|descr| descr.archetype_field_name),
-            component_name,
+            archetype_name: component_descr.archetype_name,
+            archetype_field_name: component_descr.archetype_field_name,
+            component_name: component_descr.component_name,
             store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
                 ArrowField::new("item", datatype, true).into(),
             ),
