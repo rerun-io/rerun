@@ -70,7 +70,7 @@ enum State {
     /// We need to know the full length of the message before attempting
     /// to read it, otherwise the call to `decompress_into` or the
     /// `MsgPack` deserialization may block or even fail.
-    MsgPackMessage(crate::MessageHeader),
+    MsgPackMessage(crate::LegacyMessageHeader),
 
     /// The beginning of a Protobuf message.
     ProtobufMessageHeader,
@@ -121,8 +121,8 @@ impl StreamDecoder {
             }
 
             State::MsgPackMessageHeader => {
-                if let Some(mut bytes) = self.chunks.try_read(crate::MessageHeader::SIZE) {
-                    let header = crate::MessageHeader::decode(&mut bytes)?;
+                if let Some(mut bytes) = self.chunks.try_read(crate::LegacyMessageHeader::SIZE) {
+                    let header = crate::LegacyMessageHeader::decode(&mut bytes)?;
                     self.state = State::MsgPackMessage(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
@@ -131,7 +131,7 @@ impl StreamDecoder {
             }
             State::MsgPackMessage(header) => {
                 match header {
-                    crate::MessageHeader::Data {
+                    crate::LegacyMessageHeader::Data {
                         compressed_len,
                         uncompressed_len,
                     } => {
@@ -158,7 +158,7 @@ impl StreamDecoder {
                             return Ok(Some(message));
                         }
                     }
-                    crate::MessageHeader::EndOfStream => {
+                    crate::LegacyMessageHeader::EndOfStream => {
                         // We've reached the end of the stream, but there might be concatenated streams
                         // hence we set the state as if we are about to see another new stream
                         self.state = State::StreamHeader;
