@@ -5,7 +5,7 @@ use std::sync::Arc;
 use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
 
-use re_dataframe_ui::RequestedObject;
+use re_dataframe_ui::{DataFusionTableWidget, RequestedObject};
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_grpc_client::redap;
 use re_grpc_client::redap::ConnectionError;
@@ -72,12 +72,14 @@ impl TablesSessionContext {
         }
     }
 
+    /// Rebuild the entire session context and drop related [`DataFusionTableWidget`] caches.
     pub fn refresh(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        //TODO(ab): should we drop and recreate the session context? This would force table ui to
-        // refresh since it would invalidate the state.
         if let Some(Ok(tables)) = self.registered_tables.try_as_ref() {
             for table in tables {
-                let _ = self.ctx.deregister_table(table.name.as_str());
+                let table_name = table.name.as_str();
+
+                DataFusionTableWidget::clear_state(egui_ctx, &self.ctx, table_name);
+                let _ = self.ctx.deregister_table(table_name);
             }
         }
 

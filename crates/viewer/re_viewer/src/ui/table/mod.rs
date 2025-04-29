@@ -60,7 +60,6 @@ pub fn table_ui(viewer_ctx: &ViewerContext<'_>, ui: &mut egui::Ui, context: &Tab
                 .replace('_', " ");
             ColumnConfig::new(Id::new(c.name()), name)
         }),
-        false,
     );
 
     Frame::new()

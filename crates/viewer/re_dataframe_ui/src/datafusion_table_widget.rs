@@ -57,7 +57,6 @@ type ColumnRenamerFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String
 
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
-    id: egui::Id,
     table_ref: TableReference,
 
     /// If provided, add a title UI on top of the table.
@@ -74,27 +73,30 @@ pub struct DataFusionTableWidget<'a> {
 
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
-
-    /// If `true`, force invalidating all caches and refreshing the queries.
-    refresh: bool,
 }
 
 impl<'a> DataFusionTableWidget<'a> {
-    pub fn new(
-        session_ctx: Arc<SessionContext>,
-        id: impl Into<egui::Id>,
+    /// Clears all caches related to this session context and table reference.
+    pub fn clear_state(
+        egui_ctx: &egui::Context,
+        session_ctx: &SessionContext,
         table_ref: impl Into<TableReference>,
-    ) -> Self {
+    ) {
+        let id = id_from_session_context_and_table(session_ctx, &table_ref.into());
+
+        TableConfig::clear_state(egui_ctx, id);
+        DataFusionAdapter::clear_state(egui_ctx, id);
+    }
+
+    pub fn new(session_ctx: Arc<SessionContext>, table_ref: impl Into<TableReference>) -> Self {
         Self {
             session_ctx,
-            id: id.into(),
             table_ref: table_ref.into(),
 
             title: None,
             title_button: None,
             column_renamer: None,
             initial_blueprint: Default::default(),
-            refresh: false,
         }
     }
 
@@ -136,12 +138,6 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn refresh(mut self, refresh: bool) -> Self {
-        self.refresh = refresh;
-
-        self
-    }
-
     pub fn show(
         self,
         viewer_ctx: &ViewerContext<'_>,
@@ -150,13 +146,11 @@ impl<'a> DataFusionTableWidget<'a> {
     ) {
         let Self {
             session_ctx,
-            id,
             table_ref,
             title,
             title_button,
             column_renamer,
             initial_blueprint,
-            refresh,
         } = self;
 
         if !session_ctx
@@ -172,20 +166,15 @@ impl<'a> DataFusionTableWidget<'a> {
             return;
         }
 
-        // The cache must be invalidated as soon as the input table name or session context change,
-        // so we add that to the id.
-        let id = id
-            .with((&table_ref, session_ctx.session_id()))
-            .with("__table_ui_table_state");
+        let id = id_from_session_context_and_table(&session_ctx, &table_ref);
 
         let table_state = DataFusionAdapter::get(
             runtime,
             ui,
             &session_ctx,
-            table_ref,
+            table_ref.clone(),
             id,
             initial_blueprint,
-            refresh,
         );
 
         let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
@@ -205,7 +194,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
                     if ui.small_icon_button(&re_ui::icons::RESET).clicked() {
                         // This will trigger a fresh query on the next frame.
-                        table_state.clear_state(ui);
+                        Self::clear_state(ui.ctx(), &session_ctx, table_ref);
                     }
                 });
                 return;
@@ -272,7 +261,6 @@ impl<'a> DataFusionTableWidget<'a> {
 
                 ColumnConfig::new(Id::new(c), name)
             }),
-            refresh,
         );
 
         if let Some(title) = title {
@@ -312,6 +300,13 @@ impl<'a> DataFusionTableWidget<'a> {
         drop(requested_sorbet_batches);
         table_state.update_query(runtime, ui, new_blueprint);
     }
+}
+
+fn id_from_session_context_and_table(
+    session_ctx: &SessionContext,
+    table_ref: &TableReference,
+) -> Id {
+    egui::Id::new((session_ctx.session_id(), table_ref))
 }
 
 fn title_ui<'a>(

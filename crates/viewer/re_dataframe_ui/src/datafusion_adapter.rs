@@ -119,6 +119,12 @@ pub struct DataFusionAdapter {
 }
 
 impl DataFusionAdapter {
+    pub fn clear_state(egui_ctx: &egui::Context, id: egui::Id) {
+        egui_ctx.data_mut(|data| {
+            data.remove::<Self>(id);
+        });
+    }
+
     /// Retrieve the state from egui's memory or create a new one if it doesn't exist.
     pub fn get(
         runtime: &AsyncRuntimeHandle,
@@ -127,13 +133,8 @@ impl DataFusionAdapter {
         table_ref: TableReference,
         id: egui::Id,
         initial_blueprint: TableBlueprint,
-        force_refresh: bool,
     ) -> Self {
-        let adapter = if force_refresh {
-            None
-        } else {
-            ui.data(|data| data.get_temp::<Self>(id))
-        };
+        let adapter = ui.data(|data| data.get_temp::<Self>(id));
 
         let adapter = adapter.unwrap_or_else(|| {
             let query = DataFusionQuery::new(Arc::clone(session_ctx), table_ref, initial_blueprint);
@@ -163,13 +164,6 @@ impl DataFusionAdapter {
 
     pub fn blueprint(&self) -> &TableBlueprint {
         &self.query.blueprint
-    }
-
-    /// Clear from egui's memory (force refresh on the next frame).
-    pub fn clear_state(&self, ui: &egui::Ui) {
-        ui.data_mut(|data| {
-            data.remove::<Self>(self.id);
-        });
     }
 
     /// Update the query and save the state to egui's memory.

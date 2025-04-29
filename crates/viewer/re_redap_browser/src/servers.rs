@@ -43,6 +43,7 @@ impl Server {
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
 
+        // Note: this also drops the DataFusionTableWidget caches
         self.tables_session_ctx.refresh(runtime, egui_ctx);
     }
 
@@ -116,7 +117,7 @@ impl Server {
     ) {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
-            egui::Id::new(&self.origin),
+            //egui::Id::new(&self.origin),
             dataset.name(),
         )
         .title(dataset.name())
