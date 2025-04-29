@@ -16,7 +16,7 @@ use re_types::{
 use re_ui::{list_item, Help, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
+    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
     ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities,
@@ -216,23 +216,38 @@ Set the displayed dimensions in a selection panel.",
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
-        if tensors.len() > 1 {
-            egui::Frame {
-                inner_margin: re_ui::DesignTokens::view_padding().into(),
-                ..egui::Frame::default()
-            }
-            .show(ui, |ui| {
-                ui.error_label(format!(
-                    "Can only show one tensor at a time; was given {}. Update the query so that it \
+        let response = {
+            let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));
+
+            if tensors.len() > 1 {
+                egui::Frame {
+                    inner_margin: re_ui::DesignTokens::view_padding().into(),
+                    ..egui::Frame::default()
+                }
+                    .show(&mut ui, |ui| {
+                        ui.error_label(format!(
+                            "Can only show one tensor at a time; was given {}. Update the query so that it \
                     returns a single tensor entity and create additional views for the others.",
-                    tensors.len()
-                ));
-            });
-        } else if let Some(tensor_view) = tensors.first() {
-            state.tensor = Some(tensor_view.clone());
-            self.view_tensor(ctx, ui, state, query.view_id, &tensor_view.tensor)?;
-        } else {
-            ui.centered_and_justified(|ui| ui.label("(empty)"));
+                            tensors.len()
+                        ));
+                    });
+            } else if let Some(tensor_view) = tensors.first() {
+                state.tensor = Some(tensor_view.clone());
+                self.view_tensor(ctx, &mut ui, state, query.view_id, &tensor_view.tensor)?;
+            } else {
+                ui.centered_and_justified(|ui| ui.label("(empty)"));
+            }
+
+            ui.response()
+        };
+
+        if response.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
+        if response.clicked() {
+            ctx.selection_state()
+                .set_selection(Item::View(query.view_id));
         }
 
         Ok(())
