@@ -333,63 +333,59 @@ impl ChunkStoreSubscriber for QueryCache {
                 }
 
                 for (timeline, per_component) in chunk.time_range_per_component() {
-                    for (component_name, per_desc) in per_component {
-                        for (component_desc, time_range) in per_desc {
-                            let key = QueryCacheKey::new(
-                                chunk.entity_path().clone(),
-                                timeline,
-                                component_name,
-                            );
+                    for (component_desc, time_range) in per_component {
+                        let key = QueryCacheKey::new(
+                            chunk.entity_path().clone(),
+                            timeline,
+                            component_desc.component_name,
+                        );
 
-                            // latest-at
+                        // latest-at
+                        {
+                            let mut data_time_min = time_range.min();
+
+                            // If a compaction was triggered, make sure to drop the original chunks too.
+                            if let Some(ChunkCompactionReport {
+                                srcs: compacted_chunks,
+                                new_chunk: _,
+                            }) = compacted
                             {
-                                let mut data_time_min = time_range.min();
+                                for chunk in compacted_chunks.values() {
+                                    let data_time_compacted = chunk
+                                        .time_range_per_component()
+                                        .get(&timeline)
+                                        .and_then(|per_component| {
+                                            per_component.get(&component_desc)
+                                        })
+                                        .map_or(TimeInt::MAX, |time_range| time_range.min());
 
-                                // If a compaction was triggered, make sure to drop the original chunks too.
-                                if let Some(ChunkCompactionReport {
-                                    srcs: compacted_chunks,
-                                    new_chunk: _,
-                                }) = compacted
-                                {
-                                    for chunk in compacted_chunks.values() {
-                                        let data_time_compacted = chunk
-                                            .time_range_per_component()
-                                            .get(&timeline)
-                                            .and_then(|per_component| {
-                                                per_component.get(&component_name).and_then(
-                                                    |per_desc| per_desc.get(&component_desc),
-                                                )
-                                            })
-                                            .map_or(TimeInt::MAX, |time_range| time_range.min());
-
-                                        data_time_min =
-                                            TimeInt::min(data_time_min, data_time_compacted);
-                                    }
+                                    data_time_min =
+                                        TimeInt::min(data_time_min, data_time_compacted);
                                 }
-
-                                compacted_events
-                                    .temporal_latest_at
-                                    .entry(key.clone())
-                                    .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
-                                    .or_insert(data_time_min);
                             }
 
-                            // range
-                            {
-                                let compacted_events =
-                                    compacted_events.temporal_range.entry(key).or_default();
+                            compacted_events
+                                .temporal_latest_at
+                                .entry(key.clone())
+                                .and_modify(|time| *time = TimeInt::min(*time, data_time_min))
+                                .or_insert(data_time_min);
+                        }
 
-                                compacted_events.insert(chunk.id());
-                                // If a compaction was triggered, make sure to drop the original chunks too.
-                                compacted_events.extend(compacted.iter().flat_map(
-                                    |ChunkCompactionReport {
-                                         srcs: compacted_chunks,
-                                         new_chunk: _,
-                                     }| {
-                                        compacted_chunks.keys().copied()
-                                    },
-                                ));
-                            }
+                        // range
+                        {
+                            let compacted_events =
+                                compacted_events.temporal_range.entry(key).or_default();
+
+                            compacted_events.insert(chunk.id());
+                            // If a compaction was triggered, make sure to drop the original chunks too.
+                            compacted_events.extend(compacted.iter().flat_map(
+                                |ChunkCompactionReport {
+                                     srcs: compacted_chunks,
+                                     new_chunk: _,
+                                 }| {
+                                    compacted_chunks.keys().copied()
+                                },
+                            ));
                         }
                     }
                 }

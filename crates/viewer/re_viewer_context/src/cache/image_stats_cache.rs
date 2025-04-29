@@ -39,7 +39,7 @@ impl Cache for ImageStatsCache {
                     event
                         .chunk
                         .components()
-                        .contains_key(&re_types::components::Blob::name())
+                        .contains_component_name(re_types::components::Blob::name())
                 };
 
                 if is_deletion() && contains_image_blob() {

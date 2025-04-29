@@ -273,8 +273,7 @@ impl ChunkBuilder {
 
         let components = {
             re_tracing::profile_scope!("components");
-            let mut per_name = ChunkComponents::default();
-            for (component_desc, list_array) in
+            ChunkComponents(
                 components
                     .into_iter()
                     .filter_map(|(component_desc, arrays)| {
@@ -282,10 +281,8 @@ impl ChunkBuilder {
                         re_arrow_util::arrays_to_list_array_opt(&arrays)
                             .map(|list_array| (component_desc, list_array))
                     })
-            {
-                per_name.insert_descriptor(component_desc, list_array);
-            }
-            per_name
+                    .collect(),
+            )
         };
 
         Chunk::from_native_row_ids(id, entity_path, None, &row_ids, timelines, components)
@@ -329,8 +326,7 @@ impl ChunkBuilder {
                 .map(|(timeline, time_column)| (timeline, time_column.build()))
                 .collect(),
             {
-                let mut per_name = ChunkComponents::default();
-                for (component_desc, list_array) in
+                ChunkComponents(
                     components
                         .into_iter()
                         .filter_map(|(component_desc, arrays)| {
@@ -345,10 +341,8 @@ impl ChunkBuilder {
                                     .map(|list_array| (component_desc, list_array))
                             }
                         })
-                {
-                    per_name.insert_descriptor(component_desc, list_array);
-                }
-                per_name
+                        .collect(),
+                )
             },
         )
     }

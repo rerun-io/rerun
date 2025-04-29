@@ -473,20 +473,19 @@ impl ChunkStore {
             for (timeline, time_range_per_component) in chunk.time_range_per_component() {
                 let chunk_ids_to_be_removed = chunk_ids_to_be_removed.entry(timeline).or_default();
 
-                for (component_name, per_desc) in time_range_per_component {
-                    for (_component_desc, time_range) in per_desc {
-                        let chunk_ids_to_be_removed =
-                            chunk_ids_to_be_removed.entry(component_name).or_default();
+                for (component_desc, time_range) in time_range_per_component {
+                    let chunk_ids_to_be_removed = chunk_ids_to_be_removed
+                        .entry(component_desc.component_name)
+                        .or_default();
 
-                        chunk_ids_to_be_removed
-                            .entry(time_range.min())
-                            .or_default()
-                            .push(chunk.id());
-                        chunk_ids_to_be_removed
-                            .entry(time_range.max())
-                            .or_default()
-                            .push(chunk.id());
-                    }
+                    chunk_ids_to_be_removed
+                        .entry(time_range.min())
+                        .or_default()
+                        .push(chunk.id());
+                    chunk_ids_to_be_removed
+                        .entry(time_range.max())
+                        .or_default()
+                        .push(chunk.id());
                 }
             }
         }
