@@ -290,10 +290,14 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component.
     ///
     /// Returns an error if the data cannot be deserialized.
-    // TODO: this is practically always wrong since we likely don't wan the descriptor without any context!
+    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
     #[inline]
-    pub fn component_batch<C: Component>(&self) -> Option<ChunkResult<Vec<C>>> {
-        let data = C::from_arrow(&*self.component_batch_raw(&C::descriptor())?);
+    pub fn component_batch<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ChunkResult<Vec<C>>> {
+        debug_assert_eq!(C::name(), component_descr.component_name);
+        let data = C::from_arrow(&*self.component_batch_raw(component_descr)?);
         Some(data.map_err(Into::into))
     }
 
@@ -323,13 +327,15 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component at the given instance index.
     ///
     /// Returns an error if the data cannot be deserialized, or if the instance index is out of bounds.
-    // TODO: likely wrong, see comment earlier
+    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
     #[inline]
     pub fn component_instance<C: Component>(
         &self,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ChunkResult<C>> {
-        let res = self.component_instance_raw(&C::descriptor(), instance_index)?;
+        debug_assert_eq!(C::name(), component_descr.component_name);
+        let res = self.component_instance_raw(component_descr, instance_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -367,10 +373,14 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
-    // TODO: likely, wrong see previous todo
+    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
     #[inline]
-    pub fn component_mono<C: Component>(&self) -> Option<ChunkResult<C>> {
-        let res = self.component_mono_raw(&C::descriptor())?;
+    pub fn component_mono<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ChunkResult<C>> {
+        debug_assert_eq!(C::name(), component_descr.component_name);
+        let res = self.component_mono_raw(component_descr)?;
 
         let array = match res {
             Ok(array) => array,

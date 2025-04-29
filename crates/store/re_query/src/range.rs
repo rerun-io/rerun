@@ -36,7 +36,15 @@ impl QueryCache {
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
         let component_descrs = component_descrs.into_iter().filter_map(|component_descr| {
-            let component_descr = component_descr.into();
+            // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
+            let component_descr = store
+                .entity_component_descriptors_with_name(
+                    entity_path,
+                    component_descr.into().component_name,
+                )
+                .into_iter()
+                .next()?;
+
             store
                 .entity_has_component_on_timeline(query.timeline(), entity_path, &component_descr)
                 .then_some(component_descr)

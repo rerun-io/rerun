@@ -5,6 +5,7 @@ use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::hash::Hash64;
 use re_log_types::{debug_assert_archetype_has_components, ComponentPath};
+use re_types::ComponentDescriptor;
 use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
@@ -304,13 +305,23 @@ fn preview_if_image_ui(
 
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;
     let buffer_cache_key = Hash64::hash(image_buffer.row_id()?);
-    let image_buffer = image_buffer
-        .component_mono::<components::ImageBuffer>()?
-        .ok()?;
 
+    // TODO(andreas): why does this not use the query cache like other queries?
+    // Use first buffer that we find, but then use the same tags for the format.
+    // TODO(andreas): Handle multiple types of images.
+    let image_buffer_desc =
+        image_buffer.get_first_component_descriptor(components::ImageBuffer::name())?;
+    let image_format_desc = ComponentDescriptor {
+        component_name: components::ImageFormat::name(),
+        ..image_buffer_desc.clone()
+    };
+
+    let image_buffer = image_buffer
+        .component_mono::<components::ImageBuffer>(image_buffer_desc)?
+        .ok()?;
     let image_format = component_map
         .get(&components::ImageFormat::name())?
-        .component_mono::<components::ImageFormat>()?
+        .component_mono::<components::ImageFormat>(&image_format_desc)?
         .ok()?;
 
     // TODO(#8129): it's ugly but indicators are going away next anyway.
@@ -339,10 +350,24 @@ fn preview_if_image_ui(
 
     let colormap = component_map
         .get(&components::Colormap::name())
-        .and_then(|colormap| colormap.component_mono::<components::Colormap>()?.ok());
+        .and_then(|colormap| {
+            colormap
+                .component_mono::<components::Colormap>(&ComponentDescriptor {
+                    component_name: components::Colormap::name(),
+                    ..image_buffer_desc.clone()
+                })?
+                .ok()
+        });
     let value_range = component_map
         .get(&components::Range1D::name())
-        .and_then(|colormap| colormap.component_mono::<components::ValueRange>()?.ok());
+        .and_then(|colormap| {
+            colormap
+                .component_mono::<components::ValueRange>(&ComponentDescriptor {
+                    component_name: components::ValueRange::name(),
+                    ..image_buffer_desc.clone()
+                })?
+                .ok()
+        });
     let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
         colormap,
         value_range: value_range
@@ -501,17 +526,39 @@ fn preview_if_blob_ui(
     entity_path: &re_log_types::EntityPath,
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
-    let blob = component_map.get(&components::Blob::name())?;
-    let blob_row_id = blob.row_id();
-    let blob = blob.component_mono::<components::Blob>()?.ok()?;
+    let blob_chunk = component_map.get(&components::Blob::name())?;
+    let blob_row_id = blob_chunk.row_id();
+
+    // TODO(andreas): why does this not use the query cache like other queries?
+    // Pick the first blob component we find but have other types be consistent with those tags.
+    // TODO(andreas): Handle multiple types of blobs.
+    let blob_desc = blob_chunk.get_first_component_descriptor(components::Blob::name())?;
+    let media_type_desc = ComponentDescriptor {
+        component_name: components::MediaType::name(),
+        ..blob_desc.clone()
+    };
+    let video_stamp_desc = ComponentDescriptor {
+        component_name: components::VideoTimestamp::name(),
+        ..blob_desc.clone()
+    };
+
+    let blob = blob_chunk
+        .component_mono::<components::Blob>(blob_desc)?
+        .ok()?;
     let media_type = component_map
         .get(&components::MediaType::name())
-        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok())
+        .and_then(|unit| {
+            unit.component_mono::<components::MediaType>(&media_type_desc)?
+                .ok()
+        })
         .or_else(|| components::MediaType::guess_from_data(&blob));
 
     let video_timestamp = component_map
         .get(&components::VideoTimestamp::name())
-        .and_then(|unit| unit.component_mono::<components::VideoTimestamp>()?.ok());
+        .and_then(|unit| {
+            unit.component_mono::<components::VideoTimestamp>(&video_stamp_desc)?
+                .ok()
+        });
 
     blob_preview_and_save_ui(
         ctx,

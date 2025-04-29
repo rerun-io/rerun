@@ -66,9 +66,14 @@ fn main() -> anyhow::Result<()> {
         let labels = results.get(&MyLabel::name());
 
         // You can always use the standard deserialization path:
-        let points = points.component_batch::<MyPoint>().context("missing")??;
+        let points = points
+            .component_batch::<MyPoint>(&MyPoint::descriptor())
+            .context("missing")??;
         let labels = labels
-            .and_then(|unit| unit.component_batch::<MyLabel>()?.ok())
+            .and_then(|unit| {
+                unit.component_batch::<MyLabel>(&MyLabel::descriptor())?
+                    .ok()
+            })
             .unwrap_or_default();
 
         // Or, if you want every last bit of performance you can get, you can manipulate the raw

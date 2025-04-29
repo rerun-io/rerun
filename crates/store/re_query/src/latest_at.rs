@@ -13,8 +13,8 @@ use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    components::ClearIsRecursive, external::arrow::array::ArrayRef, Component, ComponentDescriptor,
-    ComponentName,
+    archetypes, components::ClearIsRecursive, external::arrow::array::ArrayRef, Component,
+    ComponentDescriptor, ComponentName,
 };
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -39,7 +39,7 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
 }
 
 impl QueryCache {
-    /// Queries for the given `component_names` using latest-at semantics.
+    /// Queries for the given [`ComponentDescriptor`]s using latest-at semantics.
     ///
     /// See [`LatestAtResults`] for more information about how to handle the results.
     ///
@@ -60,9 +60,18 @@ impl QueryCache {
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
         let component_names = component_descrs.into_iter().filter_map(|component_descr| {
-            let component_descr = component_descr.into();
+            // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
+            let component_descr = store
+                .entity_component_descriptors_with_name(
+                    entity_path,
+                    component_descr.into().component_name,
+                )
+                .into_iter()
+                .next()?;
+
             store
                 .entity_has_component_on_timeline(&query.timeline(), entity_path, &component_descr)
+                // TODO(#6889): Don't drop the descriptor.
                 .then_some(component_descr.component_name)
         });
 
@@ -119,8 +128,11 @@ impl QueryCache {
                 if let Some(cached) =
                     cache.latest_at(&store, query, &clear_entity_path, ClearIsRecursive::name())
                 {
+                    // TODO(andreas): Should clear also work if the component is not fully tagged?
                     let found_recursive_clear = cached
-                        .component_mono::<ClearIsRecursive>()
+                        .component_mono::<ClearIsRecursive>(
+                            &archetypes::Clear::descriptor_is_recursive(),
+                        )
                         .and_then(Result::ok)
                         == Some(ClearIsRecursive(true.into()));
                     // When checking the entity itself, any kind of `Clear` component
@@ -325,9 +337,13 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
     ) -> Option<Vec<C>> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| self.ok_or_log_err(log_level, C::name(), unit.component_batch()?))
+        self.components.get(&C::name()).and_then(|unit| {
+            self.ok_or_log_err(
+                log_level,
+                C::name(),
+                unit.component_batch(unit.get_first_component_descriptor(C::name())?)?,
+            )
+        })
     }
 
     /// Returns the deserialized data for the specified component.
@@ -341,9 +357,10 @@ impl LatestAtResults {
     /// Returns the deserialized data for the specified component.
     #[inline]
     pub fn component_batch_quiet<C: Component>(&self) -> Option<Vec<C>> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| unit.component_batch()?.ok())
+        self.components.get(&C::name()).and_then(|unit| {
+            unit.component_batch(unit.get_first_component_descriptor(C::name())?)?
+                .ok()
+        })
     }
 
     // --- Instance ---
@@ -412,7 +429,10 @@ impl LatestAtResults {
             self.ok_or_log_err(
                 log_level,
                 C::name(),
-                unit.component_instance(instance_index)?,
+                unit.component_instance(
+                    unit.get_first_component_descriptor(C::name())?,
+                    instance_index,
+                )?,
             )
         })
     }
@@ -430,9 +450,13 @@ impl LatestAtResults {
     /// Returns an error if the data cannot be deserialized, or if the instance index is out of bounds.
     #[inline]
     pub fn component_instance_quiet<C: Component>(&self, instance_index: usize) -> Option<C> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| unit.component_instance(instance_index)?.ok())
+        self.components.get(&C::name()).and_then(|unit| {
+            unit.component_instance(
+                unit.get_first_component_descriptor(C::name())?,
+                instance_index,
+            )?
+            .ok()
+        })
     }
 
     // --- Mono ---
@@ -487,9 +511,13 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
     ) -> Option<C> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| self.ok_or_log_err(log_level, C::name(), unit.component_mono()?))
+        self.components.get(&C::name()).and_then(|unit| {
+            self.ok_or_log_err(
+                log_level,
+                C::name(),
+                unit.component_mono(unit.get_first_component_descriptor(C::name())?)?,
+            )
+        })
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
@@ -505,9 +533,10 @@ impl LatestAtResults {
     /// Returns none if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono_quiet<C: Component>(&self) -> Option<C> {
-        self.components
-            .get(&C::name())
-            .and_then(|unit| unit.component_mono()?.ok())
+        self.components.get(&C::name()).and_then(|unit| {
+            unit.component_mono(unit.get_first_component_descriptor(C::name())?)?
+                .ok()
+        })
     }
 
     // ---

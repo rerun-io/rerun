@@ -32,7 +32,7 @@ fn query_latest_component<C: re_types_core::Component>(
         })
         .max_by_key(|(index, _unit)| *index)?;
 
-    unit.component_mono()?
+    unit.component_mono(&C::descriptor())?
         .ok()
         .map(|values| (data_time, row_id, values))
 }
