@@ -447,7 +447,7 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let results = chunk.range(query, component_desc.component_name);
+    let results = chunk.range(query, &component_desc);
 
     eprintln!("Query: {component_desc} @ {query:?}");
     eprintln!("Data:\n{chunk}");

@@ -582,9 +582,12 @@ impl Chunk {
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     #[inline]
-    pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<u64> {
+    pub fn num_events_for_component(
+        &self,
+        component_descriptor: &ComponentDescriptor,
+    ) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
-        self.get_first_component(component_name).map(|list_array| {
+        self.components.get(component_descriptor).map(|list_array| {
             list_array.nulls().map_or_else(
                 || list_array.len() as u64,
                 |validity| validity.len() as u64 - validity.null_count() as u64,
