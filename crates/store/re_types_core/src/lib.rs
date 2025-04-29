@@ -45,7 +45,7 @@ pub use self::{
     id::{ChunkId, RowId},
     loggable::{
         Component, ComponentDescriptorSet, ComponentName, ComponentNameSet, DatatypeName, Loggable,
-        UnorderedComponentNameSet,
+        UnorderedComponentDescriptorSet, UnorderedComponentNameSet,
     },
     loggable_batch::{
         ComponentBatch, LoggableBatch, SerializedComponentBatch, SerializedComponentColumn,

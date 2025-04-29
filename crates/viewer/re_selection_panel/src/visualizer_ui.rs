@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_chunk::{ComponentName, RowId, UnitChunkShared};
-use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
+use re_data_ui::{sorted_component_name_list_for_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_log_types::{ComponentPath, EntityPath};
@@ -187,7 +187,7 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_name in sorted_component_list_for_ui(query_info.queried.iter()) {
+    for component_name in sorted_component_name_list_for_ui(query_info.queried.iter()) {
         if component_name.is_indicator_component() {
             continue;
         }
