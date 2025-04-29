@@ -22,7 +22,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        self.get_first_component(component_name)
+        self.get_first_component(*component_name)
             .and_then(|list_array| {
                 if list_array.len() > row_index {
                     list_array
@@ -239,12 +239,9 @@ impl UnitChunkShared {
     pub fn num_instances(&self, component_name: &ComponentName) -> u64 {
         debug_assert!(self.num_rows() == 1);
         self.components
-            .values()
-            .flat_map(|per_desc| per_desc.iter())
-            .filter_map(|(descr, list_array)| {
-                (descr.component_name == *component_name).then_some(list_array)
-            })
-            .map(|list_array| {
+            .iter()
+            .filter(|&(descr, _list_array)| (descr.component_name == *component_name))
+            .map(|(_descr, list_array)| {
                 let array = list_array.value(0);
                 array.nulls().map_or_else(
                     || array.len(),
@@ -265,7 +262,7 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrowArrayRef> {
         debug_assert!(self.num_rows() == 1);
-        self.get_first_component(component_name)
+        self.get_first_component(*component_name)
             .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
     }
 

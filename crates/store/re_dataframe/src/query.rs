@@ -522,9 +522,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns `None` if the chunk either doesn't contain a `ClearIsRecursive` column or if
         /// the end result is an empty chunk.
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
-            let list_array = chunk
-                .components()
-                .get_by_descriptor(&ClearIsRecursive::descriptor())?;
+            let list_array = chunk.components().get(&ClearIsRecursive::descriptor())?;
 
             let values = list_array
                 .values()
@@ -1152,13 +1150,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let list_array = match streaming_state {
                         StreamingJoinState::StreamingJoinState(s) => {
                             debug_assert!(
-                                s.chunk.components().iter_flattened().count() <= 1,
+                                s.chunk.components().iter().count() <= 1,
                                 "cannot possibly get more than one component with this query"
                             );
 
                             s.chunk
                                 .components()
-                                .iter_flattened()
+                                .iter()
                                 .next()
                                 .map(|(_, list_array)| list_array.slice(s.cursor as usize, 1))
 
@@ -1176,7 +1174,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                 },
                                 ColumnDescriptor::Time(_) => None,
                             })?;
-                            unit.components().get_by_descriptor(&component_desc).cloned()
+                            unit.components().get(&component_desc).cloned()
                         }
                     };
 

@@ -17,6 +17,7 @@ use re_protos::{
 };
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct PartitionTableProvider {
@@ -44,10 +45,11 @@ impl GrpcStreamToTable for PartitionTableProvider {
             dataset_id: Some(self.dataset_id.into()),
         };
 
+        let mut client = self.client.clone();
+
         Ok(Arc::new(
-            self.client
-                .get_partition_table_schema(request)
-                .await
+            make_future_send(async move { Ok(client.get_partition_table_schema(request).await) })
+                .await?
                 .map_err(|err| DataFusionError::External(Box::new(err)))?
                 .into_inner()
                 .schema
@@ -66,9 +68,10 @@ impl GrpcStreamToTable for PartitionTableProvider {
             scan_parameters: None,
         };
 
-        self.client
-            .scan_partition_table(request)
-            .await
+        let mut client = self.client.clone();
+
+        make_future_send(async move { Ok(client.scan_partition_table(request).await) })
+            .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 

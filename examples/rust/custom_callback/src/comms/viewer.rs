@@ -1,11 +1,15 @@
-use rerun::external::re_log;
-use std::collections::VecDeque;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf};
-use tokio::net::TcpStream;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::{Mutex, Notify};
+use std::{collections::VecDeque, sync::Arc, time::Duration};
+
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
+    net::TcpStream,
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        Mutex, Notify,
+    },
+};
+
+use rerun::external::{re_error, re_log};
 
 use super::protocol::Message;
 

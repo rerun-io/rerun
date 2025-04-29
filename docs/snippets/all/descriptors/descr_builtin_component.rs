@@ -46,12 +46,7 @@ fn check_tags(rec: &rerun::RecordingStream) {
 
         let chunk = chunks.into_iter().next().unwrap();
 
-        let mut descriptors = chunk
-            .components()
-            .values()
-            .flat_map(|per_desc| per_desc.keys())
-            .cloned()
-            .collect::<Vec<_>>();
+        let mut descriptors = chunk.components().keys().cloned().collect::<Vec<_>>();
         descriptors.sort();
 
         let expected = vec![

@@ -73,25 +73,17 @@ impl Chunk {
 
         let lhs_per_desc: IntMap<_, _> = cl
             .components
-            .values()
-            .flat_map(|per_desc| {
-                per_desc
-                    .iter()
-                    .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
-            })
+            .iter()
+            .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
             .collect();
         let rhs_per_desc: IntMap<_, _> = cr
             .components
-            .values()
-            .flat_map(|per_desc| {
-                per_desc
-                    .iter()
-                    .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
-            })
+            .iter()
+            .map(|(component_desc, list_array)| (component_desc.clone(), list_array))
             .collect();
 
         // First pass: concat right onto left.
-        let mut components: IntMap<_, _> = {
+        let mut components = ChunkComponents({
             re_tracing::profile_scope!("components (r2l)");
             lhs_per_desc
                 .iter()
@@ -121,12 +113,12 @@ impl Chunk {
                     }
                 })
                 .collect()
-        };
+        });
 
         // Second pass: concat left onto right, where necessary.
-        components.extend({
+        {
             re_tracing::profile_scope!("components (l2r)");
-            rhs_per_desc
+            let rhs = rhs_per_desc
                 .iter()
                 .filter_map(|(component_desc, &rhs_list_array)| {
                     if components.contains_key(component_desc) {
@@ -159,16 +151,9 @@ impl Chunk {
                         ))
                     }
                 })
-                .collect_vec()
-        });
-
-        let components = {
-            let mut per_name = ChunkComponents::default();
-            for (component_desc, list_array) in components {
-                per_name.insert_descriptor(component_desc.clone(), list_array);
-            }
-            per_name
-        };
+                .collect_vec();
+            components.extend(rhs);
+        }
 
         let chunk = Self {
             id: ChunkId::new(),
@@ -235,14 +220,9 @@ impl Chunk {
     #[inline]
     pub fn same_datatypes(&self, rhs: &Self) -> bool {
         self.components
-            .values()
-            .flat_map(|per_desc| per_desc.iter())
+            .iter()
             .all(|(component_desc, lhs_list_array)| {
-                if let Some(rhs_list_array) = rhs
-                    .components
-                    .get(&component_desc.component_name)
-                    .and_then(|per_desc| per_desc.get(component_desc))
-                {
+                if let Some(rhs_list_array) = rhs.components.get(component_desc) {
                     lhs_list_array.data_type() == rhs_list_array.data_type()
                 } else {
                     true
@@ -254,28 +234,15 @@ impl Chunk {
     /// _they have in common_.
     #[inline]
     pub fn same_descriptors(&self, rhs: &Self) -> bool {
-        self.components.values().all(|lhs_per_desc| {
-            if lhs_per_desc.len() > 1 {
-                // If it's already in UB land, we might as well give up immediately.
-                return false;
+        self.components.keys().all(|lhs_desc| {
+            if rhs.components.contains_key(lhs_desc) {
+                true
+            } else {
+                rhs.components
+                    .get_by_component_name(lhs_desc.component_name)
+                    .next()
+                    .is_none()
             }
-
-            lhs_per_desc.keys().all(|lhs_desc| {
-                let Some(rhs_per_desc) = rhs.components.get(&lhs_desc.component_name) else {
-                    return true;
-                };
-
-                if rhs_per_desc.len() > 1 {
-                    // If it's already in UB land, we might as well give up immediately.
-                    return false;
-                }
-
-                if let Some(rhs_desc) = rhs_per_desc.keys().next() {
-                    lhs_desc == rhs_desc
-                } else {
-                    true
-                }
-            })
         })
     }
 
@@ -305,7 +272,7 @@ impl Chunk {
     pub fn split_indicators(&mut self) -> Option<Self> {
         let indicators: ChunkComponents = self
             .components
-            .iter_flattened()
+            .iter()
             .filter(|&(descr, _list_array)| descr.component_name.is_indicator_component())
             .filter(|&(_descr, list_array)| (!list_array.is_empty()))
             .map(|(descr, list_array)| (descr.clone(), list_array.slice(0, 1)))
@@ -327,7 +294,7 @@ impl Chunk {
             indicators,
         ) {
             self.components
-                .retain(|component_name, _per_desc| !component_name.is_indicator_component());
+                .retain(|desc, _per_desc| !desc.component_name.is_indicator_component());
             return Some(chunk);
         }
 

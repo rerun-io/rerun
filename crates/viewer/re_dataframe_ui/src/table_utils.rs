@@ -101,6 +101,13 @@ impl TableConfig {
         }
     }
 
+    /// Remove the table config from the cache.
+    pub fn clear_state(ctx: &Context, persisted_id: Id) {
+        ctx.data_mut(|data| {
+            data.remove::<Self>(persisted_id);
+        });
+    }
+
     /// Get a table config, creating it if it doesn't exist.
     ///
     /// Columns is an iterator of default [`ColumnConfig`]s that will be added to the table config.

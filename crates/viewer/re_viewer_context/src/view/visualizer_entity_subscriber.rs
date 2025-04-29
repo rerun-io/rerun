@@ -173,7 +173,11 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             // Update indicator component tracking:
             if self.indicator_components.is_empty()
                 || self.indicator_components.iter().any(|component_name| {
-                    event.diff.chunk.components().contains_key(component_name)
+                    event
+                        .diff
+                        .chunk
+                        .components()
+                        .contains_component_name(*component_name)
                 })
             {
                 store_mapping
@@ -195,7 +199,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
                 continue;
             }
 
-            for (component_desc, list_array) in event.diff.chunk.components().iter_flattened() {
+            for (component_desc, list_array) in event.diff.chunk.components().iter() {
                 if let Some(index) = self
                     .required_components_indices
                     .get(&component_desc.component_name)
