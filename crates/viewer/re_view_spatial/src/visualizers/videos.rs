@@ -35,6 +35,7 @@ use super::{
 };
 
 // TODO(#9832): Support opacity for videos
+// TODO(jan): Fallback opacity in the same way as color/depth/segmentation images
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
 }
