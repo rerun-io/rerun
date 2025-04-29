@@ -2,9 +2,7 @@ use datafusion::logical_expr::ScalarUDF;
 use datafusion_ffi::udf::FFI_ScalarUDF;
 use pyo3::types::PyCapsule;
 use pyo3::{pyclass, pyfunction, pymethods, Bound, PyResult, Python};
-use re_datafusion::functions::{
-    BoundedImageExtractionUdf, DepthImageToPointCloudUdf,
-};
+use re_datafusion::functions::{BoundedImageExtractionUdf, DepthImageToPointCloudUdf};
 use std::sync::Arc;
 
 #[pyclass(name = "RerunScalarUDF")]
@@ -33,7 +31,6 @@ pub fn bounded_image_extraction_udf() -> PyRerunScalarUDF {
     let inner = Arc::new(ScalarUDF::new_from_impl(udf));
     PyRerunScalarUDF { inner }
 }
-
 
 #[pyfunction]
 pub fn depth_image_to_point_cloud_udf() -> PyRerunScalarUDF {

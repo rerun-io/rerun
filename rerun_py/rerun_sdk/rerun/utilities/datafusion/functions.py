@@ -55,7 +55,7 @@ def convert_depth_image_to_point_cloud(
     into a Points3D.
 
     There is an assumption with this UDF that the column names of the DataFrame correspond
-    the the Rerun data model. Each column will be the full entity path followed by the
+    to the Rerun data model. Each column will be the full entity path followed by the
     component name. For example, if you have an entity called `/world/my_robot` that
     contains your AssetVideo, we will expect the MediaType component to have column name
     `/world/my_robot:MediaType`.
@@ -124,7 +124,7 @@ def extract_bounding_box_images_from_video(
     an AssetVideo and a Boxes2D. It will return an Image.
 
     There is an assumption with this UDF that the column names of the DataFrame correspond
-    the the Rerun data model. Each column will be the full entity path followed by the
+    to the Rerun data model. Each column will be the full entity path followed by the
     component name. For example, if you have an entity called `/world/my_robot` that
     contains your AssetVideo, we will expect the MediaType component to have column name
     `/world/my_robot:MediaType`.

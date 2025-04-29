@@ -1,12 +1,12 @@
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::Field;
+use arrow_array::builder::{GenericListBuilder, NullBuilder};
 use arrow_array::{Array, ArrayRef, ListArray};
 use datafusion::common::{exec_datafusion_err, exec_err};
 use datafusion::error::Result as DataFusionResult;
 use datafusion::logical_expr::ColumnarValue;
 use std::collections::HashMap;
 use std::sync::Arc;
-use arrow_array::builder::{GenericListBuilder, NullBuilder};
 
 pub(crate) fn create_rerun_metadata(
     entity_path: Option<&str>,
@@ -110,7 +110,6 @@ where
 }
 
 pub(crate) fn create_indicator_array(validity: &[bool]) -> ArrayRef {
-
     let mut indicator_array_builder: GenericListBuilder<i32, NullBuilder> =
         GenericListBuilder::with_capacity(NullBuilder::new(), 0);
     for is_valid in validity {
