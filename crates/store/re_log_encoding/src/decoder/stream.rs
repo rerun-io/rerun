@@ -501,7 +501,7 @@ mod tests {
                 decoder.push_chunk(temp[..n].to_vec());
             }
 
-            if let Some(message) = decoder.try_read().unwrap() {
+            while let Some(message) = decoder.try_read().unwrap() {
                 decoded_messages.push(message);
             }
         }
