@@ -6,7 +6,7 @@ use std::f32::consts::{PI, TAU};
 use custom_callback::comms::{app::ControlApp, protocol::Message};
 
 use rerun::{
-    external::{glam::Vec3, re_log},
+    external::{glam::Vec3, re_log, tokio},
     RecordingStream,
 };
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};

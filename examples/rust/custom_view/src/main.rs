@@ -1,8 +1,8 @@
 //! This example shows how to add custom Views to the Rerun Viewer.
 
-use re_viewer::external::{re_log, re_memory};
-use re_viewer::AsyncRuntimeHandle;
+use rerun::external::{re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer, tokio};
 
+mod color_archetype;
 mod color_coordinates_view;
 mod color_coordinates_visualizer_system;
 
@@ -15,7 +15,7 @@ static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let main_thread_token = re_viewer::MainThreadToken::i_promise_i_am_on_the_main_thread();
+    let main_thread_token = rerun::MainThreadToken::i_promise_i_am_on_the_main_thread();
 
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
     re_log::setup_logging();
@@ -51,14 +51,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
-                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect(
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect(
                     "Could not get a runtime handle from the current Tokio runtime or Wasm bindgen.",
                 ),
             );
             app.add_log_receiver(rx);
 
             // Register the custom view
-            app.add_view_class::<color_coordinates_view::ColorCoordinatesView>()
+            app.view_class_registry()
+                .add_class::<color_coordinates_view::ColorCoordinatesView>()
                 .unwrap();
 
             Box::new(app)

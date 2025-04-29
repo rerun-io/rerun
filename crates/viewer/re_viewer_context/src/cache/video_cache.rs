@@ -117,7 +117,7 @@ impl Cache for VideoCache {
                     event
                         .chunk
                         .components()
-                        .contains_key(&re_types::components::Blob::name())
+                        .contains_component_name(re_types::components::Blob::name())
                 };
 
                 if is_deletion() && contains_video_blob() {

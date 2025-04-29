@@ -26,10 +26,7 @@ impl Chunk {
         row_id: RowId,
         component_desc: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
-        let list_array = self
-            .components
-            .get(&component_desc.component_name)
-            .and_then(|per_desc| per_desc.get(component_desc))?;
+        let list_array = self.components.get(component_desc)?;
 
         if self.is_sorted() {
             let row_ids = self.row_ids_slice();
@@ -93,7 +90,7 @@ impl Chunk {
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
                 .collect(),
             components: components
-                .iter_flattened()
+                .iter()
                 .map(|(component_desc, list_array)| {
                     (component_desc.clone(), list_array.clone().slice(index, len))
                 })
@@ -202,9 +199,9 @@ impl Chunk {
             timelines: timelines.clone(),
             components: crate::ChunkComponents(
                 components
-                    .get_key_value(&component_name)
-                    .map(|(component_name, list_array)| (*component_name, list_array.clone()))
-                    .into_iter()
+                    .iter()
+                    .filter(|&(desc, _list_array)| (desc.component_name == component_name))
+                    .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
                     .collect(),
             ),
         };
@@ -291,8 +288,12 @@ impl Chunk {
             components: crate::ChunkComponents(
                 components
                     .iter()
-                    .filter(|(component_name, _)| component_names.contains(component_name))
-                    .map(|(component_name, list_array)| (*component_name, list_array.clone()))
+                    .filter(|&(component_desc, _list_array)| {
+                        component_names.contains(&component_desc.component_name)
+                    })
+                    .map(|(component_desc, list_array)| {
+                        (component_desc.clone(), list_array.clone())
+                    })
                     .collect(),
             ),
         };
@@ -332,7 +333,7 @@ impl Chunk {
             return self.clone();
         }
 
-        let Some(component_list_array) = self.get_first_component(&component_name_pov) else {
+        let Some(component_list_array) = self.get_first_component(component_name_pov) else {
             return self.clone();
         };
 
@@ -357,7 +358,7 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
                 .collect(),
             components: components
-                .iter_flattened()
+                .iter()
                 .map(|(component_desc, list_array)| {
                     let filtered = re_arrow_util::filter_array(list_array, &validity_filter);
                     let filtered = if component_desc.component_name == component_name_pov {
@@ -431,7 +432,7 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
                 .collect(),
             components: components
-                .iter_flattened()
+                .iter()
                 .map(|(component_desc, list_array)| {
                     let field = match list_array.data_type() {
                         arrow::datatypes::DataType::List(field) => field.clone(),
@@ -533,7 +534,7 @@ impl Chunk {
                 .collect(),
             components: self
                 .components
-                .iter_flattened()
+                .iter()
                 .map(|(component_desc, list_array)| {
                     let filtered = re_arrow_util::take_array(list_array, &indices);
                     (component_desc.clone(), filtered)
@@ -604,7 +605,7 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
                 .collect(),
             components: components
-                .iter_flattened()
+                .iter()
                 .map(|(component_desc, list_array)| {
                     let filtered = re_arrow_util::filter_array(list_array, filter);
                     (component_desc.clone(), filtered)
@@ -687,7 +688,7 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
                 .collect(),
             components: components
-                .iter_flattened()
+                .iter()
                 .map(|(component_desc, list_array)| {
                     let taken = re_arrow_util::take_array(list_array, indices);
                     (component_desc.clone(), taken)

@@ -7,7 +7,6 @@ use tokio::runtime::Runtime;
 
 use re_data_source::DataSource;
 use re_log_types::{LogMsg, TableMsg};
-use re_sdk::sink::LogSink as _;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use re_uri::RedapUri;
 
@@ -658,6 +657,8 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
+
+    #[cfg(feature = "server")]
     let mut is_another_server_running = false;
 
     #[cfg(feature = "native_viewer")]
@@ -767,7 +768,9 @@ fn run_impl(
             }
         });
 
+        #[allow(unused_mut)]
         let mut rxs_table = Vec::new();
+        #[allow(unused_mut)]
         let mut rxs_logs = data_sources
             .into_iter()
             .filter_map(
@@ -938,44 +941,49 @@ fn run_impl(
         }
 
         Ok(())
-    } else if is_another_server_running {
-        // Another viewer is already running on the specified address
-        let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
-        re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
+    } else {
+        #[cfg(feature = "server")]
+        if is_another_server_running {
+            use re_sdk::sink::LogSink as _;
 
-        // This spawns its own single-threaded runtime on a separate thread,
-        // no need to `rt.enter()`:
-        let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
+            // Another viewer is already running on the specified address
+            let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
+            re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
 
-        for rx in rxs_log {
-            while rx.is_connected() {
-                while let Ok(msg) = rx.recv() {
-                    if let Some(log_msg) = msg.into_data() {
-                        sink.send(log_msg);
+            // This spawns its own single-threaded runtime on a separate thread,
+            // no need to `rt.enter()`:
+            let sink = re_sdk::sink::GrpcSink::new(uri, crate::default_flush_timeout());
+
+            for rx in rxs_log {
+                while rx.is_connected() {
+                    while let Ok(msg) = rx.recv() {
+                        if let Some(log_msg) = msg.into_data() {
+                            sink.send(log_msg);
+                        }
                     }
                 }
             }
+
+            if !redap_uris.is_empty() {
+                re_log::warn!("Catalogs can't be passed to already open viewers yet.");
+            }
+
+            // TODO(cmc): This is what I would have normally done, but this never terminates for some
+            // reason.
+            // let rx = ReceiveSet::new(rxs);
+            // while rx.is_connected() {
+            //     while let Ok(msg) = rx.recv() {
+            //         if let Some(log_msg) = msg.into_data() {
+            //             sink.send(log_msg);
+            //         }
+            //     }
+            // }
+
+            sink.flush_blocking();
+
+            return Ok(());
         }
 
-        if !redap_uris.is_empty() {
-            re_log::warn!("Catalogs can't be passed to already open viewers yet.");
-        }
-
-        // TODO(cmc): This is what I would have normally done, but this never terminates for some
-        // reason.
-        // let rx = ReceiveSet::new(rxs);
-        // while rx.is_connected() {
-        //     while let Ok(msg) = rx.recv() {
-        //         if let Some(log_msg) = msg.into_data() {
-        //             sink.send(log_msg);
-        //         }
-        //     }
-        // }
-
-        sink.flush_blocking();
-
-        Ok(())
-    } else {
         #[cfg(feature = "native_viewer")]
         {
             let tokio_runtime_handle = tokio_runtime_handle.clone();

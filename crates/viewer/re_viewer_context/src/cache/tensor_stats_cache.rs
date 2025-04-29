@@ -41,7 +41,7 @@ impl Cache for TensorStatsCache {
                     event
                         .chunk
                         .components()
-                        .contains_key(&re_types::components::TensorData::name())
+                        .contains_component_name(re_types::components::TensorData::name())
                 };
 
                 if is_deletion() && contains_tensor_data() {
