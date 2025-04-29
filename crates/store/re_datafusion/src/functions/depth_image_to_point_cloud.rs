@@ -1,8 +1,9 @@
-use arrow::array::ListArray;
-use arrow::buffer::OffsetBuffer;
-use arrow::datatypes::{DataType, Field, Fields};
-use arrow_array::builder::{GenericListBuilder, NullBuilder};
-use arrow_array::{Array, ArrayRef, StructArray};
+use crate::functions::utils::{
+    columnar_value_to_array_of_array, concatenate_list_of_component_arrays, create_indicator_array,
+    create_rerun_metadata,
+};
+use arrow::datatypes::{DataType, Field};
+use arrow_array::StructArray;
 use datafusion::common::{
     exec_datafusion_err, exec_err, DataFusionError, Result as DataFusionResult,
 };
@@ -16,19 +17,16 @@ use re_types::components::{DepthMeter, ImageBuffer, PinholeProjection, Position3
 use re_types::datatypes::{ChannelDatatype, ColorModel};
 use re_types_core::{ComponentBatch, Loggable as _};
 use std::any::Any;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct DepthImageToPointCloudUdf {
-    output_entity_path: String,
     signature: Signature,
 }
 
-impl DepthImageToPointCloudUdf {
-    pub fn new(output_entity_path: impl Into<String>) -> Self {
+impl Default for DepthImageToPointCloudUdf {
+    fn default() -> Self {
         Self {
-            output_entity_path: output_entity_path.into(),
             signature: Signature::new(
                 TypeSignature::Exact(create_input_datatypes()),
                 Volatility::Immutable,
@@ -40,42 +38,26 @@ impl DepthImageToPointCloudUdf {
 fn create_input_datatypes() -> Vec<DataType> {
     vec![
         // Image Buffer
-        DataType::new_list(DataType::new_list(DataType::UInt8, false), true),
+        DataType::new_list(ImageBuffer::arrow_datatype(), true),
         // Image Format
-        DataType::new_list(format_field_data_type(), true),
+        DataType::new_list(ImageFormat::arrow_datatype(), true),
         // Depth Meter
-        DataType::new_list(DataType::Float32, true),
+        DataType::new_list(DepthMeter::arrow_datatype(), true),
         // Pinhole Projection
-        DataType::new_list(
-            DataType::new_fixed_size_list(DataType::Float32, 9, false),
-            true,
-        ),
+        DataType::new_list(PinholeProjection::arrow_datatype(), true),
         // Resolution
-        DataType::new_list(
-            DataType::new_fixed_size_list(DataType::Float32, 2, false),
-            true,
-        ),
+        DataType::new_list(Resolution::arrow_datatype(), true),
     ]
 }
 
-fn format_field_data_type() -> DataType {
-    DataType::Struct(Fields::from(vec![
-        Field::new("width", DataType::UInt32, false),
-        Field::new("height", DataType::UInt32, false),
-        Field::new("pixel_format", DataType::UInt8, true),
-        Field::new("color_model", DataType::UInt8, true),
-        Field::new("channel_datatype", DataType::UInt8, true),
-    ]))
-}
-
-fn create_output_fields(output_entity_path: &str) -> Vec<Field> {
+fn create_output_fields() -> Vec<Field> {
     let points3d_indicator_field = Field::new(
-        format!("{output_entity_path}:Points3DIndicator"),
+        "Points3DIndicator",
         DataType::new_list(DataType::Null, true),
         true,
     )
     .with_metadata(create_rerun_metadata(
-        output_entity_path,
+        None,
         "Points3DIndicator",
         None,
         None,
@@ -84,12 +66,12 @@ fn create_output_fields(output_entity_path: &str) -> Vec<Field> {
     ));
 
     let position_field = Field::new(
-        format!("{output_entity_path}:Position3D"),
+        "Position3D",
         DataType::new_list(Position3D::arrow_datatype(), true),
         true,
     )
     .with_metadata(create_rerun_metadata(
-        output_entity_path,
+        None,
         "Position3D",
         Some("Points3D"),
         Some("position"),
@@ -100,56 +82,8 @@ fn create_output_fields(output_entity_path: &str) -> Vec<Field> {
     vec![points3d_indicator_field, position_field]
 }
 
-fn create_rerun_metadata(
-    entity_path: &str,
-    component: &str,
-    archetype: Option<&str>,
-    archetype_field: Option<&str>,
-    kind: &str,
-    is_indicator: bool,
-) -> HashMap<String, String> {
-    let mut metadata: HashMap<String, String> = [
-        ("rerun.entity_path".to_owned(), entity_path.into()),
-        (
-            "rerun.component".to_owned(),
-            format!("rerun.components.{component}"),
-        ),
-        ("rerun.kind".to_owned(), kind.into()),
-    ]
-    .into_iter()
-    .collect();
-
-    if is_indicator {
-        metadata.insert("rerun.is_indicator".to_owned(), "true".to_owned());
-    }
-    if let Some(archetype) = archetype {
-        metadata.insert(
-            "rerun.archetype".to_owned(),
-            format!("rerun.archetypes.{archetype}"),
-        );
-    }
-    if let Some(archetype_field) = archetype_field {
-        metadata.insert("rerun.archetype_field".to_owned(), archetype_field.into());
-    }
-
-    metadata
-}
-
-fn columnar_value_to_array_of_array<'a>(
-    columnar: &'a ColumnarValue,
-    name: &str,
-) -> DataFusionResult<&'a ListArray> {
-    let ColumnarValue::Array(array_ref) = columnar else {
-        exec_err!("Unexpect scalar columnar value for {name}")?
-    };
-    array_ref
-        .as_any()
-        .downcast_ref::<ListArray>()
-        .ok_or(exec_datafusion_err!("Incorrect array type for {name}"))
-}
-
 fn compute_points(
-    image_buffer: ImageBuffer,
+    image_buffer: &ImageBuffer,
     image_format: ImageFormat,
     depth_meter: DepthMeter,
     pinhole_projection: PinholeProjection,
@@ -212,7 +146,7 @@ fn compute_points_per_entry(
         ) = entry
         {
             compute_points(
-                image_buffer,
+                &image_buffer,
                 image_format,
                 depth_meter,
                 pinhole_projection,
@@ -250,8 +184,8 @@ impl ScalarUDFImpl for DepthImageToPointCloudUdf {
 
     fn return_field_from_args(&self, _args: ReturnFieldArgs<'_>) -> DataFusionResult<Field> {
         Ok(Field::new(
-            &self.output_entity_path,
-            DataType::Struct(create_output_fields(&self.output_entity_path).into()),
+            "depth_image_to_point_cloud",
+            DataType::Struct(create_output_fields().into()),
             true,
         ))
     }
@@ -328,134 +262,13 @@ impl ScalarUDFImpl for DepthImageToPointCloudUdf {
         })
         .collect::<DataFusionResult<Vec<_>>>()?;
 
-        // let result_arr = ListArray::try_from(result.into_iter()).map_err(|err| exec_datafusion_err!("{err}"))?;
-        // to_arrow_list_array
+        let validity = result.iter().map(|v| v.is_some()).collect::<Vec<_>>();
+        let indicator_array = create_indicator_array(&validity);
+        let result_array = concatenate_list_of_component_arrays::<Position3D>(&result)?;
 
-        // let array = self.to_arrow()?;
-        // let offsets =
-        //     arrow::buffer::OffsetBuffer::from_lengths(std::iter::repeat(1).take(array.len()));
-        // let nullable = true;
-        // let field = arrow::datatypes::Field::new("item", array.data_type().clone(), nullable);
-        // ArrowListArray::try_new(field.into(), offsets, array, None).map_err(|err| err.into())
-
-        // let results_arr = Position3D::to_arrow_list_array(result);
-
-        let fields = create_output_fields(self.output_entity_path.as_str());
-
-        let mut offsets = Vec::with_capacity(result.len() + 1);
-        let mut valid_arrays: Vec<&dyn Array> = Vec::new();
-        let mut validity = Vec::with_capacity(result.len());
-
-        offsets.push(0);
-        let mut cumulative_length = 0;
-
-        for opt_array in &result {
-            match opt_array {
-                Some(array) => {
-                    // This element is valid
-                    validity.push(true);
-                    valid_arrays.push(array);
-                    cumulative_length += array.len() as i32;
-                }
-                None => {
-                    // This element is null
-                    validity.push(false);
-                }
-            }
-            offsets.push(cumulative_length);
-        }
-
-        // Create offset buffer
-        let offset_buffer = OffsetBuffer::new(offsets.into());
-
-        // Concatenate all the valid arrays
-        let values = if valid_arrays.is_empty() {
-            arrow::array::new_empty_array(&Position3D::arrow_datatype())
-        } else {
-            re_arrow_util::concat_arrays(&valid_arrays)?
-        };
-
-        // let lengths = result
-        //     .iter()
-        //     .map(|maybe_row| maybe_row.as_ref().map(|row| row.len()))
-        //     .collect::<Vec<_>>();
-
-        // let offsets = OffsetBuffer::from_lengths(lengths.iter().map(|v| v.unwrap_or(0)));
-        // let values = result
-        //     .into_iter()
-        //     .flatten()
-        //     .flatten()
-        //     .collect::<Vec<_>>()
-        //     .to_arrow()
-        //     .map_err(|err| exec_datafusion_err!("{err}"))?;
-
-        // let validity: Vec<bool> = lengths.iter().map(|v| v.is_some()).collect();
-
-        // Points3D Indicator
-        let mut indicator_array_builder: GenericListBuilder<i32, NullBuilder> =
-            GenericListBuilder::with_capacity(NullBuilder::new(), 0);
-        for is_valid in &validity {
-            indicator_array_builder.append(*is_valid);
-        }
-        let indicator_array = Arc::new(indicator_array_builder.finish()) as ArrayRef;
-
-        let list_field = Arc::new(Field::new("item", values.data_type().clone(), true));
-        let result_array = Arc::new(ListArray::try_new(
-            list_field,
-            offset_buffer,
-            values,
-            Some(validity.into()),
-        )?);
-
-        StructArray::try_new(fields.into(), vec![indicator_array, result_array], None)
+        let fields = create_output_fields().into();
+        StructArray::try_new(fields, vec![indicator_array, result_array], None)
             .map(|arr| ColumnarValue::Array(Arc::new(arr)))
             .map_err(DataFusionError::from)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::functions::depth_image_to_point_cloud::DepthImageToPointCloudUdf;
-    use datafusion::error::DataFusionError;
-    use datafusion::logical_expr::ScalarUDF;
-    use datafusion::prelude::{col, ParquetReadOptions, SessionContext};
-
-    #[tokio::test]
-    async fn test_convert_to_point_cloud() -> Result<(), DataFusionError> {
-        let ctx = SessionContext::default();
-
-        let to_point_cloud_udf =
-            ScalarUDF::new_from_impl(DepthImageToPointCloudUdf::new("/output_point_cloud"));
-
-        let input_entity_path = "/world/camera_lowres";
-
-        let mut df = ctx
-            .read_parquet(
-                "/Users/tsaucer/working/arkit_demo_data_depth_image.parquet",
-                ParquetReadOptions::default(),
-            )
-            .await?;
-
-        df = df.select(vec![to_point_cloud_udf
-            .call(vec![
-                col(format!("{input_entity_path}/depth:ImageBuffer")),
-                col(format!("{input_entity_path}/depth:ImageFormat")),
-                col(format!("{input_entity_path}/depth:DepthMeter")),
-                col(format!("{input_entity_path}:PinholeProjection")),
-                col(format!("{input_entity_path}:Resolution")),
-            ])
-            .alias("point_cloud_archetype")])?;
-
-        let df_cached = df.cache().await?;
-
-        println!(
-            "Number of point cloud entries: {}",
-            df_cached
-                .filter(col("point_cloud_archetype").is_not_null())?
-                .count()
-                .await?
-        );
-
-        Ok(())
     }
 }

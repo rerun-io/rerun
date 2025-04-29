@@ -6,6 +6,7 @@ use datafusion::error::Result as DataFusionResult;
 use datafusion::logical_expr::ColumnarValue;
 use std::collections::HashMap;
 use std::sync::Arc;
+use arrow_array::builder::{GenericListBuilder, NullBuilder};
 
 pub(crate) fn create_rerun_metadata(
     entity_path: Option<&str>,
@@ -59,7 +60,7 @@ pub(crate) fn columnar_value_to_array_of_array<'a>(
 }
 
 pub(crate) fn concatenate_list_of_component_arrays<T>(
-    input_arrays: Vec<Option<ArrayRef>>,
+    input_arrays: &Vec<Option<ArrayRef>>,
 ) -> DataFusionResult<ArrayRef>
 where
     T: re_types_core::Loggable,
@@ -73,7 +74,7 @@ where
     offsets.push(0);
     let mut cumulative_length = 0;
 
-    for opt_array in &input_arrays {
+    for opt_array in input_arrays {
         match opt_array {
             Some(array) => {
                 // This element is valid
@@ -106,4 +107,14 @@ where
         values,
         Some(validity.into()),
     )?))
+}
+
+pub(crate) fn create_indicator_array(validity: &[bool]) -> ArrayRef {
+
+    let mut indicator_array_builder: GenericListBuilder<i32, NullBuilder> =
+        GenericListBuilder::with_capacity(NullBuilder::new(), 0);
+    for is_valid in validity {
+        indicator_array_builder.append(*is_valid);
+    }
+    Arc::new(indicator_array_builder.finish()) as ArrayRef
 }

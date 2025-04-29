@@ -190,10 +190,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(send_recording_name, m)?)?;
     m.add_function(wrap_pyfunction!(send_recording_start_time_nanos, m)?)?;
 
-    m.add_class::<crate::datafusion_utils::PyBoundedImageExtractionUdf>()?;
-    m.add_class::<crate::datafusion_utils::PyDepthImageToPointCloudUdf>()?;
-    m.add_class::<crate::datafusion_utils::PySetEntityPathUdf>()?;
-
     use crate::video::asset_video_read_frame_timestamps_nanos;
     m.add_function(wrap_pyfunction!(
         asset_video_read_frame_timestamps_nanos,
@@ -208,6 +204,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // viewer
     crate::viewer::register(py, m)?;
+
+    // datafusion
+    crate::datafusion::register(py, m)?;
 
     Ok(())
 }

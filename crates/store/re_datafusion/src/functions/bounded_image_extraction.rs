@@ -323,8 +323,8 @@ fn image_buffer_rows_to_components(
         })
         .unzip();
 
-    let buffers = concatenate_list_of_component_arrays::<ImageBuffer>(buffers)?;
-    let formats = concatenate_list_of_component_arrays::<ImageFormat>(formats)?;
+    let buffers = concatenate_list_of_component_arrays::<ImageBuffer>(&buffers)?;
+    let formats = concatenate_list_of_component_arrays::<ImageFormat>(&formats)?;
 
     Ok((buffers, formats))
 }
