@@ -253,14 +253,9 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                             let msg = rmp_serde::from_slice::<LegacyLogMsg>(data);
 
                             match msg {
-                                Ok(legacy_msg) => match legacy_msg.migrate() {
-                                    Ok(msg) => (Some(msg), length + header_size),
-                                    Err(err) => {
-                                        return std::task::Poll::Ready(Some(Err(
-                                            DecodeError::Migration(err),
-                                        )));
-                                    }
-                                },
+                                Ok(legacy_msg) => {
+                                    (Some(legacy_msg.migrate()), length + header_size)
+                                }
                                 Err(err) => {
                                     return std::task::Poll::Ready(Some(Err(
                                         DecodeError::MsgPack(err),

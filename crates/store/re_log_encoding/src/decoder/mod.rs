@@ -20,7 +20,7 @@ use crate::{Compression, EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
 
-fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError> {
+fn warn_on_version_mismatch(encoded_version: [u8; 4]) {
     // We used 0000 for all .rrd files up until 2023-02-27, post 0.2.0 release:
     let encoded_version = if encoded_version == [0, 0, 0, 0] {
         CrateVersion::new(0, 2, 0)
@@ -31,13 +31,10 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
     if encoded_version.major == 0 && encoded_version.minor < 23 {
         // We broke compatibility for 0.23 for (hopefully) the last time.
         re_log::warn_once!("Attempting to load .rrd file from {encoded_version}…");
-        Ok(())
     } else if encoded_version <= CrateVersion::LOCAL {
         // Loading old files should be fine, and if it is not, the chunk migration in re_sorbet should already log a warning.
-        Ok(())
     } else {
         re_log::warn_once!("Found data stream with Rerun version {encoded_version} which is newer than the local Rerun version ({}). This file may contain data that is not compatible with this version of Rerun. Consider updating Rerun.", CrateVersion::LOCAL);
-        Ok(())
     }
 }
 
@@ -86,9 +83,6 @@ pub enum DecodeError {
 
     #[error("Codec error: {0}")]
     Codec(#[from] codec::CodecError),
-
-    #[error("Migration error: {0}")]
-    Migration(#[from] crate::migrator::MigrationError),
 }
 
 // ----------------------------------------------------------------------------
@@ -145,7 +139,7 @@ pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions
         return Err(DecodeError::NotAnRrd);
     }
 
-    warn_on_version_mismatch(version)?;
+    warn_on_version_mismatch(version);
 
     match options.serializer {
         Serializer::MsgPack | Serializer::Protobuf => {}
@@ -397,10 +391,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                                 self.version
                             );
                             match rmp_serde::from_slice::<LegacyLogMsg>(data) {
-                                Ok(legacy_msg) => match legacy_msg.migrate() {
-                                    Ok(msg) => Some(msg),
-                                    Err(err) => return Some(Err(err.into())),
-                                },
+                                Ok(legacy_msg) => Some(legacy_msg.migrate()),
                                 Err(err) => return Some(Err(err.into())),
                             }
                         }

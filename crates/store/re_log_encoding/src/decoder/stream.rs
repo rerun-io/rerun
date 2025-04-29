@@ -150,7 +150,7 @@ impl StreamDecoder {
                             let legacy_message: LegacyLogMsg =
                                 rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
 
-                            let mut message = legacy_message.migrate()?;
+                            let mut message = legacy_message.migrate();
 
                             self.state = State::MsgPackMessageHeader;
 
