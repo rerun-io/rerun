@@ -359,14 +359,6 @@ mod tests {
         let options = [
             EncodingOptions {
                 compression: Compression::Off,
-                serializer: Serializer::MsgPack,
-            },
-            EncodingOptions {
-                compression: Compression::LZ4,
-                serializer: Serializer::MsgPack,
-            },
-            EncodingOptions {
-                compression: Compression::Off,
                 serializer: Serializer::Protobuf,
             },
             EncodingOptions {
@@ -405,14 +397,6 @@ mod tests {
         let messages = fake_log_messages();
 
         let options = [
-            EncodingOptions {
-                compression: Compression::Off,
-                serializer: Serializer::MsgPack,
-            },
-            EncodingOptions {
-                compression: Compression::LZ4,
-                serializer: Serializer::MsgPack,
-            },
             EncodingOptions {
                 compression: Compression::Off,
                 serializer: Serializer::Protobuf,
