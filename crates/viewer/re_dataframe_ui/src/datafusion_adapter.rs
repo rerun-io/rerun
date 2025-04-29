@@ -113,6 +113,8 @@ pub struct DataFusionAdapter {
     // Used to have something to display while the new dataframe is being queried.
     pub last_sorbet_batches: Option<Vec<SorbetBatch>>,
 
+    // TODO(ab, lucasmerlin): this `Mutex` is only needed because of the `Clone` bound in egui
+    // so we should clean that up if the bound is lifted.
     pub requested_sorbet_batches: Arc<Mutex<RequestedSorbetBatches>>,
 }
 
