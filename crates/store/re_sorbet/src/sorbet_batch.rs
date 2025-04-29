@@ -164,6 +164,7 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         let batch = make_all_data_columns_list_arrays(batch);
+        let batch = crate::migration::reorder_columns(&batch);
         let batch = crate::migration::migrate_tuids(&batch);
         let batch = crate::migration::migrate_record_batch(&batch);
 

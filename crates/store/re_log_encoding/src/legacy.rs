@@ -163,6 +163,134 @@ impl LegacyArrowMsg {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for LegacyArrowMsg {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct FieldVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for FieldVisitor {
+            type Value = LegacyArrowMsg;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("(table_id, timepoint, buf)")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                re_tracing::profile_scope!("LegacyArrowMsg::deserialize");
+
+                let table_id: Option<LegacyTuid> = seq.next_element()?;
+                let timepoint_max: Option<LegacyTimePoint> = seq.next_element()?;
+                let ipc_bytes: Option<serde_bytes::ByteBuf> = seq.next_element()?;
+
+                if let (Some(chunk_id), Some(timepoint_max), Some(buf)) =
+                    (table_id, timepoint_max, ipc_bytes)
+                {
+                    let batch = arrow_from_ipc(&buf)
+                        .map_err(|err| serde::de::Error::custom(format!("IPC decoding: {err}")))?;
+
+                    Ok(LegacyArrowMsg {
+                        chunk_id,
+                        timepoint_max,
+                        batch,
+                    })
+                } else {
+                    Err(serde::de::Error::custom(
+                        "Expected (table_id, timepoint, buf)",
+                    ))
+                }
+            }
+        }
+
+        deserializer
+            .deserialize_tuple(3, FieldVisitor)
+            .map_err(|err| serde::de::Error::custom(format!("ArrowMsg: {err}")))
+    }
+}
+
+// fn arrow_from_ipc(buf: &[u8]) -> Result<ArrowRecordBatch, String> {
+//     use arrow::ipc::reader::StreamReader;
+//     let stream = StreamReader::try_new(std::io::Cursor::new(buf), None)
+//         .map_err(|err| format!("Arrow StreamReader error: {err}"))?;
+//     let batches: Result<Vec<_>, _> = stream.collect();
+//     let batches = batches.map_err(|err| format!("Arrow error: {err}"))?;
+//     if batches.is_empty() {
+//         return Err("No RecordBatch in stream".to_owned());
+//     }
+//     if batches.len() > 1 {
+//         return Err(format!(
+//             "Found {} batches in stream - expected just one.",
+//             batches.len()
+//         ));
+//     }
+//     #[allow(clippy::unwrap_used)] // is_empty check above
+//     let batch = batches.into_iter().next().unwrap();
+//     Ok(batch)
+// }
+
+fn arrow_from_ipc(buf: &[u8]) -> Result<ArrowRecordBatch, String> {
+    use arrow2::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
+
+    let mut cursor = std::io::Cursor::new(buf);
+    let metadata = match read_stream_metadata(&mut cursor) {
+        Ok(metadata) => metadata,
+        Err(err) => return Err(format!("Failed to read stream metadata: {err}")),
+    };
+    let schema = metadata.schema.clone();
+    let stream = StreamReader::new(cursor, metadata, None);
+    let chunks: Result<Vec<_>, _> = stream
+        .map(|state| match state {
+            Ok(StreamState::Some(chunk)) => Ok(chunk),
+            Ok(StreamState::Waiting) => {
+                unreachable!("cannot be waiting on a fixed buffer")
+            }
+            Err(err) => Err(err),
+        })
+        .collect();
+
+    let chunks = chunks.map_err(|err| format!("Arrow2 error: {err}"))?;
+
+    if chunks.is_empty() {
+        return Err("No chunks found in stream".to_owned());
+    }
+    if chunks.len() > 1 {
+        return Err(format!(
+            "Found {} chunks in stream - expected just one.",
+            chunks.len()
+        ));
+    }
+    #[allow(clippy::unwrap_used)] // is_empty check above
+    let chunk = chunks.into_iter().next().unwrap();
+
+    let arrow::datatypes::Schema { fields, metadata } = schema.into();
+
+    let schema = arrow::datatypes::Schema {
+        fields: migrate_fields(&fields),
+        metadata,
+    };
+
+    ArrowRecordBatch::try_new(
+        schema.into(),
+        chunk.columns().iter().map(|c| c.clone().into()).collect(),
+    )
+    .map_err(|err| format!("Arrow error: {err}"))
+}
+
+fn migrate_fields(fields: &arrow::datatypes::Fields) -> arrow::datatypes::Fields {
+    fields.iter().map(migrate_field).collect()
+}
+
+fn migrate_field(field: &arrow::datatypes::FieldRef) -> arrow::datatypes::FieldRef {
+    let nullable = true; // TODO
+    arrow::datatypes::Field::new(field.name(), field.data_type().clone(), nullable)
+        .with_metadata(field.metadata().clone())
+        .into()
+}
+
 // -------------------------------------------------------------
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -204,73 +332,6 @@ pub struct LegacyTimeline {
 pub enum LegacyTimeType {
     Time,
     Sequence,
-}
-
-impl<'de> serde::Deserialize<'de> for LegacyArrowMsg {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct FieldVisitor;
-
-        impl<'de> serde::de::Visitor<'de> for FieldVisitor {
-            type Value = LegacyArrowMsg;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("(table_id, timepoint, buf)")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                re_tracing::profile_scope!("LegacyArrowMsg::deserialize");
-
-                let table_id: Option<LegacyTuid> = seq.next_element()?;
-                let timepoint_max: Option<LegacyTimePoint> = seq.next_element()?;
-                let ipc_bytes: Option<serde_bytes::ByteBuf> = seq.next_element()?;
-
-                if let (Some(chunk_id), Some(timepoint_max), Some(buf)) =
-                    (table_id, timepoint_max, ipc_bytes)
-                {
-                    use arrow::ipc::reader::StreamReader;
-
-                    let stream = StreamReader::try_new(std::io::Cursor::new(buf), None)
-                        .map_err(|err| serde::de::Error::custom(format!("Arrow error: {err}")))?;
-                    let batches: Result<Vec<_>, _> = stream.collect();
-
-                    let batches = batches
-                        .map_err(|err| serde::de::Error::custom(format!("Arrow error: {err}")))?;
-
-                    if batches.is_empty() {
-                        return Err(serde::de::Error::custom("No RecordBatch in stream"));
-                    }
-                    if batches.len() > 1 {
-                        return Err(serde::de::Error::custom(format!(
-                            "Found {} batches in stream - expected just one.",
-                            batches.len()
-                        )));
-                    }
-                    #[allow(clippy::unwrap_used)] // is_empty check above
-                    let batch = batches.into_iter().next().unwrap();
-
-                    Ok(LegacyArrowMsg {
-                        chunk_id,
-                        timepoint_max,
-                        batch,
-                    })
-                } else {
-                    Err(serde::de::Error::custom(
-                        "Expected (table_id, timepoint, buf)",
-                    ))
-                }
-            }
-        }
-
-        deserializer
-            .deserialize_tuple(3, FieldVisitor)
-            .map_err(|err| serde::de::Error::custom(format!("ArrowMsg: {err}")))
-    }
 }
 
 // -------------------------------------------------------------

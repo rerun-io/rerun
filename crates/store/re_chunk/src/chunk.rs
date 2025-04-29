@@ -32,7 +32,7 @@ pub enum ChunkError {
     #[error("Detected malformed Chunk: {reason}")]
     Malformed { reason: String },
 
-    #[error(transparent)]
+    #[error("Arrow: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
 
     #[error("{kind} index out of bounds: {index} (len={len})")]
