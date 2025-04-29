@@ -34,6 +34,7 @@ use super::{
     UiLabelTarget,
 };
 
+// TODO(#9832): Support opacity for videos
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
 }
