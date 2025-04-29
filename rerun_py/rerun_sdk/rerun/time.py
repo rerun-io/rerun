@@ -101,18 +101,11 @@ def set_time(
         )
     elif timestamp is not None:
         nanos = to_nanos_since_epoch(timestamp)
-        try:
-            bindings.set_time_timestamp_nanos_since_epoch(
-                timeline,
-                nanos,
-                recording=recording.to_native() if recording is not None else None,
-            )
-        except OverflowError as err:
-            raise ValueError(
-                f"set_time: `timestamp={timestamp!r}` is out of range; "
-                f"expected seconds since Unix epoch, datetime.datetime, or numpy.datetime64 "
-                f"(timeline='{timeline}')"
-            ) from err
+        bindings.set_time_timestamp_nanos_since_epoch(
+            timeline,
+            nanos,
+            recording=recording.to_native() if recording is not None else None,
+        )
 
 
 def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.timedelta64) -> int:
@@ -136,15 +129,11 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
 def to_nanos_since_epoch(
     timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64,
 ) -> int:
-    if isinstance(timestamp, (int, np.integer)):
-        return 1_000_000_000 * int(timestamp)  # Interpret as seconds and convert to nanos
-    elif isinstance(
-        timestamp,
-        # Only allowing f64 since anything less has way too little precision for measuring time since 1970
-        (float, np.float64),
-    ):
-        # Interpret as seconds and convert to nanos
-        return int(np.round(1e9 * timestamp))
+    # Only allowing f64 since anything less has way too little precision for measuring time since 1970
+    if isinstance(timestamp, (int, np.integer, float, np.float64)):
+        if timestamp > 1e11:
+            raise ValueError("set_time: Expected seconds since unix epoch, but it looks like this is in milliseconds")
+        return int(np.round(1e9 * timestamp))  # Interpret as seconds and convert to nanos
     elif isinstance(timestamp, datetime):
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
