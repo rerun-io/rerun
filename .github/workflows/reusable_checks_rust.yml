@@ -143,7 +143,6 @@ jobs:
           name: test-results-ubuntu
           path: "**/tests/snapshots"
 
-
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
     name: Test on ${{ matrix.name }}
