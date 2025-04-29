@@ -483,14 +483,6 @@ mod tests {
         let options = [
             EncodingOptions {
                 compression: Compression::Off,
-                serializer: Serializer::MsgPack,
-            },
-            EncodingOptions {
-                compression: Compression::LZ4,
-                serializer: Serializer::MsgPack,
-            },
-            EncodingOptions {
-                compression: Compression::Off,
                 serializer: Serializer::Protobuf,
             },
             EncodingOptions {
@@ -516,14 +508,6 @@ mod tests {
     #[test]
     fn test_concatenated_streams() {
         let options = [
-            EncodingOptions {
-                compression: Compression::Off,
-                serializer: Serializer::MsgPack,
-            },
-            EncodingOptions {
-                compression: Compression::LZ4,
-                serializer: Serializer::MsgPack,
-            },
             EncodingOptions {
                 compression: Compression::Off,
                 serializer: Serializer::Protobuf,
