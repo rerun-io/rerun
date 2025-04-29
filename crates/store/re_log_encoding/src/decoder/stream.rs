@@ -46,7 +46,7 @@ pub struct StreamDecoder {
 /// |           |
 /// ---Message<--
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum State {
     /// The beginning of the stream.
     ///
@@ -89,7 +89,7 @@ impl StreamDecoder {
             version: None,
             // Note: `options` are filled in once we read `FileHeader`,
             // so this value does not matter.
-            options: EncodingOptions::MSGPACK_UNCOMPRESSED,
+            options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
             chunks: ChunkBuffer::new(),
             uncompressed: Vec::with_capacity(1024),
             state: State::StreamHeader,

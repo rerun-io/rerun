@@ -16,12 +16,36 @@ use re_types_core::{arrow_helpers::as_array_ref, Loggable as _};
 
 use crate::ColumnKind;
 
-fn migrate_field(field: ArrowFieldRef, array: ArrowArrayRef) -> (ArrowFieldRef, ArrowArrayRef) {
+pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+    re_tracing::profile_function!();
+
+    let num_columns = batch.num_columns();
+    let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
+    let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
+
+    for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
+        let (field, array) = migrate_tuid_column(field.clone(), array.clone());
+        fields.push(field);
+        columns.push(array);
+    }
+
+    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+
+    ArrowRecordBatch::try_new_with_options(
+        schema.into(),
+        columns,
+        &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+    )
+    .expect("Can't fail")
+}
+
+fn migrate_tuid_column(
+    field: ArrowFieldRef,
+    array: ArrowArrayRef,
+) -> (ArrowFieldRef, ArrowArrayRef) {
     // TODO: check for arrow extension first
     if let Some(struct_array) = array.as_struct_opt() {
         re_tracing::profile_function!();
-
-        re_log::debug_once!("Migrating legacy TUID…");
 
         // Maybe legacy struct (from Rerun 0.22 or earlier):
         let [nanos, counters] = struct_array.columns() else {
@@ -39,7 +63,7 @@ fn migrate_field(field: ArrowFieldRef, array: ArrowArrayRef) -> (ArrowFieldRef, 
             return (field, array);
         };
 
-        re_log::debug_once!("Migrated legacy TUID.");
+        re_log::debug_once!("Migrated legacy TUID");
         let tuids: Vec<Tuid> = itertools::izip!(nanos.values(), counters.values())
             .map(|(&nanos, &inc)| Tuid::from_nanos_and_inc(nanos, inc))
             .collect();
@@ -52,29 +76,6 @@ fn migrate_field(field: ArrowFieldRef, array: ArrowArrayRef) -> (ArrowFieldRef, 
     } else {
         (field, array)
     }
-}
-
-pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
-    re_tracing::profile_function!();
-
-    let num_columns = batch.num_columns();
-    let mut fields: Vec<ArrowFieldRef> = Vec::with_capacity(num_columns);
-    let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
-
-    for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
-        let (field, array) = migrate_field(field.clone(), array.clone());
-        fields.push(field);
-        columns.push(array);
-    }
-
-    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
-
-    ArrowRecordBatch::try_new_with_options(
-        schema.into(),
-        columns,
-        &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
-    )
-    .expect("Can't fail")
 }
 
 /// Migrate old renamed types to new types.

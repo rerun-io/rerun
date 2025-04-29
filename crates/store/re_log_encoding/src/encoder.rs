@@ -123,7 +123,7 @@ pub struct Encoder<W: std::io::Write> {
     serializer: Serializer,
     compression: Compression,
     write: W,
-    uncompressed: Vec<u8>,
+    scratch: Vec<u8>,
 }
 
 impl<W: std::io::Write> Encoder<W> {
@@ -143,7 +143,7 @@ impl<W: std::io::Write> Encoder<W> {
             serializer: options.serializer,
             compression: options.compression,
             write,
-            uncompressed: Vec::new(),
+            scratch: Vec::new(),
         })
     }
 
@@ -151,14 +151,14 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
         re_tracing::profile_function!();
 
-        self.uncompressed.clear();
+        self.scratch.clear();
         match self.serializer {
             Serializer::Protobuf => {
-                encoder::encode(&mut self.uncompressed, message, self.compression)?;
+                encoder::encode(&mut self.scratch, message, self.compression)?;
 
                 self.write
-                    .write_all(&self.uncompressed)
-                    .map(|_| self.uncompressed.len() as _)
+                    .write_all(&self.scratch)
+                    .map(|_| self.scratch.len() as _)
                     .map_err(EncodeError::Write)
             }
             Serializer::MsgPack => Err(EncodeError::CannotEncodeWithMsgPack),
