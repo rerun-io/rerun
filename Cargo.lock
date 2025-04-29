@@ -7205,7 +7205,6 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "serde",
- "serde_bytes",
  "similar-asserts",
  "static_assertions",
  "thiserror 1.0.65",
