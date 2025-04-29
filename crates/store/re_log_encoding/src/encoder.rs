@@ -3,7 +3,7 @@
 use crate::codec;
 use crate::codec::file::{self, encoder};
 use crate::FileHeader;
-use crate::MessageHeader;
+use crate::LegacyMessageHeader;
 use crate::Serializer;
 use crate::{Compression, EncodingOptions};
 use re_build_info::CrateVersion;
@@ -171,7 +171,7 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         match self.serializer {
             Serializer::MsgPack => {
-                MessageHeader::EndOfStream.encode(&mut self.write)?;
+                LegacyMessageHeader::EndOfStream.encode(&mut self.write)?;
             }
             Serializer::Protobuf => {
                 file::MessageHeader {

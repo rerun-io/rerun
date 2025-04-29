@@ -13,7 +13,7 @@ use re_log_types::LogMsg;
 
 use crate::codec::file::decoder;
 use crate::FileHeader;
-use crate::MessageHeader;
+use crate::LegacyMessageHeader;
 use crate::OLD_RRD_HEADERS;
 use crate::{codec, legacy::LegacyLogMsg};
 use crate::{Compression, EncodingOptions, Serializer};
@@ -324,7 +324,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 },
             },
             Serializer::MsgPack => {
-                let header = match MessageHeader::decode(&mut self.read) {
+                let header = match LegacyMessageHeader::decode(&mut self.read) {
                     Ok(header) => header,
                     Err(err) => match err {
                         DecodeError::Read(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
@@ -333,10 +333,10 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                         other => return Some(Err(other)),
                     },
                 };
-                self.size_bytes += MessageHeader::SIZE as u64;
+                self.size_bytes += LegacyMessageHeader::SIZE as u64;
 
                 match header {
-                    MessageHeader::Data {
+                    LegacyMessageHeader::Data {
                         compressed_len,
                         uncompressed_len,
                     } => {
@@ -392,7 +392,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                             }
                         }
                     }
-                    MessageHeader::EndOfStream => None,
+                    LegacyMessageHeader::EndOfStream => None,
                 }
             }
         };

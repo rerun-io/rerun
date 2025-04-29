@@ -188,7 +188,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
             let (msg, processed_length) = match serializer {
                 crate::Serializer::MsgPack => {
-                    let header_size = super::MessageHeader::SIZE;
+                    let header_size = super::LegacyMessageHeader::SIZE;
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more
                         self.expect_more_data = true;
@@ -197,10 +197,10 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                         continue;
                     }
                     let data = &unprocessed_bytes[..header_size];
-                    let header = super::MessageHeader::from_bytes(data)?;
+                    let header = super::LegacyMessageHeader::from_bytes(data)?;
 
                     match header {
-                        super::MessageHeader::Data {
+                        super::LegacyMessageHeader::Data {
                             compressed_len,
                             uncompressed_len,
                         } => {
@@ -264,7 +264,9 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
                             }
                         }
 
-                        super::MessageHeader::EndOfStream => return std::task::Poll::Ready(None),
+                        super::LegacyMessageHeader::EndOfStream => {
+                            return std::task::Poll::Ready(None)
+                        }
                     }
                 }
 
