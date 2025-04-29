@@ -1,6 +1,6 @@
 use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{
     blueprint::{archetypes::PlotLegend, components::Corner2D},
     components::Visible,
@@ -98,10 +98,10 @@ impl ViewClass for BarChartView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
-        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self, suggested_filter)
+        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, self, include_entity)
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {

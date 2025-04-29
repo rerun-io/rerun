@@ -12,7 +12,7 @@ use tokio_stream::StreamExt as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{client, get_chunks_response_to_chunk_and_partition_id};
+use re_grpc_client::redap::{get_chunks_response_to_chunk_and_partition_id, RedapClient};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
@@ -21,10 +21,7 @@ use re_protos::{
         ReadTableEntryRequest,
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
-    frontend::v1alpha1::{
-        frontend_service_client::FrontendServiceClient, GetChunksRequest, GetDatasetSchemaRequest,
-        RegisterWithDatasetRequest,
-    },
+    frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest},
     manifest_registry::v1alpha1::ext::{DataSource, Query, QueryLatestAt, QueryRange},
 };
 
@@ -39,17 +36,18 @@ pub struct ConnectionHandle {
     origin: re_uri::Origin,
 
     /// The actual tonic connection.
-    client: FrontendServiceClient<tonic::transport::Channel>,
+    client: RedapClient,
 }
 
 impl ConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, client(origin.clone())).map_err(to_py_err)?;
+        let client = wait_for_future(py, re_grpc_client::redap::client(origin.clone()))
+            .map_err(to_py_err)?;
 
         Ok(Self { origin, client })
     }
 
-    pub fn client(&self) -> FrontendServiceClient<tonic::transport::Channel> {
+    pub fn client(&self) -> RedapClient {
         self.client.clone()
     }
 

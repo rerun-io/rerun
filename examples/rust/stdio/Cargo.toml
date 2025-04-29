@@ -1,8 +1,8 @@
 [package]
 name = "stdio"
-version = "0.23.0-alpha.3+dev"
+version = "0.24.0-alpha.1+dev"
 edition = "2021"
-rust-version = "1.84"
+rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 publish = false
 

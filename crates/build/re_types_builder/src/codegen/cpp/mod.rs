@@ -832,8 +832,6 @@ impl QuotedObject {
                 template<typename T>
                 struct AsComponents;
 
-                #deprecation_ignore_start
-
                 #doc_hide_comment
                 template<>
                 struct AsComponents<#quoted_namespace::#archetype_type_ident> {

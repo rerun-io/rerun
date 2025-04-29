@@ -264,9 +264,7 @@ impl EntryKind {
 
     fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
         match self {
-            Self::Remote { entry_id, .. } => {
-                matches!(ctx.global_context.display_mode, DisplayMode::RedapEntry(id) if id == entry_id)
-            }
+            Self::Remote { entry_id, .. } => ctx.active_redap_entry == Some(entry_id),
             // TODO(lucasmerlin): Update this when local datasets have a view like remote datasets
             Self::Local(_) => false,
         }
@@ -408,7 +406,7 @@ async fn fetch_dataset_entries(
 }
 
 async fn fetch_partition_table(
-    client: &mut redap::Client,
+    client: &mut redap::RedapClient,
     entry_id: EntryId,
 ) -> Result<Vec<SorbetBatch>, EntryError> {
     let mut response = client

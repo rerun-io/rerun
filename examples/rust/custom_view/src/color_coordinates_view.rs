@@ -1,20 +1,21 @@
-use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
-use re_viewer::external::re_log_types::ResolvedEntityPathFilter;
-use re_viewer::external::re_ui::Help;
 use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
     re_entity_db::InstancePath,
     re_log_types::EntityPath,
     re_types::ViewClassIdentifier,
-    re_ui,
+    re_ui::{self, Help},
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SystemExecutionOutput,
-        UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-        ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-        ViewSystemRegistrator, ViewerContext,
+        HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item,
+        MaybeVisualizableEntities, PerVisualizer, SelectionHighlight, SmallVisualizerSet,
+        SystemExecutionOutput, UiLayout, ViewClass, ViewClassLayoutPriority,
+        ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+        ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext,
+        VisualizableEntities,
     },
 };
+
+use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -110,19 +111,39 @@ impl ViewClass for ColorCoordinatesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&InstanceColorSystem::identifier())
-            .map_or(true, |entities| {
-                entities.is_empty() || entities.iter().all(|e| suggested_filter.matches(e))
-            })
+            .is_some_and(|entities| entities.iter().any(include_entity))
         {
-            ViewSpawnHeuristics::default()
-        } else {
             ViewSpawnHeuristics::root()
+        } else {
+            ViewSpawnHeuristics::empty()
+        }
+    }
+
+    /// Make the viewer use the `ColorCoordinatesVisualizerSystem` by default.
+    ///
+    /// The default implementation of `choose_default_visualizers` activates visualizers only
+    /// if the respective indicator is present.
+    /// We want to enable the visualizer here though for any visualizable entity instead!
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        _maybe_visualizable_entities_per_visualizer: &PerVisualizer<MaybeVisualizableEntities>,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> SmallVisualizerSet {
+        if visualizable_entities_per_visualizer
+            .get(&InstanceColorSystem::identifier())
+            .is_some_and(|entities| entities.contains(entity_path))
+        {
+            SmallVisualizerSet::from_slice(&[InstanceColorSystem::identifier()])
+        } else {
+            SmallVisualizerSet::new()
         }
     }
 

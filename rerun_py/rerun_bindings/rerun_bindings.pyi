@@ -753,6 +753,14 @@ def set_callback_sink(
 ) -> None:
     """Set callback sink."""
 
+def set_callback_sink_blueprint(
+    callback: Callable[[bytes], Any],
+    make_active: bool,
+    make_default: bool,
+    blueprint_stream: Optional[PyRecordingStream],
+) -> None:
+    """Set callback sink for blueprint."""
+
 def serve_grpc(
     grpc_port: Optional[int],
     server_memory_limit: str,

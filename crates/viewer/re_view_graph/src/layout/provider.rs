@@ -347,7 +347,7 @@ impl ForceLayoutProvider {
     }
 
     pub fn is_finished(&self) -> bool {
-        self.simulation.as_ref().map_or(true, |s| s.is_finished())
+        self.simulation.as_ref().is_none_or(|s| s.is_finished())
     }
 }
 

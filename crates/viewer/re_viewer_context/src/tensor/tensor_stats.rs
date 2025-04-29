@@ -140,7 +140,7 @@ impl TensorStats {
 
         let finite_range = if range
             .as_ref()
-            .map_or(true, |r| r.0.is_finite() && r.1.is_finite())
+            .is_none_or(|r| r.0.is_finite() && r.1.is_finite())
         {
             range
         } else {
