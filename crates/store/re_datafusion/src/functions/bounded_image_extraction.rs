@@ -345,6 +345,7 @@ impl ScalarUDFImpl for BoundedImageExtractionUdf {
     fn return_type(&self, _arg_types: &[DataType]) -> DataFusionResult<DataType> {
         exec_err!("use return_field_from_args instead")
     }
+
     fn return_field_from_args(&self, args: ReturnFieldArgs<'_>) -> DataFusionResult<Field> {
         if args.arg_fields.len() != 5 {
             exec_err!(
@@ -367,7 +368,7 @@ impl ScalarUDFImpl for BoundedImageExtractionUdf {
         // could reduce the columns value to scalar we would need to expand
         // the logic here to account for that additional complexity.
         let ColumnarValue::Array(frame_id_arr) = &args.args[0] else {
-            exec_err!("Unexpect scalar columnar value for frame ID")?
+            exec_err!("Unexpected scalar columnar value for frame ID")?
         };
         let frame_id_arr =
             frame_id_arr

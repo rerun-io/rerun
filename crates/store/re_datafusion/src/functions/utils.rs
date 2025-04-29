@@ -51,7 +51,7 @@ pub(crate) fn columnar_value_to_array_of_array<'a>(
     name: &str,
 ) -> DataFusionResult<&'a ListArray> {
     let ColumnarValue::Array(array_ref) = columnar else {
-        exec_err!("Unexpect scalar columnar value for {name}")?
+        exec_err!("Unexpected scalar columnar value for {name}")?
     };
     array_ref
         .as_any()
