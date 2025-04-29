@@ -89,8 +89,6 @@ impl LegacyLogMsg {
                     application_id,
                     store_id,
                     cloned_from,
-                    is_official_example: _, // TODO
-                    started: _,             // TODO
                 } = info;
 
                 re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
@@ -212,83 +210,24 @@ impl<'de> serde::Deserialize<'de> for LegacyArrowMsg {
     }
 }
 
-// fn arrow_from_ipc(buf: &[u8]) -> Result<ArrowRecordBatch, String> {
-//     use arrow::ipc::reader::StreamReader;
-//     let stream = StreamReader::try_new(std::io::Cursor::new(buf), None)
-//         .map_err(|err| format!("Arrow StreamReader error: {err}"))?;
-//     let batches: Result<Vec<_>, _> = stream.collect();
-//     let batches = batches.map_err(|err| format!("Arrow error: {err}"))?;
-//     if batches.is_empty() {
-//         return Err("No RecordBatch in stream".to_owned());
-//     }
-//     if batches.len() > 1 {
-//         return Err(format!(
-//             "Found {} batches in stream - expected just one.",
-//             batches.len()
-//         ));
-//     }
-//     #[allow(clippy::unwrap_used)] // is_empty check above
-//     let batch = batches.into_iter().next().unwrap();
-//     Ok(batch)
-// }
-
 fn arrow_from_ipc(buf: &[u8]) -> Result<ArrowRecordBatch, String> {
-    use arrow2::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
-
-    let mut cursor = std::io::Cursor::new(buf);
-    let metadata = match read_stream_metadata(&mut cursor) {
-        Ok(metadata) => metadata,
-        Err(err) => return Err(format!("Failed to read stream metadata: {err}")),
-    };
-    let schema = metadata.schema.clone();
-    let stream = StreamReader::new(cursor, metadata, None);
-    let chunks: Result<Vec<_>, _> = stream
-        .map(|state| match state {
-            Ok(StreamState::Some(chunk)) => Ok(chunk),
-            Ok(StreamState::Waiting) => {
-                unreachable!("cannot be waiting on a fixed buffer")
-            }
-            Err(err) => Err(err),
-        })
-        .collect();
-
-    let chunks = chunks.map_err(|err| format!("Arrow2 error: {err}"))?;
-
-    if chunks.is_empty() {
-        return Err("No chunks found in stream".to_owned());
+    use arrow::ipc::reader::StreamReader;
+    let stream = StreamReader::try_new(std::io::Cursor::new(buf), None)
+        .map_err(|err| format!("Arrow StreamReader error: {err}"))?;
+    let batches: Result<Vec<_>, _> = stream.collect();
+    let batches = batches.map_err(|err| format!("Arrow error: {err}"))?;
+    if batches.is_empty() {
+        return Err("No RecordBatch in stream".to_owned());
     }
-    if chunks.len() > 1 {
+    if batches.len() > 1 {
         return Err(format!(
-            "Found {} chunks in stream - expected just one.",
-            chunks.len()
+            "Found {} batches in stream - expected just one.",
+            batches.len()
         ));
     }
     #[allow(clippy::unwrap_used)] // is_empty check above
-    let chunk = chunks.into_iter().next().unwrap();
-
-    let arrow::datatypes::Schema { fields, metadata } = schema.into();
-
-    let schema = arrow::datatypes::Schema {
-        fields: migrate_fields(&fields),
-        metadata,
-    };
-
-    ArrowRecordBatch::try_new(
-        schema.into(),
-        chunk.columns().iter().map(|c| c.clone().into()).collect(),
-    )
-    .map_err(|err| format!("Arrow error: {err}"))
-}
-
-fn migrate_fields(fields: &arrow::datatypes::Fields) -> arrow::datatypes::Fields {
-    fields.iter().map(migrate_field).collect()
-}
-
-fn migrate_field(field: &arrow::datatypes::FieldRef) -> arrow::datatypes::FieldRef {
-    let nullable = true; // TODO
-    arrow::datatypes::Field::new(field.name(), field.data_type().clone(), nullable)
-        .with_metadata(field.metadata().clone())
-        .into()
+    let batch = batches.into_iter().next().unwrap();
+    Ok(batch)
 }
 
 // -------------------------------------------------------------
@@ -356,9 +295,6 @@ pub struct LegacyStoreInfo {
     pub application_id: ApplicationId,
     pub store_id: LegacyStoreId,
     pub cloned_from: Option<LegacyStoreId>,
-    pub is_official_example: bool,
-    pub started: LegacyTime,
+    // pub is_official_example: bool,
+    // pub started: LegacyTime,
 }
-
-#[derive(Copy, Clone, Debug, serde::Deserialize)]
-pub struct LegacyTime(i64);

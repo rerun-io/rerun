@@ -61,10 +61,6 @@ re_tracing.workspace = true
 
 # External:
 arrow = { workspace = true, features = ["ipc"] }
-arrow2 = { package = "re_arrow2", version = "0.19", features = [
-  "arrow",
-  "io_ipc",
-] }
 parking_lot.workspace = true
 thiserror.workspace = true
 
