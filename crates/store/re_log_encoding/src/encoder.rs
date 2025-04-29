@@ -21,9 +21,6 @@ pub enum EncodeError {
     #[error("lz4 error: {0}")]
     Lz4(#[from] lz4_flex::block::CompressError),
 
-    #[error("MsgPack error: {0}")]
-    MsgPack(#[from] rmp_serde::encode::Error),
-
     #[error("Protobuf error: {0}")]
     Protobuf(#[from] re_protos::external::prost::EncodeError),
 
@@ -38,6 +35,9 @@ pub enum EncodeError {
 
     #[error("Called append on already finished encoder")]
     AlreadyFinished,
+
+    #[error("Cannot encode with legacy MsgPack path")]
+    CannotEncodeWithMsgPack,
 }
 
 // ----------------------------------------------------------------------------
@@ -161,9 +161,7 @@ impl<W: std::io::Write> Encoder<W> {
                     .map(|_| self.uncompressed.len() as _)
                     .map_err(EncodeError::Write)
             }
-            Serializer::MsgPack => {
-                unimplemented!("Encoding using MsgPack")
-            }
+            Serializer::MsgPack => Err(EncodeError::CannotEncodeWithMsgPack),
         }
     }
 

@@ -1,8 +1,15 @@
 //! Legacy types for old `MsgPack` .rrd loader
+//!
+//! The types looks the same as in 0.22, to make sure their serde works the same.
+
+use std::{collections::BTreeMap, sync::Arc};
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
-use re_chunk::TimePoint;
-use re_log_types::{ApplicationId, StoreId};
+
+use re_chunk::{TimeInt, TimelineName};
+use re_log_types::{external::re_tuid::Tuid, ApplicationId, TimeCell};
+
+// -------------------------------------------------------------
 
 /// Command used for activating a blueprint once it has been fully transmitted.
 ///
@@ -13,60 +20,109 @@ use re_log_types::{ApplicationId, StoreId};
 /// - Additionally, this command allows fine-tuning the activation behavior itself
 ///   by specifying whether the blueprint should be immediately activated, or only
 ///   become the default for future activations.
-#[derive(Clone, Debug, PartialEq, Eq)] // `PartialEq` used for tests in another crate
-#[derive(serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct LegacyBlueprintActivationCommand {
-    /// The blueprint this command refers to.
-    pub blueprint_id: StoreId,
-
-    /// Immediately make this the active blueprint for the associated `app_id`.
-    ///
-    /// Note that setting this to `false` does not mean the blueprint may not still end
-    /// up becoming active. In particular, if `make_default` is true and there is no other
-    /// currently active blueprint.
+    pub blueprint_id: LegacyStoreId,
     pub make_active: bool,
-
-    /// Make this the default blueprint for the `app_id`.
-    ///
-    /// The default blueprint will be used as the template when the user resets the
-    /// blueprint for the app. It will also become the active blueprint if no other
-    /// blueprint is currently active.
     pub make_default: bool,
 }
 
-/// The most general log message sent from the SDK to the server.
-#[must_use]
-#[derive(Clone, Debug, PartialEq, serde::Deserialize)] // `PartialEq` used for tests in another crate
+impl LegacyBlueprintActivationCommand {
+    fn migrate(self) -> re_log_types::BlueprintActivationCommand {
+        let Self {
+            blueprint_id,
+            make_active,
+            make_default,
+        } = self;
+        re_log_types::BlueprintActivationCommand {
+            blueprint_id: blueprint_id.migrate(),
+            make_active,
+            make_default,
+        }
+    }
+}
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct LegacyStoreId {
+    pub kind: LegacyStoreKind,
+    pub id: Arc<String>,
+}
+
+impl LegacyStoreId {
+    fn migrate(self) -> re_log_types::StoreId {
+        let Self { kind, id } = self;
+        re_log_types::StoreId {
+            kind: match kind {
+                LegacyStoreKind::Recording => re_log_types::StoreKind::Recording,
+                LegacyStoreKind::Blueprint => re_log_types::StoreKind::Blueprint,
+            },
+            id,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, serde::Deserialize)]
+pub enum LegacyStoreKind {
+    /// A recording of user-data.
+    Recording,
+
+    /// Data associated with the blueprint state.
+    Blueprint,
+}
+
+// -------------------------------------------------------------
+
+#[derive(Clone, Debug, serde::Deserialize)]
 #[allow(clippy::large_enum_variant)]
-// TODO(#8631): Remove `LogMsg`
 pub enum LegacyLogMsg {
-    /// A new recording has begun.
-    ///
-    /// Should usually be the first message sent.
     SetStoreInfo(LegacySetStoreInfo),
-
-    /// Log an entity using an [`ArrowMsg`].
-    //
-    // TODO(#6574): the store ID should be in the metadata here so we can remove the layer on top
-    ArrowMsg(StoreId, LegacyArrowMsg),
-
-    /// Send after all messages in a blueprint to signal that the blueprint is complete.
-    ///
-    /// This is so that the viewer can wait with activating the blueprint until it is
-    /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
-    /// and also lead to problems with view heuristics.
+    ArrowMsg(LegacyStoreId, LegacyArrowMsg),
     BlueprintActivationCommand(LegacyBlueprintActivationCommand),
 }
 
+impl LegacyLogMsg {
+    pub fn migrate(self) -> re_log_types::LogMsg {
+        match self {
+            Self::SetStoreInfo(legacy_set_store_info) => {
+                let LegacySetStoreInfo { row_id, info } = legacy_set_store_info;
+                let LegacyStoreInfo {
+                    application_id,
+                    store_id,
+                    cloned_from,
+                    is_official_example: _, // TODO
+                    started: _,             // TODO
+                } = info;
+
+                re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+                    row_id: row_id.migrate(),
+                    info: re_log_types::StoreInfo {
+                        application_id,
+                        store_id: store_id.migrate(),
+                        cloned_from: cloned_from.map(|id| id.migrate()),
+                        store_source: re_log_types::StoreSource::Unknown,
+                        store_version: None,
+                    },
+                })
+            }
+
+            Self::ArrowMsg(store_id, arrow_msg) => {
+                re_log_types::LogMsg::ArrowMsg(store_id.migrate(), arrow_msg.migrate())
+            }
+
+            Self::BlueprintActivationCommand(legacy_blueprint_activation_command) => {
+                re_log_types::LogMsg::BlueprintActivationCommand(
+                    legacy_blueprint_activation_command.migrate(),
+                )
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+
 #[must_use]
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct LegacySetStoreInfo {
-    /// A time-based UID that is only used to help keep track of when these `StoreInfo` originated
-    /// and how they fit in the global ordering of events.
-    //
-    // NOTE: Using a raw `Tuid` instead of an actual `RowId` to prevent a nasty dependency cycle.
-    // Note that both using a `RowId` as well as this whole serde/msgpack layer as a whole are hacks
-    // that are destined to disappear anyhow as we are closing in on our network-exposed data APIs.
     pub row_id: LegacyTuid,
 
     pub info: LegacyStoreInfo,
@@ -75,7 +131,7 @@ pub struct LegacySetStoreInfo {
 // -------------------------------------------------------------
 
 /// Message containing an Arrow payload
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub struct LegacyArrowMsg {
     /// Unique identifier for the chunk in this message.
@@ -85,10 +141,69 @@ pub struct LegacyArrowMsg {
     ///
     /// Used to timestamp the batch as a whole for e.g. latency measurements without having to
     /// deserialize the arrow payload.
-    pub timepoint_max: TimePoint,
+    pub timepoint_max: LegacyTimePoint,
 
     /// Schema and data for all control & data columns.
     pub batch: ArrowRecordBatch,
+}
+
+impl LegacyArrowMsg {
+    fn migrate(self) -> re_log_types::ArrowMsg {
+        let Self {
+            chunk_id,
+            timepoint_max,
+            batch,
+        } = self;
+        re_log_types::ArrowMsg {
+            chunk_id: chunk_id.migrate(),
+            timepoint_max: timepoint_max.migrate(),
+            batch,
+            on_release: None,
+        }
+    }
+}
+
+// -------------------------------------------------------------
+
+#[derive(Clone, Debug, serde::Deserialize)]
+pub struct LegacyTimePoint(BTreeMap<LegacyTimeline, TimeInt>);
+
+impl LegacyTimePoint {
+    fn migrate(self) -> re_chunk::TimePoint {
+        self.0
+            .into_iter()
+            .map(|(timeline, time_int)| {
+                let LegacyTimeline { name, typ } = timeline;
+                let typ = match typ {
+                    LegacyTimeType::Time => {
+                        if name == TimelineName::log_time() {
+                            re_log_types::TimeType::TimestampNs
+                        } else {
+                            re_log_types::TimeType::DurationNs
+                        }
+                    }
+                    LegacyTimeType::Sequence => re_log_types::TimeType::Sequence,
+                };
+                (name, TimeCell::new(typ, time_int))
+            })
+            .collect::<BTreeMap<_, _>>()
+            .into()
+    }
+}
+
+// -------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+pub struct LegacyTimeline {
+    name: TimelineName,
+
+    typ: LegacyTimeType,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Deserialize)]
+pub enum LegacyTimeType {
+    Time,
+    Sequence,
 }
 
 impl<'de> serde::Deserialize<'de> for LegacyArrowMsg {
@@ -112,7 +227,7 @@ impl<'de> serde::Deserialize<'de> for LegacyArrowMsg {
                 re_tracing::profile_scope!("LegacyArrowMsg::deserialize");
 
                 let table_id: Option<LegacyTuid> = seq.next_element()?;
-                let timepoint_max: Option<TimePoint> = seq.next_element()?;
+                let timepoint_max: Option<LegacyTimePoint> = seq.next_element()?;
                 let ipc_bytes: Option<serde_bytes::ByteBuf> = seq.next_element()?;
 
                 if let (Some(chunk_id), Some(timepoint_max), Some(buf)) =
@@ -152,49 +267,37 @@ impl<'de> serde::Deserialize<'de> for LegacyArrowMsg {
             }
         }
 
-        deserializer.deserialize_tuple(3, FieldVisitor)
+        deserializer
+            .deserialize_tuple(3, FieldVisitor)
+            .map_err(|err| serde::de::Error::custom(format!("ArrowMsg: {err}")))
     }
 }
 
 // -------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, Hash, serde::Deserialize)]
 pub struct LegacyTuid {
-    /// Approximate nanoseconds since epoch.
     pub time_ns: u64,
-
-    /// Initialized to something random on each thread,
-    /// then incremented for each new [`Tuid`] being allocated.
     pub inc: u64,
 }
 
+impl LegacyTuid {
+    fn migrate(&self) -> Tuid {
+        Tuid::from_nanos_and_inc(self.time_ns, self.inc)
+    }
+}
+
+// -------------------------------------------------------------
+
 /// Information about a recording or blueprint.
-#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize)]
 pub struct LegacyStoreInfo {
-    /// The user-chosen name of the application doing the logging.
     pub application_id: ApplicationId,
-
-    /// Should be unique for each recording.
-    pub store_id: StoreId,
-
-    /// If this store is the result of a clone, which store was it cloned from?
-    ///
-    /// A cloned store always gets a new unique ID.
-    ///
-    /// We currently only clone stores for blueprints:
-    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
-    /// we clone it and make the clone the _active_ blueprint.
-    /// This means all active blueprints are clones.
-    pub cloned_from: Option<StoreId>,
-
-    /// True if the recording is one of the official Rerun examples.
+    pub store_id: LegacyStoreId,
+    pub cloned_from: Option<LegacyStoreId>,
     pub is_official_example: bool,
-
-    /// When the recording started.
-    ///
-    /// Should be an absolute time, i.e. relative to Unix Epoch.
     pub started: LegacyTime,
 }
 
-#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash, serde::Deserialize)]
+#[derive(Copy, Clone, Debug, serde::Deserialize)]
 pub struct LegacyTime(i64);
