@@ -15,6 +15,7 @@ analytics = ["rerun/analytics"]
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",
+  "sdk",
   "server",
 ] }
 
