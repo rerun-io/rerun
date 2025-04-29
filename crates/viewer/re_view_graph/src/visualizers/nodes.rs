@@ -62,7 +62,7 @@ impl VisualizerSystem for NodeVisualizer {
         VisualizerQueryInfo::from_archetype::<archetypes::GraphNodes>()
     }
 
-    /// Populates the scene part with data from the store.
+    /// Populates the visualizer with data from the store.
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,

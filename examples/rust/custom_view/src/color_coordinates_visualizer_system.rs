@@ -1,13 +1,15 @@
-use re_viewer::external::{
+use rerun::external::{
     egui,
     re_log_types::{EntityPath, Instance},
     re_renderer,
-    re_types::{self, components::Color, Component as _, ComponentDescriptor},
     re_viewer_context::{
         self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
     },
 };
+use rerun::Component as _;
+
+use crate::color_archetype::ColorArchetype;
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
@@ -18,30 +20,6 @@ pub struct InstanceColorSystem {
 pub struct ColorWithInstance {
     pub color: egui::Color32,
     pub instance: Instance,
-}
-
-struct ColorArchetype;
-
-impl re_types::Archetype for ColorArchetype {
-    type Indicator = re_types::GenericIndicatorComponent<Self>;
-
-    fn indicator() -> re_types::SerializedComponentBatch {
-        use re_types::ComponentBatch as _;
-        #[allow(clippy::unwrap_used)]
-        Self::Indicator::default().serialized().unwrap()
-    }
-
-    fn name() -> re_types::ArchetypeName {
-        "InstanceColor".into()
-    }
-
-    fn display_name() -> &'static str {
-        "Instance Color"
-    }
-
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
-        vec![re_types::components::Color::descriptor()].into()
-    }
 }
 
 impl IdentifiedViewSystem for InstanceColorSystem {
@@ -55,7 +33,7 @@ impl VisualizerSystem for InstanceColorSystem {
         VisualizerQueryInfo::from_archetype::<ColorArchetype>()
     }
 
-    /// Populates the scene part with data from the store.
+    /// Populates the visualizer with data from the store.
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -69,10 +47,10 @@ impl VisualizerSystem for InstanceColorSystem {
             let results = ctx.recording_engine().cache().latest_at(
                 &ctx.current_query(),
                 &data_result.entity_path,
-                [Color::name()],
+                [rerun::Color::name()],
             );
 
-            let Some(colors) = results.component_batch::<Color>() else {
+            let Some(colors) = results.component_batch::<rerun::Color>() else {
                 continue;
             };
 
@@ -107,4 +85,5 @@ impl VisualizerSystem for InstanceColorSystem {
 
 // Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
 // It is left empty here but could be used to provides fallback values for optional components in case they're missing.
+use rerun::external::re_types;
 re_viewer_context::impl_component_fallback_provider!(InstanceColorSystem => []);

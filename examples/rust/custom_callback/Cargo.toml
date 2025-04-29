@@ -21,13 +21,10 @@ default = []
 analytics = ["rerun/analytics"]
 
 [dependencies]
-re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
-re_error = { path = "../../../crates/utils/re_error" }
-rerun = { path = "../../../crates/top/rerun", features = [
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",
   "run",
 ] }
-re_grpc_server = { path = "../../../crates/store/re_grpc_server" }
 
 bincode = "1.3.3"
 mimalloc = "0.1.43"

@@ -102,6 +102,9 @@ pub mod external {
 
     #[cfg(feature = "testing")]
     pub use egui_kittest;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use tokio;
 }
 
 // ---------------------------------------------------------------------------
