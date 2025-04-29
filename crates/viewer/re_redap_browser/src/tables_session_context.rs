@@ -32,17 +32,16 @@ pub enum SessionContextError {
     TypeConversionError(#[from] TypeConversionError),
 }
 
-pub struct Table {
+struct Table {
     #[expect(dead_code)]
-    pub entry_id: EntryId,
-    pub name: String,
+    entry_id: EntryId,
+    name: String,
 }
 
 /// Wrapper over a [`SessionContext`] that contains all the tables registered in the remote server,
 /// including the table entries and the partition tables of the dataset entries.
 //TODO(ab): add support for local caching of table data
 pub struct TablesSessionContext {
-    runtime: AsyncRuntimeHandle,
     pub ctx: Arc<SessionContext>,
     origin: re_uri::Origin,
 
@@ -50,18 +49,22 @@ pub struct TablesSessionContext {
 }
 
 impl TablesSessionContext {
-    pub fn new(runtime: AsyncRuntimeHandle, origin: re_uri::Origin) -> Self {
+    pub fn new(
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+    ) -> Self {
         let ctx = Arc::new(SessionContext::new());
 
         let registered_tables = {
-            RequestedObject::new(
-                &runtime,
+            RequestedObject::new_with_repaint(
+                runtime,
+                egui_ctx.clone(),
                 register_all_table_entries(ctx.clone(), origin.clone()),
             )
         };
 
         Self {
-            runtime,
             ctx,
 
             origin,
@@ -69,7 +72,7 @@ impl TablesSessionContext {
         }
     }
 
-    pub fn refresh(&mut self, egui_ctx: &egui::Context) {
+    pub fn refresh(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         //TODO(ab): should we drop and recreate the session context? This would force table ui to
         // refresh since it would invalidate the state.
         if let Some(Ok(tables)) = self.registered_tables.try_as_ref() {
@@ -79,7 +82,7 @@ impl TablesSessionContext {
         }
 
         self.registered_tables = RequestedObject::new_with_repaint(
-            &self.runtime,
+            runtime,
             egui_ctx.clone(),
             register_all_table_entries(self.ctx.clone(), self.origin.clone()),
         );

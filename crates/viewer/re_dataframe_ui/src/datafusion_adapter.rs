@@ -14,7 +14,7 @@ use crate::RequestedObject;
 
 /// A table blueprint along with the context required to execute the corresponding datafusion query.
 #[derive(Clone)]
-pub struct DataFusionQuery {
+struct DataFusionQuery {
     session_ctx: Arc<SessionContext>,
     table_ref: TableReference,
 
@@ -22,7 +22,7 @@ pub struct DataFusionQuery {
 }
 
 impl DataFusionQuery {
-    pub fn new(
+    fn new(
         session_ctx: Arc<SessionContext>,
         table_ref: TableReference,
         blueprint: TableBlueprint,
@@ -100,8 +100,9 @@ impl PartialEq for DataFusionQuery {
     }
 }
 
-type RequestedDataframe = RequestedObject<Result<Vec<SorbetBatch>, DataFusionError>>;
+type RequestedSorbetBatches = RequestedObject<Result<Vec<SorbetBatch>, DataFusionError>>;
 
+/// Helper struct to manage the datafusion async query and the resulting `SorbetBatch`.
 #[derive(Clone)]
 pub struct DataFusionAdapter {
     id: egui::Id,
@@ -110,9 +111,9 @@ pub struct DataFusionAdapter {
     query: DataFusionQuery,
 
     // Used to have something to display while the new dataframe is being queried.
-    pub last_dataframe: Option<Vec<SorbetBatch>>,
+    pub last_sorbet_batches: Option<Vec<SorbetBatch>>,
 
-    pub dataframe: Arc<Mutex<RequestedDataframe>>,
+    pub requested_sorbet_batches: Arc<Mutex<RequestedSorbetBatches>>,
 }
 
 impl DataFusionAdapter {
@@ -137,13 +138,13 @@ impl DataFusionAdapter {
 
             let table_state = Self {
                 id,
-                dataframe: Arc::new(Mutex::new(RequestedObject::new_with_repaint(
+                requested_sorbet_batches: Arc::new(Mutex::new(RequestedObject::new_with_repaint(
                     runtime,
                     ui.ctx().clone(),
                     query.clone().execute(),
                 ))),
                 query,
-                last_dataframe: None,
+                last_sorbet_batches: None,
             };
 
             ui.data_mut(|data| {
@@ -153,7 +154,7 @@ impl DataFusionAdapter {
             table_state
         });
 
-        adapter.dataframe.lock().on_frame_start();
+        adapter.requested_sorbet_batches.lock().on_frame_start();
 
         adapter
     }
@@ -163,7 +164,7 @@ impl DataFusionAdapter {
     }
 
     /// Clear from egui's memory (force refresh on the next frame).
-    pub fn clear(&self, ui: &egui::Ui) {
+    pub fn clear_state(&self, ui: &egui::Ui) {
         ui.data_mut(|data| {
             data.remove::<Self>(self.id);
         });
@@ -182,10 +183,10 @@ impl DataFusionAdapter {
         if self.query.blueprint != new_blueprint {
             self.query.blueprint = new_blueprint;
 
-            let mut dataframe = self.dataframe.lock();
+            let mut dataframe = self.requested_sorbet_batches.lock();
 
             if let Some(Ok(sorbet_batches)) = dataframe.try_as_ref() {
-                self.last_dataframe = Some(sorbet_batches.clone());
+                self.last_sorbet_batches = Some(sorbet_batches.clone());
             }
 
             *dataframe = RequestedObject::new_with_repaint(

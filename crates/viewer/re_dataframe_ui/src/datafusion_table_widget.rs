@@ -188,20 +188,24 @@ impl<'a> DataFusionTableWidget<'a> {
             refresh,
         );
 
-        let dataframe = table_state.dataframe.lock();
+        let requested_sorbet_batches = table_state.requested_sorbet_batches.lock();
 
-        let sorbet_batches = match (dataframe.try_as_ref(), &table_state.last_dataframe) {
+        let sorbet_batches = match (
+            requested_sorbet_batches.try_as_ref(),
+            &table_state.last_sorbet_batches,
+        ) {
             (Some(Ok(dataframe)), _) => dataframe,
 
             (Some(Err(err)), _) => {
                 let error = format!("Could not load table: {err}");
-                drop(dataframe);
+                drop(requested_sorbet_batches);
 
                 ui.horizontal(|ui| {
                     ui.error_label(error);
 
                     if ui.small_icon_button(&re_ui::icons::RESET).clicked() {
-                        table_state.clear(ui);
+                        // This will trigger a fresh query on the next frame.
+                        table_state.clear_state(ui);
                     }
                 });
                 return;
@@ -305,7 +309,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .show(ui, &mut table_delegate);
 
         table_delegate.table_config.store(ui.ctx());
-        drop(dataframe);
+        drop(requested_sorbet_batches);
         table_state.update_query(runtime, ui, new_blueprint);
     }
 }

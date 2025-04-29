@@ -30,7 +30,7 @@ impl Server {
     fn new(runtime: AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
         let entries = Entries::new(&runtime, egui_ctx, origin.clone());
 
-        let tables_session_ctx = TablesSessionContext::new(runtime.clone(), origin.clone());
+        let tables_session_ctx = TablesSessionContext::new(&runtime, egui_ctx, origin.clone());
 
         Self {
             origin,
@@ -43,7 +43,7 @@ impl Server {
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
 
-        self.tables_session_ctx.refresh(egui_ctx);
+        self.tables_session_ctx.refresh(runtime, egui_ctx);
     }
 
     fn on_frame_start(&mut self) {
@@ -135,7 +135,7 @@ impl Server {
             "recording link",
             DATASET_MANIFEST_ID_FIELD_NAME,
             self.origin.clone(),
-            EntryId::new(),
+            dataset.id(),
         )
         .show(viewer_ctx, &self.runtime, ui);
     }
