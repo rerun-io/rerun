@@ -137,7 +137,7 @@ impl TryFrom<&ArrowField> for IndexColumnDescriptor {
         let name = if let Some(name) = field.metadata().get("rerun.index_name") {
             name.to_owned()
         } else {
-            re_log::warn_once!(
+            re_log::debug_once!(
                 "Timeline '{}' is missing 'rerun.index_name' metadata. Falling back on field/column name",
                 field.name()
             );

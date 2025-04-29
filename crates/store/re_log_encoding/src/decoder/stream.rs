@@ -150,7 +150,6 @@ impl StreamDecoder {
                             let legacy_message: LegacyLogMsg =
                                 rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
 
-                            re_log::debug_once!("Migrating legacy LogMsg from {:?}…", self.version);
                             let mut message = legacy_message.migrate();
 
                             self.state = State::MsgPackMessageHeader;
@@ -360,7 +359,7 @@ mod tests {
 
     #[test]
     fn stream_whole_chunks_uncompressed() {
-        let (input, data) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
 
@@ -377,7 +376,7 @@ mod tests {
 
     #[test]
     fn stream_byte_chunks_uncompressed() {
-        let (input, data) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
 
@@ -396,8 +395,8 @@ mod tests {
 
     #[test]
     fn two_concatenated_streams() {
-        let (input1, data1) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
-        let (input2, data2) = test_data(EncodingOptions::MSGPACK_UNCOMPRESSED, 16);
+        let (input1, data1) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
+        let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
         let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
 
         let mut decoder = StreamDecoder::new();
@@ -416,7 +415,7 @@ mod tests {
 
     #[test]
     fn stream_whole_chunks_compressed() {
-        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
 
@@ -433,7 +432,7 @@ mod tests {
 
     #[test]
     fn stream_byte_chunks_compressed() {
-        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
 
@@ -452,7 +451,7 @@ mod tests {
 
     #[test]
     fn stream_3x16_chunks() {
-        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
 
         let mut decoder = StreamDecoder::new();
         let mut decoded_messages = vec![];
@@ -481,7 +480,7 @@ mod tests {
     fn stream_irregular_chunks() {
         // this attempts to stress-test `try_read` with chunks of various sizes
 
-        let (input, data) = test_data(EncodingOptions::MSGPACK_COMPRESSED, 16);
+        let (input, data) = test_data(EncodingOptions::PROTOBUF_COMPRESSED, 16);
         let mut data = Cursor::new(data);
 
         let mut decoder = StreamDecoder::new();

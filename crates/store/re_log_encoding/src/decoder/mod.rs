@@ -386,7 +386,6 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                         let data = &self.uncompressed[..uncompressed_len];
                         {
                             re_tracing::profile_scope!("MsgPack deser");
-                            re_log::debug_once!("Migrating legacy LogMsg from {}…", self.version);
                             match rmp_serde::from_slice::<LegacyLogMsg>(data) {
                                 Ok(legacy_msg) => Some(legacy_msg.migrate()),
                                 Err(err) => return Some(Err(err.into())),

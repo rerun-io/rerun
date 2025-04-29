@@ -61,14 +61,6 @@ pub struct EncodingOptions {
 }
 
 impl EncodingOptions {
-    pub const MSGPACK_UNCOMPRESSED: Self = Self {
-        compression: Compression::Off,
-        serializer: Serializer::MsgPack,
-    };
-    pub const MSGPACK_COMPRESSED: Self = Self {
-        compression: Compression::LZ4,
-        serializer: Serializer::MsgPack,
-    };
     pub const PROTOBUF_COMPRESSED: Self = Self {
         compression: Compression::LZ4,
         serializer: Serializer::Protobuf,
