@@ -183,29 +183,6 @@ impl LegacyMessageHeader {
     #[cfg(feature = "decoder")]
     pub const SIZE: usize = 8;
 
-    #[cfg(feature = "encoder")]
-    pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
-        match self {
-            Self::Data {
-                compressed_len,
-                uncompressed_len,
-            } => {
-                write
-                    .write_all(&compressed_len.to_le_bytes())
-                    .map_err(encoder::EncodeError::Write)?;
-                write
-                    .write_all(&uncompressed_len.to_le_bytes())
-                    .map_err(encoder::EncodeError::Write)?;
-            }
-            Self::EndOfStream => {
-                write
-                    .write_all(&0_u64.to_le_bytes())
-                    .map_err(encoder::EncodeError::Write)?;
-            }
-        }
-        Ok(())
-    }
-
     #[cfg(feature = "decoder")]
     pub fn decode(read: &mut impl std::io::Read) -> Result<Self, decoder::DecodeError> {
         let mut buffer = [0_u8; Self::SIZE];
