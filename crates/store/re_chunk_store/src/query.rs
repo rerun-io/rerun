@@ -282,6 +282,44 @@ impl ChunkStore {
         }
     }
 
+    /// Lists all [`ComponentDescriptor`]s at a given [`EntityPath`] that use a certain [`ComponentName`].
+    pub fn entity_component_descriptors_with_name(
+        &self,
+        entity_path: &EntityPath,
+        component_name: ComponentName,
+    ) -> IntSet<ComponentDescriptor> {
+        let static_chunks = self.static_chunk_ids_per_entity.get(entity_path);
+        let static_components_descr =
+            static_chunks
+                .iter()
+                .flat_map(|static_chunks_per_component| {
+                    static_chunks_per_component
+                        .keys()
+                        .filter(|descr| descr.component_name == component_name)
+                });
+
+        let temporal_chunks = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path);
+        let temporal_components_descr =
+            temporal_chunks
+                .iter()
+                .flat_map(|temporal_chunk_ids_per_timeline| {
+                    temporal_chunk_ids_per_timeline.iter().flat_map(
+                        |(_, temporal_chunk_ids_per_component)| {
+                            temporal_chunk_ids_per_component
+                                .keys()
+                                .filter(|descr| descr.component_name == component_name)
+                        },
+                    )
+                });
+
+        static_components_descr
+            .chain(temporal_components_descr)
+            .cloned()
+            .collect()
+    }
+
     /// Check whether an entity has a static component or a temporal component on the specified timeline.
     ///
     /// This does _not_ check if the entity actually currently holds any data for that component.

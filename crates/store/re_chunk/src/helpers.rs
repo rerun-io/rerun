@@ -259,6 +259,22 @@ impl UnitChunkShared {
 impl UnitChunkShared {
     // --- Batch ---
 
+    /// Returns the raw data for the specified component name.
+    ///
+    /// Indetermined which batch is returned if there are multiple components with the same name.
+    /// TODO(#6889): Can we remove this method?
+    #[inline]
+    pub fn component_batch_raw_by_component_name(
+        &self,
+        component_name: ComponentName,
+    ) -> Option<ArrowArrayRef> {
+        debug_assert!(self.num_rows() == 1);
+        self.components
+            .get_by_component_name(component_name)
+            .next()
+            .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
+    }
+
     /// Returns the raw data for the specified component.
     #[inline]
     pub fn component_batch_raw(

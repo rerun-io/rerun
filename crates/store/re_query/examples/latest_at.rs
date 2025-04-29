@@ -75,7 +75,7 @@ fn main() -> anyhow::Result<()> {
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw(&MyColor::name())
+            .component_batch_raw(&MyColor::descriptor())
             .context("invalid")?;
         let colors = colors
             .downcast_array_ref::<ArrowUInt32Array>()

@@ -62,11 +62,7 @@ impl QueryCache {
         let component_names = component_descrs.into_iter().filter_map(|component_descr| {
             let component_descr = component_descr.into();
             store
-                .entity_has_component_on_timeline(
-                    &query.timeline(),
-                    entity_path,
-                    &component_descr.component_name,
-                )
+                .entity_has_component_on_timeline(&query.timeline(), entity_path, &component_descr)
                 .then_some(component_descr.component_name)
         });
 
@@ -318,7 +314,7 @@ impl LatestAtResults {
     pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
         self.components
             .get(component_name)?
-            .component_batch_raw(component_name)
+            .component_batch_raw_by_component_name(*component_name)
     }
 
     /// Returns the deserialized data for the specified component.
@@ -363,10 +359,11 @@ impl LatestAtResults {
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
         self.components.get(component_name).and_then(|unit| {
+            let component_desc = unit.get_first_component_descriptor(*component_name)?;
             self.ok_or_log_err(
                 log_level,
                 *component_name,
-                unit.component_instance_raw(component_name, instance_index)?,
+                unit.component_instance_raw(component_desc, instance_index)?,
             )
         })
     }
@@ -395,7 +392,8 @@ impl LatestAtResults {
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
         self.components.get(component_name).and_then(|unit| {
-            unit.component_instance_raw(component_name, instance_index)?
+            let component_desc = unit.get_first_component_descriptor(*component_name)?;
+            unit.component_instance_raw(component_desc, instance_index)?
                 .ok()
         })
     }
@@ -449,10 +447,11 @@ impl LatestAtResults {
         component_name: &ComponentName,
     ) -> Option<ArrowArrayRef> {
         self.components.get(component_name).and_then(|unit| {
+            let component_desc = unit.get_first_component_descriptor(*component_name)?;
             self.ok_or_log_err(
                 log_level,
                 *component_name,
-                unit.component_mono_raw(component_name)?,
+                unit.component_mono_raw(component_desc)?,
             )
         })
     }
@@ -473,9 +472,10 @@ impl LatestAtResults {
         &self,
         component_name: &ComponentName,
     ) -> Option<ArrowArrayRef> {
-        self.components
-            .get(component_name)
-            .and_then(|unit| unit.component_mono_raw(component_name)?.ok())
+        self.components.get(component_name).and_then(|unit| {
+            let component_desc = unit.get_first_component_descriptor(*component_name)?;
+            unit.component_mono_raw(component_desc)?.ok()
+        })
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
@@ -666,12 +666,17 @@ impl LatestAtCache {
             return Some(cached.unit.clone());
         }
 
+        let component_descr = store
+            .entity_component_descriptors_with_name(entity_path, component_name)
+            .into_iter()
+            .next()?;
+
         let ((data_time, _row_id), unit) = store
-            .latest_at_relevant_chunks(query, entity_path, component_name)
+            .latest_at_relevant_chunks(query, entity_path, &component_descr)
             .into_iter()
             .filter_map(|chunk| {
                 chunk
-                    .latest_at(query, component_name)
+                    .latest_at(query, &component_descr)
                     .into_unit()
                     .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
             })
