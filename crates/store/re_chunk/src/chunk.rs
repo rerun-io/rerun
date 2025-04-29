@@ -230,7 +230,7 @@ impl Chunk {
         })
     }
 
-    /// Returns any component descriptor with the the given [`ComponentName`].
+    /// Returns any component descriptor with the given [`ComponentName`].
     ///
     /// This is undefined behavior if there are more than one component with that name.
     //

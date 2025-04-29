@@ -6923,7 +6923,6 @@ dependencies = [
  "re_query",
  "re_sorbet",
  "re_tracing",
- "re_types",
  "re_types_core",
  "similar-asserts",
  "tokio",
