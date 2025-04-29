@@ -1,35 +1,55 @@
+use std::collections::BTreeMap;
+use std::sync::mpsc::{Receiver, Sender};
+
 use egui::{Frame, Margin, RichText};
+
 use re_log_types::EntryId;
+use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_ui::list_item::ItemActionButton;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
-use std::collections::BTreeMap;
-use std::sync::mpsc::{Receiver, Sender};
 
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
 use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
+use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
     origin: re_uri::Origin,
-
     entries: Entries,
+
+    /// Session context wrapper which holds all the table-like entries of the server.
+    tables_session_ctx: TablesSessionContext,
+
+    runtime: AsyncRuntimeHandle,
 }
 
 impl Server {
-    fn new(runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        let entries = Entries::new(runtime, egui_ctx, origin.clone());
+    fn new(runtime: AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
+        let entries = Entries::new(&runtime, egui_ctx, origin.clone());
 
-        Self { origin, entries }
+        let tables_session_ctx = TablesSessionContext::new(&runtime, egui_ctx, origin.clone());
+
+        Self {
+            origin,
+            entries,
+            tables_session_ctx,
+            runtime,
+        }
     }
 
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
+
+        // Note: this also drops the DataFusionTableWidget caches
+        self.tables_session_ctx.refresh(runtime, egui_ctx);
     }
 
     fn on_frame_start(&mut self) {
         self.entries.on_frame_start();
+        self.tables_session_ctx.on_frame_start();
     }
 
     fn find_dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
@@ -86,6 +106,39 @@ impl Server {
                     },
                 );
             });
+    }
+
+    fn dataset_entry_ui(
+        &self,
+        viewer_ctx: &ViewerContext<'_>,
+        ctx: &Context<'_>,
+        ui: &mut egui::Ui,
+        dataset: &Dataset,
+    ) {
+        re_dataframe_ui::DataFusionTableWidget::new(
+            self.tables_session_ctx.ctx.clone(),
+            //egui::Id::new(&self.origin),
+            dataset.name(),
+        )
+        .title(dataset.name())
+        .title_button(ItemActionButton::new(&re_ui::icons::RESET, || {
+            let _ = ctx
+                .command_sender
+                .send(Command::RefreshCollection(self.origin.clone()));
+        }))
+        .column_renamer(|desc| {
+            let name = desc.name();
+            name.strip_prefix("rerun_")
+                .unwrap_or(name)
+                .replace('_', " ")
+        })
+        .generate_partition_links(
+            "recording link",
+            DATASET_MANIFEST_ID_FIELD_NAME,
+            self.origin.clone(),
+            dataset.id(),
+        )
+        .show(viewer_ctx, &self.runtime, ui);
     }
 
     fn panel_ui(
@@ -255,7 +308,7 @@ impl RedapServers {
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
                         origin.clone(),
-                        Server::new(runtime, egui_ctx, origin.clone()),
+                        Server::new(runtime.clone(), egui_ctx, origin.clone()),
                     );
                 } else {
                     // Since we persist the server list on disk this happens quite often.
@@ -325,7 +378,7 @@ impl RedapServers {
         for server in self.servers.values() {
             if let Some(dataset) = server.find_dataset(active_entry) {
                 self.with_ctx(|ctx| {
-                    super::dataset_ui::dataset_ui(viewer_ctx, ctx, ui, &server.origin, dataset);
+                    server.dataset_entry_ui(viewer_ctx, ctx, ui, dataset);
                 });
 
                 return;

@@ -22,6 +22,7 @@ impl<T: Send + 'static> RequestedObject<T> {
         let handle = Self::Pending(rx);
 
         runtime.spawn_future(async move {
+            //TODO(#9836): implement cancellation using another channel (see `make_future_send`)
             let result = func.await;
             let _ = tx.send(result);
         });
