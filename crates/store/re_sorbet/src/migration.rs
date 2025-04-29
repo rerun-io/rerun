@@ -10,6 +10,7 @@ use arrow::{
     },
     datatypes::{Field as ArrowField, FieldRef as ArrowFieldRef, Schema as ArrowSchema},
 };
+use itertools::Itertools as _;
 use re_tuid::Tuid;
 use re_types_core::{arrow_helpers::as_array_ref, Loggable as _};
 
@@ -167,7 +168,7 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     let mut row_ids = vec![];
     let mut indices = vec![];
     let mut components = vec![];
-`
+
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
         let field = field.clone();
         let array = array.clone();
@@ -183,6 +184,19 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         itertools::chain!(row_ids, indices, components).unzip();
 
     let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+
+    if schema.fields() != batch.schema().fields() {
+        re_log::debug!(
+            "Reordered columns. Before: {:?}, after: {:?}",
+            batch
+                .schema()
+                .fields()
+                .iter()
+                .map(|f| f.name())
+                .collect_vec(),
+            schema.fields().iter().map(|f| f.name()).collect_vec()
+        );
+    }
 
     ArrowRecordBatch::try_new_with_options(
         schema.into(),
