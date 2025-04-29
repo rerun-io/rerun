@@ -93,12 +93,12 @@ impl Cache for MeshCache {
                     let contains_asset_blob = event
                         .chunk
                         .components()
-                        .contains_key(&re_types::components::Blob::name());
+                        .contains_component_name(re_types::components::Blob::name());
 
                     let contains_vertex_positions = event
                         .chunk
                         .components()
-                        .contains_key(&re_types::components::Position3D::name());
+                        .contains_component_name(re_types::components::Position3D::name());
 
                     contains_asset_blob || contains_vertex_positions
                 };

@@ -82,8 +82,7 @@ impl Chunk {
             re_tracing::profile_scope!("components");
 
             let mut components = components
-                .values()
-                .flat_map(|per_desc| per_desc.iter())
+                .iter()
                 .map(|(component_desc, list_array)| {
                     let list_array = ArrowListArray::from(list_array.clone());
                     let ComponentDescriptor {
@@ -203,10 +202,7 @@ impl Chunk {
                     component_name: schema.component_name,
                 };
 
-                if components
-                    .insert_descriptor(component_desc, column.clone())
-                    .is_some()
-                {
+                if components.insert(component_desc, column.clone()).is_some() {
                     return Err(ChunkError::Malformed {
                         reason: format!(
                             "component column '{schema:?}' was specified more than once"

@@ -246,10 +246,7 @@ impl Chunk {
         // Reminder: these are all `ListArray`s.
         re_tracing::profile_scope!("components (offsets & data)");
         {
-            for original in components
-                .values_mut()
-                .flat_map(|per_desc| per_desc.values_mut())
-            {
+            for original in components.values_mut() {
                 let sorted_arrays = swaps
                     .iter()
                     .copied()

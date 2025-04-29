@@ -38,7 +38,7 @@ default = [
 ## Enable telemetry using our analytics SDK.
 analytics = [
   "dep:re_analytics",
-  "re_crash_handler/analytics",
+  "re_crash_handler?/analytics",
   "re_viewer?/analytics",
   "re_web_viewer_server?/analytics",
 ]
@@ -79,9 +79,9 @@ log = ["dep:env_filter", "dep:log"]
 ## You need to install [nasm](https://github.com/netwide-assembler/nasm) to compile with this feature.
 nasm = ["re_video/nasm"]
 
-## Support spawning a native viewer.
+## Support spawning a native viewer and allow to extend the viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
-native_viewer = ["dep:re_viewer"]
+native_viewer = ["dep:re_viewer", "dep:re_crash_handler"]
 
 ## Support the map view.
 ## This adds a lot of extra dependencies.
@@ -91,13 +91,14 @@ map_view = ["re_viewer?/map_view"]
 ## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).
 run = [
   "clap",
+  "dep:re_chunk_store",
+  "dep:re_crash_handler",
+  "dep:re_data_source",
+  "dep:re_viewer_context",
+  "re_log_encoding/decoder",
+  "re_log_encoding/encoder",
   "sdk",
   "unindent",
-  "dep:re_chunk_store",
-  "dep:re_data_source",
-  "re_log_encoding/encoder",
-  "re_log_encoding/decoder",
-  "dep:re_viewer_context",
 ]
 
 ## Support for running a gRPC server that listens to incoming log messages from a Rerun SDK.
@@ -122,7 +123,6 @@ re_build_info.workspace = true
 re_byte_size.workspace = true
 re_capabilities.workspace = true
 re_chunk.workspace = true
-re_crash_handler.workspace = true
 re_entity_db.workspace = true
 re_error.workspace = true
 re_format_arrow.workspace = true
@@ -148,6 +148,7 @@ tokio = { workspace = true, features = ["rt-multi-thread"] }
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
 re_chunk_store = { workspace = true, optional = true }
+re_crash_handler = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }

@@ -1,4 +1,5 @@
-use re_viewer::external::{
+use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
+use rerun::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
     re_entity_db::InstancePath,
@@ -14,8 +15,6 @@ use re_viewer::external::{
         VisualizableEntities,
     },
 };
-
-use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]

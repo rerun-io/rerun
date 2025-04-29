@@ -383,10 +383,22 @@ impl App {
     }
 
     /// Adds a new view class to the viewer.
+    #[deprecated(
+        since = "0.24.0",
+        note = "Use `view_class_registry().add_class(..)` instead."
+    )]
     pub fn add_view_class<T: ViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), ViewClassRegistryError> {
         self.view_class_registry.add_class::<T>()
+    }
+
+    /// Accesses the view class registry which can be used to extend the Viewer.
+    ///
+    /// **WARNING:** Many parts or the viewer assume that all views & visualizers are registered before the first frame is rendered.
+    /// Doing so later in the application life cycle may cause unexpected behavior.
+    pub fn view_class_registry(&mut self) -> &mut ViewClassRegistry {
+        &mut self.view_class_registry
     }
 
     fn check_keyboard_shortcuts(&self, egui_ctx: &egui::Context) {
