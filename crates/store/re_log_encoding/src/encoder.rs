@@ -171,7 +171,7 @@ impl<W: std::io::Write> Encoder<W> {
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         match self.serializer {
             Serializer::MsgPack => {
-                LegacyMessageHeader::EndOfStream.encode(&mut self.write)?;
+                return Err(EncodeError::CannotEncodeWithMsgPack);
             }
             Serializer::Protobuf => {
                 file::MessageHeader {
