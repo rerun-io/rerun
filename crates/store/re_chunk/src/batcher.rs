@@ -748,11 +748,11 @@ impl PendingRow {
             })
             .collect();
 
-        let mut per_name = ChunkComponents::default();
+        let mut per_desc = ChunkComponents::default();
         for (component_desc, array) in components {
             let list_array = arrays_to_list_array_opt(&[Some(&*array as _)]);
             if let Some(list_array) = list_array {
-                per_name.insert(component_desc, list_array);
+                per_desc.insert(component_desc, list_array);
             }
         }
 
@@ -762,7 +762,7 @@ impl PendingRow {
             Some(true),
             &[row_id],
             timelines,
-            per_name,
+            per_desc,
         )
     }
 
@@ -896,15 +896,15 @@ impl PendingRow {
                                     .map(|(name, time_column)| (name, time_column.finish()))
                                     .collect(),
                                 {
-                                    let mut per_name = ChunkComponents::default();
+                                    let mut per_desc = ChunkComponents::default();
                                     for (component_desc, arrays) in std::mem::take(&mut components)
                                     {
                                         let list_array = arrays_to_list_array_opt(&arrays);
                                         if let Some(list_array) = list_array {
-                                            per_name.insert(component_desc, list_array);
+                                            per_desc.insert(component_desc, list_array);
                                         }
                                     }
-                                    per_name
+                                    per_desc
                                 },
                             ));
 
@@ -942,14 +942,14 @@ impl PendingRow {
                         .map(|(timeline, time_column)| (timeline, time_column.finish()))
                         .collect(),
                     {
-                        let mut per_name = ChunkComponents::default();
+                        let mut per_desc = ChunkComponents::default();
                         for (component_desc, arrays) in components {
                             let list_array = arrays_to_list_array_opt(&arrays);
                             if let Some(list_array) = list_array {
-                                per_name.insert(component_desc, list_array);
+                                per_desc.insert(component_desc, list_array);
                             }
                         }
-                        per_name
+                        per_desc
                     },
                 ));
 

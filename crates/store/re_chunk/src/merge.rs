@@ -83,7 +83,7 @@ impl Chunk {
             .collect();
 
         // First pass: concat right onto left.
-        let mut components: IntMap<_, _> = {
+        let mut components = ChunkComponents({
             re_tracing::profile_scope!("components (r2l)");
             lhs_per_desc
                 .iter()
@@ -113,12 +113,12 @@ impl Chunk {
                     }
                 })
                 .collect()
-        };
+        });
 
         // Second pass: concat left onto right, where necessary.
-        components.extend({
+        {
             re_tracing::profile_scope!("components (l2r)");
-            rhs_per_desc
+            let rhs = rhs_per_desc
                 .iter()
                 .filter_map(|(component_desc, &rhs_list_array)| {
                     if components.contains_key(component_desc) {
@@ -151,16 +151,9 @@ impl Chunk {
                         ))
                     }
                 })
-                .collect_vec()
-        });
-
-        let components = {
-            let mut per_name = ChunkComponents::default();
-            for (component_desc, list_array) in components {
-                per_name.insert(component_desc.clone(), list_array);
-            }
-            per_name
-        };
+                .collect_vec();
+            components.extend(rhs);
+        }
 
         let chunk = Self {
             id: ChunkId::new(),
