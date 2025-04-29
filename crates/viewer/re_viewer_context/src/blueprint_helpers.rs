@@ -149,7 +149,9 @@ impl ViewerContext<'_> {
                 default_blueprint
                     .latest_at(self.blueprint_query, entity_path, [component_name])
                     .get(&component_name)
-                    .and_then(|default_value| default_value.component_batch_raw(&component_name))
+                    .and_then(|default_value| {
+                        default_value.component_batch_raw_by_component_name(component_name)
+                    })
             })
     }
 
@@ -180,7 +182,7 @@ impl ViewerContext<'_> {
             .latest_at(self.blueprint_query, entity_path, [component_name])
             .get(&component_name)
             .and_then(|unit| {
-                unit.component_batch_raw(&component_name)
+                unit.component_batch_raw_by_component_name(component_name)
                     .map(|array| array.data_type().clone())
             })
         else {

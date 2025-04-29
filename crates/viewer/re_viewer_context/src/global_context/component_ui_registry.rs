@@ -252,7 +252,7 @@ impl ComponentUiRegistry {
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let Some(array) = unit.component_batch_raw(&component_name) else {
+        let Some(array) = unit.component_batch_raw_by_component_name(component_name) else {
             re_log::error_once!("Couldn't get {component_name}: missing");
             ui.error_with_details_on_hover(format!("Couldn't get {component_name}: missing"));
             return;

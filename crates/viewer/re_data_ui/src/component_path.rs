@@ -35,17 +35,30 @@ impl DataUi for ComponentPath {
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                if engine.store().entity_has_component_on_timeline(
-                    &query.timeline(),
-                    entity_path,
-                    component_name,
-                ) {
+                // TODO(#6889): `ComponentPath` should always have a descriptor.
+                if engine
+                    .store()
+                    .entity_component_descriptors_with_name(entity_path, *component_name)
+                    .is_empty()
+                {
                     ui.label("<unset>");
                 } else {
                     ui.label(format!(
                         "Entity {entity_path:?} has no component {component_name:?}"
                     ));
                 }
+
+                // if engine.store().entity_has_component_on_timeline(
+                //     &query.timeline(),
+                //     entity_path,
+                //     &component_descr,
+                // ) {
+                //     ui.label("<unset>");
+                // } else {
+                //     ui.label(format!(
+                //         "Entity {entity_path:?} has no component {component_descr:?}"
+                //     ));
+                // }
             } else {
                 ui.error_label(format!("Unknown component path: {self}"));
             }

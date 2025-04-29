@@ -162,7 +162,7 @@ fn visualizer_components(
         component_name: &ComponentName,
     ) -> Option<(Option<RowId>, ArrayRef)> {
         let unit = unit?;
-        let batch = unit.component_batch_raw(component_name)?;
+        let batch = unit.component_batch_raw_by_component_name(component_name)?;
         if batch.is_empty() {
             None
         } else {

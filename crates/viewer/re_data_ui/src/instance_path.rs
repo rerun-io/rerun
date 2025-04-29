@@ -191,11 +191,20 @@ fn component_list_ui(
                     continue;
                 }
 
+                // TODO(#6889): `ComponentPath` should always have a descriptor and we should be iterating over descriptors.
                 let component_path = ComponentPath::new(entity_path.clone(), component_name);
-                let is_static = db
+                let component_descr = db
                     .storage_engine()
                     .store()
-                    .entity_has_static_component(entity_path, &component_name);
+                    .entity_component_descriptors_with_name(entity_path, component_name)
+                    .into_iter()
+                    .next();
+
+                let is_static = component_descr.map_or(false, |component_descr| {
+                    db.storage_engine()
+                        .store()
+                        .entity_has_static_component(entity_path, &component_descr)
+                });
                 let icon = if is_static {
                     &re_ui::icons::COMPONENT_STATIC
                 } else {
