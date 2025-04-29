@@ -110,7 +110,7 @@ impl StreamDecoder {
                     self.options = options;
 
                     match self.options.serializer {
-                        Serializer::MsgPack => self.state = State::MsgPackMessageHeader,
+                        Serializer::LegacyMsgPack => self.state = State::MsgPackMessageHeader,
                         Serializer::Protobuf => self.state = State::ProtobufMessageHeader,
                     }
 
