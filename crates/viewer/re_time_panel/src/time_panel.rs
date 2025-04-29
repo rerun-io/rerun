@@ -52,7 +52,7 @@ impl TimePanelItem {
     pub fn to_item(&self) -> Item {
         let Self {
             entity_path,
-            component_descr: component_descr,
+            component_descr,
         } = self;
 
         if let Some(component_descr) = component_descr.as_ref() {

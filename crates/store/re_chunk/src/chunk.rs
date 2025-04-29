@@ -243,7 +243,7 @@ impl Chunk {
     ) -> Option<&ComponentDescriptor> {
         self.components
             .keys()
-            .find_map(move |descr| (descr.component_name == component_name).then_some(descr))
+            .find(|descr| descr.component_name == component_name)
     }
 }
 

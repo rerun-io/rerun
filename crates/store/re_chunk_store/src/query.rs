@@ -790,7 +790,7 @@ impl ChunkStore {
             .static_chunk_ids_per_entity
             .get(entity_path)
             .and_then(|static_chunks_per_component| {
-                static_chunks_per_component.get(&component_descr)
+                static_chunks_per_component.get(component_descr)
             })
             .and_then(|chunk_id| self.chunks_per_chunk_id.get(chunk_id))
         {
@@ -806,7 +806,7 @@ impl ChunkStore {
                         temporal_chunk_ids_per_timeline.get(query.timeline())
                     })
                     .and_then(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component.get(&component_descr)
+                        temporal_chunk_ids_per_component.get(component_descr)
                     })
                     .into_iter(),
             )

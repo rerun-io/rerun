@@ -200,7 +200,7 @@ fn component_list_ui(
                     .into_iter()
                     .next();
 
-                let is_static = component_descr.map_or(false, |component_descr| {
+                let is_static = component_descr.is_some_and(|component_descr| {
                     db.storage_engine()
                         .store()
                         .entity_has_static_component(entity_path, &component_descr)

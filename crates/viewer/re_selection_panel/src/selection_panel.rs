@@ -176,7 +176,7 @@ impl SelectionPanel {
                     .into_iter()
                     .next();
 
-                let is_static = component_descr.map_or(false, |descr| {
+                let is_static = component_descr.is_some_and(|descr| {
                     db.storage_engine()
                         .store()
                         .entity_has_static_component(entity_path, &descr)
