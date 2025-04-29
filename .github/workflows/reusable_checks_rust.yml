@@ -98,6 +98,9 @@ jobs:
     name: Rust lints (tests)
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
+    env:
+      RUSTFLAGS: --cfg=web_sys_unstable_apis
+      RUSTDOCFLAGS: ""
     steps:
       - uses: actions/checkout@v4
         with:
