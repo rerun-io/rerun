@@ -176,7 +176,7 @@ impl FileHeader {
 }
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum MessageHeader {
     Data {
         /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams

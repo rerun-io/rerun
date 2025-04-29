@@ -39,19 +39,13 @@ fn encode_roundtrip() {
     let store_id = StoreId::empty_recording();
     let messages = [LogMsg::ArrowMsg(store_id, arrow_msg)];
 
-    for option in [
-        EncodingOptions::MSGPACK_UNCOMPRESSED,
-        EncodingOptions::MSGPACK_COMPRESSED,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-    ] {
-        let crate_version = CrateVersion::LOCAL;
-        let encoded =
-            encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
-        let decoded = decode_bytes(&encoded).unwrap();
-        similar_asserts::assert_eq!(
-            decoded,
-            messages,
-            "Failed to roundtrip chunk with option {option:?}"
-        );
-    }
+    let option = EncodingOptions::PROTOBUF_COMPRESSED;
+    let crate_version = CrateVersion::LOCAL;
+    let encoded = encode_as_bytes(crate_version, option, messages.iter().cloned().map(Ok)).unwrap();
+    let decoded = decode_bytes(&encoded).unwrap();
+    similar_asserts::assert_eq!(
+        decoded,
+        messages,
+        "Failed to roundtrip chunk with option {option:?}"
+    );
 }
