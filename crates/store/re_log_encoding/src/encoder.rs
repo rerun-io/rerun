@@ -1,14 +1,16 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
-use crate::codec;
-use crate::codec::file::{self, encoder};
-use crate::FileHeader;
-use crate::LegacyMessageHeader;
-use crate::Serializer;
-use crate::{Compression, EncodingOptions};
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
+
+use crate::{
+    codec::{
+        self,
+        file::{self, encoder},
+    },
+    Compression, EncodingOptions, FileHeader, Serializer,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -161,7 +163,7 @@ impl<W: std::io::Write> Encoder<W> {
                     .map(|_| self.scratch.len() as _)
                     .map_err(EncodeError::Write)
             }
-            Serializer::MsgPack => Err(EncodeError::CannotEncodeWithMsgPack),
+            Serializer::LegacyMsgPack => Err(EncodeError::CannotEncodeWithMsgPack),
         }
     }
 
@@ -170,7 +172,7 @@ impl<W: std::io::Write> Encoder<W> {
     #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         match self.serializer {
-            Serializer::MsgPack => {
+            Serializer::LegacyMsgPack => {
                 return Err(EncodeError::CannotEncodeWithMsgPack);
             }
             Serializer::Protobuf => {

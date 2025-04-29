@@ -187,7 +187,7 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let (msg, processed_length) = match serializer {
-                crate::Serializer::MsgPack => {
+                crate::Serializer::LegacyMsgPack => {
                     let header_size = super::LegacyMessageHeader::SIZE;
                     if unprocessed_bytes.len() < header_size {
                         // Not enough data to read the header, need to wait for more

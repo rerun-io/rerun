@@ -142,7 +142,7 @@ pub fn options_from_bytes(bytes: &[u8]) -> Result<(CrateVersion, EncodingOptions
     warn_on_version_mismatch(version);
 
     match options.serializer {
-        Serializer::MsgPack | Serializer::Protobuf => {}
+        Serializer::LegacyMsgPack | Serializer::Protobuf => {}
     }
 
     Ok((CrateVersion::from_bytes(version), options))
@@ -323,7 +323,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                     _ => return Some(Err(err)),
                 },
             },
-            Serializer::MsgPack => {
+            Serializer::LegacyMsgPack => {
                 let header = match LegacyMessageHeader::decode(&mut self.read) {
                     Ok(header) => header,
                     Err(err) => match err {

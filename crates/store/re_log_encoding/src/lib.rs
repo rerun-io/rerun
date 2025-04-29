@@ -50,7 +50,9 @@ pub enum Compression {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Serializer {
-    MsgPack = 1,
+    /// For Rerun 0.22 and earlier. Only used to support loading old files.
+    LegacyMsgPack = 1,
+
     Protobuf = 2,
 }
 
@@ -79,7 +81,7 @@ impl EncodingOptions {
                     _ => return Err(OptionsError::UnknownCompression(compression)),
                 };
                 let serializer = match serializer {
-                    1 => Serializer::MsgPack,
+                    1 => Serializer::LegacyMsgPack,
                     2 => Serializer::Protobuf,
                     _ => return Err(OptionsError::UnknownSerializer(serializer)),
                 };
@@ -111,12 +113,6 @@ pub enum OptionsError {
 
     #[error("Unknown compression: {0}")]
     UnknownCompression(u8),
-
-    // TODO(jan): Remove this at some point, realistically 1-2 releases after 0.23
-    #[error(
-        "You are trying to load an old .rrd file that's not supported by this version of Rerun."
-    )]
-    RemovedMsgPackSerializer,
 
     #[error("Unknown serializer: {0}")]
     UnknownSerializer(u8),
