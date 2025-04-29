@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimelineName};
+use re_log_types::{EntityPath, TimelineName};
 use re_types::View as _;
 use re_types::{components::TextLogLevel, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
@@ -87,7 +87,7 @@ Filter message types and toggle column visibility in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -96,13 +96,11 @@ Filter message types and toggle column visibility in a selection panel.",
         if ctx
             .indicated_entities_per_visualizer
             .get(&TextLogSystem::identifier())
-            .is_none_or(|entities| {
-                entities.is_empty() || entities.iter().all(|e| suggested_filter.matches(e))
-            })
+            .is_some_and(|entities| entities.iter().any(include_entity))
         {
-            ViewSpawnHeuristics::default()
-        } else {
             ViewSpawnHeuristics::root()
+        } else {
+            ViewSpawnHeuristics::empty()
         }
     }
 

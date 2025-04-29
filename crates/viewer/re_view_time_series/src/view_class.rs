@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
+use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
@@ -203,7 +203,7 @@ impl ViewClass for TimeSeriesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -231,17 +231,11 @@ impl ViewClass for TimeSeriesView {
                 .extend(maybe_visualizable.iter().cloned());
         }
 
-        // Ensure we don't modify this list anymore before we check the `suggested_filter`.
+        // Ensure we don't modify this list anymore before we check the `include_entity`.
         let indicated_entities = indicated_entities;
-        if indicated_entities
-            .iter()
-            .all(|e| suggested_filter.matches(e))
-        {
-            return ViewSpawnHeuristics::default();
-        }
 
-        if indicated_entities.0.is_empty() {
-            return ViewSpawnHeuristics::default();
+        if !indicated_entities.iter().any(include_entity) {
+            return ViewSpawnHeuristics::empty();
         }
 
         // Spawn time series data at the root if theres 'either:
