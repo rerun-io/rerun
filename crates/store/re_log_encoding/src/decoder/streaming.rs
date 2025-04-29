@@ -254,7 +254,6 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
 
                             match msg {
                                 Ok(legacy_msg) => {
-                                    re_log::debug_once!("Migrating legacy LogMsg…");
                                     (Some(legacy_msg.migrate()), length + header_size)
                                 }
                                 Err(err) => {

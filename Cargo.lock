@@ -8417,10 +8417,13 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "camino",
  "clap",
  "crossbeam",
  "document-features",
  "env_filter",
+ "indexmap 2.8.0",
+ "indicatif",
  "itertools 0.14.0",
  "log",
  "puffin",
