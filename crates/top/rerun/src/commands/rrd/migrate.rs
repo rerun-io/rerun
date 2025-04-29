@@ -43,10 +43,10 @@ impl MigrateCommand {
 
         let failures: Vec<(Utf8PathBuf, anyhow::Error)> = path_to_input_rrds
             .par_iter()
-            .filter_map(|path| {
-                if let Err(err) = migrate_file(path) {
+            .filter_map(|original_path| {
+                if let Err(err) = migrate_file_at(original_path) {
                     progress.inc(1);
-                    Some((path.clone(), err))
+                    Some((original_path.clone(), err))
                 } else {
                     progress.inc(1);
                     None
@@ -67,30 +67,40 @@ impl MigrateCommand {
             eprintln!("❌ Failed to migrate {num_failures}/{num_files} file(s):");
             eprintln!();
             for (path, err) in &failures {
-                eprintln!("  {path}: {err}\n");
+                eprintln!("  {path}: {}\n", re_error::format(err));
             }
             anyhow::bail!("Failed to migrate {num_failures}/{num_files} file(s)");
         }
     }
 }
 
-fn migrate_file(original_path: &Utf8PathBuf) -> anyhow::Result<()> {
+fn migrate_file_at(original_path: &Utf8PathBuf) -> anyhow::Result<()> {
     // Rename `old_name.rrd` to `old_name.backup.rrd`:
     let backup_path = original_path.with_extension("backup.rrd");
 
     if backup_path.exists() {
-        anyhow::bail!("Aborting migration of {original_path}: {backup_path} already exists");
+        eprintln!("Ignoring migration of {original_path}: {backup_path} already exists");
+        return Ok(());
     }
 
     std::fs::rename(original_path, &backup_path)
         .with_context(|| format!("Couldn't rename {original_path:?} to {backup_path:?}"))?;
 
-    // Stream convert it:
-    let old_file = std::fs::File::open(&backup_path)
-        .with_context(|| format!("Failed to open {backup_path:?}"))?;
+    if let Err(err) = migrate_from_to(&backup_path, original_path) {
+        // Restore:
+        std::fs::rename(&backup_path, original_path).ok();
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
 
-    let decoder = re_log_encoding::decoder::Decoder::new(std::io::BufReader::new(old_file))
-        .with_context(|| format!("Failed to decode {original_path:?}"))?;
+/// Stream-convert an rrd file
+fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Result<()> {
+    let from_file =
+        std::fs::File::open(from_path).with_context(|| format!("Failed to open {from_path:?}"))?;
+
+    let decoder = re_log_encoding::decoder::Decoder::new(std::io::BufReader::new(from_file))?;
 
     let mut errors = indexmap::IndexSet::new();
 
@@ -102,8 +112,8 @@ fn migrate_file(original_path: &Utf8PathBuf) -> anyhow::Result<()> {
         }
     });
 
-    let new_file = std::fs::File::create(original_path)
-        .with_context(|| format!("Failed to create {original_path:?}"))?;
+    let new_file =
+        std::fs::File::create(to_path).with_context(|| format!("Failed to create {to_path:?}"))?;
 
     let mut buffered_writer = std::io::BufWriter::new(new_file);
 
@@ -113,7 +123,7 @@ fn migrate_file(original_path: &Utf8PathBuf) -> anyhow::Result<()> {
         messages,
         &mut buffered_writer,
     )
-    .with_context(|| format!("Failed to write new .rrd file to {original_path:?}"))?;
+    .with_context(|| format!("Failed to write new .rrd file to {to_path:?}"))?;
 
     if errors.is_empty() {
         Ok(())
