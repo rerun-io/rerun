@@ -33,7 +33,7 @@ use re_chunk_store::{
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::SorbetColumnDescriptors;
-use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
+use re_types_core::{archetypes, ComponentDescriptor};
 
 // ---
 
@@ -522,7 +522,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns `None` if the chunk either doesn't contain a `ClearIsRecursive` column or if
         /// the end result is an empty chunk.
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
-            let list_array = chunk.components().get(&ClearIsRecursive::descriptor())?;
+            let list_array = chunk
+                .components()
+                .get(&archetypes::Clear::descriptor_is_recursive())?;
 
             let values = list_array
                 .values()
@@ -543,8 +545,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             (!chunk.is_empty()).then_some(chunk)
         }
 
-        use re_types_core::Component as _;
-        let component_descrs = [&ComponentDescriptor::new(ClearIsRecursive::name())];
+        let component_descrs = [&archetypes::Clear::descriptor_is_recursive()];
 
         // All unique entity paths present in the view contents.
         let entity_paths: IntSet<EntityPath> = view_contents
@@ -1310,8 +1311,7 @@ mod tests {
         EntityPath, Timeline,
     };
     use re_query::StorageEngine;
-    use re_types::components::ClearIsRecursive;
-    use re_types_core::Component as _;
+    use re_types_core::{components, Component as _};
 
     use crate::{QueryCache, QueryEngine};
 
@@ -2598,15 +2598,18 @@ mod tests {
         let frame60 = TimeInt::new_temporal(60);
         let frame65 = TimeInt::new_temporal(65);
 
-        let clear_flat = ClearIsRecursive(false.into());
-        let clear_recursive = ClearIsRecursive(true.into());
+        let clear_flat = components::ClearIsRecursive(false.into());
+        let clear_recursive = components::ClearIsRecursive(true.into());
 
         let row_id1_1 = RowId::new();
         let chunk1 = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 row_id1_1,
                 TimePoint::default(),
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2628,7 +2631,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_1,
                 [build_frame_nr(frame35), build_log_time(frame35.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .build()?;
 
@@ -2640,17 +2646,26 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame55), build_log_time(frame55.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2662,7 +2677,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2674,7 +2692,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .build()?;
 
