@@ -297,7 +297,7 @@ impl TensorView {
             }),
         ];
 
-        egui::ScrollArea::both().show(ui, |ui| {
+        egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
             if let Err(err) =
                 self.tensor_slice_ui(ctx, ui, state, view_id, dimension_labels, &slice_selection)
             {
@@ -317,12 +317,12 @@ impl TensorView {
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, painter, image_rect) =
+        let (response, image_rect) =
             self.paint_tensor_slice(ctx, ui, state, view_id, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
-            paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
+            paint_axis_names(ui, image_rect, font_id, dimension_labels);
         }
 
         Ok(())
@@ -335,7 +335,7 @@ impl TensorView {
         state: &ViewTensorState,
         view_id: ViewId,
         slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
+    ) -> anyhow::Result<(egui::Response, egui::Rect)> {
         re_tracing::profile_function!();
 
         let Some(tensor_view) = state.tensor.as_ref() else {
@@ -411,7 +411,7 @@ impl TensorView {
             re_renderer::DebugLabel::from("tensor_slice"),
         )?;
 
-        Ok((response, painter, image_rect))
+        Ok((response, image_rect))
     }
 }
 
@@ -484,11 +484,12 @@ fn dimension_name(shape: &[TensorDimension], dim_idx: u32) -> String {
 
 fn paint_axis_names(
     ui: &egui::Ui,
-    painter: &egui::Painter,
     rect: egui::Rect,
     font_id: egui::FontId,
     dimension_labels: [Option<(String, bool)>; 2],
 ) {
+    let painter = ui.painter();
+
     let [width, height] = dimension_labels;
     let (width_name, invert_width) =
         width.map_or((None, false), |(label, invert)| (Some(label), invert));
