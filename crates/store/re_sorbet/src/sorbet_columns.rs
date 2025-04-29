@@ -1,5 +1,6 @@
 use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
 
+use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 
@@ -141,7 +142,11 @@ impl SorbetColumnDescriptors {
                     if indices.is_empty() && components.is_empty() {
                         row_ids.push(RowIdColumnDescriptor::try_from(field)?);
                     } else {
-                        return Err(SorbetError::custom("RowId column must be the first column"));
+                        let err = format!(
+                            "RowId column must be the first column; but the columns were: {:?}",
+                            fields.iter().map(|f| f.name()).collect_vec()
+                        );
+                        return Err(SorbetError::custom(err));
                     }
                 }
 

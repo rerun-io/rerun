@@ -13,6 +13,8 @@ use arrow::{
 use re_tuid::Tuid;
 use re_types_core::{arrow_helpers::as_array_ref, Loggable as _};
 
+use crate::ColumnKind;
+
 fn migrate_field(field: ArrowFieldRef, array: ArrowArrayRef) -> (ArrowFieldRef, ArrowArrayRef) {
     // TODO: check for arrow extension first
     if let Some(struct_array) = array.as_struct_opt() {
@@ -153,6 +155,38 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     ArrowRecordBatch::try_new_with_options(
         schema.into(),
         columns,
+        &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
+    )
+    .expect("Can't fail")
+}
+
+/// Put row-id first, then time columns, and last data columns.
+pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
+    re_tracing::profile_function!();
+
+    let mut row_ids = vec![];
+    let mut indices = vec![];
+    let mut components = vec![];
+`
+    for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
+        let field = field.clone();
+        let array = array.clone();
+        let column_kind = ColumnKind::try_from(field.as_ref()).unwrap_or(ColumnKind::Component);
+        match column_kind {
+            ColumnKind::RowId => row_ids.push((field, array)),
+            ColumnKind::Index => indices.push((field, array)),
+            ColumnKind::Component => components.push((field, array)),
+        }
+    }
+
+    let (fields, arrays): (Vec<ArrowFieldRef>, Vec<ArrowArrayRef>) =
+        itertools::chain!(row_ids, indices, components).unzip();
+
+    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+
+    ArrowRecordBatch::try_new_with_options(
+        schema.into(),
+        arrays,
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
     .expect("Can't fail")
