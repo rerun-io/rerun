@@ -159,7 +159,7 @@ fn run_view_ui_and_save_snapshot(
             raw_input
                 .events
                 .push(egui::Event::PointerMoved((50.0, 200.0).into()));
-            harness.run();
+            harness.try_run_realtime().ok();
             harness.snapshot(&name);
         }
 
