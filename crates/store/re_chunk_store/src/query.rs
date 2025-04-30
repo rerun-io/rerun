@@ -57,7 +57,7 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Retrieve all [`ComponentName`]s in the store.
+    /// Retrieve all [`ComponentDescriptor`]s in the store.
     pub fn all_components(&self) -> IntSet<ComponentDescriptor> {
         self.static_chunk_ids_per_entity
             .values()
