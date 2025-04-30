@@ -25,14 +25,15 @@ use pyo3::{
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
-    ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor, QueryExpression,
-    SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ComponentColumnDescriptor,
+    IndexColumnDescriptor, QueryExpression, SparseFillStrategy, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
-use re_sorbet::SorbetColumnDescriptors;
+use re_sorbet::{
+    ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
+};
 
 use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
 

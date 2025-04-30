@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
-use re_chunk_store::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector};
+use re_chunk_store::ColumnDescriptor;
 use re_log_types::{EntityPath, ResolvedTimeRange, Timeline, TimelineName};
+use re_sorbet::{ColumnSelector, ComponentColumnSelector};
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
