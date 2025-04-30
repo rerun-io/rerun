@@ -257,7 +257,7 @@ impl NotificationPanel {
                             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                                 if ui.small_icon_button(&icons::CLOSE).clicked() {
                                     ui.memory_mut(|mem| {
-                                        mem.close_popup(notification_panel_popup_id())
+                                        mem.close_popup(notification_panel_popup_id());
                                     });
                                 }
                             });
