@@ -16,6 +16,21 @@ permissions: write-all
 
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
+  sandbox:
+    name: macsandbox
+    runs-on: macos-latest
+    steps:
+      - name: Setup llvm 8
+        run: |
+          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
+          ls "$(brew --prefix llvm@18)/bin"
+
+      - name: Check clang version
+        run: |
+           echo $PATH
+           clang --version
+           which clang
+
   checks:
     name: Checks
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
