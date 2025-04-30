@@ -88,26 +88,25 @@ impl Client {
         };
 
         let start = std::time::Instant::now();
+
         loop {
             match rx.try_recv() {
                 Ok(_) => {
-                    re_log::debug!("Flush complete");
+                    re_log::trace!("Flush complete");
                     break;
                 }
                 Err(TryRecvError::Empty) => {
-                    let Some(timeout) = self.flush_timeout else {
-                        std::thread::yield_now();
-                        continue;
-                    };
-
-                    let elapsed = start.elapsed();
-                    if elapsed >= timeout {
-                        re_log::debug!("Flush timed out, not all messages were sent");
-                        break;
+                    if let Some(timeout) = self.flush_timeout {
+                        let elapsed = start.elapsed();
+                        if elapsed >= timeout {
+                            re_log::warn!("Flush timed out, not all messages were sent");
+                            break;
+                        }
                     }
+                    std::thread::yield_now();
                 }
                 Err(TryRecvError::Closed) => {
-                    re_log::debug!("Flush failed, not all messages were sent");
+                    re_log::warn!("Flush failed, not all messages were sent");
                     break;
                 }
             }
@@ -123,7 +122,7 @@ impl Drop for Client {
 
         // Quit immediately - no more messages left in the queue
         if let Err(err) = self.shutdown_tx.try_send(()) {
-            re_log::error!("failed to gracefully shut down message proxy client: {err}");
+            re_log::error!("Failed to gracefully shut down message proxy client: {err}");
             return;
         };
 
