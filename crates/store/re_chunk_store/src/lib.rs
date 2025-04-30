@@ -28,8 +28,7 @@ mod protobuf_conversions;
 
 pub use self::{
     dataframe::{
-        ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, QueryExpression,
-        SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+        Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, ViewContentsSelector,
     },
     events::{ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent},
     gc::{GarbageCollectionOptions, GarbageCollectionTarget},
