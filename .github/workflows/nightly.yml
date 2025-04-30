@@ -56,7 +56,7 @@ jobs:
     name: cargo build on clean container
     strategy:
       matrix:
-        os: [ubuntu-latest-16-cores, macos-latest, windows-latest-8-cores]
+        os: [ubuntu-latest-16-cores, macos-15, windows-latest-8-cores]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

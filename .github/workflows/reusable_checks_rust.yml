@@ -120,7 +120,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: "macos-latest"
+          - os: "macos-15"
             name: "macos"
           - os: "windows-latest-8-cores"
             name: "windows"
@@ -146,20 +146,20 @@ jobs:
         with:
           pixi-version: v0.41.4
 
-      # TODO
-      # Needed because the default is clang 15 and it fails to compile some dependencies for wasm, with "LLVM error:
-      # section too large".
-      - name: Use clang 18 (mac)
-        if: ${{ matrix.name == 'macos' }}
-        run: |
-          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
-          cat $GITHUB_PATH
-
-      - name: Check clang version
-        run: |
-          echo $PATH
-          clang --version
-          which clang
+#      # TODO
+#      # Needed because the default is clang 15 and it fails to compile some dependencies for wasm, with "LLVM error:
+#      # section too large".
+#      - name: Use clang 18 (mac)
+#        if: ${{ matrix.name == 'macos' }}
+#        run: |
+#          echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
+#          cat $GITHUB_PATH
+#
+#      - name: Check clang version
+#        run: |
+#          echo $PATH
+#          clang --version
+#          which clang
 
       # Install the Vulkan SDK, so we can use the software rasterizer.
       # TODO(andreas): It would be nice if `setup_software_rasterizer.py` could do that for us as well (note though that this action here is very fast when cached!)
