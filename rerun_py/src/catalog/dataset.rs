@@ -16,17 +16,15 @@ use re_protos::common::v1alpha1::IfDuplicateBehavior;
 use re_protos::frontend::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
 use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
 use re_protos::manifest_registry::v1alpha1::{
-    index_query_properties, IndexColumn, IndexConfig, IndexQueryProperties, InvertedIndexQuery,
-    VectorIndexQuery,
+    index_query_properties, IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
 };
-use re_sdk::{ComponentDescriptor, ComponentName};
-use re_sorbet::{ComponentColumnSelector, TimeColumnSelector};
+use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
 use crate::catalog::{
     dataframe_query::PyDataframeQueryView, to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike,
 };
 use crate::dataframe::{
-    PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording,
+    PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
 };
 use crate::utils::wait_for_future;
 
@@ -48,12 +46,14 @@ impl PyDataset {
     /// Return the Arrow schema of the data contained in the dataset.
     //TODO(#9457): there should be another `schema` method which returns a `PySchema`
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
-        let super_ = self_.as_super();
-        let mut connection = super_.client.borrow_mut(self_.py()).connection().clone();
+        let arrow_schema = Self::fetch_arrow_schema(&self_)?;
 
-        let schema = connection.get_dataset_schema(self_.py(), super_.details.id)?;
+        Ok(arrow_schema.into())
+    }
 
-        Ok(schema.into())
+    /// Return the schema of the data contained in the dataset.
+    fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchema> {
+        Self::fetch_schema(&self_)
     }
 
     /// Return the partition table as a Datafusion table provider.
@@ -218,18 +218,10 @@ impl PyDataset {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
-
         let time_selector: TimeColumnSelector = time_index.into();
-        let column_selector: ComponentColumnSelector = column.into();
-        let mut component_descriptor =
-            ComponentDescriptor::new(column_selector.component_name.clone());
 
-        // TODO(jleibs): get rid of this hack
-        if component_descriptor.component_name == ComponentName::from("rerun.components.Text") {
-            component_descriptor = component_descriptor
-                .or_with_archetype_name(|| "rerun.archetypes.TextLog".into())
-                .or_with_archetype_field_name(|| "text".into());
-        }
+        let schema = Self::fetch_schema(&self_)?;
+        let component_descriptor = schema.resolve_component_column_selector(&column)?;
 
         let properties = IndexProperties::Inverted {
             store_position,
@@ -243,10 +235,7 @@ impl PyDataset {
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
-                column: Some(IndexColumn {
-                    entity_path: Some(column_selector.entity_path.into()),
-                    component: Some(component_descriptor.into()),
-                }),
+                column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
 
@@ -286,8 +275,9 @@ impl PyDataset {
         let dataset_id = super_.details.id;
 
         let time_selector: TimeColumnSelector = time_index.into();
-        let column_selector: ComponentColumnSelector = column.into();
-        let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
+
+        let schema = Self::fetch_schema(&self_)?;
+        let component_descriptor = schema.resolve_component_column_selector(&column)?;
 
         let distance_metric: re_protos::manifest_registry::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
@@ -305,10 +295,7 @@ impl PyDataset {
 
             config: Some(IndexConfig {
                 properties: Some(properties.into()),
-                column: Some(IndexColumn {
-                    entity_path: Some(column_selector.entity_path.into()),
-                    component: Some(component_descriptor.into()),
-                }),
+                column: Some(component_descriptor.0.into()),
                 time_index: Some(time_selector.timeline.into()),
             }),
 
@@ -336,8 +323,8 @@ impl PyDataset {
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let column_selector: ComponentColumnSelector = column.into();
-        let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
+        let schema = Self::fetch_schema(&self_)?;
+        let component_descriptor = schema.resolve_component_column_selector(&column)?;
 
         let schema = arrow::datatypes::Schema::new_with_metadata(
             vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
@@ -352,10 +339,7 @@ impl PyDataset {
 
         let request = SearchDatasetRequest {
             dataset_id: Some(dataset_id.into()),
-            column: Some(IndexColumn {
-                entity_path: Some(column_selector.entity_path.into()),
-                component: Some(component_descriptor.into()),
-            }),
+            column: Some(component_descriptor.0.into()),
             properties: Some(IndexQueryProperties {
                 props: Some(
                     re_protos::manifest_registry::v1alpha1::index_query_properties::Props::Inverted(
@@ -400,17 +384,14 @@ impl PyDataset {
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
-        let column_selector: ComponentColumnSelector = column.into();
-        let component_descriptor = ComponentDescriptor::new(column_selector.component_name.clone());
+        let schema = Self::fetch_schema(&self_)?;
+        let component_descriptor = schema.resolve_component_column_selector(&column)?;
 
         let query = query.to_record_batch()?;
 
         let request = SearchDatasetRequest {
             dataset_id: Some(dataset_id.into()),
-            column: Some(IndexColumn {
-                entity_path: Some(column_selector.entity_path.into()),
-                component: Some(component_descriptor.into()),
-            }),
+            column: Some(component_descriptor.0.into()),
             properties: Some(IndexQueryProperties {
                 props: Some(index_query_properties::Props::Vector(VectorIndexQuery {
                     top_k: Some(top_k),
@@ -439,6 +420,26 @@ impl PyDataset {
             client: super_.client.clone_ref(self_.py()),
             name,
             provider,
+        })
+    }
+}
+
+impl PyDataset {
+    fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
+        let super_ = self_.as_super();
+        let mut connection = super_.client.borrow_mut(self_.py()).connection().clone();
+
+        let schema = connection.get_dataset_schema(self_.py(), super_.details.id)?;
+
+        Ok(schema)
+    }
+
+    fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
+        Self::fetch_arrow_schema(self_).and_then(|arrow_schema| {
+            let descs = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
+                .map_err(to_py_err)?;
+
+            Ok(PySchema { schema: descs })
         })
     }
 }

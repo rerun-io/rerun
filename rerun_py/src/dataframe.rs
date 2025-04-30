@@ -157,7 +157,7 @@ impl From<PyIndexColumnSelector> for TimeColumnSelector {
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
-pub struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
+pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
     fn from(desc: ComponentColumnDescriptor) -> Self {
@@ -222,7 +222,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
-pub struct PyComponentColumnSelector(ComponentColumnSelector);
+pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 
 #[pymethods]
 impl PyComponentColumnSelector {
@@ -309,6 +309,7 @@ impl AnyColumn {
 }
 
 /// A type alias for any component-column-like object.
+//TODO(#9853): rename to `ComponentColumnLike`
 #[derive(FromPyObject)]
 pub(crate) enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
@@ -559,6 +560,23 @@ impl PySchema {
                 None
             }
         })
+    }
+
+    pub fn resolve_component_column_selector(
+        &self,
+        column_selector: &PyComponentColumnSelector,
+    ) -> PyResult<PyComponentColumnDescriptor> {
+        let desc = self
+            .schema
+            .resolve_component_column_selector(&column_selector.0)
+            .ok_or_else(|| {
+                PyValueError::new_err(format!(
+                    "The column selector {} was not found in the schema.",
+                    column_selector.0
+                ))
+            })?;
+
+        Ok(PyComponentColumnDescriptor(desc.clone()))
     }
 }
 

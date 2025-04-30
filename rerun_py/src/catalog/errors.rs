@@ -55,6 +55,9 @@ enum ExternalError {
 
     #[error(transparent)]
     CodecError(#[from] re_log_encoding::codec::CodecError),
+
+    #[error(transparent)]
+    SorbetError(#[from] re_sorbet::SorbetError),
 }
 
 impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
@@ -112,6 +115,10 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::CodecError(err) => PyValueError::new_err(format!("Codec error: {err}")),
+
+            ExternalError::SorbetError(err) => {
+                PyValueError::new_err(format!("Sorbet error: {err}"))
+            }
         }
     }
 }

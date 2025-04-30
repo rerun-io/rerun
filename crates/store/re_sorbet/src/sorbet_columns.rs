@@ -4,8 +4,9 @@ use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 
 use crate::{
-    ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
-    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
+    ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ColumnSelector, ComponentColumnDescriptor,
+    ComponentColumnSelector, IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
+    TimeColumnSelector,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,6 +94,80 @@ impl SorbetColumnDescriptors {
                 .get(index_ignoring_row_id - self.indices.len())
                 .cloned()
                 .map(ColumnDescriptor::Component)
+        }
+    }
+
+    /// Resolve the provided column selector. Returns `None` if no corresponding column was found.
+    pub fn resolve_selector(
+        &self,
+        column_selector: &ColumnSelector,
+    ) -> Option<ColumnDescriptorRef<'_>> {
+        match column_selector {
+            ColumnSelector::Time(selector) => self
+                .resolve_index_column_selector(selector)
+                .map(ColumnDescriptorRef::Time),
+
+            ColumnSelector::Component(selector) => self
+                .resolve_component_column_selector(selector)
+                .map(ColumnDescriptorRef::Component),
+        }
+    }
+
+    /// Resolve the provided index column selector. Returns `None` if no corresponding column was
+    /// found.
+    pub fn resolve_index_column_selector(
+        &self,
+        index_column_selector: &TimeColumnSelector,
+    ) -> Option<&IndexColumnDescriptor> {
+        self.indices
+            .iter()
+            .find(|column| column.timeline_name() == index_column_selector.timeline)
+    }
+
+    /// Resolve the provided component column selector. Returns `None` if no corresponding column
+    /// was found.
+    ///
+    /// Matching strategy:
+    /// - The entity path must match exactly.
+    /// - The first component with a fully matching name is returned (there shouldn't be more than
+    ///   one for now).
+    /// - If no exact match is found, a partial match is attempted using
+    ///   [`re_types_core::ComponentName::matches`] and is returned only if it is unique.
+    // TODO(#6889): this will need to be fully revisited with tagged components
+    // TODO(ab): this is related but different from `re_chunk_store::resolve_component_selector()`.
+    // It is likely that only one of these should eventually remain.
+    // TODO: return a result?
+    pub fn resolve_component_column_selector(
+        &self,
+        component_column_selector: &ComponentColumnSelector,
+    ) -> Option<&ComponentColumnDescriptor> {
+        let ComponentColumnSelector {
+            entity_path,
+            component_name,
+        } = component_column_selector;
+
+        // happy path: exact component name match
+        let exact_match = self.components.iter().find(|column| {
+            column.component_name.as_str() == component_name && &column.entity_path == entity_path
+        });
+
+        if exact_match.is_some() {
+            return exact_match;
+        }
+
+        // fallback: use `ComponentName::match` and check that we have a single result
+        let mut partial_match = self.components.iter().filter(|column| {
+            column.component_name.matches(component_name) && &column.entity_path == entity_path
+        });
+
+        let first_match = partial_match.next();
+
+        // Note: non-unique partial match is highly unlikely for now, but will become more likely
+        // with tagged components.
+        if partial_match.next().is_none() {
+            first_match
+        } else {
+            None
         }
     }
 
