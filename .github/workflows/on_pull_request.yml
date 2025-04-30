@@ -27,9 +27,9 @@ jobs:
 
       - name: Check clang version
         run: |
-           echo $PATH
-           clang --version
-           which clang
+          echo $PATH
+          clang --version
+          which clang
 
   checks:
     name: Checks
