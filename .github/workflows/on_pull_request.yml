@@ -18,7 +18,7 @@ permissions: write-all
 jobs:
   sandbox:
     name: macsandbox
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Setup llvm 8
         run: |
