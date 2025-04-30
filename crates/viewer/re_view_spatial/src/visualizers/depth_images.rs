@@ -305,7 +305,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                             depth_meter: first_copied(depth_meter).map(Into::into),
                             fill_ratio: first_copied(fill_ratio).map(Into::into),
                             colormap: first_copied(colormap).and_then(Colormap::from_u8),
-                            value_range: first_copied(value_range).map(Into::into),
+                            value_range: first_copied(value_range),
                         })
                     },
                 );

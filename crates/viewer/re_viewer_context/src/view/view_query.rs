@@ -112,7 +112,7 @@ impl DataResult {
                 .entity_path
                 .parent()
                 .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
-                .map_or(true, |data_result| data_result.is_visible());
+                .is_none_or(|data_result| data_result.is_visible());
 
             if parent_visibility == new_value {
                 // TODO(andreas): blueprint save_empty should know about tags (`EntityBehavior::visible`'s tag)
@@ -150,7 +150,7 @@ impl DataResult {
                 .entity_path
                 .parent()
                 .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
-                .map_or(true, |data_result| data_result.is_interactive());
+                .is_none_or(|data_result| data_result.is_interactive());
 
             if parent_interactivity == new_value {
                 // TODO(andreas): tagged empty component.
@@ -210,7 +210,7 @@ impl DataResult {
         while let Some(parent_path) = override_source.parent() {
             if result_tree
                 .lookup_result_by_path(&parent_path)
-                .map_or(true, |data_result| {
+                .is_none_or(|data_result| {
                     // TODO(andreas): Assumes all overrides are recursive which is not true,
                     //                This should access `recursive_component_overrides` instead.
                     data_result

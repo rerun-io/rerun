@@ -7,26 +7,26 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
 };
 use tokio_stream::StreamExt as _;
-use tonic::transport::Channel;
 
+use re_grpc_client::redap::RedapClient;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::{
-    common::v1alpha1::ScanParameters,
-    frontend::v1alpha1::{frontend_service_client::FrontendServiceClient, SearchDatasetRequest},
+    common::v1alpha1::ScanParameters, frontend::v1alpha1::SearchDatasetRequest,
     manifest_registry::v1alpha1::SearchDatasetResponse,
 };
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::wasm_compat::make_future_send;
 
 #[derive(Debug, Clone)]
 pub struct SearchResultsTableProvider {
-    client: FrontendServiceClient<Channel>,
+    client: RedapClient,
     request: SearchDatasetRequest,
 }
 
 impl SearchResultsTableProvider {
     pub fn new(
-        client: FrontendServiceClient<Channel>,
+        client: RedapClient,
         request: SearchDatasetRequest,
     ) -> Result<Self, DataFusionError> {
         if request.scan_parameters.is_some() {
@@ -55,25 +55,31 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
             ..Default::default()
         });
 
-        let schema = self
-            .client
-            .search_dataset(request)
-            .await
-            .map_err(|err| DataFusionError::External(Box::new(err)))?
-            .into_inner()
-            .next()
-            .await
-            .ok_or(DataFusionError::Execution(
-                "Empty stream from search results".to_owned(),
-            ))?
-            .map_err(|err| DataFusionError::External(Box::new(err)))?
-            .data
-            .ok_or(DataFusionError::Execution(
-                "Empty data from search results".to_owned(),
-            ))?
-            .decode()
-            .map_err(|err| DataFusionError::External(Box::new(err)))?
-            .schema();
+        let mut client = self.client.clone();
+
+        let schema = make_future_send(async move {
+            Ok::<_, DataFusionError>(
+                client
+                    .search_dataset(request)
+                    .await
+                    .map_err(|err| DataFusionError::External(Box::new(err)))?
+                    .into_inner()
+                    .next()
+                    .await,
+            )
+        })
+        .await?
+        .ok_or(DataFusionError::Execution(
+            "Empty stream from search results".to_owned(),
+        ))?
+        .map_err(|err| DataFusionError::External(Box::new(err)))?
+        .data
+        .ok_or(DataFusionError::Execution(
+            "Empty data from search results".to_owned(),
+        ))?
+        .decode()
+        .map_err(|err| DataFusionError::External(Box::new(err)))?
+        .schema();
 
         Ok(schema)
     }
@@ -83,9 +89,10 @@ impl GrpcStreamToTable for SearchResultsTableProvider {
     ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
         let request = self.request.clone();
 
-        self.client
-            .search_dataset(request)
-            .await
+        let mut client = self.client.clone();
+
+        make_future_send(async move { Ok(client.search_dataset(request).await) })
+            .await?
             .map_err(|err| DataFusionError::External(Box::new(err)))
     }
 

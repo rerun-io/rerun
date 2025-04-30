@@ -1,8 +1,8 @@
 [package]
 name = "extend_viewer_ui"
-version = "0.23.0-alpha.3+dev"
+version = "0.24.0-alpha.1+dev"
 edition = "2021"
-rust-version = "1.84"
+rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 publish = false
 
@@ -10,25 +10,14 @@ publish = false
 default = []
 
 # Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
-analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
+analytics = ["rerun/analytics"]
 
 [dependencies]
-re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
-re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
-
-# We need re_grpc_server to receive log events from an SDK:
-re_grpc_server = { path = "../../../crates/store/re_grpc_server" }
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
+  "native_viewer",
+  "sdk",
+  "server",
+] }
 
 # mimalloc is a much faster allocator:
 mimalloc = "0.1.43"
-
-# We need `tokio` to be able to run `re_grpc_server`:
-tokio = { version = "1.14.0", features = [
-  "macros",
-  "rt-multi-thread",
-  "time",
-  "net",
-  "io-util",
-  "sync",
-  "signal",
-] }

@@ -23,7 +23,7 @@ impl TryFrom<u8> for ViewDir {
             4 => Ok(Self::Left),
             5 => Ok(Self::Forward),
             6 => Ok(Self::Back),
-            _ => Err("Could not interpret {i} as ViewDir.".to_owned()),
+            _ => Err(format!("Could not interpret {i} as ViewDir.")),
         }
     }
 }

@@ -83,7 +83,7 @@ def set_time(
     """
     if sum(x is not None for x in (sequence, duration, timestamp)) != 1:
         raise ValueError(
-            "set_time: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
+            f"set_time: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
         )
 
     if sequence is not None:
@@ -129,15 +129,11 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
 def to_nanos_since_epoch(
     timestamp: int | np.integer | float | np.float64 | datetime | np.datetime64,
 ) -> int:
-    if isinstance(timestamp, (int, np.integer)):
-        return 1_000_000_000 * int(timestamp)  # Interpret as seconds and convert to nanos
-    elif isinstance(
-        timestamp,
-        # Only allowing f64 since anything less has way too little precision for measuring time since 1970
-        (float, np.float64),
-    ):
-        # Interpret as seconds and convert to nanos
-        return int(np.round(1e9 * timestamp))
+    # Only allowing f64 since anything less has way too little precision for measuring time since 1970
+    if isinstance(timestamp, (int, np.integer, float, np.float64)):
+        if timestamp > 1e11:
+            raise ValueError("set_time: Expected seconds since unix epoch, but it looks like this is in milliseconds")
+        return int(np.round(1e9 * timestamp))  # Interpret as seconds and convert to nanos
     elif isinstance(timestamp, datetime):
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
@@ -156,7 +152,7 @@ def to_nanos_since_epoch(
 
 @deprecated(
     """Use `set_time(sequence=…)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream | None = None) -> None:
     """
@@ -196,7 +192,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
 
 @deprecated(
     """Use `set_time(timestamp=seconds)` or `set_time(duration=seconds)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
     """
@@ -244,7 +240,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
 @deprecated(
     """Use `set_time(timestamp=1e-9 * nanos)` or `set_time(duration=1e-9 * nanos)` instead.
-    See: https://www.rerun.io/docs/reference/migration/migration-0-23?speculative-link for more details.""",
+    See: https://www.rerun.io/docs/reference/migration/migration-0-23 for more details.""",
 )
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
     """

@@ -228,7 +228,7 @@ impl Query {
             .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
 
-        // The list of suggested components is build as follows:
+        // The list of suggested components is built as follows:
         // - consider all indicator components
         // - for the matching archetypes, take all required components
         // - keep those that are actually present
@@ -236,7 +236,7 @@ impl Query {
             all_components
                 .iter()
                 .filter_map(|c| {
-                    c.indicator_component_archetype()
+                    c.indicator_component_archetype_short_name()
                         .and_then(|archetype_short_name| {
                             ctx.reflection()
                                 .archetype_reflection_from_short_name(&archetype_short_name)

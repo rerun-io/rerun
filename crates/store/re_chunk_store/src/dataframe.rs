@@ -659,11 +659,11 @@ impl ChunkStore {
 
         let filter = |column: &ComponentColumnDescriptor| {
             let is_part_of_view_contents = || {
-                view_contents.as_ref().map_or(true, |view_contents| {
+                view_contents.as_ref().is_none_or(|view_contents| {
                     view_contents
                         .get(&column.entity_path)
                         .is_some_and(|components| {
-                            components.as_ref().map_or(true, |components| {
+                            components.as_ref().is_none_or(|components| {
                                 components.contains(&column.component_name)
                             })
                         })

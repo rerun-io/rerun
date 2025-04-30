@@ -1,7 +1,6 @@
-use custom_callback::{comms::viewer::ControlViewer, panel::Control};
+use rerun::external::{eframe, re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer};
 
-use rerun::external::re_viewer::AsyncRuntimeHandle;
-use rerun::external::{eframe, re_log, re_memory, re_viewer};
+use custom_callback::{comms::viewer::ControlViewer, panel::Control};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -63,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
-                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
 
             rerun_app.add_log_receiver(rx_log);

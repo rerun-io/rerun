@@ -93,7 +93,7 @@
 //! ```
 //!
 //! ```ignore
-//! cargo install rerun
+//! cargo install rerun --locked
 //! rerun --help
 //! ```
 //!
@@ -169,6 +169,7 @@ pub mod external {
     pub use ::re_build_info;
     pub use ::re_entity_db;
     pub use ::re_entity_db::external::*;
+    pub use ::re_error;
     pub use ::re_format;
     pub use ::re_format_arrow;
 
@@ -179,13 +180,16 @@ pub mod external {
     #[cfg(not(target_arch = "wasm32"))]
     pub use clap;
 
+    #[cfg(any(feature = "run", feature = "native_viewer"))]
+    pub use re_crash_handler;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
 
     #[cfg(feature = "native_viewer")]
     pub use re_viewer::external::*;
 
-    #[cfg(feature = "sdk")]
+    #[cfg(any(feature = "sdk", feature = "server"))]
     pub use re_sdk::external::*;
 
     #[cfg(feature = "sdk")]

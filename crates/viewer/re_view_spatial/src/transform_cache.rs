@@ -698,11 +698,11 @@ impl TransformCacheStoreSubscriber {
                     && per_entity
                         .pose_transforms
                         .as_ref()
-                        .map_or(true, |pose_transforms| pose_transforms.is_empty())
+                        .is_none_or(|pose_transforms| pose_transforms.is_empty())
                     && per_entity
                         .pinhole_projections
                         .as_ref()
-                        .map_or(true, |pinhole_projections| pinhole_projections.is_empty())
+                        .is_none_or(|pinhole_projections| pinhole_projections.is_empty())
                 {
                     per_timeline.per_entity.remove(entity_path);
                 }

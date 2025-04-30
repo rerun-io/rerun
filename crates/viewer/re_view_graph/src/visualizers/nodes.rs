@@ -62,7 +62,7 @@ impl VisualizerSystem for NodeVisualizer {
         VisualizerQueryInfo::from_archetype::<archetypes::GraphNodes>()
     }
 
-    /// Populates the scene part with data from the store.
+    /// Populates the visualizer with data from the store.
     fn execute(
         &mut self,
         ctx: &ViewContext<'_>,
@@ -85,7 +85,7 @@ impl VisualizerSystem for NodeVisualizer {
             let all_radii = results.iter_as(query.timeline, components::Radius::name());
             let show_label = results
                 .get_mono::<components::ShowLabels>()
-                .map_or(true, bool::from);
+                .is_none_or(bool::from);
 
             let data = range_zip_1x4(
                 all_nodes.slice::<String>(),

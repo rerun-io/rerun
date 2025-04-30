@@ -1,10 +1,14 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{rc::Rc, sync::Arc};
 
-use re_viewer::external::{eframe, egui, egui::mutex::Mutex, re_log, re_memory};
-use re_viewer::{AsyncRuntimeHandle, ViewerEvent, ViewerEventKind};
+use rerun::external::{
+    eframe, egui,
+    parking_lot::Mutex,
+    re_crash_handler, re_grpc_server, re_log, re_memory,
+    re_viewer::{self, ViewerEvent, ViewerEventKind},
+    tokio,
+};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -81,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
-                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
             rerun_app.add_log_receiver(rx);
             Ok(Box::new(MyApp {
