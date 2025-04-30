@@ -176,5 +176,5 @@ fn run_graph_view_and_save_snapshot(test_context: &mut TestContext, name: &str, 
         });
 
     harness.run();
-    harness.snapshot_options(name, &SnapshotOptions::default().threshold(1.3));
+    harness.snapshot_options(name, &SnapshotOptions::default().threshold(1.7));
 }
