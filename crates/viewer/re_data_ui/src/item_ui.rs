@@ -4,9 +4,7 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName,
-};
+use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
@@ -455,70 +453,6 @@ fn entity_tree_stats_ui(
             format_bytes(total_stats.total_size_bytes as f64)
         ));
     }
-}
-
-/// Show a component path and make it selectable.
-pub fn component_path_button(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    component_path: &ComponentPath,
-    db: &re_entity_db::EntityDb,
-) -> egui::Response {
-    component_path_button_to(
-        ctx,
-        ui,
-        component_path.component_name.short_name(),
-        component_path,
-        db,
-    )
-}
-
-/// Show a component path and make it selectable.
-pub fn component_path_button_to(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    component_path: &ComponentPath,
-    db: &re_entity_db::EntityDb,
-) -> egui::Response {
-    let item = Item::ComponentPath(component_path.clone());
-    let is_static = db.storage_engine().store().entity_has_static_component(
-        component_path.entity_path(),
-        component_path.component_name(),
-    );
-    let icon = if is_static {
-        &icons::COMPONENT_STATIC
-    } else {
-        &icons::COMPONENT_TEMPORAL
-    };
-    let response = ui.selectable_label_with_icon(
-        icon,
-        text,
-        ctx.selection().contains_item(&item),
-        re_ui::LabelStyle::Normal,
-    );
-
-    let response = response.on_hover_ui(|ui| {
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // Make tooltip as wide as needed
-
-        list_item::list_item_scope(ui, "component_path_tooltip", |ui| {
-            ui.list_item().interactive(false).show_flat(
-                ui,
-                list_item::LabelContent::new(if is_static {
-                    "Static component"
-                } else {
-                    "Temporal component"
-                })
-                .with_icon(icon),
-            );
-
-            component_path
-                .component_name
-                .data_ui_recording(ctx, ui, UiLayout::Tooltip);
-        });
-    });
-
-    cursor_interact_with_selectable(ctx, response, item)
 }
 
 pub fn data_blueprint_button_to(
