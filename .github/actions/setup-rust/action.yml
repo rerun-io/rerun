@@ -38,6 +38,21 @@ inputs:
 runs:
   using: "composite"
   steps:
+    # Needed because the default is clang 15 and it fails to compile some dependencies for wasm, with "LLVM error:
+    # section too large".
+    - name: Use clang 18 (mac)
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
+      shell: bash
+
+    - name: Check clang version
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        clang --version
+        which clang
+      shell: bash
+
     - name: Set up GCP credentials
       uses: google-github-actions/auth@v2
       with:
