@@ -43,7 +43,7 @@ impl ::prost::Name for RegisterWithDatasetRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterWithDatasetResponse {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for RegisterWithDatasetResponse {
     const NAME: &'static str = "RegisterWithDatasetResponse";
