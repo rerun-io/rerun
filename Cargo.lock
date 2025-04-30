@@ -2903,7 +2903,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.20.0"
-source = "git+https://github.com/lucasmerlin/egui_commonmark.git?branch=egui-update#da806bceec7839e045a000d6fca77c6b3d571a22"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#da806bceec7839e045a000d6fca77c6b3d571a22"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
@@ -2914,7 +2914,7 @@ dependencies = [
 [[package]]
 name = "egui_commonmark_backend"
 version = "0.20.0"
-source = "git+https://github.com/lucasmerlin/egui_commonmark.git?branch=egui-update#da806bceec7839e045a000d6fca77c6b3d571a22"
+source = "git+https://github.com/rerun-io/egui_commonmark.git?branch=egui-update#da806bceec7839e045a000d6fca77c6b3d571a22"
 dependencies = [
  "egui",
  "egui_extras",

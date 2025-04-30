@@ -668,7 +668,7 @@ emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-egui_commonmark = { git = "https://github.com/lucasmerlin/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/71
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/76
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 
