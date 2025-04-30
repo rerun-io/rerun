@@ -1,9 +1,10 @@
 use std::collections::{BTreeSet, HashSet};
 
-use re_chunk_store::{ColumnDescriptor, ColumnSelector};
+use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
+use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
 use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item, TimeDragValue, UiExt as _};
