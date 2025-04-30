@@ -23,7 +23,7 @@ jobs:
       - name: Setup llvm 8
         run: |
           echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
-          ls "$(brew --prefix llvm@18)/bin"
+          ls "/opt/homebrew/opt"
 
       - name: Check clang version
         run: |
