@@ -25,7 +25,14 @@ pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     let mut columns: Vec<ArrowArrayRef> = Vec::with_capacity(num_columns);
 
     for (field, array) in itertools::izip!(batch.schema().fields(), batch.columns()) {
-        let (field, array) = migrate_tuid_column(field.clone(), array.clone());
+        let (mut field, mut array) = (field.clone(), array.clone());
+
+        let is_tuid = field.extension_type_name() == Some("rerun.datatypes.TUID")
+            || field.name() == "rerun.controls.RowId";
+        if is_tuid {
+            (field, array) = migrate_tuid_column(field, array);
+        }
+
         fields.push(field);
         columns.push(array);
     }
@@ -45,13 +52,9 @@ fn migrate_tuid_column(
     field: ArrowFieldRef,
     array: ArrowArrayRef,
 ) -> (ArrowFieldRef, ArrowArrayRef) {
-    if field.extension_type_name() != Some("rerun.datatypes.TUID") {
-        return (field, array); // Not a Tuid
-    }
+    re_tracing::profile_function!();
 
     if let Some(struct_array) = array.as_struct_opt() {
-        re_tracing::profile_function!();
-
         // Maybe legacy struct (from Rerun 0.22 or earlier):
         let [nanos, counters] = struct_array.columns() else {
             return (field, array);
