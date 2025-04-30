@@ -26,13 +26,14 @@ use re_chunk::{
     TimelineName, UnitChunkShared,
 };
 use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, Index, IndexColumnDescriptor, IndexValue, QueryExpression,
-    SparseFillStrategy, TimeColumnSelector,
+    ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
+    IndexValue, QueryExpression, SparseFillStrategy,
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
-use re_sorbet::SorbetColumnDescriptors;
+use re_sorbet::{
+    ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
+};
 use re_types_core::{archetypes, ComponentDescriptor};
 
 // ---

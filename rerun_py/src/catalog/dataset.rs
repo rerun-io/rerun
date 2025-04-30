@@ -8,7 +8,6 @@ use re_grpc_client::redap::get_chunks_response_to_chunk_and_partition_id;
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
-use re_dataframe::{ComponentColumnSelector, TimeColumnSelector};
 use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
@@ -21,6 +20,7 @@ use re_protos::manifest_registry::v1alpha1::{
     VectorIndexQuery,
 };
 use re_sdk::{ComponentDescriptor, ComponentName};
+use re_sorbet::{ComponentColumnSelector, TimeColumnSelector};
 
 use crate::catalog::{
     dataframe_query::PyDataframeQueryView, to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike,
