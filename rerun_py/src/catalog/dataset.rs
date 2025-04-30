@@ -436,8 +436,11 @@ impl PyDataset {
 
     fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
         Self::fetch_arrow_schema(self_).and_then(|arrow_schema| {
-            let descs = SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
-                .map_err(to_py_err)?;
+            let descs = SorbetColumnDescriptors::try_from_arrow_fields_forgiving(
+                None,
+                arrow_schema.fields(),
+            )
+            .map_err(to_py_err)?;
 
             Ok(PySchema { schema: descs })
         })

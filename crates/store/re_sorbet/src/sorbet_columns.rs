@@ -251,4 +251,41 @@ impl SorbetColumnDescriptors {
             components,
         })
     }
+
+    // TODO(#9855): Reconcile this with the above.
+    pub fn try_from_arrow_fields_forgiving(
+        chunk_entity_path: Option<&EntityPath>,
+        fields: &ArrowFields,
+    ) -> Result<Self, SorbetError> {
+        let mut row_ids = Vec::new();
+        let mut indices = Vec::new();
+        let mut components = Vec::new();
+
+        for field in fields {
+            let field = field.as_ref();
+            let column_kind = ColumnKind::try_from(field)?;
+            match column_kind {
+                ColumnKind::RowId => {
+                    row_ids.push(RowIdColumnDescriptor::try_from(field)?);
+                }
+
+                ColumnKind::Index => {
+                    indices.push(IndexColumnDescriptor::try_from(field)?);
+                }
+
+                ColumnKind::Component => {
+                    components.push(ComponentColumnDescriptor::from_arrow_field(
+                        chunk_entity_path,
+                        field,
+                    ));
+                }
+            }
+        }
+
+        Ok(Self {
+            row_id: row_ids.pop(),
+            indices,
+            components,
+        })
+    }
 }
