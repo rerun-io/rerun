@@ -152,9 +152,11 @@ jobs:
         if: ${{ matrix.name == 'macos' }}
         run: |
           echo "$(brew --prefix llvm@18)/bin" >> $GITHUB_PATH
+          cat $GITHUB_PATH
 
       - name: Check clang version
         run: |
+          echo $PATH
           clang --version
           which clang
 
