@@ -47,6 +47,7 @@ runs:
       shell: bash
 
     - name: Check clang version
+      if: ${{ runner.os == 'macOS' }}
       run: |
         clang --version
         which clang
