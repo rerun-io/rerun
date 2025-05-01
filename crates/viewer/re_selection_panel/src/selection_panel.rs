@@ -167,10 +167,20 @@ impl SelectionPanel {
                 } = component_path;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let is_static = db
+
+                // TODO(#6889): `ComponentPath` should always have a descriptor and we should be iterating over descriptors.
+                let component_descr = db
                     .storage_engine()
                     .store()
-                    .entity_has_static_component(entity_path, component_name);
+                    .entity_component_descriptors_with_name(entity_path, *component_name)
+                    .into_iter()
+                    .next();
+
+                let is_static = component_descr.is_some_and(|descr| {
+                    db.storage_engine()
+                        .store()
+                        .entity_has_static_component(entity_path, &descr)
+                });
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {

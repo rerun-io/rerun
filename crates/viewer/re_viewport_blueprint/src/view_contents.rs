@@ -504,12 +504,14 @@ impl<'a> DataQueryPropertyResolver<'a> {
         // Gather overrides.
         let component_overrides = &mut property_overrides.component_overrides;
         if let Some(override_subtree) = blueprint.tree().subtree(override_path) {
-            for component_name in blueprint
+            for component_descr in blueprint
                 .storage_engine()
                 .store()
                 .all_components_for_entity(&override_subtree.path)
                 .unwrap_or_default()
             {
+                let component_name = component_descr.component_name;
+
                 if let Some(component_data) = blueprint
                     .storage_engine()
                     .cache()

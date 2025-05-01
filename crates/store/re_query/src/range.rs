@@ -35,18 +35,25 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_descrs.into_iter().filter_map(|component_descr| {
-            let component_descr = component_descr.into();
-            store
-                .entity_has_component_on_timeline(
-                    query.timeline(),
+        let component_descrs = component_descrs.into_iter().filter_map(|component_descr| {
+            // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
+            let component_descr = store
+                .entity_component_descriptors_with_name(
                     entity_path,
-                    &component_descr.component_name,
+                    component_descr.into().component_name,
                 )
-                .then_some(component_descr.component_name)
+                .into_iter()
+                .next()?;
+
+            store
+                .entity_has_component_on_timeline(query.timeline(), entity_path, &component_descr)
+                .then_some(component_descr)
         });
 
-        for component_name in component_names {
+        for component_descr in component_descrs {
+            // TODO(#6889): Don't drop the descriptor.
+            let component_name = component_descr.component_name;
+
             let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_name);
 
             let cache = Arc::clone(
@@ -276,7 +283,16 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let raw_chunks = store.range_relevant_chunks(query, entity_path, component_name);
+        // TODO(#6889): Use descriptor directly or list out all matching.
+        let Some(component_descriptor) = store
+            .entity_component_descriptors_with_name(entity_path, component_name)
+            .into_iter()
+            .next()
+        else {
+            return Vec::new();
+        };
+
+        let raw_chunks = store.range_relevant_chunks(query, entity_path, &component_descriptor);
         for raw_chunk in &raw_chunks {
             self.chunks
                 .entry(raw_chunk.id())
@@ -285,7 +301,7 @@ impl RangeCache {
                     chunk: raw_chunk
                         // Densify the cached chunk according to the cache key's component, which
                         // will speed up future arrow operations on this chunk.
-                        .densified(component_name)
+                        .densified(&component_descriptor)
                         // Pre-sort the cached chunk according to the cache key's timeline.
                         .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
@@ -307,7 +323,7 @@ impl RangeCache {
 
                 let chunk = &cached_sorted_chunk.chunk;
 
-                chunk.range(query, component_name)
+                chunk.range(query, &component_descriptor)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect()

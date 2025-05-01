@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
-use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
+use re_data_ui::{sorted_component_name_list_for_ui, DataUi as _};
 use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
 use re_types_core::{ComponentDescriptor, ComponentName, ComponentNameSet};
@@ -86,7 +86,7 @@ fn active_default_ui(
     query: &LatestAtQuery,
     db: &re_entity_db::EntityDb,
 ) {
-    let sorted_overrides = sorted_component_list_for_ui(active_defaults.iter());
+    let sorted_overrides = sorted_component_name_list_for_ui(active_defaults.iter());
 
     let query_context = QueryContext {
         viewer_ctx: ctx.viewer_ctx,

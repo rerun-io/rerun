@@ -1,13 +1,13 @@
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
+use re_types::ComponentDescriptor;
 use smallvec::SmallVec;
 
 use re_chunk_store::ChunkStore;
 use re_data_ui::sorted_component_list_for_ui;
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::EntityPath;
-use re_types_core::ComponentName;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
 
@@ -71,7 +71,7 @@ impl StreamsTreeData {
     pub fn visit<B>(
         &self,
         entity_db: &re_entity_db::EntityDb,
-        mut visitor: impl FnMut(&EntityData, Option<ComponentName>) -> VisitorControlFlow<B>,
+        mut visitor: impl FnMut(&EntityData, Option<ComponentDescriptor>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
         let engine = entity_db.storage_engine();
         let store = engine.store();
@@ -214,16 +214,16 @@ impl EntityData {
     pub fn visit<B>(
         &self,
         store: &ChunkStore,
-        visitor: &mut impl FnMut(&Self, Option<ComponentName>) -> VisitorControlFlow<B>,
+        visitor: &mut impl FnMut(&Self, Option<ComponentDescriptor>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
         if visitor(self, None).visit_children()? {
             for child in &self.children {
                 child.visit(store, visitor)?;
             }
 
-            for component_name in components_for_entity(store, &self.entity_path) {
+            for component_descr in components_for_entity(store, &self.entity_path) {
                 // these cannot have children
-                let _ = visitor(self, Some(component_name)).visit_children()?;
+                let _ = visitor(self, Some(component_descr)).visit_children()?;
             }
         }
 
@@ -245,7 +245,7 @@ impl EntityData {
 pub fn components_for_entity(
     store: &ChunkStore,
     entity_path: &EntityPath,
-) -> impl Iterator<Item = ComponentName> {
+) -> impl Iterator<Item = ComponentDescriptor> {
     if let Some(components) = store.all_components_for_entity(entity_path) {
         itertools::Either::Left(sorted_component_list_for_ui(components.iter()).into_iter())
     } else {
