@@ -1,5 +1,16 @@
 # Rerun changelog
 
+## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - WIP - WIP
+
+#### 🐍 Python API
+- Add `ViewerClient` to `rerun.experimental` [#9828](https://github.com/rerun-io/rerun/pull/9828)
+- Improve `set_time` error handling for large Python integers [#9839](https://github.com/rerun-io/rerun/pull/9839)
+- Properly resolve component selectors in dataset index creation and search APIs [#9854](https://github.com/rerun-io/rerun/pull/9854)
+
+#### 🪳 Bug fixes
+- Tensor view improvements [#9831](https://github.com/rerun-io/rerun/pull/9831)
+
+
 ## [0.23.1](https://github.com/rerun-io/rerun/compare/0.23.0...0.23.1) - 2025-04-25 - Fix notebooks
 
 #### 🪳 Bug fixes
