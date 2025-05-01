@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{invalid_field, missing_field, TypeConversionError};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
-
+use re_sorbet::{ColumnSelector, ComponentColumnSelector, TimeColumnSelector};
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
@@ -919,6 +919,107 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
         }
 
         Ok(descriptor)
+    }
+}
+
+// ---
+
+impl TryFrom<crate::common::v1alpha1::ComponentColumnSelector> for ComponentColumnSelector {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::common::v1alpha1::ComponentColumnSelector,
+    ) -> Result<Self, Self::Error> {
+        let entity_path = value
+            .entity_path
+            .ok_or(missing_field!(
+                crate::common::v1alpha1::ComponentColumnSelector,
+                "entity_path",
+            ))?
+            .try_into()?;
+
+        let component_name = value
+            .component
+            .ok_or(missing_field!(
+                crate::common::v1alpha1::ComponentColumnSelector,
+                "component",
+            ))?
+            .name;
+
+        Ok(Self {
+            entity_path,
+            component_name,
+        })
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::TimeColumnSelector> for TimeColumnSelector {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::TimeColumnSelector) -> Result<Self, Self::Error> {
+        let timeline = value.timeline.ok_or(missing_field!(
+            crate::common::v1alpha1::TimeColumnSelector,
+            "timeline",
+        ))?;
+
+        Ok(Self {
+            timeline: timeline.name.into(),
+        })
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::ColumnSelector> for ColumnSelector {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::ColumnSelector) -> Result<Self, Self::Error> {
+        match value.selector_type.ok_or(missing_field!(
+            crate::common::v1alpha1::ColumnSelector,
+            "selector_type",
+        ))? {
+            crate::common::v1alpha1::column_selector::SelectorType::ComponentColumn(
+                component_column_selector,
+            ) => {
+                let selector: ComponentColumnSelector = component_column_selector.try_into()?;
+                Ok(selector.into())
+            }
+            crate::common::v1alpha1::column_selector::SelectorType::TimeColumn(
+                time_column_selector,
+            ) => {
+                let selector: TimeColumnSelector = time_column_selector.try_into()?;
+
+                Ok(selector.into())
+            }
+        }
+    }
+}
+
+impl From<ColumnSelector> for crate::common::v1alpha1::ColumnSelector {
+    fn from(value: ColumnSelector) -> Self {
+        match value {
+            ColumnSelector::Component(ccs) => Self {
+                selector_type: Some(
+                    crate::common::v1alpha1::column_selector::SelectorType::ComponentColumn(
+                        crate::common::v1alpha1::ComponentColumnSelector {
+                            entity_path: Some(ccs.entity_path.into()),
+                            component: Some(crate::common::v1alpha1::Component {
+                                name: ccs.component_name,
+                            }),
+                        },
+                    ),
+                ),
+            },
+            ColumnSelector::Time(tcs) => Self {
+                selector_type: Some(
+                    crate::common::v1alpha1::column_selector::SelectorType::TimeColumn(
+                        crate::common::v1alpha1::TimeColumnSelector {
+                            timeline: Some(crate::common::v1alpha1::Timeline {
+                                name: tcs.timeline.to_string(),
+                            }),
+                        },
+                    ),
+                ),
+            },
+        }
     }
 }
 

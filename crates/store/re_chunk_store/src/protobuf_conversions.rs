@@ -1,110 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use re_protos::{missing_field, TypeConversionError};
-
-impl TryFrom<re_protos::common::v1alpha1::ComponentColumnSelector>
-    for crate::ComponentColumnSelector
-{
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: re_protos::common::v1alpha1::ComponentColumnSelector,
-    ) -> Result<Self, Self::Error> {
-        let entity_path = value
-            .entity_path
-            .ok_or(missing_field!(
-                re_protos::common::v1alpha1::ComponentColumnSelector,
-                "entity_path",
-            ))?
-            .try_into()?;
-
-        let component_name = value
-            .component
-            .ok_or(missing_field!(
-                re_protos::common::v1alpha1::ComponentColumnSelector,
-                "component",
-            ))?
-            .name;
-
-        Ok(Self {
-            entity_path,
-            component_name,
-        })
-    }
-}
-
-impl TryFrom<re_protos::common::v1alpha1::TimeColumnSelector> for crate::TimeColumnSelector {
-    type Error = TypeConversionError;
-
-    fn try_from(
-        value: re_protos::common::v1alpha1::TimeColumnSelector,
-    ) -> Result<Self, Self::Error> {
-        let timeline = value.timeline.ok_or(missing_field!(
-            re_protos::common::v1alpha1::TimeColumnSelector,
-            "timeline",
-        ))?;
-
-        Ok(Self {
-            timeline: timeline.name.into(),
-        })
-    }
-}
-
-impl TryFrom<re_protos::common::v1alpha1::ColumnSelector> for crate::ColumnSelector {
-    type Error = TypeConversionError;
-
-    fn try_from(value: re_protos::common::v1alpha1::ColumnSelector) -> Result<Self, Self::Error> {
-        match value.selector_type.ok_or(missing_field!(
-            re_protos::common::v1alpha1::ColumnSelector,
-            "selector_type",
-        ))? {
-            re_protos::common::v1alpha1::column_selector::SelectorType::ComponentColumn(
-                component_column_selector,
-            ) => {
-                let selector: crate::ComponentColumnSelector =
-                    component_column_selector.try_into()?;
-                Ok(selector.into())
-            }
-            re_protos::common::v1alpha1::column_selector::SelectorType::TimeColumn(
-                time_column_selector,
-            ) => {
-                let selector: crate::TimeColumnSelector = time_column_selector.try_into()?;
-
-                Ok(selector.into())
-            }
-        }
-    }
-}
-
-impl From<crate::ColumnSelector> for re_protos::common::v1alpha1::ColumnSelector {
-    fn from(value: crate::ColumnSelector) -> Self {
-        match value {
-            crate::ColumnSelector::Component(ccs) => Self {
-                selector_type: Some(
-                    re_protos::common::v1alpha1::column_selector::SelectorType::ComponentColumn(
-                        re_protos::common::v1alpha1::ComponentColumnSelector {
-                            entity_path: Some(ccs.entity_path.into()),
-                            component: Some(re_protos::common::v1alpha1::Component {
-                                name: ccs.component_name,
-                            }),
-                        },
-                    ),
-                ),
-            },
-            crate::ColumnSelector::Time(tcs) => Self {
-                selector_type: Some(
-                    re_protos::common::v1alpha1::column_selector::SelectorType::TimeColumn(
-                        re_protos::common::v1alpha1::TimeColumnSelector {
-                            timeline: Some(re_protos::common::v1alpha1::Timeline {
-                                name: tcs.timeline.to_string(),
-                            }),
-                        },
-                    ),
-                ),
-            },
-        }
-    }
-}
+use re_sorbet::{ColumnSelector, ComponentColumnSelector};
 
 impl TryFrom<re_protos::common::v1alpha1::ViewContents> for crate::ViewContentsSelector {
     type Error = TypeConversionError;
@@ -151,14 +48,14 @@ impl TryFrom<re_protos::common::v1alpha1::Query> for crate::QueryExpression {
             .map(|cs| {
                 cs.columns
                     .into_iter()
-                    .map(crate::ColumnSelector::try_from)
+                    .map(ColumnSelector::try_from)
                     .collect::<Result<Vec<_>, _>>()
             })
             .transpose()?;
 
         let filtered_is_not_null = value
             .filtered_is_not_null
-            .map(crate::ComponentColumnSelector::try_from)
+            .map(ComponentColumnSelector::try_from)
             .transpose()?;
 
         Ok(Self {
