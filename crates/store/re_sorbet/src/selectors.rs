@@ -132,7 +132,7 @@ impl std::str::FromStr for ComponentColumnSelector {
     /// Parses a string in the form of `entity_path:component_name`.
     ///
     /// Note that no attempt is made to interpret `component_name`. In particular, we don't attempt
-    /// to prepend a `rerun.components.` prefix like [`ComponentPath::from_str`] does.
+    /// to prepend a `rerun.components.` prefix like `ComponentPath::from_str` does.
     fn from_str(selector: &str) -> Result<Self, Self::Err> {
         if selector.is_empty() {
             return Err(ColumnSelectorParseError::EmptyString);
