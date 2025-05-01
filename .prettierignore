@@ -1,6 +1,7 @@
 rerun_cpp/docs/**/*
 
 rerun_py/docs/templates/**
+rerun_py/site/**
 
 rerun_js/web-viewer/re_viewer_bg.js
 rerun_js/web-viewer/re_viewer.js
