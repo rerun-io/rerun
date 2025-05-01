@@ -180,7 +180,9 @@ class Schema:
 
         """
 
-    def column_for_selector(self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor) -> ComponentColumnDescriptor:
+    def column_for_selector(
+        self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
+    ) -> ComponentColumnDescriptor:
         """
         Look up the column descriptor for a specific selector.
 
