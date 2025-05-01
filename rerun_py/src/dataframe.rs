@@ -568,10 +568,10 @@ impl PySchema {
     /// Parameters
     /// ----------
     /// selector: str | ComponentColumnDescriptor | ComponentColumnSelector
-    ///    The selector to look up.
+    ///     The selector to look up.
     ///
-    ///    String arguments are expected to follow the following format:
-    ///    `"<entity_path>:<component_name>"`
+    ///     String arguments are expected to follow the following format:
+    ///     `"<entity_path>:<component_name>"`
     ///
     /// Returns
     /// -------
