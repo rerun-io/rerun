@@ -6,15 +6,15 @@ use arrow::{
     error::ArrowError,
 };
 
-use re_chunk::TimelineName;
-use re_log_types::EntityPath;
-
+use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
+use crate::common::v1alpha1::ComponentDescriptor;
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
 };
 use crate::{invalid_field, missing_field, TypeConversionError};
-
-use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
+use re_chunk::TimelineName;
+use re_log_types::EntityPath;
+use re_sorbet::ComponentColumnDescriptor;
 
 // --- QueryDataset ---
 
@@ -506,6 +506,22 @@ impl From<IndexProperties> for crate::manifest_registry::v1alpha1::IndexProperti
                     ),
                 ),
             },
+        }
+    }
+}
+
+// ---
+
+impl From<ComponentColumnDescriptor> for crate::manifest_registry::v1alpha1::IndexColumn {
+    fn from(value: ComponentColumnDescriptor) -> Self {
+        Self {
+            entity_path: Some(value.entity_path.into()),
+
+            component: Some(ComponentDescriptor {
+                archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
+                archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
+                component_name: Some(value.component_name.full_name().to_owned()),
+            }),
         }
     }
 }

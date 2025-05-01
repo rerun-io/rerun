@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
+use crate::{invalid_field, missing_field, TypeConversionError};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
-
-use crate::{invalid_field, missing_field, TypeConversionError};
 
 // --- Arrow ---
 

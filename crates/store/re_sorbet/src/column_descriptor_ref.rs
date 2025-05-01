@@ -5,6 +5,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnDescriptorRef<'a> {
     RowId(&'a RowIdColumnDescriptor),
+    //TODO(ab): this should be renamed Index!
     Time(&'a IndexColumnDescriptor),
     Component(&'a ComponentColumnDescriptor),
 }
