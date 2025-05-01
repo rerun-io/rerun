@@ -567,16 +567,21 @@ impl PySchema {
     ///
     /// Parameters
     /// ----------
-    /// component_column_selector: str | ComponentColumnDescriptor | ComponentColumnSelector
+    /// selector: str | ComponentColumnDescriptor | ComponentColumnSelector
     ///    The selector to look up.
     ///
     ///    String arguments are expected to follow the following format:
     ///    `"<entity_path>:<component_name>"`
+    ///
+    /// Returns
+    /// -------
+    /// ComponentColumnDescriptor
+    ///     The column descriptor, if it exists. Raise an exception otherwise.
     pub fn column_for_selector(
         &self,
-        component_column_selector: AnyComponentColumn,
+        selector: AnyComponentColumn,
     ) -> PyResult<PyComponentColumnDescriptor> {
-        match component_column_selector {
+        match selector {
             AnyComponentColumn::Name(name) => self.resolve_component_column_selector(
                 &ComponentColumnSelector::from_str(&name).map_err(to_py_err)?,
             ),
