@@ -24,7 +24,7 @@ use crate::catalog::{
     dataframe_query::PyDataframeQueryView, to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike,
 };
 use crate::dataframe::{
-    PyComponentColumnSelector, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
+    AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
 };
 use crate::utils::wait_for_future;
 
@@ -210,7 +210,7 @@ impl PyDataset {
         ))]
     fn create_fts_index(
         self_: PyRef<'_, Self>,
-        column: PyComponentColumnSelector,
+        column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
         store_position: bool,
         base_tokenizer: &str,
@@ -221,7 +221,7 @@ impl PyDataset {
         let time_selector: TimeColumnSelector = time_index.into();
 
         let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.resolve_component_column_selector(&column)?;
+        let component_descriptor = schema.column_for_selector(column)?;
 
         let properties = IndexProperties::Inverted {
             store_position,
@@ -264,7 +264,7 @@ impl PyDataset {
     ))]
     fn create_vector_index(
         self_: PyRef<'_, Self>,
-        column: PyComponentColumnSelector,
+        column: AnyComponentColumn,
         time_index: PyIndexColumnSelector,
         num_partitions: usize,
         num_sub_vectors: usize,
@@ -277,7 +277,7 @@ impl PyDataset {
         let time_selector: TimeColumnSelector = time_index.into();
 
         let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.resolve_component_column_selector(&column)?;
+        let component_descriptor = schema.column_for_selector(column)?;
 
         let distance_metric: re_protos::manifest_registry::v1alpha1::VectorDistanceMetric =
             distance_metric.try_into()?;
@@ -317,14 +317,14 @@ impl PyDataset {
     fn search_fts(
         self_: PyRef<'_, Self>,
         query: String,
-        column: PyComponentColumnSelector,
+        column: AnyComponentColumn,
     ) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
         let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.resolve_component_column_selector(&column)?;
+        let component_descriptor = schema.column_for_selector(column)?;
 
         let schema = arrow::datatypes::Schema::new_with_metadata(
             vec![Field::new("items", arrow::datatypes::DataType::Utf8, false)],
@@ -377,7 +377,7 @@ impl PyDataset {
     fn search_vector(
         self_: PyRef<'_, Self>,
         query: VectorLike<'_>,
-        column: PyComponentColumnSelector,
+        column: AnyComponentColumn,
         top_k: u32,
     ) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
@@ -385,7 +385,7 @@ impl PyDataset {
         let dataset_id = super_.details.id;
 
         let schema = Self::fetch_schema(&self_)?;
-        let component_descriptor = schema.resolve_component_column_selector(&column)?;
+        let component_descriptor = schema.column_for_selector(column)?;
 
         let query = query.to_record_batch()?;
 

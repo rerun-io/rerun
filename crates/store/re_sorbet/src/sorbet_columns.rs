@@ -1,13 +1,29 @@
 use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
 
 use nohash_hasher::IntSet;
-use re_log_types::EntityPath;
+
+use re_log_types::{EntityPath, TimelineName};
 
 use crate::{
     ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ColumnSelector, ComponentColumnDescriptor,
     ComponentColumnSelector, IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
     TimeColumnSelector,
 };
+
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[expect(clippy::enum_variant_names)]
+pub enum ColumnSelectorResolveError {
+    #[error("Column for component '{0}' not found")]
+    ComponentNotFound(String),
+
+    #[error(
+        "Multiple columns were found for component '{0}'. Consider using a more specific selector."
+    )]
+    MultipleComponentColumnFound(String),
+
+    #[error("Index column for timeline '{0}' not found")]
+    TimelineNotFound(TimelineName),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SorbetColumnDescriptors {
@@ -101,7 +117,7 @@ impl SorbetColumnDescriptors {
     pub fn resolve_selector(
         &self,
         column_selector: &ColumnSelector,
-    ) -> Option<ColumnDescriptorRef<'_>> {
+    ) -> Result<ColumnDescriptorRef<'_>, ColumnSelectorResolveError> {
         match column_selector {
             ColumnSelector::Time(selector) => self
                 .resolve_index_column_selector(selector)
@@ -118,10 +134,13 @@ impl SorbetColumnDescriptors {
     pub fn resolve_index_column_selector(
         &self,
         index_column_selector: &TimeColumnSelector,
-    ) -> Option<&IndexColumnDescriptor> {
+    ) -> Result<&IndexColumnDescriptor, ColumnSelectorResolveError> {
         self.indices
             .iter()
             .find(|column| column.timeline_name() == index_column_selector.timeline)
+            .ok_or(ColumnSelectorResolveError::TimelineNotFound(
+                index_column_selector.timeline,
+            ))
     }
 
     /// Resolve the provided component column selector. Returns `None` if no corresponding column
@@ -136,11 +155,10 @@ impl SorbetColumnDescriptors {
     // TODO(#6889): this will need to be fully revisited with tagged components
     // TODO(ab): this is related but different from `re_chunk_store::resolve_component_selector()`.
     // It is likely that only one of these should eventually remain.
-    // TODO: return a result?
     pub fn resolve_component_column_selector(
         &self,
         component_column_selector: &ComponentColumnSelector,
-    ) -> Option<&ComponentColumnDescriptor> {
+    ) -> Result<&ComponentColumnDescriptor, ColumnSelectorResolveError> {
         let ComponentColumnSelector {
             entity_path,
             component_name,
@@ -151,8 +169,8 @@ impl SorbetColumnDescriptors {
             column.component_name.as_str() == component_name && &column.entity_path == entity_path
         });
 
-        if exact_match.is_some() {
-            return exact_match;
+        if let Some(exact_match) = exact_match {
+            return Ok(exact_match);
         }
 
         // fallback: use `ComponentName::match` and check that we have a single result
@@ -165,9 +183,13 @@ impl SorbetColumnDescriptors {
         // Note: non-unique partial match is highly unlikely for now, but will become more likely
         // with tagged components.
         if partial_match.next().is_none() {
-            first_match
+            first_match.ok_or(ColumnSelectorResolveError::ComponentNotFound(
+                component_name.clone(),
+            ))
         } else {
-            None
+            Err(ColumnSelectorResolveError::MultipleComponentColumnFound(
+                component_name.clone(),
+            ))
         }
     }
 

@@ -48,9 +48,11 @@ pub use self::{
     },
     migration::migrate_record_batch,
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
-    selectors::{ColumnSelector, ComponentColumnSelector, TimeColumnSelector},
+    selectors::{
+        ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
+    },
     sorbet_batch::SorbetBatch,
-    sorbet_columns::SorbetColumnDescriptors,
+    sorbet_columns::{ColumnSelectorResolveError, SorbetColumnDescriptors},
     sorbet_schema::SorbetSchema,
 };
 

@@ -1,7 +1,16 @@
-use re_log_types::{EntityPath, Timeline, TimelineName};
+use re_log_types::{ComponentPath, EntityPath, Timeline, TimelineName};
 use re_types_core::ComponentName;
 
 use crate::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
+
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+pub enum ColumnSelectorParseError {
+    #[error("Expected column selector, found empty string")]
+    EmptyString,
+
+    #[error("Expected string in the form of `entity_path:component_name`, got: {0}")]
+    FormatError(String),
+}
 
 /// Describes a column selection to return as part of a query.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -113,6 +122,41 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
         Self {
             entity_path: desc.entity_path.clone(),
             component_name: desc.component_name.short_name().to_owned(),
+        }
+    }
+}
+
+impl std::str::FromStr for ComponentColumnSelector {
+    type Err = ColumnSelectorParseError;
+
+    /// Parses a string in the form of `entity_path:component_name`.
+    ///
+    /// Note that no attempt is made to interpret `component_name`. In particular, we don't attempt
+    /// to prepend a `rerun.components.` prefix like [`ComponentPath::from_str`] does.
+    fn from_str(selector: &str) -> Result<Self, Self::Err> {
+        if selector.is_empty() {
+            return Err(ColumnSelectorParseError::EmptyString);
+        }
+
+        let tokens = re_log_types::tokenize_by(selector, b":");
+
+        match tokens.as_slice() {
+            &[entity_path_token, ":", component_name_token] => Ok(Self {
+                entity_path: EntityPath::from(entity_path_token),
+                component_name: component_name_token.to_owned(),
+            }),
+
+            _ => Err(ColumnSelectorParseError::FormatError(selector.to_owned())),
+        }
+    }
+}
+
+impl From<ComponentPath> for ComponentColumnSelector {
+    #[inline]
+    fn from(path: ComponentPath) -> Self {
+        Self {
+            entity_path: path.entity_path,
+            component_name: path.component_name.as_str().to_owned(),
         }
     }
 }
