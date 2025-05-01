@@ -563,6 +563,7 @@ impl PySchema {
         })
     }
 
+    #[expect(rustdoc::private_doc_tests)]
     /// Look up the column descriptor for a specific selector.
     ///
     /// Parameters
