@@ -35,6 +35,7 @@ use re_sorbet::{
     ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
 
+use crate::catalog::to_py_err;
 use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
@@ -157,7 +158,7 @@ impl From<PyIndexColumnSelector> for TimeColumnSelector {
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
-pub struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
+pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
     fn from(desc: ComponentColumnDescriptor) -> Self {
@@ -222,7 +223,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
-pub struct PyComponentColumnSelector(ComponentColumnSelector);
+pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 
 #[pymethods]
 impl PyComponentColumnSelector {
@@ -309,8 +310,9 @@ impl AnyColumn {
 }
 
 /// A type alias for any component-column-like object.
+//TODO(#9853): rename to `ComponentColumnLike`
 #[derive(FromPyObject)]
-pub(crate) enum AnyComponentColumn {
+pub enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
     Name(String),
     #[pyo3(transparent, annotation = "component_descriptor")]
@@ -321,7 +323,7 @@ pub(crate) enum AnyComponentColumn {
 
 impl AnyComponentColumn {
     #[allow(dead_code)]
-    pub(crate) fn into_selector(self) -> PyResult<ComponentColumnSelector> {
+    pub fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
             Self::Name(name) => {
                 let component_path =
@@ -559,6 +561,51 @@ impl PySchema {
                 None
             }
         })
+    }
+
+    /// Look up the column descriptor for a specific selector.
+    ///
+    /// Parameters
+    /// ----------
+    /// selector: str | ComponentColumnDescriptor | ComponentColumnSelector
+    ///    The selector to look up.
+    ///
+    ///    String arguments are expected to follow the following format:
+    ///    `"<entity_path>:<component_name>"`
+    ///
+    /// Returns
+    /// -------
+    /// ComponentColumnDescriptor
+    ///     The column descriptor, if it exists. Raise an exception otherwise.
+    pub fn column_for_selector(
+        &self,
+        selector: AnyComponentColumn,
+    ) -> PyResult<PyComponentColumnDescriptor> {
+        match selector {
+            AnyComponentColumn::Name(name) => self.resolve_component_column_selector(
+                &ComponentColumnSelector::from_str(&name).map_err(to_py_err)?,
+            ),
+
+            AnyComponentColumn::ComponentDescriptor(desc) => Ok(desc),
+
+            AnyComponentColumn::ComponentSelector(selector) => {
+                self.resolve_component_column_selector(&selector.0)
+            }
+        }
+    }
+}
+
+impl PySchema {
+    pub fn resolve_component_column_selector(
+        &self,
+        column_selector: &ComponentColumnSelector,
+    ) -> PyResult<PyComponentColumnDescriptor> {
+        let desc = self
+            .schema
+            .resolve_component_column_selector(column_selector)
+            .map_err(to_py_err)?;
+
+        Ok(PyComponentColumnDescriptor(desc.clone()))
     }
 }
 
