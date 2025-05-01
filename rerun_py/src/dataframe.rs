@@ -564,6 +564,7 @@ impl PySchema {
     }
 
     #[expect(rustdoc::private_doc_tests)]
+    #[allow(rustdoc::invalid_rust_codeblocks)]
     /// Look up the column descriptor for a specific selector.
     ///
     /// Parameters
