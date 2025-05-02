@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
 };
@@ -38,17 +37,44 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
     }
 }
 
+// TODO(#6889): This is a temporary object until we use tagged components everywhere or have explicit untagged queries (?).
+pub enum MaybeTagged {
+    Descriptor(ComponentDescriptor),
+    JustName(ComponentName),
+}
+
+impl<'a> From<&'a ComponentDescriptor> for MaybeTagged {
+    #[inline]
+    fn from(descr: &'a ComponentDescriptor) -> Self {
+        Self::Descriptor(descr.clone()) // don't clone TODO:
+    }
+}
+
+impl From<ComponentDescriptor> for MaybeTagged {
+    #[inline]
+    fn from(descr: ComponentDescriptor) -> Self {
+        Self::Descriptor(descr)
+    }
+}
+
+impl From<ComponentName> for MaybeTagged {
+    #[inline]
+    fn from(name: ComponentName) -> Self {
+        Self::JustName(name)
+    }
+}
+
 impl QueryCache {
     /// Queries for the given [`ComponentDescriptor`]s using latest-at semantics.
     ///
     /// See [`LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn latest_at<'d>(
+    pub fn latest_at(
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = impl Into<Cow<'d, ComponentDescriptor>>>,
+        component_descrs: impl IntoIterator<Item = impl Into<MaybeTagged>>,
     ) -> LatestAtResults {
         // This is called very frequently, don't put a profile scope here.
 
@@ -59,21 +85,44 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_descrs.into_iter().filter_map(|component_descr| {
-            // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
-            let component_descr = store
-                .entity_component_descriptors_with_name(
-                    entity_path,
-                    component_descr.into().component_name,
-                )
-                .into_iter()
-                .next()?;
+        let component_names = component_descrs
+            .into_iter()
+            .filter_map(|maybe_component_descr| {
+                // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
+                let component_descr = match maybe_component_descr.into() {
+                    MaybeTagged::Descriptor(component_descr) => {
+                        debug_assert!(component_descr.archetype_name.is_some(),
+                         "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
 
-            store
-                .entity_has_component_on_timeline(&query.timeline(), entity_path, &component_descr)
-                // TODO(#6889): Don't drop the descriptor.
-                .then_some(component_descr.component_name)
-        });
+                        if component_descr.archetype_name.map_or(true, |archetype_name| archetype_name.as_str().starts_with("rerun.blueprint.") ) {
+                            // TODO(#6889): ALWAYS ignore tags on blueprint right now because some writes & reads are tagged and others aren't.
+                            // See https://github.com/rerun-io/rerun/blob/8fb5aadcb8f4f35c8e22603c85beda6fb18d791b/crates/store/re_chunk_store/src/writes.rs#L54-L67
+                            store
+                                .entity_component_descriptors_with_name(
+                                    entity_path,
+                                    component_descr.component_name,
+                                )
+                                .into_iter()
+                                .next()?
+                        } else {
+                            component_descr
+                        }
+                    }
+                    MaybeTagged::JustName(name) => store
+                        .entity_component_descriptors_with_name(entity_path, name)
+                        .into_iter()
+                        .next()?,
+                };
+
+                store
+                    .entity_has_component_on_timeline(
+                        &query.timeline(),
+                        entity_path,
+                        &component_descr,
+                    )
+                    // TODO(#6889): Don't drop the descriptor.
+                    .then_some(component_descr.component_name)
+            });
 
         // Query-time clears
         // -----------------
