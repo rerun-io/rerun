@@ -2,12 +2,16 @@
 
 ## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - WIP - WIP
 
+#### 🪵 Log API
+- Improve and mitigate warnings around dataloss when flushing [#9846](https://github.com/rerun-io/rerun/pull/9846)
+
 #### 🐍 Python API
 - Add `ViewerClient` to `rerun.experimental` [#9828](https://github.com/rerun-io/rerun/pull/9828)
 - Improve `set_time` error handling for large Python integers [#9839](https://github.com/rerun-io/rerun/pull/9839)
 - Properly resolve component selectors in dataset index creation and search APIs [#9854](https://github.com/rerun-io/rerun/pull/9854)
 
 #### 🪳 Bug fixes
+- Fix world grid not scaling correctly when camera is below the grid [#9867](https://github.com/rerun-io/rerun/pull/9867)
 - Tensor view improvements [#9831](https://github.com/rerun-io/rerun/pull/9831)
 
 
