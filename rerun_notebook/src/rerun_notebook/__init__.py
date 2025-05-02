@@ -146,7 +146,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
         self.send({"type": "table"}, buffers=[data])
 
-    def block_until_ready(self, timeout: float = 10.0) -> None:
+    def block_until_ready(self, timeout: float = 30.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()
