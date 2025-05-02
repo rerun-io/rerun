@@ -106,7 +106,6 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
 
     let messages = decoder.into_iter().filter_map(|result| match result {
         Ok(msg) => match msg {
-            re_log_types::LogMsg::SetStoreInfo(..) => Some(Ok(msg)),
             re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
                 match re_sorbet::SorbetBatch::try_from_record_batch(
                     &arrow_msg.batch,
@@ -130,7 +129,8 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
                     }
                 }
             }
-            re_log_types::LogMsg::BlueprintActivationCommand(..) => Some(Ok(msg)),
+            re_log_types::LogMsg::BlueprintActivationCommand(..)
+            | re_log_types::LogMsg::SetStoreInfo(..) => Some(Ok(msg)),
         },
         Err(err) => {
             errors.insert(err.to_string());
