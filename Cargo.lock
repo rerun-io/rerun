@@ -8048,7 +8048,6 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_plot",
- "egui_table",
  "ehttp",
  "glam",
  "image",
