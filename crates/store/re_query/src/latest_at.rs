@@ -173,13 +173,11 @@ impl QueryCache {
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
                 if let Some(cached) =
-                    cache.latest_at(&store, query, &clear_entity_path, ClearIsRecursive::name())
+                    cache.latest_at(&store, query, &clear_entity_path, &key.component_descr)
                 {
                     // TODO(andreas): Should clear also work if the component is not fully tagged?
                     let found_recursive_clear = cached
-                        .component_mono::<ClearIsRecursive>(
-                            &archetypes::Clear::descriptor_is_recursive(),
-                        )
+                        .component_mono::<ClearIsRecursive>(&key.component_descr)
                         .and_then(Result::ok)
                         == Some(ClearIsRecursive(true.into()));
                     // When checking the entity itself, any kind of `Clear` component
@@ -219,12 +217,8 @@ impl QueryCache {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(
-                &store,
-                query,
-                entity_path,
-                key.component_descr.component_name, // TODO:
-            ) {
+            if let Some(cached) = cache.latest_at(&store, query, entity_path, &key.component_descr)
+            {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
@@ -731,7 +725,7 @@ impl LatestAtCache {
         store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<UnitChunkShared> {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
@@ -747,11 +741,6 @@ impl LatestAtCache {
         if let Some(cached) = per_query_time.get(&query.at()) {
             return Some(cached.unit.clone());
         }
-
-        let component_descr = store
-            .entity_component_descriptors_with_name(entity_path, component_name)
-            .into_iter()
-            .next()?;
 
         let ((data_time, _row_id), unit) = store
             .latest_at_relevant_chunks(query, entity_path, &component_descr)
