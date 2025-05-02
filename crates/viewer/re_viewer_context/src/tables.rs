@@ -3,6 +3,7 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, Float32Array, Int64Array, ListArray, RecordBatch};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema};
+use datafusion::common::DataFusionError;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::SessionContext;
 
@@ -24,23 +25,19 @@ impl TableStore {
         self.session_ctx.clone()
     }
 
-    pub fn add_record_batch(&self, record_batch: RecordBatch) {
+    pub fn add_record_batch(&self, record_batch: RecordBatch) -> Result<(), DataFusionError> {
         let schema = record_batch.schema();
         let _ = self.session_ctx.deregister_table(Self::TABLE_NAME);
-
-        //TODO: we must somehow invalidate the UI cache
 
         let mut record_batches = self.record_batches.write();
         record_batches.push(record_batch);
 
-        //TODO: error handling
-        let table = MemTable::try_new(schema, vec![record_batches.clone()])
-            .expect("could not create mem table");
+        let table = MemTable::try_new(schema, vec![record_batches.clone()])?;
 
-        //TODO: error handling
-        let _ = self
-            .session_ctx
-            .register_table(Self::TABLE_NAME, Arc::new(table));
+        self.session_ctx
+            .register_table(Self::TABLE_NAME, Arc::new(table))?;
+
+        Ok(())
     }
 
     /// This is just for testing purposes and will go away soon™
@@ -157,7 +154,9 @@ impl TableStore {
             RecordBatch::try_new(schema.clone(), columns).expect("could not create record batch");
 
         let store = Self::default();
-        store.add_record_batch(batch);
+        store
+            .add_record_batch(batch)
+            .expect("could not add record batch");
 
         store
     }

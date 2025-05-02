@@ -1396,25 +1396,29 @@ impl App {
         self.rx_table.lock().retain(|rx| match rx.try_recv() {
             Ok(table) => {
                 // TODO(grtlr): For now we don't append anything to existing stores and always replace.
+                // TODO(ab): When we actually append to existing table, we will have to clear the UI
+                // cache by calling `DataFusionTableWidget::clear_state`.
                 let store = TableStore::default();
-                store.add_record_batch(table.data.clone());
-
-                if store_hub
-                    .insert_table_store(table.id.clone(), store)
-                    .is_some()
-                {
-                    re_log::debug!("Overwritten table store with id: `{}`", table.id);
+                if let Err(err) = store.add_record_batch(table.data.clone()) {
+                    re_log::warn!("Failed to load table {}: {err}", table.id);
                 } else {
-                    re_log::debug!("Inserted table store with id: `{}`", table.id);
-                };
-                self.command_sender.send_system(SystemCommand::SetSelection(
-                    re_viewer_context::Item::TableId(table.id.clone()),
-                ));
+                    if store_hub
+                        .insert_table_store(table.id.clone(), store)
+                        .is_some()
+                    {
+                        re_log::debug!("Overwritten table store with id: `{}`", table.id);
+                    } else {
+                        re_log::debug!("Inserted table store with id: `{}`", table.id);
+                    };
+                    self.command_sender.send_system(SystemCommand::SetSelection(
+                        re_viewer_context::Item::TableId(table.id.clone()),
+                    ));
 
-                // If the viewer is in the background, tell the user that it has received something new.
-                egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
-                    egui::UserAttentionType::Informational,
-                ));
+                    // If the viewer is in the background, tell the user that it has received something new.
+                    egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+                        egui::UserAttentionType::Informational,
+                    ));
+                }
 
                 true
             }
