@@ -122,8 +122,6 @@ pub trait Component: Loggable {
 
 // ---
 
-pub type UnorderedComponentNameSet = IntSet<ComponentName>;
-
 pub type UnorderedComponentDescriptorSet = IntSet<ComponentDescriptor>;
 
 pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;

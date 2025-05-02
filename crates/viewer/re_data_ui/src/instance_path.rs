@@ -63,10 +63,10 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::sorted_component_name_list_for_ui(&components);
+        let components = crate::sorted_component_list_for_ui(&components);
         let indicator_count = components
             .iter()
-            .filter(|c| c.is_indicator_component())
+            .filter(|c| c.component_name.is_indicator_component())
             .count();
 
         let mut components = latest_at(db, query, entity_path, &components);
@@ -106,8 +106,9 @@ impl DataUi for InstancePath {
             // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
             // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
             if !self.is_all() {
-                components
-                    .retain(|(component, _chunk)| component != &components::GraphEdge::name());
+                components.retain(|(component, _chunk)| {
+                    component.component_name != components::GraphEdge::name()
+                });
             }
 
             component_list_ui(
@@ -123,7 +124,12 @@ impl DataUi for InstancePath {
         }
 
         if instance.is_all() {
-            let component_map = components.into_iter().collect();
+            let component_map = components
+                .into_iter()
+                // TODO(#6889): Below methods aren't handling multiple images yet.
+                .map(|(descr, chunk)| (descr.component_name, chunk))
+                .collect();
+
             preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
             preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
         }
@@ -134,21 +140,21 @@ fn latest_at(
     db: &re_entity_db::EntityDb,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &[ComponentName],
-) -> Vec<(ComponentName, UnitChunkShared)> {
-    let components: Vec<(ComponentName, UnitChunkShared)> = components
+    components: &[ComponentDescriptor],
+) -> Vec<(ComponentDescriptor, UnitChunkShared)> {
+    let components: Vec<(ComponentDescriptor, UnitChunkShared)> = components
         .iter()
-        .filter_map(|&component_name| {
+        .filter_map(|component_descr| {
             let mut results =
                 db.storage_engine()
                     .cache()
-                    .latest_at(query, entity_path, [component_name]);
+                    .latest_at(query, entity_path, [component_descr]);
 
             // We ignore components that are unset at this point in time
             results
                 .components
-                .remove(&component_name)
-                .map(|unit| (component_name, unit))
+                .remove(&component_descr)
+                .map(|unit| (component_descr.clone(), unit))
         })
         .collect();
     components
@@ -163,11 +169,11 @@ fn component_list_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components: &[(ComponentName, UnitChunkShared)],
+    components: &[(ComponentDescriptor, UnitChunkShared)],
 ) {
     let indicator_count = components
         .iter()
-        .filter(|(c, _)| c.is_indicator_component())
+        .filter(|(c, _)| c.component_name.is_indicator_component())
         .count();
 
     let show_indicator_comps = match ui_layout {
@@ -186,26 +192,19 @@ fn component_list_ui(
         ui,
         egui::Id::from("component list").with(entity_path),
         |ui| {
-            for (component_name, unit) in components {
-                let component_name = *component_name;
+            for (component_descr, unit) in components {
+                let component_name = component_descr.component_name;
                 if !show_indicator_comps && component_name.is_indicator_component() {
                     continue;
                 }
 
                 // TODO(#6889): `ComponentPath` should always have a descriptor and we should be iterating over descriptors.
                 let component_path = ComponentPath::new(entity_path.clone(), component_name);
-                let component_descr = db
+
+                let is_static = db
                     .storage_engine()
                     .store()
-                    .entity_component_descriptors_with_name(entity_path, component_name)
-                    .into_iter()
-                    .next();
-
-                let is_static = component_descr.is_some_and(|component_descr| {
-                    db.storage_engine()
-                        .store()
-                        .entity_has_static_component(entity_path, &component_descr)
-                });
+                    .entity_has_static_component(entity_path, &component_descr);
                 let icon = if is_static {
                     &re_ui::icons::COMPONENT_STATIC
                 } else {

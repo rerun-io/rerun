@@ -91,7 +91,7 @@ impl QueryCache {
                 // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
                 let component_descr = match maybe_component_descr.into() {
                     MaybeTagged::Descriptor(component_descr) => {
-                        debug_assert!(component_descr.archetype_name.is_some(),
+                        debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component(),
                          "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
 
                         if component_descr.archetype_name.map_or(true, |archetype_name| archetype_name.as_str().starts_with("rerun.blueprint.") ) {
@@ -378,6 +378,7 @@ impl LatestAtResults {
     }
 
     /// Returns the raw data for the specified component.
+    // TODO(#6889): Remove this in favor or `component_batch_raw_by_descr` and rename the later to `component_batch_raw`
     #[inline]
     pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
         let component_descr = self.find_component_descriptor(*component_name)?;
@@ -385,6 +386,17 @@ impl LatestAtResults {
         self.components
             .get(component_descr)?
             .component_batch_raw_by_component_name(*component_name)
+    }
+
+    /// Returns the raw data for the specified component.
+    #[inline]
+    pub fn component_batch_raw_by_descr(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ArrayRef> {
+        self.components
+            .get(component_descr)?
+            .component_batch_raw(component_descr)
     }
 
     /// Returns the deserialized data for the specified component.
