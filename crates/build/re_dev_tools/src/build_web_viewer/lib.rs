@@ -127,7 +127,7 @@ pub fn build(
             cmd.arg(format!("--features={features}"));
         }
         if profile == Profile::Release {
-            cmd.arg("--release");
+            cmd.arg("--profile=web-release");
         }
 
         // This is required for unstable WebGPU apis to work
@@ -212,7 +212,9 @@ pub fn build(
             "-O2",
             "--output",
             wasm_path.as_str(),
-            "--enable-reference-types",
+            "--disable-reference-types",
+            "--vacuum",
+            "--strip-debug",
         ];
         if debug_symbols {
             args.push("-g");

@@ -198,7 +198,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release -g"
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run --quiet -p re_dev_tools -- build-web-viewer --no-default-features --features analytics,map_view --release"
 
 rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends-on = [
   "rerun-build-web", # The checks require the web viewer wasm to be around.
