@@ -13,6 +13,7 @@ use re_log_types::{
     EntityPath, TimeInt, TimePoint,
 };
 use re_query::QueryCache;
+use re_types::ComponentBatch;
 use re_types_core::Archetype as _;
 
 // ---
@@ -56,6 +57,57 @@ fn simple_query() {
         expected_points,
         expected_colors,
     );
+}
+
+#[test]
+fn simple_query_with_differently_tagged_components() {
+    let store = ChunkStore::new_handle(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        Default::default(),
+    );
+    let mut caches = QueryCache::new(store.clone());
+
+    let entity_path = "point";
+    let timepoint = [build_frame_nr(123)];
+
+    let row_id1 = RowId::new();
+    let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let row_id2 = RowId::new();
+    let points2 = vec![MyPoint::new(5.0, 6.0)];
+    let points2_serialized = points2
+        .serialized()
+        .unwrap()
+        .with_archetype_name("MyPoints2".into());
+
+    let chunk = Chunk::builder(entity_path.into())
+        .with_archetype(row_id1, timepoint, &MyPoints::new(points1.clone()))
+        .with_archetype(row_id2, timepoint, &points2_serialized)
+        .build()
+        .unwrap();
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
+
+    let query = re_chunk_store::LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(123), row_id1);
+    let expected_points = &points1;
+    let expected_colors = &[];
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path.into(),
+        expected_compound_index,
+        expected_points,
+        expected_colors,
+    );
+
+    // Check that we can also reach the other re-tagged component.
+    let cached = caches.latest_at(
+        &query,
+        &entity_path.into(),
+        [&points2_serialized.descriptor],
+    );
+    let cached_points = cached.component_batch::<MyPoint>().unwrap();
+    similar_asserts::assert_eq!(points2, cached_points);
 }
 
 #[test]
