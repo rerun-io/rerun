@@ -349,7 +349,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             [ComponentDescriptor::from(descr)],
                         );
 
-                        results.components.get(&descr.component_name).cloned()
+                        results.components.into_values().next()
                     }
                 })
                 .collect_vec()
@@ -1060,7 +1060,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                     *streaming_state = results
                         .components
-                        .get(&descr.component_name)
+                        .into_values()
+                        .next()
                         .map(|unit| StreamingJoinState::Retrofilled(unit.clone()));
                 }
             }

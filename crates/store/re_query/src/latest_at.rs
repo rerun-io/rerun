@@ -226,8 +226,7 @@ impl QueryCache {
                     if key.component_descr == archetypes::Clear::descriptor_is_recursive()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
-                        // TODO:
-                        results.add(key.component_descr.component_name, index, cached);
+                        results.add(key.component_descr, index, cached);
                     }
                 }
             }
@@ -283,7 +282,7 @@ pub struct LatestAtResults {
     /// Results for each individual component.
     ///
     /// Each [`UnitChunkShared`] MUST always contain the corresponding component.
-    pub components: IntMap<ComponentName, UnitChunkShared>,
+    pub components: IntMap<ComponentDescriptor, UnitChunkShared>,
 }
 
 impl LatestAtResults {
@@ -299,15 +298,11 @@ impl LatestAtResults {
 }
 
 impl LatestAtResults {
-    #[inline]
-    pub fn contains(&self, component_name: &ComponentName) -> bool {
-        self.components.contains_key(component_name)
-    }
-
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     #[inline]
     pub fn get(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
-        self.components.get(component_name)
+        let component_descr = self.find_component_descriptor(*component_name)?;
+        self.components.get(component_descr)
     }
 
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
@@ -334,7 +329,7 @@ impl LatestAtResults {
     #[inline]
     pub fn add(
         &mut self,
-        component_name: ComponentName,
+        component_descriptor: ComponentDescriptor,
         index: (TimeInt, RowId),
         chunk: UnitChunkShared,
     ) {
@@ -347,7 +342,7 @@ impl LatestAtResults {
             self.compound_index = index;
         }
 
-        self.components.insert(component_name, chunk);
+        self.components.insert(component_descriptor, chunk);
     }
 }
 
@@ -360,19 +355,35 @@ impl LatestAtResults {
 impl LatestAtResults {
     // --- Batch ---
 
+    // TODO(#6889): Workaround, we should instead always pass component descriptor to the respective methods.
+    fn find_component_descriptor(
+        &self,
+        component_name: ComponentName,
+    ) -> Option<&ComponentDescriptor> {
+        let component_descr = self
+            .components
+            .keys()
+            .find(|component_descr| component_descr.component_name == component_name)?;
+        Some(component_descr)
+    }
+
     /// Returns the `RowId` for the specified component.
     #[inline]
     pub fn component_row_id(&self, component_name: &ComponentName) -> Option<RowId> {
+        let component_descr = self.find_component_descriptor(*component_name)?;
+
         self.components
-            .get(component_name)
+            .get(component_descr)
             .and_then(|unit| unit.row_id())
     }
 
     /// Returns the raw data for the specified component.
     #[inline]
     pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
+        let component_descr = self.find_component_descriptor(*component_name)?;
+
         self.components
-            .get(component_name)?
+            .get(component_descr)?
             .component_batch_raw_by_component_name(*component_name)
     }
 
@@ -384,11 +395,13 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
     ) -> Option<Vec<C>> {
-        self.components.get(&C::name()).and_then(|unit| {
+        let component_descr = self.find_component_descriptor(C::name())?;
+
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                C::name(),
-                unit.component_batch(unit.get_first_component_descriptor(C::name())?)?,
+                component_descr,
+                unit.component_batch(component_descr)?,
             )
         })
     }
@@ -404,10 +417,11 @@ impl LatestAtResults {
     /// Returns the deserialized data for the specified component.
     #[inline]
     pub fn component_batch_quiet<C: Component>(&self) -> Option<Vec<C>> {
-        self.components.get(&C::name()).and_then(|unit| {
-            unit.component_batch(unit.get_first_component_descriptor(C::name())?)?
-                .ok()
-        })
+        let component_descr = self.find_component_descriptor(C::name())?;
+
+        self.components
+            .get(component_descr)
+            .and_then(|unit| unit.component_batch(component_descr)?.ok())
     }
 
     // --- Instance ---
@@ -422,12 +436,13 @@ impl LatestAtResults {
         component_name: &ComponentName,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_name).and_then(|unit| {
-            let component_desc = unit.get_first_component_descriptor(*component_name)?;
+        let component_descr = self.find_component_descriptor(*component_name)?;
+
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                *component_name,
-                unit.component_instance_raw(component_desc, instance_index)?,
+                component_descr,
+                unit.component_instance_raw(component_descr, instance_index)?,
             )
         })
     }
@@ -455,9 +470,10 @@ impl LatestAtResults {
         component_name: &ComponentName,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_name).and_then(|unit| {
-            let component_desc = unit.get_first_component_descriptor(*component_name)?;
-            unit.component_instance_raw(component_desc, instance_index)?
+        let component_descr = self.find_component_descriptor(*component_name)?;
+
+        self.components.get(component_descr).and_then(|unit| {
+            unit.component_instance_raw(component_descr, instance_index)?
                 .ok()
         })
     }
@@ -472,14 +488,13 @@ impl LatestAtResults {
         log_level: re_log::Level,
         instance_index: usize,
     ) -> Option<C> {
-        self.components.get(&C::name()).and_then(|unit| {
+        let component_descr = self.find_component_descriptor(C::name())?;
+
+        self.components.get(&component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                C::name(),
-                unit.component_instance(
-                    unit.get_first_component_descriptor(C::name())?,
-                    instance_index,
-                )?,
+                component_descr,
+                unit.component_instance(component_descr, instance_index)?,
             )
         })
     }
@@ -497,12 +512,11 @@ impl LatestAtResults {
     /// Returns an error if the data cannot be deserialized, or if the instance index is out of bounds.
     #[inline]
     pub fn component_instance_quiet<C: Component>(&self, instance_index: usize) -> Option<C> {
-        self.components.get(&C::name()).and_then(|unit| {
-            unit.component_instance(
-                unit.get_first_component_descriptor(C::name())?,
-                instance_index,
-            )?
-            .ok()
+        let component_descr = self.find_component_descriptor(C::name())?;
+
+        self.components.get(&component_descr).and_then(|unit| {
+            unit.component_instance(component_descr, instance_index)?
+                .ok()
         })
     }
 
@@ -517,12 +531,13 @@ impl LatestAtResults {
         log_level: re_log::Level,
         component_name: &ComponentName,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_name).and_then(|unit| {
-            let component_desc = unit.get_first_component_descriptor(*component_name)?;
+        let component_descr = self.find_component_descriptor(*component_name)?;
+
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                *component_name,
-                unit.component_mono_raw(component_desc)?,
+                component_descr,
+                unit.component_mono_raw(component_descr)?,
             )
         })
     }
@@ -543,7 +558,9 @@ impl LatestAtResults {
         &self,
         component_name: &ComponentName,
     ) -> Option<ArrowArrayRef> {
-        self.components.get(component_name).and_then(|unit| {
+        let component_descr = self.find_component_descriptor(*component_name)?;
+
+        self.components.get(component_descr).and_then(|unit| {
             let component_desc = unit.get_first_component_descriptor(*component_name)?;
             unit.component_mono_raw(component_desc)?.ok()
         })
@@ -558,11 +575,13 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
     ) -> Option<C> {
-        self.components.get(&C::name()).and_then(|unit| {
+        let component_descr = self.find_component_descriptor(C::name())?;
+
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                C::name(),
-                unit.component_mono(unit.get_first_component_descriptor(C::name())?)?,
+                component_descr,
+                unit.component_mono(component_descr)?,
             )
         })
     }
@@ -580,10 +599,11 @@ impl LatestAtResults {
     /// Returns none if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono_quiet<C: Component>(&self) -> Option<C> {
-        self.components.get(&C::name()).and_then(|unit| {
-            unit.component_mono(unit.get_first_component_descriptor(C::name())?)?
-                .ok()
-        })
+        let component_descr = self.find_component_descriptor(C::name())?;
+
+        self.components
+            .get(&component_descr)
+            .and_then(|unit| unit.component_mono(component_descr)?.ok())
     }
 
     // ---
@@ -591,7 +611,7 @@ impl LatestAtResults {
     fn ok_or_log_err<T>(
         &self,
         log_level: re_log::Level,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
         res: re_chunk::ChunkResult<T>,
     ) -> Option<T> {
         match res {
@@ -607,7 +627,7 @@ impl LatestAtResults {
                 let err = re_error::format_ref(&err);
                 re_log::log_once!(
                     log_level,
-                    "Couldn't read {entity_path}:{component_name} @ ({index:?}): {err}",
+                    "Couldn't read {entity_path}:{component_descr} @ ({index:?}): {err}",
                 );
                 None
             }
