@@ -105,7 +105,33 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
     let mut errors = indexmap::IndexSet::new();
 
     let messages = decoder.into_iter().filter_map(|result| match result {
-        Ok(msg) => Some(Ok(msg)),
+        Ok(msg) => match msg {
+            re_log_types::LogMsg::SetStoreInfo(..) => Some(Ok(msg)),
+            re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
+                match re_sorbet::SorbetBatch::try_from_record_batch(
+                    &arrow_msg.batch,
+                    re_sorbet::BatchType::Chunk,
+                ) {
+                    Ok(batch) => {
+                        let batch = arrow::array::RecordBatch::from(&batch);
+                        Some(Ok(re_log_types::LogMsg::ArrowMsg(
+                            store_id,
+                            re_log_types::ArrowMsg {
+                                chunk_id: arrow_msg.chunk_id,
+                                timepoint_max: arrow_msg.timepoint_max.clone(),
+                                batch,
+                                on_release: None,
+                            },
+                        )))
+                    }
+                    Err(err) => {
+                        errors.insert(err.to_string());
+                        None
+                    }
+                }
+            }
+            re_log_types::LogMsg::BlueprintActivationCommand(..) => Some(Ok(msg)),
+        },
         Err(err) => {
             errors.insert(err.to_string());
             None
