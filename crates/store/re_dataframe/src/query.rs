@@ -346,7 +346,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let results = cache.latest_at(
                             &query,
                             &descr.entity_path,
-                            [ComponentDescriptor::from(descr)],
+                            // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                            //[ComponentDescriptor::from(descr.clone())],
+                            [descr.component_name],
                         );
 
                         results.components.into_values().next()
@@ -1055,7 +1057,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let results = cache.latest_at(
                         &query,
                         &descr.entity_path.clone(),
-                        [ComponentDescriptor::from(descr.clone())],
+                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                        //[ComponentDescriptor::from(descr.clone())],
+                        [descr.component_name],
                     );
 
                     *streaming_state = results
