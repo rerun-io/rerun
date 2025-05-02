@@ -7,7 +7,7 @@ use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntryId, TimelineName};
-use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_sorbet::{BatchType, ColumnDescriptorRef, SorbetSchema};
 use re_ui::list_item::ItemButton;
 use re_ui::UiExt as _;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
@@ -256,7 +256,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 let name = if let Some(renamer) = &column_renamer {
                     renamer(c)
                 } else {
-                    c.name().to_owned()
+                    c.name(BatchType::Dataframe)
                 };
 
                 ColumnConfig::new(Id::new(c), name)
@@ -355,11 +355,11 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
         if let Some(desc) = self.columns.descriptor_from_id(id) {
-            let column_name = desc.name();
+            let column_name = desc.name(BatchType::Dataframe);
             let name = if let Some(renamer) = self.column_renamer {
                 renamer(desc)
             } else {
-                desc.name().to_owned()
+                desc.name(BatchType::Dataframe)
             };
 
             let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
@@ -400,7 +400,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                         .clicked()
                                     {
                                         self.new_blueprint.sort_by = Some(SortBy {
-                                            column: column_name.to_owned(),
+                                            column: column_name.clone(),
                                             direction: sort_direction,
                                         });
                                         ui.close_menu();

@@ -1,5 +1,6 @@
 use crate::{
-    ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
+    BatchType, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
+    RowIdColumnDescriptor,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -13,11 +14,11 @@ pub enum ColumnDescriptorRef<'a> {
 impl ColumnDescriptorRef<'_> {
     /// Human-readable name for the column.
     #[inline]
-    pub fn name(&self) -> &str {
+    pub fn name(&self, batch_type: BatchType) -> String {
         match self {
-            Self::RowId(descr) => descr.name(),
-            Self::Time(descr) => descr.column_name(),
-            Self::Component(descr) => descr.component_name.short_name(),
+            Self::RowId(descr) => descr.name().to_owned(),
+            Self::Time(descr) => descr.column_name().to_owned(),
+            Self::Component(descr) => descr.column_name(batch_type),
         }
     }
 }

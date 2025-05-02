@@ -3,7 +3,6 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, Float32Array, Int64Array, ListArray, RecordBatch};
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{DataType, Field, Schema};
-use datafusion::common::TableReference;
 use datafusion::datasource::MemTable;
 use datafusion::prelude::SessionContext;
 
@@ -13,29 +12,13 @@ use re_sorbet::ComponentColumnDescriptor;
 use re_types_core::ComponentBatch as _;
 
 #[derive(Default)]
-struct SorbetBatchStore {
-    batches: Vec<re_sorbet::SorbetBatch>,
-}
-
-#[derive(Default)]
 pub struct TableStore {
-    // Don't ever expose this to the outside world.
-    store_engine: parking_lot::RwLock<SorbetBatchStore>,
-
     record_batches: parking_lot::RwLock<Vec<RecordBatch>>,
     session_ctx: Arc<SessionContext>,
 }
 
 impl TableStore {
     pub const TABLE_NAME: &'static str = "__table__";
-
-    pub fn batches(&self) -> Vec<re_sorbet::SorbetBatch> {
-        self.store_engine.read().batches.clone()
-    }
-
-    pub fn add_batch(&self, batch: re_sorbet::SorbetBatch) {
-        self.store_engine.write().batches.push(batch);
-    }
 
     pub fn session_context(&self) -> Arc<SessionContext> {
         self.session_ctx.clone()
@@ -173,20 +156,7 @@ impl TableStore {
         let batch =
             RecordBatch::try_new(schema.clone(), columns).expect("could not create record batch");
 
-        let sorbet_batch =
-            re_sorbet::SorbetBatch::try_from_record_batch(&batch, re_sorbet::BatchType::Dataframe)
-                .expect("could not build sorbet batch");
-
-        let store = SorbetBatchStore {
-            batches: vec![sorbet_batch],
-        };
-
-        let mut store = Self {
-            store_engine: parking_lot::RwLock::new(store),
-            record_batches: Default::default(),
-            session_ctx: Arc::new(Default::default()),
-        };
-
+        let store = Self::default();
         store.add_record_batch(batch);
 
         store

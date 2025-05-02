@@ -5,6 +5,7 @@ use egui::{Frame, Margin, RichText};
 
 use re_log_types::EntryId;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_sorbet::BatchType;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{icons, list_item, UiExt as _};
 use re_viewer_context::{
@@ -127,9 +128,11 @@ impl Server {
                 .send(Command::RefreshCollection(self.origin.clone()));
         }))
         .column_renamer(|desc| {
-            let name = desc.name();
+            let name = desc.name(BatchType::Dataframe);
+
+            //TODO(ab): make this smarter, there could be an entity path in the name
             name.strip_prefix("rerun_")
-                .unwrap_or(name)
+                .unwrap_or(&name)
                 .replace('_', " ")
         })
         .generate_partition_links(

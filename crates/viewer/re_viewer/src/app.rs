@@ -1399,32 +1399,6 @@ impl App {
                 let store = TableStore::default();
                 store.add_record_batch(table.data.clone());
 
-
-                match re_sorbet::SorbetBatch::try_from_record_batch(&table.data, re_sorbet::BatchType::Dataframe) {
-                    Ok(sorbet_batch) => {
-                        store.add_batch(sorbet_batch);
-
-                        if store_hub.insert_table_store(table.id.clone(), store).is_some() {
-                            re_log::debug!("Overwritten table store with id: `{}`", table.id);
-                        } else {
-                            re_log::debug!("Inserted table store with id: `{}`", table.id);
-                        };
-                        self.command_sender.send_system(SystemCommand::SetSelection(
-                            re_viewer_context::Item::TableId(table.id.clone()),
-                        ));
-
-                        // If the viewer is in the background, tell the user that it has received something new.
-                        egui_ctx.send_viewport_cmd(
-                            egui::ViewportCommand::RequestUserAttention(
-                                egui::UserAttentionType::Informational,
-                            ),
-                        );
-                    }
-                    Err(err) => {
-                        re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
-                    }
-                }
-
                 true
             }
             Err(crossbeam::channel::TryRecvError::Empty) => true,

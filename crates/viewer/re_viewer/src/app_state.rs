@@ -14,7 +14,7 @@ use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle,
     BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
     GlobalContext, Item, PlayState, RecordingConfig, SelectionChange, StorageContext, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, TableContext, TableStore, ViewClassExt as _,
+    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, ViewClassExt as _,
     ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
