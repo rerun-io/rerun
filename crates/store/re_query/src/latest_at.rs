@@ -46,7 +46,7 @@ pub enum MaybeTagged {
 impl<'a> From<&'a ComponentDescriptor> for MaybeTagged {
     #[inline]
     fn from(descr: &'a ComponentDescriptor) -> Self {
-        Self::Descriptor(descr.clone()) // don't clone TODO:
+        Self::Descriptor(descr.clone())
     }
 }
 

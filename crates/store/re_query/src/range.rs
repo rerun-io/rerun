@@ -69,7 +69,8 @@ impl QueryCache {
 
             let cached = cache.range(&store, query, entity_path, &key.component_descr);
             if !cached.is_empty() {
-                results.add(component_name, cached); // TODO:
+                // TODO(#6889): Make `RangeResults` descriptor driven.
+                results.add(component_name, cached);
             }
         }
 
