@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arrow::datatypes::Fields;
 use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
 use egui::{Frame, Id, Margin, RichText};
@@ -48,8 +49,11 @@ impl Columns<'_> {
         id.and_then(|id| self.inner.get(&id).map(|(index, _)| *index))
     }
 
-    fn descriptor_from_id(&self, id: Option<egui::Id>) -> Option<&ColumnDescriptorRef<'_>> {
-        id.and_then(|id| self.inner.get(&id).map(|(_, desc)| desc))
+    fn index_and_descriptor_from_id(
+        &self,
+        id: Option<egui::Id>,
+    ) -> Option<(usize, &ColumnDescriptorRef<'_>)> {
+        id.and_then(|id| self.inner.get(&id).map(|(index, desc)| (*index, desc)))
     }
 }
 
@@ -213,13 +217,13 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let sorbet_schema = {
+        let (fields, sorbet_schema) = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 ui.label(egui::RichText::new("This dataset is empty").italics());
                 return;
             };
 
-            sorbet_batch.sorbet_schema()
+            (sorbet_batch.fields(), sorbet_batch.sorbet_schema())
         };
 
         let num_rows = sorbet_batches
@@ -273,6 +277,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
+            fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
             column_renamer: &column_renamer,
@@ -340,6 +345,7 @@ fn title_ui<'a>(
 
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
+    fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
     column_renamer: &'a ColumnRenamerFn<'a>,
@@ -354,8 +360,8 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
-        if let Some(desc) = self.columns.descriptor_from_id(id) {
-            let column_name = desc.name(BatchType::Dataframe);
+        if let Some((index, desc)) = self.columns.index_and_descriptor_from_id(id) {
+            let column_name = self.fields[index].name();
             let name = if let Some(renamer) = self.column_renamer {
                 renamer(desc)
             } else {
@@ -370,7 +376,8 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 egui::Sides::new().show(
                     ui,
                     |ui| {
-                        ui.label(egui::RichText::new(name).strong().monospace());
+                        ui.label(egui::RichText::new(name).strong().monospace())
+                            .on_hover_text(column_name); //TODO: remove
 
                         if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
                             ui.add_space(-5.0);

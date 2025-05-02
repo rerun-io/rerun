@@ -21,6 +21,16 @@ impl ColumnDescriptorRef<'_> {
             Self::Component(descr) => descr.column_name(batch_type),
         }
     }
+
+    /// Short human-readable name for the column.
+    #[inline]
+    pub fn short_name(&self) -> &str {
+        match self {
+            Self::RowId(descr) => descr.name(),
+            Self::Time(descr) => descr.timeline_name().as_str(),
+            Self::Component(descr) => descr.component_name.short_name(),
+        }
+    }
 }
 
 impl<'a> From<&'a ColumnDescriptor> for ColumnDescriptorRef<'a> {
