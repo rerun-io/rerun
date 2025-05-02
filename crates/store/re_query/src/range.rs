@@ -54,7 +54,7 @@ impl QueryCache {
             // TODO(#6889): Don't drop the descriptor.
             let component_name = component_descr.component_name;
 
-            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_descr);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -67,9 +67,9 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component_name);
+            let cached = cache.range(&store, query, entity_path, component_name); // TODO:
             if !cached.is_empty() {
-                results.add(component_name, cached);
+                results.add(component_name, cached); // TODO:
             }
         }
 

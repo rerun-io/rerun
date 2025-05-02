@@ -85,7 +85,7 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_descrs
+        let component_descrs = component_descrs
             .into_iter()
             .filter_map(|maybe_component_descr| {
                 // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
@@ -119,9 +119,7 @@ impl QueryCache {
                         &query.timeline(),
                         entity_path,
                         &component_descr,
-                    )
-                    // TODO(#6889): Don't drop the descriptor.
-                    .then_some(component_descr.component_name)
+                    ).then_some(component_descr)
             });
 
         // Query-time clears
@@ -162,7 +160,7 @@ impl QueryCache {
                 let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
-                    ClearIsRecursive::name(),
+                    archetypes::Clear::descriptor_is_recursive(),
                 );
 
                 let cache = Arc::clone(
@@ -209,8 +207,8 @@ impl QueryCache {
             }
         }
 
-        for component_name in component_names {
-            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
+        for component_descr in component_descrs {
+            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_descr);
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
@@ -221,15 +219,21 @@ impl QueryCache {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(&store, query, entity_path, component_name) {
+            if let Some(cached) = cache.latest_at(
+                &store,
+                query,
+                entity_path,
+                key.component_descr.component_name, // TODO:
+            ) {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
                 if let Some(index) = cached.index(&query.timeline()) {
-                    if component_name == ClearIsRecursive::name()
+                    if key.component_descr == archetypes::Clear::descriptor_is_recursive()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
-                        results.add(component_name, index, cached);
+                        // TODO:
+                        results.add(key.component_descr.component_name, index, cached);
                     }
                 }
             }
