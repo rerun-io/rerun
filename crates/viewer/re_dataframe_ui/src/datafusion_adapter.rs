@@ -21,7 +21,7 @@ use crate::RequestedObject;
 /// This function is named such as to replace the datafusion's `col` function, so we do the right
 /// thing even if we forget about it.
 fn col(name: &str) -> datafusion::logical_expr::Expr {
-    datafusion_col(format!("\"{name}\""))
+    datafusion_col(format!("{name:?}"))
 }
 
 /// A table blueprint along with the context required to execute the corresponding datafusion query.

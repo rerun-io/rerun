@@ -376,8 +376,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 egui::Sides::new().show(
                     ui,
                     |ui| {
-                        ui.label(egui::RichText::new(name).strong().monospace())
-                            .on_hover_text(column_name); //TODO: remove
+                        ui.label(egui::RichText::new(name).strong().monospace());
 
                         if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
                             ui.add_space(-5.0);
