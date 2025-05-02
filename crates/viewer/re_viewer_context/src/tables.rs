@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use arrow::array::{Float32Array, Int64Array, ListArray};
+use arrow::array::{ArrayRef, Float32Array, Int64Array, ListArray, RecordBatch};
 use arrow::buffer::OffsetBuffer;
-use arrow::datatypes::{DataType, Field};
+use arrow::datatypes::{DataType, Field, Schema};
+use datafusion::common::TableReference;
+use datafusion::datasource::MemTable;
+use datafusion::prelude::SessionContext;
 
 use re_log_types::TableId;
 use re_sorbet::ComponentColumnDescriptor;
-use re_types::external::arrow::{
-    array::{ArrayRef, RecordBatch},
-    datatypes::Schema,
-};
+
 use re_types_core::ComponentBatch as _;
 
 #[derive(Default)]
@@ -21,15 +21,43 @@ struct SorbetBatchStore {
 pub struct TableStore {
     // Don't ever expose this to the outside world.
     store_engine: parking_lot::RwLock<SorbetBatchStore>,
+
+    record_batches: parking_lot::RwLock<Vec<RecordBatch>>,
+    session_ctx: Arc<SessionContext>,
 }
 
 impl TableStore {
+    pub const TABLE_NAME: &'static str = "__table__";
+
     pub fn batches(&self) -> Vec<re_sorbet::SorbetBatch> {
         self.store_engine.read().batches.clone()
     }
 
     pub fn add_batch(&self, batch: re_sorbet::SorbetBatch) {
         self.store_engine.write().batches.push(batch);
+    }
+
+    pub fn session_context(&self) -> Arc<SessionContext> {
+        self.session_ctx.clone()
+    }
+
+    pub fn add_record_batch(&self, record_batch: RecordBatch) {
+        let schema = record_batch.schema();
+        let _ = self.session_ctx.deregister_table(Self::TABLE_NAME);
+
+        //TODO: we must somehow invalidate the UI cache
+
+        let mut record_batches = self.record_batches.write();
+        record_batches.push(record_batch);
+
+        //TODO: error handling
+        let table = MemTable::try_new(schema, vec![record_batches.clone()])
+            .expect("could not create mem table");
+
+        //TODO: error handling
+        let _ = self
+            .session_ctx
+            .register_table(Self::TABLE_NAME, Arc::new(table));
     }
 
     /// This is just for testing purposes and will go away soon™
@@ -145,17 +173,23 @@ impl TableStore {
         let batch =
             RecordBatch::try_new(schema.clone(), columns).expect("could not create record batch");
 
-        let batch =
+        let sorbet_batch =
             re_sorbet::SorbetBatch::try_from_record_batch(&batch, re_sorbet::BatchType::Dataframe)
                 .expect("could not build sorbet batch");
 
         let store = SorbetBatchStore {
-            batches: vec![batch],
+            batches: vec![sorbet_batch],
         };
 
-        Self {
+        let mut store = Self {
             store_engine: parking_lot::RwLock::new(store),
-        }
+            record_batches: Default::default(),
+            session_ctx: Arc::new(Default::default()),
+        };
+
+        store.add_record_batch(batch);
+
+        store
     }
 }
 

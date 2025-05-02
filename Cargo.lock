@@ -8129,6 +8129,7 @@ dependencies = [
  "bitflags 2.8.0",
  "bytemuck",
  "crossbeam",
+ "datafusion",
  "directories",
  "egui",
  "egui-wgpu",

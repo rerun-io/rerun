@@ -1370,6 +1370,7 @@ impl App {
                             },
                             is_history_enabled,
                             self.event_dispatcher.as_ref(),
+                            &self.async_runtime,
                         );
                         render_ctx.before_submit();
                     }
@@ -1394,11 +1395,13 @@ impl App {
         // TODO(grtlr): Should we bring back analytics for this too?
         self.rx_table.lock().retain(|rx| match rx.try_recv() {
             Ok(table) => {
+                // TODO(grtlr): For now we don't append anything to existing stores and always replace.
+                let store = TableStore::default();
+                store.add_record_batch(table.data.clone());
 
-                match re_sorbet::SorbetBatch::try_from_record_batch(&table.data, re_sorbet::BatchType::Dataframe)  {
+
+                match re_sorbet::SorbetBatch::try_from_record_batch(&table.data, re_sorbet::BatchType::Dataframe) {
                     Ok(sorbet_batch) => {
-                        // TODO(grtlr): For now we don't append anything to existing stores and always replace.
-                        let store = TableStore::default();
                         store.add_batch(sorbet_batch);
 
                         if store_hub.insert_table_store(table.id.clone(), store).is_some() {
@@ -1416,7 +1419,7 @@ impl App {
                                 egui::UserAttentionType::Informational,
                             ),
                         );
-                    },
+                    }
                     Err(err) => {
                         re_log::warn!("the received dataframe does not contain Sorbet-complaiant batches: {err}");
                     }
