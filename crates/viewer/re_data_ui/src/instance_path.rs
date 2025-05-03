@@ -153,7 +153,7 @@ fn latest_at(
             // We ignore components that are unset at this point in time
             results
                 .components
-                .remove(&component_descr)
+                .remove(component_descr)
                 .map(|unit| (component_descr.clone(), unit))
         })
         .collect();
@@ -204,7 +204,7 @@ fn component_list_ui(
                 let is_static = db
                     .storage_engine()
                     .store()
-                    .entity_has_static_component(entity_path, &component_descr);
+                    .entity_has_static_component(entity_path, component_descr);
                 let icon = if is_static {
                     &re_ui::icons::COMPONENT_STATIC
                 } else {

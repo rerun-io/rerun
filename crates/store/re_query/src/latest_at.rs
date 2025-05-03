@@ -94,7 +94,7 @@ impl QueryCache {
                         debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component(),
                          "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
 
-                        if component_descr.archetype_name.map_or(true, |archetype_name| archetype_name.as_str().starts_with("rerun.blueprint.") ) {
+                        if component_descr.archetype_name.is_none_or(|archetype_name| archetype_name.as_str().starts_with("rerun.blueprint.") ) {
                             // TODO(#6889): ALWAYS ignore tags on blueprint right now because some writes & reads are tagged and others aren't.
                             // See https://github.com/rerun-io/rerun/blob/8fb5aadcb8f4f35c8e22603c85beda6fb18d791b/crates/store/re_chunk_store/src/writes.rs#L54-L67
                             store
@@ -502,7 +502,7 @@ impl LatestAtResults {
     ) -> Option<C> {
         let component_descr = self.find_component_descriptor(C::name())?;
 
-        self.components.get(&component_descr).and_then(|unit| {
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
                 component_descr,
@@ -526,7 +526,7 @@ impl LatestAtResults {
     pub fn component_instance_quiet<C: Component>(&self, instance_index: usize) -> Option<C> {
         let component_descr = self.find_component_descriptor(C::name())?;
 
-        self.components.get(&component_descr).and_then(|unit| {
+        self.components.get(component_descr).and_then(|unit| {
             unit.component_instance(component_descr, instance_index)?
                 .ok()
         })
@@ -614,7 +614,7 @@ impl LatestAtResults {
         let component_descr = self.find_component_descriptor(C::name())?;
 
         self.components
-            .get(&component_descr)
+            .get(component_descr)
             .and_then(|unit| unit.component_mono(component_descr)?.ok())
     }
 
@@ -775,11 +775,11 @@ impl LatestAtCache {
         }
 
         let ((data_time, _row_id), unit) = store
-            .latest_at_relevant_chunks(query, entity_path, &component_descr)
+            .latest_at_relevant_chunks(query, entity_path, component_descr)
             .into_iter()
             .filter_map(|chunk| {
                 chunk
-                    .latest_at(query, &component_descr)
+                    .latest_at(query, component_descr)
                     .into_unit()
                     .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
             })

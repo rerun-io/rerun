@@ -13,8 +13,7 @@ use re_log_types::{
     EntityPath, TimeInt, TimePoint,
 };
 use re_query::QueryCache;
-use re_types::ComponentBatch;
-use re_types_core::Archetype as _;
+use re_types_core::{Archetype as _, ComponentBatch as _};
 
 // ---
 
