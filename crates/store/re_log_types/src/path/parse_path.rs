@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use re_types_core::ComponentName;
+use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance};
 
@@ -30,8 +30,8 @@ pub enum PathParseError {
     #[error("Found an unexpected instance index: [#{}]", 0)]
     UnexpectedInstance(Instance),
 
-    #[error("Found an unexpected trailing component name: {0:?}")]
-    UnexpectedComponentName(ComponentName),
+    #[error("Found an unexpected trailing component descriptor: {0:?}")]
+    UnexpectedComponentDescriptor(ComponentDescriptor),
 
     #[error("Found no component name")]
     MissingComponentName,
@@ -73,9 +73,10 @@ impl std::str::FromStr for DataPath {
 
         let mut tokens = tokenize_data_path(path);
 
-        let mut component_name = None;
+        let mut component_descriptor = None;
         let mut instance = None;
 
+        // TODO: full component descriptor parsing & test thereof
         // Parse `:rerun.components.Color` suffix:
         if let Some(colon) = tokens.iter().position(|&token| token == ":") {
             let component_tokens = &tokens[colon + 1..];
@@ -87,7 +88,7 @@ impl std::str::FromStr for DataPath {
                 if !name.contains('.') {
                     name = format!("rerun.components.{name}");
                 }
-                component_name = Some(ComponentName::from(name));
+                component_descriptor = Some(ComponentDescriptor::new(ComponentName::from(name)));
             }
             tokens.truncate(colon);
         }
@@ -120,7 +121,7 @@ impl std::str::FromStr for DataPath {
         Ok(Self {
             entity_path,
             instance: instance.map(Into::into),
-            component_name,
+            component_descriptor,
         })
     }
 }
@@ -145,14 +146,16 @@ impl EntityPath {
         let DataPath {
             entity_path,
             instance,
-            component_name,
+            component_descriptor,
         } = DataPath::from_str(input)?;
 
         if let Some(instance) = instance {
             return Err(PathParseError::UnexpectedInstance(instance));
         }
-        if let Some(component_name) = component_name {
-            return Err(PathParseError::UnexpectedComponentName(component_name));
+        if let Some(component_descriptor) = component_descriptor {
+            return Err(PathParseError::UnexpectedComponentDescriptor(
+                component_descriptor,
+            ));
         }
 
         Ok(entity_path)
@@ -207,20 +210,20 @@ impl FromStr for ComponentPath {
         let DataPath {
             entity_path,
             instance,
-            component_name,
+            component_descriptor,
         } = DataPath::from_str(s)?;
 
         if let Some(instance) = instance {
             return Err(PathParseError::UnexpectedInstance(instance));
         }
 
-        let Some(component_name) = component_name else {
+        let Some(component_descriptor) = component_descriptor else {
             return Err(PathParseError::MissingComponentName);
         };
 
         Ok(Self {
             entity_path,
-            component_name,
+            component_descriptor,
         })
     }
 }
@@ -372,7 +375,7 @@ fn test_parse_entity_path_strict() {
     assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
     assert!(matches!(
         parse(r#"entity:component"#),
-        Err(PathParseError::UnexpectedComponentName { .. })
+        Err(PathParseError::UnexpectedComponentDescriptor { .. })
     ));
     assert!(matches!(
         parse(r#"entity[#123]"#),
@@ -388,23 +391,24 @@ fn test_parse_component_path() {
         ComponentPath::from_str("world/points:rerun.components.Color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from("world/points"),
-            component_name: "rerun.components.Color".into(),
+            component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
         })
     );
     assert_eq!(
         ComponentPath::from_str("world/points:Color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from("world/points"),
-            component_name: "rerun.components.Color".into(),
+            component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
         })
     );
     assert_eq!(
         ComponentPath::from_str("world/points:my.custom.color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from("world/points"),
-            component_name: "my.custom.color".into(),
+            component_descriptor: ComponentDescriptor::new("my.custom.color"),
         })
     );
+    // TODO: parse component descriptors with tags. do a test for that elsewhere.
     assert_eq!(
         ComponentPath::from_str("world/points:"),
         Err(PathParseError::TrailingColon)
@@ -426,7 +430,7 @@ fn test_parse_data_path() {
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
             instance: Some(Instance(42)),
-            component_name: Some("rerun.components.Color".into()),
+            component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
         })
     );
     assert_eq!(
@@ -434,7 +438,7 @@ fn test_parse_data_path() {
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
             instance: None,
-            component_name: Some("rerun.components.Color".into()),
+            component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
         })
     );
     assert_eq!(
@@ -442,7 +446,7 @@ fn test_parse_data_path() {
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
             instance: Some(Instance(42)),
-            component_name: None,
+            component_descriptor: None,
         })
     );
     assert_eq!(
@@ -450,7 +454,7 @@ fn test_parse_data_path() {
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
             instance: None,
-            component_name: None,
+            component_descriptor: None,
         })
     );
 

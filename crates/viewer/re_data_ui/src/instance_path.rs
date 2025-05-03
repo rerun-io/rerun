@@ -199,7 +199,8 @@ fn component_list_ui(
                 }
 
                 // TODO(#6889): `ComponentPath` should always have a descriptor and we should be iterating over descriptors.
-                let component_path = ComponentPath::new(entity_path.clone(), component_name);
+                let component_path =
+                    ComponentPath::new(entity_path.clone(), component_descr.clone());
 
                 let is_static = db
                     .storage_engine()
@@ -235,7 +236,7 @@ fn component_list_ui(
                                     crate::ComponentPathLatestAtResults {
                                         component_path: ComponentPath::new(
                                             entity_path.clone(),
-                                            component_name,
+                                            component_descr.clone(),
                                         ),
                                         unit,
                                     }
@@ -254,7 +255,7 @@ fn component_list_ui(
                                         query,
                                         db,
                                         entity_path,
-                                        component_name,
+                                        component_descr,
                                         unit,
                                         instance,
                                     );

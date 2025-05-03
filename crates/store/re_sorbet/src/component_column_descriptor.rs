@@ -164,6 +164,14 @@ impl ComponentColumnDescriptor {
     pub fn component_path(&self) -> ComponentPath {
         ComponentPath {
             entity_path: self.entity_path.clone(),
+            component_descriptor: self.component_descriptor(),
+        }
+    }
+
+    pub fn component_descriptor(&self) -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: self.archetype_name,
+            archetype_field_name: self.archetype_field_name,
             component_name: self.component_name,
         }
     }

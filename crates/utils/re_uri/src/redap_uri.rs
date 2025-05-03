@@ -7,6 +7,7 @@ use crate::{
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[expect(clippy::large_enum_variant)]
 pub enum RedapUri {
     /// `/catalog` - also the default if there is no /endpoint
     Catalog(CatalogUri),
@@ -244,7 +245,7 @@ mod tests {
                 focus: Some(DataPath {
                     entity_path: "/some/entity".into(),
                     instance: Some(42.into()),
-                    component_name: None,
+                    component_descriptor: None,
                 }),
                 ..Default::default()
             }
