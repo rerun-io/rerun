@@ -509,7 +509,7 @@ nasm = ">=2.16"                   # Required by https://github.com/memorysafety/
 ninja = "1.11.1.*"
 numpy = ">=2"
 prettier = "3.2.5.*"
-pyarrow = "18.0.0.*"
+pyarrow = "20.0.0.*"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
