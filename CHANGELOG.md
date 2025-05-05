@@ -2,6 +2,32 @@
 
 ## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - WIP - WIP
 
+### ✨ Overview & highlights
+
+- New CLI tool to migrate `.rrd` files
+- Various bugfixes
+
+#### `.rrd` migration tool
+
+With `0.23`, we made several breaking changes that resulted in older `.rrd` files not being able to load at all anymore.
+To help smoothen the migration to `0.23`, we're introducing a `migrate` command to the Rerun CLI:
+
+```
+rerun rrd migrate colmap.rrd arkit.rrd rgbd.rrd
+```
+
+The command will copy the contents into a `.backup` file, and then migrate the file.
+
+Due to the incompatibility between `.rrd` files from `0.23` and those from earlier versions, this command likely
+won't be able to migrate every recording perfectly. We expect the migration to work on files between `0.20` and `0.22`,
+simpler recordings may work as far back as `0.18`.
+
+We plan to use this command future `.rrd` migrations as a way to fulfill our N+1 compatibility guarantee:
+* Viewers after `0.23` will always be able to load recordings from the previous version.
+* Recordings from `0.23` and beyond may be migrated to the next version.
+
+We currently have no plans for compatibility or migrations across multiple versions.
+
 #### 🪵 Log API
 - Improve and mitigate warnings around data loss when flushing [#9846](https://github.com/rerun-io/rerun/pull/9846)
 
