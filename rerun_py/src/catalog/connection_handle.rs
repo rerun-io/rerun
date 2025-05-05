@@ -251,7 +251,7 @@ impl ConnectionHandle {
                     .decode()
                     .map_err(to_py_err)?
             } else {
-                return Err(PyValueError::new_err("no response from task"));
+                return Err(PyConnectionError::new_err("no response from task"));
             };
 
             // TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather
