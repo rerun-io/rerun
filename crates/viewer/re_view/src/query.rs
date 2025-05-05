@@ -9,7 +9,7 @@ use crate::{
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{TimeInt, TimelineName};
 use re_query::LatestAtResults;
-use re_types_core::{Archetype, ComponentName};
+use re_types_core::Archetype;
 use re_viewer_context::{
     DataResult, QueryContext, QueryRange, ViewContext, ViewQuery, ViewerContext,
 };
@@ -27,26 +27,30 @@ use re_viewer_context::{
 ///
 /// Data should be accessed via the [`crate::RangeResultsExt`] trait which is implemented for
 /// [`crate::HybridResults`].
-pub fn range_with_blueprint_resolved_data<'a>(
+pub fn range_with_blueprint_resolved_data<'a, 'b>(
     ctx: &ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &re_viewer_context::DataResult,
-    component_names: impl IntoIterator<Item = ComponentName>,
+    component_descrs: impl IntoIterator<Item = &'b ComponentDescriptor>,
 ) -> HybridRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
-    let mut component_name_set = component_names.into_iter().collect::<IntSet<_>>();
+    let mut component_descrs = component_descrs.into_iter().cloned().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_name_set.iter());
+    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_descrs.iter());
 
     // No need to query for components that have overrides.
-    component_name_set.retain(|component_name| overrides.get_by_name(component_name).is_none());
+    component_descrs.retain(|component_descr| {
+        overrides
+            .get_by_name(&component_descr.component_name)
+            .is_none()
+    }); // TODO(#6889): use descriptor directly (overrides aren't saved with descriptors yet)
 
     let results = ctx.recording_engine().cache().range(
         range_query,
         &data_result.entity_path,
-        component_name_set,
+        component_descrs.iter(),
     );
 
     HybridRangeResults {
@@ -69,29 +73,33 @@ pub fn range_with_blueprint_resolved_data<'a>(
 /// [`crate::HybridResults`].
 ///
 /// If `query_shadowed_components` is true, store components will be queried, even if they are not used.
-pub fn latest_at_with_blueprint_resolved_data<'a>(
+pub fn latest_at_with_blueprint_resolved_data<'a, 'b>(
     ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
-    component_names: impl IntoIterator<Item = ComponentName>,
+    component_descrs: impl IntoIterator<Item = &'b ComponentDescriptor>,
     query_shadowed_components: bool,
 ) -> HybridLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
-    let mut component_set = component_names.into_iter().collect::<IntSet<_>>();
+    let mut component_descrs = component_descrs.into_iter().cloned().collect::<IntSet<_>>();
 
-    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_set.iter());
+    let overrides = query_overrides(ctx.viewer_ctx, data_result, component_descrs.iter());
 
     // No need to query for components that have overrides unless opted in!
     if !query_shadowed_components {
-        component_set.retain(|component_name| overrides.get_by_name(component_name).is_none());
+        component_descrs.retain(|component_descr| {
+            overrides
+                .get_by_name(&component_descr.component_name)
+                .is_none()
+        }); // TODO(#6889): use descriptor directly (overrides aren't saved with descriptors yet)
     }
 
     let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
         latest_at_query,
         &data_result.entity_path,
-        component_set.iter().copied(),
+        component_descrs.iter(),
     );
 
     HybridLatestAtResults {
@@ -104,12 +112,12 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     }
 }
 
-pub fn query_archetype_with_history<'a>(
+pub fn query_archetype_with_history<'a, 'b>(
     ctx: &'a ViewContext<'a>,
     timeline: &TimelineName,
     timeline_cursor: TimeInt,
     query_range: &QueryRange,
-    component_names: impl IntoIterator<Item = ComponentName>,
+    component_descriptors: impl IntoIterator<Item = &'b ComponentDescriptor>,
     data_result: &'a re_viewer_context::DataResult,
 ) -> HybridResults<'a> {
     match query_range {
@@ -126,7 +134,7 @@ pub fn query_archetype_with_history<'a>(
                 None,
                 &range_query,
                 data_result,
-                component_names,
+                component_descriptors,
             );
             (range_query, results).into()
         }
@@ -138,7 +146,7 @@ pub fn query_archetype_with_history<'a>(
                 None,
                 &latest_query,
                 data_result,
-                component_names,
+                component_descriptors,
                 query_shadowed_defaults,
             );
             (latest_query, results).into()
@@ -149,7 +157,7 @@ pub fn query_archetype_with_history<'a>(
 fn query_overrides<'a>(
     ctx: &ViewerContext<'_>,
     data_result: &re_viewer_context::DataResult,
-    component_names: impl Iterator<Item = &'a ComponentName>,
+    component_descriptors: impl IntoIterator<Item = &'a ComponentDescriptor>,
 ) -> LatestAtResults {
     // First see if any components have overrides.
     let mut overrides = LatestAtResults::empty("<overrides>".into(), ctx.current_query());
@@ -157,7 +165,10 @@ fn query_overrides<'a>(
     let blueprint_engine = &ctx.store_context.blueprint.storage_engine();
 
     // TODO(jleibs): partitioning overrides by path
-    for component_name in component_names {
+    for component_descr in component_descriptors {
+        // TODO(#6889): Overrides should be queried with full descriptors, but aren't yet!
+        let component_name = &component_descr.component_name;
+
         if let Some(override_value) = data_result
             .property_overrides
             .component_overrides
@@ -218,10 +229,11 @@ pub trait DataResultQuery {
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a>;
 
-    fn latest_at_with_blueprint_resolved_data_for_component<'a, C: re_types_core::Component>(
+    fn latest_at_with_blueprint_resolved_data_for_component<'a, 'b>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
+        component_descr: &'b ComponentDescriptor,
     ) -> HybridLatestAtResults<'a>;
 
     fn query_archetype_with_history<'a, A: re_types_core::Archetype>(
@@ -250,15 +262,16 @@ impl DataResultQuery for DataResult {
             None,
             latest_at_query,
             self,
-            A::all_components().iter().map(|descr| descr.component_name),
+            A::all_components().iter(),
             query_shadowed_components,
         )
     }
 
-    fn latest_at_with_blueprint_resolved_data_for_component<'a, C: re_types_core::Component>(
+    fn latest_at_with_blueprint_resolved_data_for_component<'a, 'b>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
+        component_descr: &'b ComponentDescriptor,
     ) -> HybridLatestAtResults<'a> {
         let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
@@ -266,7 +279,7 @@ impl DataResultQuery for DataResult {
             None,
             latest_at_query,
             self,
-            std::iter::once(C::name()),
+            std::iter::once(component_descr),
             query_shadowed_components,
         )
     }
@@ -281,7 +294,7 @@ impl DataResultQuery for DataResult {
             &view_query.timeline,
             view_query.latest_at,
             self.query_range(),
-            A::all_components().iter().map(|descr| descr.component_name),
+            A::all_components().iter(),
             self,
         )
     }

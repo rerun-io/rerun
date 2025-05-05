@@ -204,14 +204,9 @@ impl SeriesPointSystem {
                 None,
                 &query,
                 data_result,
-                [
-                    Color::name(),
-                    MarkerShape::name(),
-                    MarkerSize::name(),
-                    Name::name(),
-                    Scalar::name(),
-                    SeriesVisible::name(),
-                ],
+                archetypes::Scalars::all_components()
+                    .iter()
+                    .chain(archetypes::SeriesLines::all_components().iter()),
             );
 
             // If we have no scalars, we can't do anything.

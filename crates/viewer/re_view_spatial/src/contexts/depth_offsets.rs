@@ -79,12 +79,25 @@ fn collect_draw_order_per_visualizer(
     let latest_at_query = ctx.current_query();
     for data_result in query.iter_visible_data_results(visualizer_identifier) {
         let query_shadowed_components = false;
+
+        // TODO(#6889): We want to query with the correct descriptor here for each visualizer in its `VisualizerQueryInfo`.
+        // To do so, we have to look up the descriptor that the visualizer advertises for `DrawOrder` here.
+        let Some(draw_order_descriptor) = ctx
+            .recording_engine()
+            .store()
+            .entity_component_descriptors_with_name(&data_result.entity_path, DrawOrder::name())
+            .into_iter()
+            .next()
+        else {
+            continue;
+        };
+
         let draw_order = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             &latest_at_query,
             data_result,
-            std::iter::once(DrawOrder::name()),
+            [&draw_order_descriptor],
             query_shadowed_components,
         )
         .get_mono_with_fallback::<DrawOrder>();
