@@ -3,12 +3,14 @@
 ## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - WIP - WIP
 
 #### 🪵 Log API
-- Improve and mitigate warnings around dataloss when flushing [#9846](https://github.com/rerun-io/rerun/pull/9846)
+- Improve and mitigate warnings around data loss when flushing [#9846](https://github.com/rerun-io/rerun/pull/9846)
 
 #### 🐍 Python API
 - Add `ViewerClient` to `rerun.experimental` [#9828](https://github.com/rerun-io/rerun/pull/9828)
 - Improve `set_time` error handling for large Python integers [#9839](https://github.com/rerun-io/rerun/pull/9839)
 - Properly resolve component selectors in dataset index creation and search APIs [#9854](https://github.com/rerun-io/rerun/pull/9854)
+- Fix incorrectly advertised minimum supported `pyarrow` version (18.0.0 is required) [#9878](https://github.com/rerun-io/rerun/pull/9878)
+- Fix incorrectly advertised numpy 1.x support (numpy2 is required now) [#9880](https://github.com/rerun-io/rerun/pull/9880)
 
 #### 🪳 Bug fixes
 - Fix world grid not scaling correctly when camera is below the grid [#9867](https://github.com/rerun-io/rerun/pull/9867)
