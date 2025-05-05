@@ -7296,7 +7296,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "backtrace",
  "bytemuck",
  "criterion",
  "indent",
