@@ -1,5 +1,6 @@
 use arrow::array::ArrayRef;
 use nohash_hasher::IntSet;
+use re_types::ComponentDescriptor;
 
 use crate::{
     results_ext::{HybridLatestAtResults, HybridRangeResults},
@@ -40,7 +41,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     let overrides = query_overrides(ctx.viewer_ctx, data_result, component_name_set.iter());
 
     // No need to query for components that have overrides.
-    component_name_set.retain(|component| !overrides.components.contains_key(component));
+    component_name_set.retain(|component_name| overrides.get(component_name).is_none());
 
     let results = ctx.recording_engine().cache().range(
         range_query,
@@ -84,7 +85,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
 
     // No need to query for components that have overrides unless opted in!
     if !query_shadowed_components {
-        component_set.retain(|component| !overrides.components.contains_key(component));
+        component_set.retain(|component_name| overrides.get(component_name).is_none());
     }
 
     let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
@@ -194,14 +195,16 @@ fn query_overrides<'a>(
             //
             // This is extra tricky since the promise hasn't been resolved yet so we can't
             // actually look at the data.
-            if let Some(value) = component_override_result.components.get(component_name) {
+            if let Some(value) = component_override_result.get(component_name) {
                 let index = value.index(&current_query.timeline());
 
                 // NOTE: This can never happen, but I'd rather it happens than an unwrap.
                 debug_assert!(index.is_some(), "{value:#?}");
                 let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
 
-                overrides.add(*component_name, index, value.clone());
+                // TODO(#6889): Overrides should be queried with full descriptors.
+                let component_descr = ComponentDescriptor::new(*component_name);
+                overrides.add(component_descr, index, value.clone());
             }
         }
     }

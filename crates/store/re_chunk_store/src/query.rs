@@ -11,7 +11,7 @@ use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
     ComponentDescriptor, ComponentDescriptorSet, ComponentName, ComponentNameSet,
-    UnorderedComponentDescriptorSet, UnorderedComponentNameSet,
+    UnorderedComponentDescriptorSet,
 };
 
 use crate::{store::ChunkIdSetPerTime, ChunkStore};
@@ -107,21 +107,21 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-    ) -> Option<UnorderedComponentNameSet> {
+    ) -> Option<UnorderedComponentDescriptorSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<UnorderedComponentNameSet> = self
+        let static_components: Option<UnorderedComponentDescriptorSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
                 static_chunks_per_component
                     .keys()
-                    .map(|descr| descr.component_name)
-                    .collect::<UnorderedComponentNameSet>()
+                    .cloned()
+                    .collect::<UnorderedComponentDescriptorSet>()
             })
             .filter(|names| !names.is_empty());
 
-        let temporal_components: Option<UnorderedComponentNameSet> = self
+        let temporal_components: Option<UnorderedComponentDescriptorSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
@@ -130,8 +130,8 @@ impl ChunkStore {
                     .map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component
                             .keys()
-                            .map(|descr| descr.component_name)
-                            .collect::<UnorderedComponentNameSet>()
+                            .cloned()
+                            .collect::<UnorderedComponentDescriptorSet>()
                     })
                     .unwrap_or_default()
             })

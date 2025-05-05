@@ -28,20 +28,24 @@ impl DataUi for ComponentPath {
             let results = engine
                 .cache()
                 .latest_at(query, entity_path, [*component_name]);
-            if let Some(unit) = results.components.get(component_name) {
+
+            // TODO(#6889): `ComponentPath` should always have a descriptor.
+            let component_descr = engine
+                .store()
+                .entity_component_descriptors_with_name(entity_path, *component_name)
+                .into_iter()
+                .next();
+
+            if let Some(unit) = component_descr
+                .as_ref()
+                .and_then(|component_descr| results.components.get(component_descr))
+            {
                 crate::ComponentPathLatestAtResults {
                     component_path: self.clone(),
                     unit,
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                // TODO(#6889): `ComponentPath` should always have a descriptor.
-                let component_descr = engine
-                    .store()
-                    .entity_component_descriptors_with_name(entity_path, *component_name)
-                    .into_iter()
-                    .next();
-
                 if component_descr.is_none_or(|component_descr| {
                     engine.store().entity_has_component_on_timeline(
                         &query.timeline(),

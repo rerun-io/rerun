@@ -206,13 +206,11 @@ fn build_points_chunks(paths: &[EntityPath], num_points: usize) -> Vec<Arc<Chunk
         .map(|path| {
             let mut builder = Chunk::builder(path.clone());
             for frame_idx in 0..NUM_FRAMES_POINTS {
-                builder = builder.with_component_batches(
+                builder = builder.with_archetype(
                     RowId::new(),
                     [build_frame_nr((frame_idx as i64).try_into().unwrap())],
-                    [
-                        &build_some_point2d(num_points) as _,
-                        &build_some_colors(num_points) as _,
-                    ],
+                    &Points2D::new(build_some_point2d(num_points))
+                        .with_colors(build_some_colors(num_points)),
                 );
             }
             Arc::new(builder.build().unwrap())
@@ -226,18 +224,14 @@ fn build_strings_chunks(paths: &[EntityPath], num_strings: usize) -> Vec<Arc<Chu
         .map(|path| {
             let mut builder = Chunk::builder(path.clone());
             for frame_idx in 0..NUM_FRAMES_POINTS {
-                builder = builder.with_component_batches(
+                builder = builder.with_archetype(
                     RowId::new(),
                     [build_frame_nr((frame_idx as i64).try_into().unwrap())],
-                    [
-                        // We still need to create points because they are the primary for the
-                        // archetype query we want to do. We won't actually deserialize the points
-                        // during the query -- we just need it for the primary keys.
-                        // TODO(jleibs): switch this to use `TextEntry` once the new type has
-                        // landed.
-                        &build_some_point2d(num_strings) as _,
-                        &build_some_strings(num_strings) as _,
-                    ],
+                    // We still need to create points because they are the primary for the
+                    // archetype query we want to do. We won't actually deserialize the points
+                    // during the query -- we just need it for the primary keys.
+                    &Points2D::new(build_some_point2d(num_strings))
+                        .with_labels(build_some_strings(num_strings)),
                 );
             }
             Arc::new(builder.build().unwrap())
