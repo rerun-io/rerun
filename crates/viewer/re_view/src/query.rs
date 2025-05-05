@@ -229,11 +229,11 @@ pub trait DataResultQuery {
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a>;
 
-    fn latest_at_with_blueprint_resolved_data_for_component<'a, 'b>(
+    fn latest_at_with_blueprint_resolved_data_for_component<'a>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        component_descr: &'b ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> HybridLatestAtResults<'a>;
 
     fn query_archetype_with_history<'a, A: re_types_core::Archetype>(
@@ -267,11 +267,11 @@ impl DataResultQuery for DataResult {
         )
     }
 
-    fn latest_at_with_blueprint_resolved_data_for_component<'a, 'b>(
+    fn latest_at_with_blueprint_resolved_data_for_component<'a>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         latest_at_query: &'a LatestAtQuery,
-        component_descr: &'b ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> HybridLatestAtResults<'a> {
         let query_shadowed_components = false;
         latest_at_with_blueprint_resolved_data(
@@ -311,7 +311,12 @@ impl DataResultQuery for DataResult {
                 continue;
             };
 
-            if vis.visualizer_query_info().queried.contains(&component) {
+            if vis
+                .visualizer_query_info()
+                .queried
+                .iter()
+                .any(|c| c.component_name == component)
+            {
                 return vis.fallback_provider().fallback_for(query_ctx, component);
             }
         }

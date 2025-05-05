@@ -40,11 +40,9 @@ const DEFAULT_STROKE_WIDTH: f32 = 0.75;
 impl VisualizerSystem for SeriesLineSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info.queried.extend(
-            archetypes::SeriesLines::all_components()
-                .iter()
-                .map(|descr| descr.component_name),
-        );
+        query_info
+            .queried
+            .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
         query_info.indicators =
             [archetypes::SeriesLines::descriptor_indicator().component_name].into();

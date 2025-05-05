@@ -64,7 +64,7 @@ impl QueryCache {
                 // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
                 let component_descr = match maybe_component_descr.into() {
                     MaybeTagged::Descriptor(component_descr) => {
-                        debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component(),
+                        debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component() || component_descr.component_name == "rerun.blueprint.components.VisualizerOverride",
                          "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
 
                         if component_descr.archetype_name.is_none_or(|archetype_name| archetype_name.as_str().starts_with("rerun.blueprint.") ) {
@@ -376,9 +376,7 @@ impl LatestAtResults {
 
     /// Returns the `RowId` for the specified component.
     #[inline]
-    pub fn component_row_id(&self, component_name: &ComponentName) -> Option<RowId> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
+    pub fn component_row_id(&self, component_descr: &ComponentDescriptor) -> Option<RowId> {
         self.components
             .get(component_descr)
             .and_then(|unit| unit.row_id())

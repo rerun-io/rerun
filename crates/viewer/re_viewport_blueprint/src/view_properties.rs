@@ -74,7 +74,7 @@ impl ViewProperty {
         let blueprint_store_path =
             entity_path_for_view_property(view_id, blueprint_db.tree(), archetype_name);
 
-        let query_results = blueprint_db.latest_at(
+        let query_results = blueprint_db.latest_at_by_name(
             &blueprint_query,
             &blueprint_store_path,
             component_descrs.iter().map(|descr| descr.component_name),

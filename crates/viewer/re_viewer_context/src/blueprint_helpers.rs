@@ -147,7 +147,7 @@ impl ViewerContext<'_> {
             .default_blueprint
             .and_then(|default_blueprint| {
                 default_blueprint
-                    .latest_at(self.blueprint_query, entity_path, [component_name])
+                    .latest_at_by_name(self.blueprint_query, entity_path, [component_name])
                     .get_by_name(&component_name)
                     .and_then(|default_value| {
                         default_value.component_batch_raw_by_component_name(component_name)
@@ -179,7 +179,7 @@ impl ViewerContext<'_> {
         let blueprint = &self.store_context.blueprint;
 
         let Some(datatype) = blueprint
-            .latest_at(self.blueprint_query, entity_path, [component_name])
+            .latest_at_by_name(self.blueprint_query, entity_path, [component_name])
             .get_by_name(&component_name)
             .and_then(|unit| {
                 unit.component_batch_raw_by_component_name(component_name)

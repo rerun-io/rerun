@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_types::{Archetype, ComponentName, ComponentNameSet};
+use re_types::{Archetype, ComponentDescriptorSet, ComponentNameSet};
 
 use crate::{
     ComponentFallbackProvider, DataBasedVisualizabilityFilter, IdentifiedViewSystem,
@@ -8,33 +8,6 @@ use crate::{
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
     VisualizableFilterContext,
 };
-
-#[derive(Debug, Clone, Default)]
-pub struct SortedComponentNameSet(linked_hash_map::LinkedHashMap<ComponentName, ()>);
-
-impl SortedComponentNameSet {
-    pub fn insert(&mut self, k: ComponentName) -> Option<()> {
-        self.0.insert(k, ())
-    }
-
-    pub fn extend(&mut self, iter: impl IntoIterator<Item = ComponentName>) {
-        self.0.extend(iter.into_iter().map(|k| (k, ())));
-    }
-
-    pub fn iter(&self) -> linked_hash_map::Keys<'_, ComponentName, ()> {
-        self.0.keys()
-    }
-
-    pub fn contains(&self, k: &ComponentName) -> bool {
-        self.0.contains_key(k)
-    }
-}
-
-impl FromIterator<ComponentName> for SortedComponentNameSet {
-    fn from_iter<I: IntoIterator<Item = ComponentName>>(iter: I) -> Self {
-        Self(iter.into_iter().map(|k| (k, ())).collect())
-    }
-}
 
 pub struct VisualizerQueryInfo {
     /// These are not required, but if _any_ of these are found, it is a strong indication that this
@@ -44,35 +17,29 @@ pub struct VisualizerQueryInfo {
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
     ///
     /// This does not include indicator components.
-    pub required: ComponentNameSet,
+    pub required: ComponentDescriptorSet,
 
     /// Returns the list of components that the system _queries_.
     ///
     /// Must include required, usually excludes indicators.
     /// Order should reflect order in archetype docs & user code as well as possible.
-    pub queried: SortedComponentNameSet,
+    pub queried: ComponentDescriptorSet,
 }
 
 impl VisualizerQueryInfo {
     pub fn from_archetype<A: Archetype>() -> Self {
         Self {
             indicators: std::iter::once(A::indicator().descriptor.component_name).collect(),
-            required: A::required_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
-            queried: A::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
+            required: A::required_components().iter().cloned().collect(),
+            queried: A::all_components().iter().cloned().collect(),
         }
     }
 
     pub fn empty() -> Self {
         Self {
-            indicators: ComponentNameSet::new(),
-            required: ComponentNameSet::new(),
-            queried: SortedComponentNameSet::default(),
+            indicators: ComponentNameSet::default(),
+            required: ComponentDescriptorSet::default(),
+            queried: ComponentDescriptorSet::default(),
         }
     }
 }

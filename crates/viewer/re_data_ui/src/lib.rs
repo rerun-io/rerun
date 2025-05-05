@@ -3,7 +3,7 @@
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
 use re_log_types::{hash::Hash64, EntityPath};
-use re_types::{ComponentDescriptor, ComponentName};
+use re_types::ComponentDescriptor;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 mod annotation_context;
@@ -27,19 +27,6 @@ pub mod item_ui;
 pub use crate::tensor::tensor_summary_ui_grid_contents;
 pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
-
-/// Sort components for display in the UI.
-pub fn sorted_component_name_list_for_ui<'a>(
-    iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
-) -> Vec<ComponentName> {
-    let mut components: Vec<ComponentName> = iter.into_iter().copied().collect();
-
-    // Put indicator components first.
-    // We then sort by the short name, as that is what is shown in the UI.
-    components.sort_by_key(|c| (!c.is_indicator_component(), c.short_name()));
-
-    components
-}
 
 /// Sort components for display in the UI.
 pub fn sorted_component_list_for_ui<'a>(
