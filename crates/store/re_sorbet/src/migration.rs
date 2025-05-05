@@ -11,7 +11,7 @@ use arrow::{
     datatypes::{Field as ArrowField, FieldRef as ArrowFieldRef, Schema as ArrowSchema},
 };
 use itertools::Itertools as _;
-use re_log::ResultExt;
+use re_log::ResultExt as _;
 use re_tuid::Tuid;
 use re_types_core::{arrow_helpers::as_array_ref, Loggable as _};
 
