@@ -7093,6 +7093,7 @@ dependencies = [
 name = "re_grpc_server"
 version = "0.23.2-rc.2"
 dependencies = [
+ "anyhow",
  "crossbeam",
  "parking_lot",
  "re_build_info",
