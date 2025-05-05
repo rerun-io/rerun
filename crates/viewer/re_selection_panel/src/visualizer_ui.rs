@@ -287,7 +287,12 @@ fn visualizer_components(
                     .entity_component_descriptors_with_name(&entity_path, component_name)
                     .into_iter()
                     .next()
-                    .unwrap_or_else(|| ComponentDescriptor::new(component_name));
+                    .unwrap_or_else(|| {
+                        re_log::warn_once!(
+                            "{component_name} was logged untagged. This is unexpected and may indicate a bug."
+                        );
+                        ComponentDescriptor::new(component_name)
+                    });
 
                 re_data_ui::ComponentPathLatestAtResults {
                     component_path: ComponentPath::new(entity_path, component_descr),
@@ -334,7 +339,12 @@ fn visualizer_components(
                                 )
                                 .into_iter()
                                 .next()
-                                .unwrap_or_else(|| ComponentDescriptor::new(component_name));
+                                .unwrap_or_else(|| {
+                                    re_log::warn_once!(
+                                        "{component_name} was logged untagged. This is unexpected and may indicate a bug."
+                                    );
+                                    ComponentDescriptor::new(component_name)
+                                });
 
                             re_data_ui::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(

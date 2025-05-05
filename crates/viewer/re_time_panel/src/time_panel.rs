@@ -18,7 +18,7 @@ use re_types_core::ComponentDescriptor;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
-    DesignTokens, Help, SyntaxHighlighting, UiExt as _,
+    DesignTokens, Help, SyntaxHighlighting as _, UiExt as _,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,

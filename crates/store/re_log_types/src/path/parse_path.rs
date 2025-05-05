@@ -535,7 +535,7 @@ mod tests {
         assert_eq!(
             ComponentPath::from_str("world/points:Points3D:#colors"),
             Err(PathParseError::ComponentDescriptorMissesComponentName(
-                "Points3D:#colors".to_string()
+                "Points3D:#colors".to_owned()
             ))
         );
     }
