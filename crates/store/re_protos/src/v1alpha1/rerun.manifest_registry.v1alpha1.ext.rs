@@ -1,15 +1,14 @@
 use std::sync::Arc;
 
+use arrow::array::Array;
 use arrow::{
     array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
-use arrow::array::Array;
 use re_arrow_util::ArrowArrayDowncastRef;
 use re_chunk::TimelineName;
 use re_log_types::EntityPath;
-
 
 use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
 use crate::common::v1alpha1::ComponentDescriptor;
@@ -462,7 +461,9 @@ impl PartitionType {
 
         match resource_type {
             "rrd" => Ok(Self::Rrd),
-            _ => Err(TypeConversionError::ArrowError(ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")))),
+            _ => Err(TypeConversionError::ArrowError(
+                ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")),
+            )),
         }
     }
 }
@@ -476,7 +477,9 @@ pub struct PartitionDescriptor {
 impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for PartitionDescriptor {
     type Error = tonic::Status;
 
-    fn try_from(value: crate::manifest_registry::v1alpha1::DataSource) -> Result<Self, Self::Error> {
+    fn try_from(
+        value: crate::manifest_registry::v1alpha1::DataSource,
+    ) -> Result<Self, Self::Error> {
         Ok(Self {
             storage_url: value
                 .storage_url
@@ -501,7 +504,6 @@ impl From<DataSourceKind> for PartitionType {
         }
     }
 }
-
 
 /// Depending on the type of index that is being created, different properties
 /// can be specified. These are defined by `IndexProperties`.
