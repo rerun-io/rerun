@@ -108,11 +108,11 @@ impl std::str::FromStr for Item {
         let DataPath {
             entity_path,
             instance,
-            component_name,
+            component_descriptor,
         } = DataPath::from_str(s)?;
 
-        match (instance, component_name) {
-            (Some(instance), Some(_component_name)) => {
+        match (instance, component_descriptor) {
+            (Some(instance), Some(_component_descriptor)) => {
                 // TODO(emilk): support selecting a specific component of a specific instance.
                 Err(re_log_types::PathParseError::UnexpectedInstance(instance))
             }
@@ -120,9 +120,9 @@ impl std::str::FromStr for Item {
                 entity_path,
                 instance,
             ))),
-            (None, Some(component_name)) => Ok(Self::ComponentPath(ComponentPath {
+            (None, Some(component_descriptor)) => Ok(Self::ComponentPath(ComponentPath {
                 entity_path,
-                component_name,
+                component_descriptor,
             })),
             (None, None) => Ok(Self::InstancePath(InstancePath::entity_all(entity_path))),
         }

@@ -295,10 +295,9 @@ impl AnyColumn {
                             PyValueError::new_err(format!("Invalid component path {name:?}: {err}"))
                         })?;
 
-                    Ok(ColumnSelector::Component(ComponentColumnSelector {
-                        entity_path: component_path.entity_path,
-                        component_name: component_path.component_name.to_string(),
-                    }))
+                    Ok(ColumnSelector::Component(ComponentColumnSelector::from(
+                        component_path,
+                    )))
                 }
             }
             Self::IndexDescriptor(desc) => Ok(ColumnDescriptor::Time(desc.0).into()),
@@ -331,10 +330,7 @@ impl AnyComponentColumn {
                         PyValueError::new_err(format!("Invalid component path '{name}': {err}"))
                     })?;
 
-                Ok(ComponentColumnSelector {
-                    entity_path: component_path.entity_path,
-                    component_name: component_path.component_name.to_string(),
-                })
+                Ok(ComponentColumnSelector::from(component_path))
             }
             Self::ComponentDescriptor(desc) => Ok(desc.0.into()),
             Self::ComponentSelector(selector) => Ok(selector.0),
