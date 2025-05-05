@@ -6,7 +6,7 @@ use arrow::{
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
-use re_arrow_util::ArrowArrayDowncastRef;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::EntityPath;
 
