@@ -3,8 +3,8 @@ use nohash_hasher::IntSet;
 use re_types::ComponentDescriptor;
 
 use crate::{
-    HybridResults,
     results_ext::{HybridLatestAtResults, HybridRangeResults},
+    HybridResults,
 };
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{TimeInt, TimelineName};
