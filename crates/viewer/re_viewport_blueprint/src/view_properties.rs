@@ -1,7 +1,10 @@
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtResults, EntityDb};
 use re_log_types::EntityPath;
-use re_types::{Archetype, ArchetypeName, ComponentBatch, ComponentName, DeserializationError};
+use re_types::{
+    Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, ComponentName,
+    DeserializationError,
+};
 use re_viewer_context::{
     external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
     QueryContext, ViewId, ViewSystemExecutionError, ViewerContext,
@@ -36,7 +39,7 @@ pub struct ViewProperty {
     pub archetype_name: ArchetypeName,
 
     /// List of all components in this property.
-    pub component_names: Vec<ComponentName>,
+    pub component_descrs: Vec<ComponentDescriptor>,
 
     /// Query results for all queries of this property.
     pub query_results: LatestAtResults,
@@ -57,10 +60,7 @@ impl ViewProperty {
             blueprint_query.clone(),
             view_id,
             A::name(),
-            A::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
+            A::all_components().iter().cloned().collect(),
         )
     }
 
@@ -69,7 +69,7 @@ impl ViewProperty {
         blueprint_query: LatestAtQuery,
         view_id: ViewId,
         archetype_name: ArchetypeName,
-        component_names: Vec<ComponentName>,
+        component_descrs: Vec<ComponentDescriptor>,
     ) -> Self {
         let blueprint_store_path =
             entity_path_for_view_property(view_id, blueprint_db.tree(), archetype_name);
@@ -77,14 +77,14 @@ impl ViewProperty {
         let query_results = blueprint_db.latest_at(
             &blueprint_query,
             &blueprint_store_path,
-            component_names.iter().copied(),
+            component_descrs.iter().map(|descr| descr.component_name),
         );
 
         Self {
             blueprint_store_path,
             archetype_name,
             query_results,
-            component_names,
+            component_descrs,
             blueprint_query,
         }
     }
@@ -195,8 +195,11 @@ impl ViewProperty {
     /// Resets all components to the values they had in the default blueprint.
     pub fn reset_all_components(&self, ctx: &ViewerContext<'_>) {
         // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
-        for &component_name in &self.component_names {
-            ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, component_name);
+        for component_descr in &self.component_descrs {
+            ctx.reset_blueprint_component_by_name(
+                &self.blueprint_store_path,
+                component_descr.component_name,
+            );
         }
     }
 
