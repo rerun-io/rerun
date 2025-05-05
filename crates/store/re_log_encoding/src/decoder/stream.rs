@@ -5,10 +5,11 @@ use std::io::Read as _;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::decoder::options_from_bytes;
+use crate::Compression;
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
+use crate::{decoder::options_from_bytes, legacy::LegacyLogMsg};
 
 use super::DecodeError;
 
@@ -27,6 +28,9 @@ pub struct StreamDecoder {
 
     /// Incoming chunks are stored here
     chunks: ChunkBuffer,
+
+    /// The uncompressed bytes are stored in this buffer before being read by `rmp_serde`
+    uncompressed: Vec<u8>,
 
     /// The stream state
     state: State,
@@ -53,14 +57,29 @@ enum State {
     /// will only ever switch between `MessageHeader` and `Message`
     StreamHeader,
 
+    /// The beginning of a `MsgPack` message.
+    ///
+    /// The message header contains the number of bytes in the
+    /// compressed message, and the number of bytes in the
+    /// uncompressed message.
+    MsgPackMessageHeader,
+
+    // TODO(jan): remove this once we decide to completely break it off.
+    /// The message content, serialized using `MsgPack`.
+    ///
+    /// We need to know the full length of the message before attempting
+    /// to read it, otherwise the call to `decompress_into` or the
+    /// `MsgPack` deserialization may block or even fail.
+    MsgPackMessage(crate::LegacyMessageHeader),
+
     /// The beginning of a Protobuf message.
-    MessageHeader,
+    ProtobufMessageHeader,
 
     /// The message content, serialized using `Protobuf`.
     ///
     /// Compression is only applied to individual `ArrowMsg`s, instead of
     /// the entire stream.
-    Message(crate::codec::file::MessageHeader),
+    ProtobufMessage(crate::codec::file::MessageHeader),
 }
 
 impl StreamDecoder {
@@ -72,6 +91,7 @@ impl StreamDecoder {
             // so this value does not matter.
             options: EncodingOptions::PROTOBUF_UNCOMPRESSED,
             chunks: ChunkBuffer::new(),
+            uncompressed: Vec::with_capacity(1024),
             state: State::StreamHeader,
         }
     }
@@ -90,7 +110,8 @@ impl StreamDecoder {
                     self.options = options;
 
                     match self.options.serializer {
-                        Serializer::Protobuf => self.state = State::MessageHeader,
+                        Serializer::LegacyMsgPack => self.state = State::MsgPackMessageHeader,
+                        Serializer::Protobuf => self.state = State::ProtobufMessageHeader,
                     }
 
                     // we might have data left in the current chunk,
@@ -99,24 +120,71 @@ impl StreamDecoder {
                 }
             }
 
-            State::MessageHeader => {
-                if let Some(bytes) = self
-                    .chunks
-                    .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
-                {
-                    let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
-                    self.state = State::Message(header);
+            State::MsgPackMessageHeader => {
+                if let Some(mut bytes) = self.chunks.try_read(crate::LegacyMessageHeader::SIZE) {
+                    let header = crate::LegacyMessageHeader::decode(&mut bytes)?;
+                    self.state = State::MsgPackMessage(header);
                     // we might have data left in the current chunk,
                     // immediately try to read the message content
                     return self.try_read();
                 }
             }
-            State::Message(header) => {
+            State::MsgPackMessage(header) => {
+                match header {
+                    crate::LegacyMessageHeader::Data {
+                        compressed_len,
+                        uncompressed_len,
+                    } => {
+                        if let Some(bytes) = self.chunks.try_read(compressed_len as usize) {
+                            let bytes = match self.options.compression {
+                                Compression::Off => bytes,
+                                Compression::LZ4 => {
+                                    self.uncompressed.resize(uncompressed_len as usize, 0);
+                                    lz4_flex::block::decompress_into(bytes, &mut self.uncompressed)
+                                        .map_err(DecodeError::Lz4)?;
+                                    &self.uncompressed
+                                }
+                            };
+
+                            // read the message from the uncompressed bytes
+                            let legacy_message: LegacyLogMsg =
+                                rmp_serde::from_slice(bytes).map_err(DecodeError::MsgPack)?;
+
+                            let mut message = legacy_message.migrate();
+
+                            self.state = State::MsgPackMessageHeader;
+
+                            propagate_version(&mut message, self.version);
+                            return Ok(Some(message));
+                        }
+                    }
+                    crate::LegacyMessageHeader::EndOfStream => {
+                        // We've reached the end of the stream, but there might be concatenated streams
+                        // hence we set the state as if we are about to see another new stream
+                        self.state = State::StreamHeader;
+                        return self.try_read();
+                    }
+                }
+            }
+
+            State::ProtobufMessageHeader => {
+                if let Some(bytes) = self
+                    .chunks
+                    .try_read(crate::codec::file::MessageHeader::SIZE_BYTES)
+                {
+                    let header = crate::codec::file::MessageHeader::from_bytes(bytes)?;
+                    self.state = State::ProtobufMessage(header);
+                    // we might have data left in the current chunk,
+                    // immediately try to read the message content
+                    return self.try_read();
+                }
+            }
+            State::ProtobufMessage(header) => {
                 if let Some(bytes) = self.chunks.try_read(header.len as usize) {
                     let message = crate::codec::file::decoder::decode_bytes(header.kind, bytes)?;
                     if let Some(mut message) = message {
                         propagate_version(&mut message, self.version);
-                        self.state = State::MessageHeader;
+                        self.state = State::ProtobufMessageHeader;
                         return Ok(Some(message));
                     } else {
                         // `None` means end of stream, but there might be concatenated streams,
@@ -400,7 +468,7 @@ mod tests {
                 }
             }
 
-            if let Some(message) = decoder.try_read().unwrap() {
+            while let Some(message) = decoder.try_read().unwrap() {
                 decoded_messages.push(message);
             }
         }

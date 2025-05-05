@@ -4,27 +4,8 @@ use re_types_core::{Component as _, Loggable as _, RowId};
 use crate::MetadataExt as _;
 
 #[derive(thiserror::Error, Debug)]
-#[error("Wrong datatype. Expected {expected:?}, got {actual:?}")]
-pub struct WrongDatatypeError {
-    pub expected: ArrowDatatype,
-    pub actual: ArrowDatatype,
-}
-
-impl WrongDatatypeError {
-    pub fn compare_expected_actual(
-        expected: &ArrowDatatype,
-        actual: &ArrowDatatype,
-    ) -> Result<(), Self> {
-        if expected == actual {
-            Ok(())
-        } else {
-            Err(Self {
-                expected: expected.clone(),
-                actual: actual.clone(),
-            })
-        }
-    }
-}
+#[error("{0}")]
+pub struct WrongDatatypeError(String);
 
 /// Describes the schema of the primary [`RowId`] column.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -90,9 +71,14 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
     type Error = WrongDatatypeError;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
-        WrongDatatypeError::compare_expected_actual(&RowId::arrow_datatype(), field.data_type())?;
-        Ok(Self {
-            is_sorted: field.metadata().get_bool("rerun.is_sorted"),
-        })
+        let actual_datatype = field.data_type();
+        let expected_datatype = RowId::arrow_datatype();
+        if actual_datatype == &expected_datatype {
+            Ok(Self {
+                is_sorted: field.metadata().get_bool("rerun.is_sorted"),
+            })
+        } else {
+            Err(WrongDatatypeError(format!("Expected a RowId column with datatype {expected_datatype:?}, but column {:?} has datatype {actual_datatype:?}", field.name())))
+        }
     }
 }

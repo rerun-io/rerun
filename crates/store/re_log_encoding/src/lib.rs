@@ -10,6 +10,9 @@ pub mod codec;
 
 pub mod protobuf_conversions;
 
+#[cfg(feature = "decoder")]
+pub mod legacy;
+
 #[cfg(feature = "encoder")]
 #[cfg(not(target_arch = "wasm32"))]
 mod file_sink;
@@ -47,6 +50,9 @@ pub enum Compression {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Serializer {
+    /// For Rerun 0.22 and earlier. Only used to support loading old files.
+    LegacyMsgPack = 1,
+
     Protobuf = 2,
 }
 
@@ -75,7 +81,7 @@ impl EncodingOptions {
                     _ => return Err(OptionsError::UnknownCompression(compression)),
                 };
                 let serializer = match serializer {
-                    1 => return Err(OptionsError::RemovedMsgPackSerializer),
+                    1 => Serializer::LegacyMsgPack,
                     2 => Serializer::Protobuf,
                     _ => return Err(OptionsError::UnknownSerializer(serializer)),
                 };
@@ -107,12 +113,6 @@ pub enum OptionsError {
 
     #[error("Unknown compression: {0}")]
     UnknownCompression(u8),
-
-    // TODO(jan): Remove this at some point, realistically 1-2 releases after 0.23
-    #[error(
-        "You are trying to load an old .rrd file that's not supported by this version of Rerun."
-    )]
-    RemovedMsgPackSerializer,
 
     #[error("Unknown serializer: {0}")]
     UnknownSerializer(u8),
@@ -160,5 +160,59 @@ impl FileHeader {
             version,
             options,
         })
+    }
+}
+
+#[cfg(any(feature = "encoder", feature = "decoder"))]
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum LegacyMessageHeader {
+    Data {
+        /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams
+        compressed_len: u32,
+        uncompressed_len: u32,
+    },
+    EndOfStream,
+}
+
+#[cfg(any(feature = "encoder", feature = "decoder"))]
+impl LegacyMessageHeader {
+    #[cfg(feature = "decoder")]
+    pub const SIZE: usize = 8;
+
+    #[cfg(feature = "decoder")]
+    pub fn decode(read: &mut impl std::io::Read) -> Result<Self, decoder::DecodeError> {
+        let mut buffer = [0_u8; Self::SIZE];
+        read.read_exact(&mut buffer)
+            .map_err(decoder::DecodeError::Read)?;
+
+        Self::from_bytes(&buffer)
+    }
+
+    /// Decode a message header from a byte buffer. Input buffer must be exactly 8 bytes long.
+    #[cfg(feature = "decoder")]
+    pub fn from_bytes(data: &[u8]) -> Result<Self, decoder::DecodeError> {
+        if data.len() != 8 {
+            return Err(decoder::DecodeError::Codec(
+                codec::CodecError::HeaderDecoding(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "invalid header length",
+                )),
+            ));
+        }
+
+        fn u32_from_le_slice(bytes: &[u8]) -> u32 {
+            u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+        }
+
+        if u32_from_le_slice(&data[0..4]) == 0 && u32_from_le_slice(&data[4..]) == 0 {
+            Ok(Self::EndOfStream)
+        } else {
+            let compressed = u32_from_le_slice(&data[0..4]);
+            let uncompressed = u32_from_le_slice(&data[4..]);
+            Ok(Self::Data {
+                compressed_len: compressed,
+                uncompressed_len: uncompressed,
+            })
+        }
     }
 }
