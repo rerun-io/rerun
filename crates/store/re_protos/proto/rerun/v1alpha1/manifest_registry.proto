@@ -131,7 +131,7 @@ message RegisterWithDatasetRequest {
 }
 
 message RegisterWithDatasetResponse {
-  rerun.common.v1alpha1.TaskId id = 1;
+  rerun.common.v1alpha1.DataframePart data = 1;
 }
 
 // TODO(andrea): This is a copy of RegisterWithDatasetRequest.
