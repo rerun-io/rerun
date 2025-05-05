@@ -37,8 +37,12 @@ fn simple_range() -> anyhow::Result<()> {
     let row_id1_2 = RowId::new();
     let colors1_2 = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id1_1, timepoint1, &points1_1)
-        .with_component_batch(row_id1_2, timepoint1, &colors1_2)
+        .with_archetype(row_id1_1, timepoint1, &MyPoints::new(points1_1.clone()))
+        .with_archetype(
+            row_id1_2,
+            timepoint1,
+            &MyPoints::update_fields().with_colors(colors1_2.clone()),
+        )
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
@@ -46,7 +50,11 @@ fn simple_range() -> anyhow::Result<()> {
     let row_id2 = RowId::new();
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id2, timepoint2, &colors2)
+        .with_archetype(
+            row_id2,
+            timepoint2,
+            &MyPoints::update_fields().with_colors(colors2.clone()),
+        )
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
@@ -54,7 +62,7 @@ fn simple_range() -> anyhow::Result<()> {
     let row_id3 = RowId::new();
     let points3 = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id3, timepoint3, &points3)
+        .with_archetype(row_id3, timepoint3, &MyPoints::new(points3.clone()))
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
@@ -129,14 +137,26 @@ fn static_range() -> anyhow::Result<()> {
     let row_id1_2 = RowId::new();
     let colors1_2 = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id1_1, timepoint1, &points1_1)
-        .with_component_batch(row_id1_2, timepoint1, &colors1_2)
+        .with_archetype(
+            row_id1_1,
+            timepoint1,
+            &MyPoints::new(points1_1.clone()).with_colors(colors1_2.clone()),
+        )
+        .with_archetype(
+            row_id1_2,
+            timepoint1,
+            &MyPoints::update_fields().with_colors(colors1_2.clone()),
+        )
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
     // Insert statically too!
     let row_id1_3 = RowId::new();
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id1_3, TimePoint::default(), &colors1_2)
+        .with_archetype(
+            row_id1_3,
+            TimePoint::default(),
+            &MyPoints::update_fields().with_colors(colors1_2.clone()),
+        )
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
@@ -144,13 +164,21 @@ fn static_range() -> anyhow::Result<()> {
     let row_id2_1 = RowId::new();
     let colors2_1 = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id2_1, timepoint2, &colors2_1)
+        .with_archetype(
+            row_id2_1,
+            timepoint2,
+            &MyPoints::update_fields().with_colors(colors2_1.clone()),
+        )
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
     // Insert statically too!
     let row_id2_2 = RowId::new();
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id2_2, TimePoint::default(), &colors2_1)
+        .with_archetype(
+            row_id2_2,
+            TimePoint::default(),
+            &MyPoints::update_fields().with_colors(colors2_1.clone()),
+        )
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
@@ -159,7 +187,7 @@ fn static_range() -> anyhow::Result<()> {
     let row_id3 = RowId::new();
     let points3 = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batch(row_id3, timepoint3, &points3)
+        .with_archetype(row_id3, timepoint3, &MyPoints::new(points3.clone()))
         .build()?;
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
@@ -260,7 +288,7 @@ fn time_back_and_forth() {
             let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
             let chunk = Arc::new(
                 Chunk::builder(entity_path.clone())
-                    .with_component_batch(RowId::new(), timepoint, &points.clone())
+                    .with_archetype(RowId::new(), timepoint, &MyPoints::new(points.clone()))
                     .build()
                     .unwrap(),
             );
@@ -403,7 +431,11 @@ fn invalidation() {
         let row_id1 = RowId::new();
         let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
         let chunk1 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id1, present_data_timepoint.clone(), &points1)
+            .with_archetype(
+                row_id1,
+                present_data_timepoint.clone(),
+                &MyPoints::new(points1.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
@@ -411,7 +443,11 @@ fn invalidation() {
         let row_id2 = RowId::new();
         let colors2 = vec![MyColor::from_rgb(1, 2, 3)];
         let chunk2 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id2, present_data_timepoint.clone(), &colors2)
+            .with_archetype(
+                row_id2,
+                present_data_timepoint.clone(),
+                &MyPoints::update_fields().with_colors(colors2.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
@@ -437,7 +473,11 @@ fn invalidation() {
         let row_id3 = RowId::new();
         let points3 = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
         let chunk3 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id3, present_data_timepoint.clone(), &points3)
+            .with_archetype(
+                row_id3,
+                present_data_timepoint.clone(),
+                &MyPoints::new(points3.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk3));
@@ -462,7 +502,11 @@ fn invalidation() {
         let row_id4 = RowId::new();
         let colors4 = vec![MyColor::from_rgb(4, 5, 6), MyColor::from_rgb(7, 8, 9)];
         let chunk4 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id4, present_data_timepoint.clone(), &colors4)
+            .with_archetype(
+                row_id4,
+                present_data_timepoint.clone(),
+                &MyPoints::update_fields().with_colors(colors4.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk4));
@@ -490,7 +534,11 @@ fn invalidation() {
         let points5 = vec![MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)];
         let row_id5 = RowId::new();
         let chunk5 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id5, past_data_timepoint.clone(), &points5)
+            .with_archetype(
+                row_id5,
+                past_data_timepoint.clone(),
+                &MyPoints::new(points5.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk5));
@@ -525,7 +573,11 @@ fn invalidation() {
         let row_id6 = RowId::new();
         let colors6 = vec![MyColor::from_rgb(10, 11, 12), MyColor::from_rgb(13, 14, 15)];
         let chunk6 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id6, past_data_timepoint.clone(), &colors6)
+            .with_archetype(
+                row_id6,
+                past_data_timepoint.clone(),
+                &MyPoints::update_fields().with_colors(colors6.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk6));
@@ -558,7 +610,11 @@ fn invalidation() {
         let row_id7 = RowId::new();
         let points7 = vec![MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)];
         let chunk7 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id7, future_data_timepoint.clone(), &points7)
+            .with_archetype(
+                row_id7,
+                future_data_timepoint.clone(),
+                &MyPoints::new(points7.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk7));
@@ -590,7 +646,11 @@ fn invalidation() {
         let row_id8 = RowId::new();
         let colors8 = vec![MyColor::from_rgb(16, 17, 18)];
         let chunk8 = Chunk::builder(entity_path.into())
-            .with_component_batch(row_id8, future_data_timepoint.clone(), &colors8)
+            .with_archetype(
+                row_id8,
+                future_data_timepoint.clone(),
+                &MyPoints::update_fields().with_colors(colors8.clone()),
+            )
             .build()
             .unwrap();
         insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk8));
@@ -683,7 +743,7 @@ fn invalidation_of_future_optionals() {
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let chunk1 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id1, static_, &points1)
+        .with_archetype(row_id1, static_, &MyPoints::new(points1.clone()))
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
@@ -704,7 +764,11 @@ fn invalidation_of_future_optionals() {
     let row_id2 = RowId::new();
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk2 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id2, frame2, &colors2)
+        .with_archetype(
+            row_id2,
+            frame2,
+            &MyPoints::update_fields().with_colors(colors2.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
@@ -724,7 +788,11 @@ fn invalidation_of_future_optionals() {
     let row_id3 = RowId::new();
     let colors3 = vec![MyColor::from_rgb(0, 0, 255)];
     let chunk3 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id3, frame3, &colors3)
+        .with_archetype(
+            row_id3,
+            frame3,
+            &MyPoints::update_fields().with_colors(colors3.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk3));
@@ -745,7 +813,11 @@ fn invalidation_of_future_optionals() {
     let row_id4 = RowId::new();
     let colors4 = vec![MyColor::from_rgb(0, 255, 0)];
     let chunk4 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id4, frame3, &colors4)
+        .with_archetype(
+            row_id4,
+            frame3,
+            &MyPoints::update_fields().with_colors(colors4.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk4));
@@ -783,7 +855,7 @@ fn invalidation_static() {
     let row_id1 = RowId::new();
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let chunk1 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id1, static_.clone(), &points1)
+        .with_archetype(row_id1, static_.clone(), &MyPoints::new(points1.clone()))
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
@@ -804,7 +876,11 @@ fn invalidation_static() {
     let row_id2 = RowId::new();
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
     let chunk2 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id2, static_.clone(), &colors2)
+        .with_archetype(
+            row_id2,
+            static_.clone(),
+            &MyPoints::update_fields().with_colors(colors2.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
@@ -824,7 +900,11 @@ fn invalidation_static() {
     let row_id3 = RowId::new();
     let colors3 = vec![MyColor::from_rgb(0, 0, 255)];
     let chunk3 = Chunk::builder(entity_path.into())
-        .with_component_batch(row_id3, static_, &colors3)
+        .with_archetype(
+            row_id3,
+            static_,
+            &MyPoints::update_fields().with_colors(colors3.clone()),
+        )
         .build()
         .unwrap();
     insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk3));
@@ -861,7 +941,7 @@ fn concurrent_multitenant_edge_case() {
         ];
         let chunk = Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), timepoint, &points)
+                .with_archetype(RowId::new(), timepoint, &MyPoints::new(points.clone()))
                 .build()
                 .unwrap(),
         );
@@ -934,7 +1014,7 @@ fn concurrent_multitenant_edge_case2() {
         ];
         let chunk = Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), timepoint, &points)
+                .with_archetype(RowId::new(), timepoint, &MyPoints::new(points.clone()))
                 .build()
                 .unwrap(),
         );
