@@ -183,16 +183,13 @@ impl HybridResults<'_> {
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
-                indices.extend(
-                    r.results
-                        .components
-                        .iter()
-                        .flat_map(|(component_name, chunks)| {
-                            chunks
-                                .iter()
-                                .flat_map(|chunk| chunk.component_row_ids(component_name))
-                        }),
-                );
+                indices.extend(r.results.components.iter().flat_map(
+                    |(component_descriptor, chunks)| {
+                        chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.component_row_ids(component_descriptor))
+                    },
+                ));
 
                 Hash64::hash(&indices)
             }

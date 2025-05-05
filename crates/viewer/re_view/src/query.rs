@@ -46,7 +46,7 @@ pub fn range_with_blueprint_resolved_data<'a>(
     let results = ctx.recording_engine().cache().range(
         range_query,
         &data_result.entity_path,
-        component_name_set.iter(),
+        component_name_set.into_iter(),
     );
 
     HybridRangeResults {
