@@ -7095,6 +7095,7 @@ dependencies = [
 name = "re_grpc_server"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
  "crossbeam",
  "parking_lot",
  "re_build_info",
