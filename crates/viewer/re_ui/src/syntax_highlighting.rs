@@ -160,8 +160,8 @@ impl SyntaxHighlighting for ArchetypeFieldName {
 impl SyntaxHighlighting for ComponentDescriptor {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         if let Some(archetype_name) = &self.archetype_name {
-            job.append(":", 0.0, faint_text_format(style));
             archetype_name.syntax_highlight_into(style, job);
+            job.append(":", 0.0, faint_text_format(style));
         }
 
         self.component_name

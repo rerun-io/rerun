@@ -18,7 +18,7 @@ use re_types_core::ComponentDescriptor;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
-    DesignTokens, Help, UiExt as _,
+    DesignTokens, Help, SyntaxHighlighting, UiExt as _,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -828,7 +828,6 @@ impl TimePanel {
 
             let component_path = ComponentPath::new(entity_path.clone(), component_descr);
             let component_descr = &component_path.component_descriptor;
-            let short_component_descr = component_descr.short_name();
             let item = TimePanelItem {
                 entity_path: entity_path.clone(),
                 component_descr: Some(component_descr.clone()),
@@ -846,7 +845,7 @@ impl TimePanel {
                 )
                 .show_hierarchical(
                     ui,
-                    list_item::LabelContent::new(short_component_descr)
+                    list_item::LabelContent::new(component_descr.syntax_highlighted(ui.style()))
                         .with_icon(if is_static {
                             &re_ui::icons::COMPONENT_STATIC
                         } else {
