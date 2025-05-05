@@ -1,7 +1,7 @@
 //! Handles migrating old `re_types` to new ones.
 //!
 //!
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use arrow::{
     array::{
@@ -11,6 +11,7 @@ use arrow::{
     datatypes::{Field as ArrowField, FieldRef as ArrowFieldRef, Schema as ArrowSchema},
 };
 use itertools::Itertools as _;
+use re_log::ResultExt;
 use re_tuid::Tuid;
 use re_types_core::{arrow_helpers::as_array_ref, Loggable as _};
 
@@ -37,14 +38,18 @@ pub fn migrate_tuids(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         columns.push(array);
     }
 
-    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+    let schema = Arc::new(ArrowSchema::new_with_metadata(
+        fields,
+        batch.schema().metadata.clone(),
+    ));
 
     ArrowRecordBatch::try_new_with_options(
-        schema.into(),
+        schema.clone(),
         columns,
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
-    .expect("Can't fail")
+    .ok_or_log_error()
+    .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
 }
 
 /// Migrate TUID:s with the pre-0.23 encoding.
@@ -160,14 +165,18 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
         columns.push(array.clone());
     }
 
-    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+    let schema = Arc::new(ArrowSchema::new_with_metadata(
+        fields,
+        batch.schema().metadata.clone(),
+    ));
 
     ArrowRecordBatch::try_new_with_options(
-        schema.into(),
+        schema.clone(),
         columns,
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
-    .expect("Can't fail")
+    .ok_or_log_error()
+    .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
 }
 
 /// Put row-id first, then time columns, and last data columns.
@@ -192,7 +201,10 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     let (fields, arrays): (Vec<ArrowFieldRef>, Vec<ArrowArrayRef>) =
         itertools::chain!(row_ids, indices, components).unzip();
 
-    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+    let schema = Arc::new(ArrowSchema::new_with_metadata(
+        fields,
+        batch.schema().metadata.clone(),
+    ));
 
     if schema.fields() != batch.schema().fields() {
         re_log::debug!(
@@ -208,9 +220,10 @@ pub fn reorder_columns(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     }
 
     ArrowRecordBatch::try_new_with_options(
-        schema.into(),
+        schema.clone(),
         arrays,
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
-    .expect("Can't fail")
+    .ok_or_log_error()
+    .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
 }
