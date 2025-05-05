@@ -16,7 +16,7 @@ dependencies = [
   "attrs>=23.1.0",
   "numpy>=1.23",
   "pillow>=8.0.0",          # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
-  "pyarrow>=14.0.2",
+  "pyarrow>=18.0.0",
   "typing_extensions>=4.5", # Used for PEP-702 deprecated decorator
 ]
 description = "The Rerun Logging SDK"
