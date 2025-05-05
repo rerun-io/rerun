@@ -6,6 +6,7 @@ use arrow::pyarrow::PyArrowType;
 use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
 use re_grpc_client::redap::get_chunks_response_to_chunk_and_partition_id;
 use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
@@ -45,6 +46,7 @@ impl PyDataset {
 
     /// Return the Arrow schema of the data contained in the dataset.
     //TODO(#9457): there should be another `schema` method which returns a `PySchema`
+    #[instrument(skip_all)]
     fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
         let arrow_schema = Self::fetch_arrow_schema(&self_)?;
 
@@ -57,6 +59,7 @@ impl PyDataset {
     }
 
     /// Return the partition table as a Datafusion table provider.
+    #[instrument(skip_all)]
     fn partition_table(self_: PyRef<'_, Self>) -> PyResult<PyDataFusionTable> {
         let super_ = self_.as_super();
         let connection = super_.client.borrow(self_.py()).connection().clone();
@@ -95,6 +98,7 @@ impl PyDataset {
     }
 
     /// Register a RRD URI to the dataset.
+    #[instrument(skip(self_), err)]
     fn register(self_: PyRef<'_, Self>, recording_uri: String) -> PyResult<()> {
         // TODO(#9731): In order to make the `register` method to appear synchronous,
         // we need to hard-code a max timeout for waiting for the task.
@@ -113,6 +117,7 @@ impl PyDataset {
     }
 
     /// Download a partition from the dataset.
+    #[instrument(skip(self_), err)]
     fn download_partition(self_: PyRef<'_, Self>, partition_id: String) -> PyResult<PyRecording> {
         let super_ = self_.as_super();
         let mut client = super_.client.borrow(self_.py()).connection().client();
@@ -208,6 +213,7 @@ impl PyDataset {
             store_position = false,
             base_tokenizer = "simple",
         ))]
+    #[instrument(skip(self_, column, time_index), err)]
     fn create_fts_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
@@ -262,6 +268,7 @@ impl PyDataset {
         num_sub_vectors = 16,
         distance_metric = VectorDistanceMetricLike::VectorDistanceMetric(crate::catalog::PyVectorDistanceMetric::Cosine),
     ))]
+    #[instrument(skip(self_, column, time_index, distance_metric), err)]
     fn create_vector_index(
         self_: PyRef<'_, Self>,
         column: AnyComponentColumn,
@@ -314,6 +321,7 @@ impl PyDataset {
     }
 
     /// Search the dataset using a full-text search query.
+    #[instrument(skip(self_, column), err)]
     fn search_fts(
         self_: PyRef<'_, Self>,
         query: String,
@@ -374,6 +382,7 @@ impl PyDataset {
     }
 
     /// Search the dataset using a vector search query.
+    #[instrument(skip(self_, query, column), err)]
     fn search_vector(
         self_: PyRef<'_, Self>,
         query: VectorLike<'_>,

@@ -6,6 +6,8 @@ use pyo3::{
     types::PyAnyMethods as _,
     FromPyObject, Py, PyAny, PyResult, Python,
 };
+use tracing::instrument;
+
 use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::EntryFilter;
 
@@ -51,6 +53,7 @@ impl PyCatalogClient {
     }
 
     /// Get a list of all entries in the catalog.
+    #[instrument(skip_all, err)]
     fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
         let mut connection = self_.borrow(py).connection.clone();
 
@@ -81,6 +84,7 @@ impl PyCatalogClient {
     }
 
     /// Get a dataset by name or id.
+    #[instrument(skip_all)]
     fn get_dataset(
         self_: Py<Self>,
         name_or_id: EntryIdLike,
@@ -112,6 +116,7 @@ impl PyCatalogClient {
     //TODO(#9369): `datasets()` (needs FindDatasetsEntries rpc)
 
     /// Create a new dataset with the provided name.
+    #[instrument(skip_all)]
     fn create_dataset(self_: Py<Self>, py: Python<'_>, name: &str) -> PyResult<Py<PyDataset>> {
         let mut connection = self_.borrow_mut(py).connection.clone();
 
@@ -137,6 +142,7 @@ impl PyCatalogClient {
     /// Get a table by name or id.
     ///
     /// Note: the entry table is named `__entries`.
+    #[instrument(skip_all)]
     fn get_table(
         self_: Py<Self>,
         name_or_id: EntryIdLike,

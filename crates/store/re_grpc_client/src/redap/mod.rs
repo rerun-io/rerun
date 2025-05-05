@@ -10,6 +10,8 @@ use re_protos::{
 };
 use re_uri::{DatasetDataUri, Origin};
 
+use redap_telemetry::external::{tower, tower_http};
+
 use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
 
 pub enum Command {
@@ -115,6 +117,7 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
     }
 }
 
+// TODO: do web too, somehow
 #[cfg(target_arch = "wasm32")]
 pub type RedapClient = FrontendServiceClient<tonic_web_wasm_client::Client>;
 
@@ -127,26 +130,24 @@ pub async fn client(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub type RedapClient = FrontendServiceClient<tonic::transport::Channel>;
-// TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-// pub type RedapClient = FrontendServiceClient<
-//     tower_http::trace::Trace<
-//         tonic::service::interceptor::InterceptedService<
-//             tonic::transport::Channel,
-//             redap_telemetry::TracingInjectorInterceptor,
-//         >,
-//         tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
-//     >,
-// >;
+pub type RedapClient = FrontendServiceClient<
+    tower_http::trace::Trace<
+        tonic::service::interceptor::InterceptedService<
+            tonic::transport::Channel,
+            redap_telemetry::TracingInjectorInterceptor,
+        >,
+        tower_http::classify::SharedClassifier<tower_http::classify::GrpcErrorsAsFailures>,
+        redap_telemetry::GrpcSpanMaker,
+    >,
+>;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
     let middlewares = tower::ServiceBuilder::new()
-        // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
-        // .layer(redap_telemetry::new_grpc_tracing_layer())
-        // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
+        .layer(redap_telemetry::new_grpc_tracing_layer())
+        .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
         .into_inner();
 
     let svc = tower::ServiceBuilder::new()

@@ -8,6 +8,7 @@ use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
 use pyo3::{pyclass, pymethods, Bound, Py, PyAny, PyRef, PyResult, Python};
+use tracing::instrument;
 
 use re_chunk::ComponentName;
 use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
@@ -36,6 +37,7 @@ pub struct PyDataframeQueryView {
 
 impl PyDataframeQueryView {
     #[expect(clippy::fn_params_excessive_bools)]
+    #[instrument(skip(dataset, contents, py))]
     pub fn new(
         dataset: Py<PyDataset>,
         index: String,
@@ -396,6 +398,7 @@ impl PyDataframeQueryView {
     }
 
     /// Returns a DataFusion table provider capsule.
+    #[instrument(skip_all)]
     fn __datafusion_table_provider__<'py>(
         self_: PyRef<'py, Self>,
         py: Python<'py>,
@@ -446,6 +449,7 @@ impl PyDataframeQueryView {
     }
 
     /// Register this view to the global DataFusion context and return a DataFrame.
+    #[instrument(skip_all)]
     fn df(self_: PyRef<'_, Self>) -> PyResult<Bound<'_, PyAny>> {
         let py = self_.py();
 

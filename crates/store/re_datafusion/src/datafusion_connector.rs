@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use datafusion::{catalog::TableProvider, error::DataFusionError};
+use tracing::instrument;
 
 use re_grpc_client::redap::RedapClient;
 use re_log_types::{external::re_tuid::Tuid, EntryId};
@@ -23,6 +24,7 @@ impl DataFusionConnector {
 }
 
 impl DataFusionConnector {
+    #[instrument(skip_all, err)]
     pub async fn get_entry_list(&mut self) -> Result<Arc<dyn TableProvider>, DataFusionError> {
         // TODO(jleibs): Clean this up with better helpers
         let entry: EntryDetails = self
@@ -48,6 +50,7 @@ impl DataFusionConnector {
             .await
     }
 
+    #[instrument(skip(self), err)]
     pub async fn get_dataset_entry(
         &mut self,
         id: Tuid,
@@ -64,6 +67,7 @@ impl DataFusionConnector {
         Ok(entry)
     }
 
+    #[instrument(skip(self), err)]
     pub async fn get_partition_table(
         &self,
         dataset_id: EntryId,

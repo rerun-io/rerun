@@ -8,6 +8,7 @@ use pyo3::{
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use tokio_stream::StreamExt as _;
+use tracing::instrument;
 
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
@@ -59,6 +60,7 @@ impl ConnectionHandle {
 // TODO(ab): all these request wrapper should be implemented in a more general client wrapper also
 // used in e.g. the redap browser, etc. The present connection handle should just forward them.
 impl ConnectionHandle {
+    #[instrument(skip(self, py), err)]
     pub fn find_entries(
         &mut self,
         py: Python<'_>,
@@ -83,6 +85,7 @@ impl ConnectionHandle {
         Ok(entries?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn delete_entry(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<()> {
         let _response = wait_for_future(
             py,
@@ -95,6 +98,7 @@ impl ConnectionHandle {
         Ok(())
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn create_dataset(&mut self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
@@ -110,6 +114,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn read_dataset(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetEntry> {
         let response = wait_for_future(
             py,
@@ -126,6 +131,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn read_table(&mut self, py: Python<'_>, entry_id: EntryId) -> PyResult<TableEntry> {
         let response = wait_for_future(
             py,
@@ -142,6 +148,7 @@ impl ConnectionHandle {
             .try_into()?)
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn get_dataset_schema(
         &mut self,
         py: Python<'_>,
@@ -160,6 +167,7 @@ impl ConnectionHandle {
         })
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn register_with_dataset(
         &mut self,
         py: Python<'_>,
@@ -187,6 +195,7 @@ impl ConnectionHandle {
         })
     }
 
+    #[instrument(skip(self, py), err)]
     pub fn wait_for_task(
         &mut self,
         py: Python<'_>,
@@ -246,6 +255,7 @@ impl ConnectionHandle {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[instrument(skip(self, py, partition_ids), err)]
     pub fn get_chunks_for_dataframe_query(
         &mut self,
         py: Python<'_>,
