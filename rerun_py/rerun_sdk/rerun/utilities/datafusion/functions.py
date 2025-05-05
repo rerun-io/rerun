@@ -4,7 +4,40 @@ from __future__ import annotations
 
 import rerun_bindings
 from datafusion import DataFrame, col, udf
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import pyarrow as pa
+
+def column_for_component(
+        schema: pa.Schema,
+        entity_path: str | None,
+        archetype_name: str | None,
+        component_name: str | None,
+) -> str | None:
+    for field in schema:
+        valid_path = True
+        valid_archetype = True
+        valid_component = True
+        if entity_path is not None:
+            valid_path = False
+            if b"rerun.entity_path" in field.metadata.keys():
+                if field.metadata[b"rerun.entity_path"].decode('utf-8') == entity_path:
+                    valid_path = True
+        if archetype_name is not None:
+            valid_archtype = False
+            if b"rerun.archetype" in field.metadata.keys():
+                if field.metadata[b"rerun.archetype"].decode('utf-8') == f"rerun.archetypes.{archetype_name}":
+                    valid_archtype = True
+        if component_name is not None:
+            valid_component = False
+            if b"rerun.component" in field.metadata.keys():
+                if field.metadata[b"rerun.component"].decode('utf-8') == f"rerun.components.{component_name}":
+                    valid_component = True
+        if valid_path and valid_archetype and valid_component:
+            return field.name
+
+    return None
 
 def duplicate_components(df: DataFrame, input_path: str, output_path: str, components: list[str]) -> DataFrame:
     """
@@ -181,4 +214,71 @@ def extract_bounding_box_images_from_video(
         *prior_columns,
         col(temp_path)["ImageBuffer"].alias(f"{output_path}:ImageBuffer", metadata={"rerun.entity_path": output_path}),
         col(temp_path)["ImageFormat"].alias(f"{output_path}:ImageFormat", metadata={"rerun.entity_path": output_path}),
+    )
+
+def intersection_over_union(
+        df: DataFrame,
+        entity_1_path: str,
+        entity_2_path: str,
+        output_path: str,
+        remove_nulls: bool = True,
+) -> DataFrame:
+    """
+    Extract images from a video and bounding boxes.
+
+    This is a Rerun focused DataFusion function that will will assume there are two
+    entities that contain Boxes2D archetypes. It will identify the corresponding
+    data columns and perform a calculation of the area of the intersection of the
+    boxes divided by the area of the union of the boxes. For boxes that exactly overlap
+    this should yield a scalar value of 1.0 and for boxes that do not intersect it
+    will yield a value of 0.0. If either of the columns for the boxes is null, it
+    will yield a null.
+
+    Parameters
+    ----------
+    df:
+        The input DataFusion DataFrame
+    entity_1_path:
+        Entity path for the input first Boxes2D components.
+    entity_2_path:
+        Entity path for the input second Boxes2D components.
+    output_path:
+        Entity path to output
+    remove_nulls:
+        If True, performs a filter operation on the resultant DataFrame
+
+    Returns
+    -------
+    A DataFusion DataFrame with new columns corresponding to the components of
+    the Image archetype.
+
+    """
+    schema = df.schema()
+    prior_columns = schema.names
+
+    iou_udf = udf(rerun_bindings.datafusion.intersection_over_union_udf())
+
+    ent1_pos_col = column_for_component(schema, entity_1_path, "Boxes2D", "Position2D")
+    ent1_half_size_col = column_for_component(schema, entity_1_path, "Boxes2D", "HalfSize2D")
+    ent2_pos_col = column_for_component(schema, entity_2_path, "Boxes2D", "Position2D")
+    ent2_half_size_col = column_for_component(schema, entity_2_path, "Boxes2D", "HalfSize2D")
+
+    output_col = f"{output_path}:Scalar"
+
+    df = df.with_column(
+        output_col,
+        iou_udf(
+            col(ent1_pos_col),
+            col(ent1_half_size_col),
+            col(ent2_pos_col),
+            col(ent2_half_size_col),
+        )
+    )
+
+    if remove_nulls:
+        df = df.filter(col(output_col).is_not_null())
+
+    return df.select(
+        *prior_columns,
+        col(output_col).alias(f"{output_path}:Scalar", metadata={"rerun.entity_path": output_path}),
     )

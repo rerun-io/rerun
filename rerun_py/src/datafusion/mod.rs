@@ -3,7 +3,9 @@ use pyo3::{wrap_pyfunction, Bound, PyResult, Python};
 
 mod scalar_udfs;
 
-use scalar_udfs::{bounded_image_extraction_udf, depth_image_to_point_cloud_udf};
+use scalar_udfs::{
+    bounded_image_extraction_udf, depth_image_to_point_cloud_udf, intersection_over_union_udf,
+};
 
 pub(crate) fn register(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     let datafusion_module = PyModule::new(py, "datafusion")?;
@@ -15,6 +17,10 @@ pub(crate) fn register(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> 
     )?)?;
     datafusion_module.add_function(wrap_pyfunction!(
         depth_image_to_point_cloud_udf,
+        &datafusion_module
+    )?)?;
+    datafusion_module.add_function(wrap_pyfunction!(
+        intersection_over_union_udf,
         &datafusion_module
     )?)?;
 
