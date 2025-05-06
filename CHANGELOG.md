@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - WIP - WIP
+## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - 2025-05-06 - RRD migration and bugfixes
 
 ### ✨ Overview & highlights
 
@@ -41,6 +41,7 @@ We currently have no plans for compatibility or migrations across multiple versi
 #### 🪳 Bug fixes
 - Fix world grid not scaling correctly when camera is below the grid [#9867](https://github.com/rerun-io/rerun/pull/9867)
 - Tensor view improvements [#9831](https://github.com/rerun-io/rerun/pull/9831)
+- Fix size check for NV12 & YUY2 formats in C++ and Rust [#9890](https://github.com/rerun-io/rerun/pull/9890)
 
 
 ## [0.23.1](https://github.com/rerun-io/rerun/compare/0.23.0...0.23.1) - 2025-04-25 - Fix notebooks
