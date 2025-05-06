@@ -221,8 +221,8 @@ impl ViewClass for TimeSeriesView {
             indicated_entities.0.extend(indicated.0.iter().cloned());
         }
 
-        // Because SeriesLine is our fallback visualizer, also include any entities for which
-        // SeriesLine is visualizable, even if not indicated.
+        // Because SeriesLines is our fallback visualizer, also include any entities for which
+        // SeriesLines is visualizable, even if not indicated.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
             .get(&SeriesLinesSystem::identifier())
