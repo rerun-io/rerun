@@ -6,7 +6,7 @@ use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
 use re_log_types::hash::Hash64;
 use re_log_types::Instance;
-use re_types::ComponentName;
+use re_types::{ComponentDescriptor, ComponentName};
 use re_ui::{UiExt as _, UiLayout};
 
 use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
@@ -245,16 +245,16 @@ impl ComponentUiRegistry {
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descriptor: &ComponentDescriptor,
         unit: &UnitChunkShared,
         instance: &Instance,
     ) {
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let Some(array) = unit.component_batch_raw_by_component_name(component_name) else {
-            re_log::error_once!("Couldn't get {component_name}: missing");
-            ui.error_with_details_on_hover(format!("Couldn't get {component_name}: missing"));
+        let Some(array) = unit.component_batch_raw(component_descriptor) else {
+            re_log::error_once!("Couldn't get {component_descriptor}: missing");
+            ui.error_with_details_on_hover(format!("Couldn't get {component_descriptor}: missing"));
             return;
         };
 
@@ -283,7 +283,7 @@ impl ComponentUiRegistry {
             query,
             db,
             entity_path,
-            component_name,
+            component_descriptor.component_name,
             unit.row_id().map(Hash64::hash),
             component_raw.as_ref(),
         );

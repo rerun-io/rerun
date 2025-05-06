@@ -16,24 +16,12 @@ use re_viewport_blueprint::ViewportBlueprint;
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
     let ComponentPath {
         entity_path,
-        component_name,
+        component_descriptor,
     } = component_path;
     let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-
-    // TODO(#6889): `ComponentPath` should always have a descriptor and we should be iterating over descriptors.
-    let Some(component_descr) = db
-        .storage_engine()
-        .store()
-        .entity_component_descriptors_with_name(entity_path, *component_name)
-        .into_iter()
-        .next()
-    else {
-        return false;
-    };
-
     db.storage_engine()
         .store()
-        .entity_has_static_component(entity_path, &component_descr)
+        .entity_has_static_component(entity_path, component_descriptor)
 }
 
 #[must_use]
@@ -157,11 +145,11 @@ impl ItemTitle {
 
         let ComponentPath {
             entity_path,
-            component_name,
+            component_descriptor,
         } = component_path;
 
         Self::new(
-            component_name.short_name(),
+            component_descriptor.short_name(),
             if is_static {
                 &icons::COMPONENT_STATIC
             } else {
@@ -171,7 +159,7 @@ impl ItemTitle {
         .with_tooltip(format!(
             "{} component {} of entity '{}'",
             if is_static { "Static" } else { "Temporal" },
-            component_name.full_name(),
+            component_descriptor.full_name(),
             entity_path
         ))
     }
