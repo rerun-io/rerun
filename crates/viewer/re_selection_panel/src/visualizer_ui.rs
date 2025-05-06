@@ -197,13 +197,13 @@ fn visualizer_components(
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result.overrides.get(&component_name);
+        let result_override = query_result.overrides.get_by_name(&component_name);
         let raw_override = non_empty_component_batch_raw(result_override, &component_name);
 
-        let result_store = query_result.results.get(&component_name);
+        let result_store = query_result.results.get_by_name(&component_name);
         let raw_store = non_empty_component_batch_raw(result_store, &component_name);
 
-        let result_default = query_result.defaults.get(&component_name);
+        let result_default = query_result.defaults.get_by_name(&component_name);
         let raw_default = non_empty_component_batch_raw(result_default, &component_name);
 
         let raw_fallback = visualizer

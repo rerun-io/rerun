@@ -127,9 +127,18 @@ impl RangeResults {
     }
 
     /// Returns the [`Chunk`]s for the specified `component_name`.
+    // TODO(#6889): Remove in favor of `get`
     #[inline]
-    pub fn get(&self, component_name: &ComponentName) -> Option<&[Chunk]> {
+    pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&[Chunk]> {
         let component_descr = self.find_component_descriptor(*component_name)?;
+        self.components
+            .get(component_descr)
+            .map(|chunks| chunks.as_slice())
+    }
+
+    /// Returns the [`Chunk`]s for the specified `component_name`.
+    #[inline]
+    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&[Chunk]> {
         self.components
             .get(component_descr)
             .map(|chunks| chunks.as_slice())
@@ -138,14 +147,26 @@ impl RangeResults {
     /// Returns the [`Chunk`]s for the specified `component_name`.
     ///
     /// Returns an error if the component is not present.
+    // TODO(#6889): Remove in favor of `get_required`
     #[inline]
-    pub fn get_required(&self, component_name: &ComponentName) -> crate::Result<&[Chunk]> {
+    pub fn get_required_by_name(&self, component_name: &ComponentName) -> crate::Result<&[Chunk]> {
         let component_descr =
             self.find_component_descriptor(*component_name)
                 .ok_or(QueryError::PrimaryNotFound(ComponentDescriptor::new(
                     *component_name,
                 )))?;
 
+        self.components.get(component_descr).map_or_else(
+            || Err(QueryError::PrimaryNotFound(component_descr.clone())),
+            |chunks| Ok(chunks.as_slice()),
+        )
+    }
+
+    /// Returns the [`Chunk`]s for the specified component.
+    ///
+    /// Returns an error if the component is not present.
+    #[inline]
+    pub fn get_required(&self, component_descr: &ComponentDescriptor) -> crate::Result<&[Chunk]> {
         self.components.get(component_descr).map_or_else(
             || Err(QueryError::PrimaryNotFound(component_descr.clone())),
             |chunks| Ok(chunks.as_slice()),

@@ -148,13 +148,13 @@ impl ViewProperty {
 
     pub fn component_row_id(&self, component_name: ComponentName) -> Option<re_chunk::RowId> {
         self.query_results
-            .get(&component_name)
+            .get_by_name(&component_name)
             .and_then(|unit| unit.row_id())
     }
 
     pub fn component_raw(&self, component_name: ComponentName) -> Option<arrow::array::ArrayRef> {
         self.query_results
-            .get(&component_name)
+            .get_by_name(&component_name)
             .and_then(|unit| unit.component_batch_raw_by_component_name(component_name))
     }
 

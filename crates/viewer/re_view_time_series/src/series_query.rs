@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_types::{components, Component as _, ComponentName, Loggable as _, RowId};
+use re_types::{archetypes, components, Component as _, ComponentName, Loggable as _, RowId};
 use re_view::{clamped_or_nothing, HybridRangeResults, RangeResultsExt as _};
 use re_viewer_context::{auto_color_egui, QueryContext, TypedComponentFallbackProvider};
 
@@ -68,7 +68,10 @@ pub fn allocate_plot_points(
     let points = all_scalar_chunks
         .iter()
         .flat_map(|chunk| {
-            chunk.iter_component_indices(query.timeline(), &components::Scalar::name())
+            chunk.iter_component_indices(
+                query.timeline(),
+                &archetypes::Scalars::descriptor_scalars(),
+            )
         })
         .map(|(data_time, _)| PlotPoint {
             time: data_time.as_i64(),
@@ -175,7 +178,7 @@ pub fn collect_colors(
 
         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(query.timeline(), &components::Color::name()),
+                chunk.iter_component_indices_by_name(query.timeline(), &components::Color::name()),
                 chunk.iter_slices::<u32>(components::Color::name())
             )
         });
@@ -276,7 +279,7 @@ pub fn collect_radius_ui(
 
             let all_radii = all_radius_chunks.iter().flat_map(|chunk| {
                 itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), &radius_component_name),
+                    chunk.iter_component_indices_by_name(query.timeline(), &radius_component_name),
                     chunk.iter_slices::<f32>(radius_component_name)
                 )
             });
@@ -316,7 +319,10 @@ pub fn all_scalars_indices<'a>(
     all_scalar_chunks
         .iter()
         .flat_map(|chunk| {
-            chunk.iter_component_indices(query.timeline(), &components::Scalar::name())
+            chunk.iter_component_indices(
+                query.timeline(),
+                &archetypes::Scalars::descriptor_scalars(),
+            )
         })
         // That is just so we can satisfy the `range_zip` contract later on.
         .map(|index| (index, ()))

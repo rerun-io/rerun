@@ -276,22 +276,48 @@ impl LatestAtResults {
 
 impl LatestAtResults {
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
+    // TODO(#6889): Remove this in favor or `get`
     #[inline]
-    pub fn get(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
+    pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
         let component_descr = self.find_component_descriptor(*component_name)?;
+        self.components.get(component_descr)
+    }
+
+    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
+    #[inline]
+    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&UnitChunkShared> {
         self.components.get(component_descr)
     }
 
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
+    // TODO(#6889): Remove this in favor or `get`
     #[inline]
-    pub fn get_required(&self, component_name: &ComponentName) -> crate::Result<&UnitChunkShared> {
+    pub fn get_required_by_name(
+        &self,
+        component_name: &ComponentName,
+    ) -> crate::Result<&UnitChunkShared> {
         let component_descr =
             self.find_component_descriptor(*component_name)
                 .ok_or(QueryError::PrimaryNotFound(ComponentDescriptor::new(
                     *component_name,
                 )))?;
+        if let Some(component) = self.components.get(component_descr) {
+            Ok(component)
+        } else {
+            Err(QueryError::PrimaryNotFound(component_descr.clone()))
+        }
+    }
+
+    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
+    ///
+    /// Returns an error if the component is not present.
+    #[inline]
+    pub fn get_required(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> crate::Result<&UnitChunkShared> {
         if let Some(component) = self.components.get(component_descr) {
             Ok(component)
         } else {
