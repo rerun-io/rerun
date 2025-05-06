@@ -390,6 +390,9 @@ pub struct StoreInfo {
 
     pub store_source: StoreSource,
 
+    /// When the recording started.
+    pub started: Option<Time>,
+
     /// The Rerun version used to encoded the RRD data.
     ///
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
@@ -402,6 +405,18 @@ impl StoreInfo {
     /// creating their own blueprint.
     pub fn is_app_default_blueprint(&self) -> bool {
         self.application_id.as_str() == self.store_id.as_str()
+    }
+}
+
+/// A date-time represented as nanoseconds since unix epoch
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct Time(i64);
+
+impl Time {
+    #[inline]
+    pub fn nanos_since_epoch(self) -> i64 {
+        self.0
     }
 }
 
@@ -753,6 +768,7 @@ impl SizeBytes for StoreInfo {
             store_id,
             cloned_from: _,
             store_source,
+            started: _,
             store_version,
         } = self;
 

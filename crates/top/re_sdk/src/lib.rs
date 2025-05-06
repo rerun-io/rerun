@@ -217,6 +217,7 @@ pub fn new_store_info(
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },
+        started: None,
         store_version: Some(re_build_info::CrateVersion::LOCAL),
     }
 }

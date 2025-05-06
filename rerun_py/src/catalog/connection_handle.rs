@@ -321,6 +321,7 @@ impl ConnectionHandle {
                         store_id: StoreId::random(StoreKind::Recording),
                         cloned_from: None,
                         store_source: StoreSource::Unknown,
+                        started: None,
                         store_version: None,
                     };
 

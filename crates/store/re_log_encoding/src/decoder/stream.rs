@@ -307,6 +307,7 @@ mod tests {
                 store_id: StoreId::from_string(StoreKind::Recording, "test".into()),
                 cloned_from: None,
                 store_source: StoreSource::Unknown,
+                started: None,
                 store_version: Some(CrateVersion::LOCAL),
             },
         })
