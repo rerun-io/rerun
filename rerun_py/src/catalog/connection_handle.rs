@@ -219,6 +219,7 @@ impl ConnectionHandle {
         })
     }
 
+    /// Wait for the provided tasks to finish.
     pub fn wait_for_tasks(
         &mut self,
         py: Python<'_>,

@@ -117,7 +117,6 @@ impl PyDataset {
         let task_ids =
             connection.register_with_dataset(self_.py(), dataset_id, vec![recording_uri])?;
 
-        //TODO: does this throw in case of timeout? If so, it must be explicit
         connection.wait_for_tasks(self_.py(), &task_ids, register_timeout)
     }
 
