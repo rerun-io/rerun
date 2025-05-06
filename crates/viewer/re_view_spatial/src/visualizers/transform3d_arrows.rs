@@ -286,6 +286,10 @@ impl VisualizerSystem for AxisLengthDetector {
         query_info.indicators = Default::default();
 
         query_info
+            .required
+            .insert(Transform3D::descriptor_axis_length());
+
+        query_info
     }
 
     fn execute(
