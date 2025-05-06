@@ -101,6 +101,7 @@ pub fn migrate_record_batch(batch: &ArrowRecordBatch) -> ArrowRecordBatch {
     }
 
     let archetype_renames = BTreeMap::from([
+        // Deprecated in 0.23, removed in 0.24:
         (
             "rerun.archetypes.Scalar",
             ArchetypeRename {
