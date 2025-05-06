@@ -66,7 +66,6 @@ half.workspace = true
 image = { workspace = true, features = ["jpeg", "png"] }
 indexmap = { workspace = true, features = ["std", "serde"] }
 itertools.workspace = true
-linked-hash-map.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
