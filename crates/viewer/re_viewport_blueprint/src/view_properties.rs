@@ -162,8 +162,10 @@ impl ViewProperty {
         component_descr: &ComponentDescriptor,
     ) -> Option<arrow::array::ArrayRef> {
         self.query_results
-            .get(component_descr)
-            .and_then(|unit| unit.component_batch_raw(component_descr))
+            .get_by_name(&component_descr.component_name)
+            .and_then(|unit| {
+                unit.component_batch_raw_by_component_name(component_descr.component_name)
+            })
     }
 
     fn component_or_fallback_raw(
