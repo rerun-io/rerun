@@ -1,4 +1,3 @@
-use std::fmt::Debug;
 
 use egui::{emath::RectTransform, NumExt as _};
 use glam::{Affine3A, Quat, Vec3};

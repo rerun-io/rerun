@@ -8,7 +8,7 @@ use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
-        archetypes::{Background, MapBackground, MapZoom},
+        archetypes::{MapBackground, MapZoom},
         components::{MapProvider, ZoomLevel},
     },
     View as _, ViewClassIdentifier,

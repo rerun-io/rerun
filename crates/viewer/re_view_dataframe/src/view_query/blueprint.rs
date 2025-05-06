@@ -5,7 +5,7 @@ use re_log_types::{EntityPath, ResolvedTimeRange, Timeline, TimelineName};
 use re_sorbet::{ColumnSelector, ComponentColumnSelector};
 use re_types::blueprint::archetypes::DataframeQuery;
 use re_types::blueprint::{components, datatypes};
-use re_types::Archetype;
+use re_types::Archetype as _;
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
 use crate::dataframe_ui::HideColumnAction;
