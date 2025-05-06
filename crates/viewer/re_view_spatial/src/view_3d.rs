@@ -490,6 +490,7 @@ fn view_property_ui_grid3d(
                                 ctx,
                                 fallback_provider,
                                 view_state,
+                                &LineGrid3D::descriptor_color(),
                             )
                         else {
                             ui.error_label("Failed to query color component");

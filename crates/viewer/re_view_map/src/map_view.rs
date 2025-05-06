@@ -215,7 +215,12 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let map_provider = map_background.component_or_fallback::<MapProvider>(ctx, self, state)?;
+        let map_provider = map_background.component_or_fallback::<MapProvider>(
+            ctx,
+            self,
+            state,
+            &MapBackground::descriptor_provider(),
+        )?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;

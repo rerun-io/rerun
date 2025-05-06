@@ -300,7 +300,7 @@ impl LatestAtResults {
 impl LatestAtResults {
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     #[inline]
-    pub fn get(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
+    pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
         let component_descr = self.find_component_descriptor(*component_name)?;
         self.components.get(component_descr)
     }
@@ -310,7 +310,7 @@ impl LatestAtResults {
     /// Returns an error if the component is not present.
     #[inline]
     pub fn get_required(&self, component_name: &ComponentName) -> crate::Result<&UnitChunkShared> {
-        if let Some(component) = self.get(component_name) {
+        if let Some(component) = self.get_by_name(component_name) {
             Ok(component)
         } else {
             Err(QueryError::PrimaryNotFound(*component_name))

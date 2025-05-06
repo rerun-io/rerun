@@ -97,23 +97,26 @@ impl ViewProperty {
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,
         view_state: &dyn re_viewer_context::ViewState,
+        component_descr: &ComponentDescriptor,
     ) -> Result<C, ViewPropertyQueryError> {
-        self.component_array_or_fallback::<C>(ctx, fallback_provider, view_state)?
+        self.component_array_or_fallback::<C>(ctx, fallback_provider, view_state, component_descr)?
             .into_iter()
             .next()
             .ok_or(ComponentFallbackError::UnexpectedEmptyFallback.into())
     }
 
+    // TODO(#6889): It's a bit sad that we can't derive the type of `C` from the `ComponentDescriptor`, which means
+    //              that the call site has to specify the return type.
     /// Get the component array for a given type or its fallback if the component is not present or empty.
     pub fn component_array_or_fallback<C: re_types::Component>(
         &self,
         ctx: &ViewerContext<'_>,
         fallback_provider: &dyn ComponentFallbackProvider,
         view_state: &dyn re_viewer_context::ViewState,
+        component_descr: &ComponentDescriptor,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
-        let component_name = C::name();
         C::from_arrow(
-            self.component_or_fallback_raw(ctx, component_name, fallback_provider, view_state)
+            self.component_or_fallback_raw(ctx, component_descr, fallback_provider, view_state)
                 .as_ref(),
         )
         .map_err(|err| err.into())
@@ -161,10 +164,12 @@ impl ViewProperty {
     fn component_or_fallback_raw(
         &self,
         ctx: &ViewerContext<'_>,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
         fallback_provider: &dyn ComponentFallbackProvider,
         view_state: &dyn re_viewer_context::ViewState,
     ) -> arrow::array::ArrayRef {
+        // TODO(#6889): Tagged components should go all the way.
+        let component_name = component_descr.component_name;
         if let Some(value) = self.component_raw(component_name) {
             if value.len() > 0 {
                 return value;

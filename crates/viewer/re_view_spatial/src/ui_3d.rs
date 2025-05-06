@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use egui::{emath::RectTransform, NumExt as _};
 use glam::{Affine3A, Quat, Vec3};
 use web_time::Instant;
@@ -725,17 +727,40 @@ impl SpatialView3D {
         grid_config: &ViewProperty,
         state: &SpatialViewState,
     ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError> {
-        if !**grid_config.component_or_fallback::<Visible>(ctx, self, state)? {
+        if !**grid_config.component_or_fallback::<Visible>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_visible(),
+        )? {
             return Ok(None);
         }
 
-        let spacing = **grid_config.component_or_fallback::<GridSpacing>(ctx, self, state)?;
+        let spacing = **grid_config.component_or_fallback::<GridSpacing>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_spacing(),
+        )?;
         let thickness_ui = **grid_config
-            .component_or_fallback::<re_types::components::StrokeWidth>(ctx, self, state)?;
-        let color =
-            grid_config.component_or_fallback::<re_types::components::Color>(ctx, self, state)?;
-        let plane =
-            grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
+            .component_or_fallback::<re_types::components::StrokeWidth>(
+                ctx,
+                self,
+                state,
+                &LineGrid3D::descriptor_stroke_width(),
+            )?;
+        let color = grid_config.component_or_fallback::<re_types::components::Color>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_color(),
+        )?;
+        let plane = grid_config.component_or_fallback::<re_types::components::Plane3D>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_plane(),
+        )?;
 
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(
             ctx.render_ctx(),
