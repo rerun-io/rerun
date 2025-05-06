@@ -23,11 +23,11 @@ use crate::{
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.
 #[derive(Default, Debug)]
-pub struct SeriesPointSystem {
+pub struct SeriesPointsSystem {
     pub all_series: Vec<PlotSeries>,
 }
 
-impl IdentifiedViewSystem for SeriesPointSystem {
+impl IdentifiedViewSystem for SeriesPointsSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "SeriesPoints".into()
     }
@@ -37,7 +37,7 @@ impl IdentifiedViewSystem for SeriesPointSystem {
 // visible.
 const DEFAULT_MARKER_SIZE: f32 = 3.0;
 
-impl VisualizerSystem for SeriesPointSystem {
+impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
         query_info
@@ -71,19 +71,19 @@ impl VisualizerSystem for SeriesPointSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<Color> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<Color> for SeriesPointsSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
-impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<MarkerSize> for SeriesPointsSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> MarkerSize {
         MarkerSize::from(DEFAULT_MARKER_SIZE)
     }
 }
 
-impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<Name> for SeriesPointsSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
         let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
 
@@ -104,15 +104,15 @@ impl TypedComponentFallbackProvider<Name> for SeriesPointSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointSystem {
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesPointsSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
         true.into()
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesPointSystem => [Color, MarkerSize, Name, SeriesVisible]);
+re_viewer_context::impl_component_fallback_provider!(SeriesPointsSystem => [Color, MarkerSize, Name, SeriesVisible]);
 
-impl SeriesPointSystem {
+impl SeriesPointsSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 

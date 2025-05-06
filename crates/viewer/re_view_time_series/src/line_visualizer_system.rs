@@ -25,11 +25,11 @@ use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
-pub struct SeriesLineSystem {
+pub struct SeriesLinesSystem {
     pub all_series: Vec<PlotSeries>,
 }
 
-impl IdentifiedViewSystem for SeriesLineSystem {
+impl IdentifiedViewSystem for SeriesLinesSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "SeriesLines".into()
     }
@@ -37,7 +37,7 @@ impl IdentifiedViewSystem for SeriesLineSystem {
 
 const DEFAULT_STROKE_WIDTH: f32 = 0.75;
 
-impl VisualizerSystem for SeriesLineSystem {
+impl VisualizerSystem for SeriesLinesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
         query_info
@@ -71,19 +71,19 @@ impl VisualizerSystem for SeriesLineSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<Color> for SeriesLinesSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
-impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLinesSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
         StrokeWidth(DEFAULT_STROKE_WIDTH.into())
     }
 }
 
-impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<Name> for SeriesLinesSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
         let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
 
@@ -104,15 +104,15 @@ impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<SeriesVisible> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesLinesSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
         true.into()
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name, SeriesVisible]);
+re_viewer_context::impl_component_fallback_provider!(SeriesLinesSystem => [Color, StrokeWidth, Name, SeriesVisible]);
 
-impl SeriesLineSystem {
+impl SeriesLinesSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
