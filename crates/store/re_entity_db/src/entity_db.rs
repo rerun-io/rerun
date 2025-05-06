@@ -196,11 +196,11 @@ impl EntityDb {
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [&C::descriptor()]);
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [C::name()]);
         results
             .component_mono()
             .map(|value| (results.index(), value))
@@ -220,11 +220,11 @@ impl EntityDb {
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [&C::descriptor()]);
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [C::name()]);
         results
             .component_mono_quiet()
             .map(|value| (results.index(), value))

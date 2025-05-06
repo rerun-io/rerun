@@ -54,7 +54,7 @@ impl QueryCache {
             // TODO(#6889): Don't drop the descriptor.
             let component_name = component_descr.component_name;
 
-            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_descr);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -67,8 +67,9 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component_name);
+            let cached = cache.range(&store, query, entity_path, &key.component_descr);
             if !cached.is_empty() {
+                // TODO(#6889): Make `RangeResults` descriptor driven.
                 results.add(component_name, cached);
             }
         }
@@ -269,7 +270,7 @@ impl RangeCache {
         store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Vec<Chunk> {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
@@ -283,16 +284,7 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        // TODO(#6889): Use descriptor directly or list out all matching.
-        let Some(component_descriptor) = store
-            .entity_component_descriptors_with_name(entity_path, component_name)
-            .into_iter()
-            .next()
-        else {
-            return Vec::new();
-        };
-
-        let raw_chunks = store.range_relevant_chunks(query, entity_path, &component_descriptor);
+        let raw_chunks = store.range_relevant_chunks(query, entity_path, component_descr);
         for raw_chunk in &raw_chunks {
             self.chunks
                 .entry(raw_chunk.id())
@@ -301,7 +293,7 @@ impl RangeCache {
                     chunk: raw_chunk
                         // Densify the cached chunk according to the cache key's component, which
                         // will speed up future arrow operations on this chunk.
-                        .densified(&component_descriptor)
+                        .densified(component_descr)
                         // Pre-sort the cached chunk according to the cache key's timeline.
                         .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
@@ -323,7 +315,7 @@ impl RangeCache {
 
                 let chunk = &cached_sorted_chunk.chunk;
 
-                chunk.range(query, &component_descriptor)
+                chunk.range(query, component_descr)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect()

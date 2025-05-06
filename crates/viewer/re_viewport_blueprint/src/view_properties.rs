@@ -202,17 +202,20 @@ impl ViewProperty {
 
     /// Resets all components to empty values, i.e. the fallback.
     pub fn reset_all_components_to_empty(&self, ctx: &ViewerContext<'_>) {
-        for &component_name in self.query_results.components.keys() {
-            ctx.clear_blueprint_component_by_name(&self.blueprint_store_path, component_name);
+        for component_descr in self.query_results.components.keys() {
+            ctx.clear_blueprint_component_by_name(
+                &self.blueprint_store_path,
+                component_descr.component_name,
+            );
         }
     }
 
     /// Returns whether any property is non-empty.
     pub fn any_non_empty(&self) -> bool {
-        self.query_results
-            .components
-            .keys()
-            .any(|name| self.component_raw(*name).is_some_and(|raw| !raw.is_empty()))
+        self.query_results.components.keys().any(|descr| {
+            self.component_raw(descr.component_name)
+                .is_some_and(|raw| !raw.is_empty())
+        })
     }
 
     /// Create a query context for this view property.

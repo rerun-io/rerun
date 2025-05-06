@@ -26,7 +26,7 @@ fn query_latest_component<C: re_types_core::Component>(
     let results = db
         .storage_engine()
         .cache()
-        .latest_at(query, entity_path, [C::descriptor()]);
+        .latest_at(query, entity_path, [C::name()]);
 
     let (data_time, row_id) = results.index();
     let data = results.component_mono::<C>()?;

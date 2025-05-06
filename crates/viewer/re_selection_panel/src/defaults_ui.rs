@@ -7,7 +7,8 @@ use re_chunk_store::LatestAtQuery;
 use re_data_ui::{sorted_component_name_list_for_ui, DataUi as _};
 use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
-use re_types_core::{ComponentDescriptor, ComponentName, ComponentNameSet};
+use re_types::ComponentNameSet;
+use re_types_core::{ComponentDescriptor, ComponentName};
 use re_ui::{list_item::LabelContent, UiExt as _};
 use re_viewer_context::{
     blueprint_timeline, ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _,
@@ -201,10 +202,11 @@ fn active_defaults(
         .filter(|c| {
             db.storage_engine()
                 .cache()
-                .latest_at(query, &view.defaults_path, [*c])
-                .component_batch_raw(c)
+                .latest_at(query, &view.defaults_path, [c])
+                .component_batch_raw_by_descr(c)
                 .is_some_and(|data| !data.is_empty())
         })
+        .map(|c| c.component_name)
         .collect::<BTreeSet<_>>()
 }
 
@@ -231,20 +233,18 @@ fn components_to_show_in_add_menu(
         // Make sure we have editors. If we don't, explain to the user.
         let mut missing_editors = vec![];
 
-        component_to_vis.retain(|(component, _)| {
-            let component = *component;
-
+        component_to_vis.retain(|(component_name, _)| {
             // If there is no registered editor, don't let the user create an override
             // TODO(andreas): Can only handle single line editors right now.
             let types = ctx
                 .viewer_ctx
                 .component_ui_registry()
-                .registered_ui_types(component);
+                .registered_ui_types(*component_name);
 
             if types.contains(ComponentUiTypes::SingleLineEditor) {
                 true // show it
             } else {
-                missing_editors.push(component);
+                missing_editors.push(*component_name);
                 false // don't show
             }
         });

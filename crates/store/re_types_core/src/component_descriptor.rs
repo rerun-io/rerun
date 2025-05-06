@@ -6,6 +6,7 @@ use crate::{ArchetypeFieldName, ArchetypeName, ComponentName};
 ///
 /// Every component is uniquely identified by its [`ComponentDescriptor`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ComponentDescriptor {
     /// Optional name of the `Archetype` associated with this data.
     ///

@@ -295,10 +295,9 @@ impl AnyColumn {
                             PyValueError::new_err(format!("Invalid component path {name:?}: {err}"))
                         })?;
 
-                    Ok(ColumnSelector::Component(ComponentColumnSelector {
-                        entity_path: component_path.entity_path,
-                        component_name: component_path.component_name.to_string(),
-                    }))
+                    Ok(ColumnSelector::Component(ComponentColumnSelector::from(
+                        component_path,
+                    )))
                 }
             }
             Self::IndexDescriptor(desc) => Ok(ColumnDescriptor::Time(desc.0).into()),
@@ -331,10 +330,7 @@ impl AnyComponentColumn {
                         PyValueError::new_err(format!("Invalid component path '{name}': {err}"))
                     })?;
 
-                Ok(ComponentColumnSelector {
-                    entity_path: component_path.entity_path,
-                    component_name: component_path.component_name.to_string(),
-                })
+                Ok(ComponentColumnSelector::from(component_path))
             }
             Self::ComponentDescriptor(desc) => Ok(desc.0.into()),
             Self::ComponentSelector(selector) => Ok(selector.0),
@@ -403,44 +399,45 @@ impl IndexValuesLike<'_> {
             }
             Self::CatchAll(any) => {
                 // If any has the `.chunks` attribute, we can try to try each chunk as pyarrow array
-                if let Ok(chunks) = any.getattr("chunks") {
-                    let mut values = BTreeSet::new();
-                    for chunk in chunks.try_iter()? {
-                        let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
-                        let array = make_array(chunk.0.clone());
+                match any.getattr("chunks") {
+                    Ok(chunks) => {
+                        let mut values = BTreeSet::new();
+                        for chunk in chunks.try_iter()? {
+                            let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
+                            let array = make_array(chunk.0.clone());
 
-                        let int_array =
-                            array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
-                                PyTypeError::new_err(
-                                    "pyarrow.Array for IndexValuesLike must be of type int64.",
-                                )
-                            })?;
-
-                        values.extend(
-                            int_array
-                                .iter()
-                                .map(|v| {
-                                    v.map_or_else(
-                                        || re_chunk_store::TimeInt::STATIC,
-                                        // The use of temporal here should be fine even if the data is
-                                        // not actually temporal. The important thing is we are converting
-                                        // from an i64 input
-                                        re_chunk_store::TimeInt::new_temporal,
+                            let int_array =
+                                array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
+                                    PyTypeError::new_err(
+                                        "pyarrow.Array for IndexValuesLike must be of type int64.",
                                     )
-                                })
-                                .collect::<BTreeSet<_>>(),
-                        );
-                    }
+                                })?;
 
-                    if values.len() != any.len()? {
-                        return Err(PyValueError::new_err("Index values must be unique."));
+                            values.extend(
+                                int_array
+                                    .iter()
+                                    .map(|v| {
+                                        v.map_or_else(
+                                            || re_chunk_store::TimeInt::STATIC,
+                                            // The use of temporal here should be fine even if the data is
+                                            // not actually temporal. The important thing is we are converting
+                                            // from an i64 input
+                                            re_chunk_store::TimeInt::new_temporal,
+                                        )
+                                    })
+                                    .collect::<BTreeSet<_>>(),
+                            );
+                        }
+                        if values.len() != any.len()? {
+                            return Err(PyValueError::new_err("Index values must be unique."));
+                        }
+                        Ok(values)
                     }
-
-                    Ok(values)
-                } else {
-                    Err(PyTypeError::new_err(
-                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray",
-                    ))
+                    Err(err) => {
+                        Err(PyTypeError::new_err(
+                            format!("IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray. {err}"),
+                        ))
+                    }
                 }
             }
         }
