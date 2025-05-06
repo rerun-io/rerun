@@ -8,9 +8,8 @@ use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
-        archetypes::{MapBackground, MapZoom},
-        components::MapProvider,
-        components::ZoomLevel,
+        archetypes::{Background, MapBackground, MapZoom},
+        components::{MapProvider, ZoomLevel},
     },
     View as _, ViewClassIdentifier,
 };
@@ -252,7 +251,7 @@ impl ViewClass for MapView {
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
-            .component_or_empty::<ZoomLevel>()?
+            .component_or_empty::<ZoomLevel>(&MapZoom::descriptor_zoom())?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
             span.zoom_for_screen_size(

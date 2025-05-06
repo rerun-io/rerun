@@ -126,17 +126,18 @@ impl ViewProperty {
     #[inline]
     pub fn component_or_empty<C: re_types::Component>(
         &self,
+        component_descr: &ComponentDescriptor,
     ) -> Result<Option<C>, DeserializationError> {
-        self.component_array()
+        self.component_array(component_descr)
             .map(|v| v.and_then(|v| v.into_iter().next()))
     }
 
     /// Get the component array for a given type, not using any fallbacks.
     pub fn component_array<C: re_types::Component>(
         &self,
+        component_descr: &ComponentDescriptor,
     ) -> Result<Option<Vec<C>>, DeserializationError> {
-        let component_name = C::name();
-        self.component_raw(component_name)
+        self.component_raw(component_descr)
             .map(|raw| C::from_arrow(raw.as_ref()))
             .transpose()
     }
@@ -144,20 +145,26 @@ impl ViewProperty {
     /// Get the component array for a given type or an empty array, not using any fallbacks.
     pub fn component_array_or_empty<C: re_types::Component>(
         &self,
+        component_descr: &ComponentDescriptor,
     ) -> Result<Vec<C>, DeserializationError> {
-        self.component_array()
+        self.component_array(component_descr)
             .map(|value| value.unwrap_or_default())
     }
 
     pub fn component_row_id(&self, component_name: ComponentName) -> Option<re_chunk::RowId> {
         self.query_results
-            .get(&component_name)
+            .get_by_name(&component_name)
             .and_then(|unit| unit.row_id())
     }
 
-    pub fn component_raw(&self, component_name: ComponentName) -> Option<arrow::array::ArrayRef> {
+    pub fn component_raw(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<arrow::array::ArrayRef> {
+        // TODO(#6889): Tagged components should go all the way.
+        let component_name = component_descr.component_name;
         self.query_results
-            .get(&component_name)
+            .get_by_name(&component_name)
             .and_then(|unit| unit.component_batch_raw_by_component_name(component_name))
     }
 
@@ -168,14 +175,15 @@ impl ViewProperty {
         fallback_provider: &dyn ComponentFallbackProvider,
         view_state: &dyn re_viewer_context::ViewState,
     ) -> arrow::array::ArrayRef {
-        // TODO(#6889): Tagged components should go all the way.
-        let component_name = component_descr.component_name;
-        if let Some(value) = self.component_raw(component_name) {
+        if let Some(value) = self.component_raw(component_descr) {
             if value.len() > 0 {
                 return value;
             }
         }
-        fallback_provider.fallback_for(&self.query_context(ctx, view_state), component_name)
+        fallback_provider.fallback_for(
+            &self.query_context(ctx, view_state),
+            component_descr.component_name,
+        )
     }
 
     /// Save change to a blueprint component.
@@ -220,10 +228,10 @@ impl ViewProperty {
 
     /// Returns whether any property is non-empty.
     pub fn any_non_empty(&self) -> bool {
-        self.query_results.components.keys().any(|descr| {
-            self.component_raw(descr.component_name)
-                .is_some_and(|raw| !raw.is_empty())
-        })
+        self.query_results
+            .components
+            .keys()
+            .any(|descr| self.component_raw(descr).is_some_and(|raw| !raw.is_empty()))
     }
 
     /// Create a query context for this view property.

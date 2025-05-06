@@ -43,9 +43,9 @@ impl HybridLatestAtResults<'_> {
     pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
         let component_name = component_name.into();
         self.overrides
-            .get(&component_name)
-            .or_else(|| self.results.get(&component_name))
-            .or_else(|| self.defaults.get(&component_name))
+            .get_by_name(&component_name)
+            .or_else(|| self.results.get_by_name(&component_name))
+            .or_else(|| self.defaults.get_by_name(&component_name))
     }
 
     pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
@@ -257,14 +257,14 @@ pub trait RangeResultsExt {
 impl RangeResultsExt for LatestAtResults {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        self.get(component_name)
+        self.get_by_name(component_name)
             .cloned()
             .map(|chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]))
     }
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        self.get(component_name).cloned().map_or_else(
+        self.get_by_name(component_name).cloned().map_or_else(
             || Cow::Owned(vec![]),
             |chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
         )
@@ -286,7 +286,7 @@ impl RangeResultsExt for RangeResults {
 impl RangeResultsExt for HybridRangeResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -301,7 +301,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
         re_tracing::profile_function!();
 
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -312,7 +312,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 
             // NOTE: Because this is a range query, we always need the defaults to come first,
             // since range queries don't have any state to bootstrap from.
-            let defaults = self.defaults.get(component_name).map(|unit| {
+            let defaults = self.defaults.get_by_name(component_name).map(|unit| {
                 // Because this is an default from the blueprint we always re-index the data as static
                 Arc::unwrap_or_clone(unit.clone().into_chunk())
                     .into_static()
@@ -336,7 +336,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -349,7 +349,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -373,7 +373,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
             }
 
             // Otherwise try to use the default data.
-            let Some(unit) = self.defaults.get(component_name) else {
+            let Some(unit) = self.defaults.get_by_name(component_name) else {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an default from the blueprint we always re-index the data as static

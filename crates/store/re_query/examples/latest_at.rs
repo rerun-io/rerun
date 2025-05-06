@@ -62,8 +62,8 @@ fn main() -> anyhow::Result<()> {
         // * `get_required` returns an error if the chunk is missing.
         // * `get` returns an option.
         let points = results.get_required(&MyPoint::name())?;
-        let colors = results.get(&MyColor::name());
-        let labels = results.get(&MyLabel::name());
+        let colors = results.get_by_name(&MyColor::name());
+        let labels = results.get_by_name(&MyLabel::name());
 
         // You can always use the standard deserialization path:
         let points = points

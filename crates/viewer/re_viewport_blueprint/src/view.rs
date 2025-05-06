@@ -377,7 +377,9 @@ impl ViewBlueprint {
             blueprint_query,
             self.id,
         );
-        let ranges = property.component_array::<blueprint_components::VisibleTimeRange>();
+        let ranges = property.component_array::<blueprint_components::VisibleTimeRange>(
+            &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+        );
 
         let time_range = ranges.ok().flatten().and_then(|ranges| {
             ranges
