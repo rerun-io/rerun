@@ -1,6 +1,6 @@
 [package]
 name = "template"
-version = "0.23.2-rc.2"
+version = "0.23.2-rc.3"
 edition = "2021"
 rust-version = "1.84"
 license = "MIT OR Apache-2.0"

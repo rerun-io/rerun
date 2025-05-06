@@ -11470,19 +11470,6 @@ packages:
   version: 1.2.5
   sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
   requires_dist:
-  - dataclasses ; python_full_version < '3.7'
-  - backports-datetime-fromisoformat ; python_full_version < '3.7'
-  - grpclib
-  - stringcase
-  - black ; extra == 'compiler'
-  - jinja2 ; extra == 'compiler'
-  - protobuf ; extra == 'compiler'
-  requires_python: '>=3.6'
-- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
-  name: betterproto
-  version: 1.2.5
-  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
-  requires_dist:
   - grpclib
   - stringcase
   - dataclasses ; python_full_version < '3.7'
@@ -25592,15 +25579,6 @@ packages:
   version: 1.16.2
   sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
   requires_dist:
-  - dataclasses ; python_full_version == '3.6.*'
-  - dataclasses-json>=0.0.25
-  - deprecated
-  requires_python: '>=3.6'
-- pypi: https://files.pythonhosted.org/packages/38/d7/0b8e35cb3ff69dd981e358e72e0a5632f847d4bd61876be04518cb4e075a/pygltflib-1.16.2.tar.gz
-  name: pygltflib
-  version: 1.16.2
-  sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
-  requires_dist:
   - dataclasses-json>=0.0.25
   - deprecated
   - dataclasses ; python_full_version == '3.6.*'
@@ -26377,8 +26355,8 @@ packages:
   - watchfiles ; extra == 'dev'
 - pypi: rerun_notebook
   name: rerun-notebook
-  version: 0.23.2rc2
-  sha256: 0362ca3283ff09e502a66140afd3899a9d5d3fe6ec17b19e5141b7f933fc6485
+  version: 0.23.2rc3
+  sha256: 76e8996a8b62dbcd1b5abb4050540e4456bddf8f56de1e98eba3cd3df0676c91
   requires_dist:
   - anywidget
   - jupyter-ui-poll
@@ -26440,8 +26418,8 @@ packages:
   requires_python: '>=3.8'
 - pypi: rerun_py
   name: rerun-sdk
-  version: 0.23.2rc2
-  sha256: cf695bf8e58b19d7929cf01d8df12fa6d80963c30e14f416fbfe7664fbd0d317
+  version: 0.23.2rc3
+  sha256: 080cd633597a8a01786ac7ab15cc0867d912588662e31d6153e1a59d876a59a9
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -26449,7 +26427,7 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.23.2rc2 ; extra == 'notebook'
+  - rerun-notebook==0.23.2rc3 ; extra == 'notebook'
   requires_python: '>=3.9'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
