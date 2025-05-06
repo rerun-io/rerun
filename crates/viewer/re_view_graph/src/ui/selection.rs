@@ -64,7 +64,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
             .expect("forces are required to have an `Enabled` component");
 
         let component_descr = ComponentDescriptor {
-            archetype_name: Some(reflection.display_name.into()),
+            archetype_name: Some(property.archetype_name),
             archetype_field_name: Some(field.name.into()),
             component_name: field.component_name,
         };

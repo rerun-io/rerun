@@ -87,13 +87,12 @@ pub fn view_property_component_ui(
     ctx: &QueryContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
-    // TODO: Why this no `ArchetypeName`
     display_name: &str,
     field: &ArchetypeFieldReflection,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let component_descr = ComponentDescriptor {
-        archetype_name: Some(display_name.into()),
+        archetype_name: Some(property.archetype_name),
         archetype_field_name: Some(field.name.into()),
         component_name: field.component_name,
     };
