@@ -180,6 +180,27 @@ class Schema:
 
         """
 
+    def column_for_selector(
+        self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
+    ) -> ComponentColumnDescriptor:
+        """
+        Look up the column descriptor for a specific selector.
+
+        Parameters
+        ----------
+        selector: str | ComponentColumnDescriptor | ComponentColumnSelector
+            The selector to look up.
+
+            String arguments are expected to follow the following format:
+            `"<entity_path>:<component_name>"`
+
+        Returns
+        -------
+        ComponentColumnDescriptor
+            The column descriptor, if it exists. Raise an exception otherwise.
+
+        """
+
 class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -1037,7 +1058,7 @@ class Dataset(Entry):
     def create_fts_index(
         self,
         *,
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
         store_position: bool = False,
         base_tokenizer: str = "simple",
@@ -1047,7 +1068,7 @@ class Dataset(Entry):
     def create_vector_index(
         self,
         *,
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
         num_partitions: int = 5,
         num_sub_vectors: int = 16,
@@ -1058,14 +1079,14 @@ class Dataset(Entry):
     def search_fts(
         self,
         query: str,
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> DataFusionTable:
         """Search the dataset using a full-text search query."""
 
     def search_vector(
         self,
         query: Any,  # VectorLike
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         top_k: int,
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""

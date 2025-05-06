@@ -258,17 +258,17 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerComponentName = IntMap<ComponentName, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerComponentDescriptor = IntMap<ComponentDescriptor, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerComponentNamePerTimeline =
-    IntMap<TimelineName, ChunkIdSetPerTimePerComponentName>;
+pub type ChunkIdSetPerTimePerComponentDescriptorPerTimeline =
+    IntMap<TimelineName, ChunkIdSetPerTimePerComponentDescriptor>;
 
-pub type ChunkIdSetPerTimePerComponentNamePerTimelinePerEntity =
-    IntMap<EntityPath, ChunkIdSetPerTimePerComponentNamePerTimeline>;
+pub type ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity =
+    IntMap<EntityPath, ChunkIdSetPerTimePerComponentDescriptorPerTimeline>;
 
-pub type ChunkIdPerComponentName = IntMap<ComponentName, ChunkId>;
+pub type ChunkIdPerComponentDescriptor = IntMap<ComponentDescriptor, ChunkId>;
 
-pub type ChunkIdPerComponentNamePerEntity = IntMap<EntityPath, ChunkIdPerComponentName>;
+pub type ChunkIdPerComponentDescriptorPerEntity = IntMap<EntityPath, ChunkIdPerComponentDescriptor>;
 
 pub type ChunkIdSetPerTimePerTimeline = IntMap<TimelineName, ChunkIdSetPerTime>;
 
@@ -427,13 +427,13 @@ pub struct ChunkStore {
     /// duplicated [`RowId`]s.
     pub(crate) chunk_ids_per_min_row_id: BTreeMap<RowId, Vec<ChunkId>>,
 
-    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentName`].
+    /// All temporal [`ChunkId`]s for all entities on all timelines, further indexed by [`ComponentDescriptor`].
     ///
     /// See also:
     /// * [`Self::temporal_chunk_ids_per_entity`].
     /// * [`Self::static_chunk_ids_per_entity`].
     pub(crate) temporal_chunk_ids_per_entity_per_component:
-        ChunkIdSetPerTimePerComponentNamePerTimelinePerEntity,
+        ChunkIdSetPerTimePerComponentDescriptorPerTimelinePerEntity,
 
     /// All temporal [`ChunkId`]s for all entities on all timelines, without the [`ComponentName`] index.
     ///
@@ -452,7 +452,7 @@ pub struct ChunkStore {
     /// Static data unconditionally shadows temporal data at query time.
     ///
     /// Existing temporal will not be removed. Events won't be fired.
-    pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentNamePerEntity,
+    pub(crate) static_chunk_ids_per_entity: ChunkIdPerComponentDescriptorPerEntity,
 
     /// Accumulated size statitistics for all static [`Chunk`]s currently present in the store.
     ///
@@ -670,31 +670,27 @@ impl ChunkStore {
     pub fn lookup_column_metadata(
         &self,
         entity_path: &EntityPath,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ColumnMetadata> {
         let ColumnMetadataState {
             is_semantically_empty,
         } = self
             .per_column_metadata
             .get(entity_path)
-            .and_then(|per_name| per_name.get(component_name))
-            .and_then(|per_component| {
-                per_component.iter().find_map(|(descr, metadata)| {
-                    (descr.component_name == *component_name).then_some(metadata)
-                })
-            })?;
+            .and_then(|per_name| per_name.get(&component_descr.component_name))
+            .and_then(|per_descr| per_descr.get(component_descr))?;
 
         let is_static = self
             .static_chunk_ids_per_entity
             .get(entity_path)
-            .is_some_and(|per_component| per_component.get(component_name).is_some());
+            .is_some_and(|per_descr| per_descr.get(component_descr).is_some());
 
-        let is_indicator = component_name.is_indicator_component();
+        let is_indicator = component_descr.component_name.is_indicator_component();
 
         use re_types_core::Archetype as _;
         let is_tombstone = re_types_core::archetypes::Clear::all_components()
             .iter()
-            .any(|descr| descr.component_name == *component_name);
+            .any(|descr| descr == component_descr);
 
         Some(ColumnMetadata {
             is_static,

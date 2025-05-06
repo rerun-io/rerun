@@ -24,16 +24,16 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_path.component_name);
+        re_tracing::profile_function!(self.component_path.component_descriptor.short_name());
 
         let ComponentPath {
             entity_path,
-            component_name,
+            component_descriptor,
         } = &self.component_path;
 
         let Some(num_instances) = self
             .unit
-            .component_batch_raw(component_name)
+            .component_batch_raw(component_descriptor)
             .map(|data| data.len())
         else {
             ui.weak("<pending>");
@@ -60,7 +60,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
             if time.is_static() {
                 let static_message_count = engine
                     .store()
-                    .num_static_events_for_component(entity_path, *component_name);
+                    .num_static_events_for_component(entity_path, component_descriptor);
                 if static_message_count > 1 {
                     ui.label(ui.ctx().warning_text(format!(
                         "Static component value was overridden {} times",
@@ -77,7 +77,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     .store()
                     .num_temporal_events_for_component_on_all_timelines(
                         entity_path,
-                        *component_name,
+                        component_descriptor,
                     );
                 if temporal_message_count > 0 {
                     ui.error_label(format!(
@@ -133,7 +133,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                 query,
                 db,
                 entity_path,
-                *component_name,
+                component_descriptor,
                 self.unit,
                 &Instance::from(0),
             );
@@ -152,7 +152,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                         ui.label("Index");
                     });
                     header.col(|ui| {
-                        ui.label(component_name.short_name());
+                        ui.label(component_descriptor.short_name());
                     });
                 })
                 .body(|mut body| {
@@ -181,7 +181,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                                 query,
                                 db,
                                 entity_path,
-                                *component_name,
+                                component_descriptor,
                                 self.unit,
                                 &instance,
                             );

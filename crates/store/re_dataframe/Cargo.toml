@@ -20,18 +20,17 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
 [features]
 default = []
 
 [dependencies]
 # Rerun dependencies:
 re_arrow_util.workspace = true
-re_chunk.workspace = true
 re_chunk_store.workspace = true
+re_chunk.workspace = true
 re_format_arrow.workspace = true
-re_log.workspace = true
 re_log_types.workspace = true
+re_log.workspace = true
 re_query.workspace = true
 re_sorbet.workspace = true
 re_tracing.workspace = true
@@ -45,8 +44,6 @@ nohash-hasher.workspace = true
 rayon.workspace = true
 
 [dev-dependencies]
-# Rerun dependencies:
-re_types.workspace = true
 # External dependencies:
 insta.workspace = true
 similar-asserts.workspace = true

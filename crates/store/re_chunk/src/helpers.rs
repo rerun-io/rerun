@@ -4,6 +4,7 @@ use arrow::array::Array as _;
 use arrow::array::ArrayRef as ArrowArrayRef;
 
 use re_log_types::{TimeInt, TimelineName};
+use re_types_core::ComponentDescriptor;
 use re_types_core::{Component, ComponentName};
 
 use crate::{Chunk, ChunkResult, RowId};
@@ -258,20 +259,45 @@ impl UnitChunkShared {
 impl UnitChunkShared {
     // --- Batch ---
 
+    /// Returns the raw data for the specified component name.
+    ///
+    /// Indetermined which batch is returned if there are multiple components with the same name.
+    /// TODO(#6889): Can we remove this method?
+    #[inline]
+    pub fn component_batch_raw_by_component_name(
+        &self,
+        component_name: ComponentName,
+    ) -> Option<ArrowArrayRef> {
+        debug_assert!(self.num_rows() == 1);
+        self.components
+            .get_by_component_name(component_name)
+            .next()
+            .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
+    }
+
     /// Returns the raw data for the specified component.
     #[inline]
-    pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrowArrayRef> {
+    pub fn component_batch_raw(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ArrowArrayRef> {
         debug_assert!(self.num_rows() == 1);
-        self.get_first_component(*component_name)
+        self.components
+            .get(component_descr)
             .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
     }
 
     /// Returns the deserialized data for the specified component.
     ///
     /// Returns an error if the data cannot be deserialized.
+    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
     #[inline]
-    pub fn component_batch<C: Component>(&self) -> Option<ChunkResult<Vec<C>>> {
-        let data = C::from_arrow(&*self.component_batch_raw(&C::name())?);
+    pub fn component_batch<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ChunkResult<Vec<C>>> {
+        debug_assert_eq!(C::name(), component_descr.component_name);
+        let data = C::from_arrow(&*self.component_batch_raw(component_descr)?);
         Some(data.map_err(Into::into))
     }
 
@@ -283,10 +309,10 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_instance_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let array = self.component_batch_raw(component_name)?;
+        let array = self.component_batch_raw(component_descr)?;
         if array.len() > instance_index {
             Some(Ok(array.slice(instance_index, 1)))
         } else {
@@ -301,12 +327,15 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component at the given instance index.
     ///
     /// Returns an error if the data cannot be deserialized, or if the instance index is out of bounds.
+    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
     #[inline]
     pub fn component_instance<C: Component>(
         &self,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ChunkResult<C>> {
-        let res = self.component_instance_raw(&C::name(), instance_index)?;
+        debug_assert_eq!(C::name(), component_descr.component_name);
+        let res = self.component_instance_raw(component_descr, instance_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -327,9 +356,9 @@ impl UnitChunkShared {
     #[inline]
     pub fn component_mono_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let array = self.component_batch_raw(component_name)?;
+        let array = self.component_batch_raw(component_descr)?;
         if array.len() == 1 {
             Some(Ok(array.slice(0, 1)))
         } else {
@@ -344,9 +373,14 @@ impl UnitChunkShared {
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Returns an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
+    /// In debug builds, panics if the descriptor doesn't have the same component name as the component type.
     #[inline]
-    pub fn component_mono<C: Component>(&self) -> Option<ChunkResult<C>> {
-        let res = self.component_mono_raw(&C::name())?;
+    pub fn component_mono<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ChunkResult<C>> {
+        debug_assert_eq!(C::name(), component_descr.component_name);
+        let res = self.component_mono_raw(component_descr)?;
 
         let array = match res {
             Ok(array) => array,

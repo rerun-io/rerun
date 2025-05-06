@@ -4,6 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
+use re_types::archetypes;
 use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Component as _, View as _,
@@ -288,7 +289,7 @@ impl ViewClass for SpatialView3D {
         ctx.recording().tree().visit_children_recursively(|path| {
             if engine
                 .store()
-                .entity_has_component(path, &ViewCoordinates::name())
+                .entity_has_component(path, &archetypes::ViewCoordinates::descriptor_xyz())
             {
                 indicated_entities.insert(path.clone());
             }

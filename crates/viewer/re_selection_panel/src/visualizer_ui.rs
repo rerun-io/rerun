@@ -1,11 +1,12 @@
 use itertools::Itertools as _;
 
 use re_chunk::{ComponentName, RowId, UnitChunkShared};
-use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
+use re_data_ui::{sorted_component_name_list_for_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_log_types::{ComponentPath, EntityPath};
 use re_types::blueprint::archetypes::VisualizerOverrides;
+use re_types::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::{list_item, UiExt as _};
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -162,7 +163,7 @@ fn visualizer_components(
         component_name: &ComponentName,
     ) -> Option<(Option<RowId>, ArrayRef)> {
         let unit = unit?;
-        let batch = unit.component_batch_raw(component_name)?;
+        let batch = unit.component_batch_raw_by_component_name(*component_name)?;
         if batch.is_empty() {
             None
         } else {
@@ -187,7 +188,7 @@ fn visualizer_components(
     );
 
     // TODO(andreas): Should we show required components in a special way?
-    for component_name in sorted_component_list_for_ui(query_info.queried.iter()) {
+    for component_name in sorted_component_name_list_for_ui(query_info.queried.iter()) {
         if component_name.is_indicator_component() {
             continue;
         }
@@ -279,8 +280,22 @@ fn visualizer_components(
                     }
                 };
 
+                // TODO(#6889): query results should already operate on full descriptors
+                let component_descr = db
+                    .storage_engine()
+                    .store()
+                    .entity_component_descriptors_with_name(&entity_path, component_name)
+                    .into_iter()
+                    .next()
+                    .unwrap_or_else(|| {
+                        re_log::warn_once!(
+                            "{component_name} was logged untagged. This is unexpected and may indicate a bug."
+                        );
+                        ComponentDescriptor::new(component_name)
+                    });
+
                 re_data_ui::ComponentPathLatestAtResults {
-                    component_path: ComponentPath::new(entity_path, component_name),
+                    component_path: ComponentPath::new(entity_path, component_descr),
                     unit: latest_at_unit,
                 }
                 .data_ui(ctx.viewer_ctx, ui, UiLayout::List, query, db);
@@ -313,10 +328,28 @@ fn visualizer_components(
                 ui.push_id("store", |ui| {
                     ui.list_item_flat_noninteractive(
                         list_item::PropertyContent::new("Store").value_fn(|ui, _style| {
+                            // TODO(#6889): query results should already operate on full descriptors
+                            let component_descr = ctx
+                                .recording()
+                                .storage_engine()
+                                .store()
+                                .entity_component_descriptors_with_name(
+                                    &data_result.entity_path,
+                                    component_name,
+                                )
+                                .into_iter()
+                                .next()
+                                .unwrap_or_else(|| {
+                                    re_log::warn_once!(
+                                        "{component_name} was logged untagged. This is unexpected and may indicate a bug."
+                                    );
+                                    ComponentDescriptor::new(component_name)
+                                });
+
                             re_data_ui::ComponentPathLatestAtResults {
                                 component_path: ComponentPath::new(
                                     data_result.entity_path.clone(),
-                                    component_name,
+                                    component_descr,
                                 ),
                                 unit,
                             }

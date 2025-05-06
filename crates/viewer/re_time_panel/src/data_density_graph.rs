@@ -462,16 +462,16 @@ pub fn build_density_graph<'a>(
         let store = engine.store();
         let query = RangeQuery::new(*timeline, visible_time_range);
 
-        if let Some(component_name) = item.component_name {
+        if let Some(component_descr) = item.component_descr.as_ref() {
             let mut total_num_events = 0;
             (
                 store
-                    .range_relevant_chunks(&query, &item.entity_path, component_name)
+                    .range_relevant_chunks(&query, &item.entity_path, component_descr)
                     .into_iter()
                     .filter_map(|chunk| {
                         let time_range = chunk.timelines().get(timeline)?.time_range();
                         chunk
-                            .num_events_for_component(component_name)
+                            .num_events_for_component(component_descr)
                             .map(|num_events| {
                                 total_num_events += num_events;
                                 (chunk, time_range, num_events)
@@ -630,11 +630,11 @@ fn show_row_ids_tooltip(
 
     let TimePanelItem {
         entity_path,
-        component_name,
+        component_descr,
     } = item;
 
-    if let Some(component_name) = component_name {
-        ComponentPath::new(entity_path.clone(), *component_name)
+    if let Some(component_descr) = component_descr.as_ref() {
+        ComponentPath::new(entity_path.clone(), component_descr.clone())
             .data_ui(ctx, ui, ui_layout, &query, db);
     } else {
         re_entity_db::InstancePath::entity_all(entity_path.clone())

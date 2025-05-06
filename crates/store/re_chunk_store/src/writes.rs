@@ -93,7 +93,7 @@ impl ChunkStore {
                 self.static_chunk_ids_per_entity
                     .entry(chunk.entity_path().clone())
                     .or_default()
-                    .entry(component_desc.component_name)
+                    .entry(component_desc.clone())
                     .and_modify(|cur_chunk_id| {
                         // NOTE: When attempting to overwrite static data, the chunk with the most
                         // recent data within -- according to RowId -- wins.
@@ -258,7 +258,7 @@ impl ChunkStore {
 
                     for (component_desc, time_range) in time_range_per_component {
                         let temporal_chunk_ids_per_time = temporal_chunk_ids_per_component
-                            .entry(component_desc.component_name)
+                            .entry(component_desc)
                             .or_default();
 
                         // See `ChunkIdSetPerTime::max_interval_length`'s documentation.
@@ -487,7 +487,7 @@ impl ChunkStore {
 
             for (component_desc, time_range) in time_range_per_component {
                 let Some(temporal_chunk_ids_per_time) =
-                    temporal_chunk_ids_per_component.get(&component_desc.component_name)
+                    temporal_chunk_ids_per_component.get(&component_desc)
                 else {
                     continue;
                 };

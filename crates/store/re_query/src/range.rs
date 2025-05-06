@@ -35,19 +35,26 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_descrs.into_iter().filter_map(|component_descr| {
-            let component_descr = component_descr.into();
-            store
-                .entity_has_component_on_timeline(
-                    query.timeline(),
+        let component_descrs = component_descrs.into_iter().filter_map(|component_descr| {
+            // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
+            let component_descr = store
+                .entity_component_descriptors_with_name(
                     entity_path,
-                    &component_descr.component_name,
+                    component_descr.into().component_name,
                 )
-                .then_some(component_descr.component_name)
+                .into_iter()
+                .next()?;
+
+            store
+                .entity_has_component_on_timeline(query.timeline(), entity_path, &component_descr)
+                .then_some(component_descr)
         });
 
-        for component_name in component_names {
-            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_name);
+        for component_descr in component_descrs {
+            // TODO(#6889): Don't drop the descriptor.
+            let component_name = component_descr.component_name;
+
+            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_descr);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -60,8 +67,9 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component_name);
+            let cached = cache.range(&store, query, entity_path, &key.component_descr);
             if !cached.is_empty() {
+                // TODO(#6889): Make `RangeResults` descriptor driven.
                 results.add(component_name, cached);
             }
         }
@@ -262,7 +270,7 @@ impl RangeCache {
         store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Vec<Chunk> {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
@@ -276,7 +284,7 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let raw_chunks = store.range_relevant_chunks(query, entity_path, component_name);
+        let raw_chunks = store.range_relevant_chunks(query, entity_path, component_descr);
         for raw_chunk in &raw_chunks {
             self.chunks
                 .entry(raw_chunk.id())
@@ -285,7 +293,7 @@ impl RangeCache {
                     chunk: raw_chunk
                         // Densify the cached chunk according to the cache key's component, which
                         // will speed up future arrow operations on this chunk.
-                        .densified(component_name)
+                        .densified(component_descr)
                         // Pre-sort the cached chunk according to the cache key's timeline.
                         .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
@@ -307,7 +315,7 @@ impl RangeCache {
 
                 let chunk = &cached_sorted_chunk.chunk;
 
-                chunk.range(query, component_name)
+                chunk.range(query, component_descr)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect()

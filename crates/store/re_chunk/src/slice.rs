@@ -168,18 +168,18 @@ impl Chunk {
         chunk
     }
 
-    /// Slices the [`Chunk`] horizontally by keeping only the selected `component_name`.
+    /// Slices the [`Chunk`] horizontally by keeping only the selected `component_descr`.
     ///
     /// The result is a new [`Chunk`] with the same rows and (at-most) one component column.
     /// All non-component columns will be kept as-is.
     ///
-    /// If `component_name` is not found within the [`Chunk`], the end result will be the same as the
+    /// If `component_descr` is not found within the [`Chunk`], the end result will be the same as the
     /// current chunk but without any component column.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn component_sliced(&self, component_name: ComponentName) -> Self {
+    pub fn component_sliced(&self, component_descr: &ComponentDescriptor) -> Self {
         let Self {
             id,
             entity_path,
@@ -199,9 +199,9 @@ impl Chunk {
             timelines: timelines.clone(),
             components: crate::ChunkComponents(
                 components
-                    .iter()
-                    .filter(|&(desc, _list_array)| (desc.component_name == component_name))
-                    .map(|(desc, list_array)| (desc.clone(), list_array.clone()))
+                    .get(component_descr)
+                    .map(|list_array| (component_descr.clone(), list_array.clone()))
+                    .into_iter()
                     .collect(),
             ),
         };
@@ -305,20 +305,20 @@ impl Chunk {
         chunk
     }
 
-    /// Densifies the [`Chunk`] vertically based on the `component_name` column.
+    /// Densifies the [`Chunk`] vertically based on the `component_descriptor` column.
     ///
-    /// Densifying here means dropping all rows where the associated value in the `component_name`
+    /// Densifying here means dropping all rows where the associated value in the `component_descriptor`
     /// column is null.
     ///
-    /// The result is a new [`Chunk`] where the `component_name` column is guaranteed to be dense.
+    /// The result is a new [`Chunk`] where the `component_descriptor` column is guaranteed to be dense.
     ///
-    /// If `component_name` doesn't exist in this [`Chunk`], or if it is already dense, this method
+    /// If `component_descriptor` doesn't exist in this [`Chunk`], or if it is already dense, this method
     /// is a no-op.
     ///
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn densified(&self, component_name_pov: ComponentName) -> Self {
+    pub fn densified(&self, component_descr_pov: &ComponentDescriptor) -> Self {
         let Self {
             id,
             entity_path,
@@ -333,7 +333,7 @@ impl Chunk {
             return self.clone();
         }
 
-        let Some(component_list_array) = self.get_first_component(component_name_pov) else {
+        let Some(component_list_array) = self.components.get(component_descr_pov) else {
             return self.clone();
         };
 
@@ -361,7 +361,7 @@ impl Chunk {
                 .iter()
                 .map(|(component_desc, list_array)| {
                     let filtered = re_arrow_util::filter_array(list_array, &validity_filter);
-                    let filtered = if component_desc.component_name == component_name_pov {
+                    let filtered = if component_desc == component_descr_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
                         // This will allow further operations on this densified chunk to take some

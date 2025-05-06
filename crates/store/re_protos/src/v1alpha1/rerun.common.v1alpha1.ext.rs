@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
+use crate::{invalid_field, missing_field, TypeConversionError};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
-
-use crate::{invalid_field, missing_field, TypeConversionError};
 
 // --- Arrow ---
 
@@ -87,7 +86,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PartitionId {
     pub id: String,
 }
