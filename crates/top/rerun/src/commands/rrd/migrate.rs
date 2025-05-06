@@ -104,8 +104,38 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
 
     let mut errors = indexmap::IndexSet::new();
 
-    let messages = decoder.into_iter().filter_map(|result| match result {
-        Ok(msg) => match msg {
+    let messages = decoder.into_iter().flat_map(|result| match result {
+        Ok(mut msg) => match msg {
+            re_log_types::LogMsg::SetStoreInfo(ref mut store_info) => match store_info.info.started
+            {
+                Some(started_time) => {
+                    let store_id = store_info.info.store_id.clone();
+                    let recording_properties =
+                        re_chunk::Chunk::builder(re_log_types::EntityPath::recording_properties())
+                            .with_archetype(
+                                re_types::RowId::new(),
+                                re_log_types::TimePoint::default(),
+                                &re_types::archetypes::RecordingProperties::new()
+                                    .with_start_time(started_time.nanos_since_epoch()),
+                            )
+                            .build()
+                            .expect("can't fail")
+                            .to_arrow_msg()
+                            .expect("can't fail");
+
+                    // change store version to CLI's version
+                    store_info.info.store_version = Some(CrateVersion::LOCAL);
+
+                    itertools::Either::Right(
+                        [
+                            msg,
+                            re_log_types::LogMsg::ArrowMsg(store_id, recording_properties),
+                        ]
+                        .into_iter(),
+                    )
+                }
+                None => itertools::Either::Left(Some(msg).into_iter()),
+            },
             re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
                 match re_sorbet::SorbetBatch::try_from_record_batch(
                     &arrow_msg.batch,
@@ -113,28 +143,32 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
                 ) {
                     Ok(batch) => {
                         let batch = arrow::array::RecordBatch::from(&batch);
-                        Some(Ok(re_log_types::LogMsg::ArrowMsg(
-                            store_id,
-                            re_log_types::ArrowMsg {
-                                chunk_id: arrow_msg.chunk_id,
-                                timepoint_max: arrow_msg.timepoint_max.clone(),
-                                batch,
-                                on_release: None,
-                            },
-                        )))
+                        itertools::Either::Left(
+                            Some(re_log_types::LogMsg::ArrowMsg(
+                                store_id,
+                                re_log_types::ArrowMsg {
+                                    chunk_id: arrow_msg.chunk_id,
+                                    timepoint_max: arrow_msg.timepoint_max.clone(),
+                                    batch,
+                                    on_release: None,
+                                },
+                            ))
+                            .into_iter(),
+                        )
                     }
                     Err(err) => {
                         errors.insert(err.to_string());
-                        None
+                        itertools::Either::Left(None.into_iter())
                     }
                 }
             }
-            re_log_types::LogMsg::BlueprintActivationCommand(..)
-            | re_log_types::LogMsg::SetStoreInfo(..) => Some(Ok(msg)),
+            re_log_types::LogMsg::BlueprintActivationCommand(..) => {
+                itertools::Either::Left(Some(msg).into_iter())
+            }
         },
         Err(err) => {
             errors.insert(err.to_string());
-            None
+            itertools::Either::Left(None.into_iter())
         }
     });
 
@@ -143,10 +177,11 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
 
     let mut buffered_writer = std::io::BufWriter::new(new_file);
 
+    re_log::debug!("Encoding with version {}", CrateVersion::LOCAL);
     re_log_encoding::encoder::encode(
         CrateVersion::LOCAL,
         EncodingOptions::PROTOBUF_COMPRESSED,
-        messages,
+        messages.map(Ok),
         &mut buffered_writer,
     )
     .with_context(|| format!("Failed to write new .rrd file to {to_path:?}"))?;
