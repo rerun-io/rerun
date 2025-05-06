@@ -75,7 +75,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                     re_log::debug!(num_broken_pixels, broken_pixels_threshold);
                     assert!(
                         num_broken_pixels <= broken_pixels_threshold,
-                        "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                        "{name} failed because {num_broken_pixels} > {broken_pixels_threshold}\n{diff_path:?}"
                     );
                 }
 
