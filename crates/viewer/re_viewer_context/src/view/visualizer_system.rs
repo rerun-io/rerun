@@ -23,6 +23,7 @@ pub struct VisualizerQueryInfo {
     ///
     /// Must include required, usually excludes indicators.
     /// Order should reflect order in archetype docs & user code as well as possible.
+    // TODO: violated order. bring it back.
     pub queried: ComponentDescriptorSet,
 }
 
