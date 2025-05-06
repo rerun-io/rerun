@@ -33,8 +33,14 @@ impl ViewContextSystem for EntityDepthOffsets {
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         let mut entities_per_draw_order = BTreeMap::new();
-        for visualizer in visualizers_processing_draw_order() {
-            collect_draw_order_per_visualizer(ctx, query, visualizer, &mut entities_per_draw_order);
+        for (visualizer, draw_order_descriptor) in visualizers_processing_draw_order() {
+            collect_draw_order_per_visualizer(
+                ctx,
+                query,
+                visualizer,
+                &draw_order_descriptor,
+                &mut entities_per_draw_order,
+            );
         }
 
         // Determine re_renderer draw order from this.
@@ -71,6 +77,7 @@ fn collect_draw_order_per_visualizer(
     ctx: &re_viewer_context::ViewContext<'_>,
     query: &re_viewer_context::ViewQuery<'_>,
     visualizer_identifier: ViewSystemIdentifier,
+    draw_order_descriptor: &re_types::ComponentDescriptor,
     entities_per_draw_order: &mut BTreeMap<
         DrawOrder,
         BTreeSet<(ViewSystemIdentifier, EntityPathHash)>,
@@ -79,25 +86,12 @@ fn collect_draw_order_per_visualizer(
     let latest_at_query = ctx.current_query();
     for data_result in query.iter_visible_data_results(visualizer_identifier) {
         let query_shadowed_components = false;
-
-        // TODO(#6889): We want to query with the correct descriptor here for each visualizer in its `VisualizerQueryInfo`.
-        // To do so, we have to look up the descriptor that the visualizer advertises for `DrawOrder` here.
-        let Some(draw_order_descriptor) = ctx
-            .recording_engine()
-            .store()
-            .entity_component_descriptors_with_name(&data_result.entity_path, DrawOrder::name())
-            .into_iter()
-            .next()
-        else {
-            continue;
-        };
-
         let draw_order = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             &latest_at_query,
             data_result,
-            [&draw_order_descriptor],
+            [draw_order_descriptor],
             query_shadowed_components,
         )
         .get_mono_with_fallback::<DrawOrder>();
