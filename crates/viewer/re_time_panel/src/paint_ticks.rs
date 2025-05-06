@@ -168,7 +168,7 @@ fn paint_ticks(
     let medium_line_strength = line_strength_from_spacing(medium_spacing_time);
     let small_line_strength = line_strength_from_spacing(small_spacing_time);
 
-    let base_strength = 0.6;
+    let base_strength = 0.7;
 
     let big_line_color = color_from_alpha(base_strength * big_line_strength);
     let medium_line_color = color_from_alpha(base_strength * medium_line_strength);
