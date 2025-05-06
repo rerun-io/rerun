@@ -100,6 +100,7 @@ impl StoreBundle {
                     store_id: id.clone(),
                     cloned_from: None,
                     store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
+                    started: None,
                     store_version: Some(re_build_info::CrateVersion::LOCAL),
                 },
             });

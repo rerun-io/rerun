@@ -42,6 +42,7 @@ impl crate::DataUi for EntityDb {
                     store_id,
                     cloned_from,
                     store_source,
+                    started: _,
                     store_version,
                 } = store_info;
 

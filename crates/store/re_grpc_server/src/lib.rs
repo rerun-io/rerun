@@ -856,6 +856,7 @@ mod tests {
                     rustc_version: String::new(),
                     llvm_version: String::new(),
                 },
+                started: None,
                 store_version: Some(CrateVersion::LOCAL),
             },
         }));
@@ -905,6 +906,7 @@ mod tests {
                     rustc_version: String::new(),
                     llvm_version: String::new(),
                 },
+                started: None,
                 store_version: Some(CrateVersion::LOCAL),
             },
         }));

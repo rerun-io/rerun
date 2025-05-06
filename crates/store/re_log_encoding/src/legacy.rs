@@ -89,6 +89,7 @@ impl LegacyLogMsg {
                     application_id,
                     store_id,
                     cloned_from,
+                    started,
                 } = info;
 
                 re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
@@ -98,6 +99,7 @@ impl LegacyLogMsg {
                         store_id: store_id.migrate(),
                         cloned_from: cloned_from.map(|id| id.migrate()),
                         store_source: re_log_types::StoreSource::Unknown,
+                        started: Some(started),
                         store_version: None,
                     },
                 })
@@ -296,5 +298,5 @@ pub struct LegacyStoreInfo {
     pub store_id: LegacyStoreId,
     pub cloned_from: Option<LegacyStoreId>,
     // pub is_official_example: bool,
-    // pub started: LegacyTime,
+    pub started: re_log_types::Time,
 }

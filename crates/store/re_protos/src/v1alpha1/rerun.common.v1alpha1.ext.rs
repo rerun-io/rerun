@@ -653,6 +653,7 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             store_id,
             cloned_from: None,
             store_source,
+            started: None,
             store_version,
         })
     }
@@ -1152,6 +1153,7 @@ mod tests {
                 patch: 0,
                 suffix: "a".to_owned(),
             }),
+            started: None,
             store_version: None,
         };
         let proto_store_info: crate::log_msg::v1alpha1::StoreInfo = store_info.clone().into();
@@ -1176,6 +1178,7 @@ mod tests {
                     patch: 0,
                     suffix: "a".to_owned(),
                 }),
+                started: None,
                 store_version: None,
             },
         };

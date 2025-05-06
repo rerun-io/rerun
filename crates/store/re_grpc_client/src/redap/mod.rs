@@ -221,6 +221,7 @@ pub async fn stream_partition_async(
         store_id: store_id.clone(),
         cloned_from: None,
         store_source: StoreSource::Unknown,
+        started: None,
         store_version: None,
     };
 
