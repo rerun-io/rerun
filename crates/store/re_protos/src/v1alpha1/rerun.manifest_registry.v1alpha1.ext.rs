@@ -14,6 +14,7 @@ use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
 use crate::common::v1alpha1::ComponentDescriptor;
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
+    RegisterWithDatasetResponse,
 };
 use crate::{invalid_field, missing_field, TypeConversionError};
 
@@ -373,6 +374,43 @@ impl GetDatasetSchemaResponse {
                 TypeConversionError::missing_field::<GetDatasetSchemaResponse>("schema")
             })?
             .try_into()?)
+    }
+}
+
+// --- RegisterWithDatasetResponse ---
+
+impl RegisterWithDatasetResponse {
+    pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const PARTITION_TYPE: &str = "rerun_partition_type";
+    pub const STORAGE_URL: &str = "rerun_storage_url";
+    pub const TASK_ID: &str = "rerun_task_id";
+
+    /// The Arrow schema of the dataframe in [`Self::data`].
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
+            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
+            Field::new(Self::TASK_ID, DataType::Utf8, false),
+        ])
+    }
+
+    /// Helper to simplify instantiation of the dataframe in [`Self::data`].
+    pub fn create_dataframe(
+        partition_ids: Vec<String>,
+        partition_types: Vec<String>,
+        storage_urls: Vec<String>,
+        task_ids: Vec<String>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let schema = Arc::new(Self::schema());
+        let columns: Vec<ArrayRef> = vec![
+            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(partition_types)),
+            Arc::new(StringArray::from(storage_urls)),
+            Arc::new(StringArray::from(task_ids)),
+        ];
+
+        RecordBatch::try_new(schema, columns)
     }
 }
 

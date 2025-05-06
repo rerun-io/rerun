@@ -193,13 +193,13 @@ fn component_list_ui(
         egui::Id::from("component list").with(entity_path),
         |ui| {
             for (component_descr, unit) in components {
-                let component_name = component_descr.component_name;
-                if !show_indicator_comps && component_name.is_indicator_component() {
+                if !show_indicator_comps && component_descr.component_name.is_indicator_component()
+                {
                     continue;
                 }
 
-                // TODO(#6889): `ComponentPath` should always have a descriptor and we should be iterating over descriptors.
-                let component_path = ComponentPath::new(entity_path.clone(), component_name);
+                let component_path =
+                    ComponentPath::new(entity_path.clone(), component_descr.clone());
 
                 let is_static = db
                     .storage_engine()
@@ -220,52 +220,57 @@ fn component_list_ui(
                     list_item = list_item.force_hovered(is_hovered);
                 }
 
-                let response = if component_name.is_indicator_component() {
+                let response = if component_descr.component_name.is_indicator_component() {
                     list_item.show_flat(
                         ui,
-                        re_ui::list_item::LabelContent::new(component_name.short_name())
-                            .with_icon(icon),
+                        re_ui::list_item::LabelContent::new(
+                            component_descr.component_name.short_name(),
+                        )
+                        .with_icon(icon),
                     )
                 } else {
-                    let content =
-                        re_ui::list_item::PropertyContent::new(component_name.short_name())
-                            .with_icon(icon)
-                            .value_fn(|ui, _| {
-                                if instance.is_all() {
-                                    crate::ComponentPathLatestAtResults {
-                                        component_path: ComponentPath::new(
-                                            entity_path.clone(),
-                                            component_name,
-                                        ),
-                                        unit,
-                                    }
-                                    .data_ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                    );
-                                } else {
-                                    ctx.component_ui_registry().ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                        entity_path,
-                                        component_name,
-                                        unit,
-                                        instance,
-                                    );
-                                }
-                            });
+                    let content = re_ui::list_item::PropertyContent::new(
+                        component_descr.component_name.short_name(),
+                    )
+                    .with_icon(icon)
+                    .value_fn(|ui, _| {
+                        if instance.is_all() {
+                            crate::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    entity_path.clone(),
+                                    component_descr.clone(),
+                                ),
+                                unit,
+                            }
+                            .data_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                            );
+                        } else {
+                            ctx.component_ui_registry().ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                                entity_path,
+                                component_descr,
+                                unit,
+                                instance,
+                            );
+                        }
+                    });
 
                     list_item.show_flat(ui, content)
                 };
 
                 let response = response.on_hover_ui(|ui| {
-                    component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    component_descr
+                        .component_name
+                        .data_ui_recording(ctx, ui, UiLayout::Tooltip);
                 });
 
                 if interactive {
