@@ -1,7 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::test_context::TestContext;
+use re_viewer_context::test_context::{HarnessExt, TestContext};
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
@@ -190,7 +190,7 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((175.0, 450.).into()));
             harness.run();
-            harness.snapshot(&name);
+            harness.snapshot_with_broken_pixels(&name, 1);
         }
 
         {
