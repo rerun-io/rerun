@@ -161,11 +161,9 @@ impl ViewProperty {
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<arrow::array::ArrayRef> {
-        // TODO(#6889): Tagged components should go all the way.
-        let component_name = component_descr.component_name;
         self.query_results
-            .get_by_name(&component_name)
-            .and_then(|unit| unit.component_batch_raw_by_component_name(component_name))
+            .get(component_descr)
+            .and_then(|unit| unit.component_batch_raw(component_descr))
     }
 
     fn component_or_fallback_raw(

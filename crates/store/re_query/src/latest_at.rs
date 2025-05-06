@@ -300,6 +300,13 @@ impl LatestAtResults {
 impl LatestAtResults {
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     #[inline]
+    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&UnitChunkShared> {
+        self.components.get(component_descr)
+    }
+
+    // TODO(#6889): Going forward, we should avoid querying by name.
+    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
+    #[inline]
     pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
         let component_descr = self.find_component_descriptor(*component_name)?;
         self.components.get(component_descr)
