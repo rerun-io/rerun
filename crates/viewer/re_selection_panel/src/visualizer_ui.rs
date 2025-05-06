@@ -170,6 +170,7 @@ fn visualizer_components(
             Some((unit.row_id(), batch))
         }
     }
+
     fn non_empty_component_batch_raw(
         unit: Option<&UnitChunkShared>,
         component_descr: &ComponentDescriptor,

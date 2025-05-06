@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_types::{Archetype, ComponentDescriptorSet, ComponentNameSet};
+use re_types::{Archetype, ComponentDescriptor, ComponentDescriptorSet, ComponentNameSet};
 
 use crate::{
     ComponentFallbackProvider, DataBasedVisualizabilityFilter, IdentifiedViewSystem,
@@ -8,6 +8,33 @@ use crate::{
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizableEntities,
     VisualizableFilterContext,
 };
+
+#[derive(Debug, Clone, Default)]
+pub struct SortedComponentDescriptorSet(linked_hash_map::LinkedHashMap<ComponentDescriptor, ()>);
+
+impl SortedComponentDescriptorSet {
+    pub fn insert(&mut self, k: ComponentDescriptor) -> Option<()> {
+        self.0.insert(k, ())
+    }
+
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = ComponentDescriptor>) {
+        self.0.extend(iter.into_iter().map(|k| (k, ())));
+    }
+
+    pub fn iter(&self) -> linked_hash_map::Keys<'_, ComponentDescriptor, ()> {
+        self.0.keys()
+    }
+
+    pub fn contains(&self, k: &ComponentDescriptor) -> bool {
+        self.0.contains_key(k)
+    }
+}
+
+impl FromIterator<ComponentDescriptor> for SortedComponentDescriptorSet {
+    fn from_iter<I: IntoIterator<Item = ComponentDescriptor>>(iter: I) -> Self {
+        Self(iter.into_iter().map(|k| (k, ())).collect())
+    }
+}
 
 pub struct VisualizerQueryInfo {
     /// These are not required, but if _any_ of these are found, it is a strong indication that this
@@ -23,8 +50,7 @@ pub struct VisualizerQueryInfo {
     ///
     /// Must include required, usually excludes indicators.
     /// Order should reflect order in archetype docs & user code as well as possible.
-    // TODO: violated order. bring it back.
-    pub queried: ComponentDescriptorSet,
+    pub queried: SortedComponentDescriptorSet,
 }
 
 impl VisualizerQueryInfo {
@@ -40,7 +66,7 @@ impl VisualizerQueryInfo {
         Self {
             indicators: ComponentNameSet::default(),
             required: ComponentDescriptorSet::default(),
-            queried: ComponentDescriptorSet::default(),
+            queried: SortedComponentDescriptorSet::default(),
         }
     }
 }

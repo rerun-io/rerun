@@ -182,7 +182,7 @@ fn visualized_components_by_archetype(
     // Accumulate the components across all visualizers and track which visualizer
     // each component came from so we can use it for fallbacks later.
     for (id, vis) in ctx.visualizer_collection.iter_with_identifiers() {
-        for descr in &vis.visualizer_query_info().queried {
+        for descr in vis.visualizer_query_info().queried.iter() {
             let (Some(archetype_name), Some(archetype_field_name)) =
                 (descr.archetype_name, descr.archetype_field_name)
             else {

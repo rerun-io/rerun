@@ -8142,6 +8142,7 @@ dependencies = [
  "image",
  "indexmap 2.8.0",
  "itertools 0.14.0",
+ "linked-hash-map",
  "ndarray",
  "nohash-hasher",
  "once_cell",
