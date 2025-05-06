@@ -204,7 +204,7 @@ impl SeriesPointSystem {
                 data_result,
                 archetypes::Scalars::all_components()
                     .iter()
-                    .chain(archetypes::SeriesLines::all_components().iter()),
+                    .chain(archetypes::SeriesPoints::all_components().iter()),
             );
 
             // If we have no scalars, we can't do anything.
