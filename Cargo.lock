@@ -7267,6 +7267,7 @@ dependencies = [
  "prost",
  "prost-types",
  "pyo3",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
