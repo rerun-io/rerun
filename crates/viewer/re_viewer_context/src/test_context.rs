@@ -30,7 +30,7 @@ pub trait HarnessExt {
         broken_percent_threshold: f64,
     );
 
-    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: u64);
+    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: i32);
 }
 
 impl HarnessExt for egui_kittest::Harness<'_> {
