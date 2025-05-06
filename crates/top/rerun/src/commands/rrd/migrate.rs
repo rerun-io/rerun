@@ -95,6 +95,7 @@ fn migrate_file_at(original_path: &Utf8PathBuf) -> anyhow::Result<()> {
     }
 }
 
+#[allow(clippy::iter_on_empty_collections, clippy::iter_on_single_items)] // suggestions don't compile
 /// Stream-convert an rrd file
 fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Result<()> {
     let from_file =
@@ -177,7 +178,6 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
 
     let mut buffered_writer = std::io::BufWriter::new(new_file);
 
-    re_log::debug!("Encoding with version {}", CrateVersion::LOCAL);
     re_log_encoding::encoder::encode(
         CrateVersion::LOCAL,
         EncodingOptions::PROTOBUF_COMPRESSED,
