@@ -430,7 +430,7 @@ fn visualizer_components(
             )
             .item_response
             .on_hover_ui(|ui| {
-                // TODO: need data ui for component_descr?
+                // TODO(andreas): Add data ui for component descr?
                 component_descr.component_name.data_ui_recording(
                     ctx.viewer_ctx,
                     ui,

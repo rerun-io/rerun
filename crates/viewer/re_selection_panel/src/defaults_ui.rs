@@ -157,7 +157,7 @@ fn active_default_ui(
                         .value_fn(|ui, _| value_fn(ui)),
                 )
                 .on_hover_ui(|ui| {
-                    // TODO: data ui for component descr!
+                    // TODO(andreas): Add data ui for component descr?
                     component_descr.component_name.data_ui_recording(
                         ctx.viewer_ctx,
                         ui,
@@ -285,7 +285,7 @@ fn add_popup_ui(
         if ui
             .button(component_descr.syntax_highlighted(ui.style()))
             .on_hover_ui(|ui| {
-                // TODO: data ui for component descr!
+                // TODO(andreas): Add data ui for component descr?
                 component_descr.component_name.data_ui_recording(
                     ctx.viewer_ctx,
                     ui,
