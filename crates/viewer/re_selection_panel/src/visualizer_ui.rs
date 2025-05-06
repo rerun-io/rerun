@@ -206,6 +206,8 @@ fn visualizer_components(
             continue;
         }
 
+        // TODO(andreas): What about annotation context?
+
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
         let result_override = query_result

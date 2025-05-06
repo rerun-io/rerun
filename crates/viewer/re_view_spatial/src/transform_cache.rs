@@ -852,10 +852,13 @@ fn query_and_resolve_instance_poses_at_entity(
     query: &LatestAtQuery,
 ) -> Vec<Affine3A> {
     // TODO(andreas): Filter out styling components.
-    let result = entity_db.latest_at(
+    // TODO(#9889): Boxes & ellipsoids depend on differently tagged instance pose right now.
+    let result = entity_db.latest_at_by_name(
         query,
         entity_path,
-        archetypes::InstancePoses3D::all_components().iter(),
+        archetypes::InstancePoses3D::all_components()
+            .iter()
+            .map(|c| c.component_name),
     );
 
     let max_num_instances = result
