@@ -580,7 +580,7 @@ impl ViewClass for TimeSeriesView {
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
-            scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+            scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
             state.reset_bounds_next_frame = true;
             ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {

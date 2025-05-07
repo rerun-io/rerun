@@ -101,17 +101,13 @@ impl ViewerContext<'_> {
     pub fn save_blueprint_array(
         &self,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: ComponentDescriptor,
         array: ArrayRef,
     ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         let chunk = match Chunk::builder(entity_path.clone())
-            .with_row(
-                RowId::new(),
-                timepoint.clone(),
-                [(ComponentDescriptor::new(component_name), array)],
-            )
+            .with_row(RowId::new(), timepoint.clone(), [(component_descr, array)])
             .build()
         {
             Ok(chunk) => chunk,
@@ -141,48 +137,65 @@ impl ViewerContext<'_> {
     pub fn raw_latest_at_in_default_blueprint(
         &self,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ArrayRef> {
         self.store_context
             .default_blueprint
             .and_then(|default_blueprint| {
                 default_blueprint
-                    .latest_at_by_name(self.blueprint_query, entity_path, [component_name])
-                    .get_by_name(&component_name)
-                    .and_then(|default_value| {
-                        default_value.component_batch_raw_by_component_name(component_name)
-                    })
+                    .latest_at(self.blueprint_query, entity_path, [component_descr])
+                    .get(component_descr)
+                    .and_then(|default_value| default_value.component_batch_raw(component_descr))
             })
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.
-    pub fn reset_blueprint_component_by_name(
+    pub fn reset_blueprint_component(
         &self,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: ComponentDescriptor,
     ) {
         if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(entity_path, component_name)
+            self.raw_latest_at_in_default_blueprint(entity_path, &component_descr)
         {
-            self.save_blueprint_array(entity_path, component_name, default_value);
+            self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
-            self.clear_blueprint_component_by_name(entity_path, component_name);
+            self.clear_blueprint_component(entity_path, component_descr);
         }
     }
 
     /// Clears a component in the blueprint store by logging an empty array if it exists.
+    // TODO(#6889): Remove in favor of `clear_blueprint_component`.
     pub fn clear_blueprint_component_by_name(
         &self,
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) {
         let blueprint = &self.store_context.blueprint;
+        if let Some(descr) = blueprint
+            .storage_engine()
+            .store()
+            .entity_component_descriptors_with_name(entity_path, component_name)
+            .into_iter()
+            .next()
+        {
+            self.clear_blueprint_component(entity_path, descr);
+        }
+    }
+
+    /// Clears a component in the blueprint store by logging an empty array if it exists.
+    pub fn clear_blueprint_component(
+        &self,
+        entity_path: &EntityPath,
+        component_descr: ComponentDescriptor,
+    ) {
+        let blueprint = &self.store_context.blueprint;
 
         let Some(datatype) = blueprint
-            .latest_at_by_name(self.blueprint_query, entity_path, [component_name])
-            .get_by_name(&component_name)
+            .latest_at(self.blueprint_query, entity_path, [&component_descr])
+            .get(&component_descr)
             .and_then(|unit| {
-                unit.component_batch_raw_by_component_name(component_name)
+                unit.component_batch_raw(&component_descr)
                     .map(|array| array.data_type().clone())
             })
         else {
@@ -196,7 +209,7 @@ impl ViewerContext<'_> {
                 RowId::new(),
                 timepoint,
                 [(
-                    ComponentDescriptor::new(component_name),
+                    component_descr,
                     re_chunk::external::arrow::array::new_empty_array(&datatype),
                 )],
             )

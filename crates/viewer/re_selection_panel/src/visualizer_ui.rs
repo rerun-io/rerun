@@ -254,7 +254,7 @@ fn visualizer_components(
                     ui,
                     raw_current_value.as_ref(),
                     override_path,
-                    component_descr.component_name,
+                    component_descr.clone(),
                     multiline,
                 )
             {
@@ -421,7 +421,7 @@ fn visualizer_components(
                     menu_more(
                         ctx,
                         ui,
-                        &component_descr,
+                        component_descr.clone(),
                         override_path,
                         &raw_override.clone().map(|(_, raw_override)| raw_override),
                         raw_default.clone().map(|(_, raw_override)| raw_override),
@@ -461,7 +461,7 @@ fn editable_blueprint_component_list_item(
                     ui,
                     query_ctx.viewer_ctx.blueprint_db(),
                     blueprint_path,
-                    component_descr.component_name,
+                    component_descr,
                     row_id.map(Hash64::hash),
                     raw_override,
                     allow_multiline,
@@ -470,11 +470,7 @@ fn editable_blueprint_component_list_item(
             .action_button(&re_ui::icons::CLOSE, || {
                 query_ctx
                     .viewer_ctx
-                    // TODO(#6889): Use component_descr directly.
-                    .clear_blueprint_component_by_name(
-                        blueprint_path,
-                        component_descr.component_name,
-                    );
+                    .clear_blueprint_component(blueprint_path, component_descr.clone());
             }),
     )
 }
@@ -484,24 +480,22 @@ fn editable_blueprint_component_list_item(
 fn menu_more(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    component_descr: &re_types::ComponentDescriptor,
+    component_descr: re_types::ComponentDescriptor,
     override_path: &EntityPath,
     raw_override: &Option<ArrayRef>,
     raw_default: Option<ArrayRef>,
     raw_fallback: arrow::array::ArrayRef,
     raw_current_value: arrow::array::ArrayRef,
 ) {
-    // TODO(#6889): Use component_descr directly on all of the usages here.
-    let component_name = component_descr.component_name;
-
     if ui
         .add_enabled(raw_override.is_some(), egui::Button::new("Remove override"))
         .on_disabled_hover_text("There's no override active")
         .clicked()
     {
         // TODO(#6889): Use component_descr directly.
-        ctx.clear_blueprint_component_by_name(override_path, component_name);
+        ctx.clear_blueprint_component(override_path, component_descr);
         ui.close_menu();
+        return;
     }
 
     if ui
@@ -513,20 +507,22 @@ fn menu_more(
         .clicked()
     {
         if let Some(raw_default) = raw_default {
-            ctx.save_blueprint_array(override_path, component_name, raw_default);
+            ctx.save_blueprint_array(override_path, component_descr, raw_default);
         }
         ui.close_menu();
+        return;
     }
 
     if ui.button("Set to fallback value").clicked() {
-        ctx.save_blueprint_array(override_path, component_name, raw_fallback);
+        ctx.save_blueprint_array(override_path, component_descr, raw_fallback);
         ui.close_menu();
+        return;
     }
 
     let override_differs_from_default = raw_override
         != &ctx
             .viewer_ctx
-            .raw_latest_at_in_default_blueprint(override_path, component_name);
+            .raw_latest_at_in_default_blueprint(override_path, &component_descr);
     if ui
         .add_enabled(
             override_differs_from_default,
@@ -536,14 +532,15 @@ fn menu_more(
         .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
         .clicked()
     {
-        ctx.reset_blueprint_component_by_name(override_path, component_name);
+        ctx.reset_blueprint_component(override_path, component_descr);
         ui.close_menu();
+        return;
     }
 
     if ui.button("Make default for current view").clicked() {
         ctx.save_blueprint_array(
             &ViewBlueprint::defaults_path(ctx.view_id),
-            component_name,
+            component_descr,
             raw_current_value,
         );
         ui.close_menu();

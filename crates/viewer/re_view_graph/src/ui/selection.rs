@@ -1,7 +1,6 @@
 use re_log_types::hash::Hash64;
 use re_types::{
     blueprint::components::Enabled, Archetype, ArchetypeReflectionMarker, Component as _,
-    ComponentDescriptor,
 };
 use re_view::{view_property_component_ui, view_property_component_ui_custom};
 use re_viewer_context::{ComponentFallbackProvider, ViewId, ViewState, ViewerContext};
@@ -63,12 +62,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
             .find(|field| field.component_name == Enabled::name())
             .expect("forces are required to have an `Enabled` component");
 
-        let component_descr = ComponentDescriptor {
-            archetype_name: Some(property.archetype_name),
-            archetype_field_name: Some(field.name),
-            component_name: field.component_name,
-        };
-
+        let component_descr = field.component_descriptor(property.archetype_name);
         let component_array = property.component_raw(&component_descr);
         let row_id = property.component_row_id(field.component_name);
 
@@ -78,7 +72,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
                 ui,
                 ctx.blueprint_db(),
                 query_ctx.target_entity_path,
-                field.component_name,
+                &component_descr,
                 row_id.map(Hash64::hash),
                 component_array.as_deref(),
                 fallback_provider,

@@ -101,7 +101,7 @@ fn ui_from_scene(
     // Update blueprint if changed
     let updated_bounds: blueprint_components::VisualBounds2D = bounds_rect.into();
     if response.double_clicked() {
-        bounds_property.reset_blueprint_component::<blueprint_components::VisualBounds2D>(ctx);
+        bounds_property.reset_blueprint_component(ctx, VisualBounds2D::descriptor_range());
     } else if bounds != updated_bounds {
         bounds_property.save_blueprint_component(ctx, &updated_bounds);
     }
