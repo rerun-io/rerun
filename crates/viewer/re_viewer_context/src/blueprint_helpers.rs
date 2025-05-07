@@ -60,6 +60,7 @@ impl ViewerContext<'_> {
             ));
     }
 
+    // TODO(#6889): This saves a component without tags.
     pub fn save_blueprint_component(
         &self,
         entity_path: &EntityPath,

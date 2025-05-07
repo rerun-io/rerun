@@ -190,9 +190,18 @@ impl ViewProperty {
     pub fn save_blueprint_component(
         &self,
         ctx: &ViewerContext<'_>,
+        component_descr: &ComponentDescriptor,
         components: &dyn ComponentBatch,
     ) {
-        ctx.save_blueprint_component(&self.blueprint_store_path, components);
+        let Some(serialized) = components
+            .serialized()
+            .map(|b| b.with_descriptor_override(component_descr.clone()))
+        else {
+            re_log::warn!("could not serialize components with descriptor `{component_descr}`");
+            return;
+        };
+
+        ctx.save_serialized_blueprint_component(&self.blueprint_store_path, serialized);
     }
 
     /// Clears a blueprint component.

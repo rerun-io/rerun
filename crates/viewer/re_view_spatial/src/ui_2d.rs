@@ -103,7 +103,11 @@ fn ui_from_scene(
     if response.double_clicked() {
         bounds_property.reset_blueprint_component::<blueprint_components::VisualBounds2D>(ctx);
     } else if bounds != updated_bounds {
-        bounds_property.save_blueprint_component(ctx, &updated_bounds);
+        bounds_property.save_blueprint_component(
+            ctx,
+            &VisualBounds2D::descriptor_range(),
+            &updated_bounds,
+        );
     }
     // Update stored bounds on the state, so visualizers see an up-to-date value.
     view_state.visual_bounds_2d = Some(bounds);

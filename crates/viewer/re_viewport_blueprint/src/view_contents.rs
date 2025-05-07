@@ -256,6 +256,7 @@ impl ViewContents {
         )
         .save_blueprint_component(
             ctx,
+            &blueprint_archetypes::ViewContents::descriptor_query(),
             &self
                 .new_entity_path_filter
                 .lock()

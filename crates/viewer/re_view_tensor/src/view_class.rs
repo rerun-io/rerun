@@ -6,7 +6,7 @@ use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
-        archetypes::{TensorScalarMapping, TensorViewFit},
+        archetypes::{self, TensorScalarMapping, TensorViewFit},
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
@@ -716,7 +716,11 @@ fn selectors_ui(
     }
 
     if changed_indices {
-        slice_property.save_blueprint_component(ctx, &indices);
+        slice_property.save_blueprint_component(
+            ctx,
+            &archetypes::TensorSliceSelection::descriptor_indices(),
+            &indices,
+        );
     }
 }
 

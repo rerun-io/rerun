@@ -227,7 +227,11 @@ impl ViewClass for GraphView {
         if resp.double_clicked() {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
         } else if scene_rect != scene_rect_ref {
-            bounds_property.save_blueprint_component(ctx, &updated_bounds);
+            bounds_property.save_blueprint_component(
+                ctx,
+                &VisualBounds2D::descriptor_range(),
+                &updated_bounds,
+            );
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.visual_bounds = Some(updated_bounds);
