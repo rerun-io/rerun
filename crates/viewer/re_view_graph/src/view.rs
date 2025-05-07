@@ -230,7 +230,11 @@ impl ViewClass for GraphView {
                 blueprint::archetypes::VisualBounds2D::descriptor_range(),
             );
         } else if scene_rect != scene_rect_ref {
-            bounds_property.save_blueprint_component(ctx, &updated_bounds);
+            bounds_property.save_blueprint_component(
+                ctx,
+                &VisualBounds2D::descriptor_range(),
+                &updated_bounds,
+            );
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.visual_bounds = Some(updated_bounds);

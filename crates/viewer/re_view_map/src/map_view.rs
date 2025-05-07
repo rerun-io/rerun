@@ -299,6 +299,7 @@ impl ViewClass for MapView {
         if Some(map_memory.zoom()) != blueprint_zoom_level {
             map_zoom.save_blueprint_component(
                 ctx,
+                &MapZoom::descriptor_zoom(),
                 &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
             );
         }

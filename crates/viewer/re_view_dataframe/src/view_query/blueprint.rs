@@ -53,8 +53,11 @@ impl Query {
     /// Note: this resets the range filter timestamps to -inf/+inf as any other value might be
     /// invalidated.
     pub fn save_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::TimelineName::from(timeline_name.as_str()));
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_timeline(),
+            &components::TimelineName::from(timeline_name.as_str()),
+        );
 
         // clearing the range filter is equivalent to setting it to the default -inf/+inf
         self.query_property
@@ -78,6 +81,7 @@ impl Query {
         } else {
             self.query_property.save_blueprint_component(
                 ctx,
+                &DataframeQuery::descriptor_filter_by_range(),
                 &components::FilterByRange::new(range.min(), range.max()),
             );
         }
@@ -114,8 +118,11 @@ impl Query {
         ctx: &ViewerContext<'_>,
         filter_is_not_null: &components::FilterIsNotNull,
     ) {
-        self.query_property
-            .save_blueprint_component(ctx, filter_is_not_null);
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_filter_is_not_null(),
+            filter_is_not_null,
+        );
     }
 
     pub fn latest_at_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
@@ -128,8 +135,11 @@ impl Query {
     }
 
     pub fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::ApplyLatestAt(enabled.into()));
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_apply_latest_at(),
+            &components::ApplyLatestAt(enabled.into()),
+        );
     }
 
     pub fn save_selected_columns(
@@ -159,8 +169,11 @@ impl Query {
             }
         }
 
-        self.query_property
-            .save_blueprint_component(ctx, &components::SelectedColumns(selected_columns));
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_select(),
+            &components::SelectedColumns(selected_columns),
+        );
     }
 
     pub fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
@@ -169,8 +182,11 @@ impl Query {
     }
 
     pub fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::SelectedColumns::default());
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_select(),
+            &components::SelectedColumns::default(),
+        );
     }
 
     /// Given some view columns, list the columns that should be visible (aka "selected columns"),

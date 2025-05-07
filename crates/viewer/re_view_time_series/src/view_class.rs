@@ -584,7 +584,11 @@ impl ViewClass for TimeSeriesView {
             state.reset_bounds_next_frame = true;
             ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(ctx, &new_y_range);
+            scalar_axis.save_blueprint_component(
+                ctx,
+                &ScalarAxis::descriptor_range(),
+                &new_y_range,
+            );
             ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
         }
 

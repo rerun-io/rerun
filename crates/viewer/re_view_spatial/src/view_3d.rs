@@ -505,7 +505,11 @@ fn view_property_ui_grid3d(
                         .changed()
                         {
                             let color = re_types::components::Color::from(edit_color);
-                            property.save_blueprint_component(ctx, &[color]);
+                            property.save_blueprint_component(
+                                ctx,
+                                &LineGrid3D::descriptor_color(),
+                                &color,
+                            );
                         }
                     },
                     None, // No multiline editor.
