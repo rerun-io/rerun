@@ -27,15 +27,12 @@ decoder = [
   "re_log_types/serde",
   "dep:bytes",
   "dep:lz4_flex",
-  "dep:rmp-serde",
-  "dep:serde",
-  "dep:serde_bytes",
   "dep:tokio",
   "dep:tokio-stream",
 ]
 
 ## Enable encoding of log messages to an .rrd file/stream.
-encoder = ["dep:rmp-serde", "dep:lz4_flex", "re_log_types/serde"]
+encoder = ["dep:lz4_flex", "re_log_types/serde"]
 
 ## Enable streaming of .rrd files from HTTP.
 stream_from_http = [
@@ -68,9 +65,6 @@ thiserror.workspace = true
 bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
 lz4_flex = { workspace = true, optional = true }
-rmp-serde = { workspace = true, optional = true }                       # For loading legacy (pre 0.22) .rrd files
-serde = { workspace = true, optional = true }                           # For loading legacy (pre 0.22) .rrd files
-serde_bytes = { workspace = true, optional = true }                     # For loading legacy (pre 0.22) .rrd files
 tokio = { workspace = true, optional = true, features = ["io-util"] }
 tokio-stream = { workspace = true, optional = true }
 web-time = { workspace = true, optional = true }

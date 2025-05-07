@@ -9,8 +9,7 @@ use tokio_stream::Stream;
 
 use crate::{
     codec::file::{self},
-    legacy::LegacyLogMsg,
-    Compression, EncodingOptions,
+    EncodingOptions,
 };
 
 use super::{options_from_bytes, DecodeError, FileHeader};
@@ -56,10 +55,6 @@ pub struct StreamingDecoder<R: AsyncBufRead> {
     options: EncodingOptions,
     reader: R,
 
-    /// buffer used for uncompressing data. This is a tiny optimization
-    /// to (potentially) avoid allocation for each (compressed) message
-    uncompressed: Vec<u8>,
-
     /// internal buffer for unprocessed bytes
     unprocessed_bytes: BytesMut,
 
@@ -85,7 +80,6 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             version,
             options,
             reader,
-            uncompressed: Vec::new(),
             unprocessed_bytes: BytesMut::new(),
             expect_more_data: false,
             num_bytes_read: FileHeader::SIZE as _,
@@ -97,7 +91,6 @@ impl<R: AsyncBufRead + Unpin> StreamingDecoder<R> {
             version,
             options,
             reader,
-            uncompressed: Vec::new(),
             unprocessed_bytes: BytesMut::new(),
             expect_more_data: false,
             num_bytes_read: FileHeader::SIZE as _,
@@ -125,14 +118,12 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             let Self {
                 options,
                 reader,
-                uncompressed,
                 unprocessed_bytes,
                 expect_more_data,
                 ..
             } = &mut *self;
 
             let serializer = options.serializer;
-            let compression = options.compression;
             let mut buf_length = 0;
 
             // poll_fill_buf() implicitly handles the EOF case, so we don't need to check for it
@@ -187,89 +178,6 @@ impl<R: AsyncBufRead + Unpin> Stream for StreamingDecoder<R> {
             }
 
             let (msg, processed_length) = match serializer {
-                crate::Serializer::LegacyMsgPack => {
-                    let header_size = super::LegacyMessageHeader::SIZE;
-                    if unprocessed_bytes.len() < header_size {
-                        // Not enough data to read the header, need to wait for more
-                        self.expect_more_data = true;
-                        Pin::new(&mut self.reader).consume(buf_length);
-
-                        continue;
-                    }
-                    let data = &unprocessed_bytes[..header_size];
-                    let header = super::LegacyMessageHeader::from_bytes(data)?;
-
-                    match header {
-                        super::LegacyMessageHeader::Data {
-                            compressed_len,
-                            uncompressed_len,
-                        } => {
-                            let uncompressed_len = uncompressed_len as usize;
-                            let compressed_len = compressed_len as usize;
-
-                            // read the data
-                            let (data, length) = match compression {
-                                Compression::Off => {
-                                    if unprocessed_bytes.len() < uncompressed_len + header_size {
-                                        self.expect_more_data = true;
-                                        Pin::new(&mut self.reader).consume(buf_length);
-
-                                        continue;
-                                    }
-
-                                    (
-                                        &unprocessed_bytes
-                                            [header_size..uncompressed_len + header_size],
-                                        uncompressed_len,
-                                    )
-                                }
-
-                                Compression::LZ4 => {
-                                    if unprocessed_bytes.len() < compressed_len + header_size {
-                                        // Not enough data to read the message, need to wait for more
-                                        self.expect_more_data = true;
-                                        Pin::new(&mut self.reader).consume(buf_length);
-
-                                        continue;
-                                    }
-
-                                    uncompressed
-                                        .resize(uncompressed.len().max(uncompressed_len), 0);
-                                    let data = &unprocessed_bytes
-                                        [header_size..compressed_len + header_size];
-                                    if let Err(err) =
-                                        lz4_flex::block::decompress_into(data, uncompressed)
-                                    {
-                                        return std::task::Poll::Ready(Some(Err(
-                                            DecodeError::Lz4(err),
-                                        )));
-                                    }
-
-                                    (&uncompressed[..], compressed_len)
-                                }
-                            };
-
-                            // decode the message
-                            let msg = rmp_serde::from_slice::<LegacyLogMsg>(data);
-
-                            match msg {
-                                Ok(legacy_msg) => {
-                                    (Some(legacy_msg.migrate()), length + header_size)
-                                }
-                                Err(err) => {
-                                    return std::task::Poll::Ready(Some(Err(
-                                        DecodeError::MsgPack(err),
-                                    )));
-                                }
-                            }
-                        }
-
-                        super::LegacyMessageHeader::EndOfStream => {
-                            return std::task::Poll::Ready(None)
-                        }
-                    }
-                }
-
                 crate::Serializer::Protobuf => {
                     let header_size = std::mem::size_of::<file::MessageHeader>();
                     if unprocessed_bytes.len() < header_size {
