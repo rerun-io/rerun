@@ -135,7 +135,9 @@ impl ViewContents {
             query,
             view_id,
         );
-        let expressions = match property.component_array_or_empty::<QueryExpression>() {
+        let expressions = match property.component_array_or_empty::<QueryExpression>(
+            &blueprint_archetypes::ViewContents::descriptor_query(),
+        ) {
             Ok(expressions) => expressions,
 
             Err(err) => {
@@ -313,13 +315,14 @@ impl ViewContents {
                 let Ok(visualizer) = visualizer_collection.get_by_identifier(*visualizer) else {
                     continue;
                 };
-                components_for_defaults.extend(visualizer.visualizer_query_info().queried.iter());
+                components_for_defaults
+                    .extend(visualizer.visualizer_query_info().queried.iter().cloned());
             }
 
             ctx.blueprint.latest_at(
                 blueprint_query,
                 &ViewBlueprint::defaults_path(self.view_id),
-                components_for_defaults,
+                components_for_defaults.iter(),
             )
         };
 
@@ -479,7 +482,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 .latest_at(
                     blueprint_query,
                     override_path,
-                    [blueprint_components::VisualizerOverride::name()],
+                    // TODO(andreas): Should there be any tags on this one? We don't have an archetype for it yet.
+                    [&blueprint_components::VisualizerOverride::descriptor()],
                 )
                 .component_batch::<blueprint_components::VisualizerOverride>()
             {
@@ -504,12 +508,14 @@ impl<'a> DataQueryPropertyResolver<'a> {
         // Gather overrides.
         let component_overrides = &mut property_overrides.component_overrides;
         if let Some(override_subtree) = blueprint.tree().subtree(override_path) {
-            for component_name in blueprint
+            for component_descr in blueprint
                 .storage_engine()
                 .store()
                 .all_components_for_entity(&override_subtree.path)
                 .unwrap_or_default()
             {
+                let component_name = component_descr.component_name;
+
                 if let Some(component_data) = blueprint
                     .storage_engine()
                     .cache()

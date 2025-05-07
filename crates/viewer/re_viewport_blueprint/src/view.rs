@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::HashMap;
 use itertools::{FoldWhile, Itertools as _};
 use parking_lot::Mutex;
-use re_types::{ComponentDescriptor, ViewClassIdentifier};
+use re_types::ViewClassIdentifier;
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
@@ -260,18 +260,18 @@ impl ViewBlueprint {
                             .flat_map(|v| v.into_iter())
                             // It's important that we don't include the ViewBlueprint's components
                             // since those will be updated separately and may contain different data.
-                            .filter(|component_name| {
+                            .filter(|component_descr| {
                                 *path != current_path
                                     || !blueprint_archetypes::ViewBlueprint::all_components()
                                         .iter()
-                                        .any(|descr| descr.component_name == *component_name)
+                                        .any(|descr| descr == component_descr)
                             })
-                            .filter_map(|component_name| {
+                            .filter_map(|component_descr| {
                                 let array = blueprint_engine
                                     .cache()
-                                    .latest_at(query, path, [component_name])
-                                    .component_batch_raw(&component_name);
-                                array.map(|array| (ComponentDescriptor::new(component_name), array))
+                                    .latest_at(query, path, [&component_descr])
+                                    .component_batch_raw_by_descr(&component_descr);
+                                array.map(|array| (component_descr, array))
                             }),
                     )
                     .build();
@@ -377,7 +377,9 @@ impl ViewBlueprint {
             blueprint_query,
             self.id,
         );
-        let ranges = property.component_array::<blueprint_components::VisibleTimeRange>();
+        let ranges = property.component_array::<blueprint_components::VisibleTimeRange>(
+            &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+        );
 
         let time_range = ranges.ok().flatten().and_then(|ranges| {
             ranges

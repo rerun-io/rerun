@@ -120,7 +120,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: "macos-latest"
+          - os: "macos-15"
             name: "macos"
           - os: "windows-latest-8-cores"
             name: "windows"

@@ -6923,7 +6923,6 @@ dependencies = [
  "re_query",
  "re_sorbet",
  "re_tracing",
- "re_types",
  "re_types_core",
  "similar-asserts",
  "tokio",
@@ -7096,6 +7095,7 @@ dependencies = [
 name = "re_grpc_server"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
  "crossbeam",
  "parking_lot",
  "re_build_info",
@@ -7267,6 +7267,7 @@ dependencies = [
  "prost",
  "prost-types",
  "pyo3",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -7296,7 +7297,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "backtrace",
  "bytemuck",
  "criterion",
  "indent",
@@ -7844,6 +7844,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
+ "re_sorbet",
  "re_tracing",
  "re_types",
  "re_types_core",

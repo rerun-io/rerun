@@ -397,7 +397,7 @@ fn latest_at_query_video_from_datastore(
         AssetVideo::all_components().iter(),
     );
 
-    let blob_row_id = results.component_row_id(&Blob::name())?;
+    let blob_row_id = results.component_row_id(&AssetVideo::descriptor_blob())?;
     let blob = results.component_instance::<Blob>(0)?;
     let media_type = results.component_instance::<MediaType>(0);
 

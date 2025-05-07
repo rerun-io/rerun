@@ -16,7 +16,7 @@ use re_types::{
 use re_ui::{list_item, Help, UiExt as _};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities,
+    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
     ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities,
@@ -216,23 +216,38 @@ Set the displayed dimensions in a selection panel.",
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 
-        if tensors.len() > 1 {
-            egui::Frame {
-                inner_margin: re_ui::DesignTokens::view_padding().into(),
-                ..egui::Frame::default()
-            }
-            .show(ui, |ui| {
-                ui.error_label(format!(
-                    "Can only show one tensor at a time; was given {}. Update the query so that it \
+        let response = {
+            let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));
+
+            if tensors.len() > 1 {
+                egui::Frame {
+                    inner_margin: re_ui::DesignTokens::view_padding().into(),
+                    ..egui::Frame::default()
+                }
+                    .show(&mut ui, |ui| {
+                        ui.error_label(format!(
+                            "Can only show one tensor at a time; was given {}. Update the query so that it \
                     returns a single tensor entity and create additional views for the others.",
-                    tensors.len()
-                ));
-            });
-        } else if let Some(tensor_view) = tensors.first() {
-            state.tensor = Some(tensor_view.clone());
-            self.view_tensor(ctx, ui, state, query.view_id, &tensor_view.tensor)?;
-        } else {
-            ui.centered_and_justified(|ui| ui.label("(empty)"));
+                            tensors.len()
+                        ));
+                    });
+            } else if let Some(tensor_view) = tensors.first() {
+                state.tensor = Some(tensor_view.clone());
+                self.view_tensor(ctx, &mut ui, state, query.view_id, &tensor_view.tensor)?;
+            } else {
+                ui.centered_and_justified(|ui| ui.label("(empty)"));
+            }
+
+            ui.response()
+        };
+
+        if response.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
+        if response.clicked() {
+            ctx.selection_state()
+                .set_selection(Item::View(query.view_id));
         }
 
         Ok(())
@@ -297,7 +312,7 @@ impl TensorView {
             }),
         ];
 
-        egui::ScrollArea::both().show(ui, |ui| {
+        egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
             if let Err(err) =
                 self.tensor_slice_ui(ctx, ui, state, view_id, dimension_labels, &slice_selection)
             {
@@ -317,12 +332,12 @@ impl TensorView {
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, painter, image_rect) =
+        let (response, image_rect) =
             self.paint_tensor_slice(ctx, ui, state, view_id, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
-            paint_axis_names(ui, &painter, image_rect, font_id, dimension_labels);
+            paint_axis_names(ui, image_rect, font_id, dimension_labels);
         }
 
         Ok(())
@@ -335,7 +350,7 @@ impl TensorView {
         state: &ViewTensorState,
         view_id: ViewId,
         slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
+    ) -> anyhow::Result<(egui::Response, egui::Rect)> {
         re_tracing::profile_function!();
 
         let Some(tensor_view) = state.tensor.as_ref() else {
@@ -352,10 +367,24 @@ impl TensorView {
             ctx.blueprint_query,
             view_id,
         );
-        let colormap: Colormap = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let mag_filter: MagnificationFilter =
-            scalar_mapping.component_or_fallback(ctx, self, state)?;
+        let colormap: Colormap = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_colormap(),
+        )?;
+        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_gamma(),
+        )?;
+        let mag_filter: MagnificationFilter = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_mag_filter(),
+        )?;
 
         let colormap = ColormapWithRange {
             colormap,
@@ -376,7 +405,7 @@ impl TensorView {
             ctx.blueprint_query,
             view_id,
         )
-        .component_or_fallback(ctx, self, state)?;
+        .component_or_fallback(ctx, self, state, &TensorViewFit::descriptor_scaling())?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
@@ -411,7 +440,7 @@ impl TensorView {
             re_renderer::DebugLabel::from("tensor_slice"),
         )?;
 
-        Ok((response, painter, image_rect))
+        Ok((response, image_rect))
     }
 }
 
@@ -484,11 +513,12 @@ fn dimension_name(shape: &[TensorDimension], dim_idx: u32) -> String {
 
 fn paint_axis_names(
     ui: &egui::Ui,
-    painter: &egui::Painter,
     rect: egui::Rect,
     font_id: egui::FontId,
     dimension_labels: [Option<(String, bool)>; 2],
 ) {
+    let painter = ui.painter();
+
     let [width, height] = dimension_labels;
     let (width_name, invert_width) =
         width.map_or((None, false), |(label, invert)| (Some(label), invert));

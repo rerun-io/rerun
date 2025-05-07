@@ -1,4 +1,5 @@
 use re_log_types::hash::Hash64;
+use re_types::ComponentDescriptor;
 use re_types_core::{
     reflection::ArchetypeFieldReflection, Archetype, ArchetypeReflectionMarker, ComponentName,
 };
@@ -90,7 +91,13 @@ pub fn view_property_component_ui(
     field: &ArchetypeFieldReflection,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
-    let component_array = property.component_raw(field.component_name);
+    let component_descr = ComponentDescriptor {
+        archetype_name: Some(property.archetype_name),
+        archetype_field_name: Some(field.name),
+        component_name: field.component_name,
+    };
+
+    let component_array = property.component_raw(&component_descr);
     let cache_key = property
         .component_row_id(field.component_name)
         .map(Hash64::hash);
@@ -196,7 +203,9 @@ fn menu_more(
     property: &ViewProperty,
     component_name: ComponentName,
 ) {
-    let component_array = property.component_raw(component_name);
+    // TODO(#6889): Use proper `ComponentDescriptor`.
+    let component_descr = ComponentDescriptor::new(component_name);
+    let component_array = property.component_raw(&component_descr);
 
     let property_differs_from_default = component_array
         != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component_name);

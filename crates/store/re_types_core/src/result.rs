@@ -1,7 +1,5 @@
 use std::{any, fmt::Display, ops::Deref};
 
-use crate::ComponentName;
-
 // ---
 
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
@@ -140,12 +138,6 @@ pub enum DeserializationError {
 
     #[error("Expected non-nullable data but didn't find any")]
     MissingData { backtrace: _Backtrace },
-
-    #[error("Expected non-nullable data but didn't find any for component {component}")]
-    MissingComponent {
-        component: ComponentName,
-        backtrace: _Backtrace,
-    },
 
     #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
     MissingStructField {
@@ -327,7 +319,6 @@ impl DeserializationError {
             | Self::MismatchedStructFieldLengths { backtrace, .. }
             | Self::MissingUnionArm { backtrace, .. }
             | Self::MissingData { backtrace }
-            | Self::MissingComponent { backtrace, .. }
             | Self::DatatypeMismatch { backtrace, .. }
             | Self::OffsetOutOfBounds { backtrace, .. }
             | Self::OffsetSliceOutOfBounds { backtrace, .. }

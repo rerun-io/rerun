@@ -43,9 +43,9 @@ impl HybridLatestAtResults<'_> {
     pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
         let component_name = component_name.into();
         self.overrides
-            .get(&component_name)
-            .or_else(|| self.results.get(&component_name))
-            .or_else(|| self.defaults.get(&component_name))
+            .get_by_name(&component_name)
+            .or_else(|| self.results.get_by_name(&component_name))
+            .or_else(|| self.defaults.get_by_name(&component_name))
     }
 
     pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
@@ -183,16 +183,13 @@ impl HybridResults<'_> {
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
-                indices.extend(
-                    r.results
-                        .components
-                        .iter()
-                        .flat_map(|(component_name, chunks)| {
-                            chunks
-                                .iter()
-                                .flat_map(|chunk| chunk.component_row_ids(component_name))
-                        }),
-                );
+                indices.extend(r.results.components.iter().flat_map(
+                    |(component_descriptor, chunks)| {
+                        chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.component_row_ids(component_descriptor))
+                    },
+                ));
 
                 Hash64::hash(&indices)
             }
@@ -257,14 +254,14 @@ pub trait RangeResultsExt {
 impl RangeResultsExt for LatestAtResults {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        self.get(component_name)
+        self.get_by_name(component_name)
             .cloned()
             .map(|chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]))
     }
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        self.get(component_name).cloned().map_or_else(
+        self.get_by_name(component_name).cloned().map_or_else(
             || Cow::Owned(vec![]),
             |chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
         )
@@ -274,19 +271,21 @@ impl RangeResultsExt for LatestAtResults {
 impl RangeResultsExt for RangeResults {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        self.get_required(component_name).ok().map(Cow::Borrowed)
+        self.get_required_by_name(component_name)
+            .ok()
+            .map(Cow::Borrowed)
     }
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        Cow::Borrowed(self.get(component_name).unwrap_or_default())
+        Cow::Borrowed(self.get_by_name(component_name).unwrap_or_default())
     }
 }
 
 impl RangeResultsExt for HybridRangeResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -301,7 +300,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
         re_tracing::profile_function!();
 
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -312,7 +311,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 
             // NOTE: Because this is a range query, we always need the defaults to come first,
             // since range queries don't have any state to bootstrap from.
-            let defaults = self.defaults.get(component_name).map(|unit| {
+            let defaults = self.defaults.get_by_name(component_name).map(|unit| {
                 // Because this is an default from the blueprint we always re-index the data as static
                 Arc::unwrap_or_clone(unit.clone().into_chunk())
                     .into_static()
@@ -336,7 +335,7 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -349,7 +348,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get_by_name(component_name) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -373,7 +372,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
             }
 
             // Otherwise try to use the default data.
-            let Some(unit) = self.defaults.get(component_name) else {
+            let Some(unit) = self.defaults.get_by_name(component_name) else {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an default from the blueprint we always re-index the data as static
@@ -428,8 +427,8 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_component::<C>(),
+                chunk.iter_component_indices_by_name(&self.timeline, &self.component_name),
+                chunk.iter_component_by_name::<C>(),
             )
         })
     }
@@ -442,7 +441,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_component_indices_by_name(&self.timeline, &self.component_name),
                 chunk.iter_slices::<S>(self.component_name)
             )
         })
@@ -457,7 +456,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_component_indices_by_name(&self.timeline, &self.component_name),
                 chunk.iter_slices_from_struct_field::<S>(self.component_name, field_name)
             )
         })

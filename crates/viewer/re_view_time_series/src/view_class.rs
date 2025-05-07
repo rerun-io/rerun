@@ -338,16 +338,35 @@ impl ViewClass for TimeSeriesView {
 
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
-        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_visible(),
+        )?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_corner(),
+        )?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(
+            ctx,
+            self,
+            state,
+            &ScalarAxis::descriptor_range(),
+        )?;
         let y_range = make_range_sane(y_range);
 
-        let y_zoom_lock =
-            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
+        let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
+            ctx,
+            self,
+            state,
+            &ScalarAxis::descriptor_zoom_lock(),
+        )?;
         let y_zoom_lock = y_zoom_lock.0 .0;
 
         let (current_time, time_type, timeline) = {

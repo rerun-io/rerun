@@ -4,7 +4,7 @@ use re_log_types::{EntityPath, Instance};
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, Component as _, ComponentName,
+    Archetype as _, ComponentName,
 };
 use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery as _};
 use re_viewer_context::{
@@ -124,7 +124,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                std::iter::once(AxisLength::name()),
+                [&Transform3D::descriptor_axis_length()],
                 false,
             );
 
@@ -283,9 +283,11 @@ impl IdentifiedViewSystem for AxisLengthDetector {
 impl VisualizerSystem for AxisLengthDetector {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<Transform3D>();
-
-        query_info.required.insert(AxisLength::name());
         query_info.indicators = Default::default();
+
+        query_info
+            .required
+            .insert(Transform3D::descriptor_axis_length());
 
         query_info
     }

@@ -3,7 +3,7 @@ use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Tensor,
     components::{TensorData, ValueRange},
-    Component as _,
+    Archetype as _, Component as _,
 };
 use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
@@ -53,7 +53,7 @@ impl VisualizerSystem for TensorSystem {
                 annotations,
                 &timeline_query,
                 data_result,
-                [TensorData::name(), ValueRange::name()].into_iter(),
+                Tensor::all_components().iter(),
                 query_shadowed_defaults,
             );
 
@@ -62,10 +62,11 @@ impl VisualizerSystem for TensorSystem {
             };
 
             let timeline = query.timeline;
+            let descriptor_data = Tensor::descriptor_data();
             let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {
                 chunk
-                    .iter_component_indices(&timeline, &TensorData::name())
-                    .zip(chunk.iter_component::<TensorData>())
+                    .iter_component_indices(&timeline, &descriptor_data)
+                    .zip(chunk.iter_component::<TensorData>(&descriptor_data))
             });
             let all_ranges = results.iter_as(timeline, ValueRange::name());
 

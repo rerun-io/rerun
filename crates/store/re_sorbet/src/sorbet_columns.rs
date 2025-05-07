@@ -2,12 +2,29 @@ use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
 
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
-use re_log_types::EntityPath;
+
+use re_log_types::{EntityPath, TimelineName};
 
 use crate::{
-    ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
-    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
+    ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ColumnSelector, ComponentColumnDescriptor,
+    ComponentColumnSelector, IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
+    TimeColumnSelector,
 };
+
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[expect(clippy::enum_variant_names)]
+pub enum ColumnSelectorResolveError {
+    #[error("Column for component '{0}' not found")]
+    ComponentNotFound(String),
+
+    #[error(
+        "Multiple columns were found for component '{0}'. Consider using a more specific selector."
+    )]
+    MultipleComponentColumnFound(String),
+
+    #[error("Index column for timeline '{0}' not found")]
+    TimelineNotFound(TimelineName),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SorbetColumnDescriptors {
@@ -97,6 +114,86 @@ impl SorbetColumnDescriptors {
         }
     }
 
+    /// Resolve the provided column selector. Returns `None` if no corresponding column was found.
+    pub fn resolve_selector(
+        &self,
+        column_selector: &ColumnSelector,
+    ) -> Result<ColumnDescriptorRef<'_>, ColumnSelectorResolveError> {
+        match column_selector {
+            ColumnSelector::Time(selector) => self
+                .resolve_index_column_selector(selector)
+                .map(ColumnDescriptorRef::Time),
+
+            ColumnSelector::Component(selector) => self
+                .resolve_component_column_selector(selector)
+                .map(ColumnDescriptorRef::Component),
+        }
+    }
+
+    /// Resolve the provided index column selector. Returns `None` if no corresponding column was
+    /// found.
+    pub fn resolve_index_column_selector(
+        &self,
+        index_column_selector: &TimeColumnSelector,
+    ) -> Result<&IndexColumnDescriptor, ColumnSelectorResolveError> {
+        self.indices
+            .iter()
+            .find(|column| column.timeline_name() == index_column_selector.timeline)
+            .ok_or(ColumnSelectorResolveError::TimelineNotFound(
+                index_column_selector.timeline,
+            ))
+    }
+
+    /// Resolve the provided component column selector. Returns `None` if no corresponding column
+    /// was found.
+    ///
+    /// Matching strategy:
+    /// - The entity path must match exactly.
+    /// - The first component with a fully matching name is returned (there shouldn't be more than
+    ///   one for now).
+    /// - If no exact match is found, a partial match is attempted using
+    ///   [`re_types_core::ComponentName::matches`] and is returned only if it is unique.
+    // TODO(#6889): this will need to be fully revisited with tagged components
+    // TODO(ab): this is related but different from `re_chunk_store::resolve_component_selector()`.
+    // It is likely that only one of these should eventually remain.
+    pub fn resolve_component_column_selector(
+        &self,
+        component_column_selector: &ComponentColumnSelector,
+    ) -> Result<&ComponentColumnDescriptor, ColumnSelectorResolveError> {
+        let ComponentColumnSelector {
+            entity_path,
+            component_name,
+        } = component_column_selector;
+
+        // happy path: exact component name match
+        let exact_match = self.components.iter().find(|column| {
+            column.component_name.as_str() == component_name && &column.entity_path == entity_path
+        });
+
+        if let Some(exact_match) = exact_match {
+            return Ok(exact_match);
+        }
+
+        // fallback: use `ComponentName::match` and check that we have a single result
+        let mut partial_match = self.components.iter().filter(|column| {
+            column.component_name.matches(component_name) && &column.entity_path == entity_path
+        });
+
+        let first_match = partial_match.next();
+
+        // Note: non-unique partial match is highly unlikely for now, but will become more likely
+        // with tagged components.
+        if partial_match.next().is_none() {
+            first_match.ok_or(ColumnSelectorResolveError::ComponentNotFound(
+                component_name.clone(),
+            ))
+        } else {
+            Err(ColumnSelectorResolveError::MultipleComponentColumnFound(
+                component_name.clone(),
+            ))
+        }
+    }
+
     pub fn arrow_fields(&self, batch_type: crate::BatchType) -> Vec<ArrowField> {
         let Self {
             row_id,
@@ -173,6 +270,43 @@ impl SorbetColumnDescriptors {
             return Err(SorbetError::custom(
                 "Multiple row_id columns are not supported",
             ));
+        }
+
+        Ok(Self {
+            row_id: row_ids.pop(),
+            indices,
+            components,
+        })
+    }
+
+    // TODO(#9855): Reconcile this with the above.
+    pub fn try_from_arrow_fields_forgiving(
+        chunk_entity_path: Option<&EntityPath>,
+        fields: &ArrowFields,
+    ) -> Result<Self, SorbetError> {
+        let mut row_ids = Vec::new();
+        let mut indices = Vec::new();
+        let mut components = Vec::new();
+
+        for field in fields {
+            let field = field.as_ref();
+            let column_kind = ColumnKind::try_from(field)?;
+            match column_kind {
+                ColumnKind::RowId => {
+                    row_ids.push(RowIdColumnDescriptor::try_from(field)?);
+                }
+
+                ColumnKind::Index => {
+                    indices.push(IndexColumnDescriptor::try_from(field)?);
+                }
+
+                ColumnKind::Component => {
+                    components.push(ComponentColumnDescriptor::from_arrow_field(
+                        chunk_entity_path,
+                        field,
+                    ));
+                }
+            }
         }
 
         Ok(Self {
