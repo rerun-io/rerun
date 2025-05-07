@@ -204,12 +204,12 @@ impl ViewProperty {
     }
 
     /// Clears a blueprint component.
-    // TODO(#6889): Blueprints should be cleared by descriptor only.
-    pub fn clear_blueprint_component_by_name<C: re_types::Component>(
+    pub fn clear_blueprint_component(
         &self,
         ctx: &ViewerContext<'_>,
+        component_descr: ComponentDescriptor,
     ) {
-        ctx.clear_blueprint_component_by_name(&self.blueprint_store_path, C::name());
+        ctx.clear_blueprint_component(&self.blueprint_store_path, component_descr);
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.

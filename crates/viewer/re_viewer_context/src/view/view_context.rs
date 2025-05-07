@@ -3,7 +3,7 @@ use std::sync::Arc;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ComponentName};
+use re_types::{AsComponents, ComponentBatch, ComponentDescriptor};
 
 use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
 
@@ -143,18 +143,6 @@ impl<'a> ViewContext<'a> {
     ) {
         self.viewer_ctx
             .reset_blueprint_component(entity_path, component_descr);
-    }
-
-    /// Clears a component in the blueprint store by logging an empty array if it exists.
-    // TODO(#6889): Remove in favor of `clear_blueprint_component`.
-    #[inline]
-    pub fn clear_blueprint_component_by_name(
-        &self,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-    ) {
-        self.viewer_ctx
-            .clear_blueprint_component_by_name(entity_path, component_name);
     }
 
     /// Clears a component in the blueprint store by logging an empty array if it exists.
