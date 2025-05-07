@@ -74,12 +74,3 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
         self.chunk.iter_component_timepoints(self.descriptor)
     }
 }
-
-impl<'chunk> std::ops::Deref for ChunkWithDescriptor<'chunk, '_> {
-    type Target = Chunk;
-
-    #[inline]
-    fn deref(&self) -> &'chunk Self::Target {
-        self.chunk
-    }
-}

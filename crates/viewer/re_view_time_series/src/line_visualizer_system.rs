@@ -260,10 +260,12 @@ impl SeriesLineSystem {
             let all_chunks_sorted_and_not_overlapped =
                 all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
                     let lhs_time_max = lhs
+                        .chunk
                         .timelines()
                         .get(query.timeline())
                         .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
                     let rhs_time_min = rhs
+                        .chunk
                         .timelines()
                         .get(query.timeline())
                         .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
