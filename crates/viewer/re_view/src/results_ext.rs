@@ -183,16 +183,13 @@ impl HybridResults<'_> {
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
-                indices.extend(
-                    r.results
-                        .components
-                        .iter()
-                        .flat_map(|(component_name, chunks)| {
-                            chunks
-                                .iter()
-                                .flat_map(|chunk| chunk.component_row_ids(component_name))
-                        }),
-                );
+                indices.extend(r.results.components.iter().flat_map(
+                    |(component_descriptor, chunks)| {
+                        chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.component_row_ids(component_descriptor))
+                    },
+                ));
 
                 Hash64::hash(&indices)
             }
@@ -274,12 +271,14 @@ impl RangeResultsExt for LatestAtResults {
 impl RangeResultsExt for RangeResults {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        self.get_required(component_name).ok().map(Cow::Borrowed)
+        self.get_required_by_name(component_name)
+            .ok()
+            .map(Cow::Borrowed)
     }
 
     #[inline]
     fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        Cow::Borrowed(self.get(component_name).unwrap_or_default())
+        Cow::Borrowed(self.get_by_name(component_name).unwrap_or_default())
     }
 }
 
@@ -428,8 +427,8 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_component::<C>(),
+                chunk.iter_component_indices_by_name(&self.timeline, &self.component_name),
+                chunk.iter_component_by_name::<C>(),
             )
         })
     }
@@ -442,7 +441,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_component_indices_by_name(&self.timeline, &self.component_name),
                 chunk.iter_slices::<S>(self.component_name)
             )
         })
@@ -457,7 +456,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
+                chunk.iter_component_indices_by_name(&self.timeline, &self.component_name),
                 chunk.iter_slices_from_struct_field::<S>(self.component_name, field_name)
             )
         })

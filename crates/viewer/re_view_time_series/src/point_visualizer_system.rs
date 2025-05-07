@@ -273,7 +273,7 @@ impl SeriesPointSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         if let Some(marker_shapes) = all_marker_shapes_chunks[0]
-                            .iter_component::<MarkerShape>()
+                            .iter_component_by_name::<MarkerShape>()
                             .next()
                         {
                             for (points, marker_shape) in points_per_series
@@ -292,7 +292,7 @@ impl SeriesPointSystem {
 
                         let mut all_marker_shapes_iters = all_marker_shapes_chunks
                             .iter()
-                            .map(|chunk| chunk.iter_component::<MarkerShape>())
+                            .map(|chunk| chunk.iter_component_by_name::<MarkerShape>())
                             .collect_vec();
                         let all_marker_shapes_indexed = {
                             let all_marker_shapes = all_marker_shapes_iters
@@ -300,7 +300,7 @@ impl SeriesPointSystem {
                                 .flat_map(|it| it.into_iter());
                             let all_marker_shapes_indices =
                                 all_marker_shapes_chunks.iter().flat_map(|chunk| {
-                                    chunk.iter_component_indices(
+                                    chunk.iter_component_indices_by_name(
                                         query.timeline(),
                                         &MarkerShape::name(),
                                     )

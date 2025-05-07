@@ -2,13 +2,12 @@ use itertools::Itertools as _;
 
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_types::archetypes;
-use re_types::components::{AggregationPolicy, ClearIsRecursive, SeriesVisible};
 use re_types::{
-    components::{Color, Name, Scalar, StrokeWidth},
+    archetypes,
+    components::{AggregationPolicy, Color, Name, Scalar, SeriesVisible, StrokeWidth},
     Archetype as _, Component as _,
 };
-use re_view::range_with_blueprint_resolved_data;
+use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
@@ -354,35 +353,24 @@ fn collect_recursive_clears(
     let mut cleared_indices = Vec::new();
 
     let mut clear_entity_path = entity_path.clone();
+    let clear_descriptor = archetypes::Clear::descriptor_is_recursive();
+
     loop {
-        let results = ctx.recording_engine().cache().range(
-            query,
-            &clear_entity_path,
-            [ClearIsRecursive::name()],
-        );
+        let results =
+            ctx.recording_engine()
+                .cache()
+                .range(query, &clear_entity_path, [&clear_descriptor]);
 
-        let empty = Vec::new();
-        let chunks = results
-            .components
-            .get(&ClearIsRecursive::name())
-            .unwrap_or(&empty);
-
-        for chunk in chunks {
-            cleared_indices.extend(
-                itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), &ClearIsRecursive::name()),
-                    chunk
-                        .iter_component::<ClearIsRecursive>()
-                        .map(|is_recursive| {
-                            is_recursive.as_slice().first().is_some_and(|v| *v.0)
-                        })
-                )
-                .filter_map(|(index, is_recursive)| {
-                    let is_recursive = is_recursive || clear_entity_path == *entity_path;
-                    is_recursive.then_some(index)
+        cleared_indices.extend(
+            results
+                .iter_as(*query.timeline(), clear_descriptor.component_name) // TODO(#6889): Pass descriptor on.
+                .slice::<bool>()
+                .filter_map(|(index, is_recursive_buffer)| {
+                    let is_recursive =
+                        !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
+                    (is_recursive || clear_entity_path == *entity_path).then_some(index)
                 }),
-            );
-        }
+        );
 
         let Some(parent_entity_path) = clear_entity_path.parent() else {
             break;

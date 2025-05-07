@@ -536,14 +536,11 @@ impl TransformCacheStoreSubscriber {
             if aspects.contains(TransformAspect::Clear) {
                 re_tracing::profile_scope!("check for recursive clears");
 
-                let name = re_types::components::ClearIsRecursive::name();
+                let descr = re_types::archetypes::Clear::descriptor_is_recursive();
 
                 let recursively_cleared_times = chunk
-                    .iter_component_indices(
-                        timeline,
-                        &re_types::components::ClearIsRecursive::name(),
-                    )
-                    .zip(chunk.iter_slices::<bool>(name))
+                    .iter_component_indices(timeline, &descr)
+                    .zip(chunk.iter_slices::<bool>(descr.component_name))
                     .filter_map(|((time, _row_id), bool_slice)| {
                         bool_slice
                             .values()

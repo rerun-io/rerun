@@ -1190,9 +1190,9 @@ impl Chunk {
     #[inline]
     pub fn component_row_ids(
         &self,
-        component_name: &ComponentName,
+        component_descriptor: &ComponentDescriptor,
     ) -> impl Iterator<Item = RowId> + '_ {
-        let Some(list_array) = self.get_first_component(*component_name) else {
+        let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
 
