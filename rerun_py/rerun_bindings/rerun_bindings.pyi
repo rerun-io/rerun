@@ -1357,6 +1357,9 @@ class Tasks:
         A `TimeoutError` is raised if the timeout is reached.
         """
 
+    def status_table(self) -> DataFusionTable:
+        """Return a table with the status of all tasks."""
+
     def __len__(self) -> int:
         """Return the number of tasks."""
 

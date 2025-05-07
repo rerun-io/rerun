@@ -68,6 +68,7 @@ impl PyTasks {
         Ok(())
     }
 
+    /// Return a table with the status of all tasks.
     pub fn status_table(&self, py: Python<'_>) -> PyResult<PyDataFusionTable> {
         let mut connection = self.client.borrow(py).connection().clone();
 
