@@ -134,7 +134,7 @@ impl ViewerContext<'_> {
     ) where
         C: re_types::Component + 'a,
     {
-        // TODO(@grtlr): It's a bit sad that we have to be generic over `C` here.
+        // TODO(grtlr): It's a bit sad that we have to be generic over `C` here.
         let empty: [C; 0] = [];
         self.save_blueprint_component(entity_path, component_descr, &empty);
     }
