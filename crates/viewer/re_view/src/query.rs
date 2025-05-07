@@ -89,11 +89,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a, 'b>(
 
     // No need to query for components that have overrides unless opted in!
     if !query_shadowed_components {
-        component_descrs.retain(|component_descr| {
-            overrides
-                .get_by_name(&component_descr.component_name)
-                .is_none()
-        }); // TODO(#6889): use descriptor directly (overrides aren't saved with descriptors yet)
+        component_descrs.retain(|component_descr| overrides.get(&component_descr).is_none());
     }
 
     let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
@@ -166,13 +162,10 @@ fn query_overrides<'a>(
 
     // TODO(jleibs): partitioning overrides by path
     for component_descr in component_descriptors {
-        // TODO(#6889): Overrides should be queried with full descriptors, but aren't yet!
-        let component_name = &component_descr.component_name;
-
         if let Some(override_value) = data_result
             .property_overrides
             .component_overrides
-            .get(component_name)
+            .get(component_descr)
         {
             let current_query = match override_value.store_kind {
                 re_log_types::StoreKind::Recording => ctx.current_query(),
@@ -188,13 +181,13 @@ fn query_overrides<'a>(
                     blueprint_engine.cache().latest_at(
                         &current_query,
                         &override_value.path,
-                        [*component_name],
+                        [component_descr],
                     )
                 }
                 re_log_types::StoreKind::Blueprint => blueprint_engine.cache().latest_at(
                     &current_query,
                     &override_value.path,
-                    [*component_name],
+                    [component_descr],
                 ),
             };
 
@@ -206,16 +199,14 @@ fn query_overrides<'a>(
             //
             // This is extra tricky since the promise hasn't been resolved yet so we can't
             // actually look at the data.
-            if let Some(value) = component_override_result.get_by_name(component_name) {
+            if let Some(value) = component_override_result.get(component_descr) {
                 let index = value.index(&current_query.timeline());
 
                 // NOTE: This can never happen, but I'd rather it happens than an unwrap.
                 debug_assert!(index.is_some(), "{value:#?}");
                 let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
 
-                // TODO(#6889): Overrides should be queried with full descriptors.
-                let component_descr = ComponentDescriptor::new(*component_name);
-                overrides.add(component_descr, index, value.clone());
+                overrides.add(component_descr.clone(), index, value.clone());
             }
         }
     }

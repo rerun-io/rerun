@@ -458,8 +458,7 @@ mod tests {
         example_components::{MyLabel, MyPoint, MyPoints},
         StoreId, StoreKind, TimePoint,
     };
-    use re_types::{blueprint::archetypes::EntityBehavior, components::Interactive};
-    use re_types::{Component as _, ComponentName};
+    use re_types::{blueprint::archetypes::EntityBehavior, ComponentDescriptor};
     use re_viewer_context::{
         test_context::TestContext, IndicatedEntities, MaybeVisualizableEntities, OverridePath,
         PerVisualizer, StoreContext, VisualizableEntities,
@@ -533,7 +532,7 @@ mod tests {
 
         struct Scenario {
             blueprint_overrides: Vec<(EntityPath, Box<dyn re_types_core::AsComponents>)>,
-            expected_overrides: HashMap<EntityPath, HashSet<ComponentName>>,
+            expected_overrides: HashMap<EntityPath, HashSet<ComponentDescriptor>>,
             expected_hidden: HashSet<EntityPath>,
             expected_non_interactive: HashSet<EntityPath>,
         }
@@ -556,7 +555,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    std::iter::once(MyLabel::name()).collect(),
+                    std::iter::once(MyPoints::descriptor_labels()).collect(),
                 )]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: HashSet::default(),
@@ -569,7 +568,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    std::iter::once(Visible::name()).collect(),
+                    std::iter::once(EntityBehavior::descriptor_visible()).collect(),
                 )]),
                 expected_hidden: [
                     "parent/skipped/grandchild".into(),
@@ -594,10 +593,13 @@ mod tests {
                     ),
                 ],
                 expected_overrides: HashMap::from([
-                    ("parent".into(), std::iter::once(Visible::name()).collect()),
+                    (
+                        "parent".into(),
+                        std::iter::once(EntityBehavior::descriptor_visible()).collect(),
+                    ),
                     (
                         "parent/skipped".into(),
-                        std::iter::once(Visible::name()).collect(),
+                        std::iter::once(EntityBehavior::descriptor_visible()).collect(),
                     ),
                 ]),
                 expected_hidden: ["parent".into(), "parent/child".into()]
@@ -613,7 +615,7 @@ mod tests {
                 )],
                 expected_overrides: HashMap::from([(
                     "parent".into(),
-                    HashSet::from_iter([Interactive::name()]),
+                    HashSet::from_iter([EntityBehavior::descriptor_interactive()]),
                 )]),
                 expected_hidden: HashSet::default(),
                 expected_non_interactive: [
@@ -640,11 +642,11 @@ mod tests {
                 expected_overrides: HashMap::from([
                     (
                         "parent".into(),
-                        std::iter::once(Interactive::name()).collect(),
+                        std::iter::once(EntityBehavior::descriptor_interactive()).collect(),
                     ),
                     (
                         "parent/skipped".into(),
-                        std::iter::once(Interactive::name()).collect(),
+                        std::iter::once(EntityBehavior::descriptor_interactive()).collect(),
                     ),
                 ]),
                 expected_hidden: HashSet::default(),
@@ -697,21 +699,21 @@ mod tests {
                     .cloned()
                     .unwrap_or_default();
 
-                for (component_name, override_path) in component_overrides {
+                for (component_descr, override_path) in component_overrides {
                     assert_eq!(
                         override_path.store_kind,
                         StoreKind::Blueprint,
                         "Scenario {i}"
                     );
 
-                    if component_name.ends_with("Indicator") {
+                    if component_descr.component_name.ends_with("Indicator") {
                         // Ignore indicators for overrides.
                         continue;
                     }
 
                     assert!(
-                        expected_overrides.remove(component_name),
-                        "Scenario {i}: expected override for {component_name} at {override_path:?} but got none"
+                        expected_overrides.remove(component_descr),
+                        "Scenario {i}: expected override for {component_descr} at {override_path:?} but got none"
                     );
 
                     assert_eq!(
