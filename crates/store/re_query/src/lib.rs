@@ -12,7 +12,9 @@ pub mod range_zip;
 
 pub use self::cache::{QueryCache, QueryCacheHandle, QueryCacheKey};
 pub use self::cache_stats::{CacheStats, CachesStats};
-pub use self::chunks_with_descriptor::{ChunkWithDescriptor, ChunksWithDescriptor};
+pub use self::chunks_with_descriptor::{
+    ChunkWithDescriptor, ChunksWithDescriptor, UnitChunkWithDescriptor,
+};
 pub use self::clamped_zip::*;
 pub use self::latest_at::LatestAtResults;
 pub use self::range::RangeResults;

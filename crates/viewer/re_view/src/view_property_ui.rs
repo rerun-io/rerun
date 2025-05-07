@@ -202,7 +202,10 @@ fn menu_more(
     let component_array = property.component_raw(component_descr);
 
     let property_differs_from_default = component_array
-        != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component_descr);
+        != ctx.raw_latest_at_in_default_blueprint(
+            &property.blueprint_store_path,
+            component_descr.clone(),
+        );
 
     let response = ui
         .add_enabled(

@@ -168,3 +168,25 @@ impl<'chunk> UnitChunkWithDescriptor<'chunk> {
         )
     }
 }
+
+impl<'chunk> From<UnitChunkWithDescriptor<'chunk>> for ChunksWithDescriptor<'chunk> {
+    fn from(unit_chunk_with_descriptor: UnitChunkWithDescriptor<'chunk>) -> Self {
+        let UnitChunkWithDescriptor {
+            chunk,
+            component_descriptor,
+        } = unit_chunk_with_descriptor;
+
+        // TODO(andreas): Can we avoid the chunk clone here? Chunk clones aren't super expensive as they
+        // will bump ref count or referenced data, but they aren't exactly free either.
+        //
+        // Previously we did `Arc::unwrap_or_clone` in similar callsites but this will (now as before)
+        // practically always go the clone path since we have the chunks owned by the query cache,
+        // so we might as well skip that check.
+        // TODO(andreas): Can we avoid the vector allocation here?
+
+        Self {
+            chunks: Cow::Owned(vec![(**chunk).clone()]),
+            component_descriptor,
+        }
+    }
+}

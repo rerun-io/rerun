@@ -8,7 +8,7 @@ use crate::{
 };
 use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{TimeInt, TimelineName};
-use re_query::LatestAtResults;
+use re_query::{LatestAtResults, UnitChunkWithDescriptor};
 use re_types_core::Archetype;
 use re_viewer_context::{
     DataResult, QueryContext, QueryRange, ViewContext, ViewQuery, ViewerContext,
@@ -41,7 +41,7 @@ pub fn range_with_blueprint_resolved_data<'a, 'b>(
     let overrides = query_overrides(ctx.viewer_ctx, data_result, component_descrs.iter());
 
     // No need to query for components that have overrides.
-    component_descrs.retain(|component_descr| overrides.get(component_descr).is_none());
+    component_descrs.retain(|component_descr| overrides.get(component_descr.clone()).is_none());
 
     let results = ctx.recording_engine().cache().range(
         range_query,
@@ -85,7 +85,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a, 'b>(
 
     // No need to query for components that have overrides unless opted in!
     if !query_shadowed_components {
-        component_descrs.retain(|component_descr| overrides.get(component_descr).is_none());
+        component_descrs.retain(|component_descr| overrides.get(component_descr.clone()).is_none());
     }
 
     let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
@@ -195,14 +195,18 @@ fn query_overrides<'a>(
             //
             // This is extra tricky since the promise hasn't been resolved yet so we can't
             // actually look at the data.
-            if let Some(value) = component_override_result.get(component_descr) {
-                let index = value.index(&current_query.timeline());
+            if let Some(UnitChunkWithDescriptor {
+                chunk,
+                component_descriptor,
+            }) = component_override_result.get(component_descr.clone())
+            {
+                let index = chunk.index(&current_query.timeline());
 
                 // NOTE: This can never happen, but I'd rather it happens than an unwrap.
-                debug_assert!(index.is_some(), "{value:#?}");
+                debug_assert!(index.is_some(), "{chunk:#?}");
                 let index = index.unwrap_or((TimeInt::STATIC, RowId::ZERO));
 
-                overrides.add(component_descr.clone(), index, value.clone());
+                overrides.add(component_descriptor, index, chunk.clone());
             }
         }
     }

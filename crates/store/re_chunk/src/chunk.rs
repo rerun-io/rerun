@@ -406,14 +406,14 @@ impl Chunk {
         }
     }
 
-    /// Clones the chunk into a new chunk without any time data.
+    /// Moves the chunk into a new chunk without any time data.
     #[inline]
     pub fn into_static(mut self) -> Self {
         self.timelines.clear();
         self
     }
 
-    /// Clones the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
+    /// Moves the chunk into a new chunk where all [`RowId`]s are [`RowId::ZERO`].
     pub fn zeroed(self) -> Self {
         let row_ids = std::iter::repeat(RowId::ZERO)
             .take(self.row_ids.len())
