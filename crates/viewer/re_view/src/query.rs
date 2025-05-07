@@ -41,7 +41,7 @@ pub fn range_with_blueprint_resolved_data<'a, 'b>(
     let overrides = query_overrides(ctx.viewer_ctx, data_result, component_descrs.iter());
 
     // No need to query for components that have overrides.
-    component_descrs.retain(|component_descr| overrides.get(&component_descr).is_none());
+    component_descrs.retain(|component_descr| overrides.get(component_descr).is_none());
 
     let results = ctx.recording_engine().cache().range(
         range_query,
