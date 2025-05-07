@@ -196,6 +196,7 @@ impl ViewProperty {
     }
 
     /// Clears a blueprint component.
+    // TODO(#6889): Blueprints should be cleared by descriptor only.
     pub fn clear_blueprint_component_by_name<C: re_types::Component>(
         &self,
         ctx: &ViewerContext<'_>,
