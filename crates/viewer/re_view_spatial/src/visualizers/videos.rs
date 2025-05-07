@@ -87,7 +87,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 let entity_path = ctx.target_entity_path;
 
                 let Some(all_video_timestamp_chunks) =
-                    results.get_required_chunks(&VideoTimestamp::name())
+                    results.get_required_chunks(&VideoFrameReference::descriptor_timestamp())
                 else {
                     return Ok(());
                 };

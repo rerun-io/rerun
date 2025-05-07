@@ -120,10 +120,12 @@ impl ImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name()) else {
+        let Some(all_buffer_chunks) = results.get_required_chunks(&Image::descriptor_buffer())
+        else {
             return;
         };
-        let Some(all_formats_chunks) = results.get_required_chunks(&ImageFormat::name()) else {
+        let Some(all_formats_chunks) = results.get_required_chunks(&Image::descriptor_format())
+        else {
             return;
         };
 

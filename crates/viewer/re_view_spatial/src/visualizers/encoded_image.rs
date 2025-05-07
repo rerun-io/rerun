@@ -135,7 +135,8 @@ impl EncodedImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+        let Some(all_blob_chunks) = results.get_required_chunks(&EncodedImage::descriptor_blob())
+        else {
             return;
         };
 

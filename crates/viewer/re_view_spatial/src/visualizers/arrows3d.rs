@@ -203,7 +203,9 @@ impl VisualizerSystem for Arrows3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_vector_chunks) = results.get_required_chunks(&Vector3D::name()) else {
+                let Some(all_vector_chunks) =
+                    results.get_required_chunks(&Arrows3D::descriptor_vectors())
+                else {
                     return Ok(());
                 };
 

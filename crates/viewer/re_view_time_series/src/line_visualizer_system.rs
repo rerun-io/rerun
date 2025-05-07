@@ -4,7 +4,7 @@ use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     archetypes,
-    components::{AggregationPolicy, Color, Name, Scalar, SeriesVisible, StrokeWidth},
+    components::{AggregationPolicy, Color, Name, SeriesVisible, StrokeWidth},
     Archetype as _, Component as _,
 };
 use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
@@ -204,7 +204,9 @@ impl SeriesLineSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+            let Some(all_scalar_chunks) =
+                results.get_required_chunks(&archetypes::Scalars::descriptor_scalars())
+            else {
                 return;
             };
 
