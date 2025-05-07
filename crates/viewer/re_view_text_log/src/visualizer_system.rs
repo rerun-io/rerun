@@ -4,6 +4,7 @@ use re_entity_db::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::TimePoint;
 use re_query::{clamped_zip_1x2, range_zip_1x2};
+use re_types::Archetype as _;
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -90,7 +91,7 @@ impl TextLogSystem {
             None,
             query,
             data_result,
-            [Text::name(), TextLogLevel::name(), Color::name()],
+            TextLog::all_components().iter(),
         );
 
         let Some(all_text_chunks) = results.get_required_chunks(&Text::name()) else {

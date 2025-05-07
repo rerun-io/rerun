@@ -41,11 +41,9 @@ const DEFAULT_MARKER_SIZE: f32 = 3.0;
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info.queried.extend(
-            archetypes::SeriesPoints::all_components()
-                .iter()
-                .map(|descr| descr.component_name),
-        );
+        query_info
+            .queried
+            .extend(archetypes::SeriesPoints::all_components().iter().cloned());
 
         query_info.indicators =
             [archetypes::SeriesPoints::descriptor_indicator().component_name].into();
@@ -204,14 +202,9 @@ impl SeriesPointSystem {
                 None,
                 &query,
                 data_result,
-                [
-                    Color::name(),
-                    MarkerShape::name(),
-                    MarkerSize::name(),
-                    Name::name(),
-                    Scalar::name(),
-                    SeriesVisible::name(),
-                ],
+                archetypes::Scalars::all_components()
+                    .iter()
+                    .chain(archetypes::SeriesPoints::all_components().iter()),
             );
 
             // If we have no scalars, we can't do anything.

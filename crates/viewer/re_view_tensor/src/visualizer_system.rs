@@ -3,7 +3,7 @@ use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Tensor,
     components::{TensorData, ValueRange},
-    Component as _,
+    Archetype as _, Component as _,
 };
 use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
@@ -53,7 +53,7 @@ impl VisualizerSystem for TensorSystem {
                 annotations,
                 &timeline_query,
                 data_result,
-                [TensorData::name(), ValueRange::name()].into_iter(),
+                Tensor::all_components().iter(),
                 query_shadowed_defaults,
             );
 

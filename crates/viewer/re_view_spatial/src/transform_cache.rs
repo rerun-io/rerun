@@ -766,9 +766,11 @@ fn query_and_resolve_tree_transform_at_entity(
     query: &LatestAtQuery,
 ) -> Option<Affine3A> {
     // TODO(andreas): Filter out styling components.
-    let components = archetypes::Transform3D::all_components();
-    let component_names = components.iter().map(|descr| descr.component_name);
-    let results = entity_db.latest_at(query, entity_path, component_names);
+    let results = entity_db.latest_at(
+        query,
+        entity_path,
+        archetypes::Transform3D::all_components().iter(),
+    );
     if results.components.is_empty() {
         return None;
     }
@@ -850,9 +852,14 @@ fn query_and_resolve_instance_poses_at_entity(
     query: &LatestAtQuery,
 ) -> Vec<Affine3A> {
     // TODO(andreas): Filter out styling components.
-    let components = archetypes::InstancePoses3D::all_components();
-    let component_names = components.iter().map(|descr| descr.component_name);
-    let result = entity_db.latest_at(query, entity_path, component_names);
+    // TODO(#9889): Boxes & ellipsoids depend on differently tagged instance pose right now.
+    let result = entity_db.latest_at_by_name(
+        query,
+        entity_path,
+        archetypes::InstancePoses3D::all_components()
+            .iter()
+            .map(|c| c.component_name),
+    );
 
     let max_num_instances = result
         .components

@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
-use re_types::{ComponentName, ComponentNameSet};
+use re_types::{ComponentDescriptor, ComponentNameSet};
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
@@ -33,7 +33,7 @@ pub struct VisualizerEntitySubscriber {
     indicator_components: ComponentNameSet,
 
     /// Assigns each required component an index.
-    required_components_indices: IntMap<ComponentName, usize>,
+    required_components_indices: IntMap<ComponentDescriptor, usize>,
 
     per_store_mapping: HashMap<StoreId, VisualizerEntityMapping>,
 
@@ -200,10 +200,7 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
             }
 
             for (component_desc, list_array) in event.diff.chunk.components().iter() {
-                if let Some(index) = self
-                    .required_components_indices
-                    .get(&component_desc.component_name)
-                {
+                if let Some(index) = self.required_components_indices.get(component_desc) {
                     // The component might be present, but logged completely empty.
                     // That shouldn't count towards filling "having the required component present"!
                     // (Note: This happens frequently now with `Transform3D`'s component which always get logged, thus tripping of the `AxisLengthDetector`!)` )

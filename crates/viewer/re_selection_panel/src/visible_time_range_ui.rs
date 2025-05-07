@@ -62,7 +62,7 @@ fn visible_time_range_ui(
 
     let visible_time_ranges = ctx
         .blueprint_db()
-        .latest_at(
+        .latest_at_by_name(
             ctx.blueprint_query,
             time_range_override_path,
             std::iter::once(VisibleTimeRange::name()),

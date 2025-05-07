@@ -33,8 +33,14 @@ impl ViewContextSystem for EntityDepthOffsets {
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         let mut entities_per_draw_order = BTreeMap::new();
-        for visualizer in visualizers_processing_draw_order() {
-            collect_draw_order_per_visualizer(ctx, query, visualizer, &mut entities_per_draw_order);
+        for (visualizer, draw_order_descriptor) in visualizers_processing_draw_order() {
+            collect_draw_order_per_visualizer(
+                ctx,
+                query,
+                visualizer,
+                &draw_order_descriptor,
+                &mut entities_per_draw_order,
+            );
         }
 
         // Determine re_renderer draw order from this.
@@ -71,6 +77,7 @@ fn collect_draw_order_per_visualizer(
     ctx: &re_viewer_context::ViewContext<'_>,
     query: &re_viewer_context::ViewQuery<'_>,
     visualizer_identifier: ViewSystemIdentifier,
+    draw_order_descriptor: &re_types::ComponentDescriptor,
     entities_per_draw_order: &mut BTreeMap<
         DrawOrder,
         BTreeSet<(ViewSystemIdentifier, EntityPathHash)>,
@@ -84,7 +91,7 @@ fn collect_draw_order_per_visualizer(
             None,
             &latest_at_query,
             data_result,
-            std::iter::once(DrawOrder::name()),
+            [draw_order_descriptor],
             query_shadowed_components,
         )
         .get_mono_with_fallback::<DrawOrder>();

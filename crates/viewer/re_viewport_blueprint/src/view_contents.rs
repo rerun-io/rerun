@@ -315,13 +315,14 @@ impl ViewContents {
                 let Ok(visualizer) = visualizer_collection.get_by_identifier(*visualizer) else {
                     continue;
                 };
-                components_for_defaults.extend(visualizer.visualizer_query_info().queried.iter());
+                components_for_defaults
+                    .extend(visualizer.visualizer_query_info().queried.iter().cloned());
             }
 
             ctx.blueprint.latest_at(
                 blueprint_query,
                 &ViewBlueprint::defaults_path(self.view_id),
-                components_for_defaults,
+                components_for_defaults.iter(),
             )
         };
 
@@ -481,7 +482,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 .latest_at(
                     blueprint_query,
                     override_path,
-                    [blueprint_components::VisualizerOverride::name()],
+                    // TODO(andreas): Should there be any tags on this one? We don't have an archetype for it yet.
+                    [&blueprint_components::VisualizerOverride::descriptor()],
                 )
                 .component_batch::<blueprint_components::VisualizerOverride>()
             {
