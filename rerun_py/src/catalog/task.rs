@@ -1,9 +1,14 @@
+use std::sync::Arc;
+
+use datafusion::datasource::MemTable;
 use pyo3::exceptions::PyIndexError;
 use pyo3::{pyclass, pymethods, Py, PyRef, PyResult, Python};
 
+use re_log_types::hash::Hash64;
 use re_protos::common::v1alpha1::TaskId;
 
-use crate::catalog::PyCatalogClient;
+use crate::catalog::{to_py_err, PyCatalogClient};
+use crate::dataframe::PyDataFusionTable;
 
 /// A handle on a remote task.
 #[pyclass(name = "Task")]
@@ -63,7 +68,24 @@ impl PyTasks {
         Ok(())
     }
 
-    //TODO(ab): add method to poll about status (how many are done, etc.)
+    /// Return a table with the status of all tasks.
+    pub fn status_table(&self, py: Python<'_>) -> PyResult<PyDataFusionTable> {
+        let mut connection = self.client.borrow(py).connection().clone();
+
+        // TODO(dataplatform/issues#709): we'd use `OperationId` here if we had it.
+        let hash = Hash64::hash(self.ids.iter().map(|id| id.id.as_str()).collect::<Vec<_>>());
+        let name = format!("__tasks_{:x}__", hash.hash64());
+
+        let task_status_table = connection.query_tasks(py, &self.ids)?;
+        let provider = MemTable::try_new(task_status_table.schema(), vec![vec![task_status_table]])
+            .map_err(to_py_err)?;
+
+        Ok(PyDataFusionTable {
+            provider: Arc::new(provider),
+            name,
+            client: self.client.clone_ref(py),
+        })
+    }
 
     //
     // Sequence methods

@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
@@ -8,6 +7,7 @@ use pyo3::{
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -216,6 +216,27 @@ impl ConnectionHandle {
                         })
                 })
                 .ok_or_else(|| PyValueError::new_err("bug: invalid response schema"))
+        })
+    }
+
+    pub fn query_tasks(&mut self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
+        wait_for_future(py, async {
+            let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
+                ids: task_ids.to_vec(),
+            };
+
+            let status_table = self
+                .client
+                .query_tasks(request)
+                .await
+                .map_err(to_py_err)?
+                .into_inner()
+                .dataframe_part()
+                .map_err(to_py_err)?
+                .decode()
+                .map_err(to_py_err)?;
+
+            Ok(status_table)
         })
     }
 

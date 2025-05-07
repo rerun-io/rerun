@@ -66,6 +66,9 @@ enum ExternalError {
 
     #[error(transparent)]
     ColumnSelectorResolveError(#[from] re_sorbet::ColumnSelectorResolveError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] re_protos::TypeConversionError),
 }
 
 impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
@@ -137,6 +140,10 @@ impl From<ExternalError> for PyErr {
 
             ExternalError::ColumnSelectorResolveError(err) => {
                 PyValueError::new_err(format!("{err}"))
+            }
+
+            ExternalError::TypeConversionError(err) => {
+                PyValueError::new_err(format!("Could not convert gRPC message: {err}"))
             }
         }
     }
