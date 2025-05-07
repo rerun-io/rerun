@@ -241,7 +241,7 @@ fn active_defaults(
 fn components_to_show_in_add_menu(
     ctx: &ViewContext<'_>,
     visualized_components_by_archetype: &BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>,
-    active_defaults: &IntMap<ComponentDescriptor, ArrayRef>,
+    active_defaults: &BTreeMap<ComponentDescriptor, ArrayRef>,
 ) -> Result<BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>, String> {
     if visualized_components_by_archetype.is_empty() {
         return Err("No components to visualize".to_owned());
