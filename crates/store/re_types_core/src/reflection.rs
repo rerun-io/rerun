@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef};
 
-use crate::{ArchetypeName, ComponentName};
+use crate::{ArchetypeFieldName, ArchetypeName, ComponentName};
 
 /// A trait for code-generated enums.
 pub trait Enum:
@@ -290,7 +290,7 @@ impl ArchetypeReflection {
 #[derive(Clone, Debug)]
 pub struct ArchetypeFieldReflection {
     /// The name of the field (i.e. same as `ComponentDescriptor::archetype_field_name`).
-    pub name: &'static str,
+    pub name: ArchetypeFieldName,
 
     /// The name of the field in human case.
     pub display_name: &'static str,

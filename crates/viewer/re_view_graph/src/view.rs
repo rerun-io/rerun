@@ -175,8 +175,8 @@ impl ViewClass for GraphView {
             ctx.blueprint_query,
             query.view_id,
         );
-        let rect_in_scene: blueprint::components::VisualBounds2D =
-            bounds_property.component_or_fallback(ctx, self, state)?;
+        let rect_in_scene: blueprint::components::VisualBounds2D = bounds_property
+            .component_or_fallback(ctx, self, state, &VisualBounds2D::descriptor_range())?;
 
         // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());

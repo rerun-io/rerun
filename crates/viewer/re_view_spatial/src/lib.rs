@@ -45,7 +45,7 @@ use re_log_types::debug_assert_archetype_has_components;
 use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
 use re_types::{
-    blueprint::components::BackgroundKind,
+    blueprint::{archetypes::Background, components::BackgroundKind},
     components::{Color, ImageFormat, MediaType, Resolution},
 };
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
@@ -108,7 +108,12 @@ pub(crate) fn configure_background(
 ) -> Result<(Option<re_renderer::QueueableDrawData>, re_renderer::Rgba), ViewPropertyQueryError> {
     use re_renderer::renderer;
 
-    let kind: BackgroundKind = background.component_or_fallback(ctx, view_system, state)?;
+    let kind: BackgroundKind = background.component_or_fallback(
+        ctx,
+        view_system,
+        state,
+        &Background::descriptor_kind(),
+    )?;
 
     match kind {
         BackgroundKind::GradientDark => Ok((
@@ -134,7 +139,12 @@ pub(crate) fn configure_background(
         )),
 
         BackgroundKind::SolidColor => {
-            let color: Color = background.component_or_fallback(ctx, view_system, state)?;
+            let color: Color = background.component_or_fallback(
+                ctx,
+                view_system,
+                state,
+                &Background::descriptor_color(),
+            )?;
             Ok((None, color.into()))
         }
     }

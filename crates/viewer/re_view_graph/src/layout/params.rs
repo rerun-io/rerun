@@ -4,7 +4,7 @@ use re_types::{
         components::{Enabled, ForceDistance, ForceIterations, ForceStrength},
     },
     components::Position2D,
-    Archetype, Component,
+    Archetype, Component, ComponentDescriptor,
 };
 use re_viewer_context::{ComponentFallbackProvider, ViewQuery, ViewState, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
@@ -61,12 +61,16 @@ impl<'a, T: Archetype> QueryArchetype<'a, T> {
         }
     }
 
-    fn get<R>(&self) -> Result<R, ViewPropertyQueryError>
+    fn get<R>(&self, component_descr: &ComponentDescriptor) -> Result<R, ViewPropertyQueryError>
     where
         R: Component + Default,
     {
-        self.property
-            .component_or_fallback(self.ctx, self.provider, self.view_state)
+        self.property.component_or_fallback(
+            self.ctx,
+            self.provider,
+            self.view_state,
+            component_descr,
+        )
     }
 }
 
@@ -87,23 +91,26 @@ impl ForceLayoutParams {
 
         Ok(Self {
             // Link
-            force_link_enabled: force_link.get()?,
-            force_link_distance: force_link.get()?,
-            force_link_iterations: force_link.get()?,
+            force_link_enabled: force_link.get(&ForceLink::descriptor_enabled())?,
+            force_link_distance: force_link.get(&ForceLink::descriptor_distance())?,
+            force_link_iterations: force_link.get(&ForceLink::descriptor_iterations())?,
             // Many body
-            force_many_body_enabled: force_many.get()?,
-            force_many_body_strength: force_many.get()?,
+            force_many_body_enabled: force_many.get(&ForceManyBody::descriptor_enabled())?,
+            force_many_body_strength: force_many.get(&ForceManyBody::descriptor_strength())?,
             // Position
-            force_position_enabled: force_position.get()?,
-            force_position_strength: force_position.get()?,
-            force_position_pos: force_position.get()?,
+            force_position_enabled: force_position.get(&ForcePosition::descriptor_enabled())?,
+            force_position_strength: force_position.get(&ForcePosition::descriptor_strength())?,
+            force_position_pos: force_position.get(&ForcePosition::descriptor_position())?,
             // Center
-            force_center_enabled: force_center.get()?,
-            force_center_strength: force_center.get()?,
+            force_center_enabled: force_center.get(&ForceCenter::descriptor_enabled())?,
+            force_center_strength: force_center.get(&ForceCenter::descriptor_strength())?,
             // Collision
-            force_collision_enabled: force_collision.get()?,
-            force_collision_strength: force_collision.get()?,
-            force_collision_iterations: force_collision.get()?,
+            force_collision_enabled: force_collision
+                .get(&ForceCollisionRadius::descriptor_enabled())?,
+            force_collision_strength: force_collision
+                .get(&ForceCollisionRadius::descriptor_strength())?,
+            force_collision_iterations: force_collision
+                .get(&ForceCollisionRadius::descriptor_iterations())?,
         })
     }
 }
