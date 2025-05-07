@@ -206,14 +206,14 @@ impl VisualizerSystem for Arrows2DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_vector_chunks) =
-                    results.get_required_chunks(&Arrows2D::descriptor_vectors())
+                    results.get_required_chunks(Arrows2D::descriptor_vectors())
                 else {
                     return Ok(());
                 };
 
                 let num_vectors = all_vector_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>(Vector2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
                     .map(|vectors| vectors.len())
                     .sum();
 
@@ -225,8 +225,7 @@ impl VisualizerSystem for Arrows2DVisualizer {
                 line_builder.reserve_vertices(num_vectors * 2)?;
 
                 let timeline = ctx.query.timeline();
-                let all_vectors_indexed =
-                    iter_slices::<[f32; 2]>(&all_vector_chunks, timeline, Vector2D::name());
+                let all_vectors_indexed = iter_slices::<[f32; 2]>(&all_vector_chunks, timeline);
                 let all_origins = results.iter_as(timeline, Position2D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());

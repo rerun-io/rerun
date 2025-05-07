@@ -1,7 +1,7 @@
 use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Image,
-    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
+    components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
     Component as _,
 };
@@ -120,20 +120,18 @@ impl ImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) = results.get_required_chunks(&Image::descriptor_buffer())
+        let Some(all_buffer_chunks) = results.get_required_chunks(Image::descriptor_buffer())
         else {
             return;
         };
-        let Some(all_formats_chunks) = results.get_required_chunks(&Image::descriptor_format())
+        let Some(all_formats_chunks) = results.get_required_chunks(Image::descriptor_format())
         else {
             return;
         };
 
         let timeline = ctx.query.timeline();
-        let all_buffers_indexed =
-            iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
-        let all_formats_indexed =
-            iter_component::<ImageFormat>(&all_formats_chunks, timeline, ImageFormat::name());
+        let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
+        let all_formats_indexed = iter_component::<ImageFormat>(&all_formats_chunks, timeline);
         let all_opacities = results.iter_as(timeline, Opacity::name());
 
         let data = re_query::range_zip_1x2(

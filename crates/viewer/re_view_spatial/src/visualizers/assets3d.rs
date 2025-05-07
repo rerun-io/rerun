@@ -5,7 +5,7 @@ use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
 use re_types::{
     archetypes::Asset3D,
-    components::{AlbedoFactor, Blob, MediaType},
+    components::{AlbedoFactor, MediaType},
     ArrowString, Component as _,
 };
 use re_viewer_context::{
@@ -151,15 +151,13 @@ impl VisualizerSystem for Asset3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_blob_chunks) =
-                    results.get_required_chunks(&Asset3D::descriptor_blob())
+                let Some(all_blob_chunks) = results.get_required_chunks(Asset3D::descriptor_blob())
                 else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed =
-                    iter_slices::<&[u8]>(&all_blob_chunks, timeline, Blob::name());
+                let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
                 let all_media_types = results.iter_as(timeline, MediaType::name());
                 let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
 

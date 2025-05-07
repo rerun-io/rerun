@@ -138,14 +138,14 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_half_size_chunks) =
-                    results.get_required_chunks(&Ellipsoids3D::descriptor_half_sizes())
+                    results.get_required_chunks(Ellipsoids3D::descriptor_half_sizes())
                 else {
                     return Ok(());
                 };
 
                 let num_ellipsoids: usize = all_half_size_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>(HalfSize3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|vectors| vectors.len())
                     .sum();
                 if num_ellipsoids == 0 {
@@ -159,7 +159,7 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
-                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline, HalfSize3D::name());
+                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_line_radii = results.iter_as(timeline, Radius::name());
                 // Deserialized because it's a union.

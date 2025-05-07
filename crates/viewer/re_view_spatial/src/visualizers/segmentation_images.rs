@@ -1,7 +1,7 @@
 use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::SegmentationImage,
-    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
+    components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
     Component as _,
 };
@@ -75,24 +75,20 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let entity_path = ctx.target_entity_path;
 
                 let Some(all_buffer_chunks) =
-                    results.get_required_chunks(&SegmentationImage::descriptor_buffer())
+                    results.get_required_chunks(SegmentationImage::descriptor_buffer())
                 else {
                     return Ok(());
                 };
                 let Some(all_formats_chunks) =
-                    results.get_required_chunks(&SegmentationImage::descriptor_format())
+                    results.get_required_chunks(SegmentationImage::descriptor_format())
                 else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_buffers_indexed =
-                    iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
-                let all_formats_indexed = iter_component::<ImageFormat>(
-                    &all_formats_chunks,
-                    timeline,
-                    ImageFormat::name(),
-                );
+                let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
+                let all_formats_indexed =
+                    iter_component::<ImageFormat>(&all_formats_chunks, timeline);
                 let all_opacities = results.iter_as(timeline, Opacity::name());
 
                 let data = re_query::range_zip_1x2(

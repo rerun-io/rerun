@@ -92,7 +92,7 @@ impl TextLogSystem {
             TextLog::all_components().iter(),
         );
 
-        let Some(all_text_chunks) = results.get_required_chunks(&TextLog::descriptor_text()) else {
+        let Some(all_text_chunks) = results.get_required_chunks(TextLog::descriptor_text()) else {
             return;
         };
 
@@ -101,7 +101,7 @@ impl TextLogSystem {
         // Let's keep it simple for now, until we have data suggested we need the extra perf.
         let all_timepoints = all_text_chunks
             .iter()
-            .flat_map(|chunk| chunk.iter_component_timepoints(&Text::name()));
+            .flat_map(|chunk| chunk.iter_component_timepoints());
 
         let timeline = *query.timeline();
         let all_texts = results.iter_as(timeline, Text::name());

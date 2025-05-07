@@ -197,14 +197,14 @@ impl VisualizerSystem for Lines3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_strip_chunks) =
-                    results.get_required_chunks(&LineStrips3D::descriptor_strips())
+                    results.get_required_chunks(LineStrips3D::descriptor_strips())
                 else {
                     return Ok(());
                 };
 
                 let num_strips = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>(LineStrip3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>())
                     .map(|strips| strips.len())
                     .sum();
                 if num_strips == 0 {
@@ -214,14 +214,13 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let num_vertices = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>(LineStrip3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>())
                     .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
 
                 let timeline = ctx.query.timeline();
-                let all_strips_indexed =
-                    iter_slices::<&[[f32; 3]]>(&all_strip_chunks, timeline, LineStrip3D::name());
+                let all_strips_indexed = iter_slices::<&[[f32; 3]]>(&all_strip_chunks, timeline);
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());

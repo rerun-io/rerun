@@ -205,7 +205,7 @@ impl SeriesLineSystem {
 
             // If we have no scalars, we can't do anything.
             let Some(all_scalar_chunks) =
-                results.get_required_chunks(&archetypes::Scalars::descriptor_scalars())
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
             else {
                 return;
             };

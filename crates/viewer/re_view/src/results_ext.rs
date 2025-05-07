@@ -9,7 +9,7 @@ use re_types::ComponentDescriptor;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
-use crate::DataResultQuery as _;
+use crate::{chunks_with_descriptor::ChunksWithDescriptor, DataResultQuery as _};
 
 // ---
 
@@ -227,8 +227,8 @@ pub trait RangeResultsExt {
     /// Defaults have no effect.
     fn get_required_chunks(
         &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<Cow<'_, [Chunk]>>;
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>>;
 
     /// Returns component data for the given component or an empty array.
     ///
@@ -261,11 +261,14 @@ impl RangeResultsExt for LatestAtResults {
     #[inline]
     fn get_required_chunks(
         &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<Cow<'_, [Chunk]>> {
-        self.get(component_descr)
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        self.get(&component_descriptor)
             .cloned()
-            .map(|chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]))
+            .map(|chunk| ChunksWithDescriptor {
+                chunks: Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
+                component_descriptor,
+            })
     }
 
     #[inline]
@@ -281,9 +284,14 @@ impl RangeResultsExt for RangeResults {
     #[inline]
     fn get_required_chunks(
         &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<Cow<'_, [Chunk]>> {
-        self.get_required(component_descr).ok().map(Cow::Borrowed)
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        self.get_required(&component_descriptor)
+            .ok()
+            .map(|chunks| ChunksWithDescriptor {
+                chunks: Cow::Borrowed(chunks),
+                component_descriptor,
+            })
     }
 
     #[inline]
@@ -298,16 +306,19 @@ impl RangeResultsExt for HybridRangeResults<'_> {
     #[inline]
     fn get_required_chunks(
         &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_descr) {
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        if let Some(unit) = self.overrides.get(&component_descriptor) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
-            Some(Cow::Owned(vec![chunk]))
+            Some(ChunksWithDescriptor {
+                chunks: Cow::Owned(vec![chunk]),
+                component_descriptor,
+            })
         } else {
-            self.results.get_required_chunks(component_descr)
+            self.results.get_required_chunks(component_descriptor)
         }
     }
 
@@ -351,16 +362,19 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
     fn get_required_chunks(
         &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_descr) {
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        if let Some(unit) = self.overrides.get(&component_descriptor) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
-            Some(Cow::Owned(vec![chunk]))
+            Some(ChunksWithDescriptor {
+                chunks: Cow::Owned(vec![chunk]),
+                component_descriptor,
+            })
         } else {
-            self.results.get_required_chunks(component_descr)
+            self.results.get_required_chunks(component_descriptor)
         }
     }
 
@@ -406,11 +420,11 @@ impl RangeResultsExt for HybridResults<'_> {
     #[inline]
     fn get_required_chunks(
         &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<Cow<'_, [Chunk]>> {
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
         match self {
-            Self::LatestAt(_, results) => results.get_required_chunks(component_descr),
-            Self::Range(_, results) => results.get_required_chunks(component_descr),
+            Self::LatestAt(_, results) => results.get_required_chunks(component_descriptor),
+            Self::Range(_, results) => results.get_required_chunks(component_descriptor),
         }
     }
 

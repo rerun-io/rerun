@@ -131,14 +131,14 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_half_size_chunks) =
-                    results.get_required_chunks(&Boxes3D::descriptor_half_sizes())
+                    results.get_required_chunks(Boxes3D::descriptor_half_sizes())
                 else {
                     return Ok(());
                 };
 
                 let num_boxes: usize = all_half_size_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>(HalfSize3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|vectors| vectors.len())
                     .sum();
                 if num_boxes == 0 {
@@ -147,7 +147,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
-                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline, HalfSize3D::name());
+                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
