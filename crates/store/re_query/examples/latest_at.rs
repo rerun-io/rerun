@@ -9,7 +9,6 @@ use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::build_frame_nr;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types::Component as _;
 use re_types_core::Archetype as _;
 
 use re_query::{clamped_zip_1x2, LatestAtResults};
