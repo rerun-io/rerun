@@ -135,7 +135,7 @@ fn active_default_ui(
                     ui,
                     db,
                     &view.defaults_path,
-                    component_descr.component_name,
+                    component_descr,
                     None, // No cache key.
                     default_value,
                     allow_multiline,
@@ -154,11 +154,7 @@ fn active_default_ui(
                 )
                 .min_desired_width(150.0)
                 .action_button(&re_ui::icons::CLOSE, || {
-                    ctx.clear_blueprint_component_by_name(
-                        &view.defaults_path,
-                        // TODO(#6889): Use descriptor directly.
-                        component_descr.component_name,
-                    );
+                    ctx.clear_blueprint_component(&view.defaults_path, component_descr.clone());
                 })
                 .value_fn(|ui, _| value_fn(ui)),
             )
@@ -332,7 +328,7 @@ fn add_popup_ui(
                         ctx,
                         defaults_path,
                         &query_context,
-                        &entry.descriptor(archetype_name),
+                        entry.descriptor(archetype_name),
                         entry.visualizer_identifier,
                     );
                     ui.close_menu();
@@ -346,15 +342,13 @@ fn add_new_default(
     ctx: &ViewContext<'_>,
     defaults_path: &EntityPath,
     query_context: &QueryContext<'_>,
-    component_descr: &ComponentDescriptor,
+    component_descr: ComponentDescriptor,
     visualizer: ViewSystemIdentifier,
 ) {
     // We are creating a new override. We need to decide what initial value to give it.
     // - First see if there's an existing splat in the recording.
     // - Next see if visualizer system wants to provide a value.
     // - Finally, fall back on the default value from the component registry.
-
-    // TODO(jleibs): Is this the right place for fallbacks to come from?
     let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(visualizer) else {
         re_log::warn!("Could not find visualizer for: {}", visualizer);
         return;
@@ -367,11 +361,7 @@ fn add_new_default(
         .with_row(
             RowId::new(),
             ctx.blueprint_timepoint_for_writes(),
-            [(
-                // TODO(#6889): Use descriptor directly.
-                ComponentDescriptor::new(component_descr.component_name),
-                initial_data,
-            )],
+            [(component_descr, initial_data)],
         )
         .build()
     {

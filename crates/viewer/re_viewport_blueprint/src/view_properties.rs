@@ -196,33 +196,35 @@ impl ViewProperty {
     }
 
     /// Clears a blueprint component.
-    pub fn clear_blueprint_component<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
+    // TODO(#6889): Blueprints should be cleared by descriptor only.
+    pub fn clear_blueprint_component_by_name<C: re_types::Component>(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) {
         ctx.clear_blueprint_component_by_name(&self.blueprint_store_path, C::name());
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.
-    pub fn reset_blueprint_component<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
-        ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, C::name());
+    pub fn reset_blueprint_component(
+        &self,
+        ctx: &ViewerContext<'_>,
+        component_descr: ComponentDescriptor,
+    ) {
+        ctx.reset_blueprint_component(&self.blueprint_store_path, component_descr);
     }
 
     /// Resets all components to the values they had in the default blueprint.
     pub fn reset_all_components(&self, ctx: &ViewerContext<'_>) {
         // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
-        for component_descr in &self.component_descrs {
-            ctx.reset_blueprint_component_by_name(
-                &self.blueprint_store_path,
-                component_descr.component_name,
-            );
+        for component_descr in self.component_descrs.iter().cloned() {
+            ctx.reset_blueprint_component(&self.blueprint_store_path, component_descr);
         }
     }
 
     /// Resets all components to empty values, i.e. the fallback.
     pub fn reset_all_components_to_empty(&self, ctx: &ViewerContext<'_>) {
-        for component_descr in self.query_results.components.keys() {
-            ctx.clear_blueprint_component_by_name(
-                &self.blueprint_store_path,
-                component_descr.component_name,
-            );
+        for component_descr in self.query_results.components.keys().cloned() {
+            ctx.clear_blueprint_component(&self.blueprint_store_path, component_descr);
         }
     }
 

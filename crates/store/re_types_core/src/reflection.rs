@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef};
 
-use crate::{ArchetypeFieldName, ArchetypeName, ComponentName};
+use crate::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
 /// A trait for code-generated enums.
 pub trait Enum:
@@ -303,4 +303,16 @@ pub struct ArchetypeFieldReflection {
 
     /// Is this a required component?
     pub is_required: bool,
+}
+
+impl ArchetypeFieldReflection {
+    /// Returns the component descriptor for this field.
+    #[inline]
+    pub fn component_descriptor(&self, archetype_name: ArchetypeName) -> ComponentDescriptor {
+        ComponentDescriptor {
+            component_name: self.component_name,
+            archetype_field_name: Some(self.name),
+            archetype_name: Some(archetype_name),
+        }
+    }
 }

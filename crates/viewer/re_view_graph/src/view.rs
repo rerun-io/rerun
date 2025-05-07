@@ -225,7 +225,10 @@ impl ViewClass for GraphView {
         // Update blueprint if changed
         let updated_bounds = blueprint::components::VisualBounds2D::from(scene_rect);
         if resp.double_clicked() {
-            bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
+            bounds_property.reset_blueprint_component(
+                ctx,
+                blueprint::archetypes::VisualBounds2D::descriptor_range(),
+            );
         } else if scene_rect != scene_rect_ref {
             bounds_property.save_blueprint_component(ctx, &updated_bounds);
         }

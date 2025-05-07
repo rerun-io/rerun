@@ -8,7 +8,10 @@ use smallvec::SmallVec;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_log_types::StoreKind;
-use re_types::{blueprint::archetypes as blueprint_archetypes, components, ComponentName};
+use re_types::{
+    blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior},
+    components, ComponentDescriptor,
+};
 
 use crate::{
     DataResultTree, QueryRange, ViewHighlights, ViewId, ViewSystemIdentifier, ViewerContext,
@@ -40,7 +43,7 @@ pub struct PropertyOverrides {
     /// like `Visible`, `Interactive` or transform components.
     // TODO(jleibs): Consider something like `tinymap` for this.
     // TODO(andreas): Should be a `Cow` to not do as many clones.
-    pub component_overrides: IntMap<ComponentName, OverridePath>,
+    pub component_overrides: IntMap<ComponentDescriptor, OverridePath>,
 
     /// Whether the entity is visible.
     ///
@@ -107,7 +110,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.lookup_override::<components::Visible>(ctx).is_some() {
+        if self.has_override(ctx, &EntityBehavior::descriptor_visible()) {
             let parent_visibility = self
                 .entity_path
                 .parent()
@@ -142,10 +145,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self
-            .lookup_override::<components::Interactive>(ctx)
-            .is_some()
-        {
+        if self.has_override(ctx, &EntityBehavior::descriptor_interactive()) {
             let parent_interactivity = self
                 .entity_path
                 .parent()
@@ -153,7 +153,7 @@ impl DataResult {
                 .is_none_or(|data_result| data_result.is_interactive());
 
             if parent_interactivity == new_value {
-                // TODO(andreas): tagged empty component.
+                // TODO(#6889): tagged empty component.
                 ctx.save_empty_blueprint_component::<components::Interactive>(
                     &self.property_overrides.override_path,
                 );
@@ -167,66 +167,25 @@ impl DataResult {
         );
     }
 
-    fn lookup_override<C: 'static + re_types::Component>(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> Option<C> {
+    fn has_override(&self, ctx: &ViewerContext<'_>, component_descr: &ComponentDescriptor) -> bool {
         self.property_overrides
             .component_overrides
-            .get(&C::name())
-            .and_then(|OverridePath { store_kind, path }| match store_kind {
-                StoreKind::Blueprint => ctx
-                    .store_context
-                    .blueprint
-                    .latest_at_component::<C>(path, ctx.blueprint_query),
-                StoreKind::Recording => ctx
-                    .recording()
-                    .latest_at_component::<C>(path, &ctx.current_query()),
+            .get(component_descr)
+            .is_some_and(|OverridePath { store_kind, path }| {
+                match store_kind {
+                    StoreKind::Blueprint => ctx.store_context.blueprint.latest_at(
+                        ctx.blueprint_query,
+                        path,
+                        [component_descr],
+                    ),
+                    StoreKind::Recording => {
+                        ctx.recording()
+                            .latest_at(&ctx.current_query(), path, [component_descr])
+                    }
+                }
+                .get(component_descr)
+                .is_some()
             })
-            .map(|(_index, value)| value)
-    }
-
-    /// Returns from which entity path an override originates from.
-    ///
-    /// Returns None if there was no override at all.
-    /// Note that if this returns the current path, the override might be either an individual or recursive override.
-    pub fn component_override_source(
-        &self,
-        result_tree: &DataResultTree,
-        component_name: ComponentName,
-    ) -> Option<EntityPath> {
-        re_tracing::profile_function!();
-
-        // If we don't have a resolved override, clearly nothing overrode this.
-        let active_override = self
-            .property_overrides
-            .component_overrides
-            .get(&component_name)?;
-
-        // Walk up the tree to find the highest ancestor which has a matching override.
-        // This must be the ancestor we inherited the override from. Note that `active_override`
-        // is a `(StoreKind, EntityPath)`, not a value.
-        let mut override_source = self.entity_path.clone();
-        while let Some(parent_path) = override_source.parent() {
-            if result_tree
-                .lookup_result_by_path(&parent_path)
-                .is_none_or(|data_result| {
-                    // TODO(andreas): Assumes all overrides are recursive which is not true,
-                    //                This should access `recursive_component_overrides` instead.
-                    data_result
-                        .property_overrides
-                        .component_overrides
-                        .get(&component_name)
-                        != Some(active_override)
-                })
-            {
-                break;
-            }
-
-            override_source = parent_path;
-        }
-
-        Some(override_source)
     }
 
     /// Shorthand for checking for visibility on data overrides.

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
-use re_types::{AsComponents, ComponentBatch, ComponentName};
+use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, ComponentName};
 
 use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
 
@@ -95,11 +95,11 @@ impl<'a> ViewContext<'a> {
     pub fn save_blueprint_array(
         &self,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: ComponentDescriptor,
         array: arrow::array::ArrayRef,
     ) {
         self.viewer_ctx
-            .save_blueprint_array(entity_path, component_name, array);
+            .save_blueprint_array(entity_path, component_descr, array);
     }
 
     #[inline]
@@ -132,16 +132,17 @@ impl<'a> ViewContext<'a> {
     }
 
     #[inline]
-    pub fn reset_blueprint_component_by_name(
+    pub fn reset_blueprint_component(
         &self,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: ComponentDescriptor,
     ) {
         self.viewer_ctx
-            .reset_blueprint_component_by_name(entity_path, component_name);
+            .reset_blueprint_component(entity_path, component_descr);
     }
 
     /// Clears a component in the blueprint store by logging an empty array if it exists.
+    // TODO(#6889): Remove in favor of `clear_blueprint_component`.
     #[inline]
     pub fn clear_blueprint_component_by_name(
         &self,
@@ -150,6 +151,17 @@ impl<'a> ViewContext<'a> {
     ) {
         self.viewer_ctx
             .clear_blueprint_component_by_name(entity_path, component_name);
+    }
+
+    /// Clears a component in the blueprint store by logging an empty array if it exists.
+    #[inline]
+    pub fn clear_blueprint_component(
+        &self,
+        entity_path: &EntityPath,
+        component_descr: ComponentDescriptor,
+    ) {
+        self.viewer_ctx
+            .clear_blueprint_component(entity_path, component_descr);
     }
 
     #[inline]
