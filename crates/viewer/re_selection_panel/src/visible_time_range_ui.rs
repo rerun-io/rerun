@@ -3,7 +3,7 @@ use egui::{NumExt as _, Ui};
 use re_chunk::Timeline;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
 use re_types::{
-    blueprint::components::VisibleTimeRange,
+    blueprint::{archetypes as blueprint_archetypes, components::VisibleTimeRange},
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
     Archetype as _,
 };
@@ -142,7 +142,11 @@ fn save_visible_time_ranges(
         visible_time_range_list.retain(|r| r.timeline.as_str() != timeline_name.as_str());
     }
 
-    ctx.save_blueprint_component(property_path, &visible_time_range_list);
+    ctx.save_blueprint_component(
+        property_path,
+        &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+        &visible_time_range_list,
+    );
 }
 
 /// Draws ui for showing and configuring a query range.

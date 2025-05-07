@@ -191,7 +191,7 @@ impl ViewProperty {
         &self,
         ctx: &ViewerContext<'_>,
         component_descr: &ComponentDescriptor,
-        components: &dyn ComponentBatch,
+        component_batch: &dyn ComponentBatch,
     ) {
         if !self.component_descrs.contains(component_descr) {
             if cfg!(debug_assertions) {
@@ -200,16 +200,7 @@ impl ViewProperty {
                 re_log::warn_once!("trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`", self.archetype_name);
             }
         }
-
-        let Some(serialized) = components
-            .serialized()
-            .map(|b| b.with_descriptor_override(component_descr.clone()))
-        else {
-            re_log::warn!("could not serialize components with descriptor `{component_descr}`");
-            return;
-        };
-
-        ctx.save_serialized_blueprint_component(&self.blueprint_store_path, serialized);
+        ctx.save_blueprint_component(&self.blueprint_store_path, component_descr, component_batch);
     }
 
     /// Clears a blueprint component.

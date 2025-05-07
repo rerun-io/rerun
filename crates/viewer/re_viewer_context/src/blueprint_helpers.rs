@@ -60,18 +60,21 @@ impl ViewerContext<'_> {
             ));
     }
 
-    // TODO(#6889): This saves a component without tags.
     pub fn save_blueprint_component(
         &self,
         entity_path: &EntityPath,
+        component_descr: &ComponentDescriptor,
         component_batch: &dyn ComponentBatch,
     ) {
-        match component_batch.try_serialized() {
-            Ok(serialized) => self.save_serialized_blueprint_component(entity_path, serialized),
-            Err(err) => {
-                re_log::error_once!("Failed to serialize component batch: {}", err);
-            }
-        }
+        let Some(serialized) = component_batch
+            .serialized()
+            .map(|b| b.with_descriptor_override(component_descr.clone()))
+        else {
+            re_log::warn!("could not serialize components with descriptor `{component_descr}`");
+            return;
+        };
+
+        self.save_serialized_blueprint_component(entity_path, serialized);
     }
 
     pub fn save_serialized_blueprint_component(
@@ -126,12 +129,16 @@ impl ViewerContext<'_> {
     }
 
     /// Helper to save a component to the blueprint store.
-    pub fn save_empty_blueprint_component<'a, C>(&self, entity_path: &EntityPath)
-    where
+    pub fn save_empty_blueprint_component<'a, C>(
+        &self,
+        entity_path: &EntityPath,
+        component_descr: &ComponentDescriptor,
+    ) where
         C: re_types::Component + 'a,
     {
+        // TODO(@grtlr): It's a bit sad that we have to be generic over `C` here.
         let empty: [C; 0] = [];
-        self.save_blueprint_component(entity_path, &empty);
+        self.save_blueprint_component(entity_path, component_descr, &empty);
     }
 
     /// Queries a raw component from the default blueprint.
