@@ -42,6 +42,7 @@ impl PyTask {
 }
 
 /// A collection of [`Task`].
+#[allow(rustdoc::broken_intra_doc_links)]
 #[pyclass(name = "Tasks")]
 pub struct PyTasks {
     pub client: Py<PyCatalogClient>,

@@ -129,6 +129,7 @@ impl PyDataset {
     /// ----------
     /// recording_uris: list[str]
     ///     The URIs of the RRDs to register
+    #[allow(rustdoc::broken_intra_doc_links)]
     fn register_batch(self_: PyRef<'_, Self>, recording_uris: Vec<String>) -> PyResult<PyTasks> {
         let super_ = self_.as_super();
         let mut connection = super_.client.borrow(self_.py()).connection().clone();
