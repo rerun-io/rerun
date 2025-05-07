@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_chunk::{ComponentName, RowId, UnitChunkShared};
+use re_chunk::{RowId, UnitChunkShared};
 use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
@@ -157,20 +157,6 @@ fn visualizer_components(
     data_result: &DataResult,
     visualizer: &dyn VisualizerSystem,
 ) {
-    // TODO(#6889): remove in favor of `non_empty_component_batch_raw`
-    fn non_empty_component_batch_raw_by_name(
-        unit: Option<&UnitChunkShared>,
-        component_name: ComponentName,
-    ) -> Option<(Option<RowId>, ArrayRef)> {
-        let unit = unit?;
-        let batch = unit.component_batch_raw_by_component_name(component_name)?;
-        if batch.is_empty() {
-            None
-        } else {
-            Some((unit.row_id(), batch))
-        }
-    }
-
     fn non_empty_component_batch_raw(
         unit: Option<&UnitChunkShared>,
         component_descr: &ComponentDescriptor,
@@ -210,20 +196,14 @@ fn visualizer_components(
 
         // Query all the sources for our value.
         // (technically we only need to query those that are shown, but rolling this out makes things easier).
-        let result_override = query_result
-            .overrides
-            .get_by_name(&component_descr.component_name); // TODO(#6889): Use component_descr directly.
-        let raw_override =
-            non_empty_component_batch_raw_by_name(result_override, component_descr.component_name);
+        let result_override = query_result.overrides.get(&component_descr);
+        let raw_override = non_empty_component_batch_raw(result_override, &component_descr);
 
         let result_store = query_result.results.get(&component_descr);
         let raw_store = non_empty_component_batch_raw(result_store, &component_descr);
 
-        let result_default = query_result
-            .defaults
-            .get_by_name(&component_descr.component_name); // TODO(#6889): Use component_descr directly.
-        let raw_default =
-            non_empty_component_batch_raw_by_name(result_default, component_descr.component_name);
+        let result_default = query_result.defaults.get(&component_descr);
+        let raw_default = non_empty_component_batch_raw(result_default, &component_descr);
 
         let raw_fallback = visualizer
             .fallback_provider()
