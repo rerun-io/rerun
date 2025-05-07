@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 
-use nohash_hasher::IntMap;
 use re_chunk::{ArchetypeFieldName, ArchetypeName, Chunk, ComponentName, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_data_ui::DataUi as _;
@@ -192,11 +191,13 @@ fn visualized_components_by_archetype(
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.
-                re_log::warn_once!(
-                    "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
-                    id,
-                    descr.component_name
-                );
+                if !descr.component_name.is_indicator_component() {
+                    re_log::warn_once!(
+                        "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
+                        id,
+                        descr.component_name
+                    );
+                }
                 continue;
             };
 
