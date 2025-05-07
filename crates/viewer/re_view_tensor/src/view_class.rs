@@ -1,4 +1,3 @@
-
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 

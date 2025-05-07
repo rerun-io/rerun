@@ -1,4 +1,3 @@
-
 use egui::{emath::RectTransform, NumExt as _};
 use glam::{Affine3A, Quat, Vec3};
 use web_time::Instant;
