@@ -367,10 +367,24 @@ impl TensorView {
             ctx.blueprint_query,
             view_id,
         );
-        let colormap: Colormap = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let mag_filter: MagnificationFilter =
-            scalar_mapping.component_or_fallback(ctx, self, state)?;
+        let colormap: Colormap = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_colormap(),
+        )?;
+        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_gamma(),
+        )?;
+        let mag_filter: MagnificationFilter = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_mag_filter(),
+        )?;
 
         let colormap = ColormapWithRange {
             colormap,
@@ -391,7 +405,7 @@ impl TensorView {
             ctx.blueprint_query,
             view_id,
         )
-        .component_or_fallback(ctx, self, state)?;
+        .component_or_fallback(ctx, self, state, &TensorViewFit::descriptor_scaling())?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry

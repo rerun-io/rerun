@@ -135,7 +135,9 @@ impl ViewContents {
             query,
             view_id,
         );
-        let expressions = match property.component_array_or_empty::<QueryExpression>() {
+        let expressions = match property.component_array_or_empty::<QueryExpression>(
+            &blueprint_archetypes::ViewContents::descriptor_query(),
+        ) {
             Ok(expressions) => expressions,
 
             Err(err) => {
