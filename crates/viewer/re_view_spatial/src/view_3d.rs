@@ -508,7 +508,7 @@ fn view_property_ui_grid3d(
                             property.save_blueprint_component(
                                 ctx,
                                 &LineGrid3D::descriptor_color(),
-                                &[color],
+                                &color,
                             );
                         }
                     },
