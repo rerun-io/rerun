@@ -138,15 +138,15 @@ impl ViewerContext<'_> {
     pub fn raw_latest_at_in_default_blueprint(
         &self,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
+        component_descr: ComponentDescriptor,
     ) -> Option<ArrayRef> {
         self.store_context
             .default_blueprint
             .and_then(|default_blueprint| {
                 default_blueprint
-                    .latest_at(self.blueprint_query, entity_path, [component_descr])
+                    .latest_at(self.blueprint_query, entity_path, [&component_descr])
                     .get(component_descr)
-                    .and_then(|default_value| default_value.component_batch_raw(component_descr))
+                    .and_then(|default_value| default_value.component_batch_raw())
             })
     }
 
@@ -157,7 +157,7 @@ impl ViewerContext<'_> {
         component_descr: ComponentDescriptor,
     ) {
         if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(entity_path, &component_descr)
+            self.raw_latest_at_in_default_blueprint(entity_path, component_descr.clone())
         {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
@@ -194,9 +194,9 @@ impl ViewerContext<'_> {
 
         let Some(datatype) = blueprint
             .latest_at(self.blueprint_query, entity_path, [&component_descr])
-            .get(&component_descr)
+            .get(component_descr.clone())
             .and_then(|unit| {
-                unit.component_batch_raw(&component_descr)
+                unit.component_batch_raw()
                     .map(|array| array.data_type().clone())
             })
         else {

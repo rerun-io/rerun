@@ -110,7 +110,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, &EntityBehavior::descriptor_visible()) {
+        if self.has_override(ctx, EntityBehavior::descriptor_visible()) {
             let parent_visibility = self
                 .entity_path
                 .parent()
@@ -145,7 +145,7 @@ impl DataResult {
         new_value: bool,
     ) {
         // Check if we should instead clear an existing override.
-        if self.has_override(ctx, &EntityBehavior::descriptor_interactive()) {
+        if self.has_override(ctx, EntityBehavior::descriptor_interactive()) {
             let parent_interactivity = self
                 .entity_path
                 .parent()
@@ -167,20 +167,20 @@ impl DataResult {
         );
     }
 
-    fn has_override(&self, ctx: &ViewerContext<'_>, component_descr: &ComponentDescriptor) -> bool {
+    fn has_override(&self, ctx: &ViewerContext<'_>, component_descr: ComponentDescriptor) -> bool {
         self.property_overrides
             .component_overrides
-            .get(component_descr)
+            .get(&component_descr)
             .is_some_and(|OverridePath { store_kind, path }| {
                 match store_kind {
                     StoreKind::Blueprint => ctx.store_context.blueprint.latest_at(
                         ctx.blueprint_query,
                         path,
-                        [component_descr],
+                        [&component_descr],
                     ),
                     StoreKind::Recording => {
                         ctx.recording()
-                            .latest_at(&ctx.current_query(), path, [component_descr])
+                            .latest_at(&ctx.current_query(), path, [&component_descr])
                     }
                 }
                 .get(component_descr)
