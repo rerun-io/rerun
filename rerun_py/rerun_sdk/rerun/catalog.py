@@ -8,5 +8,6 @@ from rerun_bindings import (
     EntryId as EntryId,
     EntryKind as EntryKind,
     Table as Table,
+    Task as Task,
     VectorDistanceMetric as VectorDistanceMetric,
 )
