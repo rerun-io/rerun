@@ -188,6 +188,11 @@ fn visualized_components_by_archetype(
             else {
                 // TODO(andreas): In theory this is perfectly valid: A visualizer may be interested in an untagged component!
                 // Practically this never happens and we don't handle this in the ui here yet.
+                re_log::warn_once!(
+                    "Visualizer {} queried untagged component {}. It won't show in the defaults ui.",
+                    id,
+                    descr.component_name
+                );
                 continue;
             };
 
@@ -201,9 +206,6 @@ fn visualized_components_by_archetype(
                 });
         }
     }
-
-    // It should be near-impossible, but just in case two visualizers use the exact same (tagged) component,
-    // make the first one win.
 
     visualized_components_by_visualizer
 }
