@@ -5,7 +5,7 @@ use re_chunk_store::{
     Chunk,
 };
 use re_log_types::{TimeInt, TimePoint, TimelineName};
-use re_types::{Component, ComponentDescriptor, RowId};
+use re_types_core::{Component, ComponentDescriptor, RowId};
 
 /// A helper struct that bundles a list of chunks with a component descriptor.
 ///
@@ -28,6 +28,14 @@ impl ChunksWithDescriptor<'_> {
             descriptor: &self.component_descriptor,
         })
     }
+
+    /// Create a new [`ChunksWithDescriptor`] with an empty list of chunks.
+    pub fn empty(component_descriptor: ComponentDescriptor) -> Self {
+        Self {
+            chunks: Cow::Borrowed(&[]),
+            component_descriptor,
+        }
+    }
 }
 
 /// Like [`ChunksWithDescriptor`] but for a single chunk.
@@ -41,7 +49,7 @@ pub struct ChunkWithDescriptor<'chunk, 'descriptor> {
     pub descriptor: &'descriptor ComponentDescriptor,
 }
 
-impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
+impl<'chunk, 'descriptor> ChunkWithDescriptor<'chunk, 'descriptor> {
     /// See [`Chunk::iter_component_indices`].
     #[inline]
     pub fn iter_component_indices(
@@ -55,7 +63,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     #[inline]
     pub fn iter_slices<S: ChunkComponentSlicer + 'chunk>(
         &self,
-    ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk {
+    ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk + use<'chunk, 'descriptor, S> {
         // TODO(#6889): Use the full descriptor instead.
         self.chunk.iter_slices::<S>(self.descriptor.component_name)
     }
@@ -72,5 +80,16 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     #[inline]
     pub fn iter_component_timepoints(&self) -> impl Iterator<Item = TimePoint> + 'chunk {
         self.chunk.iter_component_timepoints(self.descriptor)
+    }
+
+    /// See [`Chunk::iter_slices_from_struct_field`].
+    #[inline]
+    pub fn iter_slices_from_struct_field<'a: 'chunk, S: ChunkComponentSlicer + 'chunk>(
+        &self,
+        field_name: &'a str,
+    ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk + use<'chunk, 'descriptor, S> {
+        // TODO(#6889): Use the full descriptor instead.
+        self.chunk
+            .iter_slices_from_struct_field::<S>(self.descriptor.component_name, field_name)
     }
 }

@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::{borrow::Cow, collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
@@ -10,7 +10,7 @@ use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types_core::{ComponentDescriptor, ComponentName};
 
-use crate::{MaybeTagged, QueryCache, QueryCacheKey, QueryError};
+use crate::{ChunksWithDescriptor, MaybeTagged, QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -141,10 +141,32 @@ impl RangeResults {
 
     /// Returns the [`Chunk`]s for the specified `component_name`.
     #[inline]
-    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&[Chunk]> {
+    pub fn get(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
         self.components
-            .get(component_descr)
-            .map(|chunks| chunks.as_slice())
+            .get(&component_descriptor)
+            .map(|chunks| ChunksWithDescriptor {
+                chunks: Cow::Borrowed(chunks.as_slice()),
+                component_descriptor,
+            })
+    }
+
+    /// Returns the [`Chunk`]s for the specified `component_name`, returns an empty [`ChunksWithDescriptor`] if the component is not present.
+    #[inline]
+    pub fn get_or_empty(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> ChunksWithDescriptor<'_> {
+        if let Some(chunks) = self.components.get(&component_descriptor) {
+            ChunksWithDescriptor {
+                chunks: Cow::Borrowed(chunks.as_slice()),
+                component_descriptor,
+            }
+        } else {
+            ChunksWithDescriptor::empty(component_descriptor)
+        }
     }
 
     /// Returns the [`Chunk`]s for the specified `component_name`.
@@ -169,11 +191,18 @@ impl RangeResults {
     ///
     /// Returns an error if the component is not present.
     #[inline]
-    pub fn get_required(&self, component_descr: &ComponentDescriptor) -> crate::Result<&[Chunk]> {
-        self.components.get(component_descr).map_or_else(
-            || Err(QueryError::PrimaryNotFound(component_descr.clone())),
-            |chunks| Ok(chunks.as_slice()),
-        )
+    pub fn get_required(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> crate::Result<ChunksWithDescriptor<'_>> {
+        if let Some(component) = self.components.get(&component_descriptor) {
+            Ok(ChunksWithDescriptor {
+                chunks: Cow::Borrowed(component.as_slice()),
+                component_descriptor,
+            })
+        } else {
+            Err(QueryError::PrimaryNotFound(component_descriptor))
+        }
     }
 
     // TODO(#6889): Workaround, we should instead always pass component descriptor to the respective methods.

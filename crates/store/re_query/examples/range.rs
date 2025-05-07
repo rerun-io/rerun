@@ -31,9 +31,9 @@ fn main() -> anyhow::Result<()> {
 
     // * `get_required` returns an error if the chunk is missing.
     // * `get` returns an option.
-    let all_points_chunks = results.get_required(&MyPoints::descriptor_points())?;
-    let all_colors_chunks = results.get(&MyPoints::descriptor_colors());
-    let all_labels_chunks = results.get(&MyPoints::descriptor_labels());
+    let all_points_chunks = results.get_required(MyPoints::descriptor_points())?;
+    let all_colors_chunks = results.get_or_empty(MyPoints::descriptor_colors());
+    let all_labels_chunks = results.get_or_empty(MyPoints::descriptor_labels());
 
     // You can always use the standard deserialization path.
     //
@@ -43,31 +43,25 @@ fn main() -> anyhow::Result<()> {
     // to reference to.
     let all_points_indexed = all_points_chunks.iter().flat_map(|chunk| {
         izip!(
-            chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_points()),
-            chunk.iter_component::<MyPoint>(&MyPoints::descriptor_points()),
+            chunk.iter_component_indices(query.timeline()),
+            chunk.iter_component::<MyPoint>(),
         )
     });
-    let all_labels_indexed = all_labels_chunks
-        .unwrap_or_default()
-        .iter()
-        .flat_map(|chunk| {
-            izip!(
-                chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_labels()),
-                chunk.iter_component::<MyLabel>(&MyPoints::descriptor_labels())
-            )
-        });
+    let all_labels_indexed = all_labels_chunks.iter().flat_map(|chunk| {
+        izip!(
+            chunk.iter_component_indices(query.timeline()),
+            chunk.iter_component::<MyLabel>()
+        )
+    });
 
     // Or, if you want every last bit of performance you can get, you can manipulate the raw
     // data directly:
-    let all_colors_indexed = all_colors_chunks
-        .unwrap_or_default()
-        .iter()
-        .flat_map(|chunk| {
-            izip!(
-                chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_colors()),
-                chunk.iter_slices::<u32>(MyPoints::descriptor_colors().component_name), // TODO(#6889): use descriptor directly.
-            )
-        });
+    let all_colors_indexed = all_colors_chunks.iter().flat_map(|chunk| {
+        izip!(
+            chunk.iter_component_indices(query.timeline()),
+            chunk.iter_slices::<u32>(),
+        )
+    });
 
     // Zip the results together using a stateful time-based join.
     let all_frames = range_zip_1x2(all_points_indexed, all_colors_indexed, all_labels_indexed);
