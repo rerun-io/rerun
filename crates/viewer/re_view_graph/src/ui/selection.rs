@@ -65,7 +65,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
 
         let component_descr = ComponentDescriptor {
             archetype_name: Some(property.archetype_name),
-            archetype_field_name: Some(field.name.into()),
+            archetype_field_name: Some(field.name),
             component_name: field.component_name,
         };
 
