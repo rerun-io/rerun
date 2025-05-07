@@ -44,6 +44,8 @@ pub fn view_components_defaults_section_ui(
     let db = ctx.viewer_ctx.blueprint_db();
     let query = ctx.viewer_ctx.blueprint_query;
 
+    // TODO(andreas): Components in `active_defaults` should be sorted by field order within each archetype.
+    // Right now, they're just sorted by descriptor, which is not the same.
     let active_defaults = active_defaults(ctx, view, db, query);
     let visualized_components_by_archetype = visualized_components_by_archetype(ctx);
 
@@ -93,7 +95,7 @@ Click on the `+` button to add a new default value.";
 fn active_default_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    active_defaults: &IntMap<ComponentDescriptor, ArrayRef>,
+    active_defaults: &BTreeMap<ComponentDescriptor, ArrayRef>,
     view: &ViewBlueprint,
     query: &LatestAtQuery,
     db: &re_entity_db::EntityDb,
@@ -118,6 +120,8 @@ fn active_default_ui(
 
         for (component_descr, default_value) in active_defaults {
             if previous_archetype_name != component_descr.archetype_name {
+                // `active_defaults` is sorted by descriptor which in turn sorts by archetype name,
+                // so we can just check if the previous archetype name is different from the current one.
                 if let Some(archetype_name) = component_descr.archetype_name {
                     ui.add_space(4.0);
                     ui.label(archetype_name.syntax_highlighted(ui.style()));
@@ -215,7 +219,7 @@ fn active_defaults(
     view: &ViewBlueprint,
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
-) -> IntMap<ComponentDescriptor, ArrayRef> {
+) -> BTreeMap<ComponentDescriptor, ArrayRef> {
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
