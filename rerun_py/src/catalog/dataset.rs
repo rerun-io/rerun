@@ -137,10 +137,7 @@ impl PyDataset {
 
         let task_ids = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
 
-        Ok(PyTasks {
-            client: super_.client.clone_ref(self_.py()),
-            ids: task_ids,
-        })
+        Ok(PyTasks::new(super_.client.clone_ref(self_.py()), task_ids))
     }
 
     /// Download a partition from the dataset.
