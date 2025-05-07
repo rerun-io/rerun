@@ -170,7 +170,7 @@ impl DataResult {
     fn has_override(&self, ctx: &ViewerContext<'_>, component_descr: &ComponentDescriptor) -> bool {
         self.property_overrides
             .component_overrides
-            .get(&component_descr)
+            .get(component_descr)
             .is_some_and(|OverridePath { store_kind, path }| {
                 match store_kind {
                     StoreKind::Blueprint => ctx.store_context.blueprint.latest_at(

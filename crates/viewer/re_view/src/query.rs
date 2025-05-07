@@ -89,7 +89,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a, 'b>(
 
     // No need to query for components that have overrides unless opted in!
     if !query_shadowed_components {
-        component_descrs.retain(|component_descr| overrides.get(&component_descr).is_none());
+        component_descrs.retain(|component_descr| overrides.get(component_descr).is_none());
     }
 
     let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
