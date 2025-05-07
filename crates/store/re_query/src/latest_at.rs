@@ -16,7 +16,10 @@ use re_types_core::{
     ComponentDescriptor, ComponentName,
 };
 
-use crate::{MaybeTagged, QueryCache, QueryCacheKey, QueryError};
+use crate::{
+    chunks_with_descriptor::UnitChunkWithDescriptor, MaybeTagged, QueryCache, QueryCacheKey,
+    QueryError,
+};
 
 // --- Public API ---
 
@@ -280,8 +283,16 @@ impl LatestAtResults {
 
 impl LatestAtResults {
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
-    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&UnitChunkShared> {
-        self.components.get(component_descr)
+    pub fn get(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<UnitChunkWithDescriptor<'_>> {
+        self.components
+            .get(&component_descriptor)
+            .map(|chunk| UnitChunkWithDescriptor {
+                chunk,
+                component_descriptor,
+            })
     }
 
     // TODO(#6889): Going forward, we should avoid querying by name.
@@ -319,12 +330,15 @@ impl LatestAtResults {
     #[inline]
     pub fn get_required(
         &self,
-        component_descr: &ComponentDescriptor,
-    ) -> crate::Result<&UnitChunkShared> {
-        if let Some(component) = self.components.get(component_descr) {
-            Ok(component)
+        component_descriptor: ComponentDescriptor,
+    ) -> crate::Result<UnitChunkWithDescriptor<'_>> {
+        if let Some(component) = self.components.get(&component_descriptor) {
+            Ok(UnitChunkWithDescriptor {
+                chunk: component,
+                component_descriptor,
+            })
         } else {
-            Err(QueryError::PrimaryNotFound(component_descr.clone()))
+            Err(QueryError::PrimaryNotFound(component_descriptor.clone()))
         }
     }
 

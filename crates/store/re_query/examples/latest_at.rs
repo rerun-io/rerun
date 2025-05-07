@@ -61,26 +61,21 @@ fn main() -> anyhow::Result<()> {
     {
         // * `get_required` returns an error if the chunk is missing.
         // * `get` returns an option.
-        let points = results.get_required(&MyPoints::descriptor_points())?;
-        let colors = results.get(&MyPoints::descriptor_colors());
-        let labels = results.get(&MyPoints::descriptor_labels());
+        let points = results.get_required(MyPoints::descriptor_points())?;
+        let colors = results.get(MyPoints::descriptor_colors());
+        let labels = results.get(MyPoints::descriptor_labels());
 
         // You can always use the standard deserialization path:
-        let points = points
-            .component_batch::<MyPoint>(&MyPoint::descriptor())
-            .context("missing")??;
+        let points = points.component_batch::<MyPoint>().context("missing")??;
         let labels = labels
-            .and_then(|unit| {
-                unit.component_batch::<MyLabel>(&MyPoints::descriptor_labels())?
-                    .ok()
-            })
+            .and_then(|unit| unit.component_batch::<MyLabel>()?.ok())
             .unwrap_or_default();
 
         // Or, if you want every last bit of performance you can get, you can manipulate the raw
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw(&MyColor::descriptor())
+            .component_batch_raw()
             .context("invalid")?;
         let colors = colors
             .downcast_array_ref::<ArrowUInt32Array>()
