@@ -261,11 +261,13 @@ impl VisualizerSystem for DepthImageVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name())
+                let Some(all_buffer_chunks) =
+                    results.get_required_chunks(&DepthImage::descriptor_buffer())
                 else {
                     return Ok(());
                 };
-                let Some(all_format_chunks) = results.get_required_chunks(&ImageFormat::name())
+                let Some(all_format_chunks) =
+                    results.get_required_chunks(&DepthImage::descriptor_format())
                 else {
                     return Ok(());
                 };

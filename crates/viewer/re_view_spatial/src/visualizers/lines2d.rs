@@ -186,7 +186,8 @@ impl VisualizerSystem for Lines2DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_strip_chunks) = results.get_required_chunks(&LineStrip2D::name())
+                let Some(all_strip_chunks) =
+                    results.get_required_chunks(&LineStrips2D::descriptor_strips())
                 else {
                     return Ok(());
                 };

@@ -154,7 +154,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_vertex_position_chunks) =
-                    results.get_required_chunks(&Position3D::name())
+                    results.get_required_chunks(&Mesh3D::descriptor_vertex_positions())
                 else {
                     return Ok(());
                 };

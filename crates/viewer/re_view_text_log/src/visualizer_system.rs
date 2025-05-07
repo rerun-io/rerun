@@ -1,14 +1,12 @@
 use itertools::izip;
 use re_chunk_store::ResolvedTimeRange;
 use re_entity_db::EntityPath;
-use re_log_types::TimeInt;
-use re_log_types::TimePoint;
+use re_log_types::{TimeInt, TimePoint};
 use re_query::{clamped_zip_1x2, range_zip_1x2};
-use re_types::Archetype as _;
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Component as _,
+    Archetype as _, Component as _,
 };
 use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
@@ -94,7 +92,7 @@ impl TextLogSystem {
             TextLog::all_components().iter(),
         );
 
-        let Some(all_text_chunks) = results.get_required_chunks(&Text::name()) else {
+        let Some(all_text_chunks) = results.get_required_chunks(&TextLog::descriptor_text()) else {
             return;
         };
 

@@ -203,7 +203,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_half_size_chunks) = results.get_required_chunks(&HalfSize2D::name())
+                let Some(all_half_size_chunks) =
+                    results.get_required_chunks(&Boxes2D::descriptor_half_sizes())
                 else {
                     return Ok(());
                 };

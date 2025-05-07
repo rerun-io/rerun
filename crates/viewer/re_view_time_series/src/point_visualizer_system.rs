@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_types::{
     archetypes,
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar, SeriesVisible},
+    components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
     Archetype as _, Component as _,
 };
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
@@ -208,7 +208,9 @@ impl SeriesPointSystem {
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+            let Some(all_scalar_chunks) =
+                results.get_required_chunks(&archetypes::Scalars::descriptor_scalars())
+            else {
                 return;
             };
 

@@ -152,11 +152,13 @@ impl VisualizerSystem for Capsules3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_length_chunks) = results.get_required_chunks(&Length::name()) else {
+                let Some(all_length_chunks) =
+                    results.get_required_chunks(&Capsules3D::descriptor_lengths())
+                else {
                     return Ok(());
                 };
                 let Some(all_radius_chunks) =
-                    results.get_required_chunks(&components::Radius::name())
+                    results.get_required_chunks(&Capsules3D::descriptor_radii())
                 else {
                     return Ok(());
                 };
