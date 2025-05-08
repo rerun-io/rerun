@@ -42,7 +42,7 @@ impl VisualizerSystem for InstanceColorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // TODO(#6889): This is an _interesting_ but really really strange example.
+            // TODO(#6889): This is an _interesting_ but really strange example.
             // UI doesn't play nicely with it as it won't show anything when one of these color points is selected.
 
             // First gather all kinds of colors that are logged on this path.
