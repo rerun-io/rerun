@@ -254,6 +254,7 @@ impl LatestAtResults {
         let component_descr = self.find_component_descriptor(*component_name)?;
         self.components.get(component_descr)
     }
+
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
