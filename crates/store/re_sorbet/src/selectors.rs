@@ -15,7 +15,13 @@ pub enum ColumnSelectorParseError {
 /// Describes a column selection to return as part of a query.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnSelector {
+    /// Select the Row Id column (there can be only one)
+    RowId,
+
+    /// Select a specific time column
     Time(TimeColumnSelector),
+
+    /// Select some component column
     Component(ComponentColumnSelector),
     //TODO(jleibs): Add support for archetype-based component selection.
     //ArchetypeField(ArchetypeFieldColumnSelector),
@@ -25,6 +31,7 @@ impl From<ColumnDescriptor> for ColumnSelector {
     #[inline]
     fn from(desc: ColumnDescriptor) -> Self {
         match desc {
+            ColumnDescriptor::RowId(_) => Self::RowId,
             ColumnDescriptor::Time(desc) => Self::Time(desc.into()),
             ColumnDescriptor::Component(desc) => Self::Component(desc.into()),
         }

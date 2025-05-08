@@ -150,6 +150,10 @@ impl Query {
         let mut selected_columns = datatypes::SelectedColumns::default();
         for column in columns {
             match column {
+                ColumnSelector::RowId => {
+                    selected_columns.row_id = true;
+                }
+
                 ColumnSelector::Time(desc) => {
                     selected_columns
                         .time_columns
@@ -209,6 +213,7 @@ impl Query {
 
         // no selected columns means all columns are visible
         let Some(datatypes::SelectedColumns {
+            row_id,
             time_columns,
             component_columns,
         }) = selected_columns.as_deref()
@@ -235,6 +240,8 @@ impl Query {
         let result = view_columns
             .iter()
             .filter(|column| match column {
+                ColumnDescriptor::RowId(_) => *row_id,
+
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui
                     desc.timeline_name() == query_timeline_name
@@ -278,23 +285,31 @@ impl Query {
 
         for action in actions {
             match action {
-                HideColumnAction::HideTimeColumn { timeline_name } => {
-                    selected_columns.retain(|column| match column {
-                        ColumnSelector::Time(desc) => desc.timeline != timeline_name,
-                        ColumnSelector::Component(_) => true,
+                HideColumnAction::RowId => {
+                    selected_columns.retain(|column| column != &ColumnSelector::RowId);
+                }
+
+                HideColumnAction::Time { timeline_name } => {
+                    selected_columns.retain(|column| {
+                        if let ColumnSelector::Time(desc) = column {
+                            desc.timeline != timeline_name
+                        } else {
+                            true
+                        }
                     });
                 }
 
-                HideColumnAction::HideComponentColumn {
+                HideColumnAction::Component {
                     entity_path,
                     component_name,
                 } => {
-                    selected_columns.retain(|column| match column {
-                        ColumnSelector::Component(selector) => {
+                    selected_columns.retain(|column| {
+                        if let ColumnSelector::Component(selector) = column {
                             selector.entity_path != entity_path
                                 || !component_name.matches(&selector.component_name)
+                        } else {
+                            true
                         }
-                        ColumnSelector::Time(_) => true,
                     });
                 }
             }

@@ -23,6 +23,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SelectedColumns {
+    /// Include row id column?
+    pub row_id: bool,
+
     /// The time columns to include
     pub time_columns: Vec<crate::datatypes::Utf8>,
 
@@ -437,6 +440,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 .map(|opt| {
                     opt.map(|(time_columns, component_columns)| {
                         Ok(Self {
+                            row_id: false, // TODO
                             time_columns: time_columns
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context(

@@ -10,7 +10,7 @@ use arrow::datatypes::{
 use re_log_types::EntityPath;
 use re_types_core::ComponentName;
 
-use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor};
+use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ColumnError {
@@ -35,6 +35,7 @@ pub enum ColumnError {
 //TODO(#9034): This should support RowId as well, but this has ramifications on the dataframe API.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
+    RowId(RowIdColumnDescriptor),
     Time(IndexColumnDescriptor),
     Component(ComponentColumnDescriptor),
 }
@@ -45,7 +46,7 @@ impl ColumnDescriptor {
     #[track_caller]
     pub fn sanity_check(&self) {
         match self {
-            Self::Time(_) => {}
+            Self::RowId(_) | Self::Time(_) => {}
             Self::Component(descr) => descr.sanity_check(),
         }
     }
@@ -53,7 +54,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
-            Self::Time(_) => None,
+            Self::RowId(_) | Self::Time(_) => None,
             Self::Component(descr) => Some(&descr.entity_path),
         }
     }
@@ -61,7 +62,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn component_name(&self) -> Option<&ComponentName> {
         match self {
-            Self::Time(_) => None,
+            Self::RowId(_) | Self::Time(_) => None,
             Self::Component(descr) => Some(&descr.component_name),
         }
     }
@@ -69,6 +70,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn short_name(&self) -> String {
         match self {
+            Self::RowId(descr) => descr.short_name(),
             Self::Time(descr) => descr.column_name().to_owned(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
@@ -77,7 +79,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn is_static(&self) -> bool {
         match self {
-            Self::Time(_) => false,
+            Self::RowId(_) | Self::Time(_) => false,
             Self::Component(descr) => descr.is_static,
         }
     }
@@ -85,6 +87,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn arrow_datatype(&self) -> ArrowDatatype {
         match self {
+            Self::RowId(descr) => descr.datatype(),
             Self::Time(descr) => descr.datatype().clone(),
             Self::Component(descr) => descr.returned_datatype(),
         }
@@ -93,6 +96,7 @@ impl ColumnDescriptor {
     #[inline]
     pub fn to_arrow_field(&self, batch_type: crate::BatchType) -> ArrowField {
         match self {
+            Self::RowId(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(batch_type),
         }
