@@ -186,7 +186,7 @@ impl Chunk {
     pub fn iter_component_offsets<'a>(
         &'a self,
         component_descriptor: &ComponentDescriptor,
-    ) -> impl Iterator<Item = (usize, usize)> + 'a + use<'a> {
+    ) -> impl Iterator<Item = (usize, usize)> + 'a {
         let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
@@ -311,7 +311,7 @@ pub trait ChunkComponentSlicer {
 
     fn slice<'a>(
         // TODO(#9903): A reference to component descriptor should be enough since the returned iterator doesn't depend on it being alive.
-        // However, I wasn't able to get this idea across to the borrow checker.
+        // However, I wasn't able to get this idea accross to the borrow checker.
         component_descriptor: ComponentDescriptor,
         array: &'a dyn ArrowArray,
         component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
