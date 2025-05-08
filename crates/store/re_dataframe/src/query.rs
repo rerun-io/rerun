@@ -1223,7 +1223,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 ColumnDescriptor::RowId(_) => state
                     .view_chunks
                     .first()
-                    .and_then(|vec| vec.first())
+                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
                     .map(|(row_idx, chunk)| {
                         as_array_ref(
                             chunk
