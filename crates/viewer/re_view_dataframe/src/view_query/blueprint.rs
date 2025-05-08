@@ -151,7 +151,7 @@ impl Query {
         for column in columns {
             match column {
                 ColumnSelector::RowId => {
-                    selected_columns.row_id = true;
+                    selected_columns.row_id = true.into();
                 }
 
                 ColumnSelector::Time(desc) => {
@@ -240,7 +240,7 @@ impl Query {
         let result = view_columns
             .iter()
             .filter(|column| match column {
-                ColumnDescriptor::RowId(_) => *row_id,
+                ColumnDescriptor::RowId(_) => row_id.0,
 
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui

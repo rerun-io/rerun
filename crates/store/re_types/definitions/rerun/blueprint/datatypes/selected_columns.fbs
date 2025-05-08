@@ -8,6 +8,9 @@ table SelectedColumns (
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rerun.scope": "blueprint"
 ) {
+  /// Show Row ID column?
+  row_id: rerun.datatypes.Bool (order: 50);
+
   /// The time columns to include
   time_columns: [rerun.datatypes.Utf8] (order: 100);
 

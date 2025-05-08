@@ -5,6 +5,7 @@
 
 #include "../../collection.hpp"
 #include "../../component_descriptor.hpp"
+#include "../../datatypes/bool.hpp"
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
 #include "component_column_selector.hpp"
@@ -24,6 +25,9 @@ namespace rerun::blueprint::datatypes {
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct SelectedColumns {
+        /// Show Row ID column?
+        rerun::datatypes::Bool row_id;
+
         /// The time columns to include
         rerun::Collection<rerun::datatypes::Utf8> time_columns;
 
