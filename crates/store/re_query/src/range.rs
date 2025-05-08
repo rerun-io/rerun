@@ -20,11 +20,11 @@ impl QueryCache {
     /// See [`RangeResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn range(
+    pub fn range<'a>(
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = impl Into<MaybeTagged>>,
+        component_descrs: impl IntoIterator<Item = &'a ComponentDescriptor>,
     ) -> RangeResults {
         re_tracing::profile_function!(entity_path.to_string());
 
@@ -35,41 +35,9 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_descrs = component_descrs
-            .into_iter()
-            .filter_map(|maybe_component_descr| {
-                // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
-                let component_descr = match maybe_component_descr.into() {
-                    MaybeTagged::Descriptor(component_descr) => {
-                        debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component(),
-                         "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
-
-                        if component_descr.archetype_name.is_none() {
-                            store
-                                .entity_component_descriptors_with_name(
-                                    entity_path,
-                                    component_descr.component_name,
-                                )
-                                .into_iter()
-                                .next()?
-                        } else {
-                            component_descr
-                        }
-                    }
-                    MaybeTagged::JustName(name) => store
-                        .entity_component_descriptors_with_name(entity_path, name)
-                        .into_iter()
-                        .next()?,
-                };
-
-                store
-                    .entity_has_component_on_timeline(
-                        query.timeline(),
-                        entity_path,
-                        &component_descr,
-                    )
-                    .then_some(component_descr)
-            });
+        let component_descrs = component_descrs.into_iter().filter(|component_descr| {
+            store.entity_has_component_on_timeline(query.timeline(), entity_path, component_descr)
+        });
 
         for component_descr in component_descrs {
             let key = QueryCacheKey::new(
@@ -89,9 +57,9 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, &component_descr);
+            let cached = cache.range(&store, query, entity_path, component_descr);
             if !cached.is_empty() {
-                results.add(component_descr, cached);
+                results.add(component_descr.clone(), cached);
             }
         }
 
