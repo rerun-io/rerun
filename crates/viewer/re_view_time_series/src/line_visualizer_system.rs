@@ -205,7 +205,7 @@ impl SeriesLineSystem {
 
             // If we have no scalars, we can't do anything.
             let Some(all_scalar_chunks) =
-                results.get_required_chunks(&archetypes::Scalars::descriptor_scalars())
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
             else {
                 return;
             };
@@ -247,7 +247,7 @@ impl SeriesLineSystem {
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
-                .get_optional_chunks(&AggregationPolicy::name())
+                .get_optional_chunks(AggregationPolicy::name())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.component_mono::<AggregationPolicy>(0)?.ok())
@@ -260,10 +260,12 @@ impl SeriesLineSystem {
             let all_chunks_sorted_and_not_overlapped =
                 all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
                     let lhs_time_max = lhs
+                        .chunk
                         .timelines()
                         .get(query.timeline())
                         .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
                     let rhs_time_min = rhs
+                        .chunk
                         .timelines()
                         .get(query.timeline())
                         .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());

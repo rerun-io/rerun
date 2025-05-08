@@ -3,7 +3,7 @@ use std::iter;
 use ordered_float::NotNan;
 use re_types::{
     archetypes::Capsules3D,
-    components::{self, ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels, Text},
+    components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels, Text},
     ArrowString, Component as _,
 };
 use re_view::clamped_or_nothing;
@@ -153,24 +153,24 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_length_chunks) =
-                    results.get_required_chunks(&Capsules3D::descriptor_lengths())
+                    results.get_required_chunks(Capsules3D::descriptor_lengths())
                 else {
                     return Ok(());
                 };
                 let Some(all_radius_chunks) =
-                    results.get_required_chunks(&Capsules3D::descriptor_radii())
+                    results.get_required_chunks(Capsules3D::descriptor_radii())
                 else {
                     return Ok(());
                 };
 
                 let num_lengths: usize = all_length_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>(Length::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|lengths| lengths.len())
                     .sum();
                 let num_radii: usize = all_radius_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>(components::Radius::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|radii| radii.len())
                     .sum();
                 let num_instances = num_lengths.max(num_radii);
@@ -179,10 +179,8 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 }
 
                 let timeline = ctx.query.timeline();
-                let all_lengths_indexed =
-                    iter_slices::<f32>(&all_length_chunks, timeline, Length::name());
-                let all_radii_indexed =
-                    iter_slices::<f32>(&all_radius_chunks, timeline, components::Radius::name());
+                let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
+                let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_show_labels = results.iter_as(timeline, ShowLabels::name());

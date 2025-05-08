@@ -162,6 +162,11 @@ impl ConnectionHandle {
         })
     }
 
+    /// Initiate registration of the provided recording URIs with a dataset and return the
+    /// corresponding task IDs.
+    ///
+    /// NOTE: The server may pool multiple registrations into a single task. The result always has
+    /// the same length as the output, so task ids may be duplicated.
     pub fn register_with_dataset(
         &mut self,
         py: Python<'_>,

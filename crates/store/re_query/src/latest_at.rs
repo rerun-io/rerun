@@ -65,15 +65,10 @@ impl QueryCache {
                 let component_descr = match maybe_component_descr.into() {
                     MaybeTagged::Descriptor(component_descr) => {
                         debug_assert!(component_descr.archetype_name.is_some() ||
-                                        component_descr.component_name.is_indicator_component() ||
-                                        component_descr.component_name == "rerun.blueprint.components.VisualizerOverride" ||
-                                        entity_path.iter().any(|p| p.unescaped_str() == "overrides") ||
-                                        entity_path.iter().any(|p| p.unescaped_str() == "defaults"),
+                                        component_descr.component_name.is_indicator_component(),
                          "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}. Path: {entity_path:?}");
 
-                        if component_descr.archetype_name.is_none_or(|archetype_name| archetype_name.as_str().starts_with("rerun.blueprint.") ) {
-                            // TODO(#6889): ALWAYS ignore tags on blueprint right now because some writes & reads are tagged and others aren't.
-                            // See https://github.com/rerun-io/rerun/blob/8fb5aadcb8f4f35c8e22603c85beda6fb18d791b/crates/store/re_chunk_store/src/writes.rs#L54-L67
+                        if component_descr.archetype_name.is_none() {
                             store
                                 .entity_component_descriptors_with_name(
                                     entity_path,
@@ -282,6 +277,14 @@ impl LatestAtResults {
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&UnitChunkShared> {
         self.components.get(component_descr)
+    }
+
+    // TODO(#6889): remove this please!
+    pub fn get_by_maybe(&self, component_descriptor: &MaybeTagged) -> Option<&UnitChunkShared> {
+        match component_descriptor {
+            MaybeTagged::Descriptor(component_descriptor) => self.get(component_descriptor),
+            MaybeTagged::JustName(component_name) => self.get_by_name(component_name),
+        }
     }
 
     // TODO(#6889): Going forward, we should avoid querying by name.

@@ -390,30 +390,29 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         }
                     },
                     |ui| {
-                        egui::menu::menu_custom_button(
-                            ui,
+                        egui::containers::menu::MenuButton::from_button(
                             ui.small_icon_button_widget(&re_ui::icons::MORE),
-                            |ui| {
-                                for sort_direction in SortDirection::iter() {
-                                    let already_sorted =
-                                        Some(&sort_direction) == current_sort_direction;
+                        )
+                        .ui(ui, |ui| {
+                            for sort_direction in SortDirection::iter() {
+                                let already_sorted =
+                                    Some(&sort_direction) == current_sort_direction;
 
-                                    if ui
-                                        .add_enabled_ui(!already_sorted, |ui| {
-                                            sort_direction.menu_button(ui)
-                                        })
-                                        .inner
-                                        .clicked()
-                                    {
-                                        self.new_blueprint.sort_by = Some(SortBy {
-                                            column: column_name.clone(),
-                                            direction: sort_direction,
-                                        });
-                                        ui.close_menu();
-                                    }
+                                if ui
+                                    .add_enabled_ui(!already_sorted, |ui| {
+                                        sort_direction.menu_button(ui)
+                                    })
+                                    .inner
+                                    .clicked()
+                                {
+                                    self.new_blueprint.sort_by = Some(SortBy {
+                                        column: column_name.to_owned(),
+                                        direction: sort_direction,
+                                    });
+                                    ui.close();
                                 }
-                            },
-                        );
+                            }
+                        });
                     },
                 );
             });

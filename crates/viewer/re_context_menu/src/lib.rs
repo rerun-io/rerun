@@ -87,7 +87,7 @@ fn context_menu_ui_for_item_with_context_impl(
 ) {
     item_response.context_menu(|ui| {
         if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            ui.close_menu();
+            ui.close();
             return;
         }
 
@@ -227,7 +227,7 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
 
             let response = action.ui(ctx, ui);
             if response.clicked() {
-                ui.close_menu();
+                ui.close();
             }
         }
 

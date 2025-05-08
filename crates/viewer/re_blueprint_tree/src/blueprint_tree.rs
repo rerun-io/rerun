@@ -1146,7 +1146,7 @@ fn add_new_view_or_container_menu_button(
         ))
         .clicked()
     {
-        ui.close_menu();
+        ui.close();
 
         // If a single container is selected, we use it as target. Otherwise, we target the
         // root container.
@@ -1197,7 +1197,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     };
 
     if response.clicked() {
-        ui.close_menu();
+        ui.close();
         ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
     }
@@ -1219,7 +1219,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
         .on_hover_text("Re-populate viewport with automatically chosen views")
         .clicked()
     {
-        ui.close_menu();
+        ui.close();
         ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
     }

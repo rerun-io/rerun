@@ -182,9 +182,9 @@ impl Chunk {
     /// See also [`Self::iter_timepoints`].
     pub fn iter_component_timepoints(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> impl Iterator<Item = TimePoint> + '_ {
-        let Some(list_array) = self.get_first_component(*component_name) else {
+        let Some(list_array) = self.components.get(component_descr) else {
             return Either::Left(std::iter::empty());
         };
 

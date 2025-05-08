@@ -262,24 +262,20 @@ impl VisualizerSystem for DepthImageVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_buffer_chunks) =
-                    results.get_required_chunks(&DepthImage::descriptor_buffer())
+                    results.get_required_chunks(DepthImage::descriptor_buffer())
                 else {
                     return Ok(());
                 };
                 let Some(all_format_chunks) =
-                    results.get_required_chunks(&DepthImage::descriptor_format())
+                    results.get_required_chunks(DepthImage::descriptor_format())
                 else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_buffers_indexed =
-                    iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
-                let all_formats_indexed = iter_component::<ImageFormat>(
-                    &all_format_chunks,
-                    timeline,
-                    ImageFormat::name(),
-                );
+                let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
+                let all_formats_indexed =
+                    iter_component::<ImageFormat>(&all_format_chunks, timeline);
                 let all_colormaps = results.iter_as(timeline, Colormap::name());
                 let all_value_ranges = results.iter_as(timeline, ValueRange::name());
                 let all_depth_meters = results.iter_as(timeline, DepthMeter::name());

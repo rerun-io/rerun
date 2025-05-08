@@ -4,8 +4,7 @@ use re_renderer::{renderer::GpuMeshInstance, RenderContext};
 use re_types::{
     archetypes::Mesh3D,
     components::{
-        AlbedoFactor, Color, ImageBuffer, ImageFormat, Position3D, Texcoord2D, TriangleIndices,
-        Vector3D,
+        AlbedoFactor, Color, ImageBuffer, ImageFormat, Texcoord2D, TriangleIndices, Vector3D,
     },
     Component as _,
 };
@@ -154,17 +153,14 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_vertex_position_chunks) =
-                    results.get_required_chunks(&Mesh3D::descriptor_vertex_positions())
+                    results.get_required_chunks(Mesh3D::descriptor_vertex_positions())
                 else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_vertex_positions_indexed = iter_slices::<[f32; 3]>(
-                    &all_vertex_position_chunks,
-                    timeline,
-                    Position3D::name(),
-                );
+                let all_vertex_positions_indexed =
+                    iter_slices::<[f32; 3]>(&all_vertex_position_chunks, timeline);
                 let all_vertex_normals = results.iter_as(timeline, Vector3D::name());
                 let all_vertex_colors = results.iter_as(timeline, Color::name());
                 let all_vertex_texcoords = results.iter_as(timeline, Texcoord2D::name());

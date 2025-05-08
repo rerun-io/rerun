@@ -317,10 +317,17 @@ impl ViewBlueprint {
             match name {
                 Some(name) => {
                     let component = Name(name.into());
-                    ctx.save_blueprint_component(&self.entity_path(), &component);
+                    ctx.save_blueprint_component(
+                        &self.entity_path(),
+                        &blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
+                        &component,
+                    );
                 }
                 None => {
-                    ctx.save_empty_blueprint_component::<Name>(&self.entity_path());
+                    ctx.clear_blueprint_component(
+                        &self.entity_path(),
+                        blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
+                    );
                 }
             }
         }
@@ -330,7 +337,11 @@ impl ViewBlueprint {
     pub fn set_origin(&self, ctx: &ViewerContext<'_>, origin: &EntityPath) {
         if origin != &self.space_origin {
             let component = ViewOrigin(origin.into());
-            ctx.save_blueprint_component(&self.entity_path(), &component);
+            ctx.save_blueprint_component(
+                &self.entity_path(),
+                &blueprint_archetypes::ViewBlueprint::descriptor_space_origin(),
+                &component,
+            );
         }
     }
 
@@ -338,7 +349,11 @@ impl ViewBlueprint {
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
             let component = Visible::from(visible);
-            ctx.save_blueprint_component(&self.entity_path(), &component);
+            ctx.save_blueprint_component(
+                &self.entity_path(),
+                &blueprint_archetypes::ViewBlueprint::descriptor_visible(),
+                &component,
+            );
         }
     }
 

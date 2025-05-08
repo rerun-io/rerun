@@ -474,7 +474,7 @@ fn menu_more(
     {
         // TODO(#6889): Use component_descr directly.
         ctx.clear_blueprint_component(override_path, component_descr);
-        ui.close_menu();
+        ui.close();
         return;
     }
 
@@ -489,13 +489,13 @@ fn menu_more(
         if let Some(raw_default) = raw_default {
             ctx.save_blueprint_array(override_path, component_descr, raw_default);
         }
-        ui.close_menu();
+        ui.close();
         return;
     }
 
     if ui.button("Set to fallback value").clicked() {
         ctx.save_blueprint_array(override_path, component_descr, raw_fallback);
-        ui.close_menu();
+        ui.close();
         return;
     }
 
@@ -513,7 +513,7 @@ fn menu_more(
         .clicked()
     {
         ctx.reset_blueprint_component(override_path, component_descr);
-        ui.close_menu();
+        ui.close();
         return;
     }
 
@@ -523,7 +523,7 @@ fn menu_more(
             component_descr,
             raw_current_value,
         );
-        ui.close_menu();
+        ui.close();
     }
 }
 
@@ -550,7 +550,7 @@ fn menu_add_new_visualizer(
 
             ctx.save_blueprint_archetype(override_path, &archetype);
 
-            ui.close_menu();
+            ui.close();
         }
     }
 }

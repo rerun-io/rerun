@@ -87,7 +87,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 let entity_path = ctx.target_entity_path;
 
                 let Some(all_video_timestamp_chunks) =
-                    results.get_required_chunks(&VideoFrameReference::descriptor_timestamp())
+                    results.get_required_chunks(VideoFrameReference::descriptor_timestamp())
                 else {
                     return Ok(());
                 };
@@ -95,11 +95,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                     results.iter_as(timeline, re_types::components::EntityPath::name());
 
                 for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
-                    entity_iterator::iter_component(
-                        &all_video_timestamp_chunks,
-                        timeline,
-                        VideoTimestamp::name(),
-                    ),
+                    entity_iterator::iter_component(&all_video_timestamp_chunks, timeline),
                     all_video_references.slice::<String>(),
                 ) {
                     let Some(video_timestamp): Option<&VideoTimestamp> = video_timestamps.first()

@@ -209,7 +209,7 @@ impl SeriesPointSystem {
 
             // If we have no scalars, we can't do anything.
             let Some(all_scalar_chunks) =
-                results.get_required_chunks(&archetypes::Scalars::descriptor_scalars())
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
             else {
                 return;
             };
@@ -259,8 +259,7 @@ impl SeriesPointSystem {
                 re_tracing::profile_scope!("fill marker shapes");
 
                 {
-                    let all_marker_shapes_chunks =
-                        results.get_optional_chunks(&MarkerShape::name());
+                    let all_marker_shapes_chunks = results.get_optional_chunks(MarkerShape::name());
 
                     if all_marker_shapes_chunks.len() == 1
                         && all_marker_shapes_chunks[0].is_static()
