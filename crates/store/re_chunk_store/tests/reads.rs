@@ -58,7 +58,8 @@ fn all_components() -> anyhow::Result<()> {
         |store: &ChunkStore, entity_path: &EntityPath, expected: Option<&[ComponentDescriptor]>| {
             let timeline = TimelineName::new("frame_nr");
 
-            let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
+            let component_names =
+                store.all_components_on_timeline_sorted_by_name(&timeline, entity_path);
 
             let expected_component_names = expected.map(|expected| {
                 let expected: ComponentNameSet =

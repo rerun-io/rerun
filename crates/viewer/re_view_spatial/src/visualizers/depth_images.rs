@@ -367,15 +367,19 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
         &self,
         ctx: &re_viewer_context::QueryContext<'_>,
     ) -> re_types::components::ValueRange {
-        if let Some(((_time, buffer_row_id), image_buffer)) = ctx
-            .recording()
-            .latest_at_component::<ImageBuffer>(ctx.target_entity_path, ctx.query)
+        if let Some(((_time, buffer_row_id), image_buffer)) =
+            ctx.recording().latest_at_component::<ImageBuffer>(
+                ctx.target_entity_path,
+                ctx.query,
+                &DepthImage::descriptor_buffer(),
+            )
         {
             // TODO(andreas): What about overrides on the image format?
-            if let Some((_, format)) = ctx
-                .recording()
-                .latest_at_component::<ImageFormat>(ctx.target_entity_path, ctx.query)
-            {
+            if let Some((_, format)) = ctx.recording().latest_at_component::<ImageFormat>(
+                ctx.target_entity_path,
+                ctx.query,
+                &DepthImage::descriptor_format(),
+            ) {
                 let image = ImageInfo {
                     buffer_cache_key: Hash64::hash(buffer_row_id),
                     buffer: image_buffer.0,
@@ -401,12 +405,16 @@ impl TypedComponentFallbackProvider<Colormap> for DepthImageVisualizer {
 
 impl TypedComponentFallbackProvider<DepthMeter> for DepthImageVisualizer {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> DepthMeter {
-        let is_integer_tensor = ctx
+        let is_float_image = ctx
             .recording()
-            .latest_at_component::<components::TensorData>(ctx.target_entity_path, ctx.query)
-            .is_some_and(|(_index, tensor)| tensor.dtype().is_integer());
+            .latest_at_component::<components::ImageFormat>(
+                ctx.target_entity_path,
+                ctx.query,
+                &DepthImage::descriptor_format(),
+            )
+            .is_some_and(|(_index, format)| format.is_float());
 
-        if is_integer_tensor { 1000.0 } else { 1.0 }.into()
+        if is_float_image { 1.0 } else { 1000.0 }.into()
     }
 }
 

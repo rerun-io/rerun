@@ -243,7 +243,11 @@ impl TypedComponentFallbackProvider<Color> for Fallback {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Fallback {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<HalfSize3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Capsules3D::descriptor_radii(),
+            &Capsules3D::descriptor_labels(),
+        )
     }
 }
 

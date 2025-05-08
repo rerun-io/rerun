@@ -43,11 +43,11 @@ impl QueryCache {
     /// See [`LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn latest_at(
+    pub fn latest_at<'a>(
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = impl Into<MaybeTagged>>,
+        component_descrs: impl IntoIterator<Item = &'a ComponentDescriptor>,
     ) -> LatestAtResults {
         // This is called very frequently, don't put a profile scope here.
 
@@ -58,41 +58,9 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_descrs = component_descrs
-            .into_iter()
-            .filter_map(|maybe_component_descr| {
-                // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
-                let component_descr = match maybe_component_descr.into() {
-                    MaybeTagged::Descriptor(component_descr) => {
-                        debug_assert!(component_descr.archetype_name.is_some() ||
-                                        component_descr.component_name.is_indicator_component(),
-                         "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}. Path: {entity_path:?}");
-
-                        if component_descr.archetype_name.is_none() {
-                            store
-                                .entity_component_descriptors_with_name(
-                                    entity_path,
-                                    component_descr.component_name,
-                                )
-                                .into_iter()
-                                .next()?
-                        } else {
-                            component_descr
-                        }
-                    }
-                    MaybeTagged::JustName(name) => store
-                        .entity_component_descriptors_with_name(entity_path, name)
-                        .into_iter()
-                        .next()?,
-                };
-
-                store
-                    .entity_has_component_on_timeline(
-                        &query.timeline(),
-                        entity_path,
-                        &component_descr,
-                    ).then_some(component_descr)
-            });
+        let component_descrs = component_descrs.into_iter().filter(|component_descr| {
+            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_descr)
+        });
 
         // Query-time clears
         // -----------------
@@ -194,15 +162,15 @@ impl QueryCache {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(&store, query, entity_path, &component_descr) {
+            if let Some(cached) = cache.latest_at(&store, query, entity_path, component_descr) {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
                 if let Some(index) = cached.index(&query.timeline()) {
-                    if component_descr == archetypes::Clear::descriptor_is_recursive()
+                    if component_descr == &archetypes::Clear::descriptor_is_recursive()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
-                        results.add(component_descr, index, cached);
+                        results.add(component_descr.clone(), index, cached);
                     }
                 }
             }
@@ -390,22 +358,8 @@ impl LatestAtResults {
     }
 
     /// Returns the raw data for the specified component.
-    // TODO(#6889): Remove this in favor or `component_batch_raw_by_descr` and rename the later to `component_batch_raw`
     #[inline]
-    pub fn component_batch_raw(&self, component_name: &ComponentName) -> Option<ArrayRef> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
-        self.components
-            .get(component_descr)?
-            .component_batch_raw_by_component_name(*component_name)
-    }
-
-    /// Returns the raw data for the specified component.
-    #[inline]
-    pub fn component_batch_raw_by_descr(
-        &self,
-        component_descr: &ComponentDescriptor,
-    ) -> Option<ArrayRef> {
+    pub fn component_batch_raw(&self, component_descr: &ComponentDescriptor) -> Option<ArrayRef> {
         self.components
             .get(component_descr)?
             .component_batch_raw(component_descr)

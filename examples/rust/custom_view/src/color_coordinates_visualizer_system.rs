@@ -42,24 +42,42 @@ impl VisualizerSystem for InstanceColorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // …gather all colors and their instance ids.
+            // TODO(#6889): This is an _interesting_ but really really strange example.
+            // UI doesn't play nicely with it as it won't show anything when one of these color points is selected.
 
+            // First gather all kinds of colors that are logged on this path.
+            let recording_engine = ctx.recording_engine();
+            let color_descriptors = recording_engine
+                .store()
+                .entity_component_descriptors_with_name(
+                    &data_result.entity_path,
+                    rerun::Color::name(),
+                );
+
+            // Query them from the cache.
             let results = ctx.recording_engine().cache().latest_at(
                 &ctx.current_query(),
                 &data_result.entity_path,
-                [rerun::Color::name()],
+                color_descriptors.iter(),
             );
 
-            let Some(colors) = results.component_batch::<rerun::Color>() else {
+            // Collect all different kinds of colors that are returned from the cache.
+            let colors = results
+                .components
+                .iter()
+                .flat_map(|(descr, chunk)| chunk.iter_slices::<u32>(descr.component_name).flatten())
+                .collect::<Vec<_>>();
+
+            if colors.is_empty() {
                 continue;
-            };
+            }
 
             self.colors.push((
                 data_result.entity_path.clone(),
                 (0..)
                     .zip(colors)
                     .map(|(instance, color)| {
-                        let [r, g, b, _] = color.to_array();
+                        let [r, g, b, _] = rerun::Color::from_u32(*color).to_array();
                         ColorWithInstance {
                             color: egui::Color32::from_rgb(r, g, b),
                             instance: instance.into(),

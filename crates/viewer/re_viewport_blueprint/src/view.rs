@@ -270,7 +270,7 @@ impl ViewBlueprint {
                                 let array = blueprint_engine
                                     .cache()
                                     .latest_at(query, path, [&component_descr])
-                                    .component_batch_raw_by_descr(&component_descr);
+                                    .component_batch_raw(&component_descr);
                                 array.map(|array| (component_descr, array))
                             }),
                     )

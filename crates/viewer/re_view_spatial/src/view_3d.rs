@@ -4,12 +4,9 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::archetypes;
 use re_types::blueprint::archetypes::LineGrid3D;
-use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, Component as _, View as _,
-    ViewClassIdentifier,
-};
+use re_types::components;
+use re_types::{blueprint::archetypes::Background, Component as _, View as _, ViewClassIdentifier};
 use re_ui::{list_item, Help, UiExt as _};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -20,6 +17,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
+use crate::transform_cache::query_view_coordinates;
 use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer};
 use crate::{
     contexts::register_spatial_contexts,
@@ -287,9 +285,11 @@ impl ViewClass for SpatialView3D {
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
         let engine = ctx.recording_engine();
         ctx.recording().tree().visit_children_recursively(|path| {
-            if engine
+            // TODO(#9917): Note that the view coordinates component may be logged by different archetypes which is why we do a name query here.
+            if !engine
                 .store()
-                .entity_has_component(path, &archetypes::ViewCoordinates::descriptor_xyz())
+                .entity_component_descriptors_with_name(path, components::ViewCoordinates::name())
+                .is_empty()
             {
                 indicated_entities.insert(path.clone());
             }
@@ -372,10 +372,8 @@ impl ViewClass for SpatialView3D {
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialViewState>()?;
 
-        let scene_view_coordinates = ctx
-            .recording()
-            .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
-            .map(|(_index, c)| c);
+        let scene_view_coordinates =
+            query_view_coordinates(space_origin, ctx.recording(), &ctx.current_query());
 
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {

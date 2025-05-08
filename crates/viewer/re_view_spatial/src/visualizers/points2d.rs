@@ -318,7 +318,11 @@ impl TypedComponentFallbackProvider<DrawOrder> for Points2DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Points2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<Position2D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Points2D::descriptor_positions(),
+            &Points2D::descriptor_labels(),
+        )
     }
 }
 

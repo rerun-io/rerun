@@ -140,10 +140,21 @@ impl EntityDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
-    pub fn recording_property<C: re_types_core::Component>(&self) -> Option<C> {
+    pub fn recording_property<C: re_types_core::Component>(
+        &self,
+        component_descr: &re_types_core::ComponentDescriptor,
+    ) -> Option<C> {
+        debug_assert_eq!(component_descr.component_name, C::name());
+        debug_assert_eq!(
+            component_descr.archetype_name,
+            // String from re_types::RecordingProperties::name()
+            Some("rerun.archetypes.RecordingProperties".into())
+        );
+
         self.latest_at_component::<C>(
             &EntityPath::recording_properties(),
             &LatestAtQuery::latest(TimelineName::log_tick()),
+            component_descr,
         )
         .map(|(_, value)| value)
     }
@@ -182,20 +193,6 @@ impl EntityDb {
             .latest_at(query, entity_path, component_descr)
     }
 
-    // TODO(#6889): Remove.
-    #[inline]
-    pub fn latest_at_by_name(
-        &self,
-        query: &re_chunk_store::LatestAtQuery,
-        entity_path: &EntityPath,
-        component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
-    ) -> re_query::LatestAtResults {
-        self.storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, component_names)
-    }
-
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
     ///
     /// This assumes that the row we get from the store contains at most one instance for this
@@ -209,12 +206,15 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
+        component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [C::name()]);
+        debug_assert_eq!(component_descr.component_name, C::name());
+
+        let results =
+            self.storage_engine
+                .read()
+                .cache()
+                .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono()
             .map(|value| (results.index(), value))
@@ -233,12 +233,15 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
+        component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [C::name()]);
+        debug_assert_eq!(component_descr.component_name, C::name());
+
+        let results =
+            self.storage_engine
+                .read()
+                .cache()
+                .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono_quiet()
             .map(|value| (results.index(), value))
@@ -249,12 +252,15 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_chunk_store::LatestAtQuery,
+        component_descr: &re_types_core::ComponentDescriptor,
     ) -> Option<(EntityPath, (TimeInt, RowId), C)> {
         re_tracing::profile_function!();
 
         let mut cur_entity_path = Some(entity_path.clone());
         while let Some(entity_path) = cur_entity_path {
-            if let Some((index, value)) = self.latest_at_component(&entity_path, query) {
+            if let Some((index, value)) =
+                self.latest_at_component(&entity_path, query, component_descr)
+            {
                 return Some((entity_path, index, value));
             }
             cur_entity_path = entity_path.parent();
