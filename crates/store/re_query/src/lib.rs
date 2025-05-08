@@ -72,37 +72,3 @@ pub enum QueryError {
 }
 
 pub type Result<T> = std::result::Result<T, QueryError>;
-
-// ---
-
-use re_chunk::ComponentName;
-use re_types_core::ComponentDescriptor;
-
-// TODO(#6889): This is a temporary object until we use tagged components everywhere or have explicit untagged queries (?).
-
-#[derive(Debug, Clone)]
-pub enum MaybeTagged {
-    Descriptor(ComponentDescriptor),
-    JustName(ComponentName),
-}
-
-impl<'a> From<&'a ComponentDescriptor> for MaybeTagged {
-    #[inline]
-    fn from(descr: &'a ComponentDescriptor) -> Self {
-        Self::Descriptor(descr.clone())
-    }
-}
-
-impl From<ComponentDescriptor> for MaybeTagged {
-    #[inline]
-    fn from(descr: ComponentDescriptor) -> Self {
-        Self::Descriptor(descr)
-    }
-}
-
-impl From<ComponentName> for MaybeTagged {
-    #[inline]
-    fn from(name: ComponentName) -> Self {
-        Self::JustName(name)
-    }
-}

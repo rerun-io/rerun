@@ -16,7 +16,7 @@ use re_types_core::{
     ComponentDescriptor, ComponentName,
 };
 
-use crate::{MaybeTagged, QueryCache, QueryCacheKey, QueryError};
+use crate::{QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -247,14 +247,6 @@ impl LatestAtResults {
         self.components.get(component_descr)
     }
 
-    // TODO(#6889): remove this please!
-    pub fn get_by_maybe(&self, component_descriptor: &MaybeTagged) -> Option<&UnitChunkShared> {
-        match component_descriptor {
-            MaybeTagged::Descriptor(component_descriptor) => self.get(component_descriptor),
-            MaybeTagged::JustName(component_name) => self.get_by_name(component_name),
-        }
-    }
-
     // TODO(#6889): Going forward, we should avoid querying by name.
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     #[inline]
@@ -262,28 +254,6 @@ impl LatestAtResults {
         let component_descr = self.find_component_descriptor(*component_name)?;
         self.components.get(component_descr)
     }
-
-    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
-    ///
-    /// Returns an error if the component is not present.
-    // TODO(#6889): Remove this in favor or `get`
-    #[inline]
-    pub fn get_required_by_name(
-        &self,
-        component_name: &ComponentName,
-    ) -> crate::Result<&UnitChunkShared> {
-        let component_descr =
-            self.find_component_descriptor(*component_name)
-                .ok_or(QueryError::PrimaryNotFound(ComponentDescriptor::new(
-                    *component_name,
-                )))?;
-        if let Some(component) = self.components.get(component_descr) {
-            Ok(component)
-        } else {
-            Err(QueryError::PrimaryNotFound(component_descr.clone()))
-        }
-    }
-
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.

@@ -243,13 +243,14 @@ impl SeriesPointSystem {
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
+                &archetypes::SeriesPoints::descriptor_colors(),
             );
             collect_radius_ui(
                 &query,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
-                MarkerSize::name(),
+                &archetypes::SeriesPoints::descriptor_marker_sizes(),
                 // `marker_size` is a radius, see NOTE above
                 1.0,
             );
@@ -259,7 +260,8 @@ impl SeriesPointSystem {
                 re_tracing::profile_scope!("fill marker shapes");
 
                 {
-                    let all_marker_shapes_chunks = results.get_optional_chunks(MarkerShape::name());
+                    let all_marker_shapes_chunks =
+                        results.get_optional_chunks(archetypes::SeriesPoints::descriptor_markers());
 
                     if all_marker_shapes_chunks.len() == 1
                         && all_marker_shapes_chunks[0].is_static()
@@ -267,7 +269,9 @@ impl SeriesPointSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         if let Some(marker_shapes) = all_marker_shapes_chunks[0]
-                            .iter_component_by_name::<MarkerShape>()
+                            .iter_component::<MarkerShape>(
+                                &archetypes::SeriesPoints::descriptor_markers(),
+                            )
                             .next()
                         {
                             for (points, marker_shape) in points_per_series
@@ -344,7 +348,13 @@ impl SeriesPointSystem {
                 num_series,
                 archetypes::SeriesPoints::descriptor_visible_series(),
             );
-            let series_names = collect_series_name(self, &query_ctx, &results, num_series);
+            let series_names = collect_series_name(
+                self,
+                &query_ctx,
+                &results,
+                num_series,
+                &archetypes::SeriesPoints::descriptor_names(),
+            );
 
             debug_assert_eq!(points_per_series.len(), series_names.len());
             for (instance, (points, label, visible)) in itertools::izip!(
