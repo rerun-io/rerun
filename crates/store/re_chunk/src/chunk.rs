@@ -102,10 +102,8 @@ impl ChunkComponents {
     }
 
     /// Whether any of the components in this chunk has the given name.
-    pub fn contains_component_name(&self, component_name: ComponentName) -> bool {
-        self.0
-            .keys()
-            .any(|desc| desc.component_name == component_name)
+    pub fn contains_component(&self, component_descr: &ComponentDescriptor) -> bool {
+        self.0.contains_key(component_descr)
     }
 }
 

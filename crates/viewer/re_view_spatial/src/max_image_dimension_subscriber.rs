@@ -93,27 +93,22 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             }
 
             // TODO(andreas): this should be part of the ImageFormat component's tag instead.
-            if components
-                .contains_component_name(archetypes::Image::descriptor_indicator().component_name)
-            {
+            if components.contains_component(&archetypes::Image::descriptor_indicator()) {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::IMAGE);
             }
-            if components.contains_component_name(
-                archetypes::SegmentationImage::descriptor_indicator().component_name,
-            ) {
+            if components.contains_component(&archetypes::SegmentationImage::descriptor_indicator())
+            {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::SEGMENTATION_IMAGE);
             }
-            if components.contains_component_name(
-                archetypes::DepthImage::descriptor_indicator().component_name,
-            ) {
+            if components.contains_component(&archetypes::DepthImage::descriptor_indicator()) {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()

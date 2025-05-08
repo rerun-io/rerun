@@ -9,7 +9,7 @@ use itertools::Either;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{components::MediaType, Component as _};
+use re_types::{archetypes::AssetVideo, components::MediaType};
 use re_video::decode::DecodeSettings;
 
 use crate::Cache;
@@ -117,7 +117,7 @@ impl Cache for VideoCache {
                     event
                         .chunk
                         .components()
-                        .contains_component_name(re_types::components::Blob::name())
+                        .contains_component(&AssetVideo::descriptor_blob())
                 };
 
                 if is_deletion() && contains_video_blob() {

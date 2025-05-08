@@ -14,7 +14,7 @@ use re_log_types::{
 };
 use re_types::{
     testing::{build_some_large_structs, LargeStruct},
-    ComponentDescriptor, ComponentNameSet,
+    ComponentDescriptor, ComponentDescriptorSet,
 };
 use re_types_core::Component as _;
 
@@ -61,8 +61,7 @@ fn all_components() -> anyhow::Result<()> {
             let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
             let expected_component_names = expected.map(|expected| {
-                let expected: ComponentNameSet =
-                    expected.iter().map(|desc| desc.component_name).collect();
+                let expected: ComponentDescriptorSet = expected.iter().cloned().collect();
                 expected
             });
 

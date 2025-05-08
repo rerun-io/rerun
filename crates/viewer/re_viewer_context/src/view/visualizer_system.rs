@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_types::{Archetype, ComponentDescriptor, ComponentDescriptorSet, ComponentNameSet};
+use re_types::{Archetype, ComponentDescriptor, ComponentDescriptorSet};
 
 use crate::{
     ComponentFallbackProvider, DataBasedVisualizabilityFilter, IdentifiedViewSystem,
@@ -39,7 +39,7 @@ impl FromIterator<ComponentDescriptor> for SortedComponentDescriptorSet {
 pub struct VisualizerQueryInfo {
     /// These are not required, but if _any_ of these are found, it is a strong indication that this
     /// system should be active (if also the `required_components` are found).
-    pub indicators: ComponentNameSet,
+    pub indicators: ComponentDescriptorSet,
 
     /// Returns the minimal set of components that the system _requires_ in order to be instantiated.
     ///
@@ -56,7 +56,7 @@ pub struct VisualizerQueryInfo {
 impl VisualizerQueryInfo {
     pub fn from_archetype<A: Archetype>() -> Self {
         Self {
-            indicators: std::iter::once(A::indicator().descriptor.component_name).collect(),
+            indicators: std::iter::once(A::indicator().descriptor).collect(),
             required: A::required_components().iter().cloned().collect(),
             queried: A::all_components().iter().cloned().collect(),
         }
@@ -64,7 +64,7 @@ impl VisualizerQueryInfo {
 
     pub fn empty() -> Self {
         Self {
-            indicators: ComponentNameSet::default(),
+            indicators: ComponentDescriptorSet::default(),
             required: ComponentDescriptorSet::default(),
             queried: SortedComponentDescriptorSet::default(),
         }

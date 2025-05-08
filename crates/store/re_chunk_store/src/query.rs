@@ -10,8 +10,7 @@ use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
-    ComponentDescriptor, ComponentDescriptorSet, ComponentName, ComponentNameSet,
-    UnorderedComponentDescriptorSet,
+    ComponentDescriptor, ComponentDescriptorSet, ComponentName, UnorderedComponentDescriptorSet,
 };
 
 use crate::{store::ChunkIdSetPerTime, ChunkStore};
@@ -156,21 +155,21 @@ impl ChunkStore {
         &self,
         timeline: &TimelineName,
         entity_path: &EntityPath,
-    ) -> Option<ComponentNameSet> {
+    ) -> Option<ComponentDescriptorSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<ComponentNameSet> = self
+        let static_components: Option<ComponentDescriptorSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
                 static_chunks_per_component
                     .keys()
-                    .map(|descr| descr.component_name)
-                    .collect::<ComponentNameSet>()
+                    .cloned()
+                    .collect::<ComponentDescriptorSet>()
             })
             .filter(|names| !names.is_empty());
 
-        let temporal_components: Option<ComponentNameSet> = self
+        let temporal_components: Option<ComponentDescriptorSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
@@ -179,8 +178,8 @@ impl ChunkStore {
                     .map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component
                             .keys()
-                            .map(|descr| descr.component_name)
-                            .collect::<ComponentNameSet>()
+                            .cloned()
+                            .collect::<ComponentDescriptorSet>()
                     })
                     .unwrap_or_default()
             })
@@ -242,29 +241,24 @@ impl ChunkStore {
     pub fn all_components_for_entity_sorted(
         &self,
         entity_path: &EntityPath,
-    ) -> Option<ComponentNameSet> {
+    ) -> Option<ComponentDescriptorSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<ComponentNameSet> = self
+        let static_components: Option<ComponentDescriptorSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
-                static_chunks_per_component
-                    .keys()
-                    .map(|descr| descr.component_name)
-                    .collect()
+                static_chunks_per_component.keys().cloned().collect()
             });
 
-        let temporal_components: Option<ComponentNameSet> = self
+        let temporal_components: Option<ComponentDescriptorSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
                     .iter()
                     .flat_map(|(_, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component
-                            .keys()
-                            .map(|descr| descr.component_name)
+                        temporal_chunk_ids_per_component.keys().cloned()
                     })
                     .collect()
             });

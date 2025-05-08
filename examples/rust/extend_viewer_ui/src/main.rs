@@ -140,9 +140,9 @@ fn entity_ui(
         .store()
         .all_components_on_timeline_sorted(&timeline, entity_path)
     {
-        for component in components {
-            ui.collapsing(component.to_string(), |ui| {
-                component_ui(ui, entity_db, timeline, entity_path, component);
+        for descr in components {
+            ui.collapsing(descr.to_string(), |ui| {
+                component_ui(ui, entity_db, timeline, entity_path, descr.component_name);
             });
         }
     }

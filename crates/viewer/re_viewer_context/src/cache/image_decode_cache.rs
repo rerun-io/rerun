@@ -4,9 +4,9 @@ use itertools::Either;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
+    archetypes::EncodedImage,
     components::{ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
-    Component as _,
 };
 
 use crate::{Cache, ImageInfo};
@@ -159,7 +159,7 @@ impl Cache for ImageDecodeCache {
                     event
                         .chunk
                         .components()
-                        .contains_component_name(re_types::components::Blob::name())
+                        .contains_component(&EncodedImage::descriptor_blob())
                 };
 
                 if is_deletion() && contains_image_blob() {

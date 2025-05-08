@@ -44,8 +44,7 @@ impl VisualizerSystem for SeriesLineSystem {
             .queried
             .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
-        query_info.indicators =
-            [archetypes::SeriesLines::descriptor_indicator().component_name].into();
+        query_info.indicators = [archetypes::SeriesLines::descriptor_indicator()].into();
 
         query_info
     }

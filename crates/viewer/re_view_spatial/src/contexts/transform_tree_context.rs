@@ -5,8 +5,8 @@ use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
 use re_types::{
     archetypes::{self, InstancePoses3D, Transform3D},
-    components::{ImagePlaneDistance, PinholeProjection},
-    Archetype as _, Component as _, ComponentNameSet,
+    components::ImagePlaneDistance,
+    Archetype as _, Component as _, ComponentDescriptorSet,
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
@@ -149,17 +149,11 @@ impl Default for TransformTreeContext {
 }
 
 impl ViewContextSystem for TransformTreeContext {
-    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
+    fn compatible_component_sets(&self) -> Vec<ComponentDescriptorSet> {
         vec![
-            Transform3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
-            InstancePoses3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
-            std::iter::once(PinholeProjection::name()).collect(),
+            Transform3D::all_components().iter().cloned().collect(),
+            InstancePoses3D::all_components().iter().cloned().collect(),
+            std::iter::once(archetypes::Pinhole::descriptor_image_from_camera()).collect(),
         ]
     }
 
