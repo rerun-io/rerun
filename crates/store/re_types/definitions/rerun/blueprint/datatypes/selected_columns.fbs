@@ -10,7 +10,7 @@ table SelectedColumns (
 ) {
   /// Show Row ID column?
   ///
-  /// This is not yet implemented. See https://github.com/rerun-io/rerun/issues/9921
+  /// This is not yet implemented. See <https://github.com/rerun-io/rerun/issues/9921>.
   row_id: rerun.datatypes.Bool (order: 50); // TODO(#9921): hook up UI
 
   /// The time columns to include

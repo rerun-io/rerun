@@ -41,7 +41,7 @@ class SelectedColumns(SelectedColumnsExt):
     row_id: datatypes.Bool = field(converter=_selected_columns__row_id__special_field_converter_override)
     # Show Row ID column?
     #
-    # This is not yet implemented. See https://github.com/rerun-io/rerun/issues/9921
+    # This is not yet implemented. See <https://github.com/rerun-io/rerun/issues/9921>.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
