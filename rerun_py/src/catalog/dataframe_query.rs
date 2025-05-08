@@ -493,9 +493,12 @@ fn extract_contents_expr(
 
     let component_descriptors = descriptors
         .iter()
-        .filter_map(|descriptor| match descriptor {
-            ColumnDescriptor::Component(component) => Some(component),
-            ColumnDescriptor::Time(_) => None,
+        .filter_map(|descriptor| {
+            if let ColumnDescriptor::Component(component) = descriptor {
+                Some(component)
+            } else {
+                None
+            }
         })
         .cloned()
         .collect::<Vec<_>>();

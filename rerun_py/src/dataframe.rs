@@ -32,7 +32,8 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::{
-    ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
+    ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor, SorbetColumnDescriptors,
+    TimeColumnSelector,
 };
 
 use crate::catalog::to_py_err;
@@ -67,6 +68,42 @@ fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
     })
 }
 
+// TODO(#9922): Hook up to Python API
+/// The descriptor of a Row ID column.
+#[pyclass(frozen, name = "RowIdColumnDescriptor")]
+#[derive(Clone)]
+struct PyRowIdColumnDescriptor(#[expect(dead_code)] RowIdColumnDescriptor);
+
+#[pymethods]
+impl PyRowIdColumnDescriptor {
+    #[expect(clippy::unused_self)]
+    fn __repr__(&self) -> String {
+        "RowId".to_owned()
+    }
+
+    /// The name of the RowId column.
+    ///
+    /// This property is read-only.
+    #[expect(clippy::unused_self)]
+    #[getter]
+    fn name(&self) -> &'static str {
+        "RowId"
+    }
+
+    /// Part of generic ColumnDescriptor interface: always False for RowId.
+    #[expect(clippy::unused_self)]
+    #[getter]
+    fn is_static(&self) -> bool {
+        false
+    }
+}
+
+impl From<RowIdColumnDescriptor> for PyRowIdColumnDescriptor {
+    fn from(desc: RowIdColumnDescriptor) -> Self {
+        Self(desc)
+    }
+}
+
 /// The descriptor of an index column.
 ///
 /// Index columns contain the index values for when the data was updated. They
@@ -94,7 +131,7 @@ impl PyIndexColumnDescriptor {
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     #[getter]
     fn is_static(&self) -> bool {
         false
@@ -502,6 +539,7 @@ impl PySchema {
                 .indices_and_components()
                 .into_iter()
                 .map(|col| match col {
+                    ColumnDescriptor::RowId(col) => PyRowIdColumnDescriptor(col).into_py_any(py),
                     ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py_any(py),
                     ColumnDescriptor::Component(col) => {
                         PyComponentColumnDescriptor(col).into_py_any(py)

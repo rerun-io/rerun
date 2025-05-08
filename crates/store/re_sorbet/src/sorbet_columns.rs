@@ -14,6 +14,9 @@ use crate::{
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 #[expect(clippy::enum_variant_names)]
 pub enum ColumnSelectorResolveError {
+    #[error("There is no RowId column")]
+    RowIdNotFound,
+
     #[error("Column for component '{0}' not found")]
     ComponentNotFound(String),
 
@@ -120,6 +123,12 @@ impl SorbetColumnDescriptors {
         column_selector: &ColumnSelector,
     ) -> Result<ColumnDescriptorRef<'_>, ColumnSelectorResolveError> {
         match column_selector {
+            ColumnSelector::RowId => self
+                .row_id
+                .as_ref()
+                .map(ColumnDescriptorRef::RowId)
+                .ok_or(ColumnSelectorResolveError::RowIdNotFound),
+
             ColumnSelector::Time(selector) => self
                 .resolve_index_column_selector(selector)
                 .map(ColumnDescriptorRef::Time),
