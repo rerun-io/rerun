@@ -256,6 +256,7 @@ impl Query {
                 .filter(|c| {
                     all_components
                         .iter()
+                        // TODO(#6889): Should we filter by the component descriptor instead?
                         .any(|descr| &descr.component_name == c)
                 })
                 .collect::<ComponentNameSet>()
@@ -266,6 +267,7 @@ impl Query {
             .and_then(|component| {
                 all_components
                     .iter()
+                    // TODO(#6889): Should we filter by the component descriptor instead?
                     .any(|descr| descr.component_name == component)
                     .then_some(component)
             })
