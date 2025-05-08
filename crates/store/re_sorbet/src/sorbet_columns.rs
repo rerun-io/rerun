@@ -5,15 +5,12 @@ use re_log_types::{EntityPath, TimelineName};
 
 use crate::{
     ColumnDescriptor, ColumnKind, ComponentColumnDescriptor, ComponentColumnSelector,
-    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
+    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError, TimeColumnSelector,
 };
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 #[expect(clippy::enum_variant_names)]
 pub enum ColumnSelectorResolveError {
-    #[error("There is no RowId column")]
-    RowIdNotFound,
-
     #[error("Column for component '{0}' not found")]
     ComponentNotFound(String),
 
@@ -111,6 +108,19 @@ impl SorbetColumnDescriptors {
                 None
             }
         })
+    }
+
+    /// Resolve the provided index column selector. Returns `None` if no corresponding column was
+    /// found.
+    pub fn resolve_index_column_selector(
+        &self,
+        index_column_selector: &TimeColumnSelector,
+    ) -> Result<&IndexColumnDescriptor, ColumnSelectorResolveError> {
+        self.index_columns()
+            .find(|column| column.timeline_name() == index_column_selector.timeline)
+            .ok_or(ColumnSelectorResolveError::TimelineNotFound(
+                index_column_selector.timeline,
+            ))
     }
 
     /// Resolve the provided component column selector. Returns `None` if no corresponding column
