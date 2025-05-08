@@ -25,9 +25,14 @@ struct DataFusionQueryData {
 
 impl From<&TableBlueprint> for DataFusionQueryData {
     fn from(value: &TableBlueprint) -> Self {
+        let TableBlueprint {
+            sort_by,
+            partition_links,
+        } = value;
+
         Self {
-            sort_by: value.sort_by.clone(),
-            partition_links: value.partition_links.clone(),
+            sort_by: sort_by.clone(),
+            partition_links: partition_links.clone(),
         }
     }
 }
