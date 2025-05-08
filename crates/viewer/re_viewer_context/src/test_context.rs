@@ -326,8 +326,6 @@ impl TestContext {
     pub fn run(&self, egui_ctx: &egui::Context, func: impl FnOnce(&ViewerContext<'_>)) {
         re_log::PanicOnWarnScope::new(); // TODO(andreas): There should be a way to opt-out of this.
         re_ui::apply_style_and_install_loaders(egui_ctx);
-        // Disable cursor blinking so it doesn't interfere with snapshots
-        egui_ctx.all_styles_mut(|style| style.visuals.text_cursor.blink = false);
 
         let store_context = StoreContext {
             app_id: "rerun_test".into(),
@@ -542,9 +540,6 @@ impl TestContext {
             let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
                 ui.ctx().set_os(os);
                 re_ui::apply_style_and_install_loaders(ui.ctx());
-                // Disable cursor blinking so it doesn't interfere with snapshots
-                ui.ctx()
-                    .all_styles_mut(|style| style.visuals.text_cursor.blink = false);
                 help(ui.ctx()).ui(ui);
             });
             let help_view = help(&harness.ctx);

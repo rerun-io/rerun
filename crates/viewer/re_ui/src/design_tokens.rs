@@ -85,6 +85,11 @@ impl DesignTokens {
             ..Default::default()
         };
 
+        // We preserve the text cursor blink. It's false by default if we're in a test
+        // and true by default otherwise. We don't want to interfere with this behavior
+        // (Having a blinking cursor in tests can make the tests flaky).
+        egui_style.visuals.text_cursor.blink = ctx.style().visuals.text_cursor.blink;
+
         if apply_font_size {
             let font_size = parse_px(&typography_default.fontSize);
 
