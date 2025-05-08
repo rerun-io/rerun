@@ -518,7 +518,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     .storage_engine()
                     .cache()
                     .latest_at(blueprint_query, override_path, [&component_descr])
-                    .component_batch_raw_by_descr(&component_descr)
+                    .component_batch_raw(&component_descr)
                 {
                     // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
                     if !component_data.is_empty() {

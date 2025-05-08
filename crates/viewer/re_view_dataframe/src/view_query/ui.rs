@@ -226,7 +226,7 @@ impl Query {
         let all_components = ctx
             .recording_engine()
             .store()
-            .all_components_on_timeline_sorted(timeline, &filter_entity)
+            .all_components_on_timeline_sorted_by_name(timeline, &filter_entity)
             .unwrap_or_default();
 
         // The list of suggested components is built as follows:

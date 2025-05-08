@@ -343,13 +343,17 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        let results = cache.latest_at(
-                            &query,
-                            &descr.entity_path,
-                            // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
-                            //[ComponentDescriptor::from(descr.clone())],
-                            [descr.component_name],
-                        );
+                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                        let component_descriptor = store
+                            .entity_component_descriptors_with_name(
+                                &descr.entity_path,
+                                descr.component_name,
+                            )
+                            .into_iter()
+                            .next()?;
+
+                        let results =
+                            cache.latest_at(&query, &descr.entity_path, [&component_descriptor]);
 
                         results.components.into_values().next()
                     }
@@ -1054,12 +1058,19 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
+                    // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                    let component_descriptor = store
+                        .entity_component_descriptors_with_name(
+                            &descr.entity_path,
+                            descr.component_name,
+                        )
+                        .into_iter()
+                        .next()?;
+
                     let results = cache.latest_at(
                         &query,
                         &descr.entity_path.clone(),
-                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
-                        //[ComponentDescriptor::from(descr.clone())],
-                        [descr.component_name],
+                        [&component_descriptor],
                     );
 
                     *streaming_state = results

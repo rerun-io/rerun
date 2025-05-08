@@ -851,14 +851,23 @@ fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Vec<Affine3A> {
-    // TODO(andreas): Filter out styling components.
-    // TODO(#9889): Boxes & ellipsoids depend on differently tagged instance pose right now.
-    let result = entity_db.latest_at_by_name(
+    let result = entity_db.latest_at(
         query,
         entity_path,
+        // TODO(#9889): Boxes, ellipsoids and capsules depend on differently tagged instance pose right now.
         archetypes::InstancePoses3D::all_components()
             .iter()
-            .map(|c| c.component_name),
+            .chain(&[
+                archetypes::Boxes3D::descriptor_centers(), // PoseTranslation3D
+                archetypes::Boxes3D::descriptor_quaternions(), // PoseRotationQuat
+                archetypes::Boxes3D::descriptor_rotation_axis_angles(), // PoseRotationAxisAngle
+                archetypes::Ellipsoids3D::descriptor_centers(), // PoseTranslation3D
+                archetypes::Ellipsoids3D::descriptor_quaternions(), // PoseRotationQuat
+                archetypes::Ellipsoids3D::descriptor_rotation_axis_angles(), // PoseRotationAxisAngle
+                archetypes::Capsules3D::descriptor_translations(),           // PoseTranslation3D
+                archetypes::Capsules3D::descriptor_quaternions(),            // PoseRotationQuat
+                archetypes::Capsules3D::descriptor_rotation_axis_angles(), // PoseRotationAxisAngle
+            ]),
     );
 
     let max_num_instances = result
@@ -959,13 +968,69 @@ fn query_and_resolve_pinhole_projection_at_entity(
     query: &LatestAtQuery,
 ) -> Option<ResolvedPinholeProjection> {
     entity_db
-        .latest_at_component::<components::PinholeProjection>(entity_path, query)
+        .latest_at_component::<components::PinholeProjection>(
+            entity_path,
+            query,
+            &archetypes::Pinhole::descriptor_image_from_camera(),
+        )
         .map(|(_index, image_from_camera)| ResolvedPinholeProjection {
             image_from_camera,
-            view_coordinates: entity_db
-                .latest_at_component::<components::ViewCoordinates>(entity_path, query)
-                .map_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ, |(_index, res)| res),
+            view_coordinates: {
+                query_view_coordinates(entity_path, entity_db, query)
+                    .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ)
+            },
         })
+}
+
+/// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
+///
+/// Gives precedence to the `Pinhole` archetype.
+// TODO(#9917): This is confusing and should be cleaned up.
+pub fn query_view_coordinates(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<components::ViewCoordinates> {
+    entity_db
+        .latest_at_component::<components::ViewCoordinates>(
+            entity_path,
+            query,
+            &archetypes::Pinhole::descriptor_camera_xyz(),
+        )
+        .or_else(|| {
+            entity_db.latest_at_component::<components::ViewCoordinates>(
+                entity_path,
+                query,
+                &archetypes::ViewCoordinates::descriptor_xyz(),
+            )
+        })
+        .map(|(_index, view_coordinates)| view_coordinates)
+}
+
+/// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype
+/// at the closest ancestor of the given entity path.
+///
+/// Gives precedence to the `Pinhole` archetype.
+// TODO(#9917): This is confusing and should be cleaned up.
+pub fn query_view_coordinates_at_closest_ancestor(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> Option<components::ViewCoordinates> {
+    entity_db
+        .latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
+            entity_path,
+            query,
+            &archetypes::Pinhole::descriptor_camera_xyz(),
+        )
+        .or_else(|| {
+            entity_db.latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
+                entity_path,
+                query,
+                &archetypes::ViewCoordinates::descriptor_xyz(),
+            )
+        })
+        .map(|(_path, _index, view_coordinates)| view_coordinates)
 }
 
 #[cfg(test)]

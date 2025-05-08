@@ -303,7 +303,11 @@ impl TypedComponentFallbackProvider<Color> for Points3DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Points3DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<Position3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Points3D::descriptor_positions(),
+            &Points3D::descriptor_labels(),
+        )
     }
 }
 

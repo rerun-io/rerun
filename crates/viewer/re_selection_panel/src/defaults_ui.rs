@@ -229,7 +229,7 @@ fn active_defaults(
             db.storage_engine()
                 .cache()
                 .latest_at(query, &view.defaults_path, [&component_descr])
-                .component_batch_raw_by_descr(&component_descr)
+                .component_batch_raw(&component_descr)
                 .and_then(|data| (!data.is_empty()).then_some((component_descr, data)))
         })
         .collect()

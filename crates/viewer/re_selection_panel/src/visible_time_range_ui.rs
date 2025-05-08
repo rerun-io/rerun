@@ -58,14 +58,12 @@ fn visible_time_range_ui(
     time_range_override_path: &EntityPath,
     is_view: bool,
 ) {
-    use re_types::Component as _;
-
     let visible_time_ranges = ctx
         .blueprint_db()
-        .latest_at_by_name(
+        .latest_at(
             ctx.blueprint_query,
             time_range_override_path,
-            std::iter::once(VisibleTimeRange::name()),
+            [&blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()],
         )
         .component_batch::<VisibleTimeRange>()
         .unwrap_or_default();

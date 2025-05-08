@@ -4,8 +4,10 @@ use itertools::{izip, Either};
 
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
-use re_types::components::{ShowLabels, Text};
-use re_types::Component;
+use re_types::{
+    components::{ShowLabels, Text},
+    Component as _, ComponentDescriptor,
+};
 use re_viewer_context::ResolvedAnnotationInfos;
 
 #[cfg(doc)]
@@ -101,7 +103,7 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 /// (used when neither the logged data nor the blueprint provides a value).
 ///
 /// Assumes that the visualizer reads the [`Text`] component for components.
-/// The type parameter `C` must be the component type that defines the number of instances
+/// The `instance_count_component` parameter must be the component descriptor that defines the number of instances
 /// in the batch.
 ///
 // TODO(kpreid): This component type (or the length directly) should be gotten from some kind of
@@ -110,17 +112,23 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 ///
 /// This function is normally used to implement the [`ComponentFallbackProvider`]
 /// that will be used in a [`LabeledBatch`].
-pub fn show_labels_fallback<C: Component>(ctx: &re_viewer_context::QueryContext<'_>) -> ShowLabels {
-    let results = ctx.recording().latest_at_by_name(
+pub fn show_labels_fallback(
+    ctx: &re_viewer_context::QueryContext<'_>,
+    instance_count_component: &ComponentDescriptor,
+    text_component: &ComponentDescriptor,
+) -> ShowLabels {
+    debug_assert!(text_component.component_name == Text::name());
+
+    let results = ctx.recording().latest_at(
         ctx.query,
         ctx.target_entity_path,
-        [C::name(), Text::name()],
+        [instance_count_component, text_component],
     );
     let num_instances = results
-        .component_batch_raw(&C::name())
+        .component_batch_raw(instance_count_component)
         .map_or(0, |array| array.len());
     let num_labels = results
-        .component_batch_raw(&Text::name())
+        .component_batch_raw(text_component)
         .map_or(0, |array| array.len());
 
     ShowLabels::from(num_labels == 1 || num_instances < MAX_NUM_LABELS_PER_ENTITY)
