@@ -68,7 +68,7 @@ impl VisualizerSystem for TensorSystem {
                     .iter_component_indices(&timeline)
                     .zip(chunk.iter_component::<TensorData>())
             });
-            let all_ranges = results.iter_as(timeline, ValueRange::name());
+            let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range());
 
             for ((_, tensor_row_id), tensors, data_ranges) in
                 re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())

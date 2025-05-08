@@ -155,7 +155,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_show_labels = results.iter_as(timeline, Boxes3D::descriptor_show_labels());
 
                 // Deserialized because it's a union.
-                let all_fill_modes = results.iter_as(timeline, FillMode::name());
+                let all_fill_modes = results.iter_as(timeline, Boxes3D::descriptor_fill_mode());
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()
