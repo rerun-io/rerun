@@ -5,8 +5,7 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::GeoLineStrings,
-    components::{Color, GeoLineString, Radius},
-    Component as _,
+    components::{Color, Radius},
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
@@ -54,9 +53,9 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_lines = results.iter_as(timeline, GeoLineString::name());
-            let all_colors = results.iter_as(timeline, Color::name());
-            let all_radii = results.iter_as(timeline, Radius::name());
+            let all_lines = results.iter_as(timeline, GeoLineStrings::descriptor_line_strings());
+            let all_colors = results.iter_as(timeline, GeoLineStrings::descriptor_colors());
+            let all_radii = results.iter_as(timeline, GeoLineStrings::descriptor_radii());
 
             // fallback component values
             let fallback_color: Color =

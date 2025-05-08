@@ -2,8 +2,7 @@ use re_log_types::EntityPath;
 use re_renderer::{renderer::PointCloudDrawDataError, PickingLayerInstanceId};
 use re_types::{
     archetypes::GeoPoints,
-    components::{ClassId, Color, LatLon, Radius},
-    Component as _,
+    components::{Color, Radius},
 };
 use re_view::{
     process_annotation_slices, process_color_slice, AnnotationSceneContext, DataResultQuery as _,
@@ -57,10 +56,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_positions = results.iter_as(timeline, LatLon::name());
-            let all_colors = results.iter_as(timeline, Color::name());
-            let all_radii = results.iter_as(timeline, Radius::name());
-            let all_class_ids = results.iter_as(timeline, ClassId::name());
+            let all_positions = results.iter_as(timeline, GeoPoints::descriptor_positions());
+            let all_colors = results.iter_as(timeline, GeoPoints::descriptor_colors());
+            let all_radii = results.iter_as(timeline, GeoPoints::descriptor_radii());
+            let all_class_ids = results.iter_as(timeline, GeoPoints::descriptor_class_ids());
 
             // fallback component values
             let query_context = ctx.query_context(data_result, &latest_at_query);
