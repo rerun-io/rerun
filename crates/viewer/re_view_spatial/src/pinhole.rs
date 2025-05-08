@@ -97,9 +97,9 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
         query,
         entity_path,
         [
-            archetypes::Pinhole::descriptor_image_from_camera().component_name,
-            archetypes::Pinhole::descriptor_resolution().component_name,
-            archetypes::Pinhole::descriptor_camera_xyz().component_name,
+            &archetypes::Pinhole::descriptor_image_from_camera(),
+            &archetypes::Pinhole::descriptor_resolution(),
+            &archetypes::Pinhole::descriptor_camera_xyz(),
         ],
     );
 

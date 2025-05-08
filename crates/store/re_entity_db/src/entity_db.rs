@@ -164,13 +164,27 @@ impl EntityDb {
             })
     }
 
-    /// Queries for the given `component_names` using latest-at semantics.
+    /// Queries for the given components using latest-at semantics.
     ///
     /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
     #[inline]
-    pub fn latest_at(
+    pub fn latest_at<'a>(
+        &self,
+        query: &re_chunk_store::LatestAtQuery,
+        entity_path: &EntityPath,
+        component_descr: impl IntoIterator<Item = &'a re_types_core::ComponentDescriptor>,
+    ) -> re_query::LatestAtResults {
+        self.storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, component_descr)
+    }
+
+    // TODO(#6889): Remove.
+    #[inline]
+    pub fn latest_at_by_name(
         &self,
         query: &re_chunk_store::LatestAtQuery,
         entity_path: &EntityPath,

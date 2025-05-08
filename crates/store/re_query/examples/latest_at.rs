@@ -61,9 +61,9 @@ fn main() -> anyhow::Result<()> {
     {
         // * `get_required` returns an error if the chunk is missing.
         // * `get` returns an option.
-        let points = results.get_required(&MyPoint::name())?;
-        let colors = results.get(&MyColor::name());
-        let labels = results.get(&MyLabel::name());
+        let points = results.get_required(&MyPoints::descriptor_points())?;
+        let colors = results.get(&MyPoints::descriptor_colors());
+        let labels = results.get(&MyPoints::descriptor_labels());
 
         // You can always use the standard deserialization path:
         let points = points
@@ -71,7 +71,7 @@ fn main() -> anyhow::Result<()> {
             .context("missing")??;
         let labels = labels
             .and_then(|unit| {
-                unit.component_batch::<MyLabel>(&MyLabel::descriptor())?
+                unit.component_batch::<MyLabel>(&MyPoints::descriptor_labels())?
                     .ok()
             })
             .unwrap_or_default();
@@ -113,15 +113,12 @@ fn store() -> anyhow::Result<ChunkStoreHandle> {
         let timepoint = [build_frame_nr(123)];
 
         let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(
+            .with_archetype(
                 RowId::new(),
                 timepoint,
-                [
-                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)]
-                        as &dyn re_types_core::ComponentBatch, //
-                    &[MyColor::from_rgb(255, 0, 0)],
-                    &[MyLabel("a".into()), MyLabel("b".into())],
-                ],
+                &MyPoints::new([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])
+                    .with_colors([MyColor::from_rgb(255, 0, 0)])
+                    .with_labels([MyLabel("a".into()), MyLabel("b".into())]),
             )
             .build()?;
 

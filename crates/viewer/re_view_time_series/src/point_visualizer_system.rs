@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_types::{
     archetypes,
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar, SeriesVisible},
+    components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
     Archetype as _, Component as _,
 };
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
@@ -41,11 +41,9 @@ const DEFAULT_MARKER_SIZE: f32 = 3.0;
 impl VisualizerSystem for SeriesPointSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info.queried.extend(
-            archetypes::SeriesPoints::all_components()
-                .iter()
-                .map(|descr| descr.component_name),
-        );
+        query_info
+            .queried
+            .extend(archetypes::SeriesPoints::all_components().iter().cloned());
 
         query_info.indicators =
             [archetypes::SeriesPoints::descriptor_indicator().component_name].into();
@@ -204,18 +202,15 @@ impl SeriesPointSystem {
                 None,
                 &query,
                 data_result,
-                [
-                    Color::name(),
-                    MarkerShape::name(),
-                    MarkerSize::name(),
-                    Name::name(),
-                    Scalar::name(),
-                    SeriesVisible::name(),
-                ],
+                archetypes::Scalars::all_components()
+                    .iter()
+                    .chain(archetypes::SeriesPoints::all_components().iter()),
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+            let Some(all_scalar_chunks) =
+                results.get_required_chunks(&archetypes::Scalars::descriptor_scalars())
+            else {
                 return;
             };
 
@@ -273,7 +268,7 @@ impl SeriesPointSystem {
                         re_tracing::profile_scope!("override/default fast path");
 
                         if let Some(marker_shapes) = all_marker_shapes_chunks[0]
-                            .iter_component::<MarkerShape>()
+                            .iter_component_by_name::<MarkerShape>()
                             .next()
                         {
                             for (points, marker_shape) in points_per_series
@@ -292,7 +287,7 @@ impl SeriesPointSystem {
 
                         let mut all_marker_shapes_iters = all_marker_shapes_chunks
                             .iter()
-                            .map(|chunk| chunk.iter_component::<MarkerShape>())
+                            .map(|chunk| chunk.iter_component_by_name::<MarkerShape>())
                             .collect_vec();
                         let all_marker_shapes_indexed = {
                             let all_marker_shapes = all_marker_shapes_iters
@@ -300,7 +295,7 @@ impl SeriesPointSystem {
                                 .flat_map(|it| it.into_iter());
                             let all_marker_shapes_indices =
                                 all_marker_shapes_chunks.iter().flat_map(|chunk| {
-                                    chunk.iter_component_indices(
+                                    chunk.iter_component_indices_by_name(
                                         query.timeline(),
                                         &MarkerShape::name(),
                                     )

@@ -287,7 +287,6 @@ rustdoc-json = "0.9.4"
 rustdoc-types = "0.35.0"
 seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
-serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
 serde-wasm-bindgen = "0.6.5"
 serde_yaml = { version = "0.9.21", default-features = false }

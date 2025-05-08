@@ -209,7 +209,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
 
             quote! {
                 ArchetypeFieldReflection {
-                    name: #name,
+                    name: #name.into(),
                     display_name: #display_name,
                     component_name: #component_name.into(),
                     docstring_md: #docstring_md,

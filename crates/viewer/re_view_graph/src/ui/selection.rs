@@ -62,7 +62,8 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
             .find(|field| field.component_name == Enabled::name())
             .expect("forces are required to have an `Enabled` component");
 
-        let component_array = property.component_raw(field.component_name);
+        let component_descr = field.component_descriptor(property.archetype_name);
+        let component_array = property.component_raw(&component_descr);
         let row_id = property.component_row_id(field.component_name);
 
         let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
@@ -71,7 +72,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
                 ui,
                 ctx.blueprint_db(),
                 query_ctx.target_entity_path,
-                field.component_name,
+                &component_descr,
                 row_id.map(Hash64::hash),
                 component_array.as_deref(),
                 fallback_provider,

@@ -16,7 +16,7 @@ use re_types_core::{
     ComponentDescriptor, ComponentName,
 };
 
-use crate::{QueryCache, QueryCacheKey, QueryError};
+use crate::{MaybeTagged, QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -34,33 +34,6 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
         ((_, _), (TimeInt::STATIC, _)) => std::cmp::Ordering::Less,
         ((TimeInt::STATIC, _), (_, _)) => std::cmp::Ordering::Greater,
         _ => lhs.cmp(&rhs),
-    }
-}
-
-// TODO(#6889): This is a temporary object until we use tagged components everywhere or have explicit untagged queries (?).
-pub enum MaybeTagged {
-    Descriptor(ComponentDescriptor),
-    JustName(ComponentName),
-}
-
-impl<'a> From<&'a ComponentDescriptor> for MaybeTagged {
-    #[inline]
-    fn from(descr: &'a ComponentDescriptor) -> Self {
-        Self::Descriptor(descr.clone())
-    }
-}
-
-impl From<ComponentDescriptor> for MaybeTagged {
-    #[inline]
-    fn from(descr: ComponentDescriptor) -> Self {
-        Self::Descriptor(descr)
-    }
-}
-
-impl From<ComponentName> for MaybeTagged {
-    #[inline]
-    fn from(name: ComponentName) -> Self {
-        Self::JustName(name)
     }
 }
 
@@ -91,8 +64,12 @@ impl QueryCache {
                 // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
                 let component_descr = match maybe_component_descr.into() {
                     MaybeTagged::Descriptor(component_descr) => {
-                        debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component(),
-                         "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
+                        debug_assert!(component_descr.archetype_name.is_some() ||
+                                        component_descr.component_name.is_indicator_component() ||
+                                        component_descr.component_name == "rerun.blueprint.components.VisualizerOverride" ||
+                                        entity_path.iter().any(|p| p.unescaped_str() == "overrides") ||
+                                        entity_path.iter().any(|p| p.unescaped_str() == "defaults"),
+                         "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}. Path: {entity_path:?}");
 
                         if component_descr.archetype_name.is_none_or(|archetype_name| archetype_name.as_str().starts_with("rerun.blueprint.") ) {
                             // TODO(#6889): ALWAYS ignore tags on blueprint right now because some writes & reads are tagged and others aren't.
@@ -157,27 +134,28 @@ impl QueryCache {
                     continue;
                 }
 
+                let component_descr = archetypes::Clear::descriptor_is_recursive();
                 let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
-                    archetypes::Clear::descriptor_is_recursive(),
+                    component_descr.clone(),
                 );
 
                 let cache = Arc::clone(
                     self.latest_at_per_cache_key
                         .write()
                         .entry(key.clone())
-                        .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
+                        .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key)))),
                 );
 
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
                 if let Some(cached) =
-                    cache.latest_at(&store, query, &clear_entity_path, &key.component_descr)
+                    cache.latest_at(&store, query, &clear_entity_path, &component_descr)
                 {
                     // TODO(andreas): Should clear also work if the component is not fully tagged?
                     let found_recursive_clear = cached
-                        .component_mono::<ClearIsRecursive>(&key.component_descr)
+                        .component_mono::<ClearIsRecursive>(&component_descr)
                         .and_then(Result::ok)
                         == Some(ClearIsRecursive(true.into()));
                     // When checking the entity itself, any kind of `Clear` component
@@ -206,27 +184,30 @@ impl QueryCache {
         }
 
         for component_descr in component_descrs {
-            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_descr);
+            let key = QueryCacheKey::new(
+                entity_path.clone(),
+                query.timeline(),
+                component_descr.clone(),
+            );
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
                     .write()
                     .entry(key.clone())
-                    .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
+                    .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key)))),
             );
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(&store, query, entity_path, &key.component_descr)
-            {
+            if let Some(cached) = cache.latest_at(&store, query, entity_path, &component_descr) {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
                 if let Some(index) = cached.index(&query.timeline()) {
-                    if key.component_descr == archetypes::Clear::descriptor_is_recursive()
+                    if component_descr == archetypes::Clear::descriptor_is_recursive()
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
                     {
-                        results.add(key.component_descr, index, cached);
+                        results.add(component_descr, index, cached);
                     }
                 }
             }
@@ -299,8 +280,14 @@ impl LatestAtResults {
 
 impl LatestAtResults {
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
+    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&UnitChunkShared> {
+        self.components.get(component_descr)
+    }
+
+    // TODO(#6889): Going forward, we should avoid querying by name.
+    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     #[inline]
-    pub fn get(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
+    pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
         let component_descr = self.find_component_descriptor(*component_name)?;
         self.components.get(component_descr)
     }
@@ -308,12 +295,36 @@ impl LatestAtResults {
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
+    // TODO(#6889): Remove this in favor or `get`
     #[inline]
-    pub fn get_required(&self, component_name: &ComponentName) -> crate::Result<&UnitChunkShared> {
-        if let Some(component) = self.get(component_name) {
+    pub fn get_required_by_name(
+        &self,
+        component_name: &ComponentName,
+    ) -> crate::Result<&UnitChunkShared> {
+        let component_descr =
+            self.find_component_descriptor(*component_name)
+                .ok_or(QueryError::PrimaryNotFound(ComponentDescriptor::new(
+                    *component_name,
+                )))?;
+        if let Some(component) = self.components.get(component_descr) {
             Ok(component)
         } else {
-            Err(QueryError::PrimaryNotFound(*component_name))
+            Err(QueryError::PrimaryNotFound(component_descr.clone()))
+        }
+    }
+
+    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
+    ///
+    /// Returns an error if the component is not present.
+    #[inline]
+    pub fn get_required(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> crate::Result<&UnitChunkShared> {
+        if let Some(component) = self.components.get(component_descr) {
+            Ok(component)
+        } else {
+            Err(QueryError::PrimaryNotFound(component_descr.clone()))
         }
     }
 
@@ -369,9 +380,7 @@ impl LatestAtResults {
 
     /// Returns the `RowId` for the specified component.
     #[inline]
-    pub fn component_row_id(&self, component_name: &ComponentName) -> Option<RowId> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
+    pub fn component_row_id(&self, component_descr: &ComponentDescriptor) -> Option<RowId> {
         self.components
             .get(component_descr)
             .and_then(|unit| unit.row_id())

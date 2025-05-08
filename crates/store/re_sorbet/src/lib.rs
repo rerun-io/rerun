@@ -46,7 +46,6 @@ pub use self::{
         ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata,
         MissingMetadataKey,
     },
-    migration::migrate_record_batch,
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
     selectors::{
         ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
