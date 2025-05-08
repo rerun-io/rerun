@@ -243,13 +243,12 @@ pub trait RangeResultsExt {
     /// Call one of the following methods on the returned [`HybridResultsChunkIter`]:
     /// * [`HybridResultsChunkIter::slice`]
     /// * [`HybridResultsChunkIter::slice_from_struct_field`]
-    // TODO(#6889): Take descriptor instead of name.
     fn iter_as(
         &self,
         timeline: TimelineName,
-        component_descriptor: impl Into<MaybeTagged>,
+        component_descriptor: ComponentDescriptor,
     ) -> HybridResultsChunkIter<'_> {
-        let component_descriptor = component_descriptor.into();
+        let component_descriptor = MaybeTagged::Descriptor(component_descriptor);
         let chunks = self.get_optional_chunks(component_descriptor.clone());
         HybridResultsChunkIter {
             chunks,

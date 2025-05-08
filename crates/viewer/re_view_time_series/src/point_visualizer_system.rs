@@ -338,7 +338,12 @@ impl SeriesPointSystem {
                 }
             }
 
-            let series_visibility = collect_series_visibility(&query, &results, num_series);
+            let series_visibility = collect_series_visibility(
+                &query,
+                &results,
+                num_series,
+                archetypes::SeriesPoints::descriptor_visible_series(),
+            );
             let series_names = collect_series_name(self, &query_ctx, &results, num_series);
 
             debug_assert_eq!(points_per_series.len(), series_names.len());

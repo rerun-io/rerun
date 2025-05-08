@@ -304,7 +304,12 @@ impl SeriesLineSystem {
                 }
             }
 
-            let series_visibility = collect_series_visibility(&query, &results, num_series);
+            let series_visibility = collect_series_visibility(
+                &query,
+                &results,
+                num_series,
+                archetypes::SeriesLines::descriptor_visible_series(),
+            );
             let series_names = collect_series_name(self, &query_ctx, &results, num_series);
 
             debug_assert_eq!(points_per_series.len(), series_names.len());
@@ -360,7 +365,7 @@ fn collect_recursive_clears(
 
         cleared_indices.extend(
             results
-                .iter_as(*query.timeline(), clear_descriptor.component_name) // TODO(#6889): Pass descriptor on.
+                .iter_as(*query.timeline(), clear_descriptor.clone())
                 .slice::<bool>()
                 .filter_map(|(index, is_recursive_buffer)| {
                     let is_recursive =
