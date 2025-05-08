@@ -67,10 +67,12 @@ fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
         Ok(())
     })
 }
+
+// TODO(#9922): Hook up to Python API
 /// The descriptor of a Row ID column.
 #[pyclass(frozen, name = "RowIdColumnDescriptor")]
 #[derive(Clone)]
-struct PyRowIdColumnDescriptor(RowIdColumnDescriptor);
+struct PyRowIdColumnDescriptor(#[expect(dead_code)] RowIdColumnDescriptor);
 
 #[pymethods]
 impl PyRowIdColumnDescriptor {

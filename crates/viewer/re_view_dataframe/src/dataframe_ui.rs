@@ -84,7 +84,7 @@ pub(crate) fn dataframe_ui(
 
     let num_sticky_cols = selected_columns
         .iter()
-        .take_while(|cd| matches!(cd, ColumnDescriptor::Time(_)))
+        .take_while(|cd| matches!(cd, ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_)))
         .count();
 
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
