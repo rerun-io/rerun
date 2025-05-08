@@ -327,9 +327,9 @@ impl ContainerBlueprint {
                     );
                 }
                 None => {
-                    ctx.save_empty_blueprint_component::<Name>(
+                    ctx.clear_blueprint_component(
                         &self.entity_path(),
-                        &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+                        blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
                     );
                 }
             }
@@ -359,9 +359,9 @@ impl ContainerBlueprint {
                     &component,
                 );
             } else {
-                ctx.save_empty_blueprint_component::<GridColumns>(
+                ctx.clear_blueprint_component(
                     &self.entity_path(),
-                    &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+                    blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
                 );
             }
         }

@@ -126,19 +126,6 @@ impl ViewerContext<'_> {
             ));
     }
 
-    /// Helper to save a component to the blueprint store.
-    pub fn save_empty_blueprint_component<'a, C>(
-        &self,
-        entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
-    ) where
-        C: re_types::Component + 'a,
-    {
-        // TODO(grtlr): It's a bit sad that we have to be generic over `C` here.
-        let empty: [C; 0] = [];
-        self.save_blueprint_component(entity_path, component_descr, &empty);
-    }
-
     /// Queries a raw component from the default blueprint.
     pub fn raw_latest_at_in_default_blueprint(
         &self,

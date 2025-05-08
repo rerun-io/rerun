@@ -324,9 +324,9 @@ impl ViewBlueprint {
                     );
                 }
                 None => {
-                    ctx.save_empty_blueprint_component::<Name>(
+                    ctx.clear_blueprint_component(
                         &self.entity_path(),
-                        &blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
+                        blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
                     );
                 }
             }
