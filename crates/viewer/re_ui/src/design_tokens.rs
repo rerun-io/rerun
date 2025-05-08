@@ -3,6 +3,7 @@
 use crate::color_table::Scale::{S100, S1000, S150, S200, S250, S300, S325, S350, S550, S775};
 use crate::color_table::{ColorTable, ColorToken};
 use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
+use std::sync::Arc;
 
 /// The look and feel of the UI.
 ///
@@ -80,10 +81,7 @@ impl DesignTokens {
             ctx.set_fonts(font_definitions);
         }
 
-        let mut egui_style = egui::Style {
-            visuals: egui::Visuals::dark(),
-            ..Default::default()
-        };
+        let mut egui_style = Arc::unwrap_or_clone(ctx.style_of(egui::Theme::Dark));
 
         if apply_font_size {
             let font_size = parse_px(&typography_default.fontSize);
