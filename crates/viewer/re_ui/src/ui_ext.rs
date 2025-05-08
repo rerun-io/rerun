@@ -318,7 +318,13 @@ pub trait UiExt {
     ) -> Option<R> {
         let ui = self.ui();
 
-        if !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+        if !ui.memory_mut(|mem| {
+            let is_open = mem.is_popup_open(popup_id);
+            if is_open {
+                mem.keep_popup_open(popup_id);
+            }
+            is_open
+        }) {
             return None;
         }
 
