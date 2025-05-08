@@ -24,6 +24,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SelectedColumns {
     /// Show Row ID column?
+    ///
+    /// This is not yet implemented. See https://github.com/rerun-io/rerun/issues/9921
     pub row_id: crate::datatypes::Bool,
 
     /// The time columns to include

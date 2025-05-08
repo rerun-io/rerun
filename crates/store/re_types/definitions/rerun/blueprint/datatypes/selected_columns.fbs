@@ -9,7 +9,9 @@ table SelectedColumns (
   "attr.rerun.scope": "blueprint"
 ) {
   /// Show Row ID column?
-  row_id: rerun.datatypes.Bool (order: 50);
+  ///
+  /// This is not yet implemented. See https://github.com/rerun-io/rerun/issues/9921
+  row_id: rerun.datatypes.Bool (order: 50); // TODO(#9921): hook up UI
 
   /// The time columns to include
   time_columns: [rerun.datatypes.Utf8] (order: 100);

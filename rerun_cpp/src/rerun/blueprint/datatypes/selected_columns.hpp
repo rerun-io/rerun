@@ -26,6 +26,8 @@ namespace rerun::blueprint::datatypes {
     ///
     struct SelectedColumns {
         /// Show Row ID column?
+        ///
+        /// This is not yet implemented. See https://github.com/rerun-io/rerun/issues/9921
         rerun::datatypes::Bool row_id;
 
         /// The time columns to include
