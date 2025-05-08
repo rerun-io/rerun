@@ -1,5 +1,4 @@
 use arrow::datatypes::Fields as ArrowFields;
-use nohash_hasher::IntSet;
 
 use re_log_types::EntityPath;
 
