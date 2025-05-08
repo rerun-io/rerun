@@ -31,26 +31,6 @@ impl ChunkColumnDescriptors {
         }
     }
 
-    /// Total number of columns in this chunk,
-    /// including the row id column, the index columns,
-    /// and the data columns.
-    pub fn num_columns(&self) -> usize {
-        let Self {
-            row_id: _,
-            indices,
-            components,
-        } = self;
-        1 + indices.len() + components.len()
-    }
-
-    /// All unique entity paths present in the view contents.
-    pub fn entity_paths(&self) -> IntSet<EntityPath> {
-        self.components
-            .iter()
-            .map(|col| col.entity_path.clone())
-            .collect()
-    }
-
     /// Returns all indices and then all components;
     /// skipping the `row_id` column.
     ///
@@ -146,9 +126,10 @@ impl TryFrom<SorbetColumnDescriptors> for ChunkColumnDescriptors {
         }
 
         if row_ids.len() > 1 {
-            return Err(SorbetError::custom(
-                "Multiple RowId columns are not supported",
-            ));
+            return Err(SorbetError::custom(format!(
+                "Found {} RowId columns in Chunk",
+                row_ids.len()
+            )));
         }
 
         let row_id = row_ids
