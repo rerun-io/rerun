@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use datafusion::datasource::MemTable;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyIndexError;
 use pyo3::{pyclass, pymethods, Py, PyRef, PyResult, Python};
 
@@ -50,9 +51,21 @@ impl PyTask {
 #[allow(rustdoc::broken_intra_doc_links)]
 #[pyclass(name = "Tasks")]
 pub struct PyTasks {
-    pub client: Py<PyCatalogClient>,
+    client: Py<PyCatalogClient>,
 
-    pub ids: Vec<TaskId>,
+    ids: Vec<TaskId>,
+}
+
+impl PyTasks {
+    /// Create a new [`PyTasks`] instance.
+    ///
+    /// NOTE: Task ids will be deduplicated.
+    pub fn new(client: Py<PyCatalogClient>, ids: impl IntoIterator<Item = TaskId>) -> Self {
+        Self {
+            client,
+            ids: ids.into_iter().unique().collect(),
+        }
+    }
 }
 
 #[pymethods]
@@ -73,7 +86,7 @@ impl PyTasks {
         let mut connection = self.client.borrow(py).connection().clone();
 
         // TODO(dataplatform/issues#709): we'd use `OperationId` here if we had it.
-        let hash = Hash64::hash(self.ids.iter().map(|id| id.id.as_str()).collect::<Vec<_>>());
+        let hash = Hash64::hash(&self.ids);
         let name = format!("__tasks_{:x}__", hash.hash64());
 
         let task_status_table = connection.query_tasks(py, &self.ids)?;
