@@ -31,7 +31,7 @@ impl ContextMenuAction for SubMenu {
 
                 let response = action.ui(ctx, ui);
                 if response.clicked() {
-                    ui.close_menu();
+                    ui.close();
                 }
             }
         })

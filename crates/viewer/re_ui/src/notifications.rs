@@ -183,7 +183,7 @@ impl NotificationUi {
             if escape_pressed
                 || button_response.clicked_elsewhere() && panel_response.clicked_elsewhere()
             {
-                egui_ctx.memory_mut(|mem| mem.close_popup());
+                egui_ctx.memory_mut(|mem| mem.close_popup(notification_panel_popup_id()));
             }
         }
 
@@ -256,7 +256,9 @@ impl NotificationPanel {
                             }
                             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                                 if ui.small_icon_button(&icons::CLOSE).clicked() {
-                                    ui.memory_mut(|mem| mem.close_popup());
+                                    ui.memory_mut(|mem| {
+                                        mem.close_popup(notification_panel_popup_id());
+                                    });
                                 }
                             });
                         });

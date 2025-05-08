@@ -59,7 +59,7 @@ fn test_help() {
 
         harness.get_by_label("❓").hover();
 
-        harness.run();
+        harness.try_run_realtime().ok();
 
         snapshot_results.add(harness.try_snapshot(&format!("help_{os:?}")));
     }

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{
-    pos2, Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response,
-    Shape, Ui, Vec2,
+    pos2, scroll_area::ScrollSource, Color32, CursorIcon, Modifiers, NumExt as _, Painter,
+    PointerButton, Rect, Response, Shape, Ui, Vec2,
 };
 
 use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
@@ -590,10 +590,10 @@ impl TimePanel {
 
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
-            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
+            // We turn off `ScrollSource::DRAG` so that the `ScrollArea` don't steal input from
             // the earlier `interact_with_time_area`.
             // We implement drag-to-scroll manually instead!
-            .drag_to_scroll(false)
+            .scroll_source(ScrollSource::MOUSE_WHEEL | ScrollSource::SCROLL_BAR)
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0; // no spacing needed for ListItems
 
@@ -1651,14 +1651,12 @@ fn copy_time_properties_context_menu(
             let time = format!("{}", time.floor().as_i64());
             re_log::info!("Copied hovered timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     } else if let Some(time) = time_ctrl.time_int() {
         if ui.button("Copy current timestamp").clicked() {
             let time = format!("{}", time.as_i64());
             re_log::info!("Copied current timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     }
 
@@ -1666,7 +1664,6 @@ fn copy_time_properties_context_menu(
         let timeline = format!("{}", time_ctrl.timeline().name());
         re_log::info!("Copied current timeline: {}", timeline);
         ui.ctx().copy_text(timeline);
-        ui.close_menu();
     }
 }
 
