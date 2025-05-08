@@ -66,9 +66,7 @@ impl QueryCache {
                     MaybeTagged::Descriptor(component_descr) => {
                         debug_assert!(component_descr.archetype_name.is_some() ||
                                         component_descr.component_name.is_indicator_component() ||
-                                        component_descr.component_name == "rerun.blueprint.components.VisualizerOverride" ||
-                                        entity_path.iter().any(|p| p.unescaped_str() == "overrides") ||
-                                        entity_path.iter().any(|p| p.unescaped_str() == "defaults"),
+                                        component_descr.component_name == "rerun.blueprint.components.VisualizerOverride",
                          "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}. Path: {entity_path:?}");
 
                         if component_descr.archetype_name.is_none() {
