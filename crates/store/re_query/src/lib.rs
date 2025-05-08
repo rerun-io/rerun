@@ -79,6 +79,8 @@ use re_chunk::ComponentName;
 use re_types_core::ComponentDescriptor;
 
 // TODO(#6889): This is a temporary object until we use tagged components everywhere or have explicit untagged queries (?).
+
+#[derive(Debug, Clone)]
 pub enum MaybeTagged {
     Descriptor(ComponentDescriptor),
     JustName(ComponentName),

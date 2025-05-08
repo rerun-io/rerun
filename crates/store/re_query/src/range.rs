@@ -165,6 +165,14 @@ impl RangeResults {
         )
     }
 
+    // TODO(#6889): remove this please!
+    pub fn get_by_maybe(&self, component_descriptor: &MaybeTagged) -> Option<&[Chunk]> {
+        match component_descriptor {
+            MaybeTagged::Descriptor(component_descriptor) => self.get(component_descriptor),
+            MaybeTagged::JustName(component_name) => self.get_by_name(component_name),
+        }
+    }
+
     /// Returns the [`Chunk`]s for the specified component.
     ///
     /// Returns an error if the component is not present.

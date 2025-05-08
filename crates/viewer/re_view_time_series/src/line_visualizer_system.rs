@@ -247,7 +247,7 @@ impl SeriesLineSystem {
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
-                .get_optional_chunks(&AggregationPolicy::name())
+                .get_optional_chunks(AggregationPolicy::name())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.component_mono::<AggregationPolicy>(0)?.ok())
