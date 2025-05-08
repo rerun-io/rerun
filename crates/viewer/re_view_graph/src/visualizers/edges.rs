@@ -3,7 +3,7 @@ use re_log_types::{EntityPath, Instance};
 use re_types::{
     self,
     archetypes::{self, GraphEdges},
-    components, datatypes, Component as _,
+    components, datatypes,
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{

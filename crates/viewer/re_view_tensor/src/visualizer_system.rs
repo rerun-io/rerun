@@ -3,7 +3,7 @@ use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Tensor,
     components::{TensorData, ValueRange},
-    Archetype as _, Component as _,
+    Archetype as _,
 };
 use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{

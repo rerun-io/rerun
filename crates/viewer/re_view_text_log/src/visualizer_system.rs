@@ -6,7 +6,7 @@ use re_query::{clamped_zip_1x2, range_zip_1x2};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Archetype as _, Component as _,
+    Archetype as _,
 };
 use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{

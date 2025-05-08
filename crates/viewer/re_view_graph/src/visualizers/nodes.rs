@@ -7,7 +7,7 @@ use re_types::components::{Color, Radius, ShowLabels};
 use re_types::{
     self, archetypes,
     components::{self},
-    ArrowString, Component as _,
+    ArrowString,
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{

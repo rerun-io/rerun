@@ -3,7 +3,7 @@ use std::iter;
 use re_types::{
     archetypes::Boxes3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
-    ArrowString, Component as _,
+    ArrowString,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
