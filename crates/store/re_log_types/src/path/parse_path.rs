@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use re_types_core::ComponentName;
+use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
 use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance};
 
@@ -30,14 +30,20 @@ pub enum PathParseError {
     #[error("Found an unexpected instance index: [#{}]", 0)]
     UnexpectedInstance(Instance),
 
-    #[error("Found an unexpected trailing component name: {0:?}")]
-    UnexpectedComponentName(ComponentName),
+    #[error("Found an unexpected trailing component descriptor: {0:?}")]
+    UnexpectedComponentDescriptor(ComponentDescriptor),
 
     #[error("Found no component name")]
-    MissingComponentName,
+    MissingComponentDescriptor,
 
     #[error("Found trailing colon (:)")]
     TrailingColon,
+
+    #[error("Found trailing hash (#)")]
+    TrailingHash,
+
+    #[error("Component descriptor doesn't have a component name: {0:?}")]
+    ComponentDescriptorMissesComponentName(String),
 
     // Escaping:
     #[error("Unknown escape sequence: \\{0}")]
@@ -62,8 +68,11 @@ impl std::str::FromStr for DataPath {
     ///
     /// * `/world/points`
     /// * `/world/points:Color`
+    /// * `/world/points:Points3D:Color`
+    /// * `/world/points:Points3D:Color#colors`
     /// * `/world/points[#42]`
     /// * `/world/points[#42]:rerun.components.Color`
+    /// * `/world/points[#42]:Points3D:Color#colors`
     ///
     /// (the leadign slash is optional)
     fn from_str(path: &str) -> Result<Self, Self::Err> {
@@ -73,41 +82,93 @@ impl std::str::FromStr for DataPath {
 
         let mut tokens = tokenize_data_path(path);
 
-        let mut component_name = None;
+        let mut component_descriptor = None;
         let mut instance = None;
 
-        // Parse `:rerun.components.Color` suffix:
-        if let Some(colon) = tokens.iter().position(|&token| token == ":") {
-            let component_tokens = &tokens[colon + 1..];
-
-            if component_tokens.is_empty() {
+        // Parse `:Points3D:Color#colors` suffix:
+        if let Some(first_colon) = tokens.iter().position(|&token| token == ":") {
+            let component_descriptor_tokens = &tokens[first_colon + 1..];
+            if component_descriptor_tokens.is_empty() {
                 return Err(PathParseError::TrailingColon);
-            } else {
-                let mut name = join(component_tokens);
-                if !name.contains('.') {
-                    name = format!("rerun.components.{name}");
-                }
-                component_name = Some(ComponentName::from(name));
             }
-            tokens.truncate(colon);
+
+            let archetype_name_delimiter = &component_descriptor_tokens
+                .iter()
+                .position(|&token| token == ":");
+            let archetype_name = if let Some(archetype_name_delimiter) = archetype_name_delimiter {
+                if *archetype_name_delimiter == component_descriptor_tokens.len() - 1 {
+                    return Err(PathParseError::TrailingColon);
+                }
+
+                if let Some(&archetype_name) =
+                    component_descriptor_tokens.get(archetype_name_delimiter - 1)
+                {
+                    if archetype_name.contains('.') {
+                        Some(archetype_name.to_owned())
+                    } else {
+                        Some(format!("rerun.archetypes.{archetype_name}"))
+                    }
+                } else {
+                    return Err(PathParseError::TrailingColon);
+                }
+            } else {
+                None
+            };
+
+            let archetype_field_name_delimiter = &component_descriptor_tokens
+                .iter()
+                .position(|&token| token == "#");
+            let archetype_field_name =
+                if let Some(archetype_field_name_delimiter) = archetype_field_name_delimiter {
+                    if let Some(archetype_field_name) =
+                        component_descriptor_tokens.get(archetype_field_name_delimiter + 1)
+                    {
+                        Some(archetype_field_name.to_owned())
+                    } else {
+                        return Err(PathParseError::TrailingHash);
+                    }
+                } else {
+                    None
+                };
+
+            let component_name_tokens_start = archetype_name_delimiter.map_or(0, |t| t + 1);
+            let component_name_tokens_end =
+                archetype_field_name_delimiter.unwrap_or(component_descriptor_tokens.len());
+            if component_name_tokens_start == component_name_tokens_end {
+                return Err(PathParseError::ComponentDescriptorMissesComponentName(
+                    join(component_descriptor_tokens),
+                ));
+            }
+
+            let mut component_name = join(
+                &component_descriptor_tokens
+                    [component_name_tokens_start..component_name_tokens_end],
+            );
+            if !component_name.contains('.') {
+                component_name = format!("rerun.components.{component_name}");
+            }
+            component_descriptor = Some(ComponentDescriptor {
+                component_name: ComponentName::from(component_name),
+                archetype_name: archetype_name.map(ArchetypeName::from),
+                archetype_field_name: archetype_field_name.map(ArchetypeFieldName::from),
+            });
+
+            tokens.truncate(first_colon);
         }
 
         // Parse `[#1234]` suffix:
         if let Some(bracket) = tokens.iter().position(|&token| token == "[") {
             let instance_tokens = &tokens[bracket..];
-            if instance_tokens.len() != 3 || instance_tokens.last() != Some(&"]") {
+            if instance_tokens.len() != 4 || instance_tokens.last() != Some(&"]") {
                 return Err(PathParseError::BadInstance(join(instance_tokens)));
             }
-            let instance_token = instance_tokens[1];
-            if let Some(nr) = instance_token.strip_prefix('#') {
-                if let Ok(nr) = u64::from_str(nr) {
-                    instance = Some(nr);
-                } else {
-                    return Err(PathParseError::BadInstance(instance_token.to_owned()));
-                }
+            let nr = instance_tokens[2];
+            if let Ok(nr) = u64::from_str(nr) {
+                instance = Some(nr);
             } else {
-                return Err(PathParseError::BadInstance(instance_token.to_owned()));
+                return Err(PathParseError::BadInstance(nr.to_owned()));
             }
+
             tokens.truncate(bracket);
         }
 
@@ -120,7 +181,7 @@ impl std::str::FromStr for DataPath {
         Ok(Self {
             entity_path,
             instance: instance.map(Into::into),
-            component_name,
+            component_descriptor,
         })
     }
 }
@@ -145,14 +206,16 @@ impl EntityPath {
         let DataPath {
             entity_path,
             instance,
-            component_name,
+            component_descriptor,
         } = DataPath::from_str(input)?;
 
         if let Some(instance) = instance {
             return Err(PathParseError::UnexpectedInstance(instance));
         }
-        if let Some(component_name) = component_name {
-            return Err(PathParseError::UnexpectedComponentName(component_name));
+        if let Some(component_descriptor) = component_descriptor {
+            return Err(PathParseError::UnexpectedComponentDescriptor(
+                component_descriptor,
+            ));
         }
 
         Ok(entity_path)
@@ -207,20 +270,20 @@ impl FromStr for ComponentPath {
         let DataPath {
             entity_path,
             instance,
-            component_name,
+            component_descriptor,
         } = DataPath::from_str(s)?;
 
         if let Some(instance) = instance {
             return Err(PathParseError::UnexpectedInstance(instance));
         }
 
-        let Some(component_name) = component_name else {
-            return Err(PathParseError::MissingComponentName);
+        let Some(component_descriptor) = component_descriptor else {
+            return Err(PathParseError::MissingComponentDescriptor);
         };
 
         Ok(Self {
             entity_path,
-            component_name,
+            component_descriptor,
         })
     }
 }
@@ -281,9 +344,9 @@ fn tokenize_entity_path(path: &str) -> Vec<&str> {
     tokenize_by(path, b"/")
 }
 
-/// `"/foo/bar[#42]:Color"` -> `["/", "foo", "/", "bar", "[", "#42:", "]", ":", "Color"]`
+/// `"/foo/bar[#42]:Points3D:Color#colors"` -> `["/", "foo", "/", "bar", "[", "#", "42:", "]", ":", "Points3D", ":", "Color", "#", "colors"]`
 fn tokenize_data_path(path: &str) -> Vec<&str> {
-    tokenize_by(path, b"/[]:")
+    tokenize_by(path, b"/[]:#")
 }
 
 pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
@@ -320,147 +383,218 @@ pub fn tokenize_by<'s>(path: &'s str, special_chars: &[u8]) -> Vec<&'s str> {
         .collect()
 }
 
-#[test]
-fn test_parse_entity_path_forgiving() {
-    use crate::entity_path_vec;
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr as _;
 
-    fn parse(s: &str) -> Vec<EntityPathPart> {
-        EntityPath::parse_forgiving(s).to_vec()
+    use re_types_core::ComponentDescriptor;
+
+    use super::Result;
+    use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Instance, PathParseError};
+
+    #[test]
+    fn test_parse_entity_path_forgiving() {
+        use crate::entity_path_vec;
+
+        fn parse(s: &str) -> Vec<EntityPathPart> {
+            EntityPath::parse_forgiving(s).to_vec()
+        }
+
+        fn normalize(s: &str) -> String {
+            EntityPath::parse_forgiving(s).to_string()
+        }
+
+        assert_eq!(parse(""), entity_path_vec!());
+        assert_eq!(parse("/"), entity_path_vec!());
+        assert_eq!(parse("foo"), entity_path_vec!("foo"));
+        assert_eq!(parse("foo/bar"), entity_path_vec!("foo", "bar"));
+        assert_eq!(
+            parse(r#"foo/bar :/."#),
+            entity_path_vec!("foo", "bar :", ".",)
+        );
+        assert_eq!(parse("hallådär"), entity_path_vec!("hallådär"));
+
+        assert_eq!(normalize(""), "/");
+        assert_eq!(normalize("/"), "/");
+        assert_eq!(normalize("//"), "/");
+        assert_eq!(normalize("/foo/bar/"), "/foo/bar");
+        assert_eq!(normalize("/foo///bar//"), "/foo/bar");
+        assert_eq!(normalize("foo/bar:baz"), r#"/foo/bar\:baz"#);
+        assert_eq!(normalize("foo/42"), "/foo/42");
+        assert_eq!(normalize("foo/#bar/baz"), r##"/foo/\#bar/baz"##);
+        assert_eq!(normalize("foo/Hallå Där!"), r#"/foo/Hallå\ Där\!"#);
     }
 
-    fn normalize(s: &str) -> String {
-        EntityPath::parse_forgiving(s).to_string()
+    #[test]
+    fn test_parse_entity_path_strict() {
+        use crate::entity_path_vec;
+
+        fn parse(s: &str) -> Result<Vec<EntityPathPart>> {
+            EntityPath::parse_strict(s).map(|path| path.to_vec())
+        }
+
+        assert_eq!(parse(""), Err(PathParseError::EmptyString));
+        assert_eq!(parse("/"), Ok(entity_path_vec!()));
+        assert_eq!(parse("foo"), Ok(entity_path_vec!("foo")));
+        assert_eq!(parse("/foo"), Ok(entity_path_vec!("foo")));
+        assert_eq!(parse("foo/bar"), Ok(entity_path_vec!("foo", "bar")));
+        assert_eq!(parse("/foo/bar"), Ok(entity_path_vec!("foo", "bar")));
+        assert_eq!(parse("foo//bar"), Err(PathParseError::DoubleSlash));
+
+        assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
+        assert!(matches!(
+            parse(r#"entity:component"#),
+            Err(PathParseError::UnexpectedComponentDescriptor { .. })
+        ));
+        assert!(matches!(
+            parse(r#"entity[#123]"#),
+            Err(PathParseError::UnexpectedInstance(Instance(123)))
+        ));
+
+        assert_eq!(parse("hallådär"), Ok(entity_path_vec!("hallådär")));
     }
 
-    assert_eq!(parse(""), entity_path_vec!());
-    assert_eq!(parse("/"), entity_path_vec!());
-    assert_eq!(parse("foo"), entity_path_vec!("foo"));
-    assert_eq!(parse("foo/bar"), entity_path_vec!("foo", "bar"));
-    assert_eq!(
-        parse(r#"foo/bar :/."#),
-        entity_path_vec!("foo", "bar :", ".",)
-    );
-    assert_eq!(parse("hallådär"), entity_path_vec!("hallådär"));
+    #[test]
+    fn test_parse_component_path() {
+        assert_eq!(
+            ComponentPath::from_str("world/points:rerun.components.Color"),
+            Ok(ComponentPath {
+                entity_path: EntityPath::from("world/points"),
+                component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
+            })
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:Color"),
+            Ok(ComponentPath {
+                entity_path: EntityPath::from("world/points"),
+                component_descriptor: ComponentDescriptor::new("rerun.components.Color"),
+            })
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:my.custom.color"),
+            Ok(ComponentPath {
+                entity_path: EntityPath::from("world/points"),
+                component_descriptor: ComponentDescriptor::new("my.custom.color"),
+            })
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:My.Custom.Archetype:my.custom.color"),
+            Ok(ComponentPath {
+                entity_path: EntityPath::from("world/points"),
+                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                    .with_archetype_name("My.Custom.Archetype".into()),
+            })
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:Points3D:my.custom.color"),
+            Ok(ComponentPath {
+                entity_path: EntityPath::from("world/points"),
+                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                    .with_archetype_name("rerun.archetypes.Points3D".into()),
+            })
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:My.Custom.Archetype:my.custom.color#colors"),
+            Ok(ComponentPath {
+                entity_path: EntityPath::from("world/points"),
+                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                    .with_archetype_name("My.Custom.Archetype".into())
+                    .with_archetype_field_name("colors".into()),
+            })
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:Points3D:my.custom.color#colors"),
+            Ok(ComponentPath {
+                entity_path: EntityPath::from("world/points"),
+                component_descriptor: ComponentDescriptor::new("my.custom.color")
+                    .with_archetype_name("rerun.archetypes.Points3D".into())
+                    .with_archetype_field_name("colors".into()),
+            })
+        );
 
-    assert_eq!(normalize(""), "/");
-    assert_eq!(normalize("/"), "/");
-    assert_eq!(normalize("//"), "/");
-    assert_eq!(normalize("/foo/bar/"), "/foo/bar");
-    assert_eq!(normalize("/foo///bar//"), "/foo/bar");
-    assert_eq!(normalize("foo/bar:baz"), r#"/foo/bar\:baz"#);
-    assert_eq!(normalize("foo/42"), "/foo/42");
-    assert_eq!(normalize("foo/#bar/baz"), r##"/foo/\#bar/baz"##);
-    assert_eq!(normalize("foo/Hallå Där!"), r#"/foo/Hallå\ Där\!"#);
-}
-
-#[test]
-fn test_parse_entity_path_strict() {
-    use crate::entity_path_vec;
-
-    fn parse(s: &str) -> Result<Vec<EntityPathPart>> {
-        EntityPath::parse_strict(s).map(|path| path.to_vec())
+        assert_eq!(
+            ComponentPath::from_str("world/points:"),
+            Err(PathParseError::TrailingColon)
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points"),
+            Err(PathParseError::MissingComponentDescriptor)
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points[#42]:rerun.components.Color"),
+            Err(PathParseError::UnexpectedInstance(Instance(42)))
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:Points3D:"),
+            Err(PathParseError::TrailingColon)
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:Points3D:my.custom.color#"),
+            Err(PathParseError::TrailingHash)
+        );
+        assert_eq!(
+            ComponentPath::from_str("world/points:Points3D:#colors"),
+            Err(PathParseError::ComponentDescriptorMissesComponentName(
+                "Points3D:#colors".to_owned()
+            ))
+        );
     }
 
-    assert_eq!(parse(""), Err(PathParseError::EmptyString));
-    assert_eq!(parse("/"), Ok(entity_path_vec!()));
-    assert_eq!(parse("foo"), Ok(entity_path_vec!("foo")));
-    assert_eq!(parse("/foo"), Ok(entity_path_vec!("foo")));
-    assert_eq!(parse("foo/bar"), Ok(entity_path_vec!("foo", "bar")));
-    assert_eq!(parse("/foo/bar"), Ok(entity_path_vec!("foo", "bar")));
-    assert_eq!(parse("foo//bar"), Err(PathParseError::DoubleSlash));
+    #[test]
+    fn test_parse_data_path() {
+        assert_eq!(
+            DataPath::from_str("world/points[#42]:rerun.components.Color"),
+            Ok(DataPath {
+                entity_path: EntityPath::from("world/points"),
+                instance: Some(Instance(42)),
+                component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
+            })
+        );
+        assert_eq!(
+            DataPath::from_str("world/points:rerun.components.Color"),
+            Ok(DataPath {
+                entity_path: EntityPath::from("world/points"),
+                instance: None,
+                component_descriptor: Some(ComponentDescriptor::new("rerun.components.Color")),
+            })
+        );
+        assert_eq!(
+            DataPath::from_str("world/points:Points3D:my.custom.color#colors"),
+            Ok(DataPath {
+                entity_path: EntityPath::from("world/points"),
+                instance: None,
+                component_descriptor: Some(
+                    ComponentDescriptor::new("my.custom.color")
+                        .with_archetype_name("rerun.archetypes.Points3D".into())
+                        .with_archetype_field_name("colors".into())
+                ),
+            })
+        );
+        assert_eq!(
+            DataPath::from_str("world/points[#42]"),
+            Ok(DataPath {
+                entity_path: EntityPath::from("world/points"),
+                instance: Some(Instance(42)),
+                component_descriptor: None,
+            })
+        );
+        assert_eq!(
+            DataPath::from_str("world/points"),
+            Ok(DataPath {
+                entity_path: EntityPath::from("world/points"),
+                instance: None,
+                component_descriptor: None,
+            })
+        );
 
-    assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
-    assert!(matches!(
-        parse(r#"entity:component"#),
-        Err(PathParseError::UnexpectedComponentName { .. })
-    ));
-    assert!(matches!(
-        parse(r#"entity[#123]"#),
-        Err(PathParseError::UnexpectedInstance(Instance(123)))
-    ));
-
-    assert_eq!(parse("hallådär"), Ok(entity_path_vec!("hallådär")));
-}
-
-#[test]
-fn test_parse_component_path() {
-    assert_eq!(
-        ComponentPath::from_str("world/points:rerun.components.Color"),
-        Ok(ComponentPath {
-            entity_path: EntityPath::from("world/points"),
-            component_name: "rerun.components.Color".into(),
-        })
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points:Color"),
-        Ok(ComponentPath {
-            entity_path: EntityPath::from("world/points"),
-            component_name: "rerun.components.Color".into(),
-        })
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points:my.custom.color"),
-        Ok(ComponentPath {
-            entity_path: EntityPath::from("world/points"),
-            component_name: "my.custom.color".into(),
-        })
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points:"),
-        Err(PathParseError::TrailingColon)
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points"),
-        Err(PathParseError::MissingComponentName)
-    );
-    assert_eq!(
-        ComponentPath::from_str("world/points[#42]:rerun.components.Color"),
-        Err(PathParseError::UnexpectedInstance(Instance(42)))
-    );
-}
-
-#[test]
-fn test_parse_data_path() {
-    assert_eq!(
-        DataPath::from_str("world/points[#42]:rerun.components.Color"),
-        Ok(DataPath {
-            entity_path: EntityPath::from("world/points"),
-            instance: Some(Instance(42)),
-            component_name: Some("rerun.components.Color".into()),
-        })
-    );
-    assert_eq!(
-        DataPath::from_str("world/points:rerun.components.Color"),
-        Ok(DataPath {
-            entity_path: EntityPath::from("world/points"),
-            instance: None,
-            component_name: Some("rerun.components.Color".into()),
-        })
-    );
-    assert_eq!(
-        DataPath::from_str("world/points[#42]"),
-        Ok(DataPath {
-            entity_path: EntityPath::from("world/points"),
-            instance: Some(Instance(42)),
-            component_name: None,
-        })
-    );
-    assert_eq!(
-        DataPath::from_str("world/points"),
-        Ok(DataPath {
-            entity_path: EntityPath::from("world/points"),
-            instance: None,
-            component_name: None,
-        })
-    );
-
-    // Check that we catch invalid characters in identifiers/names:
-    assert!(matches!(
-        DataPath::from_str(r#"hello there"#),
-        Err(PathParseError::MissingEscape(' '))
-    ));
-    assert!(DataPath::from_str(r#"hello_there"#).is_ok());
-    assert!(DataPath::from_str(r#"hello-there"#).is_ok());
-    assert!(DataPath::from_str(r#"hello.there"#).is_ok());
-    assert!(DataPath::from_str(r#"hallådär"#).is_ok());
+        // Check that we catch invalid characters in identifiers/names:
+        assert!(matches!(
+            DataPath::from_str(r#"hello there"#),
+            Err(PathParseError::MissingEscape(' '))
+        ));
+        assert!(DataPath::from_str(r#"hello_there"#).is_ok());
+        assert!(DataPath::from_str(r#"hello-there"#).is_ok());
+        assert!(DataPath::from_str(r#"hello.there"#).is_ok());
+        assert!(DataPath::from_str(r#"hallådär"#).is_ok());
+    }
 }

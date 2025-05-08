@@ -7095,6 +7095,7 @@ dependencies = [
 name = "re_grpc_server"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
  "crossbeam",
  "parking_lot",
  "re_build_info",
@@ -7204,7 +7205,6 @@ dependencies = [
  "re_tuid",
  "re_types_core",
  "serde",
- "serde_bytes",
  "similar-asserts",
  "static_assertions",
  "thiserror 1.0.65",
@@ -7267,6 +7267,7 @@ dependencies = [
  "prost",
  "prost-types",
  "pyo3",
+ "re_arrow_util",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -7296,7 +7297,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "backtrace",
  "bytemuck",
  "criterion",
  "indent",
@@ -8414,10 +8414,13 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
+ "camino",
  "clap",
  "crossbeam",
  "document-features",
  "env_filter",
+ "indexmap 2.8.0",
+ "indicatif",
  "itertools 0.14.0",
  "log",
  "puffin",
@@ -9065,15 +9068,6 @@ dependencies = [
  "js-sys",
  "serde",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "serde_bytes"
-version = "0.11.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "387cc504cb06bb40a96c8e04e951fe01854cf6bc921053c954e4a606d9675c6a"
-dependencies = [
- "serde",
 ]
 
 [[package]]

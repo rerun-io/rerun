@@ -220,9 +220,9 @@ impl EntryIdLike {
                 }
 
                 if entry_details.is_empty() {
-                    return Err(PyLookupError::new_err(
-                        "No entry found with name or id 'name_or_id'",
-                    ));
+                    return Err(PyLookupError::new_err(format!(
+                        "No entry found with name or id {name_or_id:?}"
+                    )));
                 }
 
                 Py::new(

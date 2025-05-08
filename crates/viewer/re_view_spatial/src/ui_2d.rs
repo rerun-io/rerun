@@ -32,7 +32,12 @@ fn ui_from_scene(
     bounds_property: &ViewProperty,
 ) -> RectTransform {
     let bounds: blueprint_components::VisualBounds2D = bounds_property
-        .component_or_fallback(ctx, view_class, view_state)
+        .component_or_fallback(
+            ctx,
+            view_class,
+            view_state,
+            &VisualBounds2D::descriptor_range(),
+        )
         .ok_or_log_error()
         .unwrap_or_default();
     view_state.visual_bounds_2d = Some(bounds);
@@ -96,9 +101,13 @@ fn ui_from_scene(
     // Update blueprint if changed
     let updated_bounds: blueprint_components::VisualBounds2D = bounds_rect.into();
     if response.double_clicked() {
-        bounds_property.reset_blueprint_component::<blueprint_components::VisualBounds2D>(ctx);
+        bounds_property.reset_blueprint_component(ctx, VisualBounds2D::descriptor_range());
     } else if bounds != updated_bounds {
-        bounds_property.save_blueprint_component(ctx, &updated_bounds);
+        bounds_property.save_blueprint_component(
+            ctx,
+            &VisualBounds2D::descriptor_range(),
+            &updated_bounds,
+        );
     }
     // Update stored bounds on the state, so visualizers see an up-to-date value.
     view_state.visual_bounds_2d = Some(bounds);
@@ -177,7 +186,12 @@ impl SpatialView2D {
         let scene_from_ui = ui_from_scene.inverse();
 
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property
-            .component_or_fallback(ctx, self, state)
+            .component_or_fallback(
+                ctx,
+                self,
+                state,
+                &NearClipPlane::descriptor_near_clip_plane(),
+            )
             .ok_or_log_error()
             .unwrap_or_default();
 

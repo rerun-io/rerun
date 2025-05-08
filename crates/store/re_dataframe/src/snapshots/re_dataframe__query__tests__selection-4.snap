@@ -9,7 +9,11 @@ snapshot_kind: text
 │ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ type: i64      ┆ ---            │
 │ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ index_name:    ┆ type:          │
 │ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ frame_nr       ┆ List[Utf8]     │
-│ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ component: exa │
+│ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ kind: index    ┆ archetype: exa │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ mple.MyPoints  │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ archetype_fiel │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ d: labels      │
+│                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ component: exa │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ mple.MyLabel   │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ entity_path:   │
 │                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆                ┆ /this/that     │

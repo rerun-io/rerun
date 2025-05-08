@@ -1,19 +1,23 @@
 use std::sync::Arc;
 
+use arrow::array::Array;
 use arrow::{
     array::{ArrayRef, RecordBatch, StringArray, TimestampNanosecondArray},
     datatypes::{DataType, Field, Schema, TimeUnit},
     error::ArrowError,
 };
+use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_chunk::TimelineName;
+use re_log_types::EntityPath;
 
 use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
 use crate::common::v1alpha1::ComponentDescriptor;
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
+    RegisterWithDatasetResponse,
 };
 use crate::{invalid_field, missing_field, TypeConversionError};
-use re_chunk::TimelineName;
-use re_log_types::EntityPath;
+
 use re_sorbet::ComponentColumnDescriptor;
 
 // --- QueryDataset ---
@@ -373,6 +377,43 @@ impl GetDatasetSchemaResponse {
     }
 }
 
+// --- RegisterWithDatasetResponse ---
+
+impl RegisterWithDatasetResponse {
+    pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const PARTITION_TYPE: &str = "rerun_partition_type";
+    pub const STORAGE_URL: &str = "rerun_storage_url";
+    pub const TASK_ID: &str = "rerun_task_id";
+
+    /// The Arrow schema of the dataframe in [`Self::data`].
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
+            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
+            Field::new(Self::TASK_ID, DataType::Utf8, false),
+        ])
+    }
+
+    /// Helper to simplify instantiation of the dataframe in [`Self::data`].
+    pub fn create_dataframe(
+        partition_ids: Vec<String>,
+        partition_types: Vec<String>,
+        storage_urls: Vec<String>,
+        task_ids: Vec<String>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let schema = Arc::new(Self::schema());
+        let columns: Vec<ArrayRef> = vec![
+            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(partition_types)),
+            Arc::new(StringArray::from(storage_urls)),
+            Arc::new(StringArray::from(task_ids)),
+        ];
+
+        RecordBatch::try_new(schema, columns)
+    }
+}
+
 // --- DataSource --
 
 #[derive(Debug)]
@@ -425,6 +466,80 @@ impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for DataSource {
         }
 
         Ok(Self { storage_url, kind })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum PartitionType {
+    Rrd,
+}
+
+impl PartitionType {
+    pub fn to_arrow(self) -> ArrayRef {
+        match self {
+            Self::Rrd => {
+                let rec_type = StringArray::from_iter_values(["rrd".to_owned()]);
+                Arc::new(rec_type)
+            }
+        }
+    }
+
+    pub fn many_to_arrow(types: Vec<Self>) -> ArrayRef {
+        let data = types
+            .into_iter()
+            .map(|typ| match typ {
+                Self::Rrd => "rrd",
+            })
+            .collect::<Vec<_>>();
+        Arc::new(StringArray::from(data))
+    }
+
+    pub fn from_arrow(array: &dyn Array) -> Result<Self, TypeConversionError> {
+        let resource_type = array.try_downcast_array_ref::<StringArray>()?.value(0);
+
+        match resource_type {
+            "rrd" => Ok(Self::Rrd),
+            _ => Err(TypeConversionError::ArrowError(
+                ArrowError::InvalidArgumentError(format!("unknown resource type {resource_type}")),
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PartitionDescriptor {
+    pub storage_url: String,
+    pub partition_type: PartitionType,
+}
+
+impl TryFrom<crate::manifest_registry::v1alpha1::DataSource> for PartitionDescriptor {
+    type Error = tonic::Status;
+
+    fn try_from(
+        value: crate::manifest_registry::v1alpha1::DataSource,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            storage_url: value
+                .storage_url
+                .ok_or_else(|| tonic::Status::invalid_argument("query_data is required"))?,
+
+            partition_type: DataSourceKind::try_from(value.typ)
+                .map_err(|err| {
+                    tonic::Status::invalid_argument(format!(
+                        "{} is not a valid DataSourceKind: {err}",
+                        value.typ
+                    ))
+                })?
+                .into(),
+        })
+    }
+}
+
+impl From<DataSourceKind> for PartitionType {
+    fn from(value: DataSourceKind) -> Self {
+        match value {
+            DataSourceKind::Unspecified | DataSourceKind::Rrd => Self::Rrd,
+        }
     }
 }
 

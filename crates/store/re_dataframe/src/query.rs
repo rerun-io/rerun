@@ -346,10 +346,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let results = cache.latest_at(
                             &query,
                             &descr.entity_path,
-                            [ComponentDescriptor::from(descr)],
+                            // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                            //[ComponentDescriptor::from(descr.clone())],
+                            [descr.component_name],
                         );
 
-                        results.components.get(&descr.component_name).cloned()
+                        results.components.into_values().next()
                     }
                 })
                 .collect_vec()
@@ -1055,12 +1057,15 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let results = cache.latest_at(
                         &query,
                         &descr.entity_path.clone(),
-                        [ComponentDescriptor::from(descr.clone())],
+                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                        //[ComponentDescriptor::from(descr.clone())],
+                        [descr.component_name],
                     );
 
                     *streaming_state = results
                         .components
-                        .get(&descr.component_name)
+                        .into_values()
+                        .next()
                         .map(|unit| StreamingJoinState::Retrofilled(unit.clone()));
                 }
             }
@@ -1308,7 +1313,7 @@ mod tests {
     use re_format_arrow::format_record_batch;
     use re_log_types::{
         build_frame_nr, build_log_time,
-        example_components::{MyColor, MyLabel, MyPoint},
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
         EntityPath, Timeline,
     };
     use re_query::StorageEngine;
@@ -2442,41 +2447,41 @@ mod tests {
                 row_id1_1,
                 [build_frame_nr(frame1), build_log_time(frame1.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points1 as _)),
-                    (MyColor::descriptor(), None),
-                    (MyLabel::descriptor(), Some(&labels1 as _)), // shadowed by static
+                    (MyPoints::descriptor_points(), Some(&points1 as _)),
+                    (MyPoints::descriptor_colors(), None),
+                    (MyPoints::descriptor_labels(), Some(&labels1 as _)), // shadowed by static
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_3,
                 [build_frame_nr(frame3), build_log_time(frame3.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points3 as _)),
-                    (MyColor::descriptor(), Some(&colors3 as _)),
+                    (MyPoints::descriptor_points(), Some(&points3 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_5,
                 [build_frame_nr(frame5), build_log_time(frame5.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points5 as _)),
-                    (MyColor::descriptor(), None),
+                    (MyPoints::descriptor_points(), Some(&points5 as _)),
+                    (MyPoints::descriptor_colors(), None),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_7_1,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_1 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_2,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_2 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_3,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_3 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_3 as _))],
             )
             .build()?;
 
@@ -2494,20 +2499,20 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::descriptor(), Some(&points2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id2_3,
                 [build_frame_nr(frame3)],
                 [
-                    (MyPoint::descriptor(), Some(&points3 as _)),
-                    (MyColor::descriptor(), Some(&colors3 as _)),
+                    (MyPoints::descriptor_points(), Some(&points3 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::descriptor(), Some(&points4 as _))],
+                [(MyPoints::descriptor_points(), Some(&points4 as _))],
             )
             .build()?;
 
@@ -2521,17 +2526,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::descriptor(), Some(&points2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::descriptor(), Some(&points4 as _))],
+                [(MyPoints::descriptor_points(), Some(&points4 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_6,
                 [build_frame_nr(frame6)],
-                [(MyPoint::descriptor(), Some(&points6 as _))],
+                [(MyPoints::descriptor_points(), Some(&points6 as _))],
             )
             .build()?;
 
@@ -2545,17 +2550,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_4,
                 [build_frame_nr(frame4)],
-                [(MyColor::descriptor(), Some(&colors4 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors4 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_5,
                 [build_frame_nr(frame5)],
-                [(MyColor::descriptor(), Some(&colors5 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors5 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_7,
                 [build_frame_nr(frame7)],
-                [(MyColor::descriptor(), Some(&colors7 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors7 as _))],
             )
             .build()?;
 
@@ -2567,7 +2572,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 TimePoint::default(),
-                [(MyLabel::descriptor(), Some(&labels2 as _))],
+                [(MyPoints::descriptor_labels(), Some(&labels2 as _))],
             )
             .build()?;
 
@@ -2579,7 +2584,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id6_1,
                 TimePoint::default(),
-                [(MyLabel::descriptor(), Some(&labels3 as _))],
+                [(MyPoints::descriptor_labels(), Some(&labels3 as _))],
             )
             .build()?;
 

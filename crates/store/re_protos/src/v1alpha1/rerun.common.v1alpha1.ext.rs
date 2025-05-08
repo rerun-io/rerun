@@ -86,7 +86,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PartitionId {
     pub id: String,
 }

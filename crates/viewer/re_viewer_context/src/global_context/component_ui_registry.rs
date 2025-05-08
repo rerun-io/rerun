@@ -6,7 +6,7 @@ use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
 use re_log_types::hash::Hash64;
 use re_log_types::Instance;
-use re_types::ComponentName;
+use re_types::{ComponentDescriptor, ComponentName};
 use re_ui::{UiExt as _, UiLayout};
 
 use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
@@ -245,16 +245,16 @@ impl ComponentUiRegistry {
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descriptor: &ComponentDescriptor,
         unit: &UnitChunkShared,
         instance: &Instance,
     ) {
         // Don't use component.raw_instance here since we want to handle the case where there's several
         // elements differently.
         // Also, it allows us to slice the array without cloning any elements.
-        let Some(array) = unit.component_batch_raw_by_component_name(component_name) else {
-            re_log::error_once!("Couldn't get {component_name}: missing");
-            ui.error_with_details_on_hover(format!("Couldn't get {component_name}: missing"));
+        let Some(array) = unit.component_batch_raw(component_descriptor) else {
+            re_log::error_once!("Couldn't get {component_descriptor}: missing");
+            ui.error_with_details_on_hover(format!("Couldn't get {component_descriptor}: missing"));
             return;
         };
 
@@ -283,7 +283,7 @@ impl ComponentUiRegistry {
             query,
             db,
             entity_path,
-            component_name,
+            component_descriptor.component_name,
             unit.row_id().map(Hash64::hash),
             component_raw.as_ref(),
         );
@@ -372,7 +372,7 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
         cache_key: Option<Hash64>,
         component_array: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
@@ -383,7 +383,7 @@ impl ComponentUiRegistry {
             ui,
             origin_db,
             blueprint_write_path,
-            component_name,
+            component_descr,
             cache_key,
             component_array,
             fallback_provider,
@@ -403,7 +403,7 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
         cache_key: Option<Hash64>,
         component_query_result: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
@@ -414,7 +414,7 @@ impl ComponentUiRegistry {
             ui,
             origin_db,
             blueprint_write_path,
-            component_name,
+            component_descr,
             cache_key,
             component_query_result,
             fallback_provider,
@@ -429,13 +429,15 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
         cache_key: Option<Hash64>,
         component_array: Option<&dyn arrow::array::Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
     ) {
-        re_tracing::profile_function!(component_name.full_name());
+        re_tracing::profile_function!(component_descr.full_name());
+
+        let component_name_for_fallback = component_descr.component_name;
 
         let mut run_with = |array| {
             self.edit_ui_raw(
@@ -443,7 +445,7 @@ impl ComponentUiRegistry {
                 ui,
                 origin_db,
                 blueprint_write_path,
-                component_name,
+                component_descr,
                 cache_key,
                 array,
                 allow_multiline,
@@ -454,7 +456,7 @@ impl ComponentUiRegistry {
         if let Some(component_array) = component_array.filter(|array| !array.is_empty()) {
             run_with(component_array);
         } else {
-            let fallback = fallback_provider.fallback_for(ctx, component_name);
+            let fallback = fallback_provider.fallback_for(ctx, component_name_for_fallback);
             run_with(fallback.as_ref());
         }
     }
@@ -466,7 +468,7 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
         blueprint_write_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
         cache_key: Option<Hash64>,
         component_raw: &dyn arrow::array::Array,
         allow_multiline: bool,
@@ -476,7 +478,7 @@ impl ComponentUiRegistry {
             ui,
             component_raw,
             blueprint_write_path,
-            component_name,
+            component_descr.clone(),
             allow_multiline,
         ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
@@ -487,7 +489,7 @@ impl ComponentUiRegistry {
                 ctx.query,
                 origin_db,
                 ctx.target_entity_path,
-                component_name,
+                component_descr.component_name,
                 cache_key,
                 component_raw,
             );
@@ -504,10 +506,14 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         raw_current_value: &dyn arrow::array::Array,
         blueprint_write_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: ComponentDescriptor,
         allow_multiline: bool,
     ) -> bool {
-        re_tracing::profile_function!(component_name.full_name());
+        re_tracing::profile_function!(component_descr.full_name());
+
+        // We use the component name to identify which UI to show.
+        // (but for saving back edit results, we need the full descriptor)
+        let ui_identifier = component_descr.component_name;
 
         if raw_current_value.len() != 1 {
             return false;
@@ -515,14 +521,15 @@ impl ComponentUiRegistry {
 
         let edit_or_view = if allow_multiline {
             self.component_multiline_edit_or_view
-                .get(&component_name)
-                .or_else(|| self.component_singleline_edit_or_view.get(&component_name))
+                .get(&ui_identifier)
+                .or_else(|| self.component_singleline_edit_or_view.get(&ui_identifier))
         } else {
-            self.component_singleline_edit_or_view.get(&component_name)
+            self.component_singleline_edit_or_view.get(&ui_identifier)
         };
+
         if let Some(edit_or_view) = edit_or_view {
             if let Some(updated) = (*edit_or_view)(ctx, ui, raw_current_value, EditOrView::Edit) {
-                ctx.save_blueprint_array(blueprint_write_path, component_name, updated);
+                ctx.save_blueprint_array(blueprint_write_path, component_descr, updated);
             }
             return true;
         }

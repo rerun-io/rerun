@@ -148,8 +148,18 @@ impl ViewClass for BarChartView {
 
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
-        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
+        let legend_visible: Visible = plot_legend.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_visible(),
+        )?;
+        let legend_corner: Corner2D = plot_legend.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_corner(),
+        )?;
 
         ui.scope(|ui| {
             let mut plot = Plot::new("bar_chart_plot")

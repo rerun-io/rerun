@@ -512,7 +512,10 @@ thread_local! {
 pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
     if THREAD_LIFE_TRACKER.try_with(|_v| {}).is_ok() {
         if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
-            stream.disconnect();
+            // Before we called `stream.disconnect()` here`, which unnecessarily replaced the current sink with a
+            // buffered sink that would be immediately dropped afterwards. Not only did this cause spam in the
+            // log outputs, it also lead to race conditions upon (log) application shutdown.
+            drop(stream);
         }
     } else {
         // Yes, at least as of writing we can still log things in this state!

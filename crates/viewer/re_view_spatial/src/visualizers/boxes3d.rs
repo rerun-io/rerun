@@ -130,7 +130,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_half_size_chunks) = results.get_required_chunks(&HalfSize3D::name())
+                let Some(all_half_size_chunks) =
+                    results.get_required_chunks(&Boxes3D::descriptor_half_sizes())
                 else {
                     return Ok(());
                 };

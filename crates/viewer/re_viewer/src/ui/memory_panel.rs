@@ -294,7 +294,7 @@ impl MemoryPanel {
                                 } = stats;
 
                                 ui.label(cache_key.entity_path.to_string());
-                                ui.label(cache_key.component_name.to_string());
+                                ui.label(cache_key.component_descr.to_string());
                                 ui.label(re_format::format_uint(total_chunks));
                                 ui.label(re_format::format_bytes(total_effective_size_bytes as _));
                                 ui.label(re_format::format_bytes(total_actual_size_bytes as _));
@@ -332,7 +332,7 @@ impl MemoryPanel {
                                 } = stats;
 
                                 ui.label(cache_key.entity_path.to_string());
-                                ui.label(cache_key.component_name.to_string());
+                                ui.label(cache_key.component_descr.to_string());
                                 ui.label(re_format::format_uint(total_chunks));
                                 ui.label(re_format::format_bytes(total_effective_size_bytes as _));
                                 ui.label(re_format::format_bytes(total_actual_size_bytes as _));

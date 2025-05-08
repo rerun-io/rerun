@@ -111,9 +111,11 @@ const MAX_NUM_LABELS_PER_ENTITY: usize = 30;
 /// This function is normally used to implement the [`ComponentFallbackProvider`]
 /// that will be used in a [`LabeledBatch`].
 pub fn show_labels_fallback<C: Component>(ctx: &re_viewer_context::QueryContext<'_>) -> ShowLabels {
-    let results =
-        ctx.recording()
-            .latest_at(ctx.query, ctx.target_entity_path, [C::name(), Text::name()]);
+    let results = ctx.recording().latest_at_by_name(
+        ctx.query,
+        ctx.target_entity_path,
+        [C::name(), Text::name()],
+    );
     let num_instances = results
         .component_batch_raw(&C::name())
         .map_or(0, |array| array.len());

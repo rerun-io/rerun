@@ -156,7 +156,8 @@ impl From<ComponentPath> for ComponentColumnSelector {
     fn from(path: ComponentPath) -> Self {
         Self {
             entity_path: path.entity_path,
-            component_name: path.component_name.as_str().to_owned(),
+            // TODO(#6889): component column selectors should be tag aware?
+            component_name: path.component_descriptor.component_name.as_str().to_owned(),
         }
     }
 }

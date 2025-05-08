@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use arrow::{
     array::{
         Array as _, ArrayRef as ArrowArrayRef, AsArray as _, ListArray as ArrowListArray,
@@ -8,6 +10,7 @@ use arrow::{
 };
 
 use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_log::ResultExt as _;
 
 use crate::{
     ArrowBatchMetadata, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
@@ -164,7 +167,9 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         let batch = make_all_data_columns_list_arrays(batch);
-        let batch = crate::migrate_record_batch(&batch);
+        let batch = crate::migration::reorder_columns(&batch);
+        let batch = crate::migration::migrate_tuids(&batch);
+        let batch = crate::migration::migrate_record_batch(&batch);
 
         let sorbet_schema = SorbetSchema::try_from(batch.schema_ref().as_ref())?;
 
@@ -181,12 +186,14 @@ impl SorbetBatch {
             .metadata
             .extend(sorbet_schema.arrow_batch_metadata());
 
+        let arrow_schema = Arc::new(arrow_schema);
         let batch = ArrowRecordBatch::try_new_with_options(
-            arrow_schema.into(),
+            arrow_schema.clone(),
             batch.columns().to_vec(),
             &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
         )
-        .expect("Can't fail");
+        .ok_or_log_error()
+        .unwrap_or_else(|| ArrowRecordBatch::new_empty(arrow_schema));
 
         Ok(Self {
             schema: sorbet_schema,
@@ -217,12 +224,16 @@ fn make_all_data_columns_list_arrays(batch: &ArrowRecordBatch) -> ArrowRecordBat
         }
     }
 
-    let schema = ArrowSchema::new_with_metadata(fields, batch.schema().metadata.clone());
+    let schema = Arc::new(ArrowSchema::new_with_metadata(
+        fields,
+        batch.schema().metadata.clone(),
+    ));
 
     ArrowRecordBatch::try_new_with_options(
-        schema.into(),
+        schema.clone(),
         columns,
         &RecordBatchOptions::default().with_row_count(Some(batch.num_rows())),
     )
-    .expect("Can't fail")
+    .ok_or_log_error()
+    .unwrap_or_else(|| ArrowRecordBatch::new_empty(schema))
 }

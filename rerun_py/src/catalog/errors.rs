@@ -13,12 +13,14 @@
 //! - Error type (either built-in such as [`pyo3::exceptions::PyValueError`] or custom) can always
 //!   be used directly using, e.g. `PyValueError::new_err("message")`.
 
-use pyo3::exceptions::{PyConnectionError, PyValueError};
-use pyo3::PyErr;
 use std::error::Error as _;
+
+use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
+use pyo3::PyErr;
 
 use re_grpc_client::redap::ConnectionError;
 use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
+
 // ---
 
 /// Private error type to server as a bridge between various external error type and the
@@ -64,6 +66,9 @@ enum ExternalError {
 
     #[error(transparent)]
     ColumnSelectorResolveError(#[from] re_sorbet::ColumnSelectorResolveError),
+
+    #[error(transparent)]
+    TypeConversionError(#[from] re_protos::TypeConversionError),
 }
 
 impl From<re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError>
@@ -85,17 +90,22 @@ impl From<ExternalError> for PyErr {
             ExternalError::ConnectionError(err) => PyConnectionError::new_err(err.to_string()),
 
             ExternalError::TonicStatusError(status) => {
-                let mut msg = format!(
-                    "tonic status error: {} (code: {}",
-                    status.message(),
-                    status.code()
-                );
-                if let Some(source) = status.source() {
-                    msg.push_str(&format!(", source: {source})"));
+                if status.code() == tonic::Code::DeadlineExceeded {
+                    PyTimeoutError::new_err("Deadline expired before operation could complete")
                 } else {
-                    msg.push(')');
+                    let mut msg = format!(
+                        "tonic status error: {} (code: {}",
+                        status.message(),
+                        status.code()
+                    );
+                    if let Some(source) = status.source() {
+                        msg.push_str(&format!(", source: {source})"));
+                    } else {
+                        msg.push(')');
+                    }
+
+                    PyConnectionError::new_err(msg)
                 }
-                PyConnectionError::new_err(msg)
             }
 
             ExternalError::UriError(err) => PyValueError::new_err(format!("Invalid URI: {err}")),
@@ -130,6 +140,10 @@ impl From<ExternalError> for PyErr {
 
             ExternalError::ColumnSelectorResolveError(err) => {
                 PyValueError::new_err(format!("{err}"))
+            }
+
+            ExternalError::TypeConversionError(err) => {
+                PyValueError::new_err(format!("Could not convert gRPC message: {err}"))
             }
         }
     }

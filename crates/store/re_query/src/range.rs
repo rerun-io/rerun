@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::BTreeSet, sync::Arc};
+use std::{collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
@@ -8,9 +8,9 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types_core::{ComponentDescriptor, ComponentName, DeserializationError};
+use re_types_core::{ComponentDescriptor, ComponentName};
 
-use crate::{QueryCache, QueryCacheKey};
+use crate::{MaybeTagged, QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -20,11 +20,11 @@ impl QueryCache {
     /// See [`RangeResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn range<'a>(
+    pub fn range(
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_descrs: impl IntoIterator<Item = impl Into<Cow<'a, ComponentDescriptor>>>,
+        component_descrs: impl IntoIterator<Item = impl Into<MaybeTagged>>,
     ) -> RangeResults {
         re_tracing::profile_function!(entity_path.to_string());
 
@@ -35,41 +35,67 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_descrs = component_descrs.into_iter().filter_map(|component_descr| {
-            // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
-            let component_descr = store
-                .entity_component_descriptors_with_name(
-                    entity_path,
-                    component_descr.into().component_name,
-                )
-                .into_iter()
-                .next()?;
+        let component_descrs = component_descrs
+            .into_iter()
+            .filter_map(|maybe_component_descr| {
+                // TODO(#6889): As an interim step we ignore the descriptor here for the moment.
+                let component_descr = match maybe_component_descr.into() {
+                    MaybeTagged::Descriptor(component_descr) => {
+                        debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component(),
+                         "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
 
-            store
-                .entity_has_component_on_timeline(query.timeline(), entity_path, &component_descr)
-                .then_some(component_descr)
-        });
+                        if component_descr.archetype_name.is_none_or(|archetype_name| {
+                            archetype_name.as_str().starts_with("rerun.blueprint.")
+                        }) {
+                            // TODO(#6889): ALWAYS ignore tags on blueprint right now because some writes & reads are tagged and others aren't.
+                            // See https://github.com/rerun-io/rerun/blob/8fb5aadcb8f4f35c8e22603c85beda6fb18d791b/crates/store/re_chunk_store/src/writes.rs#L54-L67
+                            store
+                                .entity_component_descriptors_with_name(
+                                    entity_path,
+                                    component_descr.component_name,
+                                )
+                                .into_iter()
+                                .next()?
+                        } else {
+                            component_descr
+                        }
+                    }
+                    MaybeTagged::JustName(name) => store
+                        .entity_component_descriptors_with_name(entity_path, name)
+                        .into_iter()
+                        .next()?,
+                };
+
+                store
+                    .entity_has_component_on_timeline(
+                        query.timeline(),
+                        entity_path,
+                        &component_descr,
+                    )
+                    .then_some(component_descr)
+            });
 
         for component_descr in component_descrs {
-            // TODO(#6889): Don't drop the descriptor.
-            let component_name = component_descr.component_name;
-
-            let key = QueryCacheKey::new(entity_path.clone(), *query.timeline(), component_name);
+            let key = QueryCacheKey::new(
+                entity_path.clone(),
+                *query.timeline(),
+                component_descr.clone(),
+            );
 
             let cache = Arc::clone(
                 self.range_per_cache_key
                     .write()
                     .entry(key.clone())
-                    .or_insert_with(|| Arc::new(RwLock::new(RangeCache::new(key.clone())))),
+                    .or_insert_with(|| Arc::new(RwLock::new(RangeCache::new(key)))),
             );
 
             let mut cache = cache.write();
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(&store, query, entity_path, component_name);
+            let cached = cache.range(&store, query, entity_path, &component_descr);
             if !cached.is_empty() {
-                results.add(component_name, cached);
+                results.add(component_descr, cached);
             }
         }
 
@@ -91,7 +117,7 @@ pub struct RangeResults {
     pub query: RangeQuery,
 
     /// Results for each individual component.
-    pub components: IntMap<ComponentName, Vec<Chunk>>,
+    pub components: IntMap<ComponentDescriptor, Vec<Chunk>>,
 }
 
 impl RangeResults {
@@ -103,41 +129,71 @@ impl RangeResults {
         }
     }
 
+    /// Returns the [`Chunk`]s for the specified `component_name`.
+    // TODO(#6889): Remove in favor of `get`
     #[inline]
-    pub fn contains(&self, component_name: &ComponentName) -> bool {
-        self.components.contains_key(component_name)
+    pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&[Chunk]> {
+        let component_descr = self.find_component_descriptor(*component_name)?;
+        self.components
+            .get(component_descr)
+            .map(|chunks| chunks.as_slice())
     }
 
     /// Returns the [`Chunk`]s for the specified `component_name`.
     #[inline]
-    pub fn get(&self, component_name: &ComponentName) -> Option<&[Chunk]> {
+    pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&[Chunk]> {
         self.components
-            .get(component_name)
+            .get(component_descr)
             .map(|chunks| chunks.as_slice())
     }
 
     /// Returns the [`Chunk`]s for the specified `component_name`.
     ///
     /// Returns an error if the component is not present.
+    // TODO(#6889): Remove in favor of `get_required`
     #[inline]
-    pub fn get_required(&self, component_name: &ComponentName) -> crate::Result<&[Chunk]> {
-        if let Some(chunks) = self.components.get(component_name) {
-            Ok(chunks)
-        } else {
-            Err(DeserializationError::MissingComponent {
-                component: *component_name,
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            }
-            .into())
-        }
+    pub fn get_required_by_name(&self, component_name: &ComponentName) -> crate::Result<&[Chunk]> {
+        let component_descr =
+            self.find_component_descriptor(*component_name)
+                .ok_or(QueryError::PrimaryNotFound(ComponentDescriptor::new(
+                    *component_name,
+                )))?;
+
+        self.components.get(component_descr).map_or_else(
+            || Err(QueryError::PrimaryNotFound(component_descr.clone())),
+            |chunks| Ok(chunks.as_slice()),
+        )
+    }
+
+    /// Returns the [`Chunk`]s for the specified component.
+    ///
+    /// Returns an error if the component is not present.
+    #[inline]
+    pub fn get_required(&self, component_descr: &ComponentDescriptor) -> crate::Result<&[Chunk]> {
+        self.components.get(component_descr).map_or_else(
+            || Err(QueryError::PrimaryNotFound(component_descr.clone())),
+            |chunks| Ok(chunks.as_slice()),
+        )
+    }
+
+    // TODO(#6889): Workaround, we should instead always pass component descriptor to the respective methods.
+    fn find_component_descriptor(
+        &self,
+        component_name: ComponentName,
+    ) -> Option<&ComponentDescriptor> {
+        let component_descr = self
+            .components
+            .keys()
+            .find(|component_descr| component_descr.component_name == component_name)?;
+        Some(component_descr)
     }
 }
 
 impl RangeResults {
     #[doc(hidden)]
     #[inline]
-    pub fn add(&mut self, component_name: ComponentName, chunks: Vec<Chunk>) {
-        self.components.insert(component_name, chunks);
+    pub fn add(&mut self, component_descr: ComponentDescriptor, chunks: Vec<Chunk>) {
+        self.components.insert(component_descr, chunks);
     }
 }
 
@@ -269,7 +325,7 @@ impl RangeCache {
         store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_name: ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Vec<Chunk> {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
@@ -283,16 +339,7 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        // TODO(#6889): Use descriptor directly or list out all matching.
-        let Some(component_descriptor) = store
-            .entity_component_descriptors_with_name(entity_path, component_name)
-            .into_iter()
-            .next()
-        else {
-            return Vec::new();
-        };
-
-        let raw_chunks = store.range_relevant_chunks(query, entity_path, &component_descriptor);
+        let raw_chunks = store.range_relevant_chunks(query, entity_path, component_descr);
         for raw_chunk in &raw_chunks {
             self.chunks
                 .entry(raw_chunk.id())
@@ -301,7 +348,7 @@ impl RangeCache {
                     chunk: raw_chunk
                         // Densify the cached chunk according to the cache key's component, which
                         // will speed up future arrow operations on this chunk.
-                        .densified(&component_descriptor)
+                        .densified(component_descr)
                         // Pre-sort the cached chunk according to the cache key's timeline.
                         .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name),
                     resorted: !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name),
@@ -323,7 +370,7 @@ impl RangeCache {
 
                 let chunk = &cached_sorted_chunk.chunk;
 
-                chunk.range(query, &component_descriptor)
+                chunk.range(query, component_descr)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect()

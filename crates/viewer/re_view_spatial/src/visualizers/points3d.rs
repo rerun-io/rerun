@@ -200,7 +200,8 @@ impl VisualizerSystem for Points3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_position_chunks) = results.get_required_chunks(&Position3D::name())
+                let Some(all_position_chunks) =
+                    results.get_required_chunks(&Points3D::descriptor_positions())
                 else {
                     return Ok(());
                 };

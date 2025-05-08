@@ -707,13 +707,13 @@ impl App {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
-                component_name,
+                component_descriptor,
             } = focus;
 
-            let item = if let Some(component_name) = component_name {
+            let item = if let Some(component_descriptor) = component_descriptor {
                 Item::from(re_log_types::ComponentPath::new(
                     entity_path,
-                    component_name,
+                    component_descriptor,
                 ))
             } else if let Some(instance) = instance {
                 Item::from(InstancePath::instance(entity_path, instance))
