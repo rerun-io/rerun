@@ -361,7 +361,7 @@ impl ChunkStore {
             .tap_mut(|components| components.sort());
 
         SorbetColumnDescriptors {
-            row_id: Some(self.row_id_selector()),
+            row_id: Some(self.row_id_descriptor()),
             indices,
             components,
         }
@@ -369,8 +369,8 @@ impl ChunkStore {
     }
 
     #[expect(clippy::unused_self)]
-    pub fn row_id_selector(&self) -> re_sorbet::RowIdColumnDescriptor {
-        re_sorbet::RowIdColumnDescriptor { is_sorted: false }
+    pub fn row_id_descriptor(&self) -> re_sorbet::RowIdColumnDescriptor {
+        re_sorbet::RowIdColumnDescriptor::from_sorted(false)
     }
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`IndexColumnDescriptor`].
@@ -464,7 +464,7 @@ impl ChunkStore {
             .map(|selector| {
                 let selector = selector.into();
                 match selector {
-                    ColumnSelector::RowId => ColumnDescriptor::RowId(self.row_id_selector()),
+                    ColumnSelector::RowId => ColumnDescriptor::RowId(self.row_id_descriptor()),
 
                     ColumnSelector::Time(selector) => {
                         ColumnDescriptor::Time(self.resolve_time_selector(&selector))
