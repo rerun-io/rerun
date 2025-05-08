@@ -161,13 +161,20 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_vertex_positions_indexed =
                     iter_slices::<[f32; 3]>(&all_vertex_position_chunks, timeline);
-                let all_vertex_normals = results.iter_as(timeline, Vector3D::name());
-                let all_vertex_colors = results.iter_as(timeline, Color::name());
-                let all_vertex_texcoords = results.iter_as(timeline, Texcoord2D::name());
-                let all_triangle_indices = results.iter_as(timeline, TriangleIndices::name());
-                let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
-                let all_albedo_buffers = results.iter_as(timeline, ImageBuffer::name());
-                let all_albedo_formats = results.iter_as(timeline, ImageFormat::name());
+                let all_vertex_normals =
+                    results.iter_as(timeline, Mesh3D::descriptor_vertex_normals());
+                let all_vertex_colors =
+                    results.iter_as(timeline, Mesh3D::descriptor_vertex_colors());
+                let all_vertex_texcoords =
+                    results.iter_as(timeline, Mesh3D::descriptor_vertex_texcoords());
+                let all_triangle_indices =
+                    results.iter_as(timeline, Mesh3D::descriptor_triangle_indices());
+                let all_albedo_factors =
+                    results.iter_as(timeline, Mesh3D::descriptor_albedo_factor());
+                let all_albedo_buffers =
+                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_buffer());
+                let all_albedo_formats =
+                    results.iter_as(timeline, Mesh3D::descriptor_albedo_texture_format());
 
                 let query_result_hash = results.query_result_hash();
 

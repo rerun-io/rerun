@@ -230,12 +230,13 @@ impl VisualizerSystem for Points2DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_positions_indexed = iter_slices::<[f32; 2]>(&all_position_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_colors = results.iter_as(timeline, Points2D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, Points2D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, Points2D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, Points2D::descriptor_class_ids());
+                let all_keypoint_ids =
+                    results.iter_as(timeline, Points2D::descriptor_keypoint_ids());
+                let all_show_labels = results.iter_as(timeline, Points2D::descriptor_show_labels());
 
                 let data = re_query::range_zip_1x6(
                     all_positions_indexed,

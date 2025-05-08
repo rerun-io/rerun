@@ -1,7 +1,7 @@
 use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
-    archetypes::Arrows2D,
+    archetypes::{Arrows2D, Points2D},
     components::{
         ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text, Vector2D,
     },
@@ -64,7 +64,7 @@ impl Arrows2DVisualizer {
                 query.latest_at,
                 num_instances,
                 data.vectors.iter().map(|_| glam::Vec3::ZERO),
-                data.keypoint_ids,
+                &[], // No keypoint ids.
                 data.class_ids,
                 &ent_context.annotations,
             );
@@ -159,7 +159,6 @@ struct Arrows2DComponentData<'a> {
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
     // Non-repeated
@@ -226,36 +225,24 @@ impl VisualizerSystem for Arrows2DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_vectors_indexed = iter_slices::<[f32; 2]>(&all_vector_chunks, timeline);
-                let all_origins = results.iter_as(timeline, Position2D::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_origins = results.iter_as(timeline, Arrows2D::descriptor_origins());
+                let all_colors = results.iter_as(timeline, Arrows2D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, Arrows2D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, Arrows2D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, Arrows2D::descriptor_class_ids());
+                let all_show_labels = results.iter_as(timeline, Arrows2D::descriptor_show_labels());
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x6(
                     all_vectors_indexed,
                     all_origins.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
                     all_labels.slice::<String>(),
                     all_class_ids.slice::<u16>(),
-                    all_keypoint_ids.slice::<u16>(),
                     all_show_labels.slice::<bool>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        vectors,
-                        origins,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                        show_labels,
-                    )| {
+                    |(_index, vectors, origins, colors, radii, labels, class_ids, show_labels)| {
                         Arrows2DComponentData {
                             vectors: bytemuck::cast_slice(vectors),
                             origins: origins.map_or(&[], |origins| bytemuck::cast_slice(origins)),
@@ -264,8 +251,6 @@ impl VisualizerSystem for Arrows2DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            keypoint_ids: keypoint_ids
-                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                             show_labels: show_labels
                                 .map(|b| !b.is_empty() && b.value(0))
                                 .map(Into::into),

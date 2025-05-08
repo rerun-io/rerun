@@ -92,7 +92,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                     return Ok(());
                 };
                 let all_video_references =
-                    results.iter_as(timeline, re_types::components::EntityPath::name());
+                    results.iter_as(timeline, VideoFrameReference::descriptor_video_reference());
 
                 for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
                     entity_iterator::iter_component(&all_video_timestamp_chunks, timeline),

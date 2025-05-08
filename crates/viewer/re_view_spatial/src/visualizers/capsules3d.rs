@@ -181,10 +181,11 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
                 let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_colors = results.iter_as(timeline, Capsules3D::descriptor_colors());
+                let all_labels = results.iter_as(timeline, Capsules3D::descriptor_labels());
+                let all_show_labels =
+                    results.iter_as(timeline, Capsules3D::descriptor_show_labels());
+                let all_class_ids = results.iter_as(timeline, Capsules3D::descriptor_class_ids());
 
                 let data = re_query::range_zip_2x4(
                     all_lengths_indexed,

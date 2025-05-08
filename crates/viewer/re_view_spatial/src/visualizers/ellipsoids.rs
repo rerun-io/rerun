@@ -160,13 +160,15 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
                     iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_line_radii = results.iter_as(timeline, Radius::name());
-                // Deserialized because it's a union.
-                let all_fill_modes = results.iter_as(timeline, FillMode::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_colors = results.iter_as(timeline, Ellipsoids3D::descriptor_colors());
+                let all_line_radii =
+                    results.iter_as(timeline, Ellipsoids3D::descriptor_line_radii());
+                let all_fill_modes =
+                    results.iter_as(timeline, Ellipsoids3D::descriptor_fill_mode());
+                let all_labels = results.iter_as(timeline, Ellipsoids3D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, Ellipsoids3D::descriptor_class_ids());
+                let all_show_labels =
+                    results.iter_as(timeline, Ellipsoids3D::descriptor_show_labels());
 
                 let data = re_query::range_zip_1x6(
                     all_half_sizes_indexed,

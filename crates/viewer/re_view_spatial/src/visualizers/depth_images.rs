@@ -276,10 +276,12 @@ impl VisualizerSystem for DepthImageVisualizer {
                 let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
                 let all_formats_indexed =
                     iter_component::<ImageFormat>(&all_format_chunks, timeline);
-                let all_colormaps = results.iter_as(timeline, Colormap::name());
-                let all_value_ranges = results.iter_as(timeline, ValueRange::name());
-                let all_depth_meters = results.iter_as(timeline, DepthMeter::name());
-                let all_fill_ratios = results.iter_as(timeline, FillRatio::name());
+                let all_colormaps = results.iter_as(timeline, DepthImage::descriptor_colormap());
+                let all_value_ranges =
+                    results.iter_as(timeline, DepthImage::descriptor_depth_range());
+                let all_depth_meters = results.iter_as(timeline, DepthImage::descriptor_meter());
+                let all_fill_ratios =
+                    results.iter_as(timeline, DepthImage::descriptor_point_fill_ratio());
 
                 let mut data = re_query::range_zip_1x5(
                     all_buffers_indexed,
