@@ -5,7 +5,9 @@ use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_types::{components, Component as _, ComponentName, Loggable as _, RowId};
+use re_types::{
+    components, Component as _, ComponentDescriptor, ComponentName, Loggable as _, RowId,
+};
 use re_view::{clamped_or_nothing, ChunksWithDescriptor, HybridRangeResults, RangeResultsExt as _};
 use re_viewer_context::{auto_color_egui, QueryContext, TypedComponentFallbackProvider};
 
@@ -33,9 +35,10 @@ pub fn collect_series_visibility(
     query: &RangeQuery,
     results: &HybridRangeResults<'_>,
     num_series: usize,
+    visibility_descriptor: ComponentDescriptor,
 ) -> Vec<bool> {
     results
-        .iter_as(*query.timeline(), components::SeriesVisible::name())
+        .iter_as(*query.timeline(), visibility_descriptor)
         .slice::<bool>()
         .next()
         .map_or_else(
