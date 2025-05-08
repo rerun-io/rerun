@@ -2,7 +2,7 @@ use std::iter;
 
 use re_types::{
     archetypes::Boxes3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels, Text},
+    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
     ArrowString, Component as _,
 };
 use re_viewer_context::{
@@ -148,11 +148,11 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
                     iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, Boxes3D::descriptor_class_ids());
+                let all_show_labels = results.iter_as(timeline, Boxes3D::descriptor_show_labels());
 
                 // Deserialized because it's a union.
                 let all_fill_modes = results.iter_as(timeline, FillMode::name());

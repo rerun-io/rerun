@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::functions::expr_fn::concat;
-use datafusion::logical_expr::{col, lit};
+use datafusion::logical_expr::{col as datafusion_col, lit};
 use datafusion::prelude::SessionContext;
 use parking_lot::Mutex;
 
@@ -11,6 +11,18 @@ use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::table_blueprint::{PartitionLinksSpec, SortBy, TableBlueprint};
 use crate::RequestedObject;
+
+/// Make sure we escape column names correctly for datafusion.
+///
+/// Background: even when round-tripping column names from the very schema that datafusion returns,
+/// it can happen that column names have the "wrong" case and must be escaped. See this issue:
+/// <https://github.com/apache/datafusion/issues/15922>
+///
+/// This function is named such as to replace the datafusion's `col` function, so we do the right
+/// thing even if we forget about it.
+fn col(name: &str) -> datafusion::logical_expr::Expr {
+    datafusion_col(format!("{name:?}"))
+}
 
 /// The subset of [`TableBlueprint`] that is actually handled by datafusion.
 ///

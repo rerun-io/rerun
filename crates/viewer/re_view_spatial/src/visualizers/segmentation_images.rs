@@ -3,7 +3,6 @@ use re_types::{
     archetypes::SegmentationImage,
     components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
-    Component as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext,
@@ -89,7 +88,8 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                 let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
                 let all_formats_indexed =
                     iter_component::<ImageFormat>(&all_formats_chunks, timeline);
-                let all_opacities = results.iter_as(timeline, Opacity::name());
+                let all_opacities =
+                    results.iter_as(timeline, SegmentationImage::descriptor_opacity());
 
                 let data = re_query::range_zip_1x2(
                     all_buffers_indexed,

@@ -2,8 +2,8 @@ use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius, ShowLabels},
+    ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
@@ -212,11 +212,12 @@ impl VisualizerSystem for Lines2DVisualizer {
                 line_builder.reserve_vertices(num_vertices)?;
 
                 let all_strips_indexed = iter_slices::<&[[f32; 2]]>(&all_strip_chunks, timeline);
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_colors = results.iter_as(timeline, LineStrips2D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, LineStrips2D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, LineStrips2D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, LineStrips2D::descriptor_class_ids());
+                let all_show_labels =
+                    results.iter_as(timeline, LineStrips2D::descriptor_show_labels());
 
                 let data = re_query::range_zip_1x5(
                     all_strips_indexed,
