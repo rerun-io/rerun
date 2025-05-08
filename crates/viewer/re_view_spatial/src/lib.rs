@@ -66,7 +66,7 @@ fn resolution_of_image_at(
     let entity_db = ctx.recording();
     let storage_engine = entity_db.storage_engine();
 
-    // Check what kind of non-encoded were logged here if any.
+    // Check what kind of non-encoded images were logged here, if any.
     // TODO(andreas): can we do this more efficiently?
     // TODO(andreas): doesn't take blueprint into account!
     let all_components = storage_engine
