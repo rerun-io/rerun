@@ -20,7 +20,6 @@ Camera perspective projection (a.k.a. intrinsics).
 
 ## Can be shown in
 * [Spatial2DView](../views/spatial2d_view.md)
-* [Spatial2DView](../views/spatial2d_view.md)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
