@@ -237,6 +237,7 @@ fn run_view_ui_and_save_snapshot(
         });
         harness.run_steps(8);
 
+        let mut success = true;
         for time in 0..=7 {
             let name = format!("{name}_{}_{time}", timeline.name());
 
@@ -251,11 +252,12 @@ fn run_view_ui_and_save_snapshot(
             let num_pixels = (size.x * size.y).ceil() as u64;
 
             use re_viewer_context::test_context::HarnessExt as _;
-            harness.snapshot_with_broken_pixels_threshold(
+            success = harness.try_snapshot_with_broken_pixels_threshold(
                 &name,
                 num_pixels,
                 broken_percent_threshold,
             );
         }
+        assert!(success, "one or more snapshots failed");
     }
 }
