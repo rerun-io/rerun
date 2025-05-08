@@ -22,7 +22,6 @@ mod storage_context;
 mod store_bundle;
 mod store_context;
 pub mod store_hub;
-mod table_context;
 mod tables;
 mod tensor;
 mod time_control;
@@ -71,7 +70,6 @@ pub use self::{
     store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
     store_hub::{StoreHub, StoreHubEntry},
-    table_context::TableContext,
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},
