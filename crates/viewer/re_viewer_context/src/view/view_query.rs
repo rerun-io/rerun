@@ -118,9 +118,9 @@ impl DataResult {
                 .is_none_or(|data_result| data_result.is_visible());
 
             if parent_visibility == new_value {
-                // TODO(andreas): blueprint save_empty should know about tags (`EntityBehavior::visible`'s tag)
                 ctx.save_empty_blueprint_component::<components::Visible>(
                     &self.property_overrides.override_path,
+                    &EntityBehavior::descriptor_visible(),
                 );
                 return;
             }
@@ -153,9 +153,9 @@ impl DataResult {
                 .is_none_or(|data_result| data_result.is_interactive());
 
             if parent_interactivity == new_value {
-                // TODO(#6889): tagged empty component.
                 ctx.save_empty_blueprint_component::<components::Interactive>(
                     &self.property_overrides.override_path,
+                    &EntityBehavior::descriptor_interactive(),
                 );
                 return;
             }

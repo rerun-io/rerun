@@ -61,7 +61,7 @@ impl Query {
 
         // clearing the range filter is equivalent to setting it to the default -inf/+inf
         self.query_property
-            .clear_blueprint_component_by_name::<components::FilterByRange>(ctx);
+            .clear_blueprint_component(ctx, DataframeQuery::descriptor_timeline());
     }
 
     pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
@@ -77,7 +77,7 @@ impl Query {
     pub fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
         if range == ResolvedTimeRange::EVERYTHING {
             self.query_property
-                .clear_blueprint_component_by_name::<components::FilterByRange>(ctx);
+                .clear_blueprint_component(ctx, DataframeQuery::descriptor_filter_by_range());
         } else {
             self.query_property.save_blueprint_component(
                 ctx,
@@ -178,7 +178,7 @@ impl Query {
 
     pub fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
-            .clear_blueprint_component_by_name::<components::SelectedColumns>(ctx);
+            .clear_blueprint_component(ctx, DataframeQuery::descriptor_select());
     }
 
     pub fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {

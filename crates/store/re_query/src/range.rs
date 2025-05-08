@@ -44,11 +44,7 @@ impl QueryCache {
                         debug_assert!(component_descr.archetype_name.is_some() || component_descr.component_name.is_indicator_component(),
                          "TODO(#6889): Got full descriptor for query but archetype name was None, this hints at an incorrectly patched query callsite. Descr: {component_descr}");
 
-                        if component_descr.archetype_name.is_none_or(|archetype_name| {
-                            archetype_name.as_str().starts_with("rerun.blueprint.")
-                        }) {
-                            // TODO(#6889): ALWAYS ignore tags on blueprint right now because some writes & reads are tagged and others aren't.
-                            // See https://github.com/rerun-io/rerun/blob/8fb5aadcb8f4f35c8e22603c85beda6fb18d791b/crates/store/re_chunk_store/src/writes.rs#L54-L67
+                        if component_descr.archetype_name.is_none() {
                             store
                                 .entity_component_descriptors_with_name(
                                     entity_path,

@@ -2,9 +2,7 @@ use arrow::array::ArrayRef;
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-use re_types::{
-    AsComponents, ComponentBatch, ComponentDescriptor, ComponentName, SerializedComponentBatch,
-};
+use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -60,18 +58,21 @@ impl ViewerContext<'_> {
             ));
     }
 
-    // TODO(#6889): This saves a component without tags.
     pub fn save_blueprint_component(
         &self,
         entity_path: &EntityPath,
+        component_descr: &ComponentDescriptor,
         component_batch: &dyn ComponentBatch,
     ) {
-        match component_batch.try_serialized() {
-            Ok(serialized) => self.save_serialized_blueprint_component(entity_path, serialized),
-            Err(err) => {
-                re_log::error_once!("Failed to serialize component batch: {}", err);
-            }
-        }
+        let Some(serialized) = component_batch
+            .serialized()
+            .map(|b| b.with_descriptor_override(component_descr.clone()))
+        else {
+            re_log::warn!("could not serialize components with descriptor `{component_descr}`");
+            return;
+        };
+
+        self.save_serialized_blueprint_component(entity_path, serialized);
     }
 
     pub fn save_serialized_blueprint_component(
@@ -126,12 +127,16 @@ impl ViewerContext<'_> {
     }
 
     /// Helper to save a component to the blueprint store.
-    pub fn save_empty_blueprint_component<'a, C>(&self, entity_path: &EntityPath)
-    where
+    pub fn save_empty_blueprint_component<'a, C>(
+        &self,
+        entity_path: &EntityPath,
+        component_descr: &ComponentDescriptor,
+    ) where
         C: re_types::Component + 'a,
     {
+        // TODO(grtlr): It's a bit sad that we have to be generic over `C` here.
         let empty: [C; 0] = [];
-        self.save_blueprint_component(entity_path, &empty);
+        self.save_blueprint_component(entity_path, component_descr, &empty);
     }
 
     /// Queries a raw component from the default blueprint.
@@ -162,25 +167,6 @@ impl ViewerContext<'_> {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
             self.clear_blueprint_component(entity_path, component_descr);
-        }
-    }
-
-    /// Clears a component in the blueprint store by logging an empty array if it exists.
-    // TODO(#6889): Remove in favor of `clear_blueprint_component`.
-    pub fn clear_blueprint_component_by_name(
-        &self,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-    ) {
-        let blueprint = &self.store_context.blueprint;
-        if let Some(descr) = blueprint
-            .storage_engine()
-            .store()
-            .entity_component_descriptors_with_name(entity_path, component_name)
-            .into_iter()
-            .next()
-        {
-            self.clear_blueprint_component(entity_path, descr);
         }
     }
 
