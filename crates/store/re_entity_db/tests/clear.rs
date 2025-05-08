@@ -12,7 +12,6 @@ use re_log_types::{
 };
 use re_types_core::{
     archetypes::Clear, components::ClearIsRecursive, AsComponents as _, ComponentBatch as _,
-    ComponentDescriptor,
 };
 
 // ---
