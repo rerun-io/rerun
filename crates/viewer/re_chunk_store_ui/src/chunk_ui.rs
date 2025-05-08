@@ -145,8 +145,7 @@ impl ChunkUi {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let component_data =
-                        chunk.component_batch_raw(&component_desc.component_name, row_index);
+                    let component_data = chunk.component_batch_raw(component_desc, row_index);
                     match component_data {
                         Some(Ok(data)) => {
                             re_ui::arrow_ui(ui, re_ui::UiLayout::List, &*data);
