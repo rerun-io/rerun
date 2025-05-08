@@ -187,7 +187,7 @@ impl VisualizerSystem for Lines2DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_strip_chunks) =
-                    results.get_required_chunks(&LineStrips2D::descriptor_strips())
+                    results.get_required_chunks(LineStrips2D::descriptor_strips())
                 else {
                     return Ok(());
                 };
@@ -196,7 +196,7 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                 let num_strips = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>(LineStrip2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>())
                     .map(|strips| strips.len())
                     .sum();
                 if num_strips == 0 {
@@ -206,13 +206,12 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                 let num_vertices = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>(LineStrip2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>())
                     .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
 
-                let all_strips_indexed =
-                    iter_slices::<&[[f32; 2]]>(&all_strip_chunks, timeline, LineStrip2D::name());
+                let all_strips_indexed = iter_slices::<&[[f32; 2]]>(&all_strip_chunks, timeline);
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());

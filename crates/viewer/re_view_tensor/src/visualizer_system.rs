@@ -57,17 +57,16 @@ impl VisualizerSystem for TensorSystem {
                 query_shadowed_defaults,
             );
 
-            let Some(all_tensor_chunks) = results.get_required_chunks(&Tensor::descriptor_data())
+            let Some(all_tensor_chunks) = results.get_required_chunks(Tensor::descriptor_data())
             else {
                 continue;
             };
 
             let timeline = query.timeline;
-            let descriptor_data = Tensor::descriptor_data();
             let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {
                 chunk
-                    .iter_component_indices(&timeline, &descriptor_data)
-                    .zip(chunk.iter_component::<TensorData>(&descriptor_data))
+                    .iter_component_indices(&timeline)
+                    .zip(chunk.iter_component::<TensorData>())
             });
             let all_ranges = results.iter_as(timeline, ValueRange::name());
 

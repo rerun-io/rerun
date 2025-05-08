@@ -204,14 +204,14 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 use re_view::RangeResultsExt as _;
 
                 let Some(all_half_size_chunks) =
-                    results.get_required_chunks(&Boxes2D::descriptor_half_sizes())
+                    results.get_required_chunks(Boxes2D::descriptor_half_sizes())
                 else {
                     return Ok(());
                 };
 
                 let num_boxes: usize = all_half_size_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>(HalfSize2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
                     .map(|vectors| vectors.len())
                     .sum();
                 if num_boxes == 0 {
@@ -224,7 +224,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
-                    iter_slices::<[f32; 2]>(&all_half_size_chunks, timeline, HalfSize2D::name());
+                    iter_slices::<[f32; 2]>(&all_half_size_chunks, timeline);
                 let all_centers = results.iter_as(timeline, Position2D::name());
                 let all_colors = results.iter_as(timeline, Color::name());
                 let all_radii = results.iter_as(timeline, Radius::name());
