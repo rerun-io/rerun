@@ -34,6 +34,7 @@ impl ChunkColumnDescriptors {
     /// skipping the `row_id` column.
     ///
     /// See also [`Self::get_index_or_component`].
+    // TODO(#9922): stop ignoring row_id
     pub fn indices_and_components(&self) -> Vec<ColumnDescriptor> {
         itertools::chain!(
             self.indices.iter().cloned().map(ColumnDescriptor::Time),
@@ -51,6 +52,7 @@ impl ChunkColumnDescriptors {
     /// the first component column).
     ///
     /// See also [`Self::indices_and_components`].
+    // TODO(#9922): stop ignoring row_id
     pub fn get_index_or_component(&self, index_ignoring_row_id: usize) -> Option<ColumnDescriptor> {
         if index_ignoring_row_id < self.indices.len() {
             Some(ColumnDescriptor::Time(
