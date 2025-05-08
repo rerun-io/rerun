@@ -124,18 +124,6 @@ impl<'a> ViewContext<'a> {
     }
 
     #[inline]
-    pub fn save_empty_blueprint_component<C>(
-        &self,
-        entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
-    ) where
-        C: re_types::Component + 'a,
-    {
-        self.viewer_ctx
-            .save_empty_blueprint_component::<C>(entity_path, component_descr);
-    }
-
-    #[inline]
     pub fn reset_blueprint_component(
         &self,
         entity_path: &EntityPath,

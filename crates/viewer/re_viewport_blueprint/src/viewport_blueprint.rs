@@ -907,9 +907,9 @@ impl ViewportBlueprint {
             );
         } else {
             re_log::trace!("Saving empty viewport");
-            ctx.save_empty_blueprint_component::<RootContainer>(
+            ctx.clear_blueprint_component(
                 &VIEWPORT_PATH.into(),
-                &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+                blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
             );
         }
     }
