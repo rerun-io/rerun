@@ -141,10 +141,11 @@ impl TypedComponentFallbackProvider<re_types::components::ValueRange> for Tensor
         &self,
         ctx: &re_viewer_context::QueryContext<'_>,
     ) -> re_types::components::ValueRange {
-        if let Some(((_time, row_id), tensor)) = ctx
-            .recording()
-            .latest_at_component::<TensorData>(ctx.target_entity_path, ctx.query)
-        {
+        if let Some(((_time, row_id), tensor)) = ctx.recording().latest_at_component::<TensorData>(
+            ctx.target_entity_path,
+            ctx.query,
+            &Tensor::descriptor_data(),
+        ) {
             let tensor_stats = ctx
                 .viewer_ctx
                 .store_context

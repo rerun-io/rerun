@@ -2,7 +2,7 @@ use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips3D,
-    components::{ClassId, Color, LineStrip3D, Radius, ShowLabels},
+    components::{ClassId, Color, Radius, ShowLabels},
     ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
@@ -282,7 +282,11 @@ impl TypedComponentFallbackProvider<Color> for Lines3DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Lines3DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<LineStrip3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &LineStrips3D::descriptor_strips(),
+            &LineStrips3D::descriptor_labels(),
+        )
     }
 }
 

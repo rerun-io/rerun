@@ -287,7 +287,11 @@ impl TypedComponentFallbackProvider<Color> for Arrows3DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Arrows3DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<Vector3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Arrows3D::descriptor_vectors(),
+            &Arrows3D::descriptor_labels(),
+        )
     }
 }
 

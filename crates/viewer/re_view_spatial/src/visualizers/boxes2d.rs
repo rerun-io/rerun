@@ -303,7 +303,11 @@ impl TypedComponentFallbackProvider<DrawOrder> for Boxes2DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Boxes2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<HalfSize2D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Boxes2D::descriptor_half_sizes(),
+            &Boxes2D::descriptor_labels(),
+        )
     }
 }
 

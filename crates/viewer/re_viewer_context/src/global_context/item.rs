@@ -227,7 +227,7 @@ pub fn resolve_mono_instance_path(
             if let Some(array) = engine
                 .cache()
                 .latest_at(query, &instance.entity_path, [component_descr])
-                .component_batch_raw_by_descr(component_descr)
+                .component_batch_raw(component_descr)
             {
                 if array.len() > 1 {
                     return instance.clone();

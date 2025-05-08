@@ -17,6 +17,7 @@ use re_protos::catalog::v1alpha1::{
 use re_protos::TypeConversionError;
 use re_smart_channel::SmartChannelSource;
 use re_sorbet::SorbetError;
+use re_types::archetypes::RecordingProperties;
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, UiExt as _, UiLayout};
 use re_viewer_context::{
@@ -293,9 +294,10 @@ pub fn dataset_and_its_recordings_ui(
     entity_dbs.sort_by_cached_key(|entity_db| {
         (
             entity_db
-                .recording_property::<Name>()
+                .recording_property::<Name>(&RecordingProperties::descriptor_name())
                 .map(|s| natural_ordering::OrderedString(s.to_string())),
-            entity_db.recording_property::<Timestamp>(),
+            entity_db
+                .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time()),
         )
     });
 

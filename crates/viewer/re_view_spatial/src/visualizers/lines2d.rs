@@ -2,7 +2,7 @@ use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius, ShowLabels},
+    components::{ClassId, Color, DrawOrder, Radius, ShowLabels},
     ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
@@ -279,7 +279,11 @@ impl TypedComponentFallbackProvider<DrawOrder> for Lines2DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Lines2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<LineStrip2D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &LineStrips2D::descriptor_strips(),
+            &LineStrips2D::descriptor_labels(),
+        )
     }
 }
 

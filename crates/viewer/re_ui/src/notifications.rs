@@ -159,8 +159,13 @@ impl NotificationUi {
     }
 
     fn ui(&mut self, egui_ctx: &egui::Context, button_response: &egui::Response) {
-        let is_panel_visible =
-            egui_ctx.memory(|mem| mem.is_popup_open(notification_panel_popup_id()));
+        let is_panel_visible = egui_ctx.memory_mut(|mem| {
+            let is_open = mem.is_popup_open(notification_panel_popup_id());
+            if is_open {
+                mem.keep_popup_open(notification_panel_popup_id());
+            }
+            is_open
+        });
         if is_panel_visible {
             // Dismiss all toasts when opening panel
             self.unread_notification_level = None;
