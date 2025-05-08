@@ -6,7 +6,7 @@ use re_query::{clamped_zip_1x2, range_zip_1x2};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Archetype as _, Component as _,
+    Archetype as _,
 };
 use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
@@ -104,9 +104,9 @@ impl TextLogSystem {
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
         let timeline = *query.timeline();
-        let all_texts = results.iter_as(timeline, Text::name());
-        let all_levels = results.iter_as(timeline, TextLogLevel::name());
-        let all_colors = results.iter_as(timeline, Color::name());
+        let all_texts = results.iter_as(timeline, TextLog::descriptor_text());
+        let all_levels = results.iter_as(timeline, TextLog::descriptor_level());
+        let all_colors = results.iter_as(timeline, TextLog::descriptor_color());
 
         let all_frames = range_zip_1x2(
             all_texts.slice::<String>(),
