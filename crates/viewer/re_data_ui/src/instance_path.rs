@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use egui::Rangef;
 
 use re_chunk_store::UnitChunkShared;
@@ -69,14 +67,15 @@ impl DataUi for InstancePath {
             .filter(|c| c.component_name.is_indicator_component())
             .count();
 
-        let mut components: BTreeMap<ComponentDescriptor, UnitChunkShared> = db
-            .storage_engine()
-            .cache()
-            .latest_at(query, entity_path, &components)
-            .components
-            // Use descriptor order.
-            // TODO(andreas): Even better would be to use the order of components as they show on archetypes.
+        let mut query_results =
+            db.storage_engine()
+                .cache()
+                .latest_at(query, entity_path, &components);
+
+        // Keep previously established order.
+        let mut components: Vec<(ComponentDescriptor, UnitChunkShared)> = components
             .into_iter()
+            .filter_map(|c| query_results.components.remove(&c).map(|chunk| (c, chunk)))
             .collect();
 
         if components.is_empty() {
@@ -114,7 +113,7 @@ impl DataUi for InstancePath {
             // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
             // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
             if !self.is_all() {
-                components.retain(|component, _chunk| {
+                components.retain(|(component, _chunk)| {
                     component.component_name != components::GraphEdge::name()
                 });
             }
@@ -147,7 +146,7 @@ fn component_list_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components: &BTreeMap<ComponentDescriptor, UnitChunkShared>,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
 ) {
     let indicator_count = components
         .iter()
@@ -266,7 +265,7 @@ fn preview_if_image_ui(
     ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &BTreeMap<ComponentDescriptor, UnitChunkShared>,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
 ) {
     // There might be several image buffers!
     for (image_buffer_descr, image_buffer_chunk) in components
@@ -293,7 +292,7 @@ fn preview_single_image(
     ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &BTreeMap<ComponentDescriptor, UnitChunkShared>,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
     image_buffer_descr: &ComponentDescriptor,
     image_buffer_chunk: &UnitChunkShared,
 ) -> Option<()> {
@@ -494,7 +493,7 @@ fn preview_if_blob_ui(
     ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &BTreeMap<ComponentDescriptor, UnitChunkShared>,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
 ) {
     // There might be several blobs, all with different meanings.
     for (blob_descr, blob_chunk) in components
@@ -521,7 +520,7 @@ fn preview_single_blob(
     ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &BTreeMap<ComponentDescriptor, UnitChunkShared>,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
     blob_descr: &ComponentDescriptor,
     blob_chunk: &UnitChunkShared,
 ) -> Option<()> {
@@ -557,7 +556,7 @@ fn preview_single_blob(
 
 /// Finds and deserializes the given component type if its descriptor matches the given archetype name.
 fn find_and_deserialize_archetype_mono_component<C: Component>(
-    components: &BTreeMap<ComponentDescriptor, UnitChunkShared>,
+    components: &[(ComponentDescriptor, UnitChunkShared)],
     archetype_name: Option<ArchetypeName>,
 ) -> Option<C> {
     components.iter().find_map(|(descr, chunk)| {
