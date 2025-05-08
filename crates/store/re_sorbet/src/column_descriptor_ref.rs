@@ -3,7 +3,6 @@ use crate::{
     RowIdColumnDescriptor,
 };
 
-// TODO: deprecate and replace with `&ColumnDescriptor`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ColumnDescriptorRef<'a> {
     RowId(&'a RowIdColumnDescriptor),
