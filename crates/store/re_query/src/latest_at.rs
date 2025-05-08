@@ -279,6 +279,14 @@ impl LatestAtResults {
         self.components.get(component_descr)
     }
 
+    // TODO(#6889): remove this please!
+    pub fn get_by_maybe(&self, component_descriptor: &MaybeTagged) -> Option<&UnitChunkShared> {
+        match component_descriptor {
+            MaybeTagged::Descriptor(component_descriptor) => self.get(component_descriptor),
+            MaybeTagged::JustName(component_name) => self.get_by_name(component_name),
+        }
+    }
+
     // TODO(#6889): Going forward, we should avoid querying by name.
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     #[inline]

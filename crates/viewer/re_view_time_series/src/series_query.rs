@@ -131,7 +131,7 @@ pub fn collect_colors(
         let [a, b, g, r] = raw.to_le_bytes();
         re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
     }
-    let all_color_chunks = results.get_optional_chunks(&components::Color::name());
+    let all_color_chunks = results.get_optional_chunks(components::Color::name());
     if all_color_chunks.len() == 1 && all_color_chunks[0].is_static() {
         re_tracing::profile_scope!("override/default fast path");
 
@@ -215,7 +215,7 @@ pub fn collect_series_name(
     re_tracing::profile_function!();
 
     let mut series_names: Vec<String> = results
-        .get_optional_chunks(&components::Name::name())
+        .get_optional_chunks(components::Name::name())
         .iter()
         .find(|chunk| !chunk.is_empty())
         .and_then(|chunk| chunk.iter_slices::<String>(components::Name::name()).next())
@@ -250,7 +250,7 @@ pub fn collect_radius_ui(
     let num_series = points_per_series.len();
 
     {
-        let all_radius_chunks = results.get_optional_chunks(&radius_component_name);
+        let all_radius_chunks = results.get_optional_chunks(radius_component_name);
 
         if all_radius_chunks.len() == 1 && all_radius_chunks[0].is_static() {
             re_tracing::profile_scope!("override/default fast path");
