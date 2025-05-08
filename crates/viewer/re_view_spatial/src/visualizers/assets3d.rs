@@ -3,11 +3,7 @@ use arrow::buffer::ScalarBuffer;
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{
-    archetypes::Asset3D,
-    components::{AlbedoFactor, MediaType},
-    ArrowString, Component as _,
-};
+use re_types::{archetypes::Asset3D, components::AlbedoFactor, ArrowString};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
@@ -158,8 +154,9 @@ impl VisualizerSystem for Asset3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
-                let all_media_types = results.iter_as(timeline, MediaType::name());
-                let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
+                let all_media_types = results.iter_as(timeline, Asset3D::descriptor_media_type());
+                let all_albedo_factors =
+                    results.iter_as(timeline, Asset3D::descriptor_albedo_factor());
 
                 let query_result_hash = results.query_result_hash();
 
