@@ -331,7 +331,7 @@ fn add_popup_ui(
                         entry.descriptor(archetype_name),
                         entry.visualizer_identifier,
                     );
-                    ui.close_menu();
+                    ui.close();
                 }
             }
         });
