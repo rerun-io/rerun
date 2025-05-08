@@ -16,6 +16,7 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 mod arrow;
 mod catalog;
 mod dataframe;
+mod datafusion;
 mod python_bridge;
 mod utils;
 mod video;
