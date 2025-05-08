@@ -11,6 +11,7 @@ use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter,
     ResolvedEntityPathRule, Timeline,
 };
+use re_types::Loggable as _;
 use re_types::{
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
@@ -18,7 +19,6 @@ use re_types::{
     },
     Archetype as _, ViewClassIdentifier,
 };
-use re_types::{Component as _, Loggable as _};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, PropertyOverrides,
@@ -483,8 +483,7 @@ impl<'a> DataQueryPropertyResolver<'a> {
                 .latest_at(
                     blueprint_query,
                     override_path,
-                    // TODO(andreas): Should there be any tags on this one? We don't have an archetype for it yet.
-                    [&blueprint_components::VisualizerOverride::descriptor()],
+                    [&blueprint_archetypes::VisualizerOverrides::descriptor_ranges()],
                 )
                 .component_batch::<blueprint_components::VisualizerOverride>()
             {
@@ -526,9 +525,8 @@ impl<'a> DataQueryPropertyResolver<'a> {
                         // Handle special overrides:
                         //
                         // Visible time range override.
-                        // TODO(#6889): What tag to use for visible time range?
-                        if component_descr.component_name
-                            == blueprint_components::VisibleTimeRange::name()
+                        if component_descr
+                            == blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()
                         {
                             if let Ok(visible_time_ranges) =
                                 blueprint_components::VisibleTimeRange::from_arrow(&component_data)
