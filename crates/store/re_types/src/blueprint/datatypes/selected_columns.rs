@@ -23,11 +23,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SelectedColumns {
-    /// Show Row ID column?
-    ///
-    /// This is not yet implemented. See <https://github.com/rerun-io/rerun/issues/9921>.
-    pub row_id: crate::datatypes::Bool,
-
     /// The time columns to include
     pub time_columns: Vec<crate::datatypes::Utf8>,
 
@@ -43,7 +38,6 @@ impl ::re_types_core::Loggable for SelectedColumns {
         #![allow(clippy::wildcard_imports)]
         use arrow::datatypes::*;
         DataType::Struct(Fields::from(vec![
-            Field::new("row_id", <crate::datatypes::Bool>::arrow_datatype(), false),
             Field::new(
                 "time_columns",
                 DataType::List(std::sync::Arc::new(Field::new(
@@ -77,7 +71,6 @@ impl ::re_types_core::Loggable for SelectedColumns {
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
-                Field::new("row_id", <crate::datatypes::Bool>::arrow_datatype(), false),
                 Field::new(
                     "time_columns",
                     DataType::List(std::sync::Arc::new(Field::new(
@@ -111,28 +104,6 @@ impl ::re_types_core::Loggable for SelectedColumns {
             as_array_ref(StructArray::new(
                 fields,
                 vec![
-                    {
-                        let (somes, row_id): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.row_id.clone());
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let row_id_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        as_array_ref(BooleanArray::new(
-                            BooleanBuffer::from(
-                                row_id
-                                    .into_iter()
-                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            ),
-                            row_id_validity,
-                        ))
-                    },
                     {
                         let (somes, time_columns): (Vec<_>, Vec<_>) = data
                             .iter()
@@ -255,27 +226,6 @@ impl ::re_types_core::Loggable for SelectedColumns {
                     .map(|field| field.name().as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let row_id = {
-                    if !arrays_by_name.contains_key("row_id") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "row_id",
-                        ))
-                        .with_context("rerun.blueprint.datatypes.SelectedColumns");
-                    }
-                    let arrow_data = &**arrays_by_name["row_id"];
-                    arrow_data
-                        .as_any()
-                        .downcast_ref::<BooleanArray>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Boolean;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.blueprint.datatypes.SelectedColumns#row_id")?
-                        .into_iter()
-                        .map(|res_or_opt| res_or_opt.map(crate::datatypes::Bool))
-                };
                 let time_columns = {
                     if !arrays_by_name.contains_key("time_columns") {
                         return Err(DeserializationError::missing_struct_field(
@@ -481,15 +431,12 @@ impl ::re_types_core::Loggable for SelectedColumns {
                     }
                 };
                 ZipValidity::new_with_validity(
-                    ::itertools::izip!(row_id, time_columns, component_columns),
+                    ::itertools::izip!(time_columns, component_columns),
                     arrow_data.nulls(),
                 )
                 .map(|opt| {
-                    opt.map(|(row_id, time_columns, component_columns)| {
+                    opt.map(|(time_columns, component_columns)| {
                         Ok(Self {
-                            row_id: row_id
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.datatypes.SelectedColumns#row_id")?,
                             time_columns: time_columns
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context(
@@ -514,15 +461,12 @@ impl ::re_types_core::Loggable for SelectedColumns {
 impl ::re_byte_size::SizeBytes for SelectedColumns {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.row_id.heap_size_bytes()
-            + self.time_columns.heap_size_bytes()
-            + self.component_columns.heap_size_bytes()
+        self.time_columns.heap_size_bytes() + self.component_columns.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
-            && <Vec<crate::datatypes::Utf8>>::is_pod()
+        <Vec<crate::datatypes::Utf8>>::is_pod()
             && <Vec<crate::blueprint::datatypes::ComponentColumnSelector>>::is_pod()
     }
 }

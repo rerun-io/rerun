@@ -21,13 +21,6 @@ from .selected_columns_ext import SelectedColumnsExt
 __all__ = ["SelectedColumns", "SelectedColumnsArrayLike", "SelectedColumnsBatch", "SelectedColumnsLike"]
 
 
-def _selected_columns__row_id__special_field_converter_override(x: datatypes.BoolLike) -> datatypes.Bool:
-    if isinstance(x, datatypes.Bool):
-        return x
-    else:
-        return datatypes.Bool(x)
-
-
 @define(init=False)
 class SelectedColumns(SelectedColumnsExt):
     """
@@ -37,13 +30,6 @@ class SelectedColumns(SelectedColumnsExt):
     """
 
     # __init__ can be found in selected_columns_ext.py
-
-    row_id: datatypes.Bool = field(converter=_selected_columns__row_id__special_field_converter_override)
-    # Show Row ID column?
-    #
-    # This is not yet implemented. See <https://github.com/rerun-io/rerun/issues/9921>.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
 
     time_columns: list[datatypes.Utf8] = field()
     # The time columns to include
@@ -71,7 +57,6 @@ SelectedColumnsArrayLike = Union[
 
 class SelectedColumnsBatch(BaseBatch[SelectedColumnsArrayLike]):
     _ARROW_DATATYPE = pa.struct([
-        pa.field("row_id", pa.bool_(), nullable=False, metadata={}),
         pa.field(
             "time_columns",
             pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),

@@ -151,7 +151,7 @@ impl Query {
         for column in columns {
             match column {
                 ColumnSelector::RowId => {
-                    selected_columns.row_id = true.into();
+                    // selected_columns.row_id = true.into(); // TODO(#9921)
                 }
 
                 ColumnSelector::Time(desc) => {
@@ -213,7 +213,7 @@ impl Query {
 
         // no selected columns means all columns are visible
         let Some(datatypes::SelectedColumns {
-            row_id,
+            // row_id, // TODO(#9921)
             time_columns,
             component_columns,
         }) = selected_columns.as_deref()
@@ -240,7 +240,7 @@ impl Query {
         let result = view_columns
             .iter()
             .filter(|column| match column {
-                ColumnDescriptor::RowId(_) => row_id.0,
+                ColumnDescriptor::RowId(_) => false, // TODO(#9921)
 
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui

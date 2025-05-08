@@ -3,7 +3,6 @@
 
 #include "selected_columns.hpp"
 
-#include "../../datatypes/bool.hpp"
 #include "../../datatypes/utf8.hpp"
 #include "component_column_selector.hpp"
 
@@ -16,7 +15,6 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>&
         Loggable<blueprint::datatypes::SelectedColumns>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field("row_id", Loggable<rerun::datatypes::Bool>::arrow_datatype(), false),
             arrow::field(
                 "time_columns",
                 arrow::list(
@@ -75,18 +73,7 @@ namespace rerun {
         }
 
         {
-            auto field_builder = static_cast<arrow::BooleanBuilder*>(builder->field_builder(0));
-            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Bool>::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].row_id,
-                    1
-                ));
-            }
-        }
-        {
-            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(1));
+            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(0));
             auto value_builder = static_cast<arrow::StringBuilder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
@@ -104,7 +91,7 @@ namespace rerun {
             }
         }
         {
-            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(2));
+            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(1));
             auto value_builder = static_cast<arrow::StructBuilder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));

@@ -8,10 +8,7 @@ table SelectedColumns (
   "attr.rust.derive": "Default, PartialEq, Eq",
   "attr.rerun.scope": "blueprint"
 ) {
-  /// Show Row ID column?
-  ///
-  /// This is not yet implemented. See <https://github.com/rerun-io/rerun/issues/9921>.
-  row_id: rerun.datatypes.Bool (order: 50); // TODO(#9921): hook up UI
+  // row_id: rerun.datatypes.Bool (order: 50); // TODO(#9921): add support for showing Row ID in UI
 
   /// The time columns to include
   time_columns: [rerun.datatypes.Utf8] (order: 100);
