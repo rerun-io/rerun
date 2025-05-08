@@ -1,11 +1,9 @@
 use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
-    archetypes::{Arrows2D, Points2D},
-    components::{
-        ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text, Vector2D,
-    },
-    ArrowString, Component as _,
+    archetypes::Arrows2D,
+    components::{ClassId, Color, DrawOrder, Position2D, Radius, ShowLabels, Vector2D},
+    ArrowString,
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{

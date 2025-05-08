@@ -1,13 +1,7 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::{renderer::GpuMeshInstance, RenderContext};
-use re_types::{
-    archetypes::Mesh3D,
-    components::{
-        AlbedoFactor, Color, ImageBuffer, ImageFormat, Texcoord2D, TriangleIndices, Vector3D,
-    },
-    Component as _,
-};
+use re_types::{archetypes::Mesh3D, components::ImageFormat};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,

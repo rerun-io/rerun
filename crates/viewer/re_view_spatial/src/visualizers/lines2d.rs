@@ -2,8 +2,8 @@ use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius, ShowLabels},
+    ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{

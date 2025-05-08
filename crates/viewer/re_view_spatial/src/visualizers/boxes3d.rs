@@ -2,7 +2,7 @@ use std::iter;
 
 use re_types::{
     archetypes::Boxes3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels, Text},
+    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
     ArrowString, Component as _,
 };
 use re_viewer_context::{

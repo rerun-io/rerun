@@ -12,7 +12,7 @@ use re_renderer::{
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
     components::{Blob, MediaType, VideoTimestamp},
-    Archetype as _, Component as _,
+    Archetype as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,

@@ -3,7 +3,6 @@ use re_types::{
     archetypes::Image,
     components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
-    Component as _,
 };
 use re_view::HybridResults;
 use re_viewer_context::{

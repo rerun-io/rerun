@@ -2,8 +2,8 @@ use std::iter;
 
 use re_types::{
     archetypes::Ellipsoids3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
+    ArrowString,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,

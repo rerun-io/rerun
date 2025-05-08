@@ -2,7 +2,6 @@ use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::EncodedImage,
     components::{DrawOrder, MediaType, Opacity},
-    Component as _,
 };
 use re_view::{diff_component_filter, HybridResults};
 use re_viewer_context::{

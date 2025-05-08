@@ -3,7 +3,6 @@ use re_types::{
     archetypes::SegmentationImage,
     components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
-    Component as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext,

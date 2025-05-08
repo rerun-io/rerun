@@ -3,8 +3,8 @@ use itertools::Itertools as _;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points3D,
-    components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels},
+    ArrowString,
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{

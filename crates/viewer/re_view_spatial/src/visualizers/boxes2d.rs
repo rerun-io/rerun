@@ -2,8 +2,8 @@ use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes2D,
-    components::{ClassId, Color, DrawOrder, HalfSize2D, Position2D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, DrawOrder, HalfSize2D, Position2D, Radius, ShowLabels},
+    ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{

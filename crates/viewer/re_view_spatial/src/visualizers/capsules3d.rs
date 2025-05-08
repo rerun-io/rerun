@@ -3,8 +3,8 @@ use std::iter;
 use ordered_float::NotNan;
 use re_types::{
     archetypes::Capsules3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
+    ArrowString,
 };
 use re_view::clamped_or_nothing;
 use re_viewer_context::{

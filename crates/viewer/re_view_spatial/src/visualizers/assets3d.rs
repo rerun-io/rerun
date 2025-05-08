@@ -3,11 +3,7 @@ use arrow::buffer::ScalarBuffer;
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{
-    archetypes::Asset3D,
-    components::{AlbedoFactor, MediaType},
-    ArrowString, Component as _,
-};
+use re_types::{archetypes::Asset3D, components::AlbedoFactor, ArrowString};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
