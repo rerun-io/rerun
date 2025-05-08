@@ -748,11 +748,15 @@ pub struct CreatePartitionManifestsRequest {
     /// created if left unspecified (empty list)
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
+    /// types of partitions and their storage location (same order
+    /// as partition ids above)
+    #[prost(message, repeated, tag = "3")]
+    pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
     /// Define what happens if create is called multiple times for the same
     /// Dataset / partitions
     #[prost(
         enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
-        tag = "3"
+        tag = "4"
     )]
     pub on_duplicate: i32,
 }

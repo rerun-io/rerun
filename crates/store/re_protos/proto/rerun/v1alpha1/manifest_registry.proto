@@ -456,9 +456,13 @@ message CreatePartitionManifestsRequest {
   // created if left unspecified (empty list)
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
+  // types of partitions and their storage location (same order
+  // as partition ids above)
+  repeated DataSource data_sources = 3;
+
   // Define what happens if create is called multiple times for the same
   // Dataset / partitions
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
 }
 
 message CreatePartitionManifestsResponse {
