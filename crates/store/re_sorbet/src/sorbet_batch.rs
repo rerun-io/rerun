@@ -159,9 +159,9 @@ impl From<&SorbetBatch> for ArrowRecordBatch {
 }
 
 impl SorbetBatch {
-    /// Will automatically wrap data columns in `ListArrays` if they are not already.
-    ///
-    /// Will also migrate old types to new types.
+    /// Will perform some transformations:
+    /// * Will automatically wrap data columns in `ListArrays` if they are not already
+    /// * Will migrate legacy data to more modern form
     pub fn try_from_record_batch(
         batch: &ArrowRecordBatch,
         batch_type: crate::BatchType,
@@ -169,7 +169,6 @@ impl SorbetBatch {
         re_tracing::profile_function!();
 
         let batch = make_all_data_columns_list_arrays(batch);
-        let batch = crate::migration::reorder_columns(&batch);
         let batch = crate::migration::migrate_tuids(&batch);
         let batch = crate::migration::migrate_record_batch(&batch);
 
