@@ -18,7 +18,8 @@ use re_log_types::{
     EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
+    ArchetypeName, ComponentDescriptor, ComponentName, DeserializationError, Loggable as _,
+    SerializationError,
 };
 
 use crate::{ChunkId, RowId};
@@ -106,6 +107,13 @@ impl ChunkComponents {
         self.0
             .keys()
             .any(|desc| desc.component_name == component_name)
+    }
+
+    /// Whether any of the components in this chunk is tagged with the given archetype name.
+    pub fn has_component_with_archetype_name(&self, archetype_name: ArchetypeName) -> bool {
+        self.0
+            .keys()
+            .any(|desc| desc.archetype_name == Some(archetype_name))
     }
 }
 

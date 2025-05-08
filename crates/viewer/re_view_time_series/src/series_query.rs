@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use re_chunk_store::RangeQuery;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::external::arrow::datatypes::DataType as ArrowDatatype;
-use re_types::{components, Component as _, ComponentDescriptor, Loggable as _, RowId};
+use re_types::{components, ComponentDescriptor, Loggable as _, RowId};
 use re_view::{clamped_or_nothing, ChunksWithDescriptor, HybridRangeResults, RangeResultsExt as _};
 use re_viewer_context::{auto_color_egui, QueryContext, TypedComponentFallbackProvider};
 
@@ -138,7 +138,7 @@ pub fn collect_colors(
         re_tracing::profile_scope!("override/default fast path");
 
         if let Some(colors) = all_color_chunks[0]
-            .iter_slices::<u32>(color_descriptor.component_name)
+            .iter_slices::<u32>(color_descriptor.clone())
             .next()
         {
             for (points, color) in points_per_series
@@ -175,8 +175,8 @@ pub fn collect_colors(
 
         let all_colors = all_color_chunks.iter().flat_map(|chunk| {
             itertools::izip!(
-                chunk.iter_component_indices_by_name(query.timeline(), &components::Color::name()),
-                chunk.iter_slices::<u32>(components::Color::name())
+                chunk.iter_component_indices(query.timeline(), color_descriptor),
+                chunk.iter_slices::<u32>(color_descriptor.clone())
             )
         });
 
@@ -221,11 +221,7 @@ pub fn collect_series_name(
         .get_optional_chunks(name_descriptor.clone())
         .iter()
         .find(|chunk| !chunk.is_empty())
-        .and_then(|chunk| {
-            chunk
-                .iter_slices::<String>(name_descriptor.component_name)
-                .next()
-        })
+        .and_then(|chunk| chunk.iter_slices::<String>(name_descriptor.clone()).next())
         .map(|slice| slice.into_iter().map(|s| s.to_string()).collect())
         .unwrap_or_default();
 
@@ -263,7 +259,7 @@ pub fn collect_radius_ui(
             re_tracing::profile_scope!("override/default fast path");
 
             if let Some(radius) = all_radius_chunks[0]
-                .iter_slices::<f32>(radius_descriptor.component_name)
+                .iter_slices::<f32>(radius_descriptor.clone())
                 .next()
             {
                 for (points, radius) in points_per_series
@@ -282,7 +278,7 @@ pub fn collect_radius_ui(
             let all_radii = all_radius_chunks.iter().flat_map(|chunk| {
                 itertools::izip!(
                     chunk.iter_component_indices(query.timeline(), radius_descriptor),
-                    chunk.iter_slices::<f32>(radius_descriptor.component_name)
+                    chunk.iter_slices::<f32>(radius_descriptor.clone())
                 )
             });
 

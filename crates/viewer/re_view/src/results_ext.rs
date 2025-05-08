@@ -476,8 +476,7 @@ impl<'a> HybridResultsChunkIter<'a> {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
                 chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
-                // TODO(#6889): Use descriptor instead of name.
-                chunk.iter_slices::<S>(self.component_descriptor.component_name),
+                chunk.iter_slices::<S>(self.component_descriptor.clone()),
             )
         })
     }
@@ -493,8 +492,7 @@ impl<'a> HybridResultsChunkIter<'a> {
             itertools::izip!(
                 chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
                 chunk.iter_slices_from_struct_field::<S>(
-                    // TODO(#6889): Use descriptor instead of name.s
-                    self.component_descriptor.component_name,
+                    self.component_descriptor.clone(),
                     field_name,
                 )
             )

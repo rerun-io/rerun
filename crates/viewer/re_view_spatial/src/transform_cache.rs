@@ -540,7 +540,7 @@ impl TransformCacheStoreSubscriber {
 
                 let recursively_cleared_times = chunk
                     .iter_component_indices(timeline, &descr)
-                    .zip(chunk.iter_slices::<bool>(descr.component_name))
+                    .zip(chunk.iter_slices::<bool>(descr.clone()))
                     .filter_map(|((time, _row_id), bool_slice)| {
                         bool_slice
                             .values()

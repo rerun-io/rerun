@@ -1267,7 +1267,7 @@ fn query_and_compare(
             .flat_map(|chunk| {
                 itertools::izip!(
                     chunk.iter_component_indices(query.timeline(), &descriptor_colors),
-                    chunk.iter_slices::<u32>(descriptor_colors.component_name), // TODO(#6889): use descriptor directly.
+                    chunk.iter_slices::<u32>(descriptor_colors.clone()),
                 )
             })
             .collect_vec();
