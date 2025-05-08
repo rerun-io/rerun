@@ -16,6 +16,7 @@
 //! * `DataframeBatch` will have a `DataframeSchema`
 
 mod chunk_batch;
+mod chunk_columns;
 mod chunk_schema;
 mod column_descriptor;
 mod column_descriptor_ref;
@@ -34,6 +35,7 @@ mod sorbet_schema;
 
 pub use self::{
     chunk_batch::{ChunkBatch, MismatchedChunkSchemaError},
+    chunk_columns::ChunkColumnDescriptors,
     chunk_schema::ChunkSchema,
     column_descriptor::{ColumnDescriptor, ColumnError},
     column_descriptor_ref::ColumnDescriptorRef,

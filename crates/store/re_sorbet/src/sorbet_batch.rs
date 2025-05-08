@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        Array as _, ArrayRef as ArrowArrayRef, AsArray as _, ListArray as ArrowListArray,
-        RecordBatch as ArrowRecordBatch, RecordBatchOptions, StructArray as ArrowStructArray,
+        Array as _, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+        RecordBatch as ArrowRecordBatch, RecordBatchOptions,
     },
     datatypes::{FieldRef as ArrowFieldRef, Fields as ArrowFields, Schema as ArrowSchema},
     error::ArrowError,
@@ -13,8 +13,8 @@ use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
 use re_log::ResultExt as _;
 
 use crate::{
-    ArrowBatchMetadata, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
-    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError, SorbetSchema,
+    ArrowBatchMetadata, ColumnDescriptor, ColumnDescriptorRef, ColumnKind,
+    ComponentColumnDescriptor, IndexColumnDescriptor, SorbetError, SorbetSchema,
 };
 
 /// Any rerun-compatible [`ArrowRecordBatch`].
@@ -77,29 +77,31 @@ impl SorbetBatch {
         &self.batch.schema_ref().metadata
     }
 
-    /// The `RowId` column, if any.
-    pub fn row_id_column(&self) -> Option<(&RowIdColumnDescriptor, &ArrowStructArray)> {
-        self.schema.columns.row_id.as_ref().map(|row_id_desc| {
-            (
-                row_id_desc,
-                self.batch.columns()[0]
-                    .as_struct_opt()
-                    .expect("Row IDs should be encoded as struct"),
-            )
-        })
+    /// All the columns along with their descriptors.
+    pub fn all_columns(&self) -> impl Iterator<Item = (&ColumnDescriptor, &ArrowArrayRef)> {
+        itertools::izip!(self.schema.columns.iter(), self.batch.columns())
     }
 
     /// All the columns along with their descriptors.
-    pub fn all_columns(&self) -> impl Iterator<Item = (ColumnDescriptorRef<'_>, &ArrowArrayRef)> {
-        self.schema.columns.descriptors().zip(self.batch.columns())
+    pub fn all_columns_ref(
+        &self,
+    ) -> impl Iterator<Item = (ColumnDescriptorRef<'_>, &ArrowArrayRef)> {
+        itertools::izip!(
+            self.schema.columns.iter().map(|x| x.into()),
+            self.batch.columns()
+        )
     }
 
     /// The columns of the indices (timelines).
     pub fn index_columns(&self) -> impl Iterator<Item = (&IndexColumnDescriptor, &ArrowArrayRef)> {
-        let num_row_id_columns = self.schema.columns.row_id.is_some() as usize;
-        itertools::izip!(
-            &self.schema.columns.indices,
-            self.batch.columns().iter().skip(num_row_id_columns)
+        itertools::izip!(self.schema.columns.iter(), self.batch.columns().iter()).filter_map(
+            |(descr, array)| {
+                if let ColumnDescriptor::Time(descr) = descr {
+                    Some((descr, array))
+                } else {
+                    None
+                }
+            },
         )
     }
 
@@ -107,14 +109,14 @@ impl SorbetBatch {
     pub fn component_columns(
         &self,
     ) -> impl Iterator<Item = (&ComponentColumnDescriptor, &ArrowArrayRef)> {
-        let num_row_id_columns = self.schema.columns.row_id.is_some() as usize;
-        let num_index_columns = self.schema.columns.indices.len();
-        itertools::izip!(
-            &self.schema.columns.components,
-            self.batch
-                .columns()
-                .iter()
-                .skip(num_row_id_columns + num_index_columns)
+        itertools::izip!(self.schema.columns.iter(), self.batch.columns().iter()).filter_map(
+            |(descr, array)| {
+                if let ColumnDescriptor::Component(descr) = descr {
+                    Some((descr, array))
+                } else {
+                    None
+                }
+            },
         )
     }
 }

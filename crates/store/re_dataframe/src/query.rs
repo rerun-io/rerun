@@ -32,7 +32,7 @@ use re_chunk_store::{
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
-    ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor, SorbetColumnDescriptors,
+    ChunkColumnDescriptors, ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor,
     TimeColumnSelector,
 };
 use re_types_core::{archetypes, arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
@@ -79,7 +79,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: SorbetColumnDescriptors,
+    view_contents: ChunkColumnDescriptors,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -683,7 +683,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
+    pub fn view_contents(&self) -> &ChunkColumnDescriptors {
         &self.init().view_contents
     }
 
