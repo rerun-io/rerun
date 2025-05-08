@@ -100,7 +100,7 @@ fn annotation_info(
 
     // TODO(#6889): If there's several class ids we have no idea which one to use.
     // This code uses the first one that shows up.
-    // We should instead for a class id that is likely a sibling of the keypoint id.
+    // We should search instead for a class id that is likely a sibling of the keypoint id.
     let storage_engine = ctx.recording().storage_engine();
     let possible_class_id_descriptors = storage_engine
         .store()
