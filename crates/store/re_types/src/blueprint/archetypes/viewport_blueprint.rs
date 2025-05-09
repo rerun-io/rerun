@@ -54,14 +54,7 @@ pub struct ViewportBlueprint {
 impl ViewportBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::root_container`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ViewportBlueprint",
-    ///    component_name: "rerun.blueprint.components.RootContainer",
-    ///    archetype_field_name: "root_container",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.RootContainer`.
     #[inline]
     pub fn descriptor_root_container() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -73,14 +66,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::maximized`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ViewportBlueprint",
-    ///    component_name: "rerun.blueprint.components.ViewMaximized",
-    ///    archetype_field_name: "maximized",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ViewMaximized`.
     #[inline]
     pub fn descriptor_maximized() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -92,14 +78,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_layout`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ViewportBlueprint",
-    ///    component_name: "rerun.blueprint.components.AutoLayout",
-    ///    archetype_field_name: "auto_layout",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.AutoLayout`.
     #[inline]
     pub fn descriptor_auto_layout() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -111,14 +90,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_views`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ViewportBlueprint",
-    ///    component_name: "rerun.blueprint.components.AutoViews",
-    ///    archetype_field_name: "auto_views",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.AutoViews`.
     #[inline]
     pub fn descriptor_auto_views() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -130,14 +102,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::past_viewer_recommendations`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ViewportBlueprint",
-    ///    component_name: "rerun.blueprint.components.ViewerRecommendationHash",
-    ///    archetype_field_name: "past_viewer_recommendations",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ViewerRecommendationHash`.
     #[inline]
     pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
         ComponentDescriptor {

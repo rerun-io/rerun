@@ -80,14 +80,7 @@ pub struct AnnotationContext {
 impl AnnotationContext {
     /// Returns the [`ComponentDescriptor`] for [`Self::context`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.AnnotationContext",
-    ///    component_name: "rerun.components.AnnotationContext",
-    ///    archetype_field_name: "context",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.AnnotationContext`.
     #[inline]
     pub fn descriptor_context() -> ComponentDescriptor {
         ComponentDescriptor {

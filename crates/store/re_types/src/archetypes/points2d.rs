@@ -140,14 +140,7 @@ pub struct Points2D {
 impl Points2D {
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.Position2D",
-    ///    archetype_field_name: "positions",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Position2D`.
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -159,14 +152,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.Radius",
-    ///    archetype_field_name: "radii",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Radius`.
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -178,14 +164,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "colors",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -197,14 +176,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.Text",
-    ///    archetype_field_name: "labels",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Text`.
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -216,14 +188,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.ShowLabels",
-    ///    archetype_field_name: "show_labels",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ShowLabels`.
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -235,14 +200,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.DrawOrder",
-    ///    archetype_field_name: "draw_order",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.DrawOrder`.
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -254,14 +212,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.ClassId",
-    ///    archetype_field_name: "class_ids",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ClassId`.
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -273,14 +224,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::keypoint_ids`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Points2D",
-    ///    component_name: "rerun.components.KeypointId",
-    ///    archetype_field_name: "keypoint_ids",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.KeypointId`.
     #[inline]
     pub fn descriptor_keypoint_ids() -> ComponentDescriptor {
         ComponentDescriptor {

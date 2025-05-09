@@ -143,14 +143,7 @@ pub struct Pinhole {
 impl Pinhole {
     /// Returns the [`ComponentDescriptor`] for [`Self::image_from_camera`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Pinhole",
-    ///    component_name: "rerun.components.PinholeProjection",
-    ///    archetype_field_name: "image_from_camera",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PinholeProjection`.
     #[inline]
     pub fn descriptor_image_from_camera() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -162,14 +155,7 @@ impl Pinhole {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::resolution`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Pinhole",
-    ///    component_name: "rerun.components.Resolution",
-    ///    archetype_field_name: "resolution",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Resolution`.
     #[inline]
     pub fn descriptor_resolution() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -181,14 +167,7 @@ impl Pinhole {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::camera_xyz`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Pinhole",
-    ///    component_name: "rerun.components.ViewCoordinates",
-    ///    archetype_field_name: "camera_xyz",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ViewCoordinates`.
     #[inline]
     pub fn descriptor_camera_xyz() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -200,14 +179,7 @@ impl Pinhole {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::image_plane_distance`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Pinhole",
-    ///    component_name: "rerun.components.ImagePlaneDistance",
-    ///    archetype_field_name: "image_plane_distance",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ImagePlaneDistance`.
     #[inline]
     pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
         ComponentDescriptor {

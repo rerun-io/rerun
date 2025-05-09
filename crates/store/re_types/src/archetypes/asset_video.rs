@@ -141,14 +141,7 @@ pub struct AssetVideo {
 impl AssetVideo {
     /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.AssetVideo",
-    ///    component_name: "rerun.components.Blob",
-    ///    archetype_field_name: "blob",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Blob`.
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -160,14 +153,7 @@ impl AssetVideo {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.AssetVideo",
-    ///    component_name: "rerun.components.MediaType",
-    ///    archetype_field_name: "media_type",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.MediaType`.
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {

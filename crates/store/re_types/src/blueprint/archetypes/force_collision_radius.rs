@@ -40,14 +40,7 @@ pub struct ForceCollisionRadius {
 impl ForceCollisionRadius {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ForceCollisionRadius",
-    ///    component_name: "rerun.blueprint.components.Enabled",
-    ///    archetype_field_name: "enabled",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.Enabled`.
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -59,14 +52,7 @@ impl ForceCollisionRadius {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ForceCollisionRadius",
-    ///    component_name: "rerun.blueprint.components.ForceStrength",
-    ///    archetype_field_name: "strength",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ForceStrength`.
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -78,14 +64,7 @@ impl ForceCollisionRadius {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ForceCollisionRadius",
-    ///    component_name: "rerun.blueprint.components.ForceIterations",
-    ///    archetype_field_name: "iterations",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ForceIterations`.
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {

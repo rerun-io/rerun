@@ -148,14 +148,7 @@ pub struct Mesh3D {
 impl Mesh3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_positions`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.Position3D",
-    ///    archetype_field_name: "vertex_positions",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Position3D`.
     #[inline]
     pub fn descriptor_vertex_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -167,14 +160,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::triangle_indices`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.TriangleIndices",
-    ///    archetype_field_name: "triangle_indices",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.TriangleIndices`.
     #[inline]
     pub fn descriptor_triangle_indices() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -186,14 +172,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_normals`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.Vector3D",
-    ///    archetype_field_name: "vertex_normals",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Vector3D`.
     #[inline]
     pub fn descriptor_vertex_normals() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -205,14 +184,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_colors`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "vertex_colors",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_vertex_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -224,14 +196,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_texcoords`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.Texcoord2D",
-    ///    archetype_field_name: "vertex_texcoords",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Texcoord2D`.
     #[inline]
     pub fn descriptor_vertex_texcoords() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -243,14 +208,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.AlbedoFactor",
-    ///    archetype_field_name: "albedo_factor",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.AlbedoFactor`.
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -262,14 +220,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_buffer`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.ImageBuffer",
-    ///    archetype_field_name: "albedo_texture_buffer",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ImageBuffer`.
     #[inline]
     pub fn descriptor_albedo_texture_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -281,14 +232,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_format`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.ImageFormat",
-    ///    archetype_field_name: "albedo_texture_format",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ImageFormat`.
     #[inline]
     pub fn descriptor_albedo_texture_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -300,14 +244,7 @@ impl Mesh3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Mesh3D",
-    ///    component_name: "rerun.components.ClassId",
-    ///    archetype_field_name: "class_ids",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ClassId`.
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -40,14 +40,7 @@ pub struct VisibleTimeRanges {
 impl VisibleTimeRanges {
     /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.VisibleTimeRanges",
-    ///    component_name: "rerun.blueprint.components.VisibleTimeRange",
-    ///    archetype_field_name: "ranges",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.VisibleTimeRange`.
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {

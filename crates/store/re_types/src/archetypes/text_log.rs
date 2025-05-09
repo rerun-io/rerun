@@ -75,14 +75,7 @@ pub struct TextLog {
 impl TextLog {
     /// Returns the [`ComponentDescriptor`] for [`Self::text`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.TextLog",
-    ///    component_name: "rerun.components.Text",
-    ///    archetype_field_name: "text",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Text`.
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -94,14 +87,7 @@ impl TextLog {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::level`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.TextLog",
-    ///    component_name: "rerun.components.TextLogLevel",
-    ///    archetype_field_name: "level",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.TextLogLevel`.
     #[inline]
     pub fn descriptor_level() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -113,14 +99,7 @@ impl TextLog {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.TextLog",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "color",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -97,14 +97,7 @@ pub struct Scalar {
 impl Scalar {
     /// Returns the [`ComponentDescriptor`] for [`Self::scalar`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Scalar",
-    ///    component_name: "rerun.components.Scalar",
-    ///    archetype_field_name: "scalar",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Scalar`.
     #[inline]
     pub fn descriptor_scalar() -> ComponentDescriptor {
         ComponentDescriptor {

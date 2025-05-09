@@ -105,14 +105,7 @@ pub struct TextDocument {
 impl TextDocument {
     /// Returns the [`ComponentDescriptor`] for [`Self::text`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.TextDocument",
-    ///    component_name: "rerun.components.Text",
-    ///    archetype_field_name: "text",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Text`.
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -124,14 +117,7 @@ impl TextDocument {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.TextDocument",
-    ///    component_name: "rerun.components.MediaType",
-    ///    archetype_field_name: "media_type",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.MediaType`.
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {

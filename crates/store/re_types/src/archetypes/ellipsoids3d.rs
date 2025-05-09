@@ -128,14 +128,7 @@ pub struct Ellipsoids3D {
 impl Ellipsoids3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::half_sizes`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.HalfSize3D",
-    ///    archetype_field_name: "half_sizes",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.HalfSize3D`.
     #[inline]
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -147,14 +140,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.PoseTranslation3D",
-    ///    archetype_field_name: "centers",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseTranslation3D`.
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -166,14 +152,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.PoseRotationAxisAngle",
-    ///    archetype_field_name: "rotation_axis_angles",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseRotationAxisAngle`.
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -185,14 +164,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.PoseRotationQuat",
-    ///    archetype_field_name: "quaternions",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseRotationQuat`.
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -204,14 +176,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "colors",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -223,14 +188,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::line_radii`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.Radius",
-    ///    archetype_field_name: "line_radii",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Radius`.
     #[inline]
     pub fn descriptor_line_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -242,14 +200,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fill_mode`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.FillMode",
-    ///    archetype_field_name: "fill_mode",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.FillMode`.
     #[inline]
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -261,14 +212,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.Text",
-    ///    archetype_field_name: "labels",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Text`.
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -280,14 +224,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.ShowLabels",
-    ///    archetype_field_name: "show_labels",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ShowLabels`.
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -299,14 +236,7 @@ impl Ellipsoids3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Ellipsoids3D",
-    ///    component_name: "rerun.components.ClassId",
-    ///    archetype_field_name: "class_ids",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ClassId`.
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

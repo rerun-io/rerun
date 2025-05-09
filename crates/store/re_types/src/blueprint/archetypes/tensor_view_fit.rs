@@ -30,14 +30,7 @@ pub struct TensorViewFit {
 impl TensorViewFit {
     /// Returns the [`ComponentDescriptor`] for [`Self::scaling`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.TensorViewFit",
-    ///    component_name: "rerun.blueprint.components.ViewFit",
-    ///    archetype_field_name: "scaling",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ViewFit`.
     #[inline]
     pub fn descriptor_scaling() -> ComponentDescriptor {
         ComponentDescriptor {

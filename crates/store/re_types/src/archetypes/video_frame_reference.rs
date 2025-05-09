@@ -148,14 +148,7 @@ pub struct VideoFrameReference {
 impl VideoFrameReference {
     /// Returns the [`ComponentDescriptor`] for [`Self::timestamp`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.VideoFrameReference",
-    ///    component_name: "rerun.components.VideoTimestamp",
-    ///    archetype_field_name: "timestamp",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.VideoTimestamp`.
     #[inline]
     pub fn descriptor_timestamp() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -167,14 +160,7 @@ impl VideoFrameReference {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::video_reference`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.VideoFrameReference",
-    ///    component_name: "rerun.components.EntityPath",
-    ///    archetype_field_name: "video_reference",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.EntityPath`.
     #[inline]
     pub fn descriptor_video_reference() -> ComponentDescriptor {
         ComponentDescriptor {

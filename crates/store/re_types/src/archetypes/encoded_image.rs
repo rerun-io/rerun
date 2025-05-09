@@ -69,14 +69,7 @@ pub struct EncodedImage {
 impl EncodedImage {
     /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.EncodedImage",
-    ///    component_name: "rerun.components.Blob",
-    ///    archetype_field_name: "blob",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Blob`.
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -88,14 +81,7 @@ impl EncodedImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.EncodedImage",
-    ///    component_name: "rerun.components.MediaType",
-    ///    archetype_field_name: "media_type",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.MediaType`.
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -107,14 +93,7 @@ impl EncodedImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.EncodedImage",
-    ///    component_name: "rerun.components.Opacity",
-    ///    archetype_field_name: "opacity",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Opacity`.
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -126,14 +105,7 @@ impl EncodedImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.EncodedImage",
-    ///    component_name: "rerun.components.DrawOrder",
-    ///    archetype_field_name: "draw_order",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.DrawOrder`.
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

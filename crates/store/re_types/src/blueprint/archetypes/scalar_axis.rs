@@ -35,14 +35,7 @@ pub struct ScalarAxis {
 impl ScalarAxis {
     /// Returns the [`ComponentDescriptor`] for [`Self::range`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ScalarAxis",
-    ///    component_name: "rerun.components.Range1D",
-    ///    archetype_field_name: "range",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Range1D`.
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -54,14 +47,7 @@ impl ScalarAxis {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ScalarAxis",
-    ///    component_name: "rerun.blueprint.components.LockRangeDuringZoom",
-    ///    archetype_field_name: "zoom_lock",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.LockRangeDuringZoom`.
     #[inline]
     pub fn descriptor_zoom_lock() -> ComponentDescriptor {
         ComponentDescriptor {

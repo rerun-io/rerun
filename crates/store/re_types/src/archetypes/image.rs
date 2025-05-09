@@ -152,14 +152,7 @@ pub struct Image {
 impl Image {
     /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Image",
-    ///    component_name: "rerun.components.ImageBuffer",
-    ///    archetype_field_name: "buffer",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ImageBuffer`.
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -171,14 +164,7 @@ impl Image {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Image",
-    ///    component_name: "rerun.components.ImageFormat",
-    ///    archetype_field_name: "format",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ImageFormat`.
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -190,14 +176,7 @@ impl Image {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Image",
-    ///    component_name: "rerun.components.Opacity",
-    ///    archetype_field_name: "opacity",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Opacity`.
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -209,14 +188,7 @@ impl Image {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Image",
-    ///    component_name: "rerun.components.DrawOrder",
-    ///    archetype_field_name: "draw_order",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.DrawOrder`.
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

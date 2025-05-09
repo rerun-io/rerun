@@ -32,14 +32,7 @@ pub struct MapBackground {
 impl MapBackground {
     /// Returns the [`ComponentDescriptor`] for [`Self::provider`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.MapBackground",
-    ///    component_name: "rerun.blueprint.components.MapProvider",
-    ///    archetype_field_name: "provider",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.MapProvider`.
     #[inline]
     pub fn descriptor_provider() -> ComponentDescriptor {
         ComponentDescriptor {

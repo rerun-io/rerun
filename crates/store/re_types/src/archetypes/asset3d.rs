@@ -81,14 +81,7 @@ pub struct Asset3D {
 impl Asset3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Asset3D",
-    ///    component_name: "rerun.components.Blob",
-    ///    archetype_field_name: "blob",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Blob`.
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -100,14 +93,7 @@ impl Asset3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Asset3D",
-    ///    component_name: "rerun.components.MediaType",
-    ///    archetype_field_name: "media_type",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.MediaType`.
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -119,14 +105,7 @@ impl Asset3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.Asset3D",
-    ///    component_name: "rerun.components.AlbedoFactor",
-    ///    archetype_field_name: "albedo_factor",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.AlbedoFactor`.
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {

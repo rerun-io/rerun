@@ -109,14 +109,7 @@ pub struct SeriesPoints {
 impl SeriesPoints {
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.SeriesPoints",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "colors",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -128,14 +121,7 @@ impl SeriesPoints {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::markers`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.SeriesPoints",
-    ///    component_name: "rerun.components.MarkerShape",
-    ///    archetype_field_name: "markers",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.MarkerShape`.
     #[inline]
     pub fn descriptor_markers() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -147,14 +133,7 @@ impl SeriesPoints {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::names`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.SeriesPoints",
-    ///    component_name: "rerun.components.Name",
-    ///    archetype_field_name: "names",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Name`.
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -166,14 +145,7 @@ impl SeriesPoints {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.SeriesPoints",
-    ///    component_name: "rerun.components.SeriesVisible",
-    ///    archetype_field_name: "visible_series",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.SeriesVisible`.
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -185,14 +157,7 @@ impl SeriesPoints {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::marker_sizes`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.SeriesPoints",
-    ///    component_name: "rerun.components.MarkerSize",
-    ///    archetype_field_name: "marker_sizes",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.MarkerSize`.
     #[inline]
     pub fn descriptor_marker_sizes() -> ComponentDescriptor {
         ComponentDescriptor {

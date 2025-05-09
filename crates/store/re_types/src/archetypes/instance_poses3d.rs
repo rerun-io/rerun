@@ -111,14 +111,7 @@ pub struct InstancePoses3D {
 impl InstancePoses3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.InstancePoses3D",
-    ///    component_name: "rerun.components.PoseTranslation3D",
-    ///    archetype_field_name: "translations",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseTranslation3D`.
     #[inline]
     pub fn descriptor_translations() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -130,14 +123,7 @@ impl InstancePoses3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.InstancePoses3D",
-    ///    component_name: "rerun.components.PoseRotationAxisAngle",
-    ///    archetype_field_name: "rotation_axis_angles",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseRotationAxisAngle`.
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -149,14 +135,7 @@ impl InstancePoses3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.InstancePoses3D",
-    ///    component_name: "rerun.components.PoseRotationQuat",
-    ///    archetype_field_name: "quaternions",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseRotationQuat`.
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -168,14 +147,7 @@ impl InstancePoses3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scales`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.InstancePoses3D",
-    ///    component_name: "rerun.components.PoseScale3D",
-    ///    archetype_field_name: "scales",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseScale3D`.
     #[inline]
     pub fn descriptor_scales() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -187,14 +159,7 @@ impl InstancePoses3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.InstancePoses3D",
-    ///    component_name: "rerun.components.PoseTransformMat3x3",
-    ///    archetype_field_name: "mat3x3",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.PoseTransformMat3x3`.
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {

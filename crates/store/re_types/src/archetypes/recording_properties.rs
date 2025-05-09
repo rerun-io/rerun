@@ -33,14 +33,7 @@ pub struct RecordingProperties {
 impl RecordingProperties {
     /// Returns the [`ComponentDescriptor`] for [`Self::start_time`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.RecordingProperties",
-    ///    component_name: "rerun.components.Timestamp",
-    ///    archetype_field_name: "start_time",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Timestamp`.
     #[inline]
     pub fn descriptor_start_time() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -52,14 +45,7 @@ impl RecordingProperties {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.RecordingProperties",
-    ///    component_name: "rerun.components.Name",
-    ///    archetype_field_name: "name",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Name`.
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -54,14 +54,7 @@ pub struct LineGrid3D {
 impl LineGrid3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.LineGrid3D",
-    ///    component_name: "rerun.components.Visible",
-    ///    archetype_field_name: "visible",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Visible`.
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -73,14 +66,7 @@ impl LineGrid3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::spacing`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.LineGrid3D",
-    ///    component_name: "rerun.blueprint.components.GridSpacing",
-    ///    archetype_field_name: "spacing",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.GridSpacing`.
     #[inline]
     pub fn descriptor_spacing() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -92,14 +78,7 @@ impl LineGrid3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::plane`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.LineGrid3D",
-    ///    component_name: "rerun.components.Plane3D",
-    ///    archetype_field_name: "plane",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Plane3D`.
     #[inline]
     pub fn descriptor_plane() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -111,14 +90,7 @@ impl LineGrid3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::stroke_width`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.LineGrid3D",
-    ///    component_name: "rerun.components.StrokeWidth",
-    ///    archetype_field_name: "stroke_width",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.StrokeWidth`.
     #[inline]
     pub fn descriptor_stroke_width() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -130,14 +102,7 @@ impl LineGrid3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.LineGrid3D",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "color",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

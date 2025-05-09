@@ -68,14 +68,7 @@ pub struct GeoPoints {
 impl GeoPoints {
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.GeoPoints",
-    ///    component_name: "rerun.components.LatLon",
-    ///    archetype_field_name: "positions",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.LatLon`.
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -87,14 +80,7 @@ impl GeoPoints {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.GeoPoints",
-    ///    component_name: "rerun.components.Radius",
-    ///    archetype_field_name: "radii",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Radius`.
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -106,14 +92,7 @@ impl GeoPoints {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.GeoPoints",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "colors",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -125,14 +104,7 @@ impl GeoPoints {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.GeoPoints",
-    ///    component_name: "rerun.components.ClassId",
-    ///    archetype_field_name: "class_ids",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ClassId`.
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

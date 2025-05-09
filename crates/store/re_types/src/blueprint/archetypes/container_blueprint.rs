@@ -67,14 +67,7 @@ pub struct ContainerBlueprint {
 impl ContainerBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::container_kind`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.blueprint.components.ContainerKind",
-    ///    archetype_field_name: "container_kind",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ContainerKind`.
     #[inline]
     pub fn descriptor_container_kind() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -86,14 +79,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.components.Name",
-    ///    archetype_field_name: "display_name",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Name`.
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -105,14 +91,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::contents`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.blueprint.components.IncludedContent",
-    ///    archetype_field_name: "contents",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.IncludedContent`.
     #[inline]
     pub fn descriptor_contents() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -124,14 +103,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::col_shares`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.blueprint.components.ColumnShare",
-    ///    archetype_field_name: "col_shares",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ColumnShare`.
     #[inline]
     pub fn descriptor_col_shares() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -143,14 +115,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::row_shares`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.blueprint.components.RowShare",
-    ///    archetype_field_name: "row_shares",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.RowShare`.
     #[inline]
     pub fn descriptor_row_shares() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -162,14 +127,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::active_tab`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.blueprint.components.ActiveTab",
-    ///    archetype_field_name: "active_tab",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.ActiveTab`.
     #[inline]
     pub fn descriptor_active_tab() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -181,14 +139,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.components.Visible",
-    ///    archetype_field_name: "visible",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Visible`.
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -200,14 +151,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::grid_columns`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.ContainerBlueprint",
-    ///    component_name: "rerun.blueprint.components.GridColumns",
-    ///    archetype_field_name: "grid_columns",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.GridColumns`.
     #[inline]
     pub fn descriptor_grid_columns() -> ComponentDescriptor {
         ComponentDescriptor {

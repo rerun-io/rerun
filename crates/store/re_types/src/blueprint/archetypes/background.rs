@@ -33,14 +33,7 @@ pub struct Background {
 impl Background {
     /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.Background",
-    ///    component_name: "rerun.blueprint.components.BackgroundKind",
-    ///    archetype_field_name: "kind",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.blueprint.components.BackgroundKind`.
     #[inline]
     pub fn descriptor_kind() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -52,14 +45,7 @@ impl Background {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.Background",
-    ///    component_name: "rerun.components.Color",
-    ///    archetype_field_name: "color",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Color`.
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

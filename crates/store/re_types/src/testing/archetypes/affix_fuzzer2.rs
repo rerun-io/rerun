@@ -44,14 +44,7 @@ pub struct AffixFuzzer2 {
 impl AffixFuzzer2 {
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1101`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer1",
-    ///    archetype_field_name: "fuzz1101",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer1`.
     #[inline]
     pub fn descriptor_fuzz1101() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -63,14 +56,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1102`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer2",
-    ///    archetype_field_name: "fuzz1102",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer2`.
     #[inline]
     pub fn descriptor_fuzz1102() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -82,14 +68,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1103`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer3",
-    ///    archetype_field_name: "fuzz1103",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer3`.
     #[inline]
     pub fn descriptor_fuzz1103() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -101,14 +80,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1104`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer4",
-    ///    archetype_field_name: "fuzz1104",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer4`.
     #[inline]
     pub fn descriptor_fuzz1104() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -120,14 +92,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1105`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer5",
-    ///    archetype_field_name: "fuzz1105",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer5`.
     #[inline]
     pub fn descriptor_fuzz1105() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -139,14 +104,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1106`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer6",
-    ///    archetype_field_name: "fuzz1106",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer6`.
     #[inline]
     pub fn descriptor_fuzz1106() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -158,14 +116,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1107`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer7",
-    ///    archetype_field_name: "fuzz1107",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer7`.
     #[inline]
     pub fn descriptor_fuzz1107() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -177,14 +128,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1108`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer8",
-    ///    archetype_field_name: "fuzz1108",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer8`.
     #[inline]
     pub fn descriptor_fuzz1108() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -196,14 +140,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1109`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer9",
-    ///    archetype_field_name: "fuzz1109",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer9`.
     #[inline]
     pub fn descriptor_fuzz1109() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -215,14 +152,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1110`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer10",
-    ///    archetype_field_name: "fuzz1110",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer10`.
     #[inline]
     pub fn descriptor_fuzz1110() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -234,14 +164,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1111`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer11",
-    ///    archetype_field_name: "fuzz1111",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer11`.
     #[inline]
     pub fn descriptor_fuzz1111() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -253,14 +176,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1112`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer12",
-    ///    archetype_field_name: "fuzz1112",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer12`.
     #[inline]
     pub fn descriptor_fuzz1112() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -272,14 +188,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1113`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer13",
-    ///    archetype_field_name: "fuzz1113",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer13`.
     #[inline]
     pub fn descriptor_fuzz1113() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -291,14 +200,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1114`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer14",
-    ///    archetype_field_name: "fuzz1114",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer14`.
     #[inline]
     pub fn descriptor_fuzz1114() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -310,14 +212,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1115`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer15",
-    ///    archetype_field_name: "fuzz1115",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer15`.
     #[inline]
     pub fn descriptor_fuzz1115() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -329,14 +224,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1116`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer16",
-    ///    archetype_field_name: "fuzz1116",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer16`.
     #[inline]
     pub fn descriptor_fuzz1116() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -348,14 +236,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1117`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer17",
-    ///    archetype_field_name: "fuzz1117",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer17`.
     #[inline]
     pub fn descriptor_fuzz1117() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -367,14 +248,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1118`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer18",
-    ///    archetype_field_name: "fuzz1118",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer18`.
     #[inline]
     pub fn descriptor_fuzz1118() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -386,14 +260,7 @@ impl AffixFuzzer2 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1122`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.testing.archetypes.AffixFuzzer2",
-    ///    component_name: "rerun.testing.components.AffixFuzzer22",
-    ///    archetype_field_name: "fuzz1122",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer22`.
     #[inline]
     pub fn descriptor_fuzz1122() -> ComponentDescriptor {
         ComponentDescriptor {

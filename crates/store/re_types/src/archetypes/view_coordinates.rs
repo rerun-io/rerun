@@ -71,14 +71,7 @@ pub struct ViewCoordinates {
 impl ViewCoordinates {
     /// Returns the [`ComponentDescriptor`] for [`Self::xyz`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.archetypes.ViewCoordinates",
-    ///    component_name: "rerun.components.ViewCoordinates",
-    ///    archetype_field_name: "xyz",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.ViewCoordinates`.
     #[inline]
     pub fn descriptor_xyz() -> ComponentDescriptor {
         ComponentDescriptor {

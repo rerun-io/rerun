@@ -44,14 +44,7 @@ pub struct TensorScalarMapping {
 impl TensorScalarMapping {
     /// Returns the [`ComponentDescriptor`] for [`Self::mag_filter`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.TensorScalarMapping",
-    ///    component_name: "rerun.components.MagnificationFilter",
-    ///    archetype_field_name: "mag_filter",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.MagnificationFilter`.
     #[inline]
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -63,14 +56,7 @@ impl TensorScalarMapping {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.TensorScalarMapping",
-    ///    component_name: "rerun.components.Colormap",
-    ///    archetype_field_name: "colormap",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.Colormap`.
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -82,14 +68,7 @@ impl TensorScalarMapping {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::gamma`].
     ///
-    /// The `descriptor` will have the following fields:
-    /// ```
-    /// let descriptor = ComponentDescriptor {
-    ///    archetype_name: "rerun.blueprint.archetypes.TensorScalarMapping",
-    ///    component_name: "rerun.components.GammaCorrection",
-    ///    archetype_field_name: "gamma",
-    /// };
-    /// ```
+    /// The `component_name` field will be set to `rerun.components.GammaCorrection`.
     #[inline]
     pub fn descriptor_gamma() -> ComponentDescriptor {
         ComponentDescriptor {
