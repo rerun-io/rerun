@@ -31,9 +31,9 @@ impl<'a> Columns<'a> {
     fn from(sorbet_schema: &'a SorbetSchema) -> Self {
         let inner = sorbet_schema
             .columns
-            .descriptors()
+            .iter()
             .enumerate()
-            .map(|(index, desc)| (egui::Id::new(&desc), (index, desc)))
+            .map(|(index, desc)| (egui::Id::new(desc), (index, desc.into())))
             .collect::<IntMap<_, _>>();
 
         Self { inner }
@@ -238,7 +238,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|sorbet_batch| {
                 DisplayRecordBatch::try_new(
                     sorbet_batch
-                        .all_columns()
+                        .all_columns_ref()
                         .map(|(desc, array)| (desc, array.clone())),
                 )
             })

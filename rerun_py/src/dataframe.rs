@@ -32,8 +32,7 @@ use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 use re_sorbet::{
-    ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor, SorbetColumnDescriptors,
-    TimeColumnSelector,
+    ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
 };
 
 use crate::catalog::to_py_err;
@@ -66,42 +65,6 @@ fn py_rerun_warn(msg: &std::ffi::CStr) -> PyResult<()> {
         PyErr::warn(py, &warning_type, msg, 0)?;
         Ok(())
     })
-}
-
-// TODO(#9922): Hook up to Python API
-/// The descriptor of a Row ID column.
-#[pyclass(frozen, name = "RowIdColumnDescriptor")]
-#[derive(Clone)]
-struct PyRowIdColumnDescriptor(#[expect(dead_code)] RowIdColumnDescriptor);
-
-#[pymethods]
-impl PyRowIdColumnDescriptor {
-    #[expect(clippy::unused_self)]
-    fn __repr__(&self) -> String {
-        "RowId".to_owned()
-    }
-
-    /// The name of the RowId column.
-    ///
-    /// This property is read-only.
-    #[expect(clippy::unused_self)]
-    #[getter]
-    fn name(&self) -> &'static str {
-        "RowId"
-    }
-
-    /// Part of generic ColumnDescriptor interface: always False for RowId.
-    #[expect(clippy::unused_self)]
-    #[getter]
-    fn is_static(&self) -> bool {
-        false
-    }
-}
-
-impl From<RowIdColumnDescriptor> for PyRowIdColumnDescriptor {
-    fn from(desc: RowIdColumnDescriptor) -> Self {
-        Self(desc)
-    }
 }
 
 /// The descriptor of an index column.
@@ -536,13 +499,14 @@ impl PySchema {
         let iter = SchemaIterator {
             iter: slf
                 .schema
-                .indices_and_components()
-                .into_iter()
-                .map(|col| match col {
-                    ColumnDescriptor::RowId(col) => PyRowIdColumnDescriptor(col).into_py_any(py),
-                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py_any(py),
+                .iter()
+                .filter_map(|col| match col.clone() {
+                    ColumnDescriptor::RowId(_) => None, // TODO(#9922)
+                    ColumnDescriptor::Time(col) => {
+                        Some(PyIndexColumnDescriptor(col).into_py_any(py))
+                    }
                     ColumnDescriptor::Component(col) => {
-                        PyComponentColumnDescriptor(col).into_py_any(py)
+                        Some(PyComponentColumnDescriptor(col).into_py_any(py))
                     }
                 })
                 .collect::<PyResult<Vec<_>>>()?
@@ -554,8 +518,7 @@ impl PySchema {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
-            .indices
-            .iter()
+            .index_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -563,8 +526,7 @@ impl PySchema {
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
         self.schema
-            .components
-            .iter()
+            .component_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -589,7 +551,7 @@ impl PySchema {
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
-        self.schema.components.iter().find_map(|col| {
+        self.schema.component_columns().find_map(|col| {
             if col.matches(&entity_path, &component.0) {
                 Some(col.clone().into())
             } else {
@@ -749,7 +711,7 @@ impl PyRecordingView {
                 let query_handle = engine.query(query_expression);
 
                 PySchema {
-                    schema: query_handle.view_contents().clone(),
+                    schema: query_handle.view_contents().clone().into(),
                 }
             }
         }
@@ -883,8 +845,7 @@ impl PyRecordingView {
                 Ok(self
                     .schema(py)
                     .schema
-                    .components
-                    .iter()
+                    .component_columns()
                     .filter(|col| col.is_static())
                     .map(|col| ColumnDescriptor::Component(col.clone()).into())
                     .collect())
@@ -1331,7 +1292,7 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
         PySchema {
-            schema: self.store.read().schema(),
+            schema: self.store.read().schema().into(),
         }
     }
 

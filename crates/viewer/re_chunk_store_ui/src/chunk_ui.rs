@@ -289,7 +289,7 @@ impl ChunkUi {
                 }
                 Err(err) => {
                     ui.error_with_details_on_hover(format!(
-                        "Failed to convert to tqransport: {err}"
+                        "Failed to convert to transport: {err}"
                     ));
                 }
             }
