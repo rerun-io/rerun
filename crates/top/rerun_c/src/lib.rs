@@ -1096,6 +1096,6 @@ pub unsafe extern "C" fn _rr_free_string(str: *mut c_char) {
     // Free the string:
     unsafe {
         // SAFETY: `_rr_free_string` should only be called on strings allocated by `_rr_escape_entity_path_part`.
-        let _ = CString::from_raw(str);
+        std::mem::drop(CString::from_raw(str));
     }
 }
