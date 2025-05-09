@@ -11,10 +11,10 @@ use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
 use re_types::{
+    ComponentDescriptor,
     blueprint::components::{ComponentColumnSelector, QueryExpression},
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
-    ComponentDescriptor,
 };
 use re_types_core::{Component, ComponentName, LoggableBatch, reflection::Reflection};
 use re_ui::{UiExt as _, list_item};
