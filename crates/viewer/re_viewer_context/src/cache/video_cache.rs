@@ -6,13 +6,17 @@ use std::sync::{
 use ahash::{HashMap, HashSet};
 use itertools::Either;
 
+use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{components::MediaType, Component as _};
+use re_types::{
+    components::{self, MediaType},
+    Component as _, ComponentDescriptor,
+};
 use re_video::decode::DecodeSettings;
 
-use crate::Cache;
+use crate::{image_info::StoredBlobCacheKey, Cache};
 
 // ----------------------------------------------------------------------------
 
@@ -25,7 +29,7 @@ struct Entry {
 
 /// Caches meshes based on media type & row id.
 #[derive(Default)]
-pub struct VideoCache(HashMap<Hash64, HashMap<Hash64, Entry>>);
+pub struct VideoCache(HashMap<StoredBlobCacheKey, HashMap<Hash64, Entry>>);
 
 impl VideoCache {
     /// Read in some video data and cache the result.
@@ -36,12 +40,17 @@ impl VideoCache {
     pub fn entry(
         &mut self,
         debug_name: String,
-        blob_cache_key: Hash64,
+        blob_row_id: RowId,
+        blob_component_descriptor: &ComponentDescriptor,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&MediaType>,
         decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!(&debug_name);
+
+        // The descriptor should always be the one in the video asset archetype, but in the future
+        // we may allow overrides such that it is sourced from somewhere else.
+        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor);
 
         // In order to avoid loading the same video multiple times with
         // known and unknown media type, we have to resolve the media type before
@@ -109,19 +118,22 @@ impl Cache for VideoCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let cache_key_removed: HashSet<Hash64> = events
+        let cache_key_removed: HashSet<StoredBlobCacheKey> = events
             .iter()
             .flat_map(|event| {
-                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
-                let contains_video_blob = || {
-                    event
-                        .chunk
-                        .components()
-                        .contains_component_name(re_types::components::Blob::name())
-                };
-
-                if is_deletion() && contains_video_blob() {
-                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
+                if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
+                    Either::Left(
+                        event
+                            .chunk
+                            .component_descriptors()
+                            .filter(|descr| descr.component_name == components::Blob::name())
+                            .flat_map(|descr| {
+                                event
+                                    .chunk
+                                    .row_ids()
+                                    .map(move |row_id| StoredBlobCacheKey::new(row_id, &descr))
+                            }),
+                    )
                 } else {
                     Either::Right(std::iter::empty())
                 }

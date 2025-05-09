@@ -41,7 +41,6 @@ pub(crate) use pinhole::Pinhole;
 
 use re_viewer_context::{ImageDecodeCache, ViewerContext};
 
-use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes,
@@ -104,7 +103,12 @@ fn resolution_of_image_at(
             .map(|(_, c)| c);
 
         let image = ctx.store_context.caches.entry(|c: &mut ImageDecodeCache| {
-            c.entry(Hash64::hash(row_id), &blob, media_type.as_ref())
+            c.entry(
+                row_id,
+                &archetypes::EncodedImage::descriptor_blob(),
+                &blob,
+                media_type.as_ref(),
+            )
         });
 
         if let Ok(image) = image {

@@ -873,8 +873,7 @@ fn query_and_resolve_instance_poses_at_entity(
     let max_num_instances = result
         .components
         .iter()
-        // TODO(#6889): Use tagged components.
-        .map(|(component_descr, row)| row.num_instances(&component_descr.component_name))
+        .map(|(component_descr, row)| row.num_instances(component_descr))
         .max()
         .unwrap_or(0) as usize;
 

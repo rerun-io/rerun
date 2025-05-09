@@ -1,7 +1,6 @@
 use nohash_hasher::IntMap;
 
 use re_entity_db::EntityPath;
-use re_log_types::hash::Hash64;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_types::{
@@ -291,16 +290,25 @@ impl VisualizerSystem for DepthImageVisualizer {
                     all_fill_ratios.slice::<f32>(),
                 )
                 .filter_map(
-                    |(index, buffers, format, colormap, value_range, depth_meter, fill_ratio)| {
+                    |(
+                        (_time, row_id),
+                        buffers,
+                        format,
+                        colormap,
+                        value_range,
+                        depth_meter,
+                        fill_ratio,
+                    )| {
                         let buffer = buffers.first()?;
 
                         Some(DepthImageComponentData {
-                            image: ImageInfo {
-                                buffer_cache_key: Hash64::hash(index.1),
-                                buffer: buffer.clone().into(),
-                                format: first_copied(format.as_deref())?.0,
-                                kind: ImageKind::Depth,
-                            },
+                            image: ImageInfo::from_stored_blob(
+                                row_id,
+                                &DepthImage::descriptor_buffer(),
+                                buffer.clone().into(),
+                                first_copied(format.as_deref())?.0,
+                                ImageKind::Depth,
+                            ),
                             depth_meter: first_copied(depth_meter).map(Into::into),
                             fill_ratio: first_copied(fill_ratio).map(Into::into),
                             colormap: first_copied(colormap).and_then(Colormap::from_u8),
@@ -380,12 +388,13 @@ impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
                 ctx.query,
                 &DepthImage::descriptor_format(),
             ) {
-                let image = ImageInfo {
-                    buffer_cache_key: Hash64::hash(buffer_row_id),
-                    buffer: image_buffer.0,
-                    format: format.0,
-                    kind: ImageKind::Depth,
-                };
+                let image = ImageInfo::from_stored_blob(
+                    buffer_row_id,
+                    &DepthImage::descriptor_buffer(),
+                    image_buffer.0,
+                    format.0,
+                    ImageKind::Depth,
+                );
                 let cache = ctx.viewer_ctx.store_context.caches;
                 let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
                 let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);

@@ -401,7 +401,8 @@ fn latest_at_query_video_from_datastore(
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,
-            Hash64::hash(blob_row_id),
+            blob_row_id,
+            &AssetVideo::descriptor_blob(),
             &blob,
             media_type.as_ref(),
             ctx.app_options().video_decoder_settings(),

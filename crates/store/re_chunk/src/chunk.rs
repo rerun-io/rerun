@@ -225,37 +225,6 @@ impl PartialEq for Chunk {
 }
 
 impl Chunk {
-    /// Returns any list-array that matches the given [`ComponentName`].
-    ///
-    /// This is undefined behavior if there are more than one component with that name.
-    //
-    // TODO(#6889): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-    // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-    #[inline]
-    pub fn get_first_component(&self, component_name: ComponentName) -> Option<&ArrowListArray> {
-        self.components.iter().find_map(move |(descr, array)| {
-            (descr.component_name == component_name).then_some(array)
-        })
-    }
-
-    /// Returns any component descriptor with the given [`ComponentName`].
-    ///
-    /// This is undefined behavior if there are more than one component with that name.
-    //
-    // TODO(#6889): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-    // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-    #[inline]
-    pub fn get_first_component_descriptor(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<&ComponentDescriptor> {
-        self.components
-            .keys()
-            .find(|descr| descr.component_name == component_name)
-    }
-}
-
-impl Chunk {
     /// Returns a version of us with a new [`ChunkId`].
     ///
     /// Reminder:
