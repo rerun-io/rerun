@@ -23,13 +23,11 @@ namespace rerun {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(
-                Loggable<components::AffixFuzzer13>::fill_arrow_array_builder(
-                    static_cast<arrow::ListBuilder*>(builder.get()),
-                    instances,
-                    num_instances
-                )
-            );
+            RR_RETURN_NOT_OK(Loggable<components::AffixFuzzer13>::fill_arrow_array_builder(
+                static_cast<arrow::ListBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
@@ -59,9 +57,8 @@ namespace rerun {
                 ARROW_RETURN_NOT_OK(builder->Append());
                 for (size_t item_idx = 0; item_idx < element.many_strings_optional.value().size();
                      item_idx += 1) {
-                    ARROW_RETURN_NOT_OK(
-                        value_builder->Append(element.many_strings_optional.value()[item_idx])
-                    );
+                    ARROW_RETURN_NOT_OK(value_builder->Append(element.many_strings_optional.value(
+                    )[item_idx]));
                 }
             } else {
                 ARROW_RETURN_NOT_OK(builder->AppendNull());

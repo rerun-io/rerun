@@ -195,8 +195,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2001` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2001(
-            const Collection<rerun::components::AffixFuzzer1>& _fuzz2001
+        AffixFuzzer3 with_many_fuzz2001(const Collection<rerun::components::AffixFuzzer1>& _fuzz2001
         ) && {
             fuzz2001 =
                 ComponentBatch::from_loggable(_fuzz2001, Descriptor_fuzz2001).value_or_throw();
@@ -213,8 +212,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2002` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2002(
-            const Collection<rerun::components::AffixFuzzer2>& _fuzz2002
+        AffixFuzzer3 with_many_fuzz2002(const Collection<rerun::components::AffixFuzzer2>& _fuzz2002
         ) && {
             fuzz2002 =
                 ComponentBatch::from_loggable(_fuzz2002, Descriptor_fuzz2002).value_or_throw();
@@ -231,8 +229,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2003` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2003(
-            const Collection<rerun::components::AffixFuzzer3>& _fuzz2003
+        AffixFuzzer3 with_many_fuzz2003(const Collection<rerun::components::AffixFuzzer3>& _fuzz2003
         ) && {
             fuzz2003 =
                 ComponentBatch::from_loggable(_fuzz2003, Descriptor_fuzz2003).value_or_throw();
@@ -249,8 +246,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2004` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2004(
-            const Collection<rerun::components::AffixFuzzer4>& _fuzz2004
+        AffixFuzzer3 with_many_fuzz2004(const Collection<rerun::components::AffixFuzzer4>& _fuzz2004
         ) && {
             fuzz2004 =
                 ComponentBatch::from_loggable(_fuzz2004, Descriptor_fuzz2004).value_or_throw();
@@ -267,8 +263,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2005` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2005(
-            const Collection<rerun::components::AffixFuzzer5>& _fuzz2005
+        AffixFuzzer3 with_many_fuzz2005(const Collection<rerun::components::AffixFuzzer5>& _fuzz2005
         ) && {
             fuzz2005 =
                 ComponentBatch::from_loggable(_fuzz2005, Descriptor_fuzz2005).value_or_throw();
@@ -285,8 +280,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2006` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2006(
-            const Collection<rerun::components::AffixFuzzer6>& _fuzz2006
+        AffixFuzzer3 with_many_fuzz2006(const Collection<rerun::components::AffixFuzzer6>& _fuzz2006
         ) && {
             fuzz2006 =
                 ComponentBatch::from_loggable(_fuzz2006, Descriptor_fuzz2006).value_or_throw();
@@ -303,8 +297,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2007` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2007(
-            const Collection<rerun::components::AffixFuzzer7>& _fuzz2007
+        AffixFuzzer3 with_many_fuzz2007(const Collection<rerun::components::AffixFuzzer7>& _fuzz2007
         ) && {
             fuzz2007 =
                 ComponentBatch::from_loggable(_fuzz2007, Descriptor_fuzz2007).value_or_throw();
@@ -321,8 +314,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2008` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2008(
-            const Collection<rerun::components::AffixFuzzer8>& _fuzz2008
+        AffixFuzzer3 with_many_fuzz2008(const Collection<rerun::components::AffixFuzzer8>& _fuzz2008
         ) && {
             fuzz2008 =
                 ComponentBatch::from_loggable(_fuzz2008, Descriptor_fuzz2008).value_or_throw();
@@ -339,8 +331,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz2009` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer3 with_many_fuzz2009(
-            const Collection<rerun::components::AffixFuzzer9>& _fuzz2009
+        AffixFuzzer3 with_many_fuzz2009(const Collection<rerun::components::AffixFuzzer9>& _fuzz2009
         ) && {
             fuzz2009 =
                 ComponentBatch::from_loggable(_fuzz2009, Descriptor_fuzz2009).value_or_throw();

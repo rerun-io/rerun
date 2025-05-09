@@ -222,94 +222,50 @@ namespace rerun::archetypes {
             rerun::components::AffixFuzzer19 _fuzz1019, rerun::components::AffixFuzzer20 _fuzz1020,
             rerun::components::AffixFuzzer21 _fuzz1021, rerun::components::AffixFuzzer22 _fuzz1022
         )
-            : fuzz1001(
-                  ComponentBatch::from_loggable(std::move(_fuzz1001), Descriptor_fuzz1001)
-                      .value_or_throw()
-              ),
-              fuzz1002(
-                  ComponentBatch::from_loggable(std::move(_fuzz1002), Descriptor_fuzz1002)
-                      .value_or_throw()
-              ),
-              fuzz1003(
-                  ComponentBatch::from_loggable(std::move(_fuzz1003), Descriptor_fuzz1003)
-                      .value_or_throw()
-              ),
-              fuzz1004(
-                  ComponentBatch::from_loggable(std::move(_fuzz1004), Descriptor_fuzz1004)
-                      .value_or_throw()
-              ),
-              fuzz1005(
-                  ComponentBatch::from_loggable(std::move(_fuzz1005), Descriptor_fuzz1005)
-                      .value_or_throw()
-              ),
-              fuzz1006(
-                  ComponentBatch::from_loggable(std::move(_fuzz1006), Descriptor_fuzz1006)
-                      .value_or_throw()
-              ),
-              fuzz1007(
-                  ComponentBatch::from_loggable(std::move(_fuzz1007), Descriptor_fuzz1007)
-                      .value_or_throw()
-              ),
-              fuzz1008(
-                  ComponentBatch::from_loggable(std::move(_fuzz1008), Descriptor_fuzz1008)
-                      .value_or_throw()
-              ),
-              fuzz1009(
-                  ComponentBatch::from_loggable(std::move(_fuzz1009), Descriptor_fuzz1009)
-                      .value_or_throw()
-              ),
-              fuzz1010(
-                  ComponentBatch::from_loggable(std::move(_fuzz1010), Descriptor_fuzz1010)
-                      .value_or_throw()
-              ),
-              fuzz1011(
-                  ComponentBatch::from_loggable(std::move(_fuzz1011), Descriptor_fuzz1011)
-                      .value_or_throw()
-              ),
-              fuzz1012(
-                  ComponentBatch::from_loggable(std::move(_fuzz1012), Descriptor_fuzz1012)
-                      .value_or_throw()
-              ),
-              fuzz1013(
-                  ComponentBatch::from_loggable(std::move(_fuzz1013), Descriptor_fuzz1013)
-                      .value_or_throw()
-              ),
-              fuzz1014(
-                  ComponentBatch::from_loggable(std::move(_fuzz1014), Descriptor_fuzz1014)
-                      .value_or_throw()
-              ),
-              fuzz1015(
-                  ComponentBatch::from_loggable(std::move(_fuzz1015), Descriptor_fuzz1015)
-                      .value_or_throw()
-              ),
-              fuzz1016(
-                  ComponentBatch::from_loggable(std::move(_fuzz1016), Descriptor_fuzz1016)
-                      .value_or_throw()
-              ),
-              fuzz1017(
-                  ComponentBatch::from_loggable(std::move(_fuzz1017), Descriptor_fuzz1017)
-                      .value_or_throw()
-              ),
-              fuzz1018(
-                  ComponentBatch::from_loggable(std::move(_fuzz1018), Descriptor_fuzz1018)
-                      .value_or_throw()
-              ),
-              fuzz1019(
-                  ComponentBatch::from_loggable(std::move(_fuzz1019), Descriptor_fuzz1019)
-                      .value_or_throw()
-              ),
-              fuzz1020(
-                  ComponentBatch::from_loggable(std::move(_fuzz1020), Descriptor_fuzz1020)
-                      .value_or_throw()
-              ),
-              fuzz1021(
-                  ComponentBatch::from_loggable(std::move(_fuzz1021), Descriptor_fuzz1021)
-                      .value_or_throw()
-              ),
-              fuzz1022(
-                  ComponentBatch::from_loggable(std::move(_fuzz1022), Descriptor_fuzz1022)
-                      .value_or_throw()
-              ) {}
+            : fuzz1001(ComponentBatch::from_loggable(std::move(_fuzz1001), Descriptor_fuzz1001)
+                           .value_or_throw()),
+              fuzz1002(ComponentBatch::from_loggable(std::move(_fuzz1002), Descriptor_fuzz1002)
+                           .value_or_throw()),
+              fuzz1003(ComponentBatch::from_loggable(std::move(_fuzz1003), Descriptor_fuzz1003)
+                           .value_or_throw()),
+              fuzz1004(ComponentBatch::from_loggable(std::move(_fuzz1004), Descriptor_fuzz1004)
+                           .value_or_throw()),
+              fuzz1005(ComponentBatch::from_loggable(std::move(_fuzz1005), Descriptor_fuzz1005)
+                           .value_or_throw()),
+              fuzz1006(ComponentBatch::from_loggable(std::move(_fuzz1006), Descriptor_fuzz1006)
+                           .value_or_throw()),
+              fuzz1007(ComponentBatch::from_loggable(std::move(_fuzz1007), Descriptor_fuzz1007)
+                           .value_or_throw()),
+              fuzz1008(ComponentBatch::from_loggable(std::move(_fuzz1008), Descriptor_fuzz1008)
+                           .value_or_throw()),
+              fuzz1009(ComponentBatch::from_loggable(std::move(_fuzz1009), Descriptor_fuzz1009)
+                           .value_or_throw()),
+              fuzz1010(ComponentBatch::from_loggable(std::move(_fuzz1010), Descriptor_fuzz1010)
+                           .value_or_throw()),
+              fuzz1011(ComponentBatch::from_loggable(std::move(_fuzz1011), Descriptor_fuzz1011)
+                           .value_or_throw()),
+              fuzz1012(ComponentBatch::from_loggable(std::move(_fuzz1012), Descriptor_fuzz1012)
+                           .value_or_throw()),
+              fuzz1013(ComponentBatch::from_loggable(std::move(_fuzz1013), Descriptor_fuzz1013)
+                           .value_or_throw()),
+              fuzz1014(ComponentBatch::from_loggable(std::move(_fuzz1014), Descriptor_fuzz1014)
+                           .value_or_throw()),
+              fuzz1015(ComponentBatch::from_loggable(std::move(_fuzz1015), Descriptor_fuzz1015)
+                           .value_or_throw()),
+              fuzz1016(ComponentBatch::from_loggable(std::move(_fuzz1016), Descriptor_fuzz1016)
+                           .value_or_throw()),
+              fuzz1017(ComponentBatch::from_loggable(std::move(_fuzz1017), Descriptor_fuzz1017)
+                           .value_or_throw()),
+              fuzz1018(ComponentBatch::from_loggable(std::move(_fuzz1018), Descriptor_fuzz1018)
+                           .value_or_throw()),
+              fuzz1019(ComponentBatch::from_loggable(std::move(_fuzz1019), Descriptor_fuzz1019)
+                           .value_or_throw()),
+              fuzz1020(ComponentBatch::from_loggable(std::move(_fuzz1020), Descriptor_fuzz1020)
+                           .value_or_throw()),
+              fuzz1021(ComponentBatch::from_loggable(std::move(_fuzz1021), Descriptor_fuzz1021)
+                           .value_or_throw()),
+              fuzz1022(ComponentBatch::from_loggable(std::move(_fuzz1022), Descriptor_fuzz1022)
+                           .value_or_throw()) {}
 
         /// Update only some specific fields of a `AffixFuzzer1`.
         static AffixFuzzer1 update_fields() {
@@ -329,8 +285,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1001` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1001(
-            const Collection<rerun::components::AffixFuzzer1>& _fuzz1001
+        AffixFuzzer1 with_many_fuzz1001(const Collection<rerun::components::AffixFuzzer1>& _fuzz1001
         ) && {
             fuzz1001 =
                 ComponentBatch::from_loggable(_fuzz1001, Descriptor_fuzz1001).value_or_throw();
@@ -347,8 +302,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1002` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1002(
-            const Collection<rerun::components::AffixFuzzer2>& _fuzz1002
+        AffixFuzzer1 with_many_fuzz1002(const Collection<rerun::components::AffixFuzzer2>& _fuzz1002
         ) && {
             fuzz1002 =
                 ComponentBatch::from_loggable(_fuzz1002, Descriptor_fuzz1002).value_or_throw();
@@ -365,8 +319,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1003` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1003(
-            const Collection<rerun::components::AffixFuzzer3>& _fuzz1003
+        AffixFuzzer1 with_many_fuzz1003(const Collection<rerun::components::AffixFuzzer3>& _fuzz1003
         ) && {
             fuzz1003 =
                 ComponentBatch::from_loggable(_fuzz1003, Descriptor_fuzz1003).value_or_throw();
@@ -383,8 +336,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1004` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1004(
-            const Collection<rerun::components::AffixFuzzer4>& _fuzz1004
+        AffixFuzzer1 with_many_fuzz1004(const Collection<rerun::components::AffixFuzzer4>& _fuzz1004
         ) && {
             fuzz1004 =
                 ComponentBatch::from_loggable(_fuzz1004, Descriptor_fuzz1004).value_or_throw();
@@ -401,8 +353,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1005` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1005(
-            const Collection<rerun::components::AffixFuzzer5>& _fuzz1005
+        AffixFuzzer1 with_many_fuzz1005(const Collection<rerun::components::AffixFuzzer5>& _fuzz1005
         ) && {
             fuzz1005 =
                 ComponentBatch::from_loggable(_fuzz1005, Descriptor_fuzz1005).value_or_throw();
@@ -419,8 +370,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1006` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1006(
-            const Collection<rerun::components::AffixFuzzer6>& _fuzz1006
+        AffixFuzzer1 with_many_fuzz1006(const Collection<rerun::components::AffixFuzzer6>& _fuzz1006
         ) && {
             fuzz1006 =
                 ComponentBatch::from_loggable(_fuzz1006, Descriptor_fuzz1006).value_or_throw();
@@ -437,8 +387,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1007` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1007(
-            const Collection<rerun::components::AffixFuzzer7>& _fuzz1007
+        AffixFuzzer1 with_many_fuzz1007(const Collection<rerun::components::AffixFuzzer7>& _fuzz1007
         ) && {
             fuzz1007 =
                 ComponentBatch::from_loggable(_fuzz1007, Descriptor_fuzz1007).value_or_throw();
@@ -455,8 +404,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1008` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1008(
-            const Collection<rerun::components::AffixFuzzer8>& _fuzz1008
+        AffixFuzzer1 with_many_fuzz1008(const Collection<rerun::components::AffixFuzzer8>& _fuzz1008
         ) && {
             fuzz1008 =
                 ComponentBatch::from_loggable(_fuzz1008, Descriptor_fuzz1008).value_or_throw();
@@ -473,8 +421,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_fuzz1009` should
         /// be used when logging a single row's worth of data.
-        AffixFuzzer1 with_many_fuzz1009(
-            const Collection<rerun::components::AffixFuzzer9>& _fuzz1009
+        AffixFuzzer1 with_many_fuzz1009(const Collection<rerun::components::AffixFuzzer9>& _fuzz1009
         ) && {
             fuzz1009 =
                 ComponentBatch::from_loggable(_fuzz1009, Descriptor_fuzz1009).value_or_throw();

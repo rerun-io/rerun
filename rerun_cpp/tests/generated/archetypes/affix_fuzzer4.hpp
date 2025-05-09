@@ -185,144 +185,126 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `AffixFuzzer4`.
         static AffixFuzzer4 clear_fields();
 
-        AffixFuzzer4 with_fuzz2101(
-            const Collection<rerun::components::AffixFuzzer1>& _fuzz2101
+        AffixFuzzer4 with_fuzz2101(const Collection<rerun::components::AffixFuzzer1>& _fuzz2101
         ) && {
             fuzz2101 =
                 ComponentBatch::from_loggable(_fuzz2101, Descriptor_fuzz2101).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2102(
-            const Collection<rerun::components::AffixFuzzer2>& _fuzz2102
+        AffixFuzzer4 with_fuzz2102(const Collection<rerun::components::AffixFuzzer2>& _fuzz2102
         ) && {
             fuzz2102 =
                 ComponentBatch::from_loggable(_fuzz2102, Descriptor_fuzz2102).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2103(
-            const Collection<rerun::components::AffixFuzzer3>& _fuzz2103
+        AffixFuzzer4 with_fuzz2103(const Collection<rerun::components::AffixFuzzer3>& _fuzz2103
         ) && {
             fuzz2103 =
                 ComponentBatch::from_loggable(_fuzz2103, Descriptor_fuzz2103).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2104(
-            const Collection<rerun::components::AffixFuzzer4>& _fuzz2104
+        AffixFuzzer4 with_fuzz2104(const Collection<rerun::components::AffixFuzzer4>& _fuzz2104
         ) && {
             fuzz2104 =
                 ComponentBatch::from_loggable(_fuzz2104, Descriptor_fuzz2104).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2105(
-            const Collection<rerun::components::AffixFuzzer5>& _fuzz2105
+        AffixFuzzer4 with_fuzz2105(const Collection<rerun::components::AffixFuzzer5>& _fuzz2105
         ) && {
             fuzz2105 =
                 ComponentBatch::from_loggable(_fuzz2105, Descriptor_fuzz2105).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2106(
-            const Collection<rerun::components::AffixFuzzer6>& _fuzz2106
+        AffixFuzzer4 with_fuzz2106(const Collection<rerun::components::AffixFuzzer6>& _fuzz2106
         ) && {
             fuzz2106 =
                 ComponentBatch::from_loggable(_fuzz2106, Descriptor_fuzz2106).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2107(
-            const Collection<rerun::components::AffixFuzzer7>& _fuzz2107
+        AffixFuzzer4 with_fuzz2107(const Collection<rerun::components::AffixFuzzer7>& _fuzz2107
         ) && {
             fuzz2107 =
                 ComponentBatch::from_loggable(_fuzz2107, Descriptor_fuzz2107).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2108(
-            const Collection<rerun::components::AffixFuzzer8>& _fuzz2108
+        AffixFuzzer4 with_fuzz2108(const Collection<rerun::components::AffixFuzzer8>& _fuzz2108
         ) && {
             fuzz2108 =
                 ComponentBatch::from_loggable(_fuzz2108, Descriptor_fuzz2108).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2109(
-            const Collection<rerun::components::AffixFuzzer9>& _fuzz2109
+        AffixFuzzer4 with_fuzz2109(const Collection<rerun::components::AffixFuzzer9>& _fuzz2109
         ) && {
             fuzz2109 =
                 ComponentBatch::from_loggable(_fuzz2109, Descriptor_fuzz2109).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2110(
-            const Collection<rerun::components::AffixFuzzer10>& _fuzz2110
+        AffixFuzzer4 with_fuzz2110(const Collection<rerun::components::AffixFuzzer10>& _fuzz2110
         ) && {
             fuzz2110 =
                 ComponentBatch::from_loggable(_fuzz2110, Descriptor_fuzz2110).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2111(
-            const Collection<rerun::components::AffixFuzzer11>& _fuzz2111
+        AffixFuzzer4 with_fuzz2111(const Collection<rerun::components::AffixFuzzer11>& _fuzz2111
         ) && {
             fuzz2111 =
                 ComponentBatch::from_loggable(_fuzz2111, Descriptor_fuzz2111).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2112(
-            const Collection<rerun::components::AffixFuzzer12>& _fuzz2112
+        AffixFuzzer4 with_fuzz2112(const Collection<rerun::components::AffixFuzzer12>& _fuzz2112
         ) && {
             fuzz2112 =
                 ComponentBatch::from_loggable(_fuzz2112, Descriptor_fuzz2112).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2113(
-            const Collection<rerun::components::AffixFuzzer13>& _fuzz2113
+        AffixFuzzer4 with_fuzz2113(const Collection<rerun::components::AffixFuzzer13>& _fuzz2113
         ) && {
             fuzz2113 =
                 ComponentBatch::from_loggable(_fuzz2113, Descriptor_fuzz2113).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2114(
-            const Collection<rerun::components::AffixFuzzer14>& _fuzz2114
+        AffixFuzzer4 with_fuzz2114(const Collection<rerun::components::AffixFuzzer14>& _fuzz2114
         ) && {
             fuzz2114 =
                 ComponentBatch::from_loggable(_fuzz2114, Descriptor_fuzz2114).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2115(
-            const Collection<rerun::components::AffixFuzzer15>& _fuzz2115
+        AffixFuzzer4 with_fuzz2115(const Collection<rerun::components::AffixFuzzer15>& _fuzz2115
         ) && {
             fuzz2115 =
                 ComponentBatch::from_loggable(_fuzz2115, Descriptor_fuzz2115).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2116(
-            const Collection<rerun::components::AffixFuzzer16>& _fuzz2116
+        AffixFuzzer4 with_fuzz2116(const Collection<rerun::components::AffixFuzzer16>& _fuzz2116
         ) && {
             fuzz2116 =
                 ComponentBatch::from_loggable(_fuzz2116, Descriptor_fuzz2116).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2117(
-            const Collection<rerun::components::AffixFuzzer17>& _fuzz2117
+        AffixFuzzer4 with_fuzz2117(const Collection<rerun::components::AffixFuzzer17>& _fuzz2117
         ) && {
             fuzz2117 =
                 ComponentBatch::from_loggable(_fuzz2117, Descriptor_fuzz2117).value_or_throw();
             return std::move(*this);
         }
 
-        AffixFuzzer4 with_fuzz2118(
-            const Collection<rerun::components::AffixFuzzer18>& _fuzz2118
+        AffixFuzzer4 with_fuzz2118(const Collection<rerun::components::AffixFuzzer18>& _fuzz2118
         ) && {
             fuzz2118 =
                 ComponentBatch::from_loggable(_fuzz2118, Descriptor_fuzz2118).value_or_throw();
