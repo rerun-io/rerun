@@ -245,7 +245,7 @@ impl EntityData {
 pub fn components_for_entity(
     store: &ChunkStore,
     entity_path: &EntityPath,
-) -> impl Iterator<Item = ComponentDescriptor> {
+) -> impl Iterator<Item = ComponentDescriptor> + use<> {
     if let Some(components) = store.all_components_for_entity(entity_path) {
         itertools::Either::Left(sorted_component_list_for_ui(components.iter()).into_iter())
     } else {

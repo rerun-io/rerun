@@ -282,7 +282,7 @@ fn log_episode_task(
     dataset: &LeRobotDataset,
     timeline: &Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let task_indices = data
         .column_by_name("task_index")
         .and_then(|c| c.downcast_array_ref::<Int64Array>())
@@ -317,7 +317,7 @@ fn load_episode_images(
     observation: &str,
     timeline: &Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let image_bytes = data
         .column_by_name(observation)
         .and_then(|c| c.downcast_array_ref::<StructArray>())
@@ -346,7 +346,7 @@ fn load_episode_depth_images(
     observation: &str,
     timeline: &Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let image_bytes = data
         .column_by_name(observation)
         .and_then(|c| c.downcast_array_ref::<StructArray>())
@@ -379,7 +379,7 @@ fn load_episode_video(
     episode: EpisodeIndex,
     timeline: &Timeline,
     time_column: TimeColumn,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let contents = dataset
         .read_episode_video_contents(observation, episode)
         .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
@@ -535,7 +535,7 @@ fn make_scalar_batch_entity_chunks(
     feature: &Feature,
     timelines: &IntMap<TimelineName, TimeColumn>,
     data: &FixedSizeListArray,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let num_elements = data.value_length() as usize;
 
     let mut chunks = Vec::with_capacity(num_elements);

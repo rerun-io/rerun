@@ -204,10 +204,14 @@ impl ChunkStoreConfig {
 #[test]
 fn chunk_store_config() {
     // Detect breaking changes in our environment variables.
-    std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
-    std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42");
-    std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666");
-    std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false") };
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42") };
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666") };
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999") };
 
     let config = ChunkStoreConfig::from_env().unwrap();
 

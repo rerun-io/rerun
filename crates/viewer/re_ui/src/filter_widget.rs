@@ -435,7 +435,7 @@ impl PathRanges {
     }
 
     /// Remove the ranges for the given part and (if any) return them sorted and merged.
-    pub fn remove(&mut self, part_index: usize) -> Option<impl Iterator<Item = Range<usize>>> {
+    pub fn remove(&mut self, part_index: usize) -> Option<impl Iterator<Item = Range<usize>> + use<>> {
         self.ranges.remove(&part_index).map(MergeRanges::new)
     }
 

@@ -1199,7 +1199,7 @@ impl Chunk {
     pub fn component_row_ids(
         &self,
         component_descriptor: &ComponentDescriptor,
-    ) -> impl Iterator<Item = RowId> + '_ {
+    ) -> impl Iterator<Item = RowId> + '_ + use<'_> {
         let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
