@@ -109,6 +109,15 @@ pub struct SeriesLine {
 
 impl SeriesLine {
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SeriesLine",
+    ///    component_name: "rerun.components.Color",
+    ///    archetype_field_name: "color",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -119,6 +128,15 @@ impl SeriesLine {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::width`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SeriesLine",
+    ///    component_name: "rerun.components.StrokeWidth",
+    ///    archetype_field_name: "width",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_width() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -129,6 +147,15 @@ impl SeriesLine {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SeriesLine",
+    ///    component_name: "rerun.components.Name",
+    ///    archetype_field_name: "name",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -139,6 +166,15 @@ impl SeriesLine {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SeriesLine",
+    ///    component_name: "rerun.components.SeriesVisible",
+    ///    archetype_field_name: "visible_series",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -149,6 +185,15 @@ impl SeriesLine {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::aggregation_policy`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SeriesLine",
+    ///    component_name: "rerun.components.AggregationPolicy",
+    ///    archetype_field_name: "aggregation_policy",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
         ComponentDescriptor {

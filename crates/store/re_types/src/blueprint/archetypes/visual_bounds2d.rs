@@ -37,6 +37,15 @@ pub struct VisualBounds2D {
 
 impl VisualBounds2D {
     /// Returns the [`ComponentDescriptor`] for [`Self::range`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.VisualBounds2D",
+    ///    component_name: "rerun.blueprint.components.VisualBounds2D",
+    ///    archetype_field_name: "range",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {

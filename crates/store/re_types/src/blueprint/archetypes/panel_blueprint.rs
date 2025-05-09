@@ -29,6 +29,15 @@ pub struct PanelBlueprint {
 
 impl PanelBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::state`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.PanelBlueprint",
+    ///    component_name: "rerun.blueprint.components.PanelState",
+    ///    archetype_field_name: "state",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_state() -> ComponentDescriptor {
         ComponentDescriptor {

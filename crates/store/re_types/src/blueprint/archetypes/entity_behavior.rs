@@ -42,6 +42,15 @@ pub struct EntityBehavior {
 
 impl EntityBehavior {
     /// Returns the [`ComponentDescriptor`] for [`Self::interactive`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.EntityBehavior",
+    ///    component_name: "rerun.components.Interactive",
+    ///    archetype_field_name: "interactive",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_interactive() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -52,6 +61,15 @@ impl EntityBehavior {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.EntityBehavior",
+    ///    component_name: "rerun.components.Visible",
+    ///    archetype_field_name: "visible",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -71,6 +71,15 @@ pub struct Tensor {
 
 impl Tensor {
     /// Returns the [`ComponentDescriptor`] for [`Self::data`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Tensor",
+    ///    component_name: "rerun.components.TensorData",
+    ///    archetype_field_name: "data",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -81,6 +90,15 @@ impl Tensor {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::value_range`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Tensor",
+    ///    component_name: "rerun.components.ValueRange",
+    ///    archetype_field_name: "value_range",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -85,6 +85,15 @@ pub struct SegmentationImage {
 
 impl SegmentationImage {
     /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SegmentationImage",
+    ///    component_name: "rerun.components.ImageBuffer",
+    ///    archetype_field_name: "buffer",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -95,6 +104,15 @@ impl SegmentationImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SegmentationImage",
+    ///    component_name: "rerun.components.ImageFormat",
+    ///    archetype_field_name: "format",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -105,6 +123,15 @@ impl SegmentationImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SegmentationImage",
+    ///    component_name: "rerun.components.Opacity",
+    ///    archetype_field_name: "opacity",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -115,6 +142,15 @@ impl SegmentationImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.SegmentationImage",
+    ///    component_name: "rerun.components.DrawOrder",
+    ///    archetype_field_name: "draw_order",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

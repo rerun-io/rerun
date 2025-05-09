@@ -57,6 +57,15 @@ pub struct BarChart {
 
 impl BarChart {
     /// Returns the [`ComponentDescriptor`] for [`Self::values`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.BarChart",
+    ///    component_name: "rerun.components.TensorData",
+    ///    archetype_field_name: "values",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_values() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -67,6 +76,15 @@ impl BarChart {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.BarChart",
+    ///    component_name: "rerun.components.Color",
+    ///    archetype_field_name: "color",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

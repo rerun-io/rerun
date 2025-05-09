@@ -48,6 +48,15 @@ pub struct TensorSliceSelection {
 
 impl TensorSliceSelection {
     /// Returns the [`ComponentDescriptor`] for [`Self::width`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.TensorSliceSelection",
+    ///    component_name: "rerun.components.TensorWidthDimension",
+    ///    archetype_field_name: "width",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_width() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -58,6 +67,15 @@ impl TensorSliceSelection {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::height`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.TensorSliceSelection",
+    ///    component_name: "rerun.components.TensorHeightDimension",
+    ///    archetype_field_name: "height",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_height() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -68,6 +86,15 @@ impl TensorSliceSelection {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::indices`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.TensorSliceSelection",
+    ///    component_name: "rerun.components.TensorDimensionIndexSelection",
+    ///    archetype_field_name: "indices",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_indices() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -78,6 +105,15 @@ impl TensorSliceSelection {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::slider`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.TensorSliceSelection",
+    ///    component_name: "rerun.blueprint.components.TensorDimensionIndexSlider",
+    ///    archetype_field_name: "slider",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_slider() -> ComponentDescriptor {
         ComponentDescriptor {

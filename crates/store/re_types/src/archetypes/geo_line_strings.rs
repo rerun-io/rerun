@@ -71,6 +71,15 @@ pub struct GeoLineStrings {
 
 impl GeoLineStrings {
     /// Returns the [`ComponentDescriptor`] for [`Self::line_strings`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GeoLineStrings",
+    ///    component_name: "rerun.components.GeoLineString",
+    ///    archetype_field_name: "line_strings",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_line_strings() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -81,6 +90,15 @@ impl GeoLineStrings {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GeoLineStrings",
+    ///    component_name: "rerun.components.Radius",
+    ///    archetype_field_name: "radii",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -91,6 +109,15 @@ impl GeoLineStrings {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GeoLineStrings",
+    ///    component_name: "rerun.components.Color",
+    ///    archetype_field_name: "colors",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -39,6 +39,15 @@ pub struct ForceLink {
 
 impl ForceLink {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForceLink",
+    ///    component_name: "rerun.blueprint.components.Enabled",
+    ///    archetype_field_name: "enabled",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -49,6 +58,15 @@ impl ForceLink {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::distance`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForceLink",
+    ///    component_name: "rerun.blueprint.components.ForceDistance",
+    ///    archetype_field_name: "distance",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_distance() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -59,6 +77,15 @@ impl ForceLink {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForceLink",
+    ///    component_name: "rerun.blueprint.components.ForceIterations",
+    ///    archetype_field_name: "iterations",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -36,6 +36,15 @@ pub struct PlotLegend {
 
 impl PlotLegend {
     /// Returns the [`ComponentDescriptor`] for [`Self::corner`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.PlotLegend",
+    ///    component_name: "rerun.blueprint.components.Corner2D",
+    ///    archetype_field_name: "corner",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_corner() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -46,6 +55,15 @@ impl PlotLegend {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.PlotLegend",
+    ///    component_name: "rerun.components.Visible",
+    ///    archetype_field_name: "visible",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

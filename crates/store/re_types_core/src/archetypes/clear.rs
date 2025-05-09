@@ -80,6 +80,15 @@ pub struct Clear {
 
 impl Clear {
     /// Returns the [`ComponentDescriptor`] for [`Self::is_recursive`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Clear",
+    ///    component_name: "rerun.components.ClearIsRecursive",
+    ///    archetype_field_name: "is_recursive",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_is_recursive() -> ComponentDescriptor {
         ComponentDescriptor {

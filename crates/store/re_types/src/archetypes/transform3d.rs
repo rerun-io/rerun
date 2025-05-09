@@ -360,6 +360,15 @@ pub struct Transform3D {
 
 impl Transform3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::translation`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Transform3D",
+    ///    component_name: "rerun.components.Translation3D",
+    ///    archetype_field_name: "translation",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_translation() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -370,6 +379,15 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angle`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Transform3D",
+    ///    component_name: "rerun.components.RotationAxisAngle",
+    ///    archetype_field_name: "rotation_axis_angle",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_rotation_axis_angle() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -380,6 +398,15 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternion`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Transform3D",
+    ///    component_name: "rerun.components.RotationQuat",
+    ///    archetype_field_name: "quaternion",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_quaternion() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -390,6 +417,15 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scale`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Transform3D",
+    ///    component_name: "rerun.components.Scale3D",
+    ///    archetype_field_name: "scale",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_scale() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -400,6 +436,15 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Transform3D",
+    ///    component_name: "rerun.components.TransformMat3x3",
+    ///    archetype_field_name: "mat3x3",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -410,6 +455,15 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::relation`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Transform3D",
+    ///    component_name: "rerun.components.TransformRelation",
+    ///    archetype_field_name: "relation",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_relation() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -420,6 +474,15 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::axis_length`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Transform3D",
+    ///    component_name: "rerun.components.AxisLength",
+    ///    archetype_field_name: "axis_length",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_axis_length() -> ComponentDescriptor {
         ComponentDescriptor {

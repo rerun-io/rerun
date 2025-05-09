@@ -116,6 +116,15 @@ pub struct DepthImage {
 
 impl DepthImage {
     /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.DepthImage",
+    ///    component_name: "rerun.components.ImageBuffer",
+    ///    archetype_field_name: "buffer",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -126,6 +135,15 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.DepthImage",
+    ///    component_name: "rerun.components.ImageFormat",
+    ///    archetype_field_name: "format",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -136,6 +154,15 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::meter`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.DepthImage",
+    ///    component_name: "rerun.components.DepthMeter",
+    ///    archetype_field_name: "meter",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_meter() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -146,6 +173,15 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.DepthImage",
+    ///    component_name: "rerun.components.Colormap",
+    ///    archetype_field_name: "colormap",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -156,6 +192,15 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::depth_range`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.DepthImage",
+    ///    component_name: "rerun.components.ValueRange",
+    ///    archetype_field_name: "depth_range",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_depth_range() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -166,6 +211,15 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::point_fill_ratio`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.DepthImage",
+    ///    component_name: "rerun.components.FillRatio",
+    ///    archetype_field_name: "point_fill_ratio",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -176,6 +230,15 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.DepthImage",
+    ///    component_name: "rerun.components.DrawOrder",
+    ///    archetype_field_name: "draw_order",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

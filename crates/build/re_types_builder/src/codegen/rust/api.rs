@@ -1102,14 +1102,31 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             let archetype_name = &obj.fqname;
             let archetype_field_name = field.snake_case_name();
 
-            let doc = format!(
-                "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
-            );
+            // Make the `#doc` string nice (avoids `/** */`).
+            let lines = [
+                format!(
+                    "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
+                ),
+                String::new(),
+                "The `descriptor` will have the following fields:".to_owned(),
+                "```".to_owned(),
+                "let descriptor = ComponentDescriptor {".to_owned(),
+                format!("    archetype_name: \"{archetype_name}\","),
+                format!("    component_name: \"{component_name}\","),
+                format!("    archetype_field_name: \"{archetype_field_name}\","),
+                "};".to_owned(),
+                "```".to_owned(),
+            ];
+
+            let doc_attrs = lines.iter().map(|line| {
+                quote! { #[doc = #line] }
+            });
+
             let fn_name = format_ident!("descriptor_{archetype_field_name}");
 
             quote! {
-                #[doc = #doc]
-                #[inline]
+            #(#doc_attrs)*
+            #[inline]
                 pub fn #fn_name() -> ComponentDescriptor {
                     ComponentDescriptor {
                         archetype_name: Some(#archetype_name.into()),

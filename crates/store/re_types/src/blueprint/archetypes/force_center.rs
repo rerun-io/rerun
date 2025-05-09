@@ -34,6 +34,15 @@ pub struct ForceCenter {
 
 impl ForceCenter {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForceCenter",
+    ///    component_name: "rerun.blueprint.components.Enabled",
+    ///    archetype_field_name: "enabled",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -44,6 +53,15 @@ impl ForceCenter {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForceCenter",
+    ///    component_name: "rerun.blueprint.components.ForceStrength",
+    ///    archetype_field_name: "strength",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {

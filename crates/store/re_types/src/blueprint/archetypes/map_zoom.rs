@@ -31,6 +31,15 @@ pub struct MapZoom {
 
 impl MapZoom {
     /// Returns the [`ComponentDescriptor`] for [`Self::zoom`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.MapZoom",
+    ///    component_name: "rerun.blueprint.components.ZoomLevel",
+    ///    archetype_field_name: "zoom",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_zoom() -> ComponentDescriptor {
         ComponentDescriptor {

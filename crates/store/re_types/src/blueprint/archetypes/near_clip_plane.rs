@@ -31,6 +31,15 @@ pub struct NearClipPlane {
 
 impl NearClipPlane {
     /// Returns the [`ComponentDescriptor`] for [`Self::near_clip_plane`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.NearClipPlane",
+    ///    component_name: "rerun.blueprint.components.NearClipPlane",
+    ///    archetype_field_name: "near_clip_plane",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_near_clip_plane() -> ComponentDescriptor {
         ComponentDescriptor {

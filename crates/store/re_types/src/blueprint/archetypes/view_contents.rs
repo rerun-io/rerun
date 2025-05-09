@@ -68,6 +68,15 @@ pub struct ViewContents {
 
 impl ViewContents {
     /// Returns the [`ComponentDescriptor`] for [`Self::query`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ViewContents",
+    ///    component_name: "rerun.blueprint.components.QueryExpression",
+    ///    archetype_field_name: "query",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_query() -> ComponentDescriptor {
         ComponentDescriptor {

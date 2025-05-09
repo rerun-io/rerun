@@ -38,6 +38,15 @@ pub struct VisualizerOverrides {
 
 impl VisualizerOverrides {
     /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.VisualizerOverrides",
+    ///    component_name: "rerun.blueprint.components.VisualizerOverride",
+    ///    archetype_field_name: "ranges",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -37,6 +37,15 @@ pub struct ForcePosition {
 
 impl ForcePosition {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForcePosition",
+    ///    component_name: "rerun.blueprint.components.Enabled",
+    ///    archetype_field_name: "enabled",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -47,6 +56,15 @@ impl ForcePosition {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForcePosition",
+    ///    component_name: "rerun.blueprint.components.ForceStrength",
+    ///    archetype_field_name: "strength",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -57,6 +75,15 @@ impl ForcePosition {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::position`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ForcePosition",
+    ///    component_name: "rerun.components.Position2D",
+    ///    archetype_field_name: "position",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_position() -> ComponentDescriptor {
         ComponentDescriptor {

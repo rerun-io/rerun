@@ -45,6 +45,15 @@ pub struct DataframeQuery {
 
 impl DataframeQuery {
     /// Returns the [`ComponentDescriptor`] for [`Self::timeline`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.DataframeQuery",
+    ///    component_name: "rerun.blueprint.components.TimelineName",
+    ///    archetype_field_name: "timeline",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_timeline() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -55,6 +64,15 @@ impl DataframeQuery {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::filter_by_range`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.DataframeQuery",
+    ///    component_name: "rerun.blueprint.components.FilterByRange",
+    ///    archetype_field_name: "filter_by_range",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_filter_by_range() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -65,6 +83,15 @@ impl DataframeQuery {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::filter_is_not_null`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.DataframeQuery",
+    ///    component_name: "rerun.blueprint.components.FilterIsNotNull",
+    ///    archetype_field_name: "filter_is_not_null",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_filter_is_not_null() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -75,6 +102,15 @@ impl DataframeQuery {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::apply_latest_at`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.DataframeQuery",
+    ///    component_name: "rerun.blueprint.components.ApplyLatestAt",
+    ///    archetype_field_name: "apply_latest_at",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_apply_latest_at() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -85,6 +121,15 @@ impl DataframeQuery {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::select`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.DataframeQuery",
+    ///    component_name: "rerun.blueprint.components.SelectedColumns",
+    ///    archetype_field_name: "select",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_select() -> ComponentDescriptor {
         ComponentDescriptor {

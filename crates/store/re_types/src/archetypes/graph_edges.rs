@@ -64,6 +64,15 @@ pub struct GraphEdges {
 
 impl GraphEdges {
     /// Returns the [`ComponentDescriptor`] for [`Self::edges`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphEdges",
+    ///    component_name: "rerun.components.GraphEdge",
+    ///    archetype_field_name: "edges",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_edges() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -74,6 +83,15 @@ impl GraphEdges {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::graph_type`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphEdges",
+    ///    component_name: "rerun.components.GraphType",
+    ///    archetype_field_name: "graph_type",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_graph_type() -> ComponentDescriptor {
         ComponentDescriptor {

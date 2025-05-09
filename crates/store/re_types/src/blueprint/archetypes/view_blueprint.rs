@@ -46,6 +46,15 @@ pub struct ViewBlueprint {
 
 impl ViewBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::class_identifier`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ViewBlueprint",
+    ///    component_name: "rerun.blueprint.components.ViewClass",
+    ///    archetype_field_name: "class_identifier",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_class_identifier() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -56,6 +65,15 @@ impl ViewBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ViewBlueprint",
+    ///    component_name: "rerun.components.Name",
+    ///    archetype_field_name: "display_name",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -66,6 +84,15 @@ impl ViewBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::space_origin`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ViewBlueprint",
+    ///    component_name: "rerun.blueprint.components.ViewOrigin",
+    ///    archetype_field_name: "space_origin",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_space_origin() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -76,6 +103,15 @@ impl ViewBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.blueprint.archetypes.ViewBlueprint",
+    ///    component_name: "rerun.components.Visible",
+    ///    archetype_field_name: "visible",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

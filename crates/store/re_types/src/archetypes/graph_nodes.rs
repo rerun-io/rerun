@@ -72,6 +72,15 @@ pub struct GraphNodes {
 
 impl GraphNodes {
     /// Returns the [`ComponentDescriptor`] for [`Self::node_ids`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphNodes",
+    ///    component_name: "rerun.components.GraphNode",
+    ///    archetype_field_name: "node_ids",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_node_ids() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -82,6 +91,15 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphNodes",
+    ///    component_name: "rerun.components.Position2D",
+    ///    archetype_field_name: "positions",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -92,6 +110,15 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphNodes",
+    ///    component_name: "rerun.components.Color",
+    ///    archetype_field_name: "colors",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -102,6 +129,15 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphNodes",
+    ///    component_name: "rerun.components.Text",
+    ///    archetype_field_name: "labels",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -112,6 +148,15 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphNodes",
+    ///    component_name: "rerun.components.ShowLabels",
+    ///    archetype_field_name: "show_labels",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -122,6 +167,15 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.GraphNodes",
+    ///    component_name: "rerun.components.Radius",
+    ///    archetype_field_name: "radii",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {

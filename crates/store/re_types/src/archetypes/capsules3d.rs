@@ -117,6 +117,15 @@ pub struct Capsules3D {
 
 impl Capsules3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::lengths`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.Length",
+    ///    archetype_field_name: "lengths",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_lengths() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -127,6 +136,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.Radius",
+    ///    archetype_field_name: "radii",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -137,6 +155,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.PoseTranslation3D",
+    ///    archetype_field_name: "translations",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_translations() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -147,6 +174,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.PoseRotationAxisAngle",
+    ///    archetype_field_name: "rotation_axis_angles",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -157,6 +193,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.PoseRotationQuat",
+    ///    archetype_field_name: "quaternions",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -167,6 +212,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.Color",
+    ///    archetype_field_name: "colors",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -177,6 +231,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.Text",
+    ///    archetype_field_name: "labels",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -187,6 +250,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.ShowLabels",
+    ///    archetype_field_name: "show_labels",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -197,6 +269,15 @@ impl Capsules3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    ///
+    /// The `descriptor` will have the following fields:
+    /// ```
+    /// let descriptor = ComponentDescriptor {
+    ///    archetype_name: "rerun.archetypes.Capsules3D",
+    ///    component_name: "rerun.components.ClassId",
+    ///    archetype_field_name: "class_ids",
+    /// };
+    /// ```
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
