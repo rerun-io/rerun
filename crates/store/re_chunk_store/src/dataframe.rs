@@ -15,7 +15,7 @@ use re_chunk::{LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
     ChunkColumnDescriptors, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, IndexColumnDescriptor,  TimeColumnSelector,
+    ComponentColumnSelector, IndexColumnDescriptor, TimeColumnSelector,
 };
 use re_types_core::{ComponentDescriptor, ComponentName};
 use tap::Tap as _;
