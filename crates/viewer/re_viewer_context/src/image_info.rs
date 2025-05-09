@@ -42,6 +42,8 @@ impl ColormapWithRange {
 pub struct StoredBlobCacheKey(pub Hash64);
 
 impl StoredBlobCacheKey {
+    pub const ZERO: Self = Self(Hash64::ZERO);
+
     pub fn new(blob_row_id: RowId, component_descriptor: &ComponentDescriptor) -> Self {
         // Row ID + component descriptor is enough because in a single row & column there
         // can currently only be a single blob since blobs are internally stored as transparent dynamic byte arrays.
@@ -79,7 +81,10 @@ impl ImageInfo {
         // we need to make sure that the descriptor is the one used for _querying_ the blob.
         // This also means that the `ImageKind` may change!
         // But until then, image kind and descriptor should be in sync.
-        debug_assert!(ImageKind::from_archetype_name(component_descriptor.archetype_name) == kind);
+        debug_assert_eq!(
+            ImageKind::from_archetype_name(component_descriptor.archetype_name),
+            kind
+        );
 
         Self {
             buffer_content_hash: StoredBlobCacheKey::new(blob_row_id, component_descriptor),

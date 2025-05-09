@@ -39,7 +39,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                             ui,
                             ui_layout,
                             entity_path,
-                            &component_descriptor,
+                            component_descriptor,
                             row_id,
                             query,
                             db,
