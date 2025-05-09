@@ -2,23 +2,19 @@ use ahash::{HashMap, HashSet};
 use itertools::Either;
 
 use re_chunk_store::ChunkStoreEvent;
-use re_log_types::hash::Hash64;
-use re_types::Component as _;
+use re_types::{components, image::ImageKind, Component as _};
 
-use crate::{Cache, ImageInfo, ImageStats};
+use crate::{image_info::StoredBlobCacheKey, Cache, ImageInfo, ImageStats};
 
 // Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]
-pub struct ImageStatsCache(HashMap<Hash64, HashMap<Hash64, ImageStats>>);
+pub struct ImageStatsCache(HashMap<(StoredBlobCacheKey, ImageKind), ImageStats>);
 
 impl ImageStatsCache {
     pub fn entry(&mut self, image: &ImageInfo) -> ImageStats {
-        let inner_key = Hash64::hash(image.format);
         *self
             .0
-            .entry(image.buffer_cache_key)
-            .or_default()
-            .entry(inner_key)
+            .entry((image.buffer_content_hash, image.kind))
             .or_insert_with(|| ImageStats::from_image(image))
     }
 }
@@ -31,19 +27,22 @@ impl Cache for ImageStatsCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let cache_key_removed: HashSet<Hash64> = events
+        let cache_key_removed: HashSet<(StoredBlobCacheKey, ImageKind)> = events
             .iter()
             .flat_map(|event| {
-                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
-                let contains_image_blob = || {
-                    event
-                        .chunk
-                        .components()
-                        .contains_component_name(re_types::components::Blob::name())
-                };
-
-                if is_deletion() && contains_image_blob() {
-                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
+                if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
+                    Either::Left(
+                        event
+                            .chunk
+                            .component_descriptors()
+                            .filter(|descr| descr.component_name == components::Blob::name())
+                            .flat_map(|descr| {
+                                let kind = ImageKind::from_archetype_name(descr.archetype_name);
+                                event.chunk.row_ids().map(move |row_id| {
+                                    (StoredBlobCacheKey::new(row_id, &descr), kind)
+                                })
+                            }),
+                    )
                 } else {
                     Either::Right(std::iter::empty())
                 }
