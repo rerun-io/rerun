@@ -311,7 +311,7 @@ pub trait ChunkComponentSlicer {
 
     fn slice<'a>(
         // TODO(#9903): A reference to component descriptor should be enough since the returned iterator doesn't depend on it being alive.
-        // However, I wasn't able to get this idea accross to the borrow checker.
+        // However, I wasn't able to get this idea across to the borrow checker.
         component_descriptor: ComponentDescriptor,
         array: &'a dyn ArrowArray,
         component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
