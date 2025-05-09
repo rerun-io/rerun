@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_types::{
     archetypes,
     components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
-    Archetype as _, Component as _,
+    Archetype as _,
 };
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::{
@@ -289,7 +289,11 @@ impl SeriesPointSystem {
 
                         let mut all_marker_shapes_iters = all_marker_shapes_chunks
                             .iter()
-                            .map(|chunk| chunk.iter_component_by_name::<MarkerShape>())
+                            .map(|chunk| {
+                                chunk.iter_component::<MarkerShape>(
+                                    &archetypes::SeriesPoints::descriptor_markers(),
+                                )
+                            })
                             .collect_vec();
                         let all_marker_shapes_indexed = {
                             let all_marker_shapes = all_marker_shapes_iters
@@ -297,9 +301,9 @@ impl SeriesPointSystem {
                                 .flat_map(|it| it.into_iter());
                             let all_marker_shapes_indices =
                                 all_marker_shapes_chunks.iter().flat_map(|chunk| {
-                                    chunk.iter_component_indices_by_name(
+                                    chunk.iter_component_indices(
                                         query.timeline(),
-                                        &MarkerShape::name(),
+                                        &archetypes::SeriesPoints::descriptor_markers(),
                                     )
                                 });
                             itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
