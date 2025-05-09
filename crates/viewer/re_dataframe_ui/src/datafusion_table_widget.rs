@@ -270,7 +270,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
-            sorbet_schema.columns.descriptors().map(|c| {
+            sorbet_schema.columns.iter_ref().map(|c| {
                 let name = if let Some(column_name_fn) = &column_name_fn {
                     column_name_fn(&c)
                 } else {
