@@ -430,9 +430,9 @@ rust_2018_idioms = { level = "warn", priority = -1 }
 rust_2021_prelude_collisions = "warn"
 semicolon_in_expressions_from_macros = "warn"
 trivial_numeric_casts = "warn"
-unsafe_op_in_unsafe_fn = "warn"                         # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
+unsafe_op_in_unsafe_fn = "warn" # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unexpected_cfgs = { level = "deny", check-cfg = [
-    'cfg(TODO)', # NOLINT
+  'cfg(TODO)',                      # NOLINT
   'cfg(disable_web_viewer_server)',
 ] } # NOLINT allow `#[cfg(TODO)]` to compile (it will still fail CI)
 unused_extern_crates = "warn"
@@ -458,12 +458,12 @@ cloned_instead_of_copied = "warn"
 dbg_macro = "warn"
 debug_assert_with_mut_call = "warn"
 derive_partial_eq_without_eq = "warn"
-disallowed_macros = "warn"                  # See clippy.toml
-disallowed_methods = "warn"                 # See clippy.toml
-disallowed_names = "warn"                   # See clippy.toml
-disallowed_script_idents = "warn"           # See clippy.toml
-disallowed_types = "warn"                   # See clippy.toml
-doc_include_without_cfg  = "warn"
+disallowed_macros = "warn"                   # See clippy.toml
+disallowed_methods = "warn"                  # See clippy.toml
+disallowed_names = "warn"                    # See clippy.toml
+disallowed_script_idents = "warn"            # See clippy.toml
+disallowed_types = "warn"                    # See clippy.toml
+doc_include_without_cfg = "warn"
 doc_link_with_quotes = "warn"
 doc_markdown = "warn"
 empty_enum = "warn"
@@ -597,9 +597,9 @@ zero_sized_map_values = "warn"
 # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 #self_named_module_files = "warn"
 
-manual_range_contains = "allow"       # this one is just worse imho
-map_unwrap_or = "allow"               # so is this one
-ref_patterns = "allow"                # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
+manual_range_contains = "allow" # this one is just worse imho
+map_unwrap_or = "allow"         # so is this one
+ref_patterns = "allow"          # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
 allow_attributes = "allow"
