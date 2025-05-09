@@ -148,6 +148,7 @@ pub struct VideoFrameReference {
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `-15.0`.
     pub draw_order: Option<SerializedComponentBatch>,
 }
 
@@ -478,6 +479,7 @@ impl VideoFrameReference {
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `-15.0`.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);
