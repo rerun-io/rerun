@@ -113,13 +113,6 @@ impl ChunkComponents {
             .keys()
             .any(|desc| desc.archetype_name == Some(archetype_name))
     }
-
-    /// Whether any of the components in this chunk is tagged with the given archetype name.
-    pub fn has_component_with_archetype_name(&self, archetype_name: ArchetypeName) -> bool {
-        self.0
-            .keys()
-            .any(|desc| desc.archetype_name == Some(archetype_name))
-    }
 }
 
 impl std::ops::Deref for ChunkComponents {
