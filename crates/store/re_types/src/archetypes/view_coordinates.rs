@@ -70,6 +70,8 @@ pub struct ViewCoordinates {
 
 impl ViewCoordinates {
     /// Returns the [`ComponentDescriptor`] for [`Self::xyz`].
+    ///
+    /// The corresponding component is [`crate::components::ViewCoordinates`].
     #[inline]
     pub fn descriptor_xyz() -> ComponentDescriptor {
         ComponentDescriptor {

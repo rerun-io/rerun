@@ -7,7 +7,7 @@ use re_types::{
     archetypes,
     components::{Blob, ImageFormat, MediaType},
     external::image,
-    Component as _, Loggable as _,
+    Archetype as _, Component as _, Loggable as _,
 };
 
 bitflags::bitflags! {
@@ -74,7 +74,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             }
 
             // Handle `Image`, `DepthImage`, `SegmentationImage`…
-            let components = event.diff.chunk.components();
+            let chunk = &event.diff.chunk;
+            let components = chunk.components();
             for image_format_list_array in components.get_by_component_name(ImageFormat::name()) {
                 for new_dim in image_format_list_array.iter().filter_map(|array| {
                     array.and_then(|array| {
@@ -84,7 +85,7 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 }) {
                     let max_dim = self
                         .max_dimensions
-                        .entry(event.diff.chunk.entity_path().clone())
+                        .entry(chunk.entity_path().clone())
                         .or_default();
 
                     max_dim.width = max_dim.width.max(new_dim.width);
@@ -92,61 +93,69 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                 }
             }
 
-            // TODO(andreas): this should be part of the ImageFormat component's tag instead.
-            if components
-                .contains_component_name(archetypes::Image::descriptor_indicator().component_name)
-            {
+            if components.has_component_with_archetype_name(archetypes::Image::name()) {
                 self.max_dimensions
-                    .entry(event.diff.chunk.entity_path().clone())
+                    .entry(chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::IMAGE);
             }
-            if components.contains_component_name(
-                archetypes::SegmentationImage::descriptor_indicator().component_name,
-            ) {
+
+            if components.has_component_with_archetype_name(archetypes::SegmentationImage::name()) {
                 self.max_dimensions
-                    .entry(event.diff.chunk.entity_path().clone())
+                    .entry(chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::SEGMENTATION_IMAGE);
             }
-            if components.contains_component_name(
-                archetypes::DepthImage::descriptor_indicator().component_name,
-            ) {
+            if components.has_component_with_archetype_name(archetypes::DepthImage::name()) {
                 self.max_dimensions
-                    .entry(event.diff.chunk.entity_path().clone())
+                    .entry(chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::DEPTH_IMAGE);
             }
 
             // Handle `ImageEncoded`, `AssetVideo`…
-            let blobs = event.diff.chunk.iter_slices::<&[u8]>(Blob::name());
-            let media_types = event.diff.chunk.iter_slices::<String>(MediaType::name());
-            for (blob, media_type) in
-                itertools::izip!(blobs, media_types.map(Some).chain(std::iter::repeat(None)))
+            for (blob_descr, _blob_list_array) in components
+                .iter()
+                .filter(|(descr, _)| descr.component_name == Blob::name())
             {
-                if let Some(blob) = blob.first() {
-                    let media_type =
-                        media_type.and_then(|v| v.first().map(|v| MediaType(v.clone().into())));
-                    let Some(media_type) = MediaType::or_guess_from_data(media_type, blob) else {
-                        continue;
-                    };
+                let blobs = chunk.iter_slices::<&[u8]>(blob_descr.clone());
 
-                    if let Some([width, height]) = size_from_blob(blob, &media_type) {
-                        let max_dim = self
-                            .max_dimensions
-                            .entry(event.diff.chunk.entity_path().clone())
-                            .or_default();
-                        max_dim.width = max_dim.width.max(width);
-                        max_dim.height = max_dim.height.max(height);
+                let media_type_descr = components
+                    .keys()
+                    .find(|desc| {
+                        desc.component_name == MediaType::name()
+                            && desc.archetype_name == blob_descr.archetype_name
+                    })
+                    .unwrap();
+                let media_types = chunk.iter_slices::<String>(media_type_descr.clone());
+                for (blob, media_type) in
+                    itertools::izip!(blobs, media_types.map(Some).chain(std::iter::repeat(None)))
+                {
+                    if let Some(blob) = blob.first() {
+                        let media_type =
+                            media_type.and_then(|v| v.first().map(|v| MediaType(v.clone().into())));
+                        let Some(media_type) = MediaType::or_guess_from_data(media_type, blob)
+                        else {
+                            continue;
+                        };
 
-                        // TODO(andreas): this should be part of the Blob component's tag instead.
-                        if media_type.is_image() {
-                            max_dim.image_types.insert(ImageTypes::ENCODED_IMAGE);
-                        } else if media_type.is_video() {
-                            max_dim.image_types.insert(ImageTypes::VIDEO);
+                        if let Some([width, height]) = size_from_blob(blob, &media_type) {
+                            let max_dim = self
+                                .max_dimensions
+                                .entry(chunk.entity_path().clone())
+                                .or_default();
+                            max_dim.width = max_dim.width.max(width);
+                            max_dim.height = max_dim.height.max(height);
+
+                            // TODO(andreas): this should be part of the Blob component's tag instead.
+                            if media_type.is_image() {
+                                max_dim.image_types.insert(ImageTypes::ENCODED_IMAGE);
+                            } else if media_type.is_video() {
+                                max_dim.image_types.insert(ImageTypes::VIDEO);
+                            }
                         }
                     }
                 }

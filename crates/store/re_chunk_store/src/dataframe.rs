@@ -14,8 +14,8 @@ use itertools::Itertools as _;
 use re_chunk::{LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_sorbet::{
-    ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
-    IndexColumnDescriptor, SorbetColumnDescriptors, TimeColumnSelector,
+    ChunkColumnDescriptors, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
+    ComponentColumnSelector, IndexColumnDescriptor, TimeColumnSelector,
 };
 use re_types_core::{ComponentDescriptor, ComponentName};
 use tap::Tap as _;
@@ -306,7 +306,7 @@ impl ChunkStore {
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema(&self) -> SorbetColumnDescriptors {
+    pub fn schema(&self) -> ChunkColumnDescriptors {
         re_tracing::profile_function!();
 
         let indices = self
@@ -360,8 +360,8 @@ impl ChunkStore {
             .collect_vec()
             .tap_mut(|components| components.sort());
 
-        SorbetColumnDescriptors {
-            row_id: Some(self.row_id_descriptor()),
+        ChunkColumnDescriptors {
+            row_id: self.row_id_descriptor(),
             indices,
             components,
         }
@@ -483,7 +483,7 @@ impl ChunkStore {
     /// The order of the columns is guaranteed to be in a specific order:
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema_for_query(&self, query: &QueryExpression) -> SorbetColumnDescriptors {
+    pub fn schema_for_query(&self, query: &QueryExpression) -> ChunkColumnDescriptors {
         re_tracing::profile_function!();
 
         let QueryExpression {

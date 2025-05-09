@@ -302,7 +302,7 @@ impl UICommand {
 
             Self::AddRedapServer => (
                 "Add Redap server",
-                "Connect to a Redap server (experimental)"
+                "Connect to a Redap server (experimental)",
             ),
         }
     }

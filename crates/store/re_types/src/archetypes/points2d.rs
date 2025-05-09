@@ -35,8 +35,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     rec.log(
 ///         "random",
 ///         &rerun::Points2D::new((0..10).map(|_| (rng.sample(dist), rng.sample(dist))))
-///             .with_colors((0..10).map(|_| rerun::Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))
-///             .with_radii((0..10).map(|_| rng.gen::<f32>())),
+///             .with_colors(
+///                 (0..10).map(|_| rerun::Color::from_rgb(rng.r#gen(), rng.r#gen(), rng.r#gen())),
+///             )
+///             .with_radii((0..10).map(|_| rng.r#gen::<f32>())),
 ///     )?;
 ///
 ///     // TODO(#5521): log VisualBounds2D
@@ -139,6 +141,8 @@ pub struct Points2D {
 
 impl Points2D {
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    ///
+    /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -149,6 +153,8 @@ impl Points2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -159,6 +165,8 @@ impl Points2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -169,6 +177,8 @@ impl Points2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    ///
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -179,6 +189,8 @@ impl Points2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    ///
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -189,6 +201,8 @@ impl Points2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    ///
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -199,6 +213,8 @@ impl Points2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    ///
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -209,6 +225,8 @@ impl Points2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::keypoint_ids`].
+    ///
+    /// The corresponding component is [`crate::components::KeypointId`].
     #[inline]
     pub fn descriptor_keypoint_ids() -> ComponentDescriptor {
         ComponentDescriptor {

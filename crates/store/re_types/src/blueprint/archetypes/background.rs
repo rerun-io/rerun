@@ -32,6 +32,8 @@ pub struct Background {
 
 impl Background {
     /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::BackgroundKind`].
     #[inline]
     pub fn descriptor_kind() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -42,6 +44,8 @@ impl Background {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

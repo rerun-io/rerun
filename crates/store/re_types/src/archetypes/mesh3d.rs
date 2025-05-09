@@ -147,6 +147,8 @@ pub struct Mesh3D {
 
 impl Mesh3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_positions`].
+    ///
+    /// The corresponding component is [`crate::components::Position3D`].
     #[inline]
     pub fn descriptor_vertex_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -157,6 +159,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::triangle_indices`].
+    ///
+    /// The corresponding component is [`crate::components::TriangleIndices`].
     #[inline]
     pub fn descriptor_triangle_indices() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -167,6 +171,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_normals`].
+    ///
+    /// The corresponding component is [`crate::components::Vector3D`].
     #[inline]
     pub fn descriptor_vertex_normals() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -177,6 +183,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_vertex_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -187,6 +195,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::vertex_texcoords`].
+    ///
+    /// The corresponding component is [`crate::components::Texcoord2D`].
     #[inline]
     pub fn descriptor_vertex_texcoords() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -197,6 +207,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
+    ///
+    /// The corresponding component is [`crate::components::AlbedoFactor`].
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -207,6 +219,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_buffer`].
+    ///
+    /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_albedo_texture_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -217,6 +231,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_format`].
+    ///
+    /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_albedo_texture_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -227,6 +243,8 @@ impl Mesh3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    ///
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

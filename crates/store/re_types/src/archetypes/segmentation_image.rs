@@ -85,6 +85,8 @@ pub struct SegmentationImage {
 
 impl SegmentationImage {
     /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    ///
+    /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -95,6 +97,8 @@ impl SegmentationImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    ///
+    /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -105,6 +109,8 @@ impl SegmentationImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
+    ///
+    /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -115,6 +121,8 @@ impl SegmentationImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    ///
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -47,7 +47,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     pub fn iter_component_indices(
         &self,
         timeline: &TimelineName,
-    ) -> impl Iterator<Item = (TimeInt, RowId)> + 'chunk {
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + 'chunk + use<'chunk> {
         self.chunk.iter_component_indices(timeline, self.descriptor)
     }
 
@@ -55,22 +55,23 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     #[inline]
     pub fn iter_slices<S: ChunkComponentSlicer + 'chunk>(
         &self,
-    ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk {
-        // TODO(#6889): Use the full descriptor instead.
-        self.chunk.iter_slices::<S>(self.descriptor.component_name)
+    ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk + use<'chunk, S> {
+        self.chunk.iter_slices::<S>(self.descriptor.clone())
     }
 
     /// See [`Chunk::iter_component`].
     #[inline]
     pub fn iter_component<C: Component>(
         &self,
-    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + 'chunk> {
+    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + 'chunk + use<'chunk, C>> {
         self.chunk.iter_component::<C>(self.descriptor)
     }
 
     /// See [`Chunk::iter_component_timepoints`].
     #[inline]
-    pub fn iter_component_timepoints(&self) -> impl Iterator<Item = TimePoint> + 'chunk {
+    pub fn iter_component_timepoints(
+        &self,
+    ) -> impl Iterator<Item = TimePoint> + 'chunk + use<'chunk> {
         self.chunk.iter_component_timepoints(self.descriptor)
     }
 }

@@ -126,6 +126,8 @@ pub struct LineStrips3D {
 
 impl LineStrips3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::strips`].
+    ///
+    /// The corresponding component is [`crate::components::LineStrip3D`].
     #[inline]
     pub fn descriptor_strips() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -136,6 +138,8 @@ impl LineStrips3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -146,6 +150,8 @@ impl LineStrips3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -156,6 +162,8 @@ impl LineStrips3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    ///
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -166,6 +174,8 @@ impl LineStrips3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    ///
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -176,6 +186,8 @@ impl LineStrips3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    ///
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

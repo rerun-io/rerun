@@ -559,9 +559,9 @@ fn extract_contents_expr(
             } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
                 components.into_iter().map(|c| c.0).collect()
             } else {
-                return Err(PyTypeError::new_err(
-                        format!("Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."),
-                    ));
+                return Err(PyTypeError::new_err(format!(
+                    "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                )));
             };
 
             let mut key_contents = known_components
@@ -584,8 +584,8 @@ fn extract_contents_expr(
         Ok(contents)
     } else {
         return Err(PyTypeError::new_err(
-                "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
-            ));
+            "Could not interpret `contents` as a ViewContentsLike. Top-level type must be a string or a dictionary.",
+        ));
     }
 }
 

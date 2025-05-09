@@ -32,7 +32,7 @@ use re_chunk_store::{
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
-    ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor, SorbetColumnDescriptors,
+    ChunkColumnDescriptors, ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor,
     TimeColumnSelector,
 };
 use re_types_core::{archetypes, arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
@@ -79,7 +79,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: SorbetColumnDescriptors,
+    view_contents: ChunkColumnDescriptors,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -532,7 +532,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns all the ancestors of an [`EntityPath`].
         ///
         /// Doesn't return `entity_path` itself.
-        fn entity_path_ancestors(entity_path: &EntityPath) -> impl Iterator<Item = EntityPath> {
+        fn entity_path_ancestors(
+            entity_path: &EntityPath,
+        ) -> impl Iterator<Item = EntityPath> + use<> {
             std::iter::from_fn({
                 let mut entity_path = entity_path.parent();
                 move || {
@@ -683,7 +685,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
+    pub fn view_contents(&self) -> &ChunkColumnDescriptors {
         &self.init().view_contents
     }
 
@@ -845,7 +847,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn next_row_async(&self) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>>
+    pub fn next_row_async(
+        &self,
+    ) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>> + use<E>
     where
         E: 'static + Send + Clone,
     {

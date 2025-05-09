@@ -108,7 +108,7 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
 
         let chunk_id = if let Some(chunk_id_str) = metadata.get("rerun.id") {
             Some(chunk_id_str.parse().map_err(|err| {
-                SorbetError::custom(format!(
+                SorbetError::ChunkIdDeserializationError(format!(
                     "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
                 ))
             })?)

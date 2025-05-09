@@ -255,7 +255,7 @@ impl EntityPath {
     pub fn incremental_walk<'a>(
         start: Option<&'_ Self>,
         end: &'a Self,
-    ) -> impl Iterator<Item = Self> + 'a {
+    ) -> impl Iterator<Item = Self> + 'a + use<'a> {
         re_tracing::profile_function!();
         if start.is_none_or(|start| end.is_descendant_of(start)) {
             let first_ind = start.map_or(0, |start| start.len() + 1);

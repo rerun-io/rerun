@@ -90,6 +90,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.24.0-alpha.1", defaul
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.24.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.24.0-alpha.1", default-features = false }
+re_auth = { path = "crates/utils/re_auth", version = "=0.24.0-alpha.1", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.24.0-alpha.1", default-features = false }
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.24.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.24.0-alpha.1", default-features = false }
@@ -392,6 +393,13 @@ opt-level = 2
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+
+[profile.web-release]
+panic = 'abort'      # Removes panic handling code
+inherits = "release"
+lto = true
+opt-level = 'z'      # Optimize for size
+codegen-units = 1
 
 
 ## Bench

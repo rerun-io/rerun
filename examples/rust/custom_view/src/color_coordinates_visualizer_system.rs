@@ -65,7 +65,7 @@ impl VisualizerSystem for InstanceColorSystem {
             let colors = results
                 .components
                 .iter()
-                .flat_map(|(descr, chunk)| chunk.iter_slices::<u32>(descr.component_name).flatten())
+                .flat_map(|(descr, chunk)| chunk.iter_slices::<u32>(descr.clone()).flatten())
                 .collect::<Vec<_>>();
 
             if colors.is_empty() {

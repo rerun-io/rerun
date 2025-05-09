@@ -72,6 +72,8 @@ pub struct GraphNodes {
 
 impl GraphNodes {
     /// Returns the [`ComponentDescriptor`] for [`Self::node_ids`].
+    ///
+    /// The corresponding component is [`crate::components::GraphNode`].
     #[inline]
     pub fn descriptor_node_ids() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -82,6 +84,8 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    ///
+    /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -92,6 +96,8 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -102,6 +108,8 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    ///
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -112,6 +120,8 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    ///
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -122,6 +132,8 @@ impl GraphNodes {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -3,9 +3,9 @@ use itertools::Itertools as _;
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
-    archetypes,
+    archetypes::{self},
     components::{AggregationPolicy, Color, Name, SeriesVisible, StrokeWidth},
-    Archetype as _, Component as _,
+    Archetype as _,
 };
 use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::external::re_entity_db::InstancePath;
@@ -235,19 +235,20 @@ impl SeriesLineSystem {
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
+                &archetypes::SeriesLines::descriptor_colors(),
             );
             collect_radius_ui(
                 &query,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
-                StrokeWidth::name(),
+                &archetypes::SeriesLines::descriptor_widths(),
                 0.5,
             );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
             let aggregator = results
-                .get_optional_chunks(AggregationPolicy::name())
+                .get_optional_chunks(archetypes::SeriesLines::descriptor_aggregation_policy())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| chunk.component_mono::<AggregationPolicy>(0)?.ok())
@@ -310,7 +311,13 @@ impl SeriesLineSystem {
                 num_series,
                 archetypes::SeriesLines::descriptor_visible_series(),
             );
-            let series_names = collect_series_name(self, &query_ctx, &results, num_series);
+            let series_names = collect_series_name(
+                self,
+                &query_ctx,
+                &results,
+                num_series,
+                &archetypes::SeriesLines::descriptor_names(),
+            );
 
             debug_assert_eq!(points_per_series.len(), series_names.len());
             for (instance, (points, label, visible)) in itertools::izip!(

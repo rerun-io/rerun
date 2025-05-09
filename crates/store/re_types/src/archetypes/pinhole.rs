@@ -34,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     let mut image = Array::<u8, _>::default((3, 3, 3).f());
 ///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
-///     image.map_inplace(|x| *x = rng.gen());
+///     image.map_inplace(|x| *x = rng.r#gen());
 ///
 ///     rec.log(
 ///         "world/image",
@@ -142,6 +142,8 @@ pub struct Pinhole {
 
 impl Pinhole {
     /// Returns the [`ComponentDescriptor`] for [`Self::image_from_camera`].
+    ///
+    /// The corresponding component is [`crate::components::PinholeProjection`].
     #[inline]
     pub fn descriptor_image_from_camera() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -152,6 +154,8 @@ impl Pinhole {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::resolution`].
+    ///
+    /// The corresponding component is [`crate::components::Resolution`].
     #[inline]
     pub fn descriptor_resolution() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -162,6 +166,8 @@ impl Pinhole {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::camera_xyz`].
+    ///
+    /// The corresponding component is [`crate::components::ViewCoordinates`].
     #[inline]
     pub fn descriptor_camera_xyz() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -172,6 +178,8 @@ impl Pinhole {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::image_plane_distance`].
+    ///
+    /// The corresponding component is [`crate::components::ImagePlaneDistance`].
     #[inline]
     pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
         ComponentDescriptor {

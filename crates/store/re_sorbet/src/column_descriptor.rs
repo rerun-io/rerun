@@ -27,16 +27,23 @@ pub enum ColumnError {
     UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
 }
 
-// Describes any kind of column.
-//
-// See:
-// * [`IndexColumnDescriptor`]
-// * [`ComponentColumnDescriptor`]
-//TODO(#9034): This should support RowId as well, but this has ramifications on the dataframe API.
+/// Describes any kind of column.
+///
+/// See:
+/// * [`RowIdColumnDescriptor`]
+/// * [`IndexColumnDescriptor`]
+/// * [`ComponentColumnDescriptor`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
+    /// The primary row id column.
+    ///
+    /// There should usually only be one of these.
     RowId(RowIdColumnDescriptor),
+
+    /// Index columns (timelines).
     Time(IndexColumnDescriptor),
+
+    /// The actual component data
     Component(ComponentColumnDescriptor),
 }
 

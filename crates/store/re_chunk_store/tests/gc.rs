@@ -60,7 +60,7 @@ fn simple() -> anyhow::Result<()> {
             let entity_path = EntityPath::from(format!("this/that/{i}"));
 
             let num_frames = rng.gen_range(0..=100);
-            let frames = (0..num_frames).filter(|_| rand::thread_rng().gen());
+            let frames = (0..num_frames).filter(|_| rand::thread_rng().r#gen());
             for frame_nr in frames {
                 let num_instances = rng.gen_range(0..=1_000);
                 let chunk = Chunk::builder(entity_path.clone())

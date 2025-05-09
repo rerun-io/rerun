@@ -29,7 +29,7 @@ fn main() -> Result<(), std::io::Error> {
 
     match protoc_prebuilt::init("22.0") {
         Ok((protoc_bin, _)) => {
-            std::env::set_var("PROTOC", protoc_bin);
+            unsafe { std::env::set_var("PROTOC", protoc_bin) };
         }
         Err(err) => {
             eprintln!("Failed to install protoc: {err} - falling back to system 'protoc'");
