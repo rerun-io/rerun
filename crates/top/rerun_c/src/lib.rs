@@ -327,7 +327,7 @@ pub struct CError {
 // SAFETY: the unsafety comes from #[no_mangle], because we can declare multiple
 // functions with the same symbol names, and the linker behavior in this case i undefined.
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: Lazy<CString> = Lazy::new(|| {
         CString::new(re_sdk::build_info().version.to_string()).expect("CString::new failed")
@@ -352,7 +352,7 @@ fn rr_spawn_impl(spawn_opts: *const CSpawnOptions) -> Result<(), CError> {
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError) {
     if let Err(err) = rr_spawn_impl(spawn_opts) {
         err.write_error(error);
@@ -401,7 +401,7 @@ fn rr_register_component_type_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_register_component_type(
     // Note that since this is passed by value, arrow will release the schema on drop!
     component_type: CComponentType,
@@ -458,7 +458,7 @@ fn rr_recording_stream_new_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_new(
     store_info: *const CStoreInfo,
     default_enabled: bool,
@@ -508,7 +508,7 @@ thread_local! {
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
     if THREAD_LIFE_TRACKER.try_with(|_v| {}).is_ok() {
         if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
@@ -526,14 +526,14 @@ pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_set_global(id: CRecordingStream, store_kind: CStoreKind) {
     let stream = RECORDING_STREAMS.lock().get(id);
     RecordingStream::set_global(store_kind.into(), stream);
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_set_thread_local(
     id: CRecordingStream,
     store_kind: CStoreKind,
@@ -543,7 +543,7 @@ pub extern "C" fn rr_recording_stream_set_thread_local(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_is_enabled(
     stream: CRecordingStream,
     error: *mut CError,
@@ -563,7 +563,7 @@ fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CEr
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
         stream.flush_blocking();
@@ -593,7 +593,7 @@ fn rr_recording_stream_connect_grpc_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_connect_grpc(
     id: CRecordingStream,
     url: CStringView,
@@ -633,7 +633,7 @@ fn rr_recording_stream_serve_grpc_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_serve_grpc(
     id: CRecordingStream,
     bind_ip: CStringView,
@@ -674,7 +674,7 @@ fn rr_recording_stream_spawn_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_spawn(
     id: CRecordingStream,
     spawn_opts: *const CSpawnOptions,
@@ -701,7 +701,7 @@ fn rr_recording_stream_save_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_save(
     id: CRecordingStream,
     path: CStringView,
@@ -723,7 +723,7 @@ fn rr_recording_stream_stdout_impl(stream: CRecordingStream) -> Result<(), CErro
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_stdout(id: CRecordingStream, error: *mut CError) {
     if let Err(err) = rr_recording_stream_stdout_impl(id) {
         err.write_error(error);
@@ -749,7 +749,7 @@ fn rr_recording_stream_set_time_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_set_time(
     stream: CRecordingStream,
     timeline_name: CStringView,
@@ -774,7 +774,7 @@ fn rr_recording_stream_disable_timeline_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_disable_timeline(
     stream: CRecordingStream,
     timeline_name: CStringView,
@@ -786,7 +786,7 @@ pub extern "C" fn rr_recording_stream_disable_timeline(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().get(stream) {
         stream.reset_time();
@@ -850,7 +850,7 @@ fn rr_recording_stream_log_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rr_recording_stream_log(
     stream: CRecordingStream,
     data_row: CDataRow,
@@ -888,7 +888,7 @@ fn rr_recording_stream_log_file_from_path_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
     stream: CRecordingStream,
     filepath: CStringView,
@@ -936,7 +936,7 @@ fn rr_recording_stream_log_file_from_contents_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
     stream: CRecordingStream,
     filepath: CStringView,
@@ -1044,7 +1044,7 @@ fn rr_recording_stream_send_columns_impl(
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rr_recording_stream_send_columns(
     stream: CRecordingStream,
     entity_path: CStringView,
@@ -1071,7 +1071,7 @@ pub unsafe extern "C" fn rr_recording_stream_send_columns(
 // Private functions
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn _rr_escape_entity_path_part(part: CStringView) -> *const c_char {
     let Ok(part) = part.as_str("entity_path_part") else {
         return std::ptr::null();
@@ -1087,7 +1087,7 @@ pub unsafe extern "C" fn _rr_escape_entity_path_part(part: CStringView) -> *cons
 }
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn _rr_free_string(str: *mut c_char) {
     if str.is_null() {
         return;

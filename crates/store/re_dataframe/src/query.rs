@@ -532,7 +532,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns all the ancestors of an [`EntityPath`].
         ///
         /// Doesn't return `entity_path` itself.
-        fn entity_path_ancestors(entity_path: &EntityPath) -> impl Iterator<Item = EntityPath> {
+        fn entity_path_ancestors(
+            entity_path: &EntityPath,
+        ) -> impl Iterator<Item = EntityPath> + use<> {
             std::iter::from_fn({
                 let mut entity_path = entity_path.parent();
                 move || {
@@ -845,7 +847,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn next_row_async(&self) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>>
+    pub fn next_row_async(
+        &self,
+    ) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>> + use<E>
     where
         E: 'static + Send + Clone,
     {

@@ -1199,7 +1199,7 @@ impl Chunk {
     pub fn component_row_ids(
         &self,
         component_descriptor: &ComponentDescriptor,
-    ) -> impl Iterator<Item = RowId> + '_ {
+    ) -> impl Iterator<Item = RowId> + '_ + use<'_> {
         let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
@@ -1552,13 +1552,13 @@ impl Chunk {
 
             if list_array.len() != row_ids.len() {
                 return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
+                    reason: format!(
+                        "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
-                            row_ids.len(),
-                            list_array.len(),
-                        ),
-                    });
+                        row_ids.len(),
+                        list_array.len(),
+                    ),
+                });
             }
 
             let validity_is_empty = list_array
@@ -1566,11 +1566,11 @@ impl Chunk {
                 .is_some_and(|validity| validity.is_empty());
             if !self.is_empty() && validity_is_empty {
                 return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "All component batches in a chunk must contain at least one non-null entry.\
+                    reason: format!(
+                        "All component batches in a chunk must contain at least one non-null entry.\
                              Found a completely empty column for {component_desc}",
-                        ),
-                    });
+                    ),
+                });
             }
         }
 

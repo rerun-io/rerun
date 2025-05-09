@@ -39,7 +39,7 @@ impl Chunk {
     pub fn iter_indices(
         &self,
         timeline: &TimelineName,
-    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ + use<'_> {
         if self.is_static() {
             Either::Right(Either::Left(izip!(
                 std::iter::repeat(TimeInt::STATIC),
@@ -67,7 +67,7 @@ impl Chunk {
         &self,
         timeline: &TimelineName,
         component_descr: &ComponentDescriptor,
-    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ + use<'_> {
         let Some(list_array) = self.components.get(component_descr) else {
             return Either::Left(std::iter::empty());
         };
@@ -133,7 +133,7 @@ impl Chunk {
     pub fn iter_component_timepoints(
         &self,
         component_descr: &ComponentDescriptor,
-    ) -> impl Iterator<Item = TimePoint> + '_ {
+    ) -> impl Iterator<Item = TimePoint> + '_ + use<'_> {
         let Some(list_array) = self.components.get(component_descr) else {
             return Either::Left(std::iter::empty());
         };
@@ -186,7 +186,7 @@ impl Chunk {
     pub fn iter_component_offsets<'a>(
         &'a self,
         component_descriptor: &ComponentDescriptor,
-    ) -> impl Iterator<Item = (usize, usize)> + 'a {
+    ) -> impl Iterator<Item = (usize, usize)> + 'a + use<'a> {
         let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
@@ -736,7 +736,7 @@ impl Chunk {
     pub fn iter_indices_owned(
         self: Arc<Self>,
         timeline: &TimelineName,
-    ) -> impl Iterator<Item = (TimeInt, RowId)> {
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + use<> {
         if self.is_static() {
             Either::Left(ChunkIndicesIter {
                 chunk: self,
@@ -855,7 +855,7 @@ impl Chunk {
     pub fn iter_component<C: Component>(
         &self,
         component_descriptor: &ComponentDescriptor,
-    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_> {
+    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_ + use<'_, C>> {
         debug_assert_eq!(
             component_descriptor.component_name,
             C::name(),
