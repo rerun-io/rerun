@@ -319,6 +319,7 @@ pub trait ChunkComponentSlicer {
 }
 
 /// The actual implementation of `impl_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_native<'a, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -378,6 +379,7 @@ impl_native_type!(arrow::array::types::Float32Type, f32);
 impl_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_array_native<'a, const N: usize, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -459,6 +461,7 @@ impl_array_native_type!(arrow::array::types::Float32Type, f32);
 impl_array_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_buffer_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_buffer_native<'a, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
@@ -540,6 +543,7 @@ impl_buffer_native_type!(arrow::array::types::Float32Type, f32);
 impl_buffer_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_list_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_array_list_native<'a, const N: usize, P, T>(
     component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
