@@ -26,7 +26,7 @@ pub fn iter_dir<'a>(
     extensions: Option<&'a [&'a str]>,
 ) -> impl Iterator<Item = PathBuf> + 'a {
     iter_dir_filtered(path, move |entry: &Path| {
-        extensions.map_or(true, |extensions| {
+        extensions.is_none_or(|extensions| {
             extensions.iter().any(|ext| {
                 entry
                     .extension()

@@ -7,8 +7,8 @@ from __future__ import annotations
 import subprocess
 
 PIXI_VERSION = "0.41.4"
-CARGO_VERSION = "1.84.0"
-RUST_VERSION = "1.84.0"
+CARGO_VERSION = "1.85.0"
+RUST_VERSION = "1.85.0"
 
 
 def check_version(cmd: str, expected: str, update: str, install: str) -> bool:

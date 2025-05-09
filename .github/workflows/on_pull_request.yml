@@ -69,6 +69,7 @@ jobs:
               - pixi.toml # maybe our build commands have changed
               - scripts/ci/*
               - '**/*.py'
+              - '**/*.pyi'
               - '**/requirements.txt'
               - '**/pyproject.toml'
 

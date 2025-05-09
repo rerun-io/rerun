@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use egui::emath::Rangef;
-use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
+use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape, Tooltip};
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
@@ -421,14 +421,16 @@ pub fn data_density_graph_ui(
             if ui.ctx().dragged_id().is_none() {
                 // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
                 //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-                egui::show_tooltip_at_pointer(
-                    ui.ctx(),
-                    ui.layer_id(),
+                Tooltip::new(
                     egui::Id::new("data_tooltip"),
-                    |ui| {
-                        show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-                    },
-                );
+                    ui.ctx().clone(),
+                    egui::PopupAnchor::Pointer,
+                    ui.layer_id(),
+                )
+                .gap(12.0)
+                .show(|ui| {
+                    show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
+                });
             }
         }
     }
@@ -460,16 +462,16 @@ pub fn build_density_graph<'a>(
         let store = engine.store();
         let query = RangeQuery::new(*timeline, visible_time_range);
 
-        if let Some(component_name) = item.component_name {
+        if let Some(component_descr) = item.component_descr.as_ref() {
             let mut total_num_events = 0;
             (
                 store
-                    .range_relevant_chunks(&query, &item.entity_path, component_name)
+                    .range_relevant_chunks(&query, &item.entity_path, component_descr)
                     .into_iter()
                     .filter_map(|chunk| {
                         let time_range = chunk.timelines().get(timeline)?.time_range();
                         chunk
-                            .num_events_for_component(component_name)
+                            .num_events_for_component(component_descr)
                             .map(|num_events| {
                                 total_num_events += num_events;
                                 (chunk, time_range, num_events)
@@ -628,11 +630,11 @@ fn show_row_ids_tooltip(
 
     let TimePanelItem {
         entity_path,
-        component_name,
+        component_descr,
     } = item;
 
-    if let Some(component_name) = component_name {
-        ComponentPath::new(entity_path.clone(), *component_name)
+    if let Some(component_descr) = component_descr.as_ref() {
+        ComponentPath::new(entity_path.clone(), component_descr.clone())
             .data_ui(ctx, ui, ui_layout, &query, db);
     } else {
         re_entity_db::InstancePath::entity_all(entity_path.clone())

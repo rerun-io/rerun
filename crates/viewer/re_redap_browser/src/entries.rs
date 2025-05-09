@@ -2,24 +2,22 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use itertools::Itertools as _;
-use tokio_stream::StreamExt as _;
 
 use re_data_ui::item_ui::entity_db_button_ui;
 use re_data_ui::DataUi as _;
 use re_dataframe_ui::RequestedObject;
 use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{redap, StreamError};
-use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::CodecError;
 use re_log_types::{natural_ordering, ApplicationId, EntryId, StoreKind};
 use re_protos::catalog::v1alpha1::{
     ext::{DatasetEntry, EntryDetails},
     EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
 };
-use re_protos::frontend::v1alpha1::ScanPartitionTableRequest;
 use re_protos::TypeConversionError;
 use re_smart_channel::SmartChannelSource;
-use re_sorbet::{BatchType, SorbetBatch, SorbetError};
+use re_sorbet::SorbetError;
+use re_types::archetypes::RecordingProperties;
 use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, UiExt as _, UiLayout};
 use re_viewer_context::{
@@ -57,8 +55,6 @@ pub struct Dataset {
     pub dataset_entry: DatasetEntry,
 
     pub origin: re_uri::Origin,
-
-    pub partition_table: Vec<SorbetBatch>,
 }
 
 impl Dataset {
@@ -264,9 +260,7 @@ impl EntryKind {
 
     fn is_active(&self, ctx: &ViewerContext<'_>) -> bool {
         match self {
-            Self::Remote { entry_id, .. } => {
-                matches!(ctx.global_context.display_mode, DisplayMode::RedapEntry(id) if id == entry_id)
-            }
+            Self::Remote { entry_id, .. } => ctx.active_redap_entry == Some(entry_id),
             // TODO(lucasmerlin): Update this when local datasets have a view like remote datasets
             Self::Local(_) => false,
         }
@@ -300,9 +294,10 @@ pub fn dataset_and_its_recordings_ui(
     entity_dbs.sort_by_cached_key(|entity_db| {
         (
             entity_db
-                .recording_property::<Name>()
+                .recording_property::<Name>(&RecordingProperties::descriptor_name())
                 .map(|s| natural_ordering::OrderedString(s.to_string())),
-            entity_db.recording_property::<Timestamp>(),
+            entity_db
+                .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time()),
         )
     });
 
@@ -393,44 +388,13 @@ async fn fetch_dataset_entries(
             .ok_or(EntryError::FieldNotSet("dataset"))?
             .try_into()?;
 
-        let partition_table = fetch_partition_table(&mut client, entry_details.id).await?;
-
         let entry = Dataset {
             dataset_entry,
             origin: origin.clone(),
-            partition_table,
         };
 
         datasets.insert(entry.id(), entry);
     }
 
     Ok(datasets)
-}
-
-async fn fetch_partition_table(
-    client: &mut redap::Client,
-    entry_id: EntryId,
-) -> Result<Vec<SorbetBatch>, EntryError> {
-    let mut response = client
-        .scan_partition_table(ScanPartitionTableRequest {
-            dataset_id: Some(entry_id.into()),
-            scan_parameters: None,
-        })
-        .await?
-        .into_inner();
-
-    let mut sorbet_batches = Vec::new();
-
-    while let Some(result) = response.next().await {
-        let record_batch = result?
-            .data
-            .ok_or(EntryError::FieldNotSet("data"))?
-            .decode()?;
-
-        let sorbet_batch = SorbetBatch::try_from_record_batch(&record_batch, BatchType::Dataframe)?;
-
-        sorbet_batches.push(sorbet_batch);
-    }
-
-    Ok(sorbet_batches)
 }

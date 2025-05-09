@@ -39,11 +39,11 @@ pub enum DisplayRecordBatchError {
     DeserializationError(#[from] DeserializationError),
 }
 
-/// A single column of component data.
+/// Wrapper over the arrow data of a component column.
 ///
 /// Abstracts over the different possible arrow representations of component data.
 #[derive(Debug)]
-pub enum ComponentData {
+enum ComponentData {
     Null,
     ListArray(ArrowListArray),
     DictionaryArray {
@@ -107,91 +107,21 @@ impl ComponentData {
         }
     }
 
-    /// Display some data from the column.
-    ///
-    /// - Argument `row_index` is the row index within the batch column.
-    /// - Argument `instance_index` is the specific instance within the specified row. If `None`, a
-    ///   summary of all existing instances is displayed.
-    ///
-    /// # Panic
-    ///
-    /// Panics if `instance_index` is out-of-bound. Use [`Self::instance_count`] to ensure
-    /// correctness.
-    #[allow(clippy::too_many_arguments)]
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        latest_at_query: &LatestAtQuery,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-        row_ids: Option<&[RowId]>,
-        row_index: usize,
-        instance_index: Option<u64>,
-    ) {
-        let data = match self {
-            Self::Null => {
-                // don't repeat the null value when expanding instances
-                if instance_index.is_none() {
-                    ui.label("null");
-                }
-                return;
-            }
+    /// Is this as [`ArrowDataType::Null`] column?
+    fn is_null(&self) -> bool {
+        matches!(self, Self::Null)
+    }
+
+    /// Returns the content at the given row index.
+    fn row_data(&self, row_index: usize) -> Option<ArrowArrayRef> {
+        match self {
+            Self::Null => None,
             Self::ListArray(list_array) => list_array
                 .is_valid(row_index)
                 .then(|| list_array.value(row_index)),
             Self::DictionaryArray { dict, values } => {
                 dict.key(row_index).map(|key| values.value(key))
             }
-        };
-
-        if let Some(data) = data {
-            let data_to_display = if let Some(instance_index) = instance_index {
-                // Panics if the instance index is out of bound. This is checked in
-                // `DisplayColumn::data_ui`.
-                data.slice(instance_index as usize, 1)
-            } else {
-                data
-            };
-
-            let mut cache_key = row_ids
-                .and_then(|row_ids| row_ids.get(row_index))
-                .copied()
-                .map(Hash64::hash);
-
-            // TODO(ab): we should find an alternative to using content-hashing to generate cache
-            // keys.
-            //
-            // Generate a content-based cache key if we don't have one already. This is needed
-            // because without cache key, the image thumbnail will no be displayed by the component
-            // ui.
-            if cache_key.is_none() && (component_name.as_str() == "rerun.components.Blob") {
-                re_tracing::profile_scope!("Blob hash");
-
-                if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
-                    .as_ref()
-                    .map(|blob| blob.first().map(|blob| blob as &[u8]))
-                {
-                    // cap the max amount of data to hash to 9 KiB
-                    const SECTION_LENGTH: usize = 3 * 1024;
-
-                    cache_key = Some(quick_partial_hash(buffer, SECTION_LENGTH));
-                }
-            }
-
-            ctx.component_ui_registry().ui_raw(
-                ctx,
-                ui,
-                UiLayout::List,
-                latest_at_query,
-                ctx.recording(),
-                entity_path,
-                component_name,
-                cache_key,
-                data_to_display.as_ref(),
-            );
-        } else {
-            ui.label("-");
         }
     }
 }
@@ -228,6 +158,90 @@ fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
     Hash64::from_u64(hasher.finish())
 }
 
+/// Data related to a single component column.
+#[derive(Debug)]
+pub struct DisplayComponentColumn {
+    entity_path: EntityPath,
+    component_name: ComponentName,
+    component_data: ComponentData,
+
+    // if available, used to pass a row id to the component UI (e.g. to cache image)
+    row_ids: Option<Arc<Vec<RowId>>>,
+}
+
+impl DisplayComponentColumn {
+    fn data_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        latest_at_query: &LatestAtQuery,
+        row_index: usize,
+        instance_index: Option<u64>,
+    ) {
+        // handle null columns
+        if self.component_data.is_null() {
+            // don't repeat the null value when expanding instances
+            if instance_index.is_none() {
+                ui.label("null");
+            }
+            return;
+        }
+
+        let data = self.component_data.row_data(row_index);
+
+        if let Some(data) = data {
+            let data_to_display = if let Some(instance_index) = instance_index {
+                // Panics if the instance index is out of bound. This is checked in
+                // `DisplayColumn::data_ui`.
+                data.slice(instance_index as usize, 1)
+            } else {
+                data
+            };
+
+            let mut cache_key = self
+                .row_ids
+                .as_deref()
+                .and_then(|row_ids| row_ids.get(row_index))
+                .copied()
+                .map(Hash64::hash);
+
+            // TODO(ab): we should find an alternative to using content-hashing to generate cache
+            // keys.
+            //
+            // Generate a content-based cache key if we don't have one already. This is needed
+            // because without cache key, the image thumbnail will no be displayed by the component
+            // ui.
+            if cache_key.is_none() && (self.component_name.as_str() == "rerun.components.Blob") {
+                re_tracing::profile_scope!("Blob hash");
+
+                if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
+                    .as_ref()
+                    .map(|blob| blob.first().map(|blob| blob as &[u8]))
+                {
+                    // cap the max amount of data to hash to 9 KiB
+                    const SECTION_LENGTH: usize = 3 * 1024;
+
+                    cache_key = Some(quick_partial_hash(buffer, SECTION_LENGTH));
+                }
+            }
+
+            ctx.component_ui_registry().ui_raw(
+                ctx,
+                ui,
+                UiLayout::List,
+                latest_at_query,
+                ctx.recording(),
+                &self.entity_path,
+                self.component_name,
+                cache_key,
+                data_to_display.as_ref(),
+            );
+        } else {
+            ui.label("-");
+        }
+    }
+}
+
 /// A single column of data in a record batch.
 #[derive(Debug)]
 pub enum DisplayColumn {
@@ -239,14 +253,7 @@ pub enum DisplayColumn {
         time_data: ArrowScalarBuffer<i64>,
         time_nulls: Option<ArrowNullBuffer>,
     },
-    Component {
-        entity_path: EntityPath,
-        component_name: ComponentName,
-        component_data: ComponentData,
-
-        // if available, used to pass a row id to the component UI (e.g. to cache image)
-        row_ids: Option<Arc<Vec<RowId>>>,
-    },
+    Component(DisplayComponentColumn),
 }
 
 impl DisplayColumn {
@@ -274,19 +281,21 @@ impl DisplayColumn {
                     time_nulls,
                 })
             }
-            ColumnDescriptorRef::Component(desc) => Ok(Self::Component {
+            ColumnDescriptorRef::Component(desc) => Ok(Self::Component(DisplayComponentColumn {
                 entity_path: desc.entity_path.clone(),
                 component_name: desc.component_name,
                 component_data: ComponentData::try_new(desc, column_data)?,
                 row_ids: None,
-            }),
+            })),
         }
     }
 
     pub fn instance_count(&self, row_index: usize) -> u64 {
         match self {
             Self::RowId { .. } | Self::Timeline { .. } => 1,
-            Self::Component { component_data, .. } => component_data.instance_count(row_index),
+            Self::Component(component_column) => {
+                component_column.component_data.instance_count(row_index)
+            }
         }
     }
 
@@ -332,7 +341,7 @@ impl DisplayColumn {
 
                 let is_valid = time_nulls
                     .as_ref()
-                    .map_or(true, |nulls| nulls.is_valid(row_index));
+                    .is_none_or(|nulls| nulls.is_valid(row_index));
 
                 if let (true, Some(value)) = (is_valid, time_data.get(row_index)) {
                     match TimeInt::try_from(*value) {
@@ -352,22 +361,8 @@ impl DisplayColumn {
                 }
             }
 
-            Self::Component {
-                entity_path,
-                component_name,
-                component_data,
-                row_ids,
-            } => {
-                component_data.data_ui(
-                    ctx,
-                    ui,
-                    latest_at_query,
-                    entity_path,
-                    *component_name,
-                    row_ids.as_deref().map(|row_ids| row_ids.as_slice()),
-                    row_index,
-                    instance_index,
-                );
+            Self::Component(component_column) => {
+                component_column.data_ui(ctx, ui, latest_at_query, row_index, instance_index);
             }
         }
     }
@@ -425,7 +420,7 @@ impl DisplayRecordBatch {
         // If we have row_ids, give a reference to all component columns.
         if let Some(batch_row_ids) = batch_row_ids {
             for column in &mut columns {
-                if let DisplayColumn::Component { row_ids, .. } = column {
+                if let DisplayColumn::Component(DisplayComponentColumn { row_ids, .. }) = column {
                     *row_ids = Some(Arc::clone(&batch_row_ids));
                 }
             }

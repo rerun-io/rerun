@@ -25,15 +25,17 @@ use pyo3::{
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
-    ComponentColumnDescriptor, ComponentColumnSelector, IndexColumnDescriptor, QueryExpression,
-    SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ComponentColumnDescriptor,
+    IndexColumnDescriptor, QueryExpression, SparseFillStrategy, ViewContentsSelector,
 };
 use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
-use re_sorbet::SorbetColumnDescriptors;
+use re_sorbet::{
+    ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
+};
 
+use crate::catalog::to_py_err;
 use crate::{catalog::PyCatalogClient, utils::get_tokio_runtime};
 
 /// Register the `rerun.dataframe` module.
@@ -92,7 +94,7 @@ impl PyIndexColumnDescriptor {
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     #[getter]
     fn is_static(&self) -> bool {
         false
@@ -156,7 +158,7 @@ impl From<PyIndexColumnSelector> for TimeColumnSelector {
 /// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
-pub struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
+pub struct PyComponentColumnDescriptor(pub ComponentColumnDescriptor);
 
 impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
     fn from(desc: ComponentColumnDescriptor) -> Self {
@@ -221,7 +223,7 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
 ///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
-pub struct PyComponentColumnSelector(ComponentColumnSelector);
+pub struct PyComponentColumnSelector(pub ComponentColumnSelector);
 
 #[pymethods]
 impl PyComponentColumnSelector {
@@ -293,10 +295,9 @@ impl AnyColumn {
                             PyValueError::new_err(format!("Invalid component path {name:?}: {err}"))
                         })?;
 
-                    Ok(ColumnSelector::Component(ComponentColumnSelector {
-                        entity_path: component_path.entity_path,
-                        component_name: component_path.component_name.to_string(),
-                    }))
+                    Ok(ColumnSelector::Component(ComponentColumnSelector::from(
+                        component_path,
+                    )))
                 }
             }
             Self::IndexDescriptor(desc) => Ok(ColumnDescriptor::Time(desc.0).into()),
@@ -308,8 +309,9 @@ impl AnyColumn {
 }
 
 /// A type alias for any component-column-like object.
+//TODO(#9853): rename to `ComponentColumnLike`
 #[derive(FromPyObject)]
-pub(crate) enum AnyComponentColumn {
+pub enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
     Name(String),
     #[pyo3(transparent, annotation = "component_descriptor")]
@@ -320,7 +322,7 @@ pub(crate) enum AnyComponentColumn {
 
 impl AnyComponentColumn {
     #[allow(dead_code)]
-    pub(crate) fn into_selector(self) -> PyResult<ComponentColumnSelector> {
+    pub fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
             Self::Name(name) => {
                 let component_path =
@@ -328,10 +330,7 @@ impl AnyComponentColumn {
                         PyValueError::new_err(format!("Invalid component path '{name}': {err}"))
                     })?;
 
-                Ok(ComponentColumnSelector {
-                    entity_path: component_path.entity_path,
-                    component_name: component_path.component_name.to_string(),
-                })
+                Ok(ComponentColumnSelector::from(component_path))
             }
             Self::ComponentDescriptor(desc) => Ok(desc.0.into()),
             Self::ComponentSelector(selector) => Ok(selector.0),
@@ -400,44 +399,45 @@ impl IndexValuesLike<'_> {
             }
             Self::CatchAll(any) => {
                 // If any has the `.chunks` attribute, we can try to try each chunk as pyarrow array
-                if let Ok(chunks) = any.getattr("chunks") {
-                    let mut values = BTreeSet::new();
-                    for chunk in chunks.try_iter()? {
-                        let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
-                        let array = make_array(chunk.0.clone());
+                match any.getattr("chunks") {
+                    Ok(chunks) => {
+                        let mut values = BTreeSet::new();
+                        for chunk in chunks.try_iter()? {
+                            let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
+                            let array = make_array(chunk.0.clone());
 
-                        let int_array =
-                            array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
-                                PyTypeError::new_err(
-                                    "pyarrow.Array for IndexValuesLike must be of type int64.",
-                                )
-                            })?;
-
-                        values.extend(
-                            int_array
-                                .iter()
-                                .map(|v| {
-                                    v.map_or_else(
-                                        || re_chunk_store::TimeInt::STATIC,
-                                        // The use of temporal here should be fine even if the data is
-                                        // not actually temporal. The important thing is we are converting
-                                        // from an i64 input
-                                        re_chunk_store::TimeInt::new_temporal,
+                            let int_array =
+                                array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
+                                    PyTypeError::new_err(
+                                        "pyarrow.Array for IndexValuesLike must be of type int64.",
                                     )
-                                })
-                                .collect::<BTreeSet<_>>(),
-                        );
-                    }
+                                })?;
 
-                    if values.len() != any.len()? {
-                        return Err(PyValueError::new_err("Index values must be unique."));
+                            values.extend(
+                                int_array
+                                    .iter()
+                                    .map(|v| {
+                                        v.map_or_else(
+                                            || re_chunk_store::TimeInt::STATIC,
+                                            // The use of temporal here should be fine even if the data is
+                                            // not actually temporal. The important thing is we are converting
+                                            // from an i64 input
+                                            re_chunk_store::TimeInt::new_temporal,
+                                        )
+                                    })
+                                    .collect::<BTreeSet<_>>(),
+                            );
+                        }
+                        if values.len() != any.len()? {
+                            return Err(PyValueError::new_err("Index values must be unique."));
+                        }
+                        Ok(values)
                     }
-
-                    Ok(values)
-                } else {
-                    Err(PyTypeError::new_err(
-                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray",
-                    ))
+                    Err(err) => {
+                        Err(PyTypeError::new_err(
+                            format!("IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray. {err}"),
+                        ))
+                    }
                 }
             }
         }
@@ -499,12 +499,14 @@ impl PySchema {
         let iter = SchemaIterator {
             iter: slf
                 .schema
-                .indices_and_components()
-                .into_iter()
-                .map(|col| match col {
-                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py_any(py),
+                .iter()
+                .filter_map(|col| match col.clone() {
+                    ColumnDescriptor::RowId(_) => None, // TODO(#9922)
+                    ColumnDescriptor::Time(col) => {
+                        Some(PyIndexColumnDescriptor(col).into_py_any(py))
+                    }
                     ColumnDescriptor::Component(col) => {
-                        PyComponentColumnDescriptor(col).into_py_any(py)
+                        Some(PyComponentColumnDescriptor(col).into_py_any(py))
                     }
                 })
                 .collect::<PyResult<Vec<_>>>()?
@@ -516,8 +518,7 @@ impl PySchema {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
-            .indices
-            .iter()
+            .index_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -525,8 +526,7 @@ impl PySchema {
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
         self.schema
-            .components
-            .iter()
+            .component_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -551,13 +551,60 @@ impl PySchema {
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
-        self.schema.components.iter().find_map(|col| {
+        self.schema.component_columns().find_map(|col| {
             if col.matches(&entity_path, &component.0) {
                 Some(col.clone().into())
             } else {
                 None
             }
         })
+    }
+
+    #[expect(rustdoc::private_doc_tests)]
+    #[allow(rustdoc::invalid_rust_codeblocks)]
+    /// Look up the column descriptor for a specific selector.
+    ///
+    /// Parameters
+    /// ----------
+    /// selector: str | ComponentColumnDescriptor | ComponentColumnSelector
+    ///     The selector to look up.
+    ///
+    ///     String arguments are expected to follow the following format:
+    ///     `"<entity_path>:<component_name>"`
+    ///
+    /// Returns
+    /// -------
+    /// ComponentColumnDescriptor
+    ///     The column descriptor, if it exists. Raise an exception otherwise.
+    pub fn column_for_selector(
+        &self,
+        selector: AnyComponentColumn,
+    ) -> PyResult<PyComponentColumnDescriptor> {
+        match selector {
+            AnyComponentColumn::Name(name) => self.resolve_component_column_selector(
+                &ComponentColumnSelector::from_str(&name).map_err(to_py_err)?,
+            ),
+
+            AnyComponentColumn::ComponentDescriptor(desc) => Ok(desc),
+
+            AnyComponentColumn::ComponentSelector(selector) => {
+                self.resolve_component_column_selector(&selector.0)
+            }
+        }
+    }
+}
+
+impl PySchema {
+    pub fn resolve_component_column_selector(
+        &self,
+        column_selector: &ComponentColumnSelector,
+    ) -> PyResult<PyComponentColumnDescriptor> {
+        let desc = self
+            .schema
+            .resolve_component_column_selector(column_selector)
+            .map_err(to_py_err)?;
+
+        Ok(PyComponentColumnDescriptor(desc.clone()))
     }
 }
 
@@ -664,7 +711,7 @@ impl PyRecordingView {
                 let query_handle = engine.query(query_expression);
 
                 PySchema {
-                    schema: query_handle.view_contents().clone(),
+                    schema: query_handle.view_contents().clone().into(),
                 }
             }
         }
@@ -798,8 +845,7 @@ impl PyRecordingView {
                 Ok(self
                     .schema(py)
                     .schema
-                    .components
-                    .iter()
+                    .component_columns()
                     .filter(|col| col.is_static())
                     .map(|col| ColumnDescriptor::Component(col.clone()).into())
                     .collect())
@@ -1246,7 +1292,7 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
         PySchema {
-            schema: self.store.read().schema(),
+            schema: self.store.read().schema().into(),
         }
     }
 

@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter, TimeInt};
+use re_log_types::{EntityPath, TimeInt};
 use re_types::{
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
@@ -203,7 +203,7 @@ impl ViewClass for TimeSeriesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -231,17 +231,11 @@ impl ViewClass for TimeSeriesView {
                 .extend(maybe_visualizable.iter().cloned());
         }
 
-        // Ensure we don't modify this list anymore before we check the `suggested_filter`.
+        // Ensure we don't modify this list anymore before we check the `include_entity`.
         let indicated_entities = indicated_entities;
-        if indicated_entities
-            .iter()
-            .all(|e| suggested_filter.matches(e))
-        {
-            return ViewSpawnHeuristics::default();
-        }
 
-        if indicated_entities.0.is_empty() {
-            return ViewSpawnHeuristics::default();
+        if !indicated_entities.iter().any(include_entity) {
+            return ViewSpawnHeuristics::empty();
         }
 
         // Spawn time series data at the root if theres 'either:
@@ -344,16 +338,35 @@ impl ViewClass for TimeSeriesView {
 
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
-        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_visible(),
+        )?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_corner(),
+        )?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(
+            ctx,
+            self,
+            state,
+            &ScalarAxis::descriptor_range(),
+        )?;
         let y_range = make_range_sane(y_range);
 
-        let y_zoom_lock =
-            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
+        let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
+            ctx,
+            self,
+            state,
+            &ScalarAxis::descriptor_zoom_lock(),
+        )?;
         let y_zoom_lock = y_zoom_lock.0 .0;
 
         let (current_time, time_type, timeline) = {
@@ -567,11 +580,15 @@ impl ViewClass for TimeSeriesView {
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
-            scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+            scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
             state.reset_bounds_next_frame = true;
             ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(ctx, &new_y_range);
+            scalar_axis.save_blueprint_component(
+                ctx,
+                &ScalarAxis::descriptor_range(),
+                &new_y_range,
+            );
             ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
         }
 

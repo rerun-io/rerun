@@ -1,20 +1,21 @@
-use ahash::HashMap;
-use egui_tiles::{SimplificationOptions, TileId};
-use nohash_hasher::IntSet;
-use parking_lot::Mutex;
-use re_log_types::{EntityPathSubs, ResolvedEntityPathFilter};
-use smallvec::SmallVec;
-use std::ops::ControlFlow;
 use std::{
     collections::BTreeMap,
+    ops::ControlFlow,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
 };
 
+use ahash::HashMap;
+use egui_tiles::{SimplificationOptions, TileId};
+use nohash_hasher::IntSet;
+use parking_lot::Mutex;
+use smallvec::SmallVec;
+
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
+use re_log_types::EntityPathSubs;
 use re_types::blueprint::{
     archetypes as blueprint_archetypes,
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
@@ -304,11 +305,12 @@ impl ViewportBlueprint {
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
 
-            let suggested_filter = ResolvedEntityPathFilter::properties();
+            let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
+            let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
 
             let mut recommended_views = entry
                 .class
-                .spawn_heuristics(ctx, &suggested_filter)
+                .spawn_heuristics(ctx, &include_entity)
                 .into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
@@ -348,6 +350,7 @@ impl ViewportBlueprint {
 
                 ctx.save_blueprint_component(
                     &VIEWPORT_PATH.into(),
+                    &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
                     &new_viewer_recommendation_hashes,
                 );
             }
@@ -761,7 +764,11 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let auto_layout = AutoLayout::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_layout);
+            ctx.save_blueprint_component(
+                &VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
+                &auto_layout,
+            );
         }
     }
 
@@ -778,7 +785,11 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let auto_views = AutoViews::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_views);
+            ctx.save_blueprint_component(
+                &VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
+                &auto_views,
+            );
         }
     }
 
@@ -786,7 +797,11 @@ impl ViewportBlueprint {
     pub fn set_maximized(&self, view_id: Option<ViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != view_id {
             let view_maximized = view_id.map(|id| ViewMaximized(id.into()));
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &view_maximized);
+            ctx.save_blueprint_component(
+                &VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
+                &view_maximized,
+            );
         }
     }
 
@@ -885,10 +900,17 @@ impl ViewportBlueprint {
             .map(|container_id| RootContainer((container_id).into()))
         {
             re_log::trace!("Saving with a root container");
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &root_container);
+            ctx.save_blueprint_component(
+                &VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+                &root_container,
+            );
         } else {
             re_log::trace!("Saving empty viewport");
-            ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
+            ctx.clear_blueprint_component(
+                &VIEWPORT_PATH.into(),
+                blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+            );
         }
     }
 

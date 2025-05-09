@@ -10,7 +10,7 @@ use web_time::Instant;
 
 use re_chunk::{Chunk, ChunkId, TimelineName};
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt};
-use re_types_core::ComponentName;
+use re_types_core::ComponentDescriptor;
 
 use crate::{
     store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind,
@@ -91,8 +91,10 @@ impl std::fmt::Display for GarbageCollectionTarget {
     }
 }
 
-pub type RemovableChunkIdPerTimePerComponentPerTimelinePerEntity =
-    IntMap<EntityPath, IntMap<TimelineName, IntMap<ComponentName, HashMap<TimeInt, Vec<ChunkId>>>>>;
+pub type RemovableChunkIdPerTimePerComponentPerTimelinePerEntity = IntMap<
+    EntityPath,
+    IntMap<TimelineName, IntMap<ComponentDescriptor, HashMap<TimeInt, Vec<ChunkId>>>>,
+>;
 
 impl ChunkStore {
     /// Triggers a garbage collection according to the desired `target`.
@@ -302,8 +304,8 @@ impl ChunkStore {
                         .or_default();
                     for (&timeline, time_column) in chunk.timelines() {
                         let per_component = per_timeline.entry(timeline).or_default();
-                        for component_name in chunk.component_names() {
-                            let per_time = per_component.entry(component_name).or_default();
+                        for component_descr in chunk.component_descriptors() {
+                            let per_time = per_component.entry(component_descr).or_default();
 
                             // NOTE: As usual, these are vectors of `ChunkId`s, as it is legal to
                             // have perfectly overlapping chunks.
@@ -473,20 +475,18 @@ impl ChunkStore {
             for (timeline, time_range_per_component) in chunk.time_range_per_component() {
                 let chunk_ids_to_be_removed = chunk_ids_to_be_removed.entry(timeline).or_default();
 
-                for (component_name, per_desc) in time_range_per_component {
-                    for (_component_desc, time_range) in per_desc {
-                        let chunk_ids_to_be_removed =
-                            chunk_ids_to_be_removed.entry(component_name).or_default();
+                for (component_descr, time_range) in time_range_per_component {
+                    let chunk_ids_to_be_removed =
+                        chunk_ids_to_be_removed.entry(component_descr).or_default();
 
-                        chunk_ids_to_be_removed
-                            .entry(time_range.min())
-                            .or_default()
-                            .push(chunk.id());
-                        chunk_ids_to_be_removed
-                            .entry(time_range.max())
-                            .or_default()
-                            .push(chunk.id());
-                    }
+                    chunk_ids_to_be_removed
+                        .entry(time_range.min())
+                        .or_default()
+                        .push(chunk.id());
+                    chunk_ids_to_be_removed
+                        .entry(time_range.max())
+                        .or_default()
+                        .push(chunk.id());
                 }
             }
         }
@@ -604,11 +604,11 @@ impl ChunkStore {
                     continue;
                 };
 
-                for (component_name, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
+                for (component_descr, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
                     let HashMapEntry::Occupied(mut temporal_chunk_ids_per_time) =
                         temporal_chunk_ids_per_component
                             .get_mut()
-                            .entry(component_name)
+                            .entry(component_descr)
                     else {
                         continue;
                     };

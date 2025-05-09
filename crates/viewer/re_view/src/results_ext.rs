@@ -5,10 +5,11 @@ use itertools::Itertools as _;
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
+use re_types::ComponentDescriptor;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
-use crate::DataResultQuery as _;
+use crate::{chunks_with_descriptor::ChunksWithDescriptor, DataResultQuery as _};
 
 // ---
 
@@ -43,9 +44,9 @@ impl HybridLatestAtResults<'_> {
     pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
         let component_name = component_name.into();
         self.overrides
-            .get(&component_name)
-            .or_else(|| self.results.get(&component_name))
-            .or_else(|| self.defaults.get(&component_name))
+            .get_by_name(&component_name)
+            .or_else(|| self.results.get_by_name(&component_name))
+            .or_else(|| self.defaults.get_by_name(&component_name))
     }
 
     pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
@@ -183,16 +184,13 @@ impl HybridResults<'_> {
                         .values()
                         .filter_map(|chunk| chunk.row_id()),
                 );
-                indices.extend(
-                    r.results
-                        .components
-                        .iter()
-                        .flat_map(|(component_name, chunks)| {
-                            chunks
-                                .iter()
-                                .flat_map(|chunk| chunk.component_row_ids(component_name))
-                        }),
-                );
+                indices.extend(r.results.components.iter().flat_map(
+                    |(component_descriptor, chunks)| {
+                        chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.component_row_ids(component_descriptor))
+                    },
+                ));
 
                 Hash64::hash(&indices)
             }
@@ -227,13 +225,17 @@ pub trait RangeResultsExt {
     /// For results that are aware of the blueprint, only overrides & store results will
     /// be considered.
     /// Defaults have no effect.
-    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>>;
+    fn get_required_chunks(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>>;
 
     /// Returns component data for the given component or an empty array.
     ///
     /// For results that are aware of the blueprint, overrides, store results, and defaults will be
     /// considered.
-    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]>;
+    // TODO(#6889): Take descriptor instead of name.
+    fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]>;
 
     /// Returns a zero-copy iterator over all the results for the given `(timeline, component)` pair.
     ///
@@ -243,28 +245,34 @@ pub trait RangeResultsExt {
     fn iter_as(
         &self,
         timeline: TimelineName,
-        component_name: ComponentName,
+        component_descriptor: ComponentDescriptor,
     ) -> HybridResultsChunkIter<'_> {
-        let chunks = self.get_optional_chunks(&component_name);
+        let chunks = self.get_optional_chunks(component_descriptor.clone());
         HybridResultsChunkIter {
             chunks,
             timeline,
-            component_name,
+            component_descriptor,
         }
     }
 }
 
 impl RangeResultsExt for LatestAtResults {
     #[inline]
-    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        self.get(component_name)
+    fn get_required_chunks(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        self.get(&component_descriptor)
             .cloned()
-            .map(|chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]))
+            .map(|chunk| ChunksWithDescriptor {
+                chunks: Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
+                component_descriptor,
+            })
     }
 
     #[inline]
-    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        self.get(component_name).cloned().map_or_else(
+    fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
+        self.get(&component_descriptor).cloned().map_or_else(
             || Cow::Owned(vec![]),
             |chunk| Cow::Owned(vec![Arc::unwrap_or_clone(chunk.into_chunk())]),
         )
@@ -273,35 +281,51 @@ impl RangeResultsExt for LatestAtResults {
 
 impl RangeResultsExt for RangeResults {
     #[inline]
-    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        self.get_required(component_name).ok().map(Cow::Borrowed)
+    fn get_required_chunks(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        self.get_required(&component_descriptor)
+            .ok()
+            .map(|chunks| ChunksWithDescriptor {
+                chunks: Cow::Borrowed(chunks),
+                component_descriptor,
+            })
     }
 
     #[inline]
-    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        Cow::Borrowed(self.get(component_name).unwrap_or_default())
+    fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
+        Cow::Borrowed(self.get(&component_descriptor).unwrap_or_default())
     }
 }
 
 impl RangeResultsExt for HybridRangeResults<'_> {
+    // TODO(andreas): We typically lookup inside the returned chunks using the same descriptor.
+    // We should return a more highlevel type that doesn't require passing the descriptor again!
     #[inline]
-    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_name) {
+    fn get_required_chunks(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        if let Some(unit) = self.overrides.get(&component_descriptor) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
-            Some(Cow::Owned(vec![chunk]))
+            Some(ChunksWithDescriptor {
+                chunks: Cow::Owned(vec![chunk]),
+                component_descriptor,
+            })
         } else {
-            self.results.get_required_chunks(component_name)
+            self.results.get_required_chunks(component_descriptor)
         }
     }
 
     #[inline]
-    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
+    fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
         re_tracing::profile_function!();
 
-        if let Some(unit) = self.overrides.get(component_name) {
+        if let Some(unit) = self.overrides.get(&component_descriptor) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -312,14 +336,14 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 
             // NOTE: Because this is a range query, we always need the defaults to come first,
             // since range queries don't have any state to bootstrap from.
-            let defaults = self.defaults.get(component_name).map(|unit| {
+            let defaults = self.defaults.get(&component_descriptor).map(|unit| {
                 // Because this is an default from the blueprint we always re-index the data as static
                 Arc::unwrap_or_clone(unit.clone().into_chunk())
                     .into_static()
                     .zeroed()
             });
 
-            let chunks = self.results.get_optional_chunks(component_name);
+            let chunks = self.results.get_optional_chunks(component_descriptor);
 
             // TODO(cmc): this `collect_vec()` sucks, let's keep an eye on it and see if it ever
             // becomes an issue.
@@ -335,21 +359,27 @@ impl RangeResultsExt for HybridRangeResults<'_> {
 
 impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
-    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
-        if let Some(unit) = self.overrides.get(component_name) {
+    fn get_required_chunks(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
+        if let Some(unit) = self.overrides.get(&component_descriptor) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
                 .zeroed();
-            Some(Cow::Owned(vec![chunk]))
+            Some(ChunksWithDescriptor {
+                chunks: Cow::Owned(vec![chunk]),
+                component_descriptor,
+            })
         } else {
-            self.results.get_required_chunks(component_name)
+            self.results.get_required_chunks(component_descriptor)
         }
     }
 
     #[inline]
-    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
-        if let Some(unit) = self.overrides.get(component_name) {
+    fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
+        if let Some(unit) = self.overrides.get(&component_descriptor) {
             // Because this is an override we always re-index the data as static
             let chunk = Arc::unwrap_or_clone(unit.clone().into_chunk())
                 .into_static()
@@ -358,7 +388,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
         } else {
             let chunks = self
                 .results
-                .get_optional_chunks(component_name)
+                .get_optional_chunks(component_descriptor.clone())
                 .iter()
                 // NOTE: Since this is a latest-at query that is being coerced into a range query, we
                 // need to make sure that every secondary column has an index smaller then the primary column
@@ -373,7 +403,7 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
             }
 
             // Otherwise try to use the default data.
-            let Some(unit) = self.defaults.get(component_name) else {
+            let Some(unit) = self.defaults.get(&component_descriptor) else {
                 return Cow::Owned(Vec::new());
             };
             // Because this is an default from the blueprint we always re-index the data as static
@@ -387,18 +417,21 @@ impl RangeResultsExt for HybridLatestAtResults<'_> {
 
 impl RangeResultsExt for HybridResults<'_> {
     #[inline]
-    fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
+    fn get_required_chunks(
+        &self,
+        component_descriptor: ComponentDescriptor,
+    ) -> Option<ChunksWithDescriptor<'_>> {
         match self {
-            Self::LatestAt(_, results) => results.get_required_chunks(component_name),
-            Self::Range(_, results) => results.get_required_chunks(component_name),
+            Self::LatestAt(_, results) => results.get_required_chunks(component_descriptor),
+            Self::Range(_, results) => results.get_required_chunks(component_descriptor),
         }
     }
 
     #[inline]
-    fn get_optional_chunks(&self, component_name: &ComponentName) -> Cow<'_, [Chunk]> {
+    fn get_optional_chunks(&self, component_descriptor: ComponentDescriptor) -> Cow<'_, [Chunk]> {
         match self {
-            Self::LatestAt(_, results) => results.get_optional_chunks(component_name),
-            Self::Range(_, results) => results.get_optional_chunks(component_name),
+            Self::LatestAt(_, results) => results.get_optional_chunks(component_descriptor),
+            Self::Range(_, results) => results.get_optional_chunks(component_descriptor),
         }
     }
 }
@@ -412,7 +445,7 @@ use re_chunk_store::external::re_chunk;
 pub struct HybridResultsChunkIter<'a> {
     chunks: Cow<'a, [Chunk]>,
     timeline: TimelineName,
-    component_name: ComponentName,
+    component_descriptor: ComponentDescriptor,
 }
 
 impl<'a> HybridResultsChunkIter<'a> {
@@ -428,8 +461,8 @@ impl<'a> HybridResultsChunkIter<'a> {
     ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
         self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_component::<C>(),
+                chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
+                chunk.iter_component::<C>(&self.component_descriptor),
             )
         })
     }
@@ -440,10 +473,11 @@ impl<'a> HybridResultsChunkIter<'a> {
     pub fn slice<S: 'a + re_chunk::ChunkComponentSlicer>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
-        self.chunks.iter().flat_map(|chunk| {
+        self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_slices::<S>(self.component_name)
+                chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
+                // TODO(#6889): Use descriptor instead of name.
+                chunk.iter_slices::<S>(self.component_descriptor.component_name),
             )
         })
     }
@@ -455,10 +489,14 @@ impl<'a> HybridResultsChunkIter<'a> {
         &'a self,
         field_name: &'a str,
     ) -> impl Iterator<Item = ((TimeInt, RowId), S::Item<'a>)> + 'a {
-        self.chunks.iter().flat_map(|chunk| {
+        self.chunks.iter().flat_map(move |chunk| {
             itertools::izip!(
-                chunk.iter_component_indices(&self.timeline, &self.component_name),
-                chunk.iter_slices_from_struct_field::<S>(self.component_name, field_name)
+                chunk.iter_component_indices(&self.timeline, &self.component_descriptor),
+                chunk.iter_slices_from_struct_field::<S>(
+                    // TODO(#6889): Use descriptor instead of name.s
+                    self.component_descriptor.component_name,
+                    field_name,
+                )
             )
         })
     }

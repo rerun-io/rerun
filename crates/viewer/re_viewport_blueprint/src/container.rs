@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use ahash::HashMap;
 use egui_tiles::TileId;
 
@@ -111,7 +113,7 @@ impl ContainerBlueprint {
 
         let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 
-        let visible = visible.map_or(true, |v| **v);
+        let visible = visible.is_none_or(|v| **v);
         let grid_columns = grid_columns.map(|v| **v);
 
         Some(Self {
@@ -318,10 +320,17 @@ impl ContainerBlueprint {
             match name {
                 Some(name) => {
                     let component = Name(name.into());
-                    ctx.save_blueprint_component(&self.entity_path(), &component);
+                    ctx.save_blueprint_component(
+                        &self.entity_path(),
+                        &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+                        &component,
+                    );
                 }
                 None => {
-                    ctx.save_empty_blueprint_component::<Name>(&self.entity_path());
+                    ctx.clear_blueprint_component(
+                        &self.entity_path(),
+                        blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+                    );
                 }
             }
         }
@@ -331,7 +340,11 @@ impl ContainerBlueprint {
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
             let component = Visible::from(visible);
-            ctx.save_blueprint_component(&self.entity_path(), &component);
+            ctx.save_blueprint_component(
+                &self.entity_path(),
+                &blueprint_archetypes::ContainerBlueprint::descriptor_visible(),
+                &component,
+            );
         }
     }
 
@@ -340,9 +353,16 @@ impl ContainerBlueprint {
         if grid_columns != self.grid_columns {
             if let Some(grid_columns) = grid_columns {
                 let component = GridColumns(grid_columns.into());
-                ctx.save_blueprint_component(&self.entity_path(), &component);
+                ctx.save_blueprint_component(
+                    &self.entity_path(),
+                    &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+                    &component,
+                );
             } else {
-                ctx.save_empty_blueprint_component::<GridColumns>(&self.entity_path());
+                ctx.clear_blueprint_component(
+                    &self.entity_path(),
+                    blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+                );
             }
         }
     }

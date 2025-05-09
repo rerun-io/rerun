@@ -158,8 +158,6 @@ namespace rerun {
     /// \private
     template <typename T>
     struct AsComponents;
-    RR_PUSH_WARNINGS
-    RR_DISABLE_DEPRECATION_WARNING
 
     /// \private
     template <>

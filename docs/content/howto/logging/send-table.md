@@ -41,7 +41,7 @@ pip install rerun-sdk[notebook] pyarrow pandas numpy
 ### Connecting to the Viewer
 
 ```python
-from rerun_bindings import ViewerClient
+from rerun.experimental import ViewerClient
 
 # Connect to a running Rerun Viewer
 client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")

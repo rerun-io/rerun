@@ -932,7 +932,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <SeriesVisible as Component>::name(),
             ComponentReflection {
-                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible?speculative-link) since it would conflict with the entity-wide visibility state.",
+                docstring_md: "Like [`components.Visible`](https://rerun.io/docs/reference/types/components/visible), but for time series.\n\nTODO(#6889): This is a temporary workaround. Right now we can't use [`components.Visible`](https://rerun.io/docs/reference/types/components/visible) since it would conflict with the entity-wide visibility state.",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: SeriesVisible::arrow_datatype(),
@@ -1160,7 +1160,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "context", display_name :
+                    ArchetypeFieldReflection { name : "context".into(), display_name :
                     "Context", component_name : "rerun.components.AnnotationContext"
                     .into(), docstring_md :
                     "List of class descriptions, mapping class indices to class names, colors etc.",
@@ -1176,34 +1176,35 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "vectors", display_name :
+                    ArchetypeFieldReflection { name : "vectors".into(), display_name :
                     "Vectors", component_name : "rerun.components.Vector2D".into(),
                     docstring_md : "All the vectors for each arrow in the batch.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "origins",
-                    display_name : "Origins", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "origins"
+                    .into(), display_name : "Origins", component_name :
                     "rerun.components.Position2D".into(), docstring_md :
                     "All the origin (base) positions for each arrow in the batch.\n\nIf no origins are set, (0, 0) is used as the origin for each arrow.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
                     "Optional radii for the arrows.\n\nThe shaft is rendered as a line with `radius = 0.5 * radius`.\nThe tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the points.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the points.", is_required : false, },
+                    ArchetypeFieldReflection { name : "labels".into(), display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md :
                     "Optional text labels for the arrows.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1218,30 +1219,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "vectors", display_name :
+                    ArchetypeFieldReflection { name : "vectors".into(), display_name :
                     "Vectors", component_name : "rerun.components.Vector3D".into(),
                     docstring_md : "All the vectors for each arrow in the batch.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "origins",
-                    display_name : "Origins", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "origins"
+                    .into(), display_name : "Origins", component_name :
                     "rerun.components.Position3D".into(), docstring_md :
                     "All the origin (base) positions for each arrow in the batch.\n\nIf no origins are set, (0, 0, 0) is used as the origin for each arrow.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
                     "Optional radii for the arrows.\n\nThe shaft is rendered as a line with `radius = 0.5 * radius`.\nThe tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the points.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the points.", is_required : false, },
+                    ArchetypeFieldReflection { name : "labels".into(), display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md :
                     "Optional text labels for the arrows.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1256,15 +1258,17 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "blob", display_name : "Blob",
-                    component_name : "rerun.components.Blob".into(), docstring_md :
-                    "The asset's bytes.", is_required : true, }, ArchetypeFieldReflection
-                    { name : "media_type", display_name : "Media type", component_name :
-                    "rerun.components.MediaType".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "blob".into(), display_name :
+                    "Blob", component_name : "rerun.components.Blob".into(), docstring_md
+                    : "The asset's bytes.", is_required : true, },
+                    ArchetypeFieldReflection { name : "media_type".into(), display_name :
+                    "Media type", component_name : "rerun.components.MediaType".into(),
+                    docstring_md :
                     "The Media Type of the asset.\n\nSupported values:\n* `model/gltf-binary`\n* `model/gltf+json`\n* `model/obj` (.mtl material files are not supported yet, references are silently ignored)\n* `model/stl`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "albedo_factor", display_name : "Albedo factor", component_name :
-                    "rerun.components.AlbedoFactor".into(), docstring_md :
+                    "albedo_factor".into(), display_name : "Albedo factor",
+                    component_name : "rerun.components.AlbedoFactor".into(), docstring_md
+                    :
                     "A color multiplier applied to the whole asset.\n\nFor mesh who already have `albedo_factor` in materials,\nit will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) (if specified).",
                     is_required : false, },
                 ],
@@ -1278,11 +1282,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "blob", display_name : "Blob",
-                    component_name : "rerun.components.Blob".into(), docstring_md :
-                    "The asset's bytes.", is_required : true, }, ArchetypeFieldReflection
-                    { name : "media_type", display_name : "Media type", component_name :
-                    "rerun.components.MediaType".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "blob".into(), display_name :
+                    "Blob", component_name : "rerun.components.Blob".into(), docstring_md
+                    : "The asset's bytes.", is_required : true, },
+                    ArchetypeFieldReflection { name : "media_type".into(), display_name :
+                    "Media type", component_name : "rerun.components.MediaType".into(),
+                    docstring_md :
                     "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
                     is_required : false, },
                 ],
@@ -1296,13 +1301,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["BarChartView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "values", display_name : "Values",
-                    component_name : "rerun.components.TensorData".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "values".into(), display_name :
+                    "Values", component_name : "rerun.components.TensorData".into(),
+                    docstring_md :
                     "The values. Should always be a 1-dimensional tensor (i.e. a vector).",
-                    is_required : true, }, ArchetypeFieldReflection { name : "color",
-                    display_name : "Color", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "The color of the bar chart", is_required :
-                    false, },
+                    is_required : true, }, ArchetypeFieldReflection { name : "color"
+                    .into(), display_name : "Color", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "The color of the bar chart", is_required : false, },
                 ],
             },
         ),
@@ -1314,33 +1320,34 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "half_sizes", display_name :
+                    ArchetypeFieldReflection { name : "half_sizes".into(), display_name :
                     "Half sizes", component_name : "rerun.components.HalfSize2D".into(),
                     docstring_md : "All half-extents that make up the batch of boxes.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "centers",
-                    display_name : "Centers", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "centers"
+                    .into(), display_name : "Centers", component_name :
                     "rerun.components.Position2D".into(), docstring_md :
                     "Optional center positions of the boxes.", is_required : false, },
-                    ArchetypeFieldReflection { name : "colors", display_name : "Colors",
-                    component_name : "rerun.components.Color".into(), docstring_md :
-                    "Optional colors for the boxes.", is_required : false, },
-                    ArchetypeFieldReflection { name : "radii", display_name : "Radii",
-                    component_name : "rerun.components.Radius".into(), docstring_md :
-                    "Optional radii for the lines that make up the boxes.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "labels", display_name :
-                    "Labels", component_name : "rerun.components.Text".into(),
+                    ArchetypeFieldReflection { name : "colors".into(), display_name :
+                    "Colors", component_name : "rerun.components.Color".into(),
+                    docstring_md : "Optional colors for the boxes.", is_required : false,
+                    }, ArchetypeFieldReflection { name : "radii".into(), display_name :
+                    "Radii", component_name : "rerun.components.Radius".into(),
                     docstring_md :
+                    "Optional radii for the lines that make up the boxes.", is_required :
+                    false, }, ArchetypeFieldReflection { name : "labels".into(),
+                    display_name : "Labels", component_name : "rerun.components.Text"
+                    .into(), docstring_md :
                     "Optional text labels for the boxes.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\n\nThe default for 2D boxes is 10.0.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1355,43 +1362,44 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "half_sizes", display_name :
+                    ArchetypeFieldReflection { name : "half_sizes".into(), display_name :
                     "Half sizes", component_name : "rerun.components.HalfSize3D".into(),
                     docstring_md : "All half-extents that make up the batch of boxes.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "centers",
-                    display_name : "Centers", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "centers"
+                    .into(), display_name : "Centers", component_name :
                     "rerun.components.PoseTranslation3D".into(), docstring_md :
                     "Optional center positions of the boxes.\n\nIf not specified, the centers will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "rotation_axis_angles", display_name : "Rotation axis angles",
+                    "rotation_axis_angles".into(), display_name : "Rotation axis angles",
                     component_name : "rerun.components.PoseRotationAxisAngle".into(),
                     docstring_md :
                     "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "quaternions", display_name : "Quaternions", component_name :
+                    "quaternions".into(), display_name : "Quaternions", component_name :
                     "rerun.components.PoseRotationQuat".into(), docstring_md :
                     "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the boxes.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "radii", display_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the boxes.", is_required : false, },
+                    ArchetypeFieldReflection { name : "radii".into(), display_name :
                     "Radii", component_name : "rerun.components.Radius".into(),
                     docstring_md :
                     "Optional radii for the lines that make up the boxes.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "fill_mode", display_name
-                    : "Fill mode", component_name : "rerun.components.FillMode".into(),
-                    docstring_md :
+                    false, }, ArchetypeFieldReflection { name : "fill_mode".into(),
+                    display_name : "Fill mode", component_name :
+                    "rerun.components.FillMode".into(), docstring_md :
                     "Optionally choose whether the boxes are drawn with lines or solid.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "labels"
+                    .into(), display_name : "Labels", component_name :
+                    "rerun.components.Text".into(), docstring_md :
                     "Optional text labels for the boxes.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the boxes.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1406,39 +1414,41 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "lengths", display_name :
+                    ArchetypeFieldReflection { name : "lengths".into(), display_name :
                     "Lengths", component_name : "rerun.components.Length".into(),
                     docstring_md :
                     "Lengths of the capsules, defined as the distance between the centers of the endcaps.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md : "Radii of the capsules.", is_required : true,
-                    }, ArchetypeFieldReflection { name : "translations", display_name :
-                    "Translations", component_name : "rerun.components.PoseTranslation3D"
-                    .into(), docstring_md :
+                    is_required : true, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
+                    "Radii of the capsules.", is_required : true, },
+                    ArchetypeFieldReflection { name : "translations".into(), display_name
+                    : "Translations", component_name :
+                    "rerun.components.PoseTranslation3D".into(), docstring_md :
                     "Optional translations of the capsules.\n\nIf not specified, one end of each capsule will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "rotation_axis_angles", display_name : "Rotation axis angles",
+                    "rotation_axis_angles".into(), display_name : "Rotation axis angles",
                     component_name : "rerun.components.PoseRotationAxisAngle".into(),
                     docstring_md :
                     "Rotations via axis + angle.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "quaternions", display_name : "Quaternions", component_name :
+                    "quaternions".into(), display_name : "Quaternions", component_name :
                     "rerun.components.PoseRotationQuat".into(), docstring_md :
                     "Rotations via quaternion.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the capsules.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the capsules.", is_required : false, },
+                    ArchetypeFieldReflection { name : "labels".into(), display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md :
                     "Optional text labels for the capsules, which will be located at their centers.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional class ID for the ellipsoids.\n\nThe class ID provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1453,9 +1463,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView", "TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "is_recursive", display_name :
-                    "Is recursive", component_name : "rerun.components.ClearIsRecursive"
-                    .into(), docstring_md : "", is_required : true, },
+                    ArchetypeFieldReflection { name : "is_recursive".into(), display_name
+                    : "Is recursive", component_name :
+                    "rerun.components.ClearIsRecursive".into(), docstring_md : "",
+                    is_required : true, },
                 ],
             },
         ),
@@ -1467,29 +1478,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "buffer", display_name : "Buffer",
-                    component_name : "rerun.components.ImageBuffer".into(), docstring_md
-                    : "The raw depth image data.", is_required : true, },
-                    ArchetypeFieldReflection { name : "format", display_name : "Format",
-                    component_name : "rerun.components.ImageFormat".into(), docstring_md
-                    : "The format of the image.", is_required : true, },
-                    ArchetypeFieldReflection { name : "meter", display_name : "Meter",
-                    component_name : "rerun.components.DepthMeter".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "buffer".into(), display_name :
+                    "Buffer", component_name : "rerun.components.ImageBuffer".into(),
+                    docstring_md : "The raw depth image data.", is_required : true, },
+                    ArchetypeFieldReflection { name : "format".into(), display_name :
+                    "Format", component_name : "rerun.components.ImageFormat".into(),
+                    docstring_md : "The format of the image.", is_required : true, },
+                    ArchetypeFieldReflection { name : "meter".into(), display_name :
+                    "Meter", component_name : "rerun.components.DepthMeter".into(),
+                    docstring_md :
                     "An optional floating point value that specifies how long a meter is in the native depth units.\n\nFor instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision\nand a range of up to ~65 meters (2^16 / 1000).\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colormap",
-                    display_name : "Colormap", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colormap"
+                    .into(), display_name : "Colormap", component_name :
                     "rerun.components.Colormap".into(), docstring_md :
                     "Colormap to use for rendering the depth image.\n\nIf not set, the depth image will be rendered using the Turbo colormap.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "depth_range", display_name : "Depth range", component_name :
+                    "depth_range".into(), display_name : "Depth range", component_name :
                     "rerun.components.ValueRange".into(), docstring_md :
                     "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "point_fill_ratio", display_name : "Point fill ratio", component_name
-                    : "rerun.components.FillRatio".into(), docstring_md :
+                    "point_fill_ratio".into(), display_name : "Point fill ratio",
+                    component_name : "rerun.components.FillRatio".into(), docstring_md :
                     "Scale the radii of the points in the point cloud generated from this image.\n\nA fill ratio of 1.0 (the default) means that each point is as big as to touch the center of its neighbor\nif it is at the same depth, leaving no gaps.\nA fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.\n\nTODO(#6744): This applies only to 3D views!",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
@@ -1504,43 +1516,45 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "half_sizes", display_name :
+                    ArchetypeFieldReflection { name : "half_sizes".into(), display_name :
                     "Half sizes", component_name : "rerun.components.HalfSize3D".into(),
                     docstring_md :
                     "For each ellipsoid, half of its size on its three axes.\n\nIf all components are equal, then it is a sphere with that radius.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "centers",
-                    display_name : "Centers", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "centers"
+                    .into(), display_name : "Centers", component_name :
                     "rerun.components.PoseTranslation3D".into(), docstring_md :
                     "Optional center positions of the ellipsoids.\n\nIf not specified, the centers will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "rotation_axis_angles", display_name : "Rotation axis angles",
+                    "rotation_axis_angles".into(), display_name : "Rotation axis angles",
                     component_name : "rerun.components.PoseRotationAxisAngle".into(),
                     docstring_md :
                     "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "quaternions", display_name : "Quaternions", component_name :
+                    "quaternions".into(), display_name : "Quaternions", component_name :
                     "rerun.components.PoseRotationQuat".into(), docstring_md :
                     "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the ellipsoids.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "line_radii", display_name : "Line radii", component_name :
-                    "rerun.components.Radius".into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the ellipsoids.", is_required : false, },
+                    ArchetypeFieldReflection { name : "line_radii".into(), display_name :
+                    "Line radii", component_name : "rerun.components.Radius".into(),
+                    docstring_md :
                     "Optional radii for the lines used when the ellipsoid is rendered as a wireframe.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "fill_mode", display_name : "Fill mode", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "fill_mode"
+                    .into(), display_name : "Fill mode", component_name :
                     "rerun.components.FillMode".into(), docstring_md :
                     "Optionally choose whether the ellipsoids are drawn with lines or solid.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md : "Optional text labels for the ellipsoids.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
-                    "rerun.components.ShowLabels".into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "labels"
+                    .into(), display_name : "Labels", component_name :
+                    "rerun.components.Text".into(), docstring_md :
+                    "Optional text labels for the ellipsoids.", is_required : false, },
+                    ArchetypeFieldReflection { name : "show_labels".into(), display_name
+                    : "Show labels", component_name : "rerun.components.ShowLabels"
+                    .into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional class ID for the ellipsoids.\n\nThe class ID provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1555,19 +1569,19 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "blob", display_name : "Blob",
-                    component_name : "rerun.components.Blob".into(), docstring_md :
-                    "The encoded content of some image file, e.g. a PNG or JPEG.",
-                    is_required : true, }, ArchetypeFieldReflection { name :
-                    "media_type", display_name : "Media type", component_name :
+                    ArchetypeFieldReflection { name : "blob".into(), display_name :
+                    "Blob", component_name : "rerun.components.Blob".into(), docstring_md
+                    : "The encoded content of some image file, e.g. a PNG or JPEG.",
+                    is_required : true, }, ArchetypeFieldReflection { name : "media_type"
+                    .into(), display_name : "Media type", component_name :
                     "rerun.components.MediaType".into(), docstring_md :
                     "The Media Type of the asset.\n\nSupported values:\n* `image/jpeg`\n* `image/png`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "opacity",
-                    display_name : "Opacity", component_name : "rerun.components.Opacity"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "opacity"
+                    .into(), display_name : "Opacity", component_name :
+                    "rerun.components.Opacity".into(), docstring_md :
                     "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
@@ -1582,18 +1596,18 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["MapView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "line_strings", display_name :
-                    "Line strings", component_name : "rerun.components.GeoLineString"
+                    ArchetypeFieldReflection { name : "line_strings".into(), display_name
+                    : "Line strings", component_name : "rerun.components.GeoLineString"
                     .into(), docstring_md :
                     "The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).",
-                    is_required : true, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md :
+                    is_required : true, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
                     "Optional radii for the line strings.\n\n*Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of\nthe first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the line strings.",
-                    is_required : false, },
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the line strings.", is_required : false, },
                 ],
             },
         ),
@@ -1605,20 +1619,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["MapView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "positions", display_name :
+                    ArchetypeFieldReflection { name : "positions".into(), display_name :
                     "Positions", component_name : "rerun.components.LatLon".into(),
                     docstring_md :
                     "The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).",
-                    is_required : true, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md :
+                    is_required : true, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
                     "Optional radii for the points, effectively turning them into circles.\n\n*Note*: scene units radiii are interpreted as meters.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the points.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
-                    "rerun.components.ClassId".into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the points.", is_required : false, },
+                    ArchetypeFieldReflection { name : "class_ids".into(), display_name :
+                    "Class ids", component_name : "rerun.components.ClassId".into(),
+                    docstring_md :
                     "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors if not specified explicitly.",
                     is_required : false, },
                 ],
@@ -1632,10 +1647,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["GraphView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "edges", display_name : "Edges",
-                    component_name : "rerun.components.GraphEdge".into(), docstring_md :
-                    "A list of node tuples.", is_required : true, },
-                    ArchetypeFieldReflection { name : "graph_type", display_name :
+                    ArchetypeFieldReflection { name : "edges".into(), display_name :
+                    "Edges", component_name : "rerun.components.GraphEdge".into(),
+                    docstring_md : "A list of node tuples.", is_required : true, },
+                    ArchetypeFieldReflection { name : "graph_type".into(), display_name :
                     "Graph type", component_name : "rerun.components.GraphType".into(),
                     docstring_md :
                     "Specifies if the graph is directed or undirected.\n\nIf no [`components.GraphType`](https://rerun.io/docs/reference/types/components/graph_type) is provided, the graph is assumed to be undirected.",
@@ -1651,26 +1666,26 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["GraphView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "node_ids", display_name :
+                    ArchetypeFieldReflection { name : "node_ids".into(), display_name :
                     "Node ids", component_name : "rerun.components.GraphNode".into(),
                     docstring_md : "A list of node IDs.", is_required : true, },
-                    ArchetypeFieldReflection { name : "positions", display_name :
+                    ArchetypeFieldReflection { name : "positions".into(), display_name :
                     "Positions", component_name : "rerun.components.Position2D".into(),
                     docstring_md : "Optional center positions of the nodes.", is_required
-                    : false, }, ArchetypeFieldReflection { name : "colors", display_name
-                    : "Colors", component_name : "rerun.components.Color".into(),
-                    docstring_md : "Optional colors for the boxes.", is_required : false,
-                    }, ArchetypeFieldReflection { name : "labels", display_name :
-                    "Labels", component_name : "rerun.components.Text".into(),
-                    docstring_md : "Optional text labels for the node.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "show_labels",
-                    display_name : "Show labels", component_name :
+                    : false, }, ArchetypeFieldReflection { name : "colors".into(),
+                    display_name : "Colors", component_name : "rerun.components.Color"
+                    .into(), docstring_md : "Optional colors for the boxes.", is_required
+                    : false, }, ArchetypeFieldReflection { name : "labels".into(),
+                    display_name : "Labels", component_name : "rerun.components.Text"
+                    .into(), docstring_md : "Optional text labels for the node.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md : "Optional radii for nodes.", is_required :
-                    false, },
+                    is_required : false, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
+                    "Optional radii for nodes.", is_required : false, },
                 ],
             },
         ),
@@ -1682,18 +1697,18 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "buffer", display_name : "Buffer",
-                    component_name : "rerun.components.ImageBuffer".into(), docstring_md
-                    : "The raw image data.", is_required : true, },
-                    ArchetypeFieldReflection { name : "format", display_name : "Format",
-                    component_name : "rerun.components.ImageFormat".into(), docstring_md
-                    : "The format of the image.", is_required : true, },
-                    ArchetypeFieldReflection { name : "opacity", display_name :
+                    ArchetypeFieldReflection { name : "buffer".into(), display_name :
+                    "Buffer", component_name : "rerun.components.ImageBuffer".into(),
+                    docstring_md : "The raw image data.", is_required : true, },
+                    ArchetypeFieldReflection { name : "format".into(), display_name :
+                    "Format", component_name : "rerun.components.ImageFormat".into(),
+                    docstring_md : "The format of the image.", is_required : true, },
+                    ArchetypeFieldReflection { name : "opacity".into(), display_name :
                     "Opacity", component_name : "rerun.components.Opacity".into(),
                     docstring_md :
                     "Opacity of the image, useful for layering several images.\n\nDefaults to 1.0 (fully opaque).",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
@@ -1708,23 +1723,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "translations", display_name :
-                    "Translations", component_name : "rerun.components.PoseTranslation3D"
-                    .into(), docstring_md : "Translation vectors.", is_required : false,
-                    }, ArchetypeFieldReflection { name : "rotation_axis_angles",
+                    ArchetypeFieldReflection { name : "translations".into(), display_name
+                    : "Translations", component_name :
+                    "rerun.components.PoseTranslation3D".into(), docstring_md :
+                    "Translation vectors.", is_required : false, },
+                    ArchetypeFieldReflection { name : "rotation_axis_angles".into(),
                     display_name : "Rotation axis angles", component_name :
                     "rerun.components.PoseRotationAxisAngle".into(), docstring_md :
                     "Rotations via axis + angle.", is_required : false, },
-                    ArchetypeFieldReflection { name : "quaternions", display_name :
-                    "Quaternions", component_name : "rerun.components.PoseRotationQuat"
+                    ArchetypeFieldReflection { name : "quaternions".into(), display_name
+                    : "Quaternions", component_name : "rerun.components.PoseRotationQuat"
                     .into(), docstring_md : "Rotations via quaternion.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "scales", display_name :
-                    "Scales", component_name : "rerun.components.PoseScale3D".into(),
-                    docstring_md : "Scaling factors.", is_required : false, },
-                    ArchetypeFieldReflection { name : "mat3x3", display_name :
-                    "Mat 3x 3", component_name : "rerun.components.PoseTransformMat3x3"
-                    .into(), docstring_md : "3x3 transformation matrices.", is_required :
-                    false, },
+                    false, }, ArchetypeFieldReflection { name : "scales".into(),
+                    display_name : "Scales", component_name :
+                    "rerun.components.PoseScale3D".into(), docstring_md :
+                    "Scaling factors.", is_required : false, }, ArchetypeFieldReflection
+                    { name : "mat3x3".into(), display_name : "Mat 3x 3", component_name :
+                    "rerun.components.PoseTransformMat3x3".into(), docstring_md :
+                    "3x3 transformation matrices.", is_required : false, },
                 ],
             },
         ),
@@ -1736,29 +1752,31 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "strips", display_name : "Strips",
-                    component_name : "rerun.components.LineStrip2D".into(), docstring_md
-                    : "All the actual 2D line strips that make up the batch.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "radii",
+                    ArchetypeFieldReflection { name : "strips".into(), display_name :
+                    "Strips", component_name : "rerun.components.LineStrip2D".into(),
+                    docstring_md :
+                    "All the actual 2D line strips that make up the batch.", is_required
+                    : true, }, ArchetypeFieldReflection { name : "radii".into(),
                     display_name : "Radii", component_name : "rerun.components.Radius"
                     .into(), docstring_md : "Optional radii for the line strips.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the line strips.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the line strips.", is_required : false, },
+                    ArchetypeFieldReflection { name : "labels".into(), display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md :
                     "Optional text labels for the line strips.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order of each line strip.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the lines.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1773,25 +1791,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "strips", display_name : "Strips",
-                    component_name : "rerun.components.LineStrip3D".into(), docstring_md
-                    : "All the actual 3D line strips that make up the batch.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "radii",
+                    ArchetypeFieldReflection { name : "strips".into(), display_name :
+                    "Strips", component_name : "rerun.components.LineStrip3D".into(),
+                    docstring_md :
+                    "All the actual 3D line strips that make up the batch.", is_required
+                    : true, }, ArchetypeFieldReflection { name : "radii".into(),
                     display_name : "Radii", component_name : "rerun.components.Radius"
                     .into(), docstring_md : "Optional radii for the line strips.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the line strips.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the line strips.", is_required : false, },
+                    ArchetypeFieldReflection { name : "labels".into(), display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md :
                     "Optional text labels for the line strips.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s for the lines.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
@@ -1806,40 +1826,43 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "vertex_positions", display_name :
-                    "Vertex positions", component_name : "rerun.components.Position3D"
-                    .into(), docstring_md :
+                    ArchetypeFieldReflection { name : "vertex_positions".into(),
+                    display_name : "Vertex positions", component_name :
+                    "rerun.components.Position3D".into(), docstring_md :
                     "The positions of each vertex.\n\nIf no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.",
                     is_required : true, }, ArchetypeFieldReflection { name :
-                    "triangle_indices", display_name : "Triangle indices", component_name
-                    : "rerun.components.TriangleIndices".into(), docstring_md :
+                    "triangle_indices".into(), display_name : "Triangle indices",
+                    component_name : "rerun.components.TriangleIndices".into(),
+                    docstring_md :
                     "Optional indices for the triangles that make up the mesh.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "vertex_normals", display_name : "Vertex normals", component_name :
-                    "rerun.components.Vector3D".into(), docstring_md :
+                    "vertex_normals".into(), display_name : "Vertex normals",
+                    component_name : "rerun.components.Vector3D".into(), docstring_md :
                     "An optional normal for each vertex.", is_required : false, },
-                    ArchetypeFieldReflection { name : "vertex_colors", display_name :
-                    "Vertex colors", component_name : "rerun.components.Color".into(),
-                    docstring_md : "An optional color for each vertex.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "vertex_texcoords",
+                    ArchetypeFieldReflection { name : "vertex_colors".into(),
+                    display_name : "Vertex colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "An optional color for each vertex.", is_required : false, },
+                    ArchetypeFieldReflection { name : "vertex_texcoords".into(),
                     display_name : "Vertex texcoords", component_name :
                     "rerun.components.Texcoord2D".into(), docstring_md :
                     "An optional uv texture coordinate for each vertex.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "albedo_factor",
+                    false, }, ArchetypeFieldReflection { name : "albedo_factor".into(),
                     display_name : "Albedo factor", component_name :
                     "rerun.components.AlbedoFactor".into(), docstring_md :
                     "A color multiplier applied to the whole mesh.", is_required : false,
-                    }, ArchetypeFieldReflection { name : "albedo_texture_buffer",
+                    }, ArchetypeFieldReflection { name : "albedo_texture_buffer".into(),
                     display_name : "Albedo texture buffer", component_name :
                     "rerun.components.ImageBuffer".into(), docstring_md :
                     "Optional albedo texture.\n\nUsed with the [`components.Texcoord2D`](https://rerun.io/docs/reference/types/components/texcoord2d) of the mesh.\n\nCurrently supports only sRGB(A) textures, ignoring alpha.\n(meaning that the tensor must have 3 or 4 channels and use the `u8` format)",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "albedo_texture_format", display_name : "Albedo texture format",
-                    component_name : "rerun.components.ImageFormat".into(), docstring_md
-                    : "The format of the `albedo_texture_buffer`, if any.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "class_ids", display_name
-                    : "Class ids", component_name : "rerun.components.ClassId".into(),
-                    docstring_md :
+                    "albedo_texture_format".into(), display_name :
+                    "Albedo texture format", component_name :
+                    "rerun.components.ImageFormat".into(), docstring_md :
+                    "The format of the `albedo_texture_buffer`, if any.", is_required :
+                    false, }, ArchetypeFieldReflection { name : "class_ids".into(),
+                    display_name : "Class ids", component_name :
+                    "rerun.components.ClassId".into(), docstring_md :
                     "Optional class Ids for the vertices.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, },
                 ],
@@ -1853,20 +1876,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "image_from_camera", display_name :
-                    "Image from camera", component_name :
+                    ArchetypeFieldReflection { name : "image_from_camera".into(),
+                    display_name : "Image from camera", component_name :
                     "rerun.components.PinholeProjection".into(), docstring_md :
                     "Camera projection, from image coordinates to view coordinates.",
-                    is_required : true, }, ArchetypeFieldReflection { name :
-                    "resolution", display_name : "Resolution", component_name :
+                    is_required : true, }, ArchetypeFieldReflection { name : "resolution"
+                    .into(), display_name : "Resolution", component_name :
                     "rerun.components.Resolution".into(), docstring_md :
                     "Pixel resolution (usually integers) of child image space. Width and height.\n\nExample:\n```text\n[1920.0, 1440.0]\n```\n\n`image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "camera_xyz", display_name : "Camera xyz", component_name :
+                    "camera_xyz".into(), display_name : "Camera xyz", component_name :
                     "rerun.components.ViewCoordinates".into(), docstring_md :
                     "Sets the view coordinates for the camera.\n\nAll common values are available as constants on the [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) class.\n\nThe default is `ViewCoordinates::RDF`, i.e. X=Right, Y=Down, Z=Forward, and this is also the recommended setting.\nThis means that the camera frustum will point along the positive Z axis of the parent space,\nand the cameras \"up\" direction will be along the negative Y axis of the parent space.\n\nThe camera frustum will point whichever axis is set to `F` (or the opposite of `B`).\nWhen logging a depth image under this entity, this is the direction the point cloud will be projected.\nWith `RDF`, the default forward is +Z.\n\nThe frustum's \"up\" direction will be whichever axis is set to `U` (or the opposite of `D`).\nThis will match the negative Y direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default is up is -Y.\n\nThe frustum's \"right\" direction will be whichever axis is set to `R` (or the opposite of `L`).\nThis will match the positive X direction of pixel space (all images are assumed to have xyz=RDF).\nWith `RDF`, the default right is +x.\n\nOther common formats are `RUB` (X=Right, Y=Up, Z=Back) and `FLU` (X=Forward, Y=Left, Z=Up).\n\nNOTE: setting this to something else than `RDF` (the default) will change the orientation of the camera frustum,\nand make the pinhole matrix not match up with the coordinate system of the pinhole entity.\n\nThe pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,\nbut will be re-oriented to project along the forward axis of the `camera_xyz` argument.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "image_plane_distance", display_name : "Image plane distance",
+                    "image_plane_distance".into(), display_name : "Image plane distance",
                     component_name : "rerun.components.ImagePlaneDistance".into(),
                     docstring_md :
                     "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
@@ -1882,36 +1905,37 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "positions", display_name :
+                    ArchetypeFieldReflection { name : "positions".into(), display_name :
                     "Positions", component_name : "rerun.components.Position2D".into(),
                     docstring_md :
                     "All the 2D positions at which the point cloud shows points.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md :
+                    is_required : true, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
                     "Optional radii for the points, effectively turning them into circles.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the points.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the points.", is_required : false, },
+                    ArchetypeFieldReflection { name : "labels".into(), display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md :
                     "Optional text labels for the points.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "keypoint_ids", display_name : "Keypoint ids", component_name :
-                    "rerun.components.KeypointId".into(), docstring_md :
+                    "keypoint_ids".into(), display_name : "Keypoint ids", component_name
+                    : "rerun.components.KeypointId".into(), docstring_md :
                     "Optional keypoint IDs for the points, identifying them within a class.\n\nIf keypoint IDs are passed in but no [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s were specified, the [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) will\ndefault to 0.\nThis is useful to identify points within a single classification (which is identified\nwith `class_id`).\nE.g. the classification might be 'Person' and the keypoints refer to joints on a\ndetected skeleton.",
                     is_required : false, },
                 ],
@@ -1925,32 +1949,33 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "positions", display_name :
+                    ArchetypeFieldReflection { name : "positions".into(), display_name :
                     "Positions", component_name : "rerun.components.Position3D".into(),
                     docstring_md :
                     "All the 3D positions at which the point cloud shows points.",
-                    is_required : true, }, ArchetypeFieldReflection { name : "radii",
-                    display_name : "Radii", component_name : "rerun.components.Radius"
-                    .into(), docstring_md :
+                    is_required : true, }, ArchetypeFieldReflection { name : "radii"
+                    .into(), display_name : "Radii", component_name :
+                    "rerun.components.Radius".into(), docstring_md :
                     "Optional radii for the points, effectively turning them into circles.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colors",
-                    display_name : "Colors", component_name : "rerun.components.Color"
-                    .into(), docstring_md : "Optional colors for the points.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "labels",
-                    display_name : "Labels", component_name : "rerun.components.Text"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colors"
+                    .into(), display_name : "Colors", component_name :
+                    "rerun.components.Color".into(), docstring_md :
+                    "Optional colors for the points.", is_required : false, },
+                    ArchetypeFieldReflection { name : "labels".into(), display_name :
+                    "Labels", component_name : "rerun.components.Text".into(),
+                    docstring_md :
                     "Optional text labels for the points.\n\nIf there's a single label present, it will be placed at the center of the entity.\nOtherwise, each instance will have its own label.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "show_labels", display_name : "Show labels", component_name :
+                    "show_labels".into(), display_name : "Show labels", component_name :
                     "rerun.components.ShowLabels".into(), docstring_md :
                     "Optional choice of whether the text labels should be shown by default.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "class_ids", display_name : "Class ids", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
+                    .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
                     "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors and labels if not specified explicitly.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "keypoint_ids", display_name : "Keypoint ids", component_name :
-                    "rerun.components.KeypointId".into(), docstring_md :
+                    "keypoint_ids".into(), display_name : "Keypoint ids", component_name
+                    : "rerun.components.KeypointId".into(), docstring_md :
                     "Optional keypoint IDs for the points, identifying them within a class.\n\nIf keypoint IDs are passed in but no [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s were specified, the [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) will\ndefault to 0.\nThis is useful to identify points within a single classification (which is identified\nwith `class_id`).\nE.g. the classification might be 'Person' and the keypoints refer to joints on a\ndetected skeleton.",
                     is_required : false, },
                 ],
@@ -1964,14 +1989,14 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "start_time", display_name :
+                    ArchetypeFieldReflection { name : "start_time".into(), display_name :
                     "Start time", component_name : "rerun.components.Timestamp".into(),
                     docstring_md :
                     "When the recording started.\n\nShould be an absolute time, i.e. relative to Unix Epoch.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "name",
-                    display_name : "Name", component_name : "rerun.components.Name"
-                    .into(), docstring_md : "A user-chosen name for the recording.",
-                    is_required : false, },
+                    is_required : false, }, ArchetypeFieldReflection { name : "name"
+                    .into(), display_name : "Name", component_name :
+                    "rerun.components.Name".into(), docstring_md :
+                    "A user-chosen name for the recording.", is_required : false, },
                 ],
             },
         ),
@@ -1983,9 +2008,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "scalar", display_name : "Scalar",
-                    component_name : "rerun.components.Scalar".into(), docstring_md :
-                    "The scalar value to log.", is_required : true, },
+                    ArchetypeFieldReflection { name : "scalar".into(), display_name :
+                    "Scalar", component_name : "rerun.components.Scalar".into(),
+                    docstring_md : "The scalar value to log.", is_required : true, },
                 ],
             },
         ),
@@ -1997,7 +2022,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "scalars", display_name :
+                    ArchetypeFieldReflection { name : "scalars".into(), display_name :
                     "Scalars", component_name : "rerun.components.Scalar".into(),
                     docstring_md : "The scalar values to log.", is_required : true, },
                 ],
@@ -2011,18 +2036,18 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "buffer", display_name : "Buffer",
-                    component_name : "rerun.components.ImageBuffer".into(), docstring_md
-                    : "The raw image data.", is_required : true, },
-                    ArchetypeFieldReflection { name : "format", display_name : "Format",
-                    component_name : "rerun.components.ImageFormat".into(), docstring_md
-                    : "The format of the image.", is_required : true, },
-                    ArchetypeFieldReflection { name : "opacity", display_name :
+                    ArchetypeFieldReflection { name : "buffer".into(), display_name :
+                    "Buffer", component_name : "rerun.components.ImageBuffer".into(),
+                    docstring_md : "The raw image data.", is_required : true, },
+                    ArchetypeFieldReflection { name : "format".into(), display_name :
+                    "Format", component_name : "rerun.components.ImageFormat".into(),
+                    docstring_md : "The format of the image.", is_required : true, },
+                    ArchetypeFieldReflection { name : "opacity".into(), display_name :
                     "Opacity", component_name : "rerun.components.Opacity".into(),
                     docstring_md :
                     "Opacity of the image, useful for layering the segmentation image on top of another image.\n\nDefaults to 0.5 if there's any other images in the scene, otherwise 1.0.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "draw_order", display_name : "Draw order", component_name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
@@ -2037,21 +2062,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "color", display_name : "Color",
-                    component_name : "rerun.components.Color".into(), docstring_md :
-                    "Color for the corresponding series.", is_required : false, },
-                    ArchetypeFieldReflection { name : "width", display_name : "Width",
-                    component_name : "rerun.components.StrokeWidth".into(), docstring_md
-                    : "Stroke width for the corresponding series.", is_required : false,
-                    }, ArchetypeFieldReflection { name : "name", display_name : "Name",
-                    component_name : "rerun.components.Name".into(), docstring_md :
-                    "Display name of the series.\n\nUsed in the legend.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "visible_series",
+                    ArchetypeFieldReflection { name : "color".into(), display_name :
+                    "Color", component_name : "rerun.components.Color".into(),
+                    docstring_md : "Color for the corresponding series.", is_required :
+                    false, }, ArchetypeFieldReflection { name : "width".into(),
+                    display_name : "Width", component_name :
+                    "rerun.components.StrokeWidth".into(), docstring_md :
+                    "Stroke width for the corresponding series.", is_required : false, },
+                    ArchetypeFieldReflection { name : "name".into(), display_name :
+                    "Name", component_name : "rerun.components.Name".into(), docstring_md
+                    : "Display name of the series.\n\nUsed in the legend.", is_required :
+                    false, }, ArchetypeFieldReflection { name : "visible_series".into(),
                     display_name : "Visible series", component_name :
                     "rerun.components.SeriesVisible".into(), docstring_md :
                     "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "aggregation_policy", display_name : "Aggregation policy",
+                    "aggregation_policy".into(), display_name : "Aggregation policy",
                     component_name : "rerun.components.AggregationPolicy".into(),
                     docstring_md :
                     "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
@@ -2067,23 +2093,25 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "colors", display_name : "Colors",
-                    component_name : "rerun.components.Color".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "colors".into(), display_name :
+                    "Colors", component_name : "rerun.components.Color".into(),
+                    docstring_md :
                     "Color for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "widths",
-                    display_name : "Widths", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "widths"
+                    .into(), display_name : "Widths", component_name :
                     "rerun.components.StrokeWidth".into(), docstring_md :
                     "Stroke width for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "names",
-                    display_name : "Names", component_name : "rerun.components.Name"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "names"
+                    .into(), display_name : "Names", component_name :
+                    "rerun.components.Name".into(), docstring_md :
                     "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "visible_series", display_name : "Visible series", component_name :
-                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "visible_series".into(), display_name : "Visible series",
+                    component_name : "rerun.components.SeriesVisible".into(),
+                    docstring_md :
                     "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time, but can cause discontinuities in the line.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "aggregation_policy", display_name : "Aggregation policy",
+                    "aggregation_policy".into(), display_name : "Aggregation policy",
                     component_name : "rerun.components.AggregationPolicy".into(),
                     docstring_md :
                     "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.\n\nExpected to be unchanging over time.",
@@ -2099,21 +2127,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "color", display_name : "Color",
-                    component_name : "rerun.components.Color".into(), docstring_md :
-                    "Color for the corresponding series.", is_required : false, },
-                    ArchetypeFieldReflection { name : "marker", display_name : "Marker",
-                    component_name : "rerun.components.MarkerShape".into(), docstring_md
-                    : "What shape to use to represent the point", is_required : false, },
-                    ArchetypeFieldReflection { name : "name", display_name : "Name",
-                    component_name : "rerun.components.Name".into(), docstring_md :
-                    "Display name of the series.\n\nUsed in the legend.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "visible_series",
+                    ArchetypeFieldReflection { name : "color".into(), display_name :
+                    "Color", component_name : "rerun.components.Color".into(),
+                    docstring_md : "Color for the corresponding series.", is_required :
+                    false, }, ArchetypeFieldReflection { name : "marker".into(),
+                    display_name : "Marker", component_name :
+                    "rerun.components.MarkerShape".into(), docstring_md :
+                    "What shape to use to represent the point", is_required : false, },
+                    ArchetypeFieldReflection { name : "name".into(), display_name :
+                    "Name", component_name : "rerun.components.Name".into(), docstring_md
+                    : "Display name of the series.\n\nUsed in the legend.", is_required :
+                    false, }, ArchetypeFieldReflection { name : "visible_series".into(),
                     display_name : "Visible series", component_name :
                     "rerun.components.SeriesVisible".into(), docstring_md :
                     "Which point series are visible.\n\nIf not set, all point series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "marker_size", display_name : "Marker size", component_name :
+                    "marker_size".into(), display_name : "Marker size", component_name :
                     "rerun.components.MarkerSize".into(), docstring_md :
                     "Size of the marker.", is_required : false, },
                 ],
@@ -2127,24 +2156,26 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TimeSeriesView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "colors", display_name : "Colors",
-                    component_name : "rerun.components.Color".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "colors".into(), display_name :
+                    "Colors", component_name : "rerun.components.Color".into(),
+                    docstring_md :
                     "Color for the corresponding series.\n\nMay change over time, but can cause discontinuities in the line.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "markers",
-                    display_name : "Markers", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "markers"
+                    .into(), display_name : "Markers", component_name :
                     "rerun.components.MarkerShape".into(), docstring_md :
                     "What shape to use to represent the point\n\nMay change over time.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "names",
-                    display_name : "Names", component_name : "rerun.components.Name"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "names"
+                    .into(), display_name : "Names", component_name :
+                    "rerun.components.Name".into(), docstring_md :
                     "Display name of the series.\n\nUsed in the legend. Expected to be unchanging over time.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "visible_series", display_name : "Visible series", component_name :
-                    "rerun.components.SeriesVisible".into(), docstring_md :
+                    "visible_series".into(), display_name : "Visible series",
+                    component_name : "rerun.components.SeriesVisible".into(),
+                    docstring_md :
                     "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.\n\nMay change over time.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "marker_sizes", display_name : "Marker sizes", component_name :
-                    "rerun.components.MarkerSize".into(), docstring_md :
+                    "marker_sizes".into(), display_name : "Marker sizes", component_name
+                    : "rerun.components.MarkerSize".into(), docstring_md :
                     "Sizes of the markers.\n\nMay change over time.", is_required :
                     false, },
                 ],
@@ -2158,11 +2189,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TensorView", "BarChartView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "data", display_name : "Data",
-                    component_name : "rerun.components.TensorData".into(), docstring_md :
-                    "The tensor data", is_required : true, }, ArchetypeFieldReflection {
-                    name : "value_range", display_name : "Value range", component_name :
-                    "rerun.components.ValueRange".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "data".into(), display_name :
+                    "Data", component_name : "rerun.components.TensorData".into(),
+                    docstring_md : "The tensor data", is_required : true, },
+                    ArchetypeFieldReflection { name : "value_range".into(), display_name
+                    : "Value range", component_name : "rerun.components.ValueRange"
+                    .into(), docstring_md :
                     "The expected range of values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nAny colormap applied for display, will map this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the tensor.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, },
                 ],
@@ -2176,10 +2208,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TextDocumentView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "text", display_name : "Text",
-                    component_name : "rerun.components.Text".into(), docstring_md :
-                    "Contents of the text document.", is_required : true, },
-                    ArchetypeFieldReflection { name : "media_type", display_name :
+                    ArchetypeFieldReflection { name : "text".into(), display_name :
+                    "Text", component_name : "rerun.components.Text".into(), docstring_md
+                    : "Contents of the text document.", is_required : true, },
+                    ArchetypeFieldReflection { name : "media_type".into(), display_name :
                     "Media type", component_name : "rerun.components.MediaType".into(),
                     docstring_md :
                     "The Media Type of the text.\n\nFor instance:\n* `text/plain`\n* `text/markdown`\n\nIf omitted, `text/plain` is assumed.",
@@ -2195,16 +2227,16 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["TextLogView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "text", display_name : "Text",
-                    component_name : "rerun.components.Text".into(), docstring_md :
-                    "The body of the message.", is_required : true, },
-                    ArchetypeFieldReflection { name : "level", display_name : "Level",
-                    component_name : "rerun.components.TextLogLevel".into(), docstring_md
-                    :
+                    ArchetypeFieldReflection { name : "text".into(), display_name :
+                    "Text", component_name : "rerun.components.Text".into(), docstring_md
+                    : "The body of the message.", is_required : true, },
+                    ArchetypeFieldReflection { name : "level".into(), display_name :
+                    "Level", component_name : "rerun.components.TextLogLevel".into(),
+                    docstring_md :
                     "The verbosity level of the message.\n\nThis can be used to filter the log messages in the Rerun Viewer.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "color",
-                    display_name : "Color", component_name : "rerun.components.Color"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "color"
+                    .into(), display_name : "Color", component_name :
+                    "rerun.components.Color".into(), docstring_md :
                     "Optional color to use for the log line in the Rerun Viewer.",
                     is_required : false, },
                 ],
@@ -2218,28 +2250,28 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "translation", display_name :
-                    "Translation", component_name : "rerun.components.Translation3D"
+                    ArchetypeFieldReflection { name : "translation".into(), display_name
+                    : "Translation", component_name : "rerun.components.Translation3D"
                     .into(), docstring_md : "Translation vector.", is_required : false,
-                    }, ArchetypeFieldReflection { name : "rotation_axis_angle",
+                    }, ArchetypeFieldReflection { name : "rotation_axis_angle".into(),
                     display_name : "Rotation axis angle", component_name :
                     "rerun.components.RotationAxisAngle".into(), docstring_md :
                     "Rotation via axis + angle.", is_required : false, },
-                    ArchetypeFieldReflection { name : "quaternion", display_name :
+                    ArchetypeFieldReflection { name : "quaternion".into(), display_name :
                     "Quaternion", component_name : "rerun.components.RotationQuat"
                     .into(), docstring_md : "Rotation via quaternion.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "scale", display_name :
-                    "Scale", component_name : "rerun.components.Scale3D".into(),
-                    docstring_md : "Scaling factor.", is_required : false, },
-                    ArchetypeFieldReflection { name : "mat3x3", display_name :
+                    false, }, ArchetypeFieldReflection { name : "scale".into(),
+                    display_name : "Scale", component_name : "rerun.components.Scale3D"
+                    .into(), docstring_md : "Scaling factor.", is_required : false, },
+                    ArchetypeFieldReflection { name : "mat3x3".into(), display_name :
                     "Mat 3x 3", component_name : "rerun.components.TransformMat3x3"
                     .into(), docstring_md : "3x3 transformation matrix.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "relation", display_name
-                    : "Relation", component_name : "rerun.components.TransformRelation"
-                    .into(), docstring_md :
+                    false, }, ArchetypeFieldReflection { name : "relation".into(),
+                    display_name : "Relation", component_name :
+                    "rerun.components.TransformRelation".into(), docstring_md :
                     "Specifies the relation this transform establishes between this entity and its parent.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "axis_length", display_name : "Axis length", component_name :
+                    "axis_length".into(), display_name : "Axis length", component_name :
                     "rerun.components.AxisLength".into(), docstring_md :
                     "Visual length of the 3 axes.\n\nThe length is interpreted in the local coordinate system of the transform.\nIf the transform is scaled, the axes will be scaled accordingly.",
                     is_required : false, },
@@ -2254,13 +2286,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "timestamp", display_name :
+                    ArchetypeFieldReflection { name : "timestamp".into(), display_name :
                     "Timestamp", component_name : "rerun.components.VideoTimestamp"
                     .into(), docstring_md :
                     "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\nTimestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.\nThis is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames\n(bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.",
                     is_required : true, }, ArchetypeFieldReflection { name :
-                    "video_reference", display_name : "Video reference", component_name :
-                    "rerun.components.EntityPath".into(), docstring_md :
+                    "video_reference".into(), display_name : "Video reference",
+                    component_name : "rerun.components.EntityPath".into(), docstring_md :
                     "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
                     is_required : false, },
                 ],
@@ -2274,7 +2306,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: None,
                 view_types: &["Spatial3DView"],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "xyz", display_name : "Xyz",
+                    ArchetypeFieldReflection { name : "xyz".into(), display_name : "Xyz",
                     component_name : "rerun.components.ViewCoordinates".into(),
                     docstring_md : "The directions of the [x, y, z] axes.", is_required :
                     true, },
@@ -2289,12 +2321,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "kind", display_name : "Kind",
-                    component_name : "rerun.blueprint.components.BackgroundKind".into(),
-                    docstring_md : "The type of the background.", is_required : true, },
-                    ArchetypeFieldReflection { name : "color", display_name : "Color",
-                    component_name : "rerun.components.Color".into(), docstring_md :
-                    "Color used for the solid background type.", is_required : false, },
+                    ArchetypeFieldReflection { name : "kind".into(), display_name :
+                    "Kind", component_name : "rerun.blueprint.components.BackgroundKind"
+                    .into(), docstring_md : "The type of the background.", is_required :
+                    true, }, ArchetypeFieldReflection { name : "color".into(),
+                    display_name : "Color", component_name : "rerun.components.Color"
+                    .into(), docstring_md : "Color used for the solid background type.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -2306,36 +2339,36 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "container_kind", display_name :
-                    "Container kind", component_name :
+                    ArchetypeFieldReflection { name : "container_kind".into(),
+                    display_name : "Container kind", component_name :
                     "rerun.blueprint.components.ContainerKind".into(), docstring_md :
                     "The class of the view.", is_required : true, },
-                    ArchetypeFieldReflection { name : "display_name", display_name :
-                    "Display name", component_name : "rerun.components.Name".into(),
+                    ArchetypeFieldReflection { name : "display_name".into(), display_name
+                    : "Display name", component_name : "rerun.components.Name".into(),
                     docstring_md : "The name of the container.", is_required : false, },
-                    ArchetypeFieldReflection { name : "contents", display_name :
+                    ArchetypeFieldReflection { name : "contents".into(), display_name :
                     "Contents", component_name :
                     "rerun.blueprint.components.IncludedContent".into(), docstring_md :
                     "`ContainerId`s or `ViewId`s that are children of this container.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "col_shares", display_name : "Col shares", component_name :
+                    "col_shares".into(), display_name : "Col shares", component_name :
                     "rerun.blueprint.components.ColumnShare".into(), docstring_md :
                     "The layout shares of each column in the container.\n\nFor components.ContainerKind containers, the length of this list should always match the number of contents.\n\nIgnored for components.ContainerKind containers.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "row_shares", display_name : "Row shares", component_name :
+                    "row_shares".into(), display_name : "Row shares", component_name :
                     "rerun.blueprint.components.RowShare".into(), docstring_md :
                     "The layout shares of each row of the container.\n\nFor components.ContainerKind containers, the length of this list should always match the number of contents.\n\nIgnored for components.ContainerKind containers.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "active_tab", display_name : "Active tab", component_name :
+                    "active_tab".into(), display_name : "Active tab", component_name :
                     "rerun.blueprint.components.ActiveTab".into(), docstring_md :
                     "Which tab is active.\n\nOnly applies to `Tabs` containers.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name : "rerun.components.Visible"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "visible"
+                    .into(), display_name : "Visible", component_name :
+                    "rerun.components.Visible".into(), docstring_md :
                     "Whether this container is visible.\n\nDefaults to true if not specified.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "grid_columns", display_name : "Grid columns", component_name :
-                    "rerun.blueprint.components.GridColumns".into(), docstring_md :
+                    "grid_columns".into(), display_name : "Grid columns", component_name
+                    : "rerun.blueprint.components.GridColumns".into(), docstring_md :
                     "How many columns this grid should have.\n\nIf unset, the grid layout will be auto.\n\nIgnored for components.ContainerKind/components.ContainerKind containers.",
                     is_required : false, },
                 ],
@@ -2349,25 +2382,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "timeline", display_name :
+                    ArchetypeFieldReflection { name : "timeline".into(), display_name :
                     "Timeline", component_name :
                     "rerun.blueprint.components.TimelineName".into(), docstring_md :
                     "The timeline for this query.\n\nIf unset, the timeline currently active on the time panel is used.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "filter_by_range", display_name : "Filter by range", component_name :
-                    "rerun.blueprint.components.FilterByRange".into(), docstring_md :
+                    "filter_by_range".into(), display_name : "Filter by range",
+                    component_name : "rerun.blueprint.components.FilterByRange".into(),
+                    docstring_md :
                     "If provided, only rows whose timestamp is within this range will be shown.\n\nNote: will be unset as soon as `timeline` is changed.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "filter_is_not_null", display_name : "Filter is not null",
+                    "filter_is_not_null".into(), display_name : "Filter is not null",
                     component_name : "rerun.blueprint.components.FilterIsNotNull".into(),
                     docstring_md :
                     "If provided, only show rows which contains a logged event for the specified component.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "apply_latest_at", display_name : "Apply latest at", component_name :
-                    "rerun.blueprint.components.ApplyLatestAt".into(), docstring_md :
+                    "apply_latest_at".into(), display_name : "Apply latest at",
+                    component_name : "rerun.blueprint.components.ApplyLatestAt".into(),
+                    docstring_md :
                     "Should empty cells be filled with latest-at queries?", is_required :
-                    false, }, ArchetypeFieldReflection { name : "select", display_name :
-                    "Select", component_name :
+                    false, }, ArchetypeFieldReflection { name : "select".into(),
+                    display_name : "Select", component_name :
                     "rerun.blueprint.components.SelectedColumns".into(), docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
@@ -2382,13 +2417,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "interactive", display_name :
-                    "Interactive", component_name : "rerun.components.Interactive"
+                    ArchetypeFieldReflection { name : "interactive".into(), display_name
+                    : "Interactive", component_name : "rerun.components.Interactive"
                     .into(), docstring_md :
                     "Whether the entity can be interacted with.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `interactive` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `interactive` value or true if there is no parent.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name : "rerun.components.Visible"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "visible"
+                    .into(), display_name : "Visible", component_name :
+                    "rerun.components.Visible".into(), docstring_md :
                     "Whether the entity is visible.\n\nThis property is propagated down the entity hierarchy until another child entity\nsets `visible` to a different value at which point propagation continues with that value instead.\n\nDefaults to parent's `visible` value or true if there is no parent.",
                     is_required : false, },
                 ],
@@ -2402,12 +2437,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "enabled", display_name :
+                    ArchetypeFieldReflection { name : "enabled".into(), display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
                     .into(), docstring_md :
                     "Whether the center force is enabled.\n\nThe center force tries to move the center of mass of the graph towards the origin.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
-                    display_name : "Strength", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength"
+                    .into(), display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },
                 ],
@@ -2421,15 +2456,15 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "enabled", display_name :
+                    ArchetypeFieldReflection { name : "enabled".into(), display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
                     .into(), docstring_md :
                     "Whether the collision force is enabled.\n\nThe collision force resolves collisions between nodes based on the bounding circle defined by their radius.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
-                    display_name : "Strength", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength"
+                    .into(), display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },
-                    ArchetypeFieldReflection { name : "iterations", display_name :
+                    ArchetypeFieldReflection { name : "iterations".into(), display_name :
                     "Iterations", component_name :
                     "rerun.blueprint.components.ForceIterations".into(), docstring_md :
                     "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
@@ -2445,15 +2480,15 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "enabled", display_name :
+                    ArchetypeFieldReflection { name : "enabled".into(), display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
                     .into(), docstring_md :
                     "Whether the link force is enabled.\n\nThe link force aims to achieve a target distance between two nodes that are connected by one ore more edges.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "distance",
-                    display_name : "Distance", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "distance"
+                    .into(), display_name : "Distance", component_name :
                     "rerun.blueprint.components.ForceDistance".into(), docstring_md :
                     "The target distance between two nodes.", is_required : false, },
-                    ArchetypeFieldReflection { name : "iterations", display_name :
+                    ArchetypeFieldReflection { name : "iterations".into(), display_name :
                     "Iterations", component_name :
                     "rerun.blueprint.components.ForceIterations".into(), docstring_md :
                     "Specifies how often this force should be applied per iteration.\n\nIncreasing this parameter can lead to better results at the cost of longer computation time.",
@@ -2469,12 +2504,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "enabled", display_name :
+                    ArchetypeFieldReflection { name : "enabled".into(), display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
                     .into(), docstring_md :
                     "Whether the many body force is enabled.\n\nThe many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the\nstrength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
-                    display_name : "Strength", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength"
+                    .into(), display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.\n\nIf `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.",
                     is_required : false, },
@@ -2489,15 +2524,15 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "enabled", display_name :
+                    ArchetypeFieldReflection { name : "enabled".into(), display_name :
                     "Enabled", component_name : "rerun.blueprint.components.Enabled"
                     .into(), docstring_md :
                     "Whether the position force is enabled.\n\nThe position force pulls nodes towards a specific position, similar to gravity.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "strength",
-                    display_name : "Strength", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "strength"
+                    .into(), display_name : "Strength", component_name :
                     "rerun.blueprint.components.ForceStrength".into(), docstring_md :
                     "The strength of the force.", is_required : false, },
-                    ArchetypeFieldReflection { name : "position", display_name :
+                    ArchetypeFieldReflection { name : "position".into(), display_name :
                     "Position", component_name : "rerun.components.Position2D".into(),
                     docstring_md :
                     "The position where the nodes should be pulled towards.", is_required
@@ -2513,24 +2548,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "visible", display_name :
+                    ArchetypeFieldReflection { name : "visible".into(), display_name :
                     "Visible", component_name : "rerun.components.Visible".into(),
                     docstring_md : "Whether the grid is visible.\n\nDefaults to true.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "spacing",
-                    display_name : "Spacing", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "spacing"
+                    .into(), display_name : "Spacing", component_name :
                     "rerun.blueprint.components.GridSpacing".into(), docstring_md :
                     "Space between grid lines spacing of one line to the next in scene units.\n\nAs you zoom out, successively only every tenth line is shown.\nThis controls the closest zoom level.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "plane",
-                    display_name : "Plane", component_name : "rerun.components.Plane3D"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "plane"
+                    .into(), display_name : "Plane", component_name :
+                    "rerun.components.Plane3D".into(), docstring_md :
                     "In what plane the grid is drawn.\n\nDefaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) if present.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "stroke_width", display_name : "Stroke width", component_name :
-                    "rerun.components.StrokeWidth".into(), docstring_md :
+                    "stroke_width".into(), display_name : "Stroke width", component_name
+                    : "rerun.components.StrokeWidth".into(), docstring_md :
                     "How thick the lines should be in ui units.\n\nDefault is 1.0 ui unit.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "color",
-                    display_name : "Color", component_name : "rerun.components.Color"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "color"
+                    .into(), display_name : "Color", component_name :
+                    "rerun.components.Color".into(), docstring_md :
                     "Color used for the grid.\n\nTransparency via alpha channel is supported.\nDefaults to a slightly transparent light gray.",
                     is_required : false, },
                 ],
@@ -2544,7 +2579,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "provider", display_name :
+                    ArchetypeFieldReflection { name : "provider".into(), display_name :
                     "Provider", component_name : "rerun.blueprint.components.MapProvider"
                     .into(), docstring_md :
                     "Map provider and style to use.\n\n**Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.",
@@ -2560,9 +2595,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "zoom", display_name : "Zoom",
-                    component_name : "rerun.blueprint.components.ZoomLevel".into(),
-                    docstring_md :
+                    ArchetypeFieldReflection { name : "zoom".into(), display_name :
+                    "Zoom", component_name : "rerun.blueprint.components.ZoomLevel"
+                    .into(), docstring_md :
                     "Zoom level for the map.\n\nZoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).",
                     is_required : false, },
                 ],
@@ -2576,8 +2611,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "near_clip_plane", display_name :
-                    "Near clip plane", component_name :
+                    ArchetypeFieldReflection { name : "near_clip_plane".into(),
+                    display_name : "Near clip plane", component_name :
                     "rerun.blueprint.components.NearClipPlane".into(), docstring_md :
                     "Controls the distance to the near clip plane in 3D scene units.\n\nContent closer than this distance will not be visible.",
                     is_required : false, },
@@ -2592,10 +2627,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "state", display_name : "State",
-                    component_name : "rerun.blueprint.components.PanelState".into(),
-                    docstring_md : "Current state of the panels.", is_required : false,
-                    },
+                    ArchetypeFieldReflection { name : "state".into(), display_name :
+                    "State", component_name : "rerun.blueprint.components.PanelState"
+                    .into(), docstring_md : "Current state of the panels.", is_required :
+                    false, },
                 ],
             },
         ),
@@ -2607,13 +2642,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "corner", display_name : "Corner",
-                    component_name : "rerun.blueprint.components.Corner2D".into(),
-                    docstring_md :
-                    "To what corner the legend is aligned.\n\nDefaults to the right bottom corner.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name : "rerun.components.Visible"
+                    ArchetypeFieldReflection { name : "corner".into(), display_name :
+                    "Corner", component_name : "rerun.blueprint.components.Corner2D"
                     .into(), docstring_md :
+                    "To what corner the legend is aligned.\n\nDefaults to the right bottom corner.",
+                    is_required : false, }, ArchetypeFieldReflection { name : "visible"
+                    .into(), display_name : "Visible", component_name :
+                    "rerun.components.Visible".into(), docstring_md :
                     "Whether the legend is shown at all.\n\nTrue by default.",
                     is_required : false, },
                 ],
@@ -2627,11 +2662,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "range", display_name : "Range",
-                    component_name : "rerun.components.Range1D".into(), docstring_md :
+                    ArchetypeFieldReflection { name : "range".into(), display_name :
+                    "Range", component_name : "rerun.components.Range1D".into(),
+                    docstring_md :
                     "The range of the axis.\n\nIf unset, the range well be automatically determined based on the queried data.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "zoom_lock", display_name : "Zoom lock", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "zoom_lock"
+                    .into(), display_name : "Zoom lock", component_name :
                     "rerun.blueprint.components.LockRangeDuringZoom".into(), docstring_md
                     :
                     "If enabled, the Y axis range will remain locked to the specified range when zooming.",
@@ -2647,16 +2683,16 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "mag_filter", display_name :
+                    ArchetypeFieldReflection { name : "mag_filter".into(), display_name :
                     "Mag filter", component_name : "rerun.components.MagnificationFilter"
                     .into(), docstring_md :
                     "Filter used when zooming in on the tensor.\n\nNote that the filter is applied to the scalar values *before* they are mapped to color.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "colormap",
-                    display_name : "Colormap", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "colormap"
+                    .into(), display_name : "Colormap", component_name :
                     "rerun.components.Colormap".into(), docstring_md :
                     "How scalar values map to colors.", is_required : false, },
-                    ArchetypeFieldReflection { name : "gamma", display_name : "Gamma",
-                    component_name : "rerun.components.GammaCorrection".into(),
+                    ArchetypeFieldReflection { name : "gamma".into(), display_name :
+                    "Gamma", component_name : "rerun.components.GammaCorrection".into(),
                     docstring_md :
                     "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.\n\nThe final value for display is set as:\n`colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`",
                     is_required : false, },
@@ -2671,21 +2707,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "width", display_name : "Width",
-                    component_name : "rerun.components.TensorWidthDimension".into(),
-                    docstring_md :
+                    ArchetypeFieldReflection { name : "width".into(), display_name :
+                    "Width", component_name : "rerun.components.TensorWidthDimension"
+                    .into(), docstring_md :
                     "Which dimension to map to width.\n\nIf not specified, the height will be determined automatically based on the name and index of the dimension.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "height",
-                    display_name : "Height", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "height"
+                    .into(), display_name : "Height", component_name :
                     "rerun.components.TensorHeightDimension".into(), docstring_md :
                     "Which dimension to map to height.\n\nIf not specified, the height will be determined automatically based on the name and index of the dimension.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "indices",
-                    display_name : "Indices", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "indices"
+                    .into(), display_name : "Indices", component_name :
                     "rerun.components.TensorDimensionIndexSelection".into(), docstring_md
                     :
                     "Selected indices for all other dimensions.\n\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "slider",
-                    display_name : "Slider", component_name :
+                    is_required : false, }, ArchetypeFieldReflection { name : "slider"
+                    .into(), display_name : "Slider", component_name :
                     "rerun.blueprint.components.TensorDimensionIndexSlider".into(),
                     docstring_md :
                     "Any dimension listed here will have a slider for the index.\n\nEdits to the sliders will directly manipulate dimensions on the `indices` list.\nIf any of the here listed dimensions is equal to `width` or `height`, it will be ignored.\nIf not specified, adds slides for any dimension in `indices`.",
@@ -2701,7 +2737,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "scaling", display_name :
+                    ArchetypeFieldReflection { name : "scaling".into(), display_name :
                     "Scaling", component_name : "rerun.blueprint.components.ViewFit"
                     .into(), docstring_md : "How the image is scaled to fit the view.",
                     is_required : false, },
@@ -2716,20 +2752,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "class_identifier", display_name :
-                    "Class identifier", component_name :
+                    ArchetypeFieldReflection { name : "class_identifier".into(),
+                    display_name : "Class identifier", component_name :
                     "rerun.blueprint.components.ViewClass".into(), docstring_md :
                     "The class of the view.", is_required : true, },
-                    ArchetypeFieldReflection { name : "display_name", display_name :
-                    "Display name", component_name : "rerun.components.Name".into(),
+                    ArchetypeFieldReflection { name : "display_name".into(), display_name
+                    : "Display name", component_name : "rerun.components.Name".into(),
                     docstring_md : "The name of the view.", is_required : false, },
-                    ArchetypeFieldReflection { name : "space_origin", display_name :
-                    "Space origin", component_name :
+                    ArchetypeFieldReflection { name : "space_origin".into(), display_name
+                    : "Space origin", component_name :
                     "rerun.blueprint.components.ViewOrigin".into(), docstring_md :
                     "The \"anchor point\" of this view.\n\nDefaults to the root path '/' if not specified.\n\nThe transform at this path forms the reference point for all scene->world transforms in this view.\nI.e. the position of this entity path in space forms the origin of the coordinate system in this view.\nFurthermore, this is the primary indicator for heuristics on what entities we show in this view.",
-                    is_required : false, }, ArchetypeFieldReflection { name : "visible",
-                    display_name : "Visible", component_name : "rerun.components.Visible"
-                    .into(), docstring_md :
+                    is_required : false, }, ArchetypeFieldReflection { name : "visible"
+                    .into(), display_name : "Visible", component_name :
+                    "rerun.components.Visible".into(), docstring_md :
                     "Whether this view is visible.\n\nDefaults to true if not specified.",
                     is_required : false, },
                 ],
@@ -2743,9 +2779,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "query", display_name : "Query",
-                    component_name : "rerun.blueprint.components.QueryExpression".into(),
-                    docstring_md :
+                    ArchetypeFieldReflection { name : "query".into(), display_name :
+                    "Query", component_name :
+                    "rerun.blueprint.components.QueryExpression".into(), docstring_md :
                     "The `QueryExpression` that populates the contents for the view.\n\nThey determine which entities are part of the view.",
                     is_required : false, },
                 ],
@@ -2759,24 +2795,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "root_container", display_name :
-                    "Root container", component_name :
+                    ArchetypeFieldReflection { name : "root_container".into(),
+                    display_name : "Root container", component_name :
                     "rerun.blueprint.components.RootContainer".into(), docstring_md :
                     "The layout of the views", is_required : false, },
-                    ArchetypeFieldReflection { name : "maximized", display_name :
+                    ArchetypeFieldReflection { name : "maximized".into(), display_name :
                     "Maximized", component_name :
                     "rerun.blueprint.components.ViewMaximized".into(), docstring_md :
                     "Show one tab as maximized?", is_required : false, },
-                    ArchetypeFieldReflection { name : "auto_layout", display_name :
-                    "Auto layout", component_name :
+                    ArchetypeFieldReflection { name : "auto_layout".into(), display_name
+                    : "Auto layout", component_name :
                     "rerun.blueprint.components.AutoLayout".into(), docstring_md :
                     "Whether the viewport layout is determined automatically.\n\nIf `true`, the container layout will be reset whenever a new view is added or removed.\nThis defaults to `false` and is automatically set to `false` when there is user determined layout.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "auto_views", display_name : "Auto views", component_name :
+                    "auto_views".into(), display_name : "Auto views", component_name :
                     "rerun.blueprint.components.AutoViews".into(), docstring_md :
                     "Whether or not views should be created automatically.\n\nIf `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)\nand which aren't deemed redundant to existing views.\nThis defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.",
                     is_required : false, }, ArchetypeFieldReflection { name :
-                    "past_viewer_recommendations", display_name :
+                    "past_viewer_recommendations".into(), display_name :
                     "Past viewer recommendations", component_name :
                     "rerun.blueprint.components.ViewerRecommendationHash".into(),
                     docstring_md :
@@ -2793,9 +2829,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "ranges", display_name : "Ranges",
-                    component_name : "rerun.blueprint.components.VisibleTimeRange"
-                    .into(), docstring_md :
+                    ArchetypeFieldReflection { name : "ranges".into(), display_name :
+                    "Ranges", component_name :
+                    "rerun.blueprint.components.VisibleTimeRange".into(), docstring_md :
                     "The time ranges to show for each timeline unless specified otherwise on a per-entity basis.\n\nIf a timeline is specified more than once, the first entry will be used.",
                     is_required : true, },
                 ],
@@ -2809,9 +2845,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "range", display_name : "Range",
-                    component_name : "rerun.blueprint.components.VisualBounds2D".into(),
-                    docstring_md :
+                    ArchetypeFieldReflection { name : "range".into(), display_name :
+                    "Range", component_name : "rerun.blueprint.components.VisualBounds2D"
+                    .into(), docstring_md :
                     "Controls the visible range of a 2D view.\n\nUse this to control pan & zoom of the view.",
                     is_required : true, },
                 ],
@@ -2825,10 +2861,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 scope: Some("blueprint"),
                 view_types: &[],
                 fields: vec![
-                    ArchetypeFieldReflection { name : "ranges", display_name : "Ranges",
-                    component_name : "rerun.blueprint.components.VisualizerOverride"
-                    .into(), docstring_md :
-                    "Names of the visualizers that should be active.", is_required :
+                    ArchetypeFieldReflection { name : "ranges".into(), display_name :
+                    "Ranges", component_name :
+                    "rerun.blueprint.components.VisualizerOverride".into(), docstring_md
+                    : "Names of the visualizers that should be active.", is_required :
                     true, },
                 ],
             },

@@ -3,7 +3,7 @@ use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Tensor,
     components::{TensorData, ValueRange},
-    Component as _,
+    Archetype as _,
 };
 use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
@@ -53,21 +53,22 @@ impl VisualizerSystem for TensorSystem {
                 annotations,
                 &timeline_query,
                 data_result,
-                [TensorData::name(), ValueRange::name()].into_iter(),
+                Tensor::all_components().iter(),
                 query_shadowed_defaults,
             );
 
-            let Some(all_tensor_chunks) = results.get_required_chunks(&TensorData::name()) else {
+            let Some(all_tensor_chunks) = results.get_required_chunks(Tensor::descriptor_data())
+            else {
                 continue;
             };
 
             let timeline = query.timeline;
             let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {
                 chunk
-                    .iter_component_indices(&timeline, &TensorData::name())
+                    .iter_component_indices(&timeline)
                     .zip(chunk.iter_component::<TensorData>())
             });
-            let all_ranges = results.iter_as(timeline, ValueRange::name());
+            let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range());
 
             for ((_, tensor_row_id), tensors, data_ranges) in
                 re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())
@@ -140,10 +141,11 @@ impl TypedComponentFallbackProvider<re_types::components::ValueRange> for Tensor
         &self,
         ctx: &re_viewer_context::QueryContext<'_>,
     ) -> re_types::components::ValueRange {
-        if let Some(((_time, row_id), tensor)) = ctx
-            .recording()
-            .latest_at_component::<TensorData>(ctx.target_entity_path, ctx.query)
-        {
+        if let Some(((_time, row_id), tensor)) = ctx.recording().latest_at_component::<TensorData>(
+            ctx.target_entity_path,
+            ctx.query,
+            &Tensor::descriptor_data(),
+        ) {
             let tensor_stats = ctx
                 .viewer_ctx
                 .store_context

@@ -75,11 +75,8 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
 
             // Handle `Image`, `DepthImage`, `SegmentationImage`…
             let components = event.diff.chunk.components();
-            if let Some(all_dimensions) = components
-                .get(&ImageFormat::name())
-                .and_then(|per_desc| per_desc.values().next())
-            {
-                for new_dim in all_dimensions.iter().filter_map(|array| {
+            for image_format_list_array in components.get_by_component_name(ImageFormat::name()) {
+                for new_dim in image_format_list_array.iter().filter_map(|array| {
                     array.and_then(|array| {
                         let array = arrow::array::ArrayRef::from(array);
                         ImageFormat::from_arrow(&array).ok()?.into_iter().next()
@@ -94,26 +91,29 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
                     max_dim.height = max_dim.height.max(new_dim.height);
                 }
             }
+
             // TODO(andreas): this should be part of the ImageFormat component's tag instead.
-            if components.contains_key(&archetypes::Image::descriptor_indicator().component_name) {
+            if components
+                .contains_component_name(archetypes::Image::descriptor_indicator().component_name)
+            {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::IMAGE);
             }
-            if components
-                .contains_key(&archetypes::SegmentationImage::descriptor_indicator().component_name)
-            {
+            if components.contains_component_name(
+                archetypes::SegmentationImage::descriptor_indicator().component_name,
+            ) {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()
                     .image_types
                     .insert(ImageTypes::SEGMENTATION_IMAGE);
             }
-            if components
-                .contains_key(&archetypes::DepthImage::descriptor_indicator().component_name)
-            {
+            if components.contains_component_name(
+                archetypes::DepthImage::descriptor_indicator().component_name,
+            ) {
                 self.max_dimensions
                     .entry(event.diff.chunk.entity_path().clone())
                     .or_default()

@@ -191,6 +191,48 @@ class Viewer:
         # Create new record batch with updated schema
         return RecordBatch.from_arrays(record_batch.columns, schema=schema)
 
+    def set_application_blueprint(
+        self, application_id: str, blueprint: BlueprintLike, make_active: bool = True, make_default: bool = True
+    ) -> None:
+        """
+        Set the blueprint for the given application.
+
+        Parameters
+        ----------
+        application_id:
+            The ID of the application to set the blueprint for.
+        blueprint:
+            The blueprint to set for the application.
+        make_active:
+            Whether to make the blueprint active.
+            If `True`, the blueprint will be set as the active blueprint for the application.
+        make_default:
+            Whether to make the blueprint the default blueprint for the application.
+            If `True`, the blueprint will be set as the default blueprint for the application.
+
+        """
+
+        blueprint = blueprint.to_blueprint()
+
+        blueprint_stream = RecordingStream._from_native(
+            bindings.new_blueprint(
+                application_id=application_id,
+                make_default=False,
+                make_thread_default=False,
+                default_enabled=True,
+            ),
+        )
+
+        blueprint_stream.set_time("blueprint", sequence=0)
+        blueprint._log_to_stream(blueprint_stream)
+
+        bindings.set_callback_sink_blueprint(
+            callback=self._flush_hook,
+            make_active=make_active,
+            make_default=make_default,
+            blueprint_stream=blueprint_stream.to_native(),
+        )
+
     def send_table(
         self,
         id: str,
@@ -365,7 +407,7 @@ class Viewer:
 
         if sum(x is not None for x in (sequence, duration, timestamp)) > 1:
             raise ValueError(
-                "set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
+                f"set_time_ctrl: Exactly one of `sequence`, `duration`, and `timestamp` must be set (timeline='{timeline}')",
             )
 
         if sequence is not None:

@@ -1,10 +1,10 @@
+use std::hash::Hasher;
 use std::sync::Arc;
 
+use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
+use crate::{invalid_field, missing_field, TypeConversionError};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
-
-use crate::{invalid_field, missing_field, TypeConversionError};
-
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
@@ -87,7 +87,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PartitionId {
     pub id: String,
 }
@@ -231,20 +231,6 @@ impl TryFrom<crate::common::v1alpha1::EntityPath> for re_log_types::EntityPath {
     }
 }
 
-impl From<re_log_types::TimeInt> for crate::common::v1alpha1::TimeInt {
-    fn from(value: re_log_types::TimeInt) -> Self {
-        Self {
-            time: value.as_i64(),
-        }
-    }
-}
-
-impl From<crate::common::v1alpha1::TimeInt> for re_log_types::TimeInt {
-    fn from(value: crate::common::v1alpha1::TimeInt) -> Self {
-        Self::new_temporal(value.time)
-    }
-}
-
 impl From<re_log_types::ResolvedTimeRange> for crate::common::v1alpha1::TimeRange {
     fn from(value: re_log_types::ResolvedTimeRange) -> Self {
         Self {
@@ -378,25 +364,6 @@ impl From<re_log_types::StoreId> for crate::common::v1alpha1::StoreId {
         let kind: crate::common::v1alpha1::StoreKind = value.kind.into();
         Self {
             kind: kind as i32,
-            id: String::clone(&*value.id),
-        }
-    }
-}
-
-impl From<crate::common::v1alpha1::RecordingId> for re_log_types::StoreId {
-    #[inline]
-    fn from(value: crate::common::v1alpha1::RecordingId) -> Self {
-        Self {
-            kind: re_log_types::StoreKind::Recording,
-            id: Arc::new(value.id),
-        }
-    }
-}
-
-impl From<re_log_types::StoreId> for crate::common::v1alpha1::RecordingId {
-    #[inline]
-    fn from(value: re_log_types::StoreId) -> Self {
-        Self {
             id: String::clone(&*value.id),
         }
     }
@@ -923,7 +890,17 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     }
 }
 
-// --
+// ---
+
+impl Eq for TaskId {}
+
+impl std::hash::Hash for TaskId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.as_str().hash(state)
+    }
+}
+
+// ---
 
 #[cfg(test)]
 mod tests {
@@ -934,14 +911,6 @@ mod tests {
         let proto_entity_path: crate::common::v1alpha1::EntityPath = entity_path.clone().into();
         let entity_path2: re_log_types::EntityPath = proto_entity_path.try_into().unwrap();
         assert_eq!(entity_path, entity_path2);
-    }
-
-    #[test]
-    fn time_int_conversion() {
-        let time_int = re_log_types::TimeInt::new_temporal(123456789);
-        let proto_time_int: crate::common::v1alpha1::TimeInt = time_int.into();
-        let time_int2: re_log_types::TimeInt = proto_time_int.into();
-        assert_eq!(time_int, time_int2);
     }
 
     #[test]
@@ -1002,17 +971,6 @@ mod tests {
         );
         let proto_store_id: crate::common::v1alpha1::StoreId = store_id.clone().into();
         let store_id2: re_log_types::StoreId = proto_store_id.into();
-        assert_eq!(store_id, store_id2);
-    }
-
-    #[test]
-    fn recording_id_conversion() {
-        let store_id = re_log_types::StoreId::from_string(
-            re_log_types::StoreKind::Recording,
-            "test_recording".to_owned(),
-        );
-        let proto_recording_id: crate::common::v1alpha1::RecordingId = store_id.clone().into();
-        let store_id2: re_log_types::StoreId = proto_recording_id.into();
         assert_eq!(store_id, store_id2);
     }
 

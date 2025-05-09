@@ -245,9 +245,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 None,
                 &time_query,
                 data_result,
-                Pinhole::all_components()
-                    .iter()
-                    .map(|desc| desc.component_name),
+                Pinhole::all_components().iter(),
                 query_shadowed_components,
             );
 

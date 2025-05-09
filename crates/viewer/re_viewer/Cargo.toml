@@ -73,6 +73,7 @@ re_query.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_selection_panel.workspace = true
 re_smart_channel.workspace = true
+re_sorbet.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
 re_types_core.workspace = true
@@ -95,10 +96,6 @@ re_viewport.workspace = true
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
-
-# TODO(grtlr): The following deps are for the table. They should go into a separate crate.
-re_sorbet.workspace = true
-egui_table.workspace = true
 
 
 # External

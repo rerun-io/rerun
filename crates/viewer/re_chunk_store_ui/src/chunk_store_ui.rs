@@ -9,7 +9,7 @@ use re_log_types::{
     ResolvedTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
 use re_ui::{list_item, UiExt as _};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::StoreContext;
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
@@ -74,7 +74,7 @@ impl DatastoreUi {
     /// or `true` if the datastore UI should remain open.
     pub fn ui(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreContext<'_>,
         ui: &mut egui::Ui,
         timestamp_format: TimestampFormat,
     ) -> bool {
@@ -91,8 +91,8 @@ impl DatastoreUi {
                 self.chunk_store_ui(
                     ui,
                     match self.store_kind {
-                        StoreKind::Recording => ctx.recording_engine(),
-                        StoreKind::Blueprint => ctx.blueprint_engine(),
+                        StoreKind::Recording => ctx.recording.storage_engine(),
+                        StoreKind::Blueprint => ctx.blueprint.storage_engine(),
                     }
                     .store(),
                     &mut datastore_ui_active,
@@ -133,7 +133,7 @@ impl DatastoreUi {
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_descr,
                 query: ChunkListQueryMode::LatestAt(at),
                 ..
             } => Either::Right(
@@ -141,14 +141,14 @@ impl DatastoreUi {
                     .latest_at_relevant_chunks(
                         &LatestAtQuery::new(*timeline.name(), *at),
                         entity_path,
-                        *component_name,
+                        component_descr,
                     )
                     .into_iter(),
             ),
             ChunkListMode::Query {
                 timeline,
                 entity_path,
-                component_name,
+                component_descr,
                 query: ChunkListQueryMode::Range(range),
                 ..
             } => Either::Right(
@@ -156,7 +156,7 @@ impl DatastoreUi {
                     .range_relevant_chunks(
                         &RangeQuery::new(*timeline.name(), *range),
                         entity_path,
-                        *component_name,
+                        component_descr,
                     )
                     .into_iter(),
             ),

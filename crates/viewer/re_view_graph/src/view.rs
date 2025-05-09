@@ -1,4 +1,4 @@
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{
     blueprint::{
         self,
@@ -97,7 +97,7 @@ impl ViewClass for GraphView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         // TODO(grtlr): Consider using `suggest_view_for_each_entity` here too.
         if let Some(maybe_visualizable) = ctx
@@ -105,9 +105,11 @@ impl ViewClass for GraphView {
             .get(&NodeVisualizer::identifier())
         {
             ViewSpawnHeuristics::new(maybe_visualizable.iter().cloned().filter_map(|entity| {
-                suggested_filter
-                    .matches(&entity)
-                    .then_some(RecommendedView::new_single_entity(entity))
+                if include_entity(&entity) {
+                    Some(RecommendedView::new_single_entity(entity))
+                } else {
+                    None
+                }
             }))
         } else {
             ViewSpawnHeuristics::empty()
@@ -173,8 +175,8 @@ impl ViewClass for GraphView {
             ctx.blueprint_query,
             query.view_id,
         );
-        let rect_in_scene: blueprint::components::VisualBounds2D =
-            bounds_property.component_or_fallback(ctx, self, state)?;
+        let rect_in_scene: blueprint::components::VisualBounds2D = bounds_property
+            .component_or_fallback(ctx, self, state, &VisualBounds2D::descriptor_range())?;
 
         // Perform all layout-related tasks.
         let request = LayoutRequest::from_graphs(graphs.iter());
@@ -223,9 +225,16 @@ impl ViewClass for GraphView {
         // Update blueprint if changed
         let updated_bounds = blueprint::components::VisualBounds2D::from(scene_rect);
         if resp.double_clicked() {
-            bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
+            bounds_property.reset_blueprint_component(
+                ctx,
+                blueprint::archetypes::VisualBounds2D::descriptor_range(),
+            );
         } else if scene_rect != scene_rect_ref {
-            bounds_property.save_blueprint_component(ctx, &updated_bounds);
+            bounds_property.save_blueprint_component(
+                ctx,
+                &VisualBounds2D::descriptor_range(),
+                &updated_bounds,
+            );
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.visual_bounds = Some(updated_bounds);

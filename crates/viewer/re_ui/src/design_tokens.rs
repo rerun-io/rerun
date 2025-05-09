@@ -3,6 +3,7 @@
 use crate::color_table::Scale::*;
 use crate::color_table::{ColorTable, ColorToken};
 use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
+use std::sync::Arc;
 
 /// The look and feel of the UI.
 ///
@@ -80,10 +81,7 @@ impl DesignTokens {
             ctx.set_fonts(font_definitions);
         }
 
-        let mut egui_style = egui::Style {
-            visuals: egui::Visuals::light(),
-            ..Default::default()
-        };
+        let mut egui_style = Arc::unwrap_or_clone(ctx.style_of(egui::Theme::Light));
 
         // println!("DEFAULT LIGHT THEME: {:#?}", egui::Visuals::light()); //to understand what's there (katya)
 

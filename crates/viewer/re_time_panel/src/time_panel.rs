@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{
-    pos2, Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response,
-    Shape, Ui, Vec2,
+    pos2, scroll_area::ScrollSource, Color32, CursorIcon, Modifiers, NumExt as _, Painter,
+    PointerButton, Rect, Response, Shape, Ui, Vec2,
 };
 
 use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
@@ -14,11 +14,11 @@ use re_log_types::{
     ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_types::blueprint::components::PanelState;
-use re_types_core::ComponentName;
+use re_types_core::ComponentDescriptor;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
-    DesignTokens, Help, UiExt as _,
+    DesignTokens, Help, SyntaxHighlighting as _, UiExt as _,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -38,36 +38,28 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct TimePanelItem {
     pub entity_path: EntityPath,
-    pub component_name: Option<ComponentName>,
+    pub component_descr: Option<ComponentDescriptor>,
 }
 
 impl TimePanelItem {
     pub fn entity_path(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component_name: None,
-        }
-    }
-
-    pub fn component_path(component_path: ComponentPath) -> Self {
-        let ComponentPath {
-            entity_path,
-            component_name,
-        } = component_path;
-        Self {
-            entity_path,
-            component_name: Some(component_name),
+            component_descr: None,
         }
     }
 
     pub fn to_item(&self) -> Item {
         let Self {
             entity_path,
-            component_name,
+            component_descr,
         } = self;
 
-        if let Some(component_name) = component_name {
-            Item::ComponentPath(ComponentPath::new(entity_path.clone(), *component_name))
+        if let Some(component_descr) = component_descr.as_ref() {
+            Item::ComponentPath(ComponentPath::new(
+                entity_path.clone(),
+                component_descr.clone(),
+            ))
         } else {
             Item::InstancePath(InstancePath::entity_all(entity_path.clone()))
         }
@@ -598,10 +590,10 @@ impl TimePanel {
 
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
-            // We turn off `drag_to_scroll` so that the `ScrollArea` don't steal input from
+            // We turn off `ScrollSource::DRAG` so that the `ScrollArea` don't steal input from
             // the earlier `interact_with_time_area`.
             // We implement drag-to-scroll manually instead!
-            .drag_to_scroll(false)
+            .scroll_source(ScrollSource::MOUSE_WHEEL | ScrollSource::SCROLL_BAR)
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0; // no spacing needed for ListItems
 
@@ -666,7 +658,8 @@ impl TimePanel {
             .as_ref()
             .and_then(|item| item.entity_path());
 
-        if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(entity_path))
+        if focused_entity_path
+            .is_some_and(|focused_entity_path| focused_entity_path.is_descendant_of(entity_path))
         {
             collapse_scope
                 .entity(entity_path.clone())
@@ -830,12 +823,15 @@ impl TimePanel {
         let engine = entity_db.storage_engine();
         let store = engine.store();
 
-        for component_name in components_for_entity(store, entity_path) {
-            let is_static = store.entity_has_static_component(entity_path, &component_name);
+        for component_descr in components_for_entity(store, entity_path) {
+            let is_static = store.entity_has_static_component(entity_path, &component_descr);
 
-            let component_path = ComponentPath::new(entity_path.clone(), component_name);
-            let short_component_name = component_path.component_name.short_name();
-            let item = TimePanelItem::component_path(component_path.clone());
+            let component_path = ComponentPath::new(entity_path.clone(), component_descr);
+            let component_descr = &component_path.component_descriptor;
+            let item = TimePanelItem {
+                entity_path: entity_path.clone(),
+                component_descr: Some(component_descr.clone()),
+            };
             let timeline = time_ctrl.timeline();
 
             let response = ui
@@ -849,7 +845,7 @@ impl TimePanel {
                 )
                 .show_hierarchical(
                     ui,
-                    list_item::LabelContent::new(short_component_name)
+                    list_item::LabelContent::new(component_descr.syntax_highlighted(ui.style()))
                         .with_icon(if is_static {
                             &re_ui::icons::COMPONENT_STATIC
                         } else {
@@ -872,11 +868,11 @@ impl TimePanel {
 
             response.on_hover_ui(|ui| {
                 let num_static_messages =
-                    store.num_static_events_for_component(entity_path, component_name);
+                    store.num_static_events_for_component(entity_path, component_descr);
                 let num_temporal_messages = store.num_temporal_events_for_component_on_timeline(
                     time_ctrl.timeline().name(),
                     entity_path,
-                    component_name,
+                    component_descr,
                 );
                 let total_num_messages = num_static_messages + num_temporal_messages;
 
@@ -948,7 +944,7 @@ impl TimePanel {
                     .entity_has_component_on_timeline(
                         time_ctrl.timeline().name(),
                         entity_path,
-                        &component_name,
+                        component_descr,
                     );
 
                 if component_has_data_in_current_timeline {
@@ -1080,11 +1076,11 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(entity_db, |entity_data, component_name| {
-            let item = if let Some(component_name) = component_name {
+        streams_tree_data.visit(entity_db, |entity_data, component_descr| {
+            let item = if let Some(component_descr) = component_descr {
                 Item::ComponentPath(ComponentPath::new(
                     entity_data.entity_path.clone(),
-                    component_name,
+                    component_descr,
                 ))
             } else {
                 entity_data.item()
@@ -1655,14 +1651,12 @@ fn copy_time_properties_context_menu(
             let time = format!("{}", time.floor().as_i64());
             re_log::info!("Copied hovered timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     } else if let Some(time) = time_ctrl.time_int() {
         if ui.button("Copy current timestamp").clicked() {
             let time = format!("{}", time.as_i64());
             re_log::info!("Copied current timestamp: {}", time);
             ui.ctx().copy_text(time);
-            ui.close_menu();
         };
     }
 
@@ -1670,7 +1664,6 @@ fn copy_time_properties_context_menu(
         let timeline = format!("{}", time_ctrl.timeline().name());
         re_log::info!("Copied current timeline: {}", timeline);
         ui.ctx().copy_text(timeline);
-        ui.close_menu();
     }
 }
 

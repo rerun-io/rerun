@@ -4,13 +4,12 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePathHash;
-use re_log_types::{EntityPath, ResolvedEntityPathFilter};
+use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
         archetypes::{MapBackground, MapZoom},
-        components::MapProvider,
-        components::ZoomLevel,
+        components::{MapProvider, ZoomLevel},
     },
     View as _, ViewClassIdentifier,
 };
@@ -145,7 +144,7 @@ impl ViewClass for MapView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        suggested_filter: &ResolvedEntityPathFilter,
+        include_entity: &dyn Fn(&EntityPath) -> bool,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -159,18 +158,13 @@ impl ViewClass for MapView {
             // TODO(grtlr): This looks slow.
             ctx.indicated_entities_per_visualizer
                 .get(system_id)
-                .is_some_and(|indicated_entities| {
-                    !indicated_entities.is_empty()
-                        && !indicated_entities
-                            .iter()
-                            .all(|e| suggested_filter.matches(e))
-                })
+                .is_some_and(|indicated_entities| indicated_entities.iter().any(include_entity))
         });
 
         if any_map_entity {
             ViewSpawnHeuristics::root()
         } else {
-            ViewSpawnHeuristics::default()
+            ViewSpawnHeuristics::empty()
         }
     }
 
@@ -220,7 +214,12 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let map_provider = map_background.component_or_fallback::<MapProvider>(ctx, self, state)?;
+        let map_provider = map_background.component_or_fallback::<MapProvider>(
+            ctx,
+            self,
+            state,
+            &MapBackground::descriptor_provider(),
+        )?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
@@ -252,7 +251,7 @@ impl ViewClass for MapView {
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
-            .component_or_empty::<ZoomLevel>()?
+            .component_or_empty::<ZoomLevel>(&MapZoom::descriptor_zoom())?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
             span.zoom_for_screen_size(
@@ -300,6 +299,7 @@ impl ViewClass for MapView {
         if Some(map_memory.zoom()) != blueprint_zoom_level {
             map_zoom.save_blueprint_component(
                 ctx,
+                &MapZoom::descriptor_zoom(),
                 &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
             );
         }

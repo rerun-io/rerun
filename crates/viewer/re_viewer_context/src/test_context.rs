@@ -8,9 +8,9 @@ use parking_lot::Mutex;
 
 use crate::{
     blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, DisplayMode, GlobalContext, ItemCollection,
-    RecordingConfig, StorageContext, StoreContext, SystemCommand, ViewClass, ViewClassRegistry,
-    ViewId, ViewStates, ViewerContext,
+    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
+    StorageContext, StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
+    ViewerContext,
 };
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;
@@ -29,6 +29,8 @@ pub trait HarnessExt {
         num_pixels: u64,
         broken_percent_threshold: f64,
     );
+
+    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: i32);
 }
 
 impl HarnessExt for egui_kittest::Harness<'_> {
@@ -52,6 +54,28 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                     assert!(
                         broken_percent <= broken_percent_threshold,
                         "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                    );
+                }
+
+                _ => panic!("{name} failed: {err}"),
+            },
+        }
+    }
+
+    fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels_threshold: i32) {
+        match self.try_snapshot(name) {
+            Ok(_) => {}
+
+            Err(err) => match err {
+                egui_kittest::SnapshotError::Diff {
+                    name,
+                    diff: num_broken_pixels,
+                    diff_path,
+                } => {
+                    re_log::debug!(num_broken_pixels, broken_pixels_threshold);
+                    assert!(
+                        num_broken_pixels <= broken_pixels_threshold,
+                        "{name} failed because {num_broken_pixels} > {broken_pixels_threshold}\n{diff_path:?}"
                     );
                 }
 
@@ -342,9 +366,10 @@ impl TestContext {
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
-                display_mode: &DisplayMode::LocalRecordings,
             },
             store_context: &store_context,
+            active_redap_entry: None,
+            active_table_id: None,
             storage_context: &StorageContext {
                 hub: &Default::default(),
                 bundle: &Default::default(),

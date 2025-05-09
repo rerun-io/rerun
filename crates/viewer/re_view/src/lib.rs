@@ -6,6 +6,7 @@ pub mod controls;
 
 mod annotation_context_utils;
 mod annotation_scene_context;
+mod chunks_with_descriptor;
 mod heuristics;
 mod instance_hash_conversions;
 mod outlines;
@@ -17,6 +18,7 @@ pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
+pub use chunks_with_descriptor::{ChunkWithDescriptor, ChunksWithDescriptor};
 pub use heuristics::suggest_view_for_each_entity;
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
@@ -52,7 +54,7 @@ pub fn diff_component_filter<T: re_types_core::Component>(
         .diff
         .chunk
         .components()
-        .get_by_component_name(&T::descriptor().component_name)
+        .get_by_component_name(T::descriptor().component_name)
         .any(|list_array| {
             list_array
                 .iter()

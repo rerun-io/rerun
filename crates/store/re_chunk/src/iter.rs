@@ -14,7 +14,7 @@ use itertools::{izip, Either, Itertools as _};
 
 use re_arrow_util::{offsets_lengths, ArrowArrayDowncastRef as _};
 use re_log_types::{TimeInt, TimePoint, TimelineName};
-use re_types_core::{ArrowString, Component, ComponentName};
+use re_types_core::{ArrowString, Component, ComponentDescriptor, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -63,12 +63,62 @@ impl Chunk {
     /// at which there is data for the specified `component_name`.
     ///
     /// See also [`Self::iter_indices`].
-    pub fn iter_component_indices(
+    // TODO(#6889): remove in favor of `iter_component_indices`.
+    pub fn iter_component_indices_by_name(
         &self,
         timeline: &TimelineName,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some(list_array) = self.get_first_component(*component_name) else {
+            return Either::Left(std::iter::empty());
+        };
+
+        if self.is_static() {
+            let indices = izip!(std::iter::repeat(TimeInt::STATIC), self.row_ids());
+
+            if let Some(validity) = list_array.nulls() {
+                Either::Right(Either::Left(Either::Left(
+                    indices
+                        .enumerate()
+                        .filter_map(|(i, o)| validity.is_valid(i).then_some(o)),
+                )))
+            } else {
+                Either::Right(Either::Left(Either::Right(indices)))
+            }
+        } else {
+            let Some(time_column) = self.timelines.get(timeline) else {
+                return Either::Left(std::iter::empty());
+            };
+
+            let indices = izip!(time_column.times(), self.row_ids());
+
+            if let Some(validity) = list_array.nulls() {
+                Either::Right(Either::Right(Either::Left(
+                    indices
+                        .enumerate()
+                        .filter_map(|(i, o)| validity.is_valid(i).then_some(o)),
+                )))
+            } else {
+                Either::Right(Either::Right(Either::Right(indices)))
+            }
+        }
+    }
+
+    /// Returns an iterator over the indices (`(TimeInt, RowId)`) of a [`Chunk`], for a given
+    /// timeline and component.
+    ///
+    /// If the chunk is static, `timeline` will be ignored.
+    ///
+    /// This is different than [`Self::iter_indices`] in that it will only yield indices for rows
+    /// at which there is data for the specified `component_name`.
+    ///
+    /// See also [`Self::iter_indices`].
+    pub fn iter_component_indices(
+        &self,
+        timeline: &TimelineName,
+        component_descr: &ComponentDescriptor,
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
+        let Some(list_array) = self.components.get(component_descr) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -132,9 +182,9 @@ impl Chunk {
     /// See also [`Self::iter_timepoints`].
     pub fn iter_component_timepoints(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> impl Iterator<Item = TimePoint> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some(list_array) = self.components.get(component_descr) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -187,7 +237,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = (usize, usize)> + '_ {
-        let Some(list_array) = self.get_first_component(component_name) else {
+        let Some(list_array) = self.get_first_component(*component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -220,7 +270,7 @@ impl Chunk {
         &'a self,
         component_name: ComponentName,
     ) -> impl Iterator<Item = S::Item<'a>> + 'a {
-        let Some(list_array) = self.get_first_component(&component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -248,7 +298,7 @@ impl Chunk {
         component_name: ComponentName,
         field_name: &'a str,
     ) -> impl Iterator<Item = S::Item<'a>> + 'a {
-        let Some(list_array) = self.get_first_component(&component_name) else {
+        let Some(list_array) = self.get_first_component(component_name) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -845,11 +895,75 @@ impl Chunk {
     /// See also:
     /// * [`Self::iter_slices`]
     /// * [`Self::iter_slices_from_struct_field`]
+    // TODO(#6889): Remove in favor of `iter_component`.
+    #[inline]
+    pub fn iter_component_by_name<C: Component>(
+        &self,
+    ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_> {
+        let Some(list_array) = self.get_first_component(C::name()) else {
+            return ChunkComponentIter {
+                values: Arc::new(vec![]),
+                offsets: Either::Left(std::iter::empty()),
+            };
+        };
+
+        let values = arrow::array::ArrayRef::from(list_array.values().clone());
+        let values = match C::from_arrow(&values) {
+            Ok(values) => values,
+            Err(err) => {
+                if cfg!(debug_assertions) {
+                    panic!(
+                        "[DEBUG-ONLY] deserialization failed for {}, data discarded: {}",
+                        C::name(),
+                        re_error::format_ref(&err),
+                    );
+                } else {
+                    re_log::error_once!(
+                        "deserialization failed for {}, data discarded: {}",
+                        C::name(),
+                        re_error::format_ref(&err),
+                    );
+                }
+                return ChunkComponentIter {
+                    values: Arc::new(vec![]),
+                    offsets: Either::Left(std::iter::empty()),
+                };
+            }
+        };
+
+        // NOTE: No need for validity checks here, `iter_offsets` already takes care of that.
+        ChunkComponentIter {
+            values: Arc::new(values),
+            offsets: Either::Right(self.iter_component_offsets(&C::name())),
+        }
+    }
+
+    /// Returns an iterator over the deserialized batches of a [`Chunk`], for a given component.
+    ///
+    /// This is a dedicated fast path: the entire column will be downcasted and deserialized at
+    /// once, and then every component batch will be a slice reference into that global slice.
+    /// Use this when working with complex arrow datatypes and performance matters (e.g. ranging
+    /// through enum types across many timestamps).
+    ///
+    /// TODO(#5305): Note that, while this is much faster than deserializing each row individually,
+    /// this still uses the old codegen'd deserialization path, which does some very unidiomatic Arrow
+    /// things, and is therefore very slow at the moment. Avoid this on performance critical paths.
+    ///
+    /// See also:
+    /// * [`Self::iter_slices`]
+    /// * [`Self::iter_slices_from_struct_field`]
     #[inline]
     pub fn iter_component<C: Component>(
         &self,
+        component_descriptor: &ComponentDescriptor,
     ) -> ChunkComponentIter<C, impl Iterator<Item = (usize, usize)> + '_> {
-        let Some(list_array) = self.get_first_component(&C::name()) else {
+        debug_assert_eq!(
+            component_descriptor.component_name,
+            C::name(),
+            "component name mismatch"
+        );
+
+        let Some(list_array) = self.components.get(component_descriptor) else {
             return ChunkComponentIter {
                 values: Arc::new(vec![]),
                 offsets: Either::Left(std::iter::empty()),

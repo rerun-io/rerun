@@ -49,6 +49,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.redap_tasks.v1alpha1.rs"]
     pub mod rerun_redap_tasks_v1alpha1;
+
+    #[path = "./rerun.redap_tasks.v1alpha1.ext.rs"]
+    pub mod rerun_redap_tasks_v1alpha1_ext;
 }
 
 pub mod common {

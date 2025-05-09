@@ -76,7 +76,7 @@ impl ChunkUi {
 
         let components = chunk
             .components()
-            .iter_flattened()
+            .iter()
             .map(|(component_desc, list_array)| {
                 (
                     component_desc.clone(),
@@ -289,7 +289,7 @@ impl ChunkUi {
                 }
                 Err(err) => {
                     ui.error_with_details_on_hover(format!(
-                        "Failed to convert to tqransport: {err}"
+                        "Failed to convert to transport: {err}"
                     ));
                 }
             }

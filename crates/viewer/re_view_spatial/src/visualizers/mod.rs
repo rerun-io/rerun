@@ -23,6 +23,7 @@ mod videos;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
+use re_types::{archetypes, ComponentDescriptor};
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
     entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
@@ -116,18 +117,43 @@ pub fn register_3d_spatial_visualizers(
     Ok(())
 }
 
-/// List of all visualizers that read [`re_types::components::DrawOrder`].
+/// List of all visualizers that read [`re_types::components::DrawOrder`] and the exact draw order component descriptor they use.
 // TODO(jan, andreas): consider adding DrawOrder to video
-pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIdentifier> {
+pub fn visualizers_processing_draw_order(
+) -> impl Iterator<Item = (ViewSystemIdentifier, ComponentDescriptor)> {
     [
-        arrows2d::Arrows2DVisualizer::identifier(),
-        boxes2d::Boxes2DVisualizer::identifier(),
-        depth_images::DepthImageVisualizer::identifier(),
-        encoded_image::EncodedImageVisualizer::identifier(),
-        images::ImageVisualizer::identifier(),
-        lines2d::Lines2DVisualizer::identifier(),
-        points2d::Points2DVisualizer::identifier(),
-        segmentation_images::SegmentationImageVisualizer::identifier(),
+        (
+            arrows2d::Arrows2DVisualizer::identifier(),
+            archetypes::Arrows2D::descriptor_draw_order(),
+        ),
+        (
+            boxes2d::Boxes2DVisualizer::identifier(),
+            archetypes::Boxes2D::descriptor_draw_order(),
+        ),
+        (
+            depth_images::DepthImageVisualizer::identifier(),
+            archetypes::DepthImage::descriptor_draw_order(),
+        ),
+        (
+            encoded_image::EncodedImageVisualizer::identifier(),
+            archetypes::EncodedImage::descriptor_draw_order(),
+        ),
+        (
+            images::ImageVisualizer::identifier(),
+            archetypes::Image::descriptor_draw_order(),
+        ),
+        (
+            lines2d::Lines2DVisualizer::identifier(),
+            archetypes::LineStrips2D::descriptor_draw_order(),
+        ),
+        (
+            points2d::Points2DVisualizer::identifier(),
+            archetypes::Points2D::descriptor_draw_order(),
+        ),
+        (
+            segmentation_images::SegmentationImageVisualizer::identifier(),
+            archetypes::SegmentationImage::descriptor_draw_order(),
+        ),
     ]
     .into_iter()
 }

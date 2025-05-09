@@ -2,8 +2,8 @@ use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows3D,
-    components::{ClassId, Color, Position3D, Radius, ShowLabels, Text, Vector3D},
-    ArrowString, Component as _,
+    components::{ClassId, Color, Position3D, Radius, ShowLabels, Vector3D},
+    ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
@@ -203,13 +203,15 @@ impl VisualizerSystem for Arrows3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_vector_chunks) = results.get_required_chunks(&Vector3D::name()) else {
+                let Some(all_vector_chunks) =
+                    results.get_required_chunks(Arrows3D::descriptor_vectors())
+                else {
                     return Ok(());
                 };
 
                 let num_vectors = all_vector_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>(Vector3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|vectors| vectors.len())
                     .sum();
 
@@ -221,14 +223,13 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 line_builder.reserve_vertices(num_vectors * 2)?;
 
                 let timeline = ctx.query.timeline();
-                let all_vectors_indexed =
-                    iter_slices::<[f32; 3]>(&all_vector_chunks, timeline, Vector3D::name());
-                let all_origins = results.iter_as(timeline, Position3D::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_vectors_indexed = iter_slices::<[f32; 3]>(&all_vector_chunks, timeline);
+                let all_origins = results.iter_as(timeline, Arrows3D::descriptor_origins());
+                let all_colors = results.iter_as(timeline, Arrows3D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, Arrows3D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, Arrows3D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, Arrows3D::descriptor_class_ids());
+                let all_show_labels = results.iter_as(timeline, Arrows3D::descriptor_show_labels());
 
                 let data = re_query::range_zip_1x6(
                     all_vectors_indexed,
@@ -286,7 +287,11 @@ impl TypedComponentFallbackProvider<Color> for Arrows3DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Arrows3DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<Vector3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Arrows3D::descriptor_vectors(),
+            &Arrows3D::descriptor_labels(),
+        )
     }
 }
 

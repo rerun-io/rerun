@@ -48,13 +48,13 @@ impl PrintCommand {
             match res {
                 Ok(msg) => {
                     if let Err(err) = print_msg(*verbose, msg) {
-                        re_log::error!(err = re_error::format(err));
+                        re_log::error_once!("{}", re_error::format(err));
                         is_success = false;
                     }
                 }
 
                 Err(err) => {
-                    re_log::error!(err = re_error::format(err));
+                    re_log::error_once!("{}", re_error::format(err));
                     is_success = false;
                 }
             }

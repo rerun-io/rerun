@@ -1,24 +1,50 @@
 use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
-
 use nohash_hasher::IntSet;
-use re_log_types::EntityPath;
+
+use re_log_types::{EntityPath, TimelineName};
 
 use crate::{
-    ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
-    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
+    ColumnDescriptor, ColumnKind, ComponentColumnDescriptor, ComponentColumnSelector,
+    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError, TimeColumnSelector,
 };
+
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[expect(clippy::enum_variant_names)]
+pub enum ColumnSelectorResolveError {
+    #[error("Column for component '{0}' not found")]
+    ComponentNotFound(String),
+
+    #[error(
+        "Multiple columns were found for component '{0}'. Consider using a more specific selector."
+    )]
+    MultipleComponentColumnFound(String),
+
+    #[error("Index column for timeline '{0}' not found")]
+    TimelineNotFound(TimelineName),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SorbetColumnDescriptors {
-    /// The primary row id column.
-    /// If present, it is always the first column.
-    pub row_id: Option<RowIdColumnDescriptor>,
+    pub columns: Vec<ColumnDescriptor>,
+}
 
-    /// Index columns (timelines).
-    pub indices: Vec<IndexColumnDescriptor>,
+impl std::ops::Deref for SorbetColumnDescriptors {
+    type Target = [ColumnDescriptor];
 
-    /// The actual component data
-    pub components: Vec<ComponentColumnDescriptor>,
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.columns
+    }
+}
+
+impl IntoIterator for SorbetColumnDescriptors {
+    type Item = ColumnDescriptor;
+    type IntoIter = std::vec::IntoIter<ColumnDescriptor>;
+
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        self.columns.into_iter()
+    }
 }
 
 impl SorbetColumnDescriptors {
@@ -26,8 +52,8 @@ impl SorbetColumnDescriptors {
     #[inline]
     #[track_caller]
     pub fn sanity_check(&self) {
-        for component in &self.components {
-            component.sanity_check();
+        for column in &self.columns {
+            column.sanity_check();
         }
     }
 
@@ -35,92 +61,115 @@ impl SorbetColumnDescriptors {
     /// including the row id column, the index columns,
     /// and the data columns.
     pub fn num_columns(&self) -> usize {
-        let Self {
-            row_id,
-            indices,
-            components,
-        } = self;
-        row_id.is_some() as usize + indices.len() + components.len()
+        self.columns.len()
     }
 
     /// All unique entity paths present in the view contents.
     pub fn entity_paths(&self) -> IntSet<EntityPath> {
-        self.components
+        self.columns
             .iter()
-            .map(|col| col.entity_path.clone())
+            .filter_map(|col| col.entity_path().cloned())
             .collect()
     }
 
-    /// Returns all columns, including the `row_id` column.
-    ///
-    /// See also [`Self::indices_and_components`].
-    pub fn descriptors(&self) -> impl Iterator<Item = ColumnDescriptorRef<'_>> + '_ {
-        self.row_id
-            .iter()
-            .map(ColumnDescriptorRef::from)
-            .chain(self.indices.iter().map(ColumnDescriptorRef::from))
-            .chain(self.components.iter().map(ColumnDescriptorRef::from))
+    pub fn row_id_columns(&self) -> impl Iterator<Item = &RowIdColumnDescriptor> {
+        self.columns.iter().filter_map(|descr| {
+            if let ColumnDescriptor::RowId(descr) = descr {
+                Some(descr)
+            } else {
+                None
+            }
+        })
     }
 
-    /// Returns all indices and then all components;
-    /// skipping the `row_id` column.
-    ///
-    /// See also [`Self::get_index_or_component`].
-    pub fn indices_and_components(&self) -> Vec<ColumnDescriptor> {
-        itertools::chain!(
-            self.indices.iter().cloned().map(ColumnDescriptor::Time),
-            self.components
-                .iter()
-                .cloned()
-                .map(ColumnDescriptor::Component),
-        )
-        .collect()
+    pub fn index_columns(&self) -> impl Iterator<Item = &IndexColumnDescriptor> {
+        self.columns.iter().filter_map(|descr| {
+            if let ColumnDescriptor::Time(descr) = descr {
+                Some(descr)
+            } else {
+                None
+            }
+        })
     }
 
-    /// Index the index- and component columns, ignoring the `row_id` column completely.
+    pub fn component_columns(&self) -> impl Iterator<Item = &ComponentColumnDescriptor> {
+        self.columns.iter().filter_map(|descr| {
+            if let ColumnDescriptor::Component(descr) = descr {
+                Some(descr)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Resolve the provided index column selector. Returns `None` if no corresponding column was
+    /// found.
+    pub fn resolve_index_column_selector(
+        &self,
+        index_column_selector: &TimeColumnSelector,
+    ) -> Result<&IndexColumnDescriptor, ColumnSelectorResolveError> {
+        self.index_columns()
+            .find(|column| column.timeline_name() == index_column_selector.timeline)
+            .ok_or(ColumnSelectorResolveError::TimelineNotFound(
+                index_column_selector.timeline,
+            ))
+    }
+
+    /// Resolve the provided component column selector. Returns `None` if no corresponding column
+    /// was found.
     ///
-    /// That is, `get_index_or_component(0)` will return the first index column (if any; otherwise
-    /// the first component column).
-    ///
-    /// See also [`Self::indices_and_components`].
-    pub fn get_index_or_component(&self, index_ignoring_row_id: usize) -> Option<ColumnDescriptor> {
-        if index_ignoring_row_id < self.indices.len() {
-            Some(ColumnDescriptor::Time(
-                self.indices[index_ignoring_row_id].clone(),
+    /// Matching strategy:
+    /// - The entity path must match exactly.
+    /// - The first component with a fully matching name is returned (there shouldn't be more than
+    ///   one for now).
+    /// - If no exact match is found, a partial match is attempted using
+    ///   [`re_types_core::ComponentName::matches`] and is returned only if it is unique.
+    // TODO(#6889): this will need to be fully revisited with tagged components
+    // TODO(ab): this is related but different from `re_chunk_store::resolve_component_selector()`.
+    // It is likely that only one of these should eventually remain.
+    pub fn resolve_component_column_selector(
+        &self,
+        component_column_selector: &ComponentColumnSelector,
+    ) -> Result<&ComponentColumnDescriptor, ColumnSelectorResolveError> {
+        let ComponentColumnSelector {
+            entity_path,
+            component_name,
+        } = component_column_selector;
+
+        // happy path: exact component name match
+        let exact_match = self.component_columns().find(|column| {
+            column.component_name.as_str() == component_name && &column.entity_path == entity_path
+        });
+
+        if let Some(exact_match) = exact_match {
+            return Ok(exact_match);
+        }
+
+        // fallback: use `ComponentName::match` and check that we have a single result
+        let mut partial_match = self.component_columns().filter(|column| {
+            column.component_name.matches(component_name) && &column.entity_path == entity_path
+        });
+
+        let first_match = partial_match.next();
+
+        // Note: non-unique partial match is highly unlikely for now, but will become more likely
+        // with tagged components.
+        if partial_match.next().is_none() {
+            first_match.ok_or(ColumnSelectorResolveError::ComponentNotFound(
+                component_name.clone(),
             ))
         } else {
-            self.components
-                .get(index_ignoring_row_id - self.indices.len())
-                .cloned()
-                .map(ColumnDescriptor::Component)
+            Err(ColumnSelectorResolveError::MultipleComponentColumnFound(
+                component_name.clone(),
+            ))
         }
     }
 
     pub fn arrow_fields(&self, batch_type: crate::BatchType) -> Vec<ArrowField> {
-        let Self {
-            row_id,
-            indices,
-            components,
-        } = self;
-        let mut fields: Vec<ArrowField> = Vec::with_capacity(self.num_columns());
-        if let Some(row_id) = row_id {
-            fields.push(row_id.to_arrow_field());
-        }
-        fields.extend(indices.iter().map(|column| column.to_arrow_field()));
-        fields.extend(
-            components
-                .iter()
-                .map(|column| column.to_arrow_field(batch_type)),
-        );
-        fields
-    }
-
-    /// Keep only the component columns that satisfy the given predicate.
-    #[must_use]
-    #[inline]
-    pub fn filter_components(mut self, keep: impl Fn(&ComponentColumnDescriptor) -> bool) -> Self {
-        self.components.retain(keep);
-        self
+        self.columns
+            .iter()
+            .map(|c| c.to_arrow_field(batch_type))
+            .collect()
     }
 }
 
@@ -129,51 +178,29 @@ impl SorbetColumnDescriptors {
         chunk_entity_path: Option<&EntityPath>,
         fields: &ArrowFields,
     ) -> Result<Self, SorbetError> {
-        let mut row_ids = Vec::new();
-        let mut indices = Vec::new();
-        let mut components = Vec::new();
+        let mut columns = Vec::with_capacity(fields.len());
 
         for field in fields {
             let field = field.as_ref();
             let column_kind = ColumnKind::try_from(field)?;
-            match column_kind {
+
+            let descr = match column_kind {
                 ColumnKind::RowId => {
-                    if indices.is_empty() && components.is_empty() {
-                        row_ids.push(RowIdColumnDescriptor::try_from(field)?);
-                    } else {
-                        return Err(SorbetError::custom("RowId column must be the first column"));
-                    }
+                    ColumnDescriptor::RowId(RowIdColumnDescriptor::try_from(field)?)
                 }
 
                 ColumnKind::Index => {
-                    if components.is_empty() {
-                        indices.push(IndexColumnDescriptor::try_from(field)?);
-                    } else {
-                        return Err(SorbetError::custom(
-                            "Index columns must come before any data columns",
-                        ));
-                    }
+                    ColumnDescriptor::Time(IndexColumnDescriptor::try_from(field)?)
                 }
 
-                ColumnKind::Component => {
-                    components.push(ComponentColumnDescriptor::from_arrow_field(
-                        chunk_entity_path,
-                        field,
-                    ));
-                }
-            }
+                ColumnKind::Component => ColumnDescriptor::Component(
+                    ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field),
+                ),
+            };
+
+            columns.push(descr);
         }
 
-        if row_ids.len() > 1 {
-            return Err(SorbetError::custom(
-                "Multiple row_id columns are not supported",
-            ));
-        }
-
-        Ok(Self {
-            row_id: row_ids.pop(),
-            indices,
-            components,
-        })
+        Ok(Self { columns })
     }
 }

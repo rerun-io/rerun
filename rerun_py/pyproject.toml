@@ -11,12 +11,14 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Visualization",
 ]
+# Keep in mind that tested dependencies are usually goverend by `pixi.toml`
+# which means that any changes to the dependencies here should be reflected there as well.
 dependencies = [
   # Must match list in `.github/workflows/reusable_test_wheels.yml`
   "attrs>=23.1.0",
-  "numpy>=1.23",
+  "numpy>=2",
   "pillow>=8.0.0",          # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
-  "pyarrow>=14.0.2",
+  "pyarrow>=18.0.0",
   "typing_extensions>=4.5", # Used for PEP-702 deprecated decorator
 ]
 description = "The Rerun Logging SDK"
@@ -34,7 +36,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = ["pytest==7.1.2"]
-notebook = ["rerun-notebook==0.23.0-alpha.3+dev"]
+notebook = ["rerun-notebook==0.24.0-alpha.1+dev"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -151,6 +153,7 @@ lint.select = [
   "PIE",     # flake8-pic: various idomatic python lints
   "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
   "YTT",     # Various checks on the use of `sys.version_info` and related.
+  "RUF027",  # Ensure that strings which look like format-strings have the `f` prefix
 ]
 
 lint.unfixable = [

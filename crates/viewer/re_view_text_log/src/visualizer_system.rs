@@ -1,13 +1,12 @@
 use itertools::izip;
 use re_chunk_store::ResolvedTimeRange;
 use re_entity_db::EntityPath;
-use re_log_types::TimeInt;
-use re_log_types::TimePoint;
+use re_log_types::{TimeInt, TimePoint};
 use re_query::{clamped_zip_1x2, range_zip_1x2};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Component as _,
+    Archetype as _,
 };
 use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
 use re_viewer_context::{
@@ -90,10 +89,10 @@ impl TextLogSystem {
             None,
             query,
             data_result,
-            [Text::name(), TextLogLevel::name(), Color::name()],
+            TextLog::all_components().iter(),
         );
 
-        let Some(all_text_chunks) = results.get_required_chunks(&Text::name()) else {
+        let Some(all_text_chunks) = results.get_required_chunks(TextLog::descriptor_text()) else {
             return;
         };
 
@@ -102,12 +101,12 @@ impl TextLogSystem {
         // Let's keep it simple for now, until we have data suggested we need the extra perf.
         let all_timepoints = all_text_chunks
             .iter()
-            .flat_map(|chunk| chunk.iter_component_timepoints(&Text::name()));
+            .flat_map(|chunk| chunk.iter_component_timepoints());
 
         let timeline = *query.timeline();
-        let all_texts = results.iter_as(timeline, Text::name());
-        let all_levels = results.iter_as(timeline, TextLogLevel::name());
-        let all_colors = results.iter_as(timeline, Color::name());
+        let all_texts = results.iter_as(timeline, TextLog::descriptor_text());
+        let all_levels = results.iter_as(timeline, TextLog::descriptor_level());
+        let all_colors = results.iter_as(timeline, TextLog::descriptor_color());
 
         let all_frames = range_zip_1x2(
             all_texts.slice::<String>(),

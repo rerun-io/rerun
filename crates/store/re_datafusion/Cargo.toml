@@ -20,6 +20,10 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-shear]
+# Needed for Datafusion on wasm, see note below.
+ignored = ["chrono", "getrandom"]
+
 
 [features]
 default = []
@@ -27,6 +31,7 @@ default = []
 [dependencies]
 # Rerun dependencies:
 re_dataframe.workspace = true
+re_grpc_client.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
@@ -34,14 +39,23 @@ re_protos.workspace = true
 # External dependencies:
 anyhow.workspace = true
 arrow.workspace = true
-async-trait = "0.1.83"
 async-stream.workspace = true
+async-trait = "0.1.83"
 datafusion.workspace = true
 futures-util.workspace = true
 itertools.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true
 tonic.workspace = true
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+futures.workspace = true
+wasm-bindgen-futures.workspace = true
+
+# These are used by Datafusion but the required features are not set for wasm build.
+chrono = { workspace = true, features = ["wasmbind"] }
+getrandom = { workspace = true, features = ["js"] }
+
+
 [dev-dependencies]
 re_tuid.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

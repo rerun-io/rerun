@@ -100,6 +100,7 @@ pub trait Component: Loggable {
     // * Users might still want to register Components with specific tags.
     // * In the future, `ComponentDescriptor`s will very likely cover more than Archetype-related tags
     //   (e.g. generics, metric units, etc).
+    // TODO(#6889): This method should be removed, or made dynamic.
     fn descriptor() -> ComponentDescriptor;
 
     /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.
@@ -111,9 +112,7 @@ pub trait Component: Loggable {
     /// `Self::name()` must exactly match the value returned by `Self::descriptor().component_name`,
     /// or undefined behavior ensues.
     //
-    // TODO(cmc): The only reason we keep this around is for convenience, and the only reason we need this
-    // convenience is because we're still in this weird half-way in-between state where some things
-    // are still indexed by name. Remove this entirely once we've ported everything to descriptors.
+    // TODO(#6889): This method should be removed.
     #[inline]
     fn name() -> ComponentName {
         Self::descriptor().component_name
@@ -122,9 +121,11 @@ pub trait Component: Loggable {
 
 // ---
 
-pub type UnorderedComponentNameSet = IntSet<ComponentName>;
+pub type UnorderedComponentDescriptorSet = IntSet<ComponentDescriptor>;
 
 pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
+
+pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
@@ -206,13 +207,15 @@ impl ComponentName {
     }
 
     /// If this is an indicator component, for which archetype?
-    pub fn indicator_component_archetype(&self) -> Option<String> {
-        self.strip_suffix("Indicator").map(|name| name.to_owned())
+    pub fn indicator_component_archetype_short_name(&self) -> Option<String> {
+        self.short_name()
+            .strip_suffix("Indicator")
+            .map(|name| name.to_owned())
     }
 
     /// Web URL to the Rerun documentation for this component.
     pub fn doc_url(&self) -> Option<String> {
-        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype() {
+        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype_short_name() {
             // Link indicator components to their archetype.
             // This code should be correct as long as this url passes our link checker:
             // https://rerun.io/docs/reference/types/archetypes/line_strips3d

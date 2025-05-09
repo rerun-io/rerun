@@ -56,13 +56,13 @@ jobs:
     name: cargo build on clean container
     strategy:
       matrix:
-        os: [ubuntu-latest-16-cores, macos-latest, windows-latest-8-cores]
+        os: [ubuntu-latest-16-cores, macos-15, windows-latest-8-cores]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.84.0
+          toolchain: 1.85.0
 
       - run: cargo build -p rerun
 

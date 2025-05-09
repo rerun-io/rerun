@@ -1,4 +1,5 @@
 use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
+use std::sync::Arc;
 
 use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent, ListVisuals};
 use crate::{DesignTokens, Icon, UiExt as _};
@@ -290,8 +291,11 @@ impl ListItemContent for PropertyContent<'_> {
 
         // Prepare the label galley. We first go for an un-truncated version to register our desired
         // column width. If it doesn't fit the available space, we recreate it with truncation.
-        let mut layout_job =
-            label.into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+        let mut layout_job = Arc::unwrap_or_clone(label.into_layout_job(
+            ui.style(),
+            egui::FontSelection::Default,
+            Align::LEFT,
+        ));
         let desired_galley = ui.fonts(|fonts| fonts.layout_job(layout_job.clone()));
         let desired_width =
             (content_indent + icon_extra + desired_galley.size().x + Self::COLUMN_SPACING / 2.0)
@@ -328,10 +332,7 @@ impl ListItemContent for PropertyContent<'_> {
         ui.painter().galley(text_pos, galley, visuals.text_color());
 
         // Draw value
-        let is_completely_collapsed = context
-            .list_item
-            .collapse_openness
-            .map_or(true, |o| o == 0.0);
+        let is_completely_collapsed = context.list_item.collapse_openness.is_none_or(|o| o == 0.0);
         let should_show_value = if show_only_when_collapsed {
             is_completely_collapsed
         } else {
