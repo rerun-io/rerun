@@ -12,6 +12,7 @@ use arrow::{
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
+use re_types::ComponentDescriptor;
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -20,7 +21,7 @@ use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
-use re_types_core::{ComponentName, DeserializationError, Loggable as _, RowId};
+use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -162,7 +163,7 @@ fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
 #[derive(Debug)]
 pub struct DisplayComponentColumn {
     entity_path: EntityPath,
-    component_name: ComponentName,
+    component_descr: ComponentDescriptor,
     component_data: ComponentData,
 
     // if available, used to pass a row id to the component UI (e.g. to cache image)
@@ -198,12 +199,11 @@ impl DisplayComponentColumn {
                 data
             };
 
-            let mut cache_key = self
+            let mut row_id = self
                 .row_ids
                 .as_deref()
                 .and_then(|row_ids| row_ids.get(row_index))
-                .copied()
-                .map(Hash64::hash);
+                .copied();
 
             // TODO(ab): we should find an alternative to using content-hashing to generate cache
             // keys.
@@ -211,7 +211,9 @@ impl DisplayComponentColumn {
             // Generate a content-based cache key if we don't have one already. This is needed
             // because without cache key, the image thumbnail will no be displayed by the component
             // ui.
-            if cache_key.is_none() && (self.component_name.as_str() == "rerun.components.Blob") {
+            if row_id.is_none()
+                && (self.component_descr.component_name == re_types::components::Blob::name())
+            {
                 re_tracing::profile_scope!("Blob hash");
 
                 if let Ok(Some(buffer)) = re_types::components::Blob::from_arrow(&data_to_display)
@@ -221,7 +223,10 @@ impl DisplayComponentColumn {
                     // cap the max amount of data to hash to 9 KiB
                     const SECTION_LENGTH: usize = 3 * 1024;
 
-                    cache_key = Some(quick_partial_hash(buffer, SECTION_LENGTH));
+                    // TODO(andreas, ab): This is a hack to create a pretend-row-id from the content hash.
+                    row_id = Some(RowId::from_u128(
+                        quick_partial_hash(buffer, SECTION_LENGTH).hash64() as _,
+                    ));
                 }
             }
 
@@ -232,8 +237,8 @@ impl DisplayComponentColumn {
                 latest_at_query,
                 ctx.recording(),
                 &self.entity_path,
-                self.component_name,
-                cache_key,
+                &self.component_descr,
+                row_id,
                 data_to_display.as_ref(),
             );
         } else {
@@ -283,7 +288,7 @@ impl DisplayColumn {
             }
             ColumnDescriptorRef::Component(desc) => Ok(Self::Component(DisplayComponentColumn {
                 entity_path: desc.entity_path.clone(),
-                component_name: desc.component_name,
+                component_descr: desc.component_descriptor(),
                 component_data: ComponentData::try_new(desc, column_data)?,
                 row_ids: None,
             })),

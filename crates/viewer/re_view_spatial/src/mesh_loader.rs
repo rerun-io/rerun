@@ -1,9 +1,10 @@
 use itertools::Itertools as _;
 
-use re_log_types::hash::Hash64;
 use re_renderer::{mesh::GpuMesh, RenderContext};
 use re_types::{components::MediaType, datatypes};
-use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
+use re_viewer_context::{
+    gpu_bridge::texture_creation_desc_from_color_image, ImageInfo, StoredBlobCacheKey,
+};
 
 use crate::{mesh_cache::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
 
@@ -230,8 +231,8 @@ fn try_get_or_create_albedo_texture(
     re_tracing::profile_function!();
 
     let image_info = ImageInfo {
-        buffer_cache_key: Hash64::ZERO,        // unused
-        buffer: albedo_texture_buffer.clone(), // shallow clone
+        buffer_content_hash: StoredBlobCacheKey::ZERO, // unused
+        buffer: albedo_texture_buffer.clone(),         // shallow clone
         format: *albedo_texture_format,
         kind: re_types::image::ImageKind::Color,
     };

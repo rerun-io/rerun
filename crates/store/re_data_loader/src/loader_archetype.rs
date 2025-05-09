@@ -154,7 +154,7 @@ fn load_image(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [
@@ -180,7 +180,7 @@ fn load_video(
     mut timepoint: TimePoint,
     entity_path: &EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let video_timeline = re_log_types::Timeline::new_duration("video");
@@ -291,7 +291,7 @@ fn load_point_cloud(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: &[u8],
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [

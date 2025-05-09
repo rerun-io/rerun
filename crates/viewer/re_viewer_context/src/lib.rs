@@ -56,7 +56,7 @@ pub use self::{
         command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
         ComponentUiTypes, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender,
     },
-    image_info::{ColormapWithRange, ImageInfo},
+    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
     maybe_mut_ref::MaybeMutRef,
     query_context::{
         DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,

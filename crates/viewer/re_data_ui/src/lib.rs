@@ -2,8 +2,8 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
-use re_log_types::{hash::Hash64, EntityPath};
-use re_types::ComponentDescriptor;
+use re_log_types::EntityPath;
+use re_types::{ComponentDescriptor, RowId};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 mod annotation_context;
@@ -71,7 +71,8 @@ pub trait EntityDataUi {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        cache_key: Option<Hash64>,
+        component_descriptor: &ComponentDescriptor,
+        row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
@@ -87,7 +88,8 @@ where
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _cache_key: Option<Hash64>,
+        _component_descriptor: &ComponentDescriptor,
+        _row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {

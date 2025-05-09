@@ -2818,7 +2818,7 @@ dependencies = [
  "pollster 0.4.0",
  "profiling",
  "raw-window-handle",
- "ron 0.10.1",
+ "ron",
  "serde",
  "static_assertions",
  "wasm-bindgen",
@@ -2845,7 +2845,7 @@ dependencies = [
  "log",
  "nohash-hasher",
  "profiling",
- "ron 0.10.1",
+ "ron",
  "serde",
  "unicode-segmentation",
 ]
@@ -6860,7 +6860,6 @@ dependencies = [
  "egui_extras",
  "egui_plot",
  "itertools 0.14.0",
- "nohash-hasher",
  "re_byte_size",
  "re_capabilities",
  "re_chunk_store",
@@ -8080,7 +8079,7 @@ dependencies = [
  "re_viewport",
  "re_viewport_blueprint",
  "rfd",
- "ron 0.8.1",
+ "ron",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -8586,18 +8585,6 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "ron"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91f7eff05f748767f183df4320a63d6936e9c6107d97c9e6bdd9784f4289c94"
-dependencies = [
- "base64 0.21.7",
- "bitflags 2.8.0",
- "serde",
- "serde_derive",
 ]
 
 [[package]]

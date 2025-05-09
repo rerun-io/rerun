@@ -270,11 +270,16 @@ impl ChunkBatcherConfig {
 
 #[test]
 fn chunk_batcher_config() {
+    #![allow(unsafe_code)] // It's only a test
+
     // Detect breaking changes in our environment variables.
-    std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.3");
-    std::env::set_var("RERUN_FLUSH_NUM_BYTES", "42");
-    std::env::set_var("RERUN_FLUSH_NUM_ROWS", "666");
-    std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "7777");
+    // SAFETY: it's a test
+    unsafe {
+        std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.3");
+        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "42");
+        std::env::set_var("RERUN_FLUSH_NUM_ROWS", "666");
+        std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "7777");
+    }
 
     let config = ChunkBatcherConfig::from_env().unwrap();
     let expected = ChunkBatcherConfig {
@@ -286,7 +291,10 @@ fn chunk_batcher_config() {
     };
     assert_eq!(expected, config);
 
-    std::env::set_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED", "9999");
+    // SAFETY: it's a test
+    unsafe {
+        std::env::set_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED", "9999");
+    }
 
     let config = ChunkBatcherConfig::from_env().unwrap();
     let expected = ChunkBatcherConfig {

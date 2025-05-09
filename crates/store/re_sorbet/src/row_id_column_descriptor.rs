@@ -85,7 +85,10 @@ impl TryFrom<&ArrowField> for RowIdColumnDescriptor {
                 is_sorted: field.metadata().get_bool("rerun.is_sorted"),
             })
         } else {
-            Err(WrongDatatypeError(format!("Expected a RowId column with datatype {expected_datatype:?}, but column {:?} has datatype {actual_datatype:?}", field.name())))
+            Err(WrongDatatypeError(format!(
+                "Expected a RowId column with datatype {expected_datatype:?}, but column {:?} has datatype {actual_datatype:?}",
+                field.name()
+            )))
         }
     }
 }

@@ -32,14 +32,14 @@ fn target_directory() -> Utf8PathBuf {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Profile {
-    Release,
+    WebRelease,
     Debug,
 }
 
 impl Profile {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Release => "release",
+            Self::WebRelease => "web-release",
             Self::Debug => "debug",
         }
     }
@@ -126,8 +126,8 @@ pub fn build(
         if !features.is_empty() {
             cmd.arg(format!("--features={features}"));
         }
-        if profile == Profile::Release {
-            cmd.arg("--release");
+        if profile == Profile::WebRelease {
+            cmd.arg("--profile=web-release");
         }
 
         // This is required for unstable WebGPU apis to work
@@ -200,7 +200,7 @@ pub fn build(
         );
     }
 
-    if profile == Profile::Release {
+    if profile == Profile::WebRelease {
         eprintln!("Optimizing wasm with wasm-opt…");
         let start_time = Instant::now();
 
@@ -213,9 +213,12 @@ pub fn build(
             "--output",
             wasm_path.as_str(),
             "--enable-reference-types",
+            "--vacuum",
         ];
         if debug_symbols {
             args.push("-g");
+        } else {
+            args.push("--strip-debug");
         }
         cmd.args(args);
         eprintln!("{root_dir}> {cmd:?}");

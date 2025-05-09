@@ -99,7 +99,9 @@ impl Client {
                     if let Some(timeout) = self.flush_timeout {
                         let elapsed = start.elapsed();
                         if elapsed >= timeout {
-                            re_log::warn!("Flush timed out, not all messages were sent. The timeout can be adjusted when connecting via gRPC.");
+                            re_log::warn!(
+                                "Flush timed out, not all messages were sent. The timeout can be adjusted when connecting via gRPC."
+                            );
                             break;
                         }
                     }

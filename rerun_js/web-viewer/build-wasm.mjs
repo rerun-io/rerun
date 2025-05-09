@@ -57,6 +57,12 @@ function re_viewer_js() {
   const end = `wasm_bindgen = Object.assign(__wbg_init, { initSync }, __exports);
 
 })();`;
+  if (code.indexOf(start) === -1) {
+    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find replace start marker");
+  }
+  if (code.indexOf(end) === -1) {
+    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find replace end marker");
+  }
   code = code.replace(start, "").replace(end, "");
 
   code = `
@@ -66,10 +72,11 @@ ${code}
 function deinit() {
   __wbg_init.__wbindgen_wasm_module = null;
   wasm = null;
+  cachedUint8ArrayMemory0 = null;
   cachedFloat32ArrayMemory0 = null;
   cachedInt32ArrayMemory0 = null;
   cachedUint32ArrayMemory0 = null;
-  cachedUint8ArrayMemory0 = null;
+  cachedDataViewMemory0 = null;
 }
 
 return Object.assign(__wbg_init, { initSync, deinit }, __exports);
@@ -80,19 +87,32 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   // Otherwise we end up with an exceptioon during closure destruction which prevents the references from all being
   // cleaned up properly.
   // TODO(jprochazk): Can we force these to run before we null `wasm` instead?
-  const closure_dtors = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
-        ? { register: () => {}, unregister: () => {} }
-        : new FinalizationRegistry(state => {
-        wasm.__wbindgen_export_4.get(state.dtor)(state.a, state.b)
-    });`;
+  const closure_dtors_start_marker = "const CLOSURE_DTORS";
+  const closure_dtors_end_marker = "});";
+
+  const closure_dtors_start = code.indexOf(closure_dtors_start_marker);
+  if (closure_dtors_start === -1) {
+    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find CLOSURE_DTORS start");
+  }
+  const closure_dtors_end = code.indexOf(closure_dtors_end_marker, closure_dtors_start);
+  if (closure_dtors_end === -1) {
+    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find CLOSURE_DTORS end");
+  }
+
+  let m = code.substring(closure_dtors_start, closure_dtors_end).match(/__wbindgen_export_\d+/);
+  if (!m) {
+    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find __wbindgen_export within CLOSURE_DTORS");
+  }
+
+  let wbindgen_export = m[0];
 
   const closure_dtors_patch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
         ? { register: () => {}, unregister: () => {} }
         : new FinalizationRegistry(state => {
-        wasm?.__wbindgen_export_4.get(state.dtor)(state.a, state.b)
+        wasm?.${wbindgen_export}.get(state.dtor)(state.a, state.b)
     });`;
 
-  code = code.replace(closure_dtors, closure_dtors_patch);
+  code = code.substring(0, closure_dtors_start) + closure_dtors_patch + code.slice(closure_dtors_end + closure_dtors_end_marker.length);
 
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }

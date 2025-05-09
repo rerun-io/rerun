@@ -1,15 +1,16 @@
 use ahash::{HashMap, HashSet};
 use itertools::Either;
 
+use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
-    archetypes::EncodedImage,
-    components::{ImageBuffer, MediaType},
+    components::{self, ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
+    Component as _, ComponentDescriptor,
 };
 
-use crate::{Cache, ImageInfo};
+use crate::{image_info::StoredBlobCacheKey, Cache, ImageInfo};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image
@@ -25,7 +26,7 @@ struct DecodedImageResult {
 /// Caches the results of decoding [`re_types::archetypes::EncodedImage`].
 #[derive(Default)]
 pub struct ImageDecodeCache {
-    cache: HashMap<Hash64, HashMap<Hash64, DecodedImageResult>>,
+    cache: HashMap<StoredBlobCacheKey, HashMap<Hash64, DecodedImageResult>>,
     memory_used: u64,
     generation: u64,
 }
@@ -39,7 +40,8 @@ impl ImageDecodeCache {
     /// so we don't need the instance id here.
     pub fn entry(
         &mut self,
-        blob_cache_key: Hash64,
+        blob_row_id: RowId,
+        blob_component_descriptor: &ComponentDescriptor,
         image_bytes: &[u8],
         media_type: Option<&MediaType>,
     ) -> Result<ImageInfo, ImageLoadError> {
@@ -57,13 +59,22 @@ impl ImageDecodeCache {
 
         let inner_key = Hash64::hash(&media_type);
 
+        // The descriptor should always be the one in the encoded image archetype, but in the future
+        // we may allow overrides such that it is sourced from somewhere else.
+        let blob_cache_key = StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor);
+
         let lookup = self
             .cache
             .entry(blob_cache_key)
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let result = decode_image(blob_cache_key, image_bytes, media_type.as_str());
+                let result = decode_image(
+                    blob_row_id,
+                    blob_component_descriptor,
+                    image_bytes,
+                    media_type.as_str(),
+                );
                 let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
                 self.memory_used += memory_used;
                 DecodedImageResult {
@@ -78,7 +89,8 @@ impl ImageDecodeCache {
 }
 
 fn decode_image(
-    blob_cache_key: Hash64,
+    blob_row_id: RowId,
+    blob_component_descriptor: &ComponentDescriptor,
     image_bytes: &[u8],
     media_type: &str,
 ) -> Result<ImageInfo, ImageLoadError> {
@@ -96,12 +108,13 @@ fn decode_image(
 
     let (buffer, format) = ImageBuffer::from_dynamic_image(dynamic_image)?;
 
-    Ok(ImageInfo {
-        buffer_cache_key: blob_cache_key,
-        buffer: buffer.0,
-        format: format.0,
-        kind: ImageKind::Color,
-    })
+    Ok(ImageInfo::from_stored_blob(
+        blob_row_id,
+        blob_component_descriptor,
+        buffer.0,
+        format.0,
+        ImageKind::Color,
+    ))
 }
 
 impl Cache for ImageDecodeCache {
@@ -151,19 +164,22 @@ impl Cache for ImageDecodeCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let cache_key_removed: HashSet<Hash64> = events
+        let cache_key_removed: HashSet<StoredBlobCacheKey> = events
             .iter()
             .flat_map(|event| {
-                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
-                let contains_image_blob = || {
-                    event
-                        .chunk
-                        .components()
-                        .contains_component(&EncodedImage::descriptor_blob())
-                };
-
-                if is_deletion() && contains_image_blob() {
-                    Either::Left(event.chunk.row_ids().map(Hash64::hash))
+                if event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion {
+                    Either::Left(
+                        event
+                            .chunk
+                            .component_descriptors()
+                            .filter(|descr| descr.component_name == components::Blob::name())
+                            .flat_map(|descr| {
+                                event
+                                    .chunk
+                                    .row_ids()
+                                    .map(move |row_id| StoredBlobCacheKey::new(row_id, &descr))
+                            }),
+                    )
                 } else {
                     Either::Right(std::iter::empty())
                 }
