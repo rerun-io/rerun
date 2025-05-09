@@ -1108,7 +1108,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                     "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
                 ),
                 String::new(),
-                "The `descriptor` will have the following fields:".to_owned(),
+                "It will have the following fields:".to_owned(),
                 "```".to_owned(),
                 "let descriptor = ComponentDescriptor {".to_owned(),
                 format!("    archetype_name: \"{archetype_name}\","),
