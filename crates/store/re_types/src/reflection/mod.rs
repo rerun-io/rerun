@@ -1874,7 +1874,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Pinhole",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial2DView"],
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { name : "image_from_camera".into(),
                     display_name : "Image from camera", component_name :
