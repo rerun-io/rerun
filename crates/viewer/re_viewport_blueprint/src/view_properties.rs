@@ -195,9 +195,15 @@ impl ViewProperty {
     ) {
         if !self.component_descrs.contains(component_descr) {
             if cfg!(debug_assertions) {
-                panic!("trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`", self.archetype_name);
+                panic!(
+                    "trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`",
+                    self.archetype_name
+                );
             } else {
-                re_log::warn_once!("trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`", self.archetype_name);
+                re_log::warn_once!(
+                    "trying to save a blueprint component `{component_descr}` that is not part of the view property for archetype `{}`",
+                    self.archetype_name
+                );
             }
         }
         ctx.save_blueprint_component(&self.blueprint_store_path, component_descr, component_batch);

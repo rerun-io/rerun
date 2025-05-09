@@ -89,7 +89,9 @@ async fn serve_impl(
     } else {
         format!("rerun+http://{addr}/proxy")
     };
-    re_log::info!("Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`");
+    re_log::info!(
+        "Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`"
+    );
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();

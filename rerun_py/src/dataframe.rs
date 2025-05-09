@@ -433,11 +433,9 @@ impl IndexValuesLike<'_> {
                         }
                         Ok(values)
                     }
-                    Err(err) => {
-                        Err(PyTypeError::new_err(
-                            format!("IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray. {err}"),
-                        ))
-                    }
+                    Err(err) => Err(PyTypeError::new_err(format!(
+                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray. {err}"
+                    ))),
                 }
             }
         }
@@ -1257,9 +1255,9 @@ impl PyRecording {
                 } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
                     components.into_iter().map(|c| c.0).collect()
                 } else {
-                    return Err(PyTypeError::new_err(
-                            format!("Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."),
-                        ));
+                    return Err(PyTypeError::new_err(format!(
+                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                    )));
                 };
 
                 contents.append(

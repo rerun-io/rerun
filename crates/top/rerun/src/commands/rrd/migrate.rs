@@ -27,7 +27,10 @@ impl MigrateCommand {
         let num_files = path_to_input_rrds.len();
 
         if num_files < num_files_before {
-            eprintln!("Ignored {} file(s) that are called .backup.rrd, and are therefore assumed to already have been migrated", num_files_before - num_files);
+            eprintln!(
+                "Ignored {} file(s) that are called .backup.rrd, and are therefore assumed to already have been migrated",
+                num_files_before - num_files
+            );
         }
 
         // Sanity-check input:

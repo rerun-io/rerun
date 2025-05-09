@@ -1598,7 +1598,9 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
     let seed = match authkey(py) {
         Ok(seed) => seed,
         Err(err) => {
-            re_log::error_once!("Failed to retrieve python authkey: {err}\nMultiprocessing will result in split recordings.");
+            re_log::error_once!(
+                "Failed to retrieve python authkey: {err}\nMultiprocessing will result in split recordings."
+            );
             // If authkey failed, just generate a random 8-byte authkey
             let bytes = rand::Rng::r#gen::<[u8; 8]>(&mut rand::thread_rng());
             bytes.to_vec()
