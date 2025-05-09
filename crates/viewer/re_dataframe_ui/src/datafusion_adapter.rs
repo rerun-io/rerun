@@ -128,12 +128,12 @@ impl PartialEq for DataFusionQuery {
         let Self {
             session_ctx,
             table_ref,
-            query_data: blueprint,
+            query_data,
         } = self;
 
         Arc::ptr_eq(session_ctx, &other.session_ctx)
             && table_ref == &other.table_ref
-            && blueprint == &other.query_data
+            && query_data == &other.query_data
     }
 }
 
