@@ -49,7 +49,7 @@ pub struct TensorSliceSelection {
 impl TensorSliceSelection {
     /// Returns the [`ComponentDescriptor`] for [`Self::width`].
     ///
-    /// The `component_name` field will be set to `rerun.components.TensorWidthDimension`.
+    /// The corresponding component is [`crate::components::TensorWidthDimension`].
     #[inline]
     pub fn descriptor_width() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -61,7 +61,7 @@ impl TensorSliceSelection {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::height`].
     ///
-    /// The `component_name` field will be set to `rerun.components.TensorHeightDimension`.
+    /// The corresponding component is [`crate::components::TensorHeightDimension`].
     #[inline]
     pub fn descriptor_height() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -73,7 +73,7 @@ impl TensorSliceSelection {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::indices`].
     ///
-    /// The `component_name` field will be set to `rerun.components.TensorDimensionIndexSelection`.
+    /// The corresponding component is [`crate::components::TensorDimensionIndexSelection`].
     #[inline]
     pub fn descriptor_indices() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -85,7 +85,7 @@ impl TensorSliceSelection {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::slider`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.TensorDimensionIndexSlider`.
+    /// The corresponding component is [`crate::blueprint::components::TensorDimensionIndexSlider`].
     #[inline]
     pub fn descriptor_slider() -> ComponentDescriptor {
         ComponentDescriptor {

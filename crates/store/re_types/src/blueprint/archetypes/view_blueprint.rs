@@ -47,7 +47,7 @@ pub struct ViewBlueprint {
 impl ViewBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::class_identifier`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ViewClass`.
+    /// The corresponding component is [`crate::blueprint::components::ViewClass`].
     #[inline]
     pub fn descriptor_class_identifier() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -59,7 +59,7 @@ impl ViewBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Name`.
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -71,7 +71,7 @@ impl ViewBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::space_origin`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ViewOrigin`.
+    /// The corresponding component is [`crate::blueprint::components::ViewOrigin`].
     #[inline]
     pub fn descriptor_space_origin() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -83,7 +83,7 @@ impl ViewBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Visible`.
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

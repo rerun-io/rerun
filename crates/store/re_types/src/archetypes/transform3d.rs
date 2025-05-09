@@ -361,7 +361,7 @@ pub struct Transform3D {
 impl Transform3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::translation`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Translation3D`.
+    /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_translation() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -373,7 +373,7 @@ impl Transform3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angle`].
     ///
-    /// The `component_name` field will be set to `rerun.components.RotationAxisAngle`.
+    /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angle() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -385,7 +385,7 @@ impl Transform3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternion`].
     ///
-    /// The `component_name` field will be set to `rerun.components.RotationQuat`.
+    /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternion() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -397,7 +397,7 @@ impl Transform3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scale`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Scale3D`.
+    /// The corresponding component is [`crate::components::Scale3D`].
     #[inline]
     pub fn descriptor_scale() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -409,7 +409,7 @@ impl Transform3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
     ///
-    /// The `component_name` field will be set to `rerun.components.TransformMat3x3`.
+    /// The corresponding component is [`crate::components::TransformMat3x3`].
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -421,7 +421,7 @@ impl Transform3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::relation`].
     ///
-    /// The `component_name` field will be set to `rerun.components.TransformRelation`.
+    /// The corresponding component is [`crate::components::TransformRelation`].
     #[inline]
     pub fn descriptor_relation() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -433,7 +433,7 @@ impl Transform3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::axis_length`].
     ///
-    /// The `component_name` field will be set to `rerun.components.AxisLength`.
+    /// The corresponding component is [`crate::components::AxisLength`].
     #[inline]
     pub fn descriptor_axis_length() -> ComponentDescriptor {
         ComponentDescriptor {

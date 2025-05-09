@@ -40,7 +40,7 @@ pub struct ForceCollisionRadius {
 impl ForceCollisionRadius {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.Enabled`.
+    /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -52,7 +52,7 @@ impl ForceCollisionRadius {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ForceStrength`.
+    /// The corresponding component is [`crate::blueprint::components::ForceStrength`].
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -64,7 +64,7 @@ impl ForceCollisionRadius {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ForceIterations`.
+    /// The corresponding component is [`crate::blueprint::components::ForceIterations`].
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {

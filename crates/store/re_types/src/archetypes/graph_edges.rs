@@ -65,7 +65,7 @@ pub struct GraphEdges {
 impl GraphEdges {
     /// Returns the [`ComponentDescriptor`] for [`Self::edges`].
     ///
-    /// The `component_name` field will be set to `rerun.components.GraphEdge`.
+    /// The corresponding component is [`crate::components::GraphEdge`].
     #[inline]
     pub fn descriptor_edges() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -77,7 +77,7 @@ impl GraphEdges {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::graph_type`].
     ///
-    /// The `component_name` field will be set to `rerun.components.GraphType`.
+    /// The corresponding component is [`crate::components::GraphType`].
     #[inline]
     pub fn descriptor_graph_type() -> ComponentDescriptor {
         ComponentDescriptor {

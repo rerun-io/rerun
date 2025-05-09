@@ -72,7 +72,7 @@ pub struct Tensor {
 impl Tensor {
     /// Returns the [`ComponentDescriptor`] for [`Self::data`].
     ///
-    /// The `component_name` field will be set to `rerun.components.TensorData`.
+    /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -84,7 +84,7 @@ impl Tensor {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::value_range`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ValueRange`.
+    /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
         ComponentDescriptor {

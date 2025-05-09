@@ -43,7 +43,7 @@ pub struct EntityBehavior {
 impl EntityBehavior {
     /// Returns the [`ComponentDescriptor`] for [`Self::interactive`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Interactive`.
+    /// The corresponding component is [`crate::components::Interactive`].
     #[inline]
     pub fn descriptor_interactive() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -55,7 +55,7 @@ impl EntityBehavior {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Visible`.
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

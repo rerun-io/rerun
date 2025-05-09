@@ -32,7 +32,7 @@ pub struct MapBackground {
 impl MapBackground {
     /// Returns the [`ComponentDescriptor`] for [`Self::provider`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.MapProvider`.
+    /// The corresponding component is [`crate::blueprint::components::MapProvider`].
     #[inline]
     pub fn descriptor_provider() -> ComponentDescriptor {
         ComponentDescriptor {

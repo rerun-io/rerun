@@ -35,7 +35,7 @@ pub struct ScalarAxis {
 impl ScalarAxis {
     /// Returns the [`ComponentDescriptor`] for [`Self::range`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Range1D`.
+    /// The corresponding component is [`crate::components::Range1D`].
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -47,7 +47,7 @@ impl ScalarAxis {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::zoom_lock`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.LockRangeDuringZoom`.
+    /// The corresponding component is [`crate::blueprint::components::LockRangeDuringZoom`].
     #[inline]
     pub fn descriptor_zoom_lock() -> ComponentDescriptor {
         ComponentDescriptor {

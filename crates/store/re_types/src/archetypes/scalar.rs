@@ -97,7 +97,7 @@ pub struct Scalar {
 impl Scalar {
     /// Returns the [`ComponentDescriptor`] for [`Self::scalar`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Scalar`.
+    /// The corresponding component is [`crate::components::Scalar`].
     #[inline]
     pub fn descriptor_scalar() -> ComponentDescriptor {
         ComponentDescriptor {

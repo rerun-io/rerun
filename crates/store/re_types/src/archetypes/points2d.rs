@@ -140,7 +140,7 @@ pub struct Points2D {
 impl Points2D {
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Position2D`.
+    /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -152,7 +152,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Radius`.
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -164,7 +164,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -176,7 +176,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Text`.
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -188,7 +188,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ShowLabels`.
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -200,7 +200,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
     ///
-    /// The `component_name` field will be set to `rerun.components.DrawOrder`.
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -212,7 +212,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ClassId`.
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -224,7 +224,7 @@ impl Points2D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::keypoint_ids`].
     ///
-    /// The `component_name` field will be set to `rerun.components.KeypointId`.
+    /// The corresponding component is [`crate::components::KeypointId`].
     #[inline]
     pub fn descriptor_keypoint_ids() -> ComponentDescriptor {
         ComponentDescriptor {

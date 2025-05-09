@@ -37,7 +37,7 @@ pub struct PlotLegend {
 impl PlotLegend {
     /// Returns the [`ComponentDescriptor`] for [`Self::corner`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.Corner2D`.
+    /// The corresponding component is [`crate::blueprint::components::Corner2D`].
     #[inline]
     pub fn descriptor_corner() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -49,7 +49,7 @@ impl PlotLegend {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Visible`.
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

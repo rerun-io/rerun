@@ -113,7 +113,7 @@ pub struct Boxes3D {
 impl Boxes3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::half_sizes`].
     ///
-    /// The `component_name` field will be set to `rerun.components.HalfSize3D`.
+    /// The corresponding component is [`crate::components::HalfSize3D`].
     #[inline]
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -125,7 +125,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
     ///
-    /// The `component_name` field will be set to `rerun.components.PoseTranslation3D`.
+    /// The corresponding component is [`crate::components::PoseTranslation3D`].
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -137,7 +137,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
     ///
-    /// The `component_name` field will be set to `rerun.components.PoseRotationAxisAngle`.
+    /// The corresponding component is [`crate::components::PoseRotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -149,7 +149,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
     ///
-    /// The `component_name` field will be set to `rerun.components.PoseRotationQuat`.
+    /// The corresponding component is [`crate::components::PoseRotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -161,7 +161,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -173,7 +173,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Radius`.
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -185,7 +185,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fill_mode`].
     ///
-    /// The `component_name` field will be set to `rerun.components.FillMode`.
+    /// The corresponding component is [`crate::components::FillMode`].
     #[inline]
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -197,7 +197,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Text`.
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -209,7 +209,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ShowLabels`.
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -221,7 +221,7 @@ impl Boxes3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ClassId`.
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

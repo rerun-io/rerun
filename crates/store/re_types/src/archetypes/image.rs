@@ -152,7 +152,7 @@ pub struct Image {
 impl Image {
     /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ImageBuffer`.
+    /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -164,7 +164,7 @@ impl Image {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ImageFormat`.
+    /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -176,7 +176,7 @@ impl Image {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Opacity`.
+    /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -188,7 +188,7 @@ impl Image {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
     ///
-    /// The `component_name` field will be set to `rerun.components.DrawOrder`.
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

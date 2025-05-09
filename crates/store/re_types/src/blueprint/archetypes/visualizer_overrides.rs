@@ -39,7 +39,7 @@ pub struct VisualizerOverrides {
 impl VisualizerOverrides {
     /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.VisualizerOverride`.
+    /// The corresponding component is [`crate::blueprint::components::VisualizerOverride`].
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {

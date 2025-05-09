@@ -38,7 +38,7 @@ pub struct VisualBounds2D {
 impl VisualBounds2D {
     /// Returns the [`ComponentDescriptor`] for [`Self::range`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.VisualBounds2D`.
+    /// The corresponding component is [`crate::blueprint::components::VisualBounds2D`].
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {

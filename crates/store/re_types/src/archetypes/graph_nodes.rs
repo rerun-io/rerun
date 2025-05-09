@@ -73,7 +73,7 @@ pub struct GraphNodes {
 impl GraphNodes {
     /// Returns the [`ComponentDescriptor`] for [`Self::node_ids`].
     ///
-    /// The `component_name` field will be set to `rerun.components.GraphNode`.
+    /// The corresponding component is [`crate::components::GraphNode`].
     #[inline]
     pub fn descriptor_node_ids() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -85,7 +85,7 @@ impl GraphNodes {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Position2D`.
+    /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -97,7 +97,7 @@ impl GraphNodes {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -109,7 +109,7 @@ impl GraphNodes {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Text`.
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -121,7 +121,7 @@ impl GraphNodes {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ShowLabels`.
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -133,7 +133,7 @@ impl GraphNodes {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Radius`.
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {

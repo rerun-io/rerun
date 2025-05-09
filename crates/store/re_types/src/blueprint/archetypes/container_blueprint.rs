@@ -67,7 +67,7 @@ pub struct ContainerBlueprint {
 impl ContainerBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::container_kind`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ContainerKind`.
+    /// The corresponding component is [`crate::blueprint::components::ContainerKind`].
     #[inline]
     pub fn descriptor_container_kind() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -79,7 +79,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Name`.
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -91,7 +91,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::contents`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.IncludedContent`.
+    /// The corresponding component is [`crate::blueprint::components::IncludedContent`].
     #[inline]
     pub fn descriptor_contents() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -103,7 +103,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::col_shares`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ColumnShare`.
+    /// The corresponding component is [`crate::blueprint::components::ColumnShare`].
     #[inline]
     pub fn descriptor_col_shares() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -115,7 +115,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::row_shares`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.RowShare`.
+    /// The corresponding component is [`crate::blueprint::components::RowShare`].
     #[inline]
     pub fn descriptor_row_shares() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -127,7 +127,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::active_tab`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ActiveTab`.
+    /// The corresponding component is [`crate::blueprint::components::ActiveTab`].
     #[inline]
     pub fn descriptor_active_tab() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -139,7 +139,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Visible`.
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -151,7 +151,7 @@ impl ContainerBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::grid_columns`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.GridColumns`.
+    /// The corresponding component is [`crate::blueprint::components::GridColumns`].
     #[inline]
     pub fn descriptor_grid_columns() -> ComponentDescriptor {
         ComponentDescriptor {

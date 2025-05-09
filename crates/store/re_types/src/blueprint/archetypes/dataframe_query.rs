@@ -46,7 +46,7 @@ pub struct DataframeQuery {
 impl DataframeQuery {
     /// Returns the [`ComponentDescriptor`] for [`Self::timeline`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.TimelineName`.
+    /// The corresponding component is [`crate::blueprint::components::TimelineName`].
     #[inline]
     pub fn descriptor_timeline() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -58,7 +58,7 @@ impl DataframeQuery {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::filter_by_range`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.FilterByRange`.
+    /// The corresponding component is [`crate::blueprint::components::FilterByRange`].
     #[inline]
     pub fn descriptor_filter_by_range() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -70,7 +70,7 @@ impl DataframeQuery {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::filter_is_not_null`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.FilterIsNotNull`.
+    /// The corresponding component is [`crate::blueprint::components::FilterIsNotNull`].
     #[inline]
     pub fn descriptor_filter_is_not_null() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -82,7 +82,7 @@ impl DataframeQuery {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::apply_latest_at`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ApplyLatestAt`.
+    /// The corresponding component is [`crate::blueprint::components::ApplyLatestAt`].
     #[inline]
     pub fn descriptor_apply_latest_at() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -94,7 +94,7 @@ impl DataframeQuery {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::select`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.SelectedColumns`.
+    /// The corresponding component is [`crate::blueprint::components::SelectedColumns`].
     #[inline]
     pub fn descriptor_select() -> ComponentDescriptor {
         ComponentDescriptor {

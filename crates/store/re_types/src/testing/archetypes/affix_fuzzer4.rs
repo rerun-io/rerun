@@ -43,7 +43,7 @@ pub struct AffixFuzzer4 {
 impl AffixFuzzer4 {
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2101`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer1`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer1`].
     #[inline]
     pub fn descriptor_fuzz2101() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -55,7 +55,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2102`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer2`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer2`].
     #[inline]
     pub fn descriptor_fuzz2102() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -67,7 +67,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2103`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer3`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer3`].
     #[inline]
     pub fn descriptor_fuzz2103() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -79,7 +79,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2104`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer4`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer4`].
     #[inline]
     pub fn descriptor_fuzz2104() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -91,7 +91,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2105`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer5`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer5`].
     #[inline]
     pub fn descriptor_fuzz2105() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -103,7 +103,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2106`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer6`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer6`].
     #[inline]
     pub fn descriptor_fuzz2106() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -115,7 +115,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2107`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer7`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer7`].
     #[inline]
     pub fn descriptor_fuzz2107() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -127,7 +127,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2108`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer8`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer8`].
     #[inline]
     pub fn descriptor_fuzz2108() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -139,7 +139,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2109`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer9`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer9`].
     #[inline]
     pub fn descriptor_fuzz2109() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -151,7 +151,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2110`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer10`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer10`].
     #[inline]
     pub fn descriptor_fuzz2110() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -163,7 +163,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2111`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer11`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer11`].
     #[inline]
     pub fn descriptor_fuzz2111() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -175,7 +175,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2112`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer12`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer12`].
     #[inline]
     pub fn descriptor_fuzz2112() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -187,7 +187,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2113`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer13`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer13`].
     #[inline]
     pub fn descriptor_fuzz2113() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -199,7 +199,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2114`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer14`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer14`].
     #[inline]
     pub fn descriptor_fuzz2114() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -211,7 +211,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2115`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer15`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer15`].
     #[inline]
     pub fn descriptor_fuzz2115() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -223,7 +223,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2116`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer16`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer16`].
     #[inline]
     pub fn descriptor_fuzz2116() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -235,7 +235,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2117`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer17`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer17`].
     #[inline]
     pub fn descriptor_fuzz2117() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -247,7 +247,7 @@ impl AffixFuzzer4 {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz2118`].
     ///
-    /// The `component_name` field will be set to `rerun.testing.components.AffixFuzzer18`.
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer18`].
     #[inline]
     pub fn descriptor_fuzz2118() -> ComponentDescriptor {
         ComponentDescriptor {

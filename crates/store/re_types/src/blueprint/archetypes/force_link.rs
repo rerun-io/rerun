@@ -40,7 +40,7 @@ pub struct ForceLink {
 impl ForceLink {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.Enabled`.
+    /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -52,7 +52,7 @@ impl ForceLink {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::distance`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ForceDistance`.
+    /// The corresponding component is [`crate::blueprint::components::ForceDistance`].
     #[inline]
     pub fn descriptor_distance() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -64,7 +64,7 @@ impl ForceLink {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::iterations`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ForceIterations`.
+    /// The corresponding component is [`crate::blueprint::components::ForceIterations`].
     #[inline]
     pub fn descriptor_iterations() -> ComponentDescriptor {
         ComponentDescriptor {

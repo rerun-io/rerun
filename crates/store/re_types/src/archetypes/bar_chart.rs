@@ -58,7 +58,7 @@ pub struct BarChart {
 impl BarChart {
     /// Returns the [`ComponentDescriptor`] for [`Self::values`].
     ///
-    /// The `component_name` field will be set to `rerun.components.TensorData`.
+    /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
     pub fn descriptor_values() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -70,7 +70,7 @@ impl BarChart {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

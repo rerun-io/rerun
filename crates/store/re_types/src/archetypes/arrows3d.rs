@@ -98,7 +98,7 @@ pub struct Arrows3D {
 impl Arrows3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::vectors`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Vector3D`.
+    /// The corresponding component is [`crate::components::Vector3D`].
     #[inline]
     pub fn descriptor_vectors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -110,7 +110,7 @@ impl Arrows3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::origins`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Position3D`.
+    /// The corresponding component is [`crate::components::Position3D`].
     #[inline]
     pub fn descriptor_origins() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -122,7 +122,7 @@ impl Arrows3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Radius`.
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -134,7 +134,7 @@ impl Arrows3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -146,7 +146,7 @@ impl Arrows3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Text`.
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -158,7 +158,7 @@ impl Arrows3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ShowLabels`.
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -170,7 +170,7 @@ impl Arrows3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ClassId`.
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

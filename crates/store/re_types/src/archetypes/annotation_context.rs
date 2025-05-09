@@ -80,7 +80,7 @@ pub struct AnnotationContext {
 impl AnnotationContext {
     /// Returns the [`ComponentDescriptor`] for [`Self::context`].
     ///
-    /// The `component_name` field will be set to `rerun.components.AnnotationContext`.
+    /// The corresponding component is [`crate::components::AnnotationContext`].
     #[inline]
     pub fn descriptor_context() -> ComponentDescriptor {
         ComponentDescriptor {

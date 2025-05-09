@@ -33,7 +33,7 @@ pub struct Background {
 impl Background {
     /// Returns the [`ComponentDescriptor`] for [`Self::kind`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.BackgroundKind`.
+    /// The corresponding component is [`crate::blueprint::components::BackgroundKind`].
     #[inline]
     pub fn descriptor_kind() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -45,7 +45,7 @@ impl Background {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

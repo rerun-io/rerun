@@ -40,7 +40,7 @@ pub struct VisibleTimeRanges {
 impl VisibleTimeRanges {
     /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.VisibleTimeRange`.
+    /// The corresponding component is [`crate::blueprint::components::VisibleTimeRange`].
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {

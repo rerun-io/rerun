@@ -141,7 +141,7 @@ pub struct AssetVideo {
 impl AssetVideo {
     /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Blob`.
+    /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -153,7 +153,7 @@ impl AssetVideo {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
     ///
-    /// The `component_name` field will be set to `rerun.components.MediaType`.
+    /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {

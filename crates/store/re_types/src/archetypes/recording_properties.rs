@@ -33,7 +33,7 @@ pub struct RecordingProperties {
 impl RecordingProperties {
     /// Returns the [`ComponentDescriptor`] for [`Self::start_time`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Timestamp`.
+    /// The corresponding component is [`crate::components::Timestamp`].
     #[inline]
     pub fn descriptor_start_time() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -45,7 +45,7 @@ impl RecordingProperties {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Name`.
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {

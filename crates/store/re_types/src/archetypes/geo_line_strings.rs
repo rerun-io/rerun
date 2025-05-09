@@ -72,7 +72,7 @@ pub struct GeoLineStrings {
 impl GeoLineStrings {
     /// Returns the [`ComponentDescriptor`] for [`Self::line_strings`].
     ///
-    /// The `component_name` field will be set to `rerun.components.GeoLineString`.
+    /// The corresponding component is [`crate::components::GeoLineString`].
     #[inline]
     pub fn descriptor_line_strings() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -84,7 +84,7 @@ impl GeoLineStrings {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Radius`.
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -96,7 +96,7 @@ impl GeoLineStrings {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -69,7 +69,7 @@ pub struct ViewContents {
 impl ViewContents {
     /// Returns the [`ComponentDescriptor`] for [`Self::query`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.QueryExpression`.
+    /// The corresponding component is [`crate::blueprint::components::QueryExpression`].
     #[inline]
     pub fn descriptor_query() -> ComponentDescriptor {
         ComponentDescriptor {

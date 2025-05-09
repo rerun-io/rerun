@@ -54,7 +54,7 @@ pub struct ViewportBlueprint {
 impl ViewportBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::root_container`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.RootContainer`.
+    /// The corresponding component is [`crate::blueprint::components::RootContainer`].
     #[inline]
     pub fn descriptor_root_container() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -66,7 +66,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::maximized`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ViewMaximized`.
+    /// The corresponding component is [`crate::blueprint::components::ViewMaximized`].
     #[inline]
     pub fn descriptor_maximized() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -78,7 +78,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_layout`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.AutoLayout`.
+    /// The corresponding component is [`crate::blueprint::components::AutoLayout`].
     #[inline]
     pub fn descriptor_auto_layout() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -90,7 +90,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_views`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.AutoViews`.
+    /// The corresponding component is [`crate::blueprint::components::AutoViews`].
     #[inline]
     pub fn descriptor_auto_views() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -102,7 +102,7 @@ impl ViewportBlueprint {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::past_viewer_recommendations`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ViewerRecommendationHash`.
+    /// The corresponding component is [`crate::blueprint::components::ViewerRecommendationHash`].
     #[inline]
     pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
         ComponentDescriptor {

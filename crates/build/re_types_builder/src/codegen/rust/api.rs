@@ -1101,6 +1101,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
 
             let archetype_name = &obj.fqname;
             let archetype_field_name = field.snake_case_name();
+            let (typ, _) = quote_field_type_from_typ(&field.typ, true);
 
             // Make the `#doc` string nice (avoids `/** */`).
             let lines = [
@@ -1108,7 +1109,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                     "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
                 ),
                 String::new(),
-                format!("The `component_name` field will be set to `{component_name}`."),
+                format!("The corresponding component is [`{typ}`]."),
             ];
 
             let doc_attrs = lines.iter().map(|line| {

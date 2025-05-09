@@ -44,7 +44,7 @@ pub struct TensorScalarMapping {
 impl TensorScalarMapping {
     /// Returns the [`ComponentDescriptor`] for [`Self::mag_filter`].
     ///
-    /// The `component_name` field will be set to `rerun.components.MagnificationFilter`.
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
     #[inline]
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -56,7 +56,7 @@ impl TensorScalarMapping {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Colormap`.
+    /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -68,7 +68,7 @@ impl TensorScalarMapping {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::gamma`].
     ///
-    /// The `component_name` field will be set to `rerun.components.GammaCorrection`.
+    /// The corresponding component is [`crate::components::GammaCorrection`].
     #[inline]
     pub fn descriptor_gamma() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -81,7 +81,7 @@ pub struct Asset3D {
 impl Asset3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Blob`.
+    /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -93,7 +93,7 @@ impl Asset3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
     ///
-    /// The `component_name` field will be set to `rerun.components.MediaType`.
+    /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -105,7 +105,7 @@ impl Asset3D {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
     ///
-    /// The `component_name` field will be set to `rerun.components.AlbedoFactor`.
+    /// The corresponding component is [`crate::components::AlbedoFactor`].
     #[inline]
     pub fn descriptor_albedo_factor() -> ComponentDescriptor {
         ComponentDescriptor {

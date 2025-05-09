@@ -110,7 +110,7 @@ pub struct SeriesLine {
 impl SeriesLine {
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Color`.
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -122,7 +122,7 @@ impl SeriesLine {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::width`].
     ///
-    /// The `component_name` field will be set to `rerun.components.StrokeWidth`.
+    /// The corresponding component is [`crate::components::StrokeWidth`].
     #[inline]
     pub fn descriptor_width() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -134,7 +134,7 @@ impl SeriesLine {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Name`.
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -146,7 +146,7 @@ impl SeriesLine {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
     ///
-    /// The `component_name` field will be set to `rerun.components.SeriesVisible`.
+    /// The corresponding component is [`crate::components::SeriesVisible`].
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -158,7 +158,7 @@ impl SeriesLine {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::aggregation_policy`].
     ///
-    /// The `component_name` field will be set to `rerun.components.AggregationPolicy`.
+    /// The corresponding component is [`crate::components::AggregationPolicy`].
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
         ComponentDescriptor {

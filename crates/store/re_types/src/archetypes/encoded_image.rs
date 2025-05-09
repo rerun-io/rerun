@@ -69,7 +69,7 @@ pub struct EncodedImage {
 impl EncodedImage {
     /// Returns the [`ComponentDescriptor`] for [`Self::blob`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Blob`.
+    /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -81,7 +81,7 @@ impl EncodedImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
     ///
-    /// The `component_name` field will be set to `rerun.components.MediaType`.
+    /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -93,7 +93,7 @@ impl EncodedImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Opacity`.
+    /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -105,7 +105,7 @@ impl EncodedImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
     ///
-    /// The `component_name` field will be set to `rerun.components.DrawOrder`.
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

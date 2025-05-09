@@ -32,7 +32,7 @@ pub struct MapZoom {
 impl MapZoom {
     /// Returns the [`ComponentDescriptor`] for [`Self::zoom`].
     ///
-    /// The `component_name` field will be set to `rerun.blueprint.components.ZoomLevel`.
+    /// The corresponding component is [`crate::blueprint::components::ZoomLevel`].
     #[inline]
     pub fn descriptor_zoom() -> ComponentDescriptor {
         ComponentDescriptor {

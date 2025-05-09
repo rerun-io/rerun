@@ -117,7 +117,7 @@ pub struct DepthImage {
 impl DepthImage {
     /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ImageBuffer`.
+    /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -129,7 +129,7 @@ impl DepthImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ImageFormat`.
+    /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -141,7 +141,7 @@ impl DepthImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::meter`].
     ///
-    /// The `component_name` field will be set to `rerun.components.DepthMeter`.
+    /// The corresponding component is [`crate::components::DepthMeter`].
     #[inline]
     pub fn descriptor_meter() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -153,7 +153,7 @@ impl DepthImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
     ///
-    /// The `component_name` field will be set to `rerun.components.Colormap`.
+    /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -165,7 +165,7 @@ impl DepthImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::depth_range`].
     ///
-    /// The `component_name` field will be set to `rerun.components.ValueRange`.
+    /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_depth_range() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -177,7 +177,7 @@ impl DepthImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::point_fill_ratio`].
     ///
-    /// The `component_name` field will be set to `rerun.components.FillRatio`.
+    /// The corresponding component is [`crate::components::FillRatio`].
     #[inline]
     pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -189,7 +189,7 @@ impl DepthImage {
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
     ///
-    /// The `component_name` field will be set to `rerun.components.DrawOrder`.
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
