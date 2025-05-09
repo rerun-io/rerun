@@ -394,6 +394,13 @@ opt-level = 2
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
+[profile.web-release]
+panic = 'abort'      # Removes panic handling code
+inherits = "release"
+lto = true
+opt-level = 'z'      # Optimize for size
+codegen-units = 1
+
 
 ## Bench
 
