@@ -375,7 +375,7 @@ fn lookup_image_plane_distance(
                     &archetypes::Pinhole::descriptor_image_plane_distance(),
                 )
                 .get_mono_with_fallback::<ImagePlaneDistance>(
-                    archetypes::Pinhole::descriptor_image_plane_distance(),
+                    &archetypes::Pinhole::descriptor_image_plane_distance(),
                 )
         })
         .unwrap_or_default()

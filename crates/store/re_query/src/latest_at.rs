@@ -436,13 +436,13 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
         instance_index: usize,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        self.components.get(&component_descr).and_then(|unit| {
+        self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
-                &component_descr,
-                unit.component_instance(&component_descr, instance_index)?,
+                component_descr,
+                unit.component_instance(component_descr, instance_index)?,
             )
         })
     }
@@ -454,7 +454,7 @@ impl LatestAtResults {
     pub fn component_instance<C: Component>(
         &self,
         instance_index: usize,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
         debug_assert_eq!(component_descr.component_name, C::name());
         self.component_instance_with_log_level(

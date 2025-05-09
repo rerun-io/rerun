@@ -129,7 +129,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             let axis_length: f32 = results
-                .get_mono_with_fallback::<AxisLength>(Transform3D::descriptor_axis_length())
+                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length())
                 .into();
 
             if axis_length == 0.0 {
@@ -239,7 +239,7 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
                             .latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
 
                         Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
-                            Pinhole::descriptor_image_plane_distance(),
+                            &Pinhole::descriptor_image_plane_distance(),
                         ))
                     } else {
                         None

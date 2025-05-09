@@ -75,7 +75,7 @@ impl HybridLatestAtResults<'_> {
     #[inline]
     pub fn get_required_mono<C: re_types_core::Component>(
         &self,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
         self.get_required_instance(0, component_descr)
     }
@@ -84,7 +84,7 @@ impl HybridLatestAtResults<'_> {
     #[inline]
     pub fn get_mono<C: re_types_core::Component>(
         &self,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
         self.get_instance(0, component_descr)
     }
@@ -93,7 +93,7 @@ impl HybridLatestAtResults<'_> {
     #[inline]
     pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(
         &self,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> C {
         debug_assert_eq!(component_descr.component_name, C::name());
 
@@ -107,10 +107,10 @@ impl HybridLatestAtResults<'_> {
     pub fn get_required_instance<C: re_types_core::Component>(
         &self,
         index: usize,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
         self.overrides
-            .component_instance::<C>(index, component_descr.clone())
+            .component_instance::<C>(index, component_descr)
             .or_else(||
                 // No override -> try recording store instead
                 self.results.component_instance::<C>(index, component_descr))
@@ -123,11 +123,11 @@ impl HybridLatestAtResults<'_> {
     pub fn get_instance<C: re_types_core::Component>(
         &self,
         index: usize,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        self.get_required_instance(index, component_descr.clone())
+        self.get_required_instance(index, component_descr)
             .or_else(|| {
                 // No override & no store -> try default instead
                 self.defaults
@@ -142,7 +142,7 @@ impl HybridLatestAtResults<'_> {
     pub fn get_instance_with_fallback<C: re_types_core::Component + Default>(
         &self,
         index: usize,
-        component_descr: ComponentDescriptor,
+        component_descr: &ComponentDescriptor,
     ) -> C {
         debug_assert_eq!(component_descr.component_name, C::name());
 
