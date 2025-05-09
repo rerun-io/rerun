@@ -117,6 +117,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         self.__attrs_init__(
             timestamp=None,
             video_reference=None,
+            draw_order=None,
         )
 
     @classmethod
@@ -133,6 +134,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         clear_unset: bool = False,
         timestamp: datatypes.VideoTimestampLike | None = None,
         video_reference: datatypes.EntityPathLike | None = None,
+        draw_order: datatypes.Float32Like | None = None,
     ) -> VideoFrameReference:
         """
         Update only some specific fields of a `VideoFrameReference`.
@@ -160,6 +162,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             For a series of video frame references, it is recommended to specify this path only once
             at the beginning of the series and then rely on latest-at query semantics to
             keep the video reference active.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
 
         """
 
@@ -168,6 +174,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             kwargs = {
                 "timestamp": timestamp,
                 "video_reference": video_reference,
+                "draw_order": draw_order,
             }
 
             if clear_unset:
@@ -190,6 +197,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
         *,
         timestamp: datatypes.VideoTimestampArrayLike | None = None,
         video_reference: datatypes.EntityPathArrayLike | None = None,
+        draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -220,6 +228,10 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             For a series of video frame references, it is recommended to specify this path only once
             at the beginning of the series and then rely on latest-at query semantics to
             keep the video reference active.
+        draw_order:
+            An optional floating point value that specifies the 2D drawing order.
+
+            Objects with higher values are drawn on top of those with lower values.
 
         """
 
@@ -228,13 +240,14 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
             inst.__attrs_init__(
                 timestamp=timestamp,
                 video_reference=video_reference,
+                draw_order=draw_order,
             )
 
         batches = inst.as_component_batches(include_indicators=False)
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"timestamp": timestamp, "video_reference": video_reference}
+        kwargs = {"timestamp": timestamp, "video_reference": video_reference, "draw_order": draw_order}
         columns = []
 
         for batch in batches:
@@ -295,6 +308,17 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     # For a series of video frame references, it is recommended to specify this path only once
     # at the beginning of the series and then rely on latest-at query semantics to
     # keep the video reference active.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    draw_order: components.DrawOrderBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.DrawOrderBatch._converter,  # type: ignore[misc]
+    )
+    # An optional floating point value that specifies the 2D drawing order.
+    #
+    # Objects with higher values are drawn on top of those with lower values.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

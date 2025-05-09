@@ -144,6 +144,11 @@ pub struct VideoFrameReference {
     /// at the beginning of the series and then rely on latest-at query semantics to
     /// keep the video reference active.
     pub video_reference: Option<SerializedComponentBatch>,
+
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    pub draw_order: Option<SerializedComponentBatch>,
 }
 
 impl VideoFrameReference {
@@ -171,6 +176,18 @@ impl VideoFrameReference {
         }
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    ///
+    /// The corresponding component is [`crate::components::DrawOrder`].
+    #[inline]
+    pub fn descriptor_draw_order() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.VideoFrameReference".into()),
+            component_name: "rerun.components.DrawOrder".into(),
+            archetype_field_name: Some("draw_order".into()),
+        }
+    }
+
     /// Returns the [`ComponentDescriptor`] for the associated indicator component.
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
@@ -188,21 +205,27 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]>
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_indicator()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [VideoFrameReference::descriptor_video_reference()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            VideoFrameReference::descriptor_video_reference(),
+            VideoFrameReference::descriptor_draw_order(),
+        ]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             VideoFrameReference::descriptor_timestamp(),
             VideoFrameReference::descriptor_indicator(),
             VideoFrameReference::descriptor_video_reference(),
+            VideoFrameReference::descriptor_draw_order(),
         ]
     });
 
 impl VideoFrameReference {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`VideoFrameReference`] [`::re_types_core::Archetype`]
@@ -265,9 +288,15 @@ impl ::re_types_core::Archetype for VideoFrameReference {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_video_reference())
             });
+        let draw_order = arrays_by_descr
+            .get(&Self::descriptor_draw_order())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
+            });
         Ok(Self {
             timestamp,
             video_reference,
+            draw_order,
         })
     }
 }
@@ -280,6 +309,7 @@ impl ::re_types_core::AsComponents for VideoFrameReference {
             Some(Self::indicator()),
             self.timestamp.clone(),
             self.video_reference.clone(),
+            self.draw_order.clone(),
         ]
         .into_iter()
         .flatten()
@@ -296,6 +326,7 @@ impl VideoFrameReference {
         Self {
             timestamp: try_serialize_field(Self::descriptor_timestamp(), [timestamp]),
             video_reference: None,
+            draw_order: None,
         }
     }
 
@@ -317,6 +348,10 @@ impl VideoFrameReference {
             video_reference: Some(SerializedComponentBatch::new(
                 crate::components::EntityPath::arrow_empty(),
                 Self::descriptor_video_reference(),
+            )),
+            draw_order: Some(SerializedComponentBatch::new(
+                crate::components::DrawOrder::arrow_empty(),
+                Self::descriptor_draw_order(),
             )),
         }
     }
@@ -346,6 +381,9 @@ impl VideoFrameReference {
             self.video_reference
                 .map(|video_reference| video_reference.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.draw_order
+                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns
             .into_iter()
@@ -365,7 +403,12 @@ impl VideoFrameReference {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_timestamp = self.timestamp.as_ref().map(|b| b.array.len());
         let len_video_reference = self.video_reference.as_ref().map(|b| b.array.len());
-        let len = None.or(len_timestamp).or(len_video_reference).unwrap_or(0);
+        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len = None
+            .or(len_timestamp)
+            .or(len_video_reference)
+            .or(len_draw_order)
+            .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
 
@@ -431,11 +474,35 @@ impl VideoFrameReference {
             try_serialize_field(Self::descriptor_video_reference(), video_reference);
         self
     }
+
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    #[inline]
+    pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
+        self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::DrawOrder`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_draw_order`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_draw_order(
+        mut self,
+        draw_order: impl IntoIterator<Item = impl Into<crate::components::DrawOrder>>,
+    ) -> Self {
+        self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
+        self
+    }
 }
 
 impl ::re_byte_size::SizeBytes for VideoFrameReference {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.timestamp.heap_size_bytes() + self.video_reference.heap_size_bytes()
+        self.timestamp.heap_size_bytes()
+            + self.video_reference.heap_size_bytes()
+            + self.draw_order.heap_size_bytes()
     }
 }
