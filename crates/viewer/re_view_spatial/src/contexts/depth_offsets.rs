@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
-use re_types::{Component as _, ComponentDescriptorSet, components::DrawOrder};
+use re_types::{ComponentDescriptorSet, archetypes, components::DrawOrder};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier};
 

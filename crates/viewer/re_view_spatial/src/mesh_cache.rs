@@ -7,7 +7,10 @@ use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
-use re_types::{Component as _, components::MediaType};
+use re_types::{
+    archetypes::{Asset3D, Mesh3D},
+    components::MediaType,
+};
 use re_viewer_context::Cache;
 
 use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};

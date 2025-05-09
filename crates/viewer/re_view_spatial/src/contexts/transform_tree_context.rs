@@ -4,9 +4,9 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
 use re_types::{
-    Archetype as _, Component as _, ComponentNameSet,
+    Archetype as _, Component as _, ComponentDescriptorSet,
     archetypes::{self, InstancePoses3D, Transform3D},
-    components::{ImagePlaneDistance, PinholeProjection},
+    components::ImagePlaneDistance,
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
