@@ -35,8 +35,8 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    PlotSeriesKind, line_visualizer_system::SeriesLineSystem,
-    point_visualizer_system::SeriesPointSystem,
+    PlotSeriesKind, line_visualizer_system::SeriesLinesSystem,
+    point_visualizer_system::SeriesPointsSystem,
 };
 
 // ---
@@ -158,8 +158,8 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<SeriesLineSystem>()?;
-        system_registry.register_visualizer::<SeriesPointSystem>()?;
+        system_registry.register_visualizer::<SeriesLinesSystem>()?;
+        system_registry.register_visualizer::<SeriesPointsSystem>()?;
         Ok(())
     }
 
@@ -212,8 +212,8 @@ impl ViewClass for TimeSeriesView {
         let mut indicated_entities = IndicatedEntities::default();
 
         for indicated in [
-            SeriesLineSystem::identifier(),
-            SeriesPointSystem::identifier(),
+            SeriesLinesSystem::identifier(),
+            SeriesPointsSystem::identifier(),
         ]
         .iter()
         .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
@@ -221,11 +221,11 @@ impl ViewClass for TimeSeriesView {
             indicated_entities.0.extend(indicated.0.iter().cloned());
         }
 
-        // Because SeriesLine is our fallback visualizer, also include any entities for which
-        // SeriesLine is visualizable, even if not indicated.
+        // Because SeriesLines is our fallback visualizer, also include any entities for which
+        // SeriesLines is visualizable, even if not indicated.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
-            .get(&SeriesLineSystem::identifier())
+            .get(&SeriesLinesSystem::identifier())
         {
             indicated_entities
                 .0
@@ -314,9 +314,10 @@ impl ViewClass for TimeSeriesView {
             .collect();
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if visualizers.is_empty() && available_visualizers.contains(&SeriesLineSystem::identifier())
+        if visualizers.is_empty()
+            && available_visualizers.contains(&SeriesLinesSystem::identifier())
         {
-            visualizers.insert(0, SeriesLineSystem::identifier());
+            visualizers.insert(0, SeriesLinesSystem::identifier());
         }
 
         visualizers
@@ -381,8 +382,8 @@ impl ViewClass for TimeSeriesView {
 
         let timeline_name = timeline.name().to_string();
 
-        let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
-        let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
+        let line_series = system_output.view_systems.get::<SeriesLinesSystem>()?;
+        let point_series = system_output.view_systems.get::<SeriesPointsSystem>()?;
 
         let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())
