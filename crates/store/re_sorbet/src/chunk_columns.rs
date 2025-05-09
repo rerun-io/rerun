@@ -106,7 +106,7 @@ impl TryFrom<SorbetColumnDescriptors> for ChunkColumnDescriptors {
                         let err = format!(
                             "RowId column must be the first column; but the columns were: {columns:?}"
                         );
-                        return Err(SorbetError::custom(err));
+                        return Err(SorbetError::InvalidColumnOrder(err));
                     }
                 }
 
@@ -114,8 +114,8 @@ impl TryFrom<SorbetColumnDescriptors> for ChunkColumnDescriptors {
                     if components.is_empty() {
                         indices.push(descr);
                     } else {
-                        return Err(SorbetError::custom(
-                            "Index columns must come before any data columns",
+                        return Err(SorbetError::InvalidColumnOrder(
+                            "Index columns must come before any data columns".to_owned(),
                         ));
                     }
                 }
@@ -127,15 +127,10 @@ impl TryFrom<SorbetColumnDescriptors> for ChunkColumnDescriptors {
         }
 
         if row_ids.len() > 1 {
-            return Err(SorbetError::custom(format!(
-                "Found {} RowId columns in Chunk",
-                row_ids.len()
-            )));
+            return Err(SorbetError::MultipleRowIdColumns(row_ids.len()));
         }
 
-        let row_id = row_ids
-            .pop()
-            .ok_or_else(|| SorbetError::custom("Missing RowId column"))?;
+        let row_id = row_ids.pop().ok_or(SorbetError::MissingRowIdColumn)?;
 
         Ok(Self {
             row_id,

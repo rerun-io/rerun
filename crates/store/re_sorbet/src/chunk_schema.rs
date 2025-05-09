@@ -150,13 +150,11 @@ impl TryFrom<SorbetSchema> for ChunkSchema {
 
             chunk_columns: ChunkColumnDescriptors::try_from(sorbet_schema.columns.clone())?,
 
-            chunk_id: sorbet_schema
-                .chunk_id
-                .ok_or_else(|| SorbetError::custom("Missing chunk_id"))?,
+            chunk_id: sorbet_schema.chunk_id.ok_or(SorbetError::MissingChunkId)?,
 
             entity_path: sorbet_schema
                 .entity_path
-                .ok_or_else(|| SorbetError::custom("Missing entity_path"))?,
+                .ok_or(SorbetError::MissingEntityPath)?,
         })
     }
 }
