@@ -2,12 +2,12 @@ use egui::ahash::HashMap;
 use egui_plot::ColorConflictHandling;
 use re_log_types::EntityPath;
 use re_types::{
+    View as _, ViewClassIdentifier,
     blueprint::{archetypes::PlotLegend, components::Corner2D},
     components::Visible,
     datatypes::TensorBuffer,
-    View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText};
+use re_ui::{Help, MouseButtonText, icon_text, icons, list_item, shortcut_with_icon};
 use re_view::{
     controls::{self, ASPECT_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON, ZOOM_SCROLL_MODIFIER},
     suggest_view_for_each_entity, view_property_ui,

@@ -1,28 +1,26 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
+    ArrowString,
     archetypes::Boxes2D,
     components::{ClassId, Color, DrawOrder, HalfSize2D, Position2D, Radius, ShowLabels},
-    ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
-    visualizers::{entity_iterator::clamped_or, UiLabelTarget},
+    visualizers::{UiLabelTarget, entity_iterator::clamped_or},
 };
 
 use super::{
-    filter_visualizable_2d_entities, process_radius_slice,
-    utilities::{process_labels, LabeledBatch},
-    SpatialViewVisualizerData,
+    SpatialViewVisualizerData, filter_visualizable_2d_entities, process_radius_slice,
+    utilities::{LabeledBatch, process_labels},
 };
 
 // ---

@@ -2,11 +2,11 @@ use arrow::array::{Array as _, ListArray as ArrowListArray, RecordBatch as Arrow
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
-use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_byte_size::SizeBytes as _;
-use re_types_core::{arrow_helpers::as_array_ref, ComponentDescriptor};
+use re_types_core::{ComponentDescriptor, arrow_helpers::as_array_ref};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkResult, TimeColumn};
+use crate::{Chunk, ChunkError, ChunkResult, TimeColumn, chunk::ChunkComponents};
 
 // ---
 
@@ -270,8 +270,8 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use re_log_types::{
-        example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
+        example_components::{MyColor, MyPoint},
     };
     use re_types_core::{ChunkId, Component as _, Loggable as _, RowId};
 

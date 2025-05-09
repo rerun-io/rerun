@@ -1,6 +1,6 @@
 use re_log::error;
 
-use tonic::{metadata::errors::InvalidMetadataValue, service::Interceptor, Request, Status};
+use tonic::{Request, Status, metadata::errors::InvalidMetadataValue, service::Interceptor};
 
 use crate::Jwt;
 

@@ -1,6 +1,6 @@
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_format::{format_bytes, format_uint};
-use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
+use re_memory::{MemoryHistory, MemoryLimit, MemoryUse, util::sec_since_start};
 use re_query::{CacheStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;

@@ -4,11 +4,11 @@ use re_entity_db::EntityPath;
 use re_log_types::{TimeInt, TimePoint};
 use re_query::{clamped_zip_1x2, range_zip_1x2};
 use re_types::{
+    Archetype as _,
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Archetype as _,
 };
-use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
+use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerQueryInfo, VisualizerSystem,

@@ -3,15 +3,15 @@
 use egui::Vec2;
 
 use re_blueprint_tree::BlueprintTree;
-use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_chunk_store::RowId;
-use re_log_types::{build_frame_nr, Timeline};
+use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_log_types::{Timeline, build_frame_nr};
 use re_types::archetypes::Points3D;
 use re_viewer_context::{
-    test_context::TestContext, CollapseScope, RecommendedView, ViewClass as _, ViewId,
+    CollapseScope, RecommendedView, ViewClass as _, ViewId, test_context::TestContext,
 };
 use re_viewport_blueprint::{
-    test_context_ext::TestContextExt as _, ViewBlueprint, ViewportBlueprint,
+    ViewBlueprint, ViewportBlueprint, test_context_ext::TestContextExt as _,
 };
 
 #[test]

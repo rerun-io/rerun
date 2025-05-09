@@ -1,7 +1,7 @@
 use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 use rerun::external::{
     egui,
-    re_data_ui::{item_ui, DataUi},
+    re_data_ui::{DataUi, item_ui},
     re_entity_db::InstancePath,
     re_log_types::EntityPath,
     re_types::ViewClassIdentifier,

@@ -1,4 +1,4 @@
-use egui::{hex_color, Ui};
+use egui::{Ui, hex_color};
 
 use re_ui::UiExt as _;
 

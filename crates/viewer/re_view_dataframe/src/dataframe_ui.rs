@@ -7,8 +7,8 @@ use egui::NumExt as _;
 use itertools::Itertools as _;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
-use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
+use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types_core::ComponentName;

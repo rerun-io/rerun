@@ -6,18 +6,18 @@ use parking_lot::Mutex;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
-use re_entity_db::{external::re_chunk_store::LatestAtQuery, EntityDb, EntityTree};
+use re_entity_db::{EntityDb, EntityTree, external::re_chunk_store::LatestAtQuery};
 use re_log_types::{
-    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter,
-    ResolvedEntityPathRule, Timeline,
+    EntityPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter, ResolvedEntityPathRule,
+    Timeline, path::RuleEffect,
 };
 use re_types::Loggable as _;
 use re_types::{
+    Archetype as _, ViewClassIdentifier,
     blueprint::{
         archetypes as blueprint_archetypes, components as blueprint_components,
         components::QueryExpression,
     },
-    Archetype as _, ViewClassIdentifier,
 };
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
@@ -632,8 +632,8 @@ mod tests {
 
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
-    use re_log_types::{example_components::MyPoint, StoreId, TimePoint, Timeline};
-    use re_viewer_context::{blueprint_timeline, StoreContext, VisualizableEntities};
+    use re_log_types::{StoreId, TimePoint, Timeline, example_components::MyPoint};
+    use re_viewer_context::{StoreContext, VisualizableEntities, blueprint_timeline};
 
     use super::*;
 

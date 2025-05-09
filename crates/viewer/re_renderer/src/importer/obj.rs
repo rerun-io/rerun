@@ -1,8 +1,8 @@
 use smallvec::smallvec;
 
 use crate::{
-    mesh::{CpuMesh, Material, MeshError},
     CpuModel, RenderContext, Rgba32Unmul,
+    mesh::{CpuMesh, Material, MeshError},
 };
 
 #[derive(thiserror::Error, Debug)]

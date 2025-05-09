@@ -44,6 +44,7 @@
 //!
 
 use crate::{
+    DebugLabel, RenderContext,
     allocator::create_and_fill_uniform_buffer_batch,
     device_caps::DeviceCapabilityTier,
     include_shader_module,
@@ -54,7 +55,6 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
         PoolError, RenderPipelineDesc, SamplerDesc,
     },
-    DebugLabel, RenderContext,
 };
 
 use smallvec::smallvec;

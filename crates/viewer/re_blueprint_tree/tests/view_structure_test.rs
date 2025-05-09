@@ -7,11 +7,11 @@ use egui::Vec2;
 use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 
-use re_blueprint_tree::data::BlueprintTreeData;
 use re_blueprint_tree::BlueprintTree;
-use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_blueprint_tree::data::BlueprintTreeData;
 use re_chunk_store::RowId;
-use re_log_types::{build_frame_nr, EntityPath, Timeline};
+use re_chunk_store::external::re_chunk::ChunkBuilder;
+use re_log_types::{EntityPath, Timeline, build_frame_nr};
 use re_types::archetypes::Points3D;
 use re_ui::filter_widget::FilterState;
 use re_viewer_context::test_context::TestContext;

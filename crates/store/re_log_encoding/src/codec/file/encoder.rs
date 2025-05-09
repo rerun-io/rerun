@@ -1,7 +1,7 @@
 use super::{MessageHeader, MessageKind};
+use crate::Compression;
 use crate::codec::arrow::encode_arrow;
 use crate::encoder::EncodeError;
-use crate::Compression;
 use re_log_types::LogMsg;
 
 pub(crate) fn encode(

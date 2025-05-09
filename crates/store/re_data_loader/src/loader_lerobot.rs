@@ -1,8 +1,8 @@
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::sync::mpsc::Sender;
 use std::thread;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::{Context as _, anyhow};
 use arrow::array::{
     ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray, StructArray,
 };
@@ -10,10 +10,10 @@ use arrow::compute::cast;
 use arrow::datatypes::{DataType, Field};
 use itertools::Either;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
 };
+use re_chunk::{TimelineName, external::nohash_hasher::IntMap};
 
 use re_log_types::{ApplicationId, StoreId};
 use re_types::archetypes::{
@@ -23,8 +23,8 @@ use re_types::components::{Name, Scalar, VideoTimestamp};
 use re_types::{Archetype, Component, ComponentBatch};
 
 use crate::lerobot::{
-    is_lerobot_dataset, is_v1_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset,
-    TaskIndex,
+    DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex, is_lerobot_dataset,
+    is_v1_lerobot_dataset,
 };
 use crate::load_file::prepare_store_info;
 use crate::{DataLoader, DataLoaderError, LoadedData};

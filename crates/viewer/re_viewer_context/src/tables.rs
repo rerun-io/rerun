@@ -27,7 +27,7 @@ impl TableStore {
 
     pub fn add_record_batch(&self, record_batch: RecordBatch) -> Result<(), DataFusionError> {
         let schema = record_batch.schema();
-        let _ = self.session_ctx.deregister_table(Self::TABLE_NAME);
+        self.session_ctx.deregister_table(Self::TABLE_NAME).ok();
 
         let mut record_batches = self.record_batches.write();
         record_batches.push(record_batch);

@@ -19,7 +19,7 @@ exclude = ["examples/rust/revy", "examples/rust/chess_robby_fischer"]
 
 [workspace.package]
 authors = ["rerun.io <opensource@rerun.io>"]
-edition = "2021"
+edition = "2024"
 homepage = "https://rerun.io"
 include = [
   "../../Cargo.lock",     # So that users can pass `--locked` to `cargo install rerun-cli`
@@ -490,7 +490,6 @@ fn_params_excessive_bools = "warn"
 fn_to_numeric_cast_any = "warn"
 from_iter_instead_of_collect = "warn"
 get_unwrap = "warn"
-if_let_mutex = "warn"
 implicit_clone = "warn"
 imprecise_flops = "warn"
 index_refutable_slice = "warn"
@@ -509,6 +508,7 @@ large_include_file = "warn"
 large_stack_arrays = "warn"
 large_stack_frames = "warn"
 large_types_passed_by_value = "warn"
+let_underscore_must_use = "warn"
 let_unit_value = "warn"
 linkedlist = "warn"
 literal_string_with_formatting_args = "warn"
@@ -524,6 +524,7 @@ manual_ok_or = "warn"
 manual_string_new = "warn"
 map_err_ignore = "warn"
 map_flatten = "warn"
+match_bool = "warn"
 match_on_vec_items = "warn"
 match_same_arms = "warn"
 match_wild_err_arm = "warn"
@@ -603,12 +604,12 @@ zero_sized_map_values = "warn"
 # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 #self_named_module_files = "warn"
 
-assigning_clones = "allow"      # Too much for too little
 manual_range_contains = "allow" # this one is just worse imho
 map_unwrap_or = "allow"         # so is this one
 ref_patterns = "allow"          # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
+allow_attributes = "allow"
 iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"

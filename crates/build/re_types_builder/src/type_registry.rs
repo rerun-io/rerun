@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use anyhow::Context as _;
 
 use crate::{
+    ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type,
     data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode},
-    ElementType, Object, ObjectField, Type, ATTR_ARROW_SPARSE_UNION,
 };
 
 // --- Registry ---

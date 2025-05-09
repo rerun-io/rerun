@@ -9,7 +9,7 @@ use re_types::{
     archetypes::RecordingProperties,
     components::{Name, Timestamp},
 };
-use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
 };

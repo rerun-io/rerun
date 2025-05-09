@@ -1,6 +1,6 @@
 //! Logs a `Box3D` archetype for roundtrip checks.
 
-use rerun::{archetypes::Boxes3D, RecordingStream};
+use rerun::{RecordingStream, archetypes::Boxes3D};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

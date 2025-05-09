@@ -9,7 +9,7 @@ use arrow::{
     },
     buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
-use itertools::{izip, Either, Itertools as _};
+use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -477,10 +477,12 @@ impl Chunk {
             self.num_events_cumulative_per_unique_time_unsorted(time_column)
         };
 
-        debug_assert!(counts
-            .iter()
-            .tuple_windows::<(_, _)>()
-            .all(|((time1, _), (time2, _))| time1 < time2));
+        debug_assert!(
+            counts
+                .iter()
+                .tuple_windows::<(_, _)>()
+                .all(|((time1, _), (time2, _))| time1 < time2)
+        );
 
         counts
     }

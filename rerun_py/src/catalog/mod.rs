@@ -15,7 +15,7 @@ use arrow::{
     array::{Float32Array, RecordBatch},
     datatypes::Field,
 };
-use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
+use pyo3::{Bound, PyResult, exceptions::PyRuntimeError, prelude::*};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
 

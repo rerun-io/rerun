@@ -1,23 +1,22 @@
 use egui::{NumExt as _, TextBuffer};
 use egui_tiles::ContainerKind;
 
-use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::{
-    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
     DataUi,
+    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
 use re_ui::{
-    icons,
+    ContextExt as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
-    ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
-    contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, UiLayout,
+    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
 use crate::{
     defaults_ui::view_components_defaults_section_ui,

@@ -7,11 +7,11 @@ use smallvec::SmallVec;
 use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
-use re_ui::filter_widget::{format_matching_text, FilterMatcher, FilterState, PathRanges};
-use re_ui::{list_item, UiExt as _};
+use re_ui::filter_widget::{FilterMatcher, FilterState, PathRanges, format_matching_text};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
-    create_entity_add_info, CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint,
+    CanAddToView, EntityAddInfo, ViewBlueprint, ViewportBlueprint, create_entity_add_info,
 };
 
 /// Window for adding/removing entities from a view.

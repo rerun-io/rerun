@@ -6,9 +6,9 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
-    codegen::{autogen_warning, Target},
-    ObjectKind, Objects, Reporter, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE,
-    ATTR_RUST_DERIVE_ONLY,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects,
+    Reporter,
+    codegen::{Target, autogen_warning},
 };
 
 use super::util::{append_tokens, doc_as_lines};

@@ -865,8 +865,8 @@ impl TimeColumn {
 mod tests {
     use itertools::Itertools as _;
     use re_log_types::{
-        example_components::{MyColor, MyLabel, MyPoint},
         TimePoint,
+        example_components::{MyColor, MyLabel, MyPoint},
     };
     use re_types_core::Component as _;
 

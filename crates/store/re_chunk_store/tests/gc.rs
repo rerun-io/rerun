@@ -9,11 +9,10 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_log_types::{
-    build_frame_nr, build_log_time,
+    EntityPath, ResolvedTimeRange, Timestamp, build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoint},
-    EntityPath, ResolvedTimeRange, Timestamp,
 };
-use re_types::{testing::build_some_large_structs, ComponentDescriptor};
+use re_types::{ComponentDescriptor, testing::build_some_large_structs};
 use re_types_core::Component as _;
 
 // ---

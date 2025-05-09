@@ -1,12 +1,12 @@
-use egui::{emath::RectTransform, NumExt as _};
+use egui::{NumExt as _, emath::RectTransform};
 use glam::{Affine3A, Quat, Vec3};
 use web_time::Instant;
 
 use re_log_types::EntityPath;
 use re_math::BoundingBox;
 use re_renderer::{
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     LineDrawableBuilder, Size,
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
 use re_types::{
     blueprint::{
@@ -17,25 +17,25 @@ use re_types::{
     view_coordinates::SignedAxis3,
 };
 use re_ui::{
-    icon_text, icons, modifiers_text, shortcut_with_icon, ContextExt as _, Help, MouseButtonText,
+    ContextExt as _, Help, MouseButtonText, icon_text, icons, modifiers_text, shortcut_with_icon,
 };
 use re_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
+    DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
-    gpu_bridge, Item, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext,
+    Item, ItemContext, ViewQuery, ViewSystemExecutionError, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
+    SpatialView3D,
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     transform_cache::query_view_coordinates_at_closest_ancestor,
-    ui::{create_labels, SpatialViewState},
+    ui::{SpatialViewState, create_labels},
     view_kind::SpatialViewKind,
-    visualizers::{collect_ui_labels, image_view_coordinates, CamerasVisualizer},
-    SpatialView3D,
+    visualizers::{CamerasVisualizer, collect_ui_labels, image_view_coordinates},
 };
 
 use super::eye::{Eye, ViewEye};

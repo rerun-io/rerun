@@ -11,17 +11,17 @@ use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
 use re_types::{
+    ComponentDescriptor,
     blueprint::components::{ComponentColumnSelector, QueryExpression},
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
-    ComponentDescriptor,
 };
-use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
-use re_ui::{list_item, UiExt as _};
+use re_types_core::{Component, ComponentName, LoggableBatch, reflection::Reflection};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
-    external::re_chunk_store::{external::re_chunk, LatestAtQuery},
-    test_context::TestContext,
     UiLayout, ViewerContext,
+    external::re_chunk_store::{LatestAtQuery, external::re_chunk},
+    test_context::TestContext,
 };
 
 /// Test case master list.

@@ -1,12 +1,12 @@
 use arrow::array::FixedSizeBinaryArray;
 use arrow::array::{Array as _, ListArray as ArrowListArray};
 use arrow::buffer::ScalarBuffer as ArrowScalarBuffer;
-use itertools::{izip, Itertools as _};
+use itertools::{Itertools as _, izip};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
+use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn, chunk::ChunkComponents};
 
 // ---
 

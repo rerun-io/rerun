@@ -2,16 +2,15 @@ use itertools::Itertools as _;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
+    ArrowString,
     archetypes::Points2D,
     components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels},
-    ArrowString,
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{
@@ -21,9 +20,8 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities,
-    utilities::{process_labels_2d, LabeledBatch},
-    SpatialViewVisualizerData,
+    SpatialViewVisualizerData, filter_visualizable_2d_entities,
+    utilities::{LabeledBatch, process_labels_2d},
 };
 
 // ---

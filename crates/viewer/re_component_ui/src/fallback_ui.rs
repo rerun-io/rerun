@@ -1,7 +1,7 @@
 use re_types::{ComponentDescriptor, RowId};
 use re_viewer_context::{
-    external::{re_chunk_store::LatestAtQuery, re_entity_db::EntityDb, re_log_types::EntityPath},
     UiLayout, ViewerContext,
+    external::{re_chunk_store::LatestAtQuery, re_entity_db::EntityDb, re_log_types::EntityPath},
 };
 
 #[allow(clippy::too_many_arguments)]

@@ -1,5 +1,5 @@
-use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::UiExt as _;
+use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 
 use crate::context::Context;
@@ -91,7 +91,7 @@ impl AddServerModal {
                         if ui.button("Add").clicked() {
                             ui.close();
 
-                            let _ = ctx.command_sender.send(Command::AddServer(origin));
+                            ctx.command_sender.send(Command::AddServer(origin)).ok();
                         }
                     } else {
                         ui.add_enabled(false, egui::Button::new("Add"));

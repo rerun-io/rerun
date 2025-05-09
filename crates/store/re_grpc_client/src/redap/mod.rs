@@ -1,7 +1,7 @@
 use tokio_stream::{Stream, StreamExt as _};
 
 #[cfg(not(target_arch = "wasm32"))]
-use re_auth::{client::AuthDecorator, Jwt};
+use re_auth::{Jwt, client::AuthDecorator};
 
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
@@ -13,7 +13,7 @@ use re_protos::{
 };
 use re_uri::{DatasetDataUri, Origin};
 
-use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
+use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
 
 pub enum Command {
     SetLoopSelection {

@@ -1,6 +1,6 @@
 use re_types::ComponentDescriptor;
-use re_types_core::{reflection::ArchetypeFieldReflection, Archetype, ArchetypeReflectionMarker};
-use re_ui::{list_item, UiExt as _};
+use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewId, ViewState, ViewerContext,
 };

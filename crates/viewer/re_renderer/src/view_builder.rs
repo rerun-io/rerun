@@ -2,7 +2,8 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 
 use crate::{
-    allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier},
+    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
+    allocator::{GpuReadbackIdentifier, create_and_fill_uniform_buffer},
     context::{RenderContext, Renderers},
     draw_phases::{
         DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
@@ -15,7 +16,6 @@ use crate::{
     wgpu_resources::{
         GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
     },
-    DebugLabel, MsaaMode, RectInt, RenderConfig, Rgba,
 };
 
 #[derive(thiserror::Error, Debug)]

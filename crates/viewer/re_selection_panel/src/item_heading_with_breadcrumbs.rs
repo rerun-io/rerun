@@ -16,7 +16,7 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathPart;
-use re_ui::{icons, list_item, DesignTokens, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{DesignTokens, SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 

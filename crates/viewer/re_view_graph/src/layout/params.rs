@@ -1,10 +1,10 @@
 use re_types::{
+    Archetype, Component, ComponentDescriptor,
     blueprint::{
         archetypes::{ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition},
         components::{Enabled, ForceDistance, ForceIterations, ForceStrength},
     },
     components::Position2D,
-    Archetype, Component, ComponentDescriptor,
 };
 use re_viewer_context::{ComponentFallbackProvider, ViewQuery, ViewState, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};

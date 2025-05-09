@@ -50,11 +50,7 @@ fn compare_chars(a: char, b: char) -> Ordering {
     let al = a.to_ascii_lowercase();
     let bl = b.to_ascii_lowercase();
 
-    if al == bl {
-        a.cmp(&b)
-    } else {
-        al.cmp(&bl)
-    }
+    if al == bl { a.cmp(&b) } else { al.cmp(&bl) }
 }
 
 #[test]

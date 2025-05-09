@@ -1,6 +1,6 @@
 //! Extensions for the [`RenderContext`] for testing.
 //!
-use crate::{device_caps, RenderConfig, RenderContext};
+use crate::{RenderConfig, RenderContext, device_caps};
 
 impl RenderContext {
     /// Creates a new [`RenderContext`] for testing.

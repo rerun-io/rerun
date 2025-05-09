@@ -1,4 +1,4 @@
-use anyhow::{bail, ensure, Context as _};
+use anyhow::{Context as _, bail, ensure};
 use half::f16;
 use itertools::izip;
 

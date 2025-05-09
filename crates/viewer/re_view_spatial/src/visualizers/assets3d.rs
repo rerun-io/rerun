@@ -1,16 +1,16 @@
 use arrow::buffer::ScalarBuffer;
 
 use re_chunk_store::RowId;
-use re_log_types::{hash::Hash64, Instance, TimeInt};
+use re_log_types::{Instance, TimeInt, hash::Hash64};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{archetypes::Asset3D, components::AlbedoFactor, ArrowString};
+use re_types::{ArrowString, archetypes::Asset3D, components::AlbedoFactor};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 use crate::{
     contexts::SpatialSceneEntityContext,

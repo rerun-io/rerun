@@ -18,11 +18,11 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::Stream;
 use tokio_stream::StreamExt as _;
-use tonic::transport::server::TcpIncoming;
+use tokio_stream::wrappers::BroadcastStream;
 use tonic::transport::Server;
+use tonic::transport::server::TcpIncoming;
 use tower_http::cors::CorsLayer;
 
 use re_memory::MemoryLimit;
@@ -32,8 +32,8 @@ use re_protos::{
     },
     log_msg::v1alpha1::LogMsg as LogMsgProto,
     sdk_comms::v1alpha1::{
-        message_proxy_service_server, ReadMessagesRequest, ReadMessagesResponse,
-        WriteMessagesResponse,
+        ReadMessagesRequest, ReadMessagesResponse, WriteMessagesResponse,
+        message_proxy_service_server,
     },
 };
 
@@ -800,8 +800,8 @@ mod tests {
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
     use re_log_encoding::Compression;
+    use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
@@ -815,9 +815,9 @@ mod tests {
     use std::time::Duration;
     use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;
-    use tonic::transport::server::TcpIncoming;
     use tonic::transport::Channel;
     use tonic::transport::Endpoint;
+    use tonic::transport::server::TcpIncoming;
 
     #[derive(Clone)]
     struct Completion(Arc<CancellationToken>);

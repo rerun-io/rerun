@@ -2,8 +2,8 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
-    Python,
+    PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
+    exceptions::PyRuntimeError,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
@@ -14,13 +14,13 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{get_chunks_response_to_chunk_and_partition_id, RedapClient};
+use re_grpc_client::redap::{RedapClient, get_chunks_response_to_chunk_and_partition_id};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
-        ext::{DatasetEntry, EntryDetails, TableEntry},
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
         ReadTableEntryRequest,
+        ext::{DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
     frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest},

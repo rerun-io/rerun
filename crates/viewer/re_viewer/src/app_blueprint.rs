@@ -5,11 +5,11 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{
-    blueprint::{archetypes::PanelBlueprint, components::PanelState},
     ComponentBatch,
+    blueprint::{archetypes::PanelBlueprint, components::PanelState},
 };
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, CommandSender, SystemCommand, SystemCommandSender as _,
+    CommandSender, SystemCommand, SystemCommandSender as _, blueprint_timepoint_for_writes,
 };
 
 const TOP_PANEL_PATH: &str = "top_panel";

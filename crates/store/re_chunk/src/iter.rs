@@ -10,9 +10,9 @@ use arrow::{
     buffer::{BooleanBuffer as ArrowBooleanBuffer, ScalarBuffer as ArrowScalarBuffer},
     datatypes::ArrowNativeType,
 };
-use itertools::{izip, Either, Itertools as _};
+use itertools::{Either, Itertools as _, izip};
 
-use re_arrow_util::{offsets_lengths, ArrowArrayDowncastRef as _};
+use re_arrow_util::{ArrowArrayDowncastRef as _, offsets_lengths};
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_types_core::{ArrowString, Component, ComponentDescriptor};
 
@@ -319,8 +319,9 @@ pub trait ChunkComponentSlicer {
 }
 
 /// The actual implementation of `impl_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_native<'a, P, T>(
-    component_descriptor: &ComponentDescriptor,
+    component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = &'a [T]> + 'a
@@ -354,7 +355,7 @@ macro_rules! impl_native_type {
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_native::<$arrow_primitive_type, $native_type>(
-                    &component_descriptor,
+                    component_descriptor,
                     array,
                     component_offsets,
                 )
@@ -378,8 +379,9 @@ impl_native_type!(arrow::array::types::Float32Type, f32);
 impl_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_array_native<'a, const N: usize, P, T>(
-    component_descriptor: &ComponentDescriptor,
+    component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = &'a [[T; N]]> + 'a
@@ -435,7 +437,7 @@ macro_rules! impl_array_native_type {
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_array_native::<N, $arrow_primitive_type, $native_type>(
-                    &component_descriptor,
+                    component_descriptor,
                     array,
                     component_offsets,
                 )
@@ -459,8 +461,9 @@ impl_array_native_type!(arrow::array::types::Float32Type, f32);
 impl_array_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_buffer_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_buffer_native<'a, P, T>(
-    component_descriptor: &ComponentDescriptor,
+    component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = Vec<ArrowScalarBuffer<T>>> + 'a
@@ -516,7 +519,7 @@ macro_rules! impl_buffer_native_type {
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_buffer_native::<$primitive_type, $native_type>(
-                    &component_descriptor,
+                    component_descriptor,
                     array,
                     component_offsets,
                 )
@@ -540,8 +543,9 @@ impl_buffer_native_type!(arrow::array::types::Float32Type, f32);
 impl_buffer_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_list_native_type!`, so that we don't have to work in a macro.
+#[expect(clippy::needless_pass_by_value)] // The simplest way to avoid lifetime issues.
 fn slice_as_array_list_native<'a, const N: usize, P, T>(
-    component_descriptor: &ComponentDescriptor,
+    component_descriptor: ComponentDescriptor,
     array: &'a dyn ArrowArray,
     component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
 ) -> impl Iterator<Item = Vec<&'a [[T; N]]>> + 'a
@@ -617,7 +621,7 @@ macro_rules! impl_array_list_native_type {
                 component_offsets: impl Iterator<Item = (usize, usize)> + 'a,
             ) -> impl Iterator<Item = Self::Item<'a>> + 'a {
                 slice_as_array_list_native::<N, $primitive_type, $native_type>(
-                    &component_descriptor,
+                    component_descriptor,
                     array,
                     component_offsets,
                 )
@@ -907,8 +911,8 @@ impl Chunk {
 mod tests {
     use std::sync::Arc;
 
-    use itertools::{izip, Itertools as _};
-    use re_log_types::{example_components::MyPoint, EntityPath, TimeInt, TimePoint};
+    use itertools::{Itertools as _, izip};
+    use re_log_types::{EntityPath, TimeInt, TimePoint, example_components::MyPoint};
 
     use crate::{Chunk, RowId, Timeline};
 

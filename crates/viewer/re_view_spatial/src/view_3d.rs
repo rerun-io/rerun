@@ -6,8 +6,8 @@ use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::components;
-use re_types::{blueprint::archetypes::Background, Component as _, View as _, ViewClassIdentifier};
-use re_ui::{list_item, Help, UiExt as _};
+use re_types::{Component as _, View as _, ViewClassIdentifier, blueprint::archetypes::Background};
+use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
@@ -23,7 +23,7 @@ use crate::{
     contexts::register_spatial_contexts,
     heuristics::default_visualized_entities_for_visualizer_kind,
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::{format_vector, SpatialViewState},
+    ui::{SpatialViewState, format_vector},
     view_kind::SpatialViewKind,
     visualizers::register_3d_spatial_visualizers,
 };

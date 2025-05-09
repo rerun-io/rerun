@@ -7,7 +7,7 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
-use crate::{app_blueprint::AppBlueprint, App};
+use crate::{App, app_blueprint::AppBlueprint};
 
 pub fn top_panel(
     frame: &eframe::Frame,

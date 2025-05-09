@@ -1,12 +1,12 @@
 use std::hash::Hash;
 
 use egui::{
+    Align2, Button, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2, Widget as _,
     emath::{GuiRounding as _, Rot2},
-    pos2, Align2, Button, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2,
-    Widget as _,
+    pos2,
 };
 
-use crate::{design_tokens, icons, list_item, DesignTokens, Icon, LabelStyle, SUCCESS_COLOR};
+use crate::{DesignTokens, Icon, LabelStyle, SUCCESS_COLOR, design_tokens, icons, list_item};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 

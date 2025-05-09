@@ -1,4 +1,4 @@
-use re_types::{archetypes::AnnotationContext, Archetype as _, ComponentNameSet};
+use re_types::{Archetype as _, ComponentNameSet, archetypes::AnnotationContext};
 use re_viewer_context::{
     AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier,
 };

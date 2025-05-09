@@ -1,12 +1,13 @@
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
     Arc,
+    atomic::{AtomicU64, Ordering},
 };
 
 use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
+    FileServer, RecommendedFileResolver,
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
     device_caps::{DeviceCaps, WgpuBackendType},
     error_handling::{ErrorTracker, WgpuErrorScope},
@@ -14,7 +15,6 @@ use crate::{
     renderer::Renderer,
     resource_managers::TextureManager2D,
     wgpu_resources::WgpuResourcePools,
-    FileServer, RecommendedFileResolver,
 };
 
 /// Frame idx used before starting the first frame.

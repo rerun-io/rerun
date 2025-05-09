@@ -1,15 +1,15 @@
 use std::str::FromStr as _;
 
 use pyo3::{
+    FromPyObject, Py, PyAny, PyResult, Python,
     exceptions::{PyLookupError, PyRuntimeError},
     pyclass, pymethods,
     types::PyAnyMethods as _,
-    FromPyObject, Py, PyAny, PyResult, Python,
 };
 use re_log_types::EntryId;
 use re_protos::catalog::v1alpha1::EntryFilter;
 
-use crate::catalog::{to_py_err, ConnectionHandle, PyDataset, PyEntry, PyEntryId, PyTable};
+use crate::catalog::{ConnectionHandle, PyDataset, PyEntry, PyEntryId, PyTable, to_py_err};
 
 /// Client for a remote Rerun catalog server.
 #[pyclass(name = "CatalogClient")]

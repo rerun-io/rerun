@@ -3,8 +3,8 @@ use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::{
-    example_components::{MyColor, MyLabel, MyPoint},
     ResolvedTimeRange,
+    example_components::{MyColor, MyLabel, MyPoint},
 };
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 

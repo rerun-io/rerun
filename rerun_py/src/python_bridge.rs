@@ -18,12 +18,12 @@ use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::sink::CallbackSink;
-use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, TimeCell};
 use re_sdk::{
+    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
     sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
-    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
 };
+use re_sdk::{TimeCell, external::re_log_encoding::encoder::encode_ref_as_bytes_local};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -98,8 +98,8 @@ fn flush_garbage_queue() {
 // ---
 
 #[cfg(feature = "web_viewer")]
-fn global_web_viewer_server(
-) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServer>> {
+fn global_web_viewer_server()
+-> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServer>> {
     static WEB_HANDLE: OnceCell<parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServer>>> =
         OnceCell::new();
     WEB_HANDLE.get_or_init(Default::default).lock()

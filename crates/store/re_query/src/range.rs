@@ -288,9 +288,11 @@ impl RangeCache {
             .into_iter()
             .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
             .map(|cached_sorted_chunk| {
-                debug_assert!(cached_sorted_chunk
-                    .chunk
-                    .is_timeline_sorted(query.timeline()));
+                debug_assert!(
+                    cached_sorted_chunk
+                        .chunk
+                        .is_timeline_sorted(query.timeline())
+                );
 
                 let chunk = &cached_sorted_chunk.chunk;
 
