@@ -5,8 +5,8 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, ReadHalf, WriteHalf},
     net::{TcpListener, TcpSocket, TcpStream},
     sync::{
-        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         Mutex,
+        mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
     },
 };
 

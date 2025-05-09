@@ -5,7 +5,7 @@ use rerun::external::{
     eframe,
     egui::{self, ScrollArea},
     re_log::ResultExt,
-    re_ui::{list_item, UiExt},
+    re_ui::{UiExt, list_item},
     re_viewer,
 };
 

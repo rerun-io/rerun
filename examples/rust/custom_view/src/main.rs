@@ -40,7 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "This example starts a custom Rerun Viewer that is ready to accept data… you have to give it some!"
     );
-    println!("Try for example to run: `cargo run -p minimal_options -- --connect` in another terminal instance.");
+    println!(
+        "Try for example to run: `cargo run -p minimal_options -- --connect` in another terminal instance."
+    );
 
     re_viewer::run_native_app(
         main_thread_token,
