@@ -7048,6 +7048,7 @@ name = "re_grpc_client"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "async-stream",
+ "re_auth",
  "re_chunk",
  "re_error",
  "re_log",
