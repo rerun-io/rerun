@@ -116,6 +116,8 @@ pub struct DepthImage {
 
 impl DepthImage {
     /// Returns the [`ComponentDescriptor`] for [`Self::buffer`].
+    ///
+    /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -126,6 +128,8 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
+    ///
+    /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -136,6 +140,8 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::meter`].
+    ///
+    /// The corresponding component is [`crate::components::DepthMeter`].
     #[inline]
     pub fn descriptor_meter() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -146,6 +152,8 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
+    ///
+    /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -156,6 +164,8 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::depth_range`].
+    ///
+    /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_depth_range() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -166,6 +176,8 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::point_fill_ratio`].
+    ///
+    /// The corresponding component is [`crate::components::FillRatio`].
     #[inline]
     pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -176,6 +188,8 @@ impl DepthImage {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    ///
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {

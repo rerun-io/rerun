@@ -104,6 +104,8 @@ pub struct TextDocument {
 
 impl TextDocument {
     /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    ///
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -114,6 +116,8 @@ impl TextDocument {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
+    ///
+    /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
         ComponentDescriptor {

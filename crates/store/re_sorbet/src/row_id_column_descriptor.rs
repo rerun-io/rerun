@@ -22,6 +22,13 @@ impl RowIdColumnDescriptor {
         Self { is_sorted }
     }
 
+    /// Short field/column name
+    #[inline]
+    #[expect(clippy::unused_self)]
+    pub fn short_name(&self) -> String {
+        RowId::descriptor().short_name()
+    }
+
     /// Human-readable name for this column.
     #[inline]
     #[expect(clippy::unused_self)]

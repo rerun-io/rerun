@@ -115,7 +115,7 @@ impl ComponentDescriptor {
     #[inline]
     pub fn full_name(&self) -> String {
         self.sanity_check();
-        self.to_string()
+        self.to_any_string(false)
     }
 
     /// Returns the unqualified name, e.g. `Points3D:Position3D#positions`.

@@ -36,6 +36,7 @@ impl ColumnDescriptorRef<'_> {
 impl<'a> From<&'a ColumnDescriptor> for ColumnDescriptorRef<'a> {
     fn from(desc: &'a ColumnDescriptor) -> Self {
         match desc {
+            ColumnDescriptor::RowId(desc) => Self::RowId(desc),
             ColumnDescriptor::Time(desc) => Self::Time(desc),
             ColumnDescriptor::Component(desc) => Self::Component(desc),
         }

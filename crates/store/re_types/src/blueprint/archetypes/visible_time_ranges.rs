@@ -39,6 +39,8 @@ pub struct VisibleTimeRanges {
 
 impl VisibleTimeRanges {
     /// Returns the [`ComponentDescriptor`] for [`Self::ranges`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::VisibleTimeRange`].
     #[inline]
     pub fn descriptor_ranges() -> ComponentDescriptor {
         ComponentDescriptor {

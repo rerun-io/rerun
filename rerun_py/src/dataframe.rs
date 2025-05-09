@@ -94,7 +94,7 @@ impl PyIndexColumnDescriptor {
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     #[getter]
     fn is_static(&self) -> bool {
         false
@@ -499,12 +499,14 @@ impl PySchema {
         let iter = SchemaIterator {
             iter: slf
                 .schema
-                .indices_and_components()
-                .into_iter()
-                .map(|col| match col {
-                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py_any(py),
+                .iter()
+                .filter_map(|col| match col.clone() {
+                    ColumnDescriptor::RowId(_) => None, // TODO(#9922)
+                    ColumnDescriptor::Time(col) => {
+                        Some(PyIndexColumnDescriptor(col).into_py_any(py))
+                    }
                     ColumnDescriptor::Component(col) => {
-                        PyComponentColumnDescriptor(col).into_py_any(py)
+                        Some(PyComponentColumnDescriptor(col).into_py_any(py))
                     }
                 })
                 .collect::<PyResult<Vec<_>>>()?
@@ -516,8 +518,7 @@ impl PySchema {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
-            .indices
-            .iter()
+            .index_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -525,8 +526,7 @@ impl PySchema {
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
         self.schema
-            .components
-            .iter()
+            .component_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -551,7 +551,7 @@ impl PySchema {
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
-        self.schema.components.iter().find_map(|col| {
+        self.schema.component_columns().find_map(|col| {
             if col.matches(&entity_path, &component.0) {
                 Some(col.clone().into())
             } else {
@@ -711,7 +711,7 @@ impl PyRecordingView {
                 let query_handle = engine.query(query_expression);
 
                 PySchema {
-                    schema: query_handle.view_contents().clone(),
+                    schema: query_handle.view_contents().clone().into(),
                 }
             }
         }
@@ -845,8 +845,7 @@ impl PyRecordingView {
                 Ok(self
                     .schema(py)
                     .schema
-                    .components
-                    .iter()
+                    .component_columns()
                     .filter(|col| col.is_static())
                     .map(|col| ColumnDescriptor::Component(col.clone()).into())
                     .collect())
@@ -1293,7 +1292,7 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
         PySchema {
-            schema: self.store.read().schema(),
+            schema: self.store.read().schema().into(),
         }
     }
 

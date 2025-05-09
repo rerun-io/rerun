@@ -32,6 +32,8 @@ pub struct RecordingProperties {
 
 impl RecordingProperties {
     /// Returns the [`ComponentDescriptor`] for [`Self::start_time`].
+    ///
+    /// The corresponding component is [`crate::components::Timestamp`].
     #[inline]
     pub fn descriptor_start_time() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -42,6 +44,8 @@ impl RecordingProperties {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
+    ///
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {

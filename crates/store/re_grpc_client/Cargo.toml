@@ -36,6 +36,7 @@ url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_auth.workspace = true
 tokio.workspace = true
 tonic = { workspace = true, default-features = false, features = [
   "transport",
