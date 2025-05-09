@@ -1,7 +1,7 @@
 use re_chunk::{Chunk, RangeQuery, RowId, Timeline, TimelineName};
 use re_log_types::{
-    example_components::{MyColor, MyLabel, MyPoint},
     ResolvedTimeRange,
+    example_components::{MyColor, MyLabel, MyPoint},
 };
 use re_types_core::Component as _;
 
