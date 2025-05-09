@@ -11,7 +11,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "random",
         &rerun::Points2D::new((0..10).map(|_| (rng.sample(dist), rng.sample(dist))))
-            .with_colors((0..10).map(|_| rerun::Color::from_rgb(rng.r#gen(), rng.r#gen(), rng.r#gen())))
+            .with_colors(
+                (0..10).map(|_| rerun::Color::from_rgb(rng.r#gen(), rng.r#gen(), rng.r#gen())),
+            )
             .with_radii((0..10).map(|_| rng.r#gen::<f32>())),
     )?;
 
