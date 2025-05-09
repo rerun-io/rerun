@@ -8,9 +8,9 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types_core::{ComponentDescriptor, ComponentName};
+use re_types_core::ComponentDescriptor;
 
-use crate::{MaybeTagged, QueryCache, QueryCacheKey, QueryError};
+use crate::{QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -94,47 +94,11 @@ impl RangeResults {
     }
 
     /// Returns the [`Chunk`]s for the specified `component_name`.
-    // TODO(#6889): Remove in favor of `get`
-    #[inline]
-    pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&[Chunk]> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-        self.components
-            .get(component_descr)
-            .map(|chunks| chunks.as_slice())
-    }
-
-    /// Returns the [`Chunk`]s for the specified `component_name`.
     #[inline]
     pub fn get(&self, component_descr: &ComponentDescriptor) -> Option<&[Chunk]> {
         self.components
             .get(component_descr)
             .map(|chunks| chunks.as_slice())
-    }
-
-    /// Returns the [`Chunk`]s for the specified `component_name`.
-    ///
-    /// Returns an error if the component is not present.
-    // TODO(#6889): Remove in favor of `get_required`
-    #[inline]
-    pub fn get_required_by_name(&self, component_name: &ComponentName) -> crate::Result<&[Chunk]> {
-        let component_descr =
-            self.find_component_descriptor(*component_name)
-                .ok_or(QueryError::PrimaryNotFound(ComponentDescriptor::new(
-                    *component_name,
-                )))?;
-
-        self.components.get(component_descr).map_or_else(
-            || Err(QueryError::PrimaryNotFound(component_descr.clone())),
-            |chunks| Ok(chunks.as_slice()),
-        )
-    }
-
-    // TODO(#6889): remove this please!
-    pub fn get_by_maybe(&self, component_descriptor: &MaybeTagged) -> Option<&[Chunk]> {
-        match component_descriptor {
-            MaybeTagged::Descriptor(component_descriptor) => self.get(component_descriptor),
-            MaybeTagged::JustName(component_name) => self.get_by_name(component_name),
-        }
     }
 
     /// Returns the [`Chunk`]s for the specified component.
@@ -146,18 +110,6 @@ impl RangeResults {
             || Err(QueryError::PrimaryNotFound(component_descr.clone())),
             |chunks| Ok(chunks.as_slice()),
         )
-    }
-
-    // TODO(#6889): Workaround, we should instead always pass component descriptor to the respective methods.
-    fn find_component_descriptor(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<&ComponentDescriptor> {
-        let component_descr = self
-            .components
-            .keys()
-            .find(|component_descr| component_descr.component_name == component_name)?;
-        Some(component_descr)
     }
 }
 

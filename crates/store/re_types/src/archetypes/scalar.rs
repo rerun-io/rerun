@@ -96,6 +96,8 @@ pub struct Scalar {
 
 impl Scalar {
     /// Returns the [`ComponentDescriptor`] for [`Self::scalar`].
+    ///
+    /// The corresponding component is [`crate::components::Scalar`].
     #[inline]
     pub fn descriptor_scalar() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -46,6 +46,8 @@ pub struct ViewBlueprint {
 
 impl ViewBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::class_identifier`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ViewClass`].
     #[inline]
     pub fn descriptor_class_identifier() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -56,6 +58,8 @@ impl ViewBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
+    ///
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -66,6 +70,8 @@ impl ViewBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::space_origin`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ViewOrigin`].
     #[inline]
     pub fn descriptor_space_origin() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -76,6 +82,8 @@ impl ViewBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    ///
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

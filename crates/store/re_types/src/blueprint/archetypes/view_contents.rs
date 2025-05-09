@@ -68,6 +68,8 @@ pub struct ViewContents {
 
 impl ViewContents {
     /// Returns the [`ComponentDescriptor`] for [`Self::query`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::QueryExpression`].
     #[inline]
     pub fn descriptor_query() -> ComponentDescriptor {
         ComponentDescriptor {

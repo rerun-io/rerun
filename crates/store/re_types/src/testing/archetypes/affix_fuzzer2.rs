@@ -43,6 +43,8 @@ pub struct AffixFuzzer2 {
 
 impl AffixFuzzer2 {
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1101`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer1`].
     #[inline]
     pub fn descriptor_fuzz1101() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -53,6 +55,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1102`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer2`].
     #[inline]
     pub fn descriptor_fuzz1102() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -63,6 +67,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1103`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer3`].
     #[inline]
     pub fn descriptor_fuzz1103() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -73,6 +79,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1104`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer4`].
     #[inline]
     pub fn descriptor_fuzz1104() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -83,6 +91,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1105`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer5`].
     #[inline]
     pub fn descriptor_fuzz1105() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -93,6 +103,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1106`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer6`].
     #[inline]
     pub fn descriptor_fuzz1106() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -103,6 +115,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1107`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer7`].
     #[inline]
     pub fn descriptor_fuzz1107() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -113,6 +127,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1108`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer8`].
     #[inline]
     pub fn descriptor_fuzz1108() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -123,6 +139,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1109`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer9`].
     #[inline]
     pub fn descriptor_fuzz1109() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -133,6 +151,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1110`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer10`].
     #[inline]
     pub fn descriptor_fuzz1110() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -143,6 +163,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1111`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer11`].
     #[inline]
     pub fn descriptor_fuzz1111() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -153,6 +175,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1112`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer12`].
     #[inline]
     pub fn descriptor_fuzz1112() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -163,6 +187,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1113`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer13`].
     #[inline]
     pub fn descriptor_fuzz1113() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -173,6 +199,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1114`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer14`].
     #[inline]
     pub fn descriptor_fuzz1114() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -183,6 +211,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1115`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer15`].
     #[inline]
     pub fn descriptor_fuzz1115() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -193,6 +223,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1116`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer16`].
     #[inline]
     pub fn descriptor_fuzz1116() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -203,6 +235,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1117`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer17`].
     #[inline]
     pub fn descriptor_fuzz1117() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -213,6 +247,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1118`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer18`].
     #[inline]
     pub fn descriptor_fuzz1118() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -223,6 +259,8 @@ impl AffixFuzzer2 {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fuzz1122`].
+    ///
+    /// The corresponding component is [`crate::testing::components::AffixFuzzer22`].
     #[inline]
     pub fn descriptor_fuzz1122() -> ComponentDescriptor {
         ComponentDescriptor {

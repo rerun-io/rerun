@@ -29,6 +29,8 @@ pub struct PanelBlueprint {
 
 impl PanelBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::state`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::PanelState`].
     #[inline]
     pub fn descriptor_state() -> ComponentDescriptor {
         ComponentDescriptor {

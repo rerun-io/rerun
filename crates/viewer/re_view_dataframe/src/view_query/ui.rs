@@ -381,6 +381,24 @@ impl Query {
 
             ui.add_space(12.0);
 
+            // TODO(#9921): add support for showing Row ID column
+            if false {
+                let mut show_row_id = view_columns
+                    .iter()
+                    .any(|d| matches!(d, ColumnDescriptor::RowId(_)));
+                if ui
+                    .re_checkbox(&mut show_row_id, "RowID")
+                    .on_disabled_hover_text("The query timeline must always be visible")
+                    .changed()
+                {
+                    if show_row_id {
+                        new_selected_columns.insert(ColumnSelector::RowId);
+                    } else {
+                        new_selected_columns.remove(&ColumnSelector::RowId);
+                    }
+                }
+            }
+
             //
             // Time columns
             //

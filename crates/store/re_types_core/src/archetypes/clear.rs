@@ -80,6 +80,8 @@ pub struct Clear {
 
 impl Clear {
     /// Returns the [`ComponentDescriptor`] for [`Self::is_recursive`].
+    ///
+    /// The corresponding component is [`crate::components::ClearIsRecursive`].
     #[inline]
     pub fn descriptor_is_recursive() -> ComponentDescriptor {
         ComponentDescriptor {

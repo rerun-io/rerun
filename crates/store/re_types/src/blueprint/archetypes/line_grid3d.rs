@@ -53,6 +53,8 @@ pub struct LineGrid3D {
 
 impl LineGrid3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    ///
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -63,6 +65,8 @@ impl LineGrid3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::spacing`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::GridSpacing`].
     #[inline]
     pub fn descriptor_spacing() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -73,6 +77,8 @@ impl LineGrid3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::plane`].
+    ///
+    /// The corresponding component is [`crate::components::Plane3D`].
     #[inline]
     pub fn descriptor_plane() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -83,6 +89,8 @@ impl LineGrid3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::stroke_width`].
+    ///
+    /// The corresponding component is [`crate::components::StrokeWidth`].
     #[inline]
     pub fn descriptor_stroke_width() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -93,6 +101,8 @@ impl LineGrid3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

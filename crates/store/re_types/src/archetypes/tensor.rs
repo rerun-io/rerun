@@ -71,6 +71,8 @@ pub struct Tensor {
 
 impl Tensor {
     /// Returns the [`ComponentDescriptor`] for [`Self::data`].
+    ///
+    /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -81,6 +83,8 @@ impl Tensor {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::value_range`].
+    ///
+    /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
         ComponentDescriptor {

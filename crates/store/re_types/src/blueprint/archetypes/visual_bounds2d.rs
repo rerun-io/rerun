@@ -37,6 +37,8 @@ pub struct VisualBounds2D {
 
 impl VisualBounds2D {
     /// Returns the [`ComponentDescriptor`] for [`Self::range`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::VisualBounds2D`].
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
         ComponentDescriptor {

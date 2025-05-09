@@ -67,6 +67,8 @@ pub struct GeoPoints {
 
 impl GeoPoints {
     /// Returns the [`ComponentDescriptor`] for [`Self::positions`].
+    ///
+    /// The corresponding component is [`crate::components::LatLon`].
     #[inline]
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -77,6 +79,8 @@ impl GeoPoints {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -87,6 +91,8 @@ impl GeoPoints {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -97,6 +103,8 @@ impl GeoPoints {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    ///
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
