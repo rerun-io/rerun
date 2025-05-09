@@ -186,7 +186,7 @@ impl Chunk {
     pub fn iter_component_offsets<'a>(
         &'a self,
         component_descriptor: &ComponentDescriptor,
-    ) -> impl Iterator<Item = (usize, usize)> + 'a + use<'a> {
+    ) -> impl Iterator<Item = (usize, usize)> + 'a {
         let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };

@@ -247,11 +247,16 @@ impl SeriesLineSystem {
             );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = results
-                .get_optional_chunks(archetypes::SeriesLines::descriptor_aggregation_policy())
+                .get_optional_chunks(aggregation_policy_descr.clone())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
-                .and_then(|chunk| chunk.component_mono::<AggregationPolicy>(0)?.ok())
+                .and_then(|chunk| {
+                    chunk
+                        .component_mono::<AggregationPolicy>(&aggregation_policy_descr, 0)?
+                        .ok()
+                })
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
                 //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
                 .unwrap_or_default();
