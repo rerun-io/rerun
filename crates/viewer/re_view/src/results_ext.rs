@@ -2,7 +2,7 @@ use std::{borrow::Cow, sync::Arc};
 
 use itertools::Itertools as _;
 
-use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
+use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types::ComponentDescriptor;
@@ -39,20 +39,6 @@ pub struct HybridRangeResults<'a> {
 }
 
 impl HybridLatestAtResults<'_> {
-    /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
-    #[inline]
-    // TODO(#6889): This method seems to be unused?
-    pub fn get_by_name(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<&UnitChunkShared> {
-        let component_name = component_name.into();
-        self.overrides
-            .get_by_name(&component_name)
-            .or_else(|| self.results.get_by_name(&component_name))
-            .or_else(|| self.defaults.get_by_name(&component_name))
-    }
-
     // TODO(#6889): Right now, fallbacks are on a per-component basis, so it's fine to pass the component name here.
     pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
         let query_context = QueryContext {
