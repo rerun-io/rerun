@@ -247,14 +247,14 @@ impl SeriesLineSystem {
             );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
-            let aggreation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
+            let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = results
-                .get_optional_chunks(aggreation_policy_descr.clone())
+                .get_optional_chunks(aggregation_policy_descr.clone())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
                 .and_then(|chunk| {
                     chunk
-                        .component_mono::<AggregationPolicy>(&aggreation_policy_descr, 0)?
+                        .component_mono::<AggregationPolicy>(&aggregation_policy_descr, 0)?
                         .ok()
                 })
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
