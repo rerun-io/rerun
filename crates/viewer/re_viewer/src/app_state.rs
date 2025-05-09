@@ -745,7 +745,7 @@ fn table_ui(
 ) {
     re_dataframe_ui::DataFusionTableWidget::new(store.session_context(), TableStore::TABLE_NAME)
         .title(table_id.as_str())
-        .column_renamer(|desc| match desc {
+        .column_name(|desc| match desc {
             ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => {
                 desc.short_name().to_owned()
             }

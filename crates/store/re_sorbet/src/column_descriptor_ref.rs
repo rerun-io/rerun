@@ -1,3 +1,5 @@
+use re_log_types::EntityPath;
+
 use crate::{
     BatchType, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
     RowIdColumnDescriptor,
@@ -29,6 +31,13 @@ impl ColumnDescriptorRef<'_> {
             Self::RowId(descr) => descr.name(),
             Self::Time(descr) => descr.timeline_name().as_str(),
             Self::Component(descr) => descr.component_name.short_name(),
+        }
+    }
+
+    pub fn entity_path(&self) -> Option<EntityPath> {
+        match self {
+            Self::RowId(_) | Self::Time(_) => None,
+            Self::Component(descr) => Some(descr.entity_path.clone()),
         }
     }
 }
