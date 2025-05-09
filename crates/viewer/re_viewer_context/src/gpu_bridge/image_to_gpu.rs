@@ -255,9 +255,10 @@ pub fn texture_creation_desc_from_color_image<'a>(
             re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
         };
 
-        let range = match pixel_format.is_limited_yuv_range() {
-            true => YuvRange::Limited,
-            false => YuvRange::Full,
+        let range = if pixel_format.is_limited_yuv_range() {
+            YuvRange::Limited
+        } else {
+            YuvRange::Full
         };
 
         let format = match pixel_format {
