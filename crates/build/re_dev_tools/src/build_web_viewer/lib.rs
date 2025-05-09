@@ -214,10 +214,11 @@ pub fn build(
             wasm_path.as_str(),
             "--enable-reference-types",
             "--vacuum",
-            "--strip-debug",
         ];
         if debug_symbols {
             args.push("-g");
+        } else {
+            args.push("--strip-debug");
         }
         cmd.args(args);
         eprintln!("{root_dir}> {cmd:?}");
