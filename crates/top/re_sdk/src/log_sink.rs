@@ -5,7 +5,7 @@ use std::time::Duration;
 use parking_lot::Mutex;
 use re_grpc_client::message_proxy::write::{Client as MessageProxyClient, Options};
 use re_log_encoding::encoder::encode_as_bytes_local;
-use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
+use re_log_encoding::encoder::{EncodeError, local_raw_encoder};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;

@@ -6,13 +6,13 @@ use egui_tiles::TileId;
 use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
+use re_types::Loggable as _;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::blueprint::components::{
     ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
 };
 use re_types::components::Name;
-use re_types::Loggable as _;
-use re_types::{components::Visible, Archetype as _};
+use re_types::{Archetype as _, components::Visible};
 use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
 /// The native version of a [`re_types::blueprint::archetypes::ContainerBlueprint`].

@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
-use re_types::{archetypes, components::DrawOrder, ComponentDescriptorSet};
+use re_types::{Component as _, ComponentDescriptorSet, components::DrawOrder};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier};
 
@@ -24,18 +24,20 @@ impl IdentifiedViewSystem for EntityDepthOffsets {
 
 impl ViewContextSystem for EntityDepthOffsets {
     fn compatible_component_sets(&self) -> Vec<ComponentDescriptorSet> {
-        vec![[
-            archetypes::Arrows2D::descriptor_indicator(),
-            archetypes::Boxes2D::descriptor_indicator(),
-            archetypes::DepthImage::descriptor_indicator(),
-            archetypes::EncodedImage::descriptor_indicator(),
-            archetypes::Image::descriptor_indicator(),
-            archetypes::LineStrips2D::descriptor_indicator(),
-            archetypes::Points2D::descriptor_indicator(),
-            archetypes::SegmentationImage::descriptor_indicator(),
+        vec![
+            [
+                archetypes::Arrows2D::descriptor_indicator(),
+                archetypes::Boxes2D::descriptor_indicator(),
+                archetypes::DepthImage::descriptor_indicator(),
+                archetypes::EncodedImage::descriptor_indicator(),
+                archetypes::Image::descriptor_indicator(),
+                archetypes::LineStrips2D::descriptor_indicator(),
+                archetypes::Points2D::descriptor_indicator(),
+                archetypes::SegmentationImage::descriptor_indicator(),
+            ]
+            .into_iter()
+            .collect(),
         ]
-        .into_iter()
-        .collect()]
     }
 
     fn execute(

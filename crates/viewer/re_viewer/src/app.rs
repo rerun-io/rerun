@@ -6,28 +6,27 @@ use re_build_info::CrateVersion;
 use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
-use re_entity_db::{entity_db::EntityDb, InstancePath};
+use re_entity_db::{InstancePath, entity_db::EntityDb};
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
+use re_ui::{DesignTokens, UICommand, UICommandSender as _, notifications};
 use re_uri::Origin;
 use re_viewer_context::{
-    command_channel,
-    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
     StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError,
+    ViewClassRegistry, ViewClassRegistryError, command_channel,
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
 use crate::startup_options::StartupOptions;
 use crate::{
+    AppState,
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
-    AppState,
 };
 // ----------------------------------------------------------------------------
 

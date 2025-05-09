@@ -12,7 +12,7 @@ mod times_per_timeline;
 mod versioned_instance_path;
 
 pub use self::{
-    entity_db::{EntityDb, DEFAULT_GC_TIME_BUDGET},
+    entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb},
     entity_tree::EntityTree,
     instance_path::{InstancePath, InstancePathHash},
     time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimeline},

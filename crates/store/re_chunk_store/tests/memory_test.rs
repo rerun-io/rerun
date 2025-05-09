@@ -4,8 +4,8 @@
 #![cfg(test)]
 
 use std::sync::{
-    atomic::{AtomicUsize, Ordering::Relaxed},
     Arc,
+    atomic::{AtomicUsize, Ordering::Relaxed},
 };
 
 static LIVE_BYTES_GLOBAL: AtomicUsize = AtomicUsize::new(0);
@@ -69,11 +69,11 @@ fn memory_use<R>(run: impl Fn() -> R) -> (usize, usize) {
 // ----------------------------------------------------------------------------
 
 use re_chunk::{
-    external::crossbeam::channel::TryRecvError, ChunkBatcher, ChunkBatcherConfig, PendingRow,
+    ChunkBatcher, ChunkBatcherConfig, PendingRow, external::crossbeam::channel::TryRecvError,
 };
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{TimePoint, Timeline};
-use re_types::{components::Scalar, Component as _, Loggable as _};
+use re_types::{Component as _, Loggable as _, components::Scalar};
 
 /// The memory overhead of storing many scalars in the store.
 #[test]

@@ -2,11 +2,11 @@ use egui::Color32;
 use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
+    Archetype as _, ComponentName,
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, ComponentName,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery as _};
+use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use crate::{contexts::TransformTreeContext, ui::SpatialViewState, view_kind::SpatialViewKind};
 
-use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
+use super::{CamerasVisualizer, SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 

@@ -7,9 +7,9 @@
 //! ```
 
 use rerun::{
+    DataLoader as _, EntityPath, LoadedData, TimePoint,
     external::{anyhow, re_build_info, re_data_loader, re_log},
     log::{Chunk, RowId},
-    DataLoader as _, EntityPath, LoadedData, TimePoint,
 };
 
 fn main() -> anyhow::Result<std::process::ExitCode> {

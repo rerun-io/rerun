@@ -5,9 +5,8 @@ use re_query::{clamped_zip_2x4, range_zip_1x4};
 use re_types::archetypes::GraphNodes;
 use re_types::components::{Color, Radius, ShowLabels};
 use re_types::{
-    self, archetypes,
+    self, ArrowString, archetypes,
     components::{self},
-    ArrowString,
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
@@ -122,7 +121,7 @@ impl VisualizerSystem for NodeVisualizer {
                             color,
                         },
                         (None, true) => Label::Text {
-                            text: node.0 .0.clone(),
+                            text: node.0.0.clone(),
                             color,
                         },
                         _ => Label::Circle {

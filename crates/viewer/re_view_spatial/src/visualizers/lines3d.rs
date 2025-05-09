@@ -1,25 +1,24 @@
 use re_log_types::Instance;
-use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
+use re_renderer::{PickingLayerInstanceId, renderer::LineStripFlags};
 use re_types::{
+    ArrowString,
     archetypes::LineStrips3D,
     components::{ClassId, Color, Radius, ShowLabels},
-    ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
-    visualizers::utilities::{process_labels_3d, LabeledBatch},
+    visualizers::utilities::{LabeledBatch, process_labels_3d},
 };
 
-use super::{filter_visualizable_3d_entities, process_radius_slice, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities, process_radius_slice};
 
 // ---
 

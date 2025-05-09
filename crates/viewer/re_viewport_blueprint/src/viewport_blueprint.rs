@@ -2,8 +2,8 @@ use std::{
     collections::BTreeMap,
     ops::ControlFlow,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -21,13 +21,13 @@ use re_types::blueprint::{
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
 };
 use re_types::{
-    blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
+    Archetype as _, ViewClassIdentifier, blueprint::components::ViewerRecommendationHash,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
+    ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow, blueprint_id_to_tile_id,
 };
 
-use crate::{container::ContainerBlueprint, ViewBlueprint, ViewportCommand, VIEWPORT_PATH};
+use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand, container::ContainerBlueprint};
 
 // ----------------------------------------------------------------------------
 

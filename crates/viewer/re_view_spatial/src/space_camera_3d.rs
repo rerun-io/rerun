@@ -4,7 +4,7 @@ use re_math::IsoTransform;
 use re_log_types::EntityPath;
 use re_types::components::ViewCoordinates;
 
-use crate::{visualizers::image_view_coordinates, Pinhole};
+use crate::{Pinhole, visualizers::image_view_coordinates};
 
 /// A logged camera that connects spaces.
 #[derive(Clone, PartialEq)]

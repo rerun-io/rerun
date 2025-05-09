@@ -12,11 +12,11 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::{
+    ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD, Docs, ElementType,
+    GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
     codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
-    Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    TypeRegistry, ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD,
 };
 
 use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
@@ -24,7 +24,7 @@ use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
 
-use super::{common::ExampleInfo, Target};
+use super::{Target, common::ExampleInfo};
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
 

@@ -36,8 +36,8 @@ pub use startup_options::StartupOptions;
 pub use re_capabilities::MainThreadToken;
 
 pub use re_viewer_context::{
-    command_channel, AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand,
-    SystemCommandSender,
+    AsyncRuntimeHandle, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+    command_channel,
 };
 
 pub mod external {

@@ -12,7 +12,7 @@ mod ptr;
 mod recording_streams;
 mod video;
 
-use std::ffi::{c_char, c_uchar, CString};
+use std::ffi::{CString, c_char, c_uchar};
 
 use arrow::{
     array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray},
@@ -23,15 +23,15 @@ use once_cell::sync::Lazy;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::{
+    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
+    TimePoint, Timeline,
     external::{nohash_hasher::IntMap, re_log_types::TimelineName},
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
-    TimePoint, Timeline,
 };
 
 use component_type_registry::COMPONENT_TYPES;
-use recording_streams::{recording_stream, RECORDING_STREAMS};
+use recording_streams::{RECORDING_STREAMS, recording_stream};
 
 // ----------------------------------------------------------------------------
 // Types:
@@ -1096,6 +1096,6 @@ pub unsafe extern "C" fn _rr_free_string(str: *mut c_char) {
     // Free the string:
     unsafe {
         // SAFETY: `_rr_free_string` should only be called on strings allocated by `_rr_escape_entity_path_part`.
-        let _ = CString::from_raw(str);
+        std::mem::drop(CString::from_raw(str));
     }
 }

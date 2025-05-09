@@ -164,7 +164,7 @@ impl Chunk {
         #[cfg(not(target_arch = "wasm32"))]
         let now = std::time::Instant::now();
 
-        use rand::{seq::SliceRandom as _, SeedableRng as _};
+        use rand::{SeedableRng as _, seq::SliceRandom as _};
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let swaps = {
@@ -307,8 +307,8 @@ impl TimeColumn {
 #[cfg(test)]
 mod tests {
     use re_log_types::{
-        example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
+        example_components::{MyColor, MyPoint},
     };
     use re_types_core::Component as _;
 
@@ -484,27 +484,35 @@ mod tests {
             assert!(chunk_unsorted_timeline2.is_sorted());
             assert!(chunk_unsorted_timeline2.is_sorted_uncached());
 
-            assert!(chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted());
-            assert!(chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
-            assert!(!chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted());
-            assert!(!chunk_unsorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                !chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                !chunk_unsorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
             let chunk_sorted_timeline2 =
                 chunk_unsorted_timeline2.sorted_by_timeline_if_unsorted(timeline2.name());
@@ -514,27 +522,35 @@ mod tests {
             assert!(!chunk_sorted_timeline2.is_sorted());
             assert!(!chunk_sorted_timeline2.is_sorted_uncached());
 
-            assert!(!chunk_sorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted());
-            assert!(!chunk_sorted_timeline2
-                .timelines()
-                .get(timeline1.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                !chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                !chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline1.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
-            assert!(chunk_sorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted());
-            assert!(chunk_sorted_timeline2
-                .timelines()
-                .get(timeline2.name())
-                .unwrap()
-                .is_sorted_uncached());
+            assert!(
+                chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted()
+            );
+            assert!(
+                chunk_sorted_timeline2
+                    .timelines()
+                    .get(timeline2.name())
+                    .unwrap()
+                    .is_sorted_uncached()
+            );
 
             let chunk_sorted_timeline2_expected =
                 Chunk::builder_with_id(chunk_id, entity_path.clone())

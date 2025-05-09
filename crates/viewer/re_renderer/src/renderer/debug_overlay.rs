@@ -1,4 +1,5 @@
 use crate::{
+    RectInt,
     allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
@@ -7,7 +8,6 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    RectInt,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};

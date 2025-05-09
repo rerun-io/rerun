@@ -12,8 +12,8 @@ use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    archetypes, components::ClearIsRecursive, external::arrow::array::ArrayRef, Component,
-    ComponentDescriptor, ComponentName,
+    Component, ComponentDescriptor, ComponentName, archetypes, components::ClearIsRecursive,
+    external::arrow::array::ArrayRef,
 };
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -517,10 +517,9 @@ impl LatestAtResults {
     ) -> Option<ArrowArrayRef> {
         let component_descr = self.find_component_descriptor(*component_name)?;
 
-        self.components.get(component_descr).and_then(|unit| {
-            let component_desc = unit.get_first_component_descriptor(*component_name)?;
-            unit.component_mono_raw(component_desc)?.ok()
-        })
+        self.components
+            .get(component_descr)
+            .and_then(|unit| unit.component_mono_raw(component_descr)?.ok())
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.

@@ -1,11 +1,11 @@
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_log_types::hash::Hash64;
 use re_types::{
+    Archetype as _,
     archetypes::Tensor,
     components::{TensorData, ValueRange},
-    Archetype as _,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt as _};
+use re_view::{RangeResultsExt as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, TensorStats, TensorStatsCache, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,

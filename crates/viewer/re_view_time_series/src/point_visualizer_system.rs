@@ -1,25 +1,24 @@
 use itertools::Itertools as _;
 
 use re_types::{
-    archetypes,
+    Archetype as _, archetypes,
     components::{Color, MarkerShape, MarkerSize, Name, SeriesVisible},
-    Archetype as _,
 };
 use re_view::{clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::{
-    auto_color_for_entity_path, external::re_entity_db::InstancePath, IdentifiedViewSystem,
-    QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery, ViewStateExt as _,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
+    ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, external::re_entity_db::InstancePath,
 };
 
 use crate::{
+    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
     series_query::{
         all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui,
         collect_scalars, collect_series_name, collect_series_visibility, determine_num_series,
     },
     util::{determine_time_per_pixel, determine_time_range, points_to_series},
     view_class::TimeSeriesViewState,
-    PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// The system for rendering [`archetypes::SeriesPoints`] archetypes.

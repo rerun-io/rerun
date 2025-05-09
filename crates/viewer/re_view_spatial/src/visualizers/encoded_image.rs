@@ -2,7 +2,7 @@ use re_types::{
     archetypes::EncodedImage,
     components::{DrawOrder, MediaType, Opacity},
 };
-use re_view::{diff_component_filter, HybridResults};
+use re_view::{HybridResults, diff_component_filter};
 use re_viewer_context::{
     DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageDecodeCache,
     MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider, ViewContext,
@@ -11,13 +11,13 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 
 pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,

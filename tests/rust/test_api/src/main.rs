@@ -16,10 +16,10 @@ use std::{collections::HashSet, f32::consts::TAU};
 
 use itertools::Itertools as _;
 use rerun::{
+    EntityPath, RecordingStream, TransformRelation,
     archetypes::{Clear, SegmentationImage, TextLog},
     datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
-    EntityPath, RecordingStream, TransformRelation,
 };
 
 // --- Rerun logging ---
@@ -156,7 +156,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
 
 fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     use ndarray::prelude::*;
-    use ndarray_rand::{rand_distr::Uniform, RandomExt as _};
+    use ndarray_rand::{RandomExt as _, rand_distr::Uniform};
 
     use rerun::{
         archetypes::{Boxes2D, Tensor},

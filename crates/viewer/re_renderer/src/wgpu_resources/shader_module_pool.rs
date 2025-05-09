@@ -3,7 +3,7 @@ use std::{hash::Hash, path::PathBuf};
 use ahash::HashSet;
 use anyhow::Context as _;
 
-use crate::{debug_label::DebugLabel, FileResolver, FileSystem, RenderContext};
+use crate::{FileResolver, FileSystem, RenderContext, debug_label::DebugLabel};
 
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
 

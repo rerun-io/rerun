@@ -11,10 +11,10 @@ use std::io::Read as _;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::codec;
-use crate::codec::file::decoder;
 use crate::FileHeader;
 use crate::OLD_RRD_HEADERS;
+use crate::codec;
+use crate::codec::file::decoder;
 use crate::{EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------

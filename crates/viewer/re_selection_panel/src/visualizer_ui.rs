@@ -1,13 +1,13 @@
 use itertools::Itertools as _;
 
 use re_chunk::{RowId, UnitChunkShared};
-use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
+use re_data_ui::{DataUi as _, sorted_component_list_for_ui};
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath};
-use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types::ComponentDescriptor;
+use re_types::blueprint::archetypes::VisualizerOverrides;
 use re_types_core::external::arrow::array::ArrayRef;
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     DataResult, QueryContext, UiLayout, ViewClassExt as _, ViewContext, ViewSystemIdentifier,

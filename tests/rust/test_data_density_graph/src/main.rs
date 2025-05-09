@@ -4,11 +4,11 @@
 //! cargo run -p test_data_density_graph
 //! ```
 
-use rerun::{external::re_log_types::NonMinI64, time::TimeInt};
 use rerun::{
-    external::{re_chunk_store, re_log},
     RecordingStream,
+    external::{re_chunk_store, re_log},
 };
+use rerun::{external::re_log_types::NonMinI64, time::TimeInt};
 
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();

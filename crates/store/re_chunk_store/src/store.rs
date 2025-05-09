@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 
 use arrow::datatypes::DataType as ArrowDataType;
 use nohash_hasher::IntMap;

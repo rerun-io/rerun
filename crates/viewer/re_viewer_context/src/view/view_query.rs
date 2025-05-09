@@ -9,8 +9,8 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
 use re_log_types::StoreKind;
 use re_types::{
-    blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior},
     ComponentDescriptor,
+    blueprint::archetypes::{self as blueprint_archetypes, EntityBehavior},
 };
 
 use crate::{

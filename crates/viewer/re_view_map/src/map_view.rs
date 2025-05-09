@@ -2,28 +2,28 @@ use egui::{Context, Modifiers, NumExt as _, Rect, Response};
 use re_view::AnnotationSceneContext;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
-use re_data_ui::{item_ui, DataUi as _};
+use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
+    View as _, ViewClassIdentifier,
     blueprint::{
         archetypes::{MapBackground, MapZoom},
         components::{MapProvider, ZoomLevel},
     },
-    View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help};
+use re_ui::{Help, icon_text, icons, list_item, shortcut_with_icon};
 use re_viewer_context::{
-    gpu_bridge, IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
+    IdentifiedViewSystem as _, Item, SystemExecutionOutput, UiLayout, ViewClass,
     ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext,
+    ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::map_overlays;
-use crate::visualizers::{update_span, GeoLineStringsVisualizer, GeoPointsVisualizer};
+use crate::visualizers::{GeoLineStringsVisualizer, GeoPointsVisualizer, update_span};
 
 pub struct MapViewState {
     tiles: Option<HttpTiles>,
@@ -288,7 +288,7 @@ impl ViewClass for MapView {
         if map_response.double_clicked() {
             map_memory.follow_my_position();
             if let Some(zoom_level) = default_zoom_level {
-                let _ = map_memory.set_zoom(zoom_level);
+                map_memory.set_zoom(zoom_level).ok();
             }
         }
 

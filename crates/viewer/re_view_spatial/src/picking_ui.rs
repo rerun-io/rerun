@@ -1,10 +1,11 @@
 use egui::NumExt as _;
 
-use re_data_ui::{item_ui, DataUi as _};
+use re_data_ui::{DataUi as _, item_ui};
+use re_log::ResultExt as _;
 use re_log_types::Instance;
 use re_ui::{
-    list_item::{list_item_scope, PropertyContent},
     UiExt as _,
+    list_item::{PropertyContent, list_item_scope},
 };
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
@@ -13,12 +14,12 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     picking::{PickableUiRect, PickingContext, PickingHitType},
-    picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
+    picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -49,16 +50,18 @@ pub fn picking(
         .at_least(8.0)
         .at_most(128.0) as u32;
 
-    let _ = view_builder.schedule_picking_rect(
-        ctx.render_ctx(),
-        re_renderer::RectInt::from_middle_and_extent(
-            picking_context.pointer_in_pixel.as_ivec2(),
-            glam::uvec2(picking_rect_size, picking_rect_size),
-        ),
-        query.view_id.gpu_readback_id(),
-        (),
-        ctx.app_options().show_picking_debug_overlay,
-    );
+    view_builder
+        .schedule_picking_rect(
+            ctx.render_ctx(),
+            re_renderer::RectInt::from_middle_and_extent(
+                picking_context.pointer_in_pixel.as_ivec2(),
+                glam::uvec2(picking_rect_size, picking_rect_size),
+            ),
+            query.view_id.gpu_readback_id(),
+            (),
+            ctx.app_options().show_picking_debug_overlay,
+        )
+        .ok_or_log_error_once();
 
     let annotations = system_output
         .context_systems

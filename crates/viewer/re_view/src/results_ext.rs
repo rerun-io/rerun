@@ -9,7 +9,7 @@ use re_types::ComponentDescriptor;
 use re_types_core::ComponentName;
 use re_viewer_context::{DataResult, QueryContext, ViewContext};
 
-use crate::{chunks_with_descriptor::ChunksWithDescriptor, DataResultQuery as _};
+use crate::{DataResultQuery as _, chunks_with_descriptor::ChunksWithDescriptor};
 
 // ---
 

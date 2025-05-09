@@ -3,10 +3,10 @@
 use itertools::Itertools as _;
 use rand::Rng as _;
 use re_renderer::{
-    renderer::GpuMeshInstance,
-    view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Color32, GpuReadbackIdentifier, PickingLayerId, PickingLayerInstanceId, PickingLayerProcessor,
     PointCloudBuilder, RectInt, Size,
+    renderer::GpuMeshInstance,
+    view_builder::{Projection, TargetConfiguration, ViewBuilder},
 };
 
 mod framework;

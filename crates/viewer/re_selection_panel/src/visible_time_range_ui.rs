@@ -3,13 +3,13 @@ use egui::{NumExt as _, Ui};
 use re_chunk::Timeline;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
 use re_types::{
+    Archetype as _,
     blueprint::{archetypes as blueprint_archetypes, components::VisibleTimeRange},
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-    Archetype as _,
 };
 use re_ui::{TimeDragValue, UiExt as _};
 use re_viewer_context::{QueryRange, ViewClass, ViewState, ViewerContext};
-use re_viewport_blueprint::{entity_path_for_view_property, ViewBlueprint};
+use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 
 pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,

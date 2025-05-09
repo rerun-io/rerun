@@ -9,7 +9,7 @@ use arrow::{
     },
     buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
-use itertools::{izip, Either, Itertools as _};
+use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -219,37 +219,6 @@ impl PartialEq for Chunk {
             && *row_ids == other.row_ids
             && *timelines == other.timelines
             && *components == other.components
-    }
-}
-
-impl Chunk {
-    /// Returns any list-array that matches the given [`ComponentName`].
-    ///
-    /// This is undefined behavior if there are more than one component with that name.
-    //
-    // TODO(#6889): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-    // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-    #[inline]
-    pub fn get_first_component(&self, component_name: ComponentName) -> Option<&ArrowListArray> {
-        self.components.iter().find_map(move |(descr, array)| {
-            (descr.component_name == component_name).then_some(array)
-        })
-    }
-
-    /// Returns any component descriptor with the given [`ComponentName`].
-    ///
-    /// This is undefined behavior if there are more than one component with that name.
-    //
-    // TODO(#6889): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-    // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-    #[inline]
-    pub fn get_first_component_descriptor(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<&ComponentDescriptor> {
-        self.components
-            .keys()
-            .find(|descr| descr.component_name == component_name)
     }
 }
 
@@ -506,10 +475,12 @@ impl Chunk {
             self.num_events_cumulative_per_unique_time_unsorted(time_column)
         };
 
-        debug_assert!(counts
-            .iter()
-            .tuple_windows::<(_, _)>()
-            .all(|((time1, _), (time2, _))| time1 < time2));
+        debug_assert!(
+            counts
+                .iter()
+                .tuple_windows::<(_, _)>()
+                .all(|((time1, _), (time2, _))| time1 < time2)
+        );
 
         counts
     }

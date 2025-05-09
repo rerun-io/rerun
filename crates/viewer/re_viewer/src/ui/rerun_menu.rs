@@ -1,9 +1,9 @@
 //! The main Rerun drop-down menu found in the top panel.
 
 use crate::App;
+use egui::NumExt as _;
 #[cfg(debug_assertions)]
 use egui::containers::menu;
-use egui::NumExt as _;
 use re_ui::UICommand;
 use re_viewer_context::StoreContext;
 

@@ -1,4 +1,4 @@
-use re_ui::{arrow_ui, UiExt as _};
+use re_ui::{UiExt as _, arrow_ui};
 use re_viewer_context::ComponentUiRegistry;
 
 use super::EntityDataUi;

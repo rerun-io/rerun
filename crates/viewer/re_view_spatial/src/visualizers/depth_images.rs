@@ -18,13 +18,13 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect, SpatialView3D,
     contexts::{SpatialSceneEntityContext, TwoDInThreeDTransformInfo},
     view_kind::SpatialViewKind,
     visualizers::filter_visualizable_2d_entities,
-    PickableRectSourceData, PickableTexturedRect, SpatialView3D,
 };
 
-use super::{textured_rect_from_image, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, textured_rect_from_image};
 
 pub struct DepthImageVisualizer {
     pub data: SpatialViewVisualizerData,

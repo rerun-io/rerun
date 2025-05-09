@@ -167,8 +167,8 @@ impl ChunkStore {
 
     /// Registers a [`PerStoreChunkSubscriber`] type so it gets automatically notified when data gets added and/or
     /// removed to/from a [`ChunkStore`].
-    pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>(
-    ) -> ChunkStoreSubscriberHandle {
+    pub fn register_per_store_subscriber<S: PerStoreChunkSubscriber + Default + 'static>()
+    -> ChunkStoreSubscriberHandle {
         let mut subscribers = SUBSCRIBERS.write();
         subscribers.push(RwLock::new(Box::new(
             PerStoreStoreSubscriberWrapper::<S>::default(),
@@ -311,8 +311,8 @@ mod tests {
 
     use re_chunk::{Chunk, RowId};
     use re_log_types::{
-        example_components::{MyColor, MyIndex, MyPoint},
         StoreId, TimePoint, Timeline,
+        example_components::{MyColor, MyIndex, MyPoint},
     };
 
     use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};

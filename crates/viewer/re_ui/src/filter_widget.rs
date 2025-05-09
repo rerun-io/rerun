@@ -4,7 +4,7 @@ use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
-use crate::{list_item, UiExt as _};
+use crate::{UiExt as _, list_item};
 
 /// State for the filter widget when it is toggled on.
 #[derive(Debug, Clone)]

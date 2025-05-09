@@ -1,6 +1,6 @@
 use crate::common::v1alpha1::DataframePart;
 use crate::v1alpha1::rerun_redap_tasks_v1alpha1::QueryTasksResponse;
-use crate::{missing_field, TypeConversionError};
+use crate::{TypeConversionError, missing_field};
 
 impl QueryTasksResponse {
     pub fn dataframe_part(&self) -> Result<&DataframePart, TypeConversionError> {

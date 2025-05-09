@@ -4,9 +4,9 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
 use re_types::{
+    Archetype as _, Component as _, ComponentNameSet,
     archetypes::{self, InstancePoses3D, Transform3D},
-    components::ImagePlaneDistance,
-    Archetype as _, Component as _, ComponentDescriptorSet,
+    components::{ImagePlaneDistance, PinholeProjection},
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
@@ -493,7 +493,7 @@ fn transform_info_for_downward_propagation(
 
 #[cfg(debug_assertions)]
 fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflection) {
-    use re_types::{components, Archetype as _};
+    use re_types::{Archetype as _, components};
 
     let expected_order = vec![
         components::Translation3D::name(),

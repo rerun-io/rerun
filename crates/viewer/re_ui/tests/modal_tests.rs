@@ -1,7 +1,7 @@
 use egui::Vec2;
 
 use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
 #[test]
 pub fn test_modal_normal_should_match_snapshot() {

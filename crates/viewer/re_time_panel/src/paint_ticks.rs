@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use egui::{lerp, pos2, remap_clamp, Align2, Color32, Rect, Rgba, Shape, Stroke};
+use egui::{Align2, Color32, Rect, Rgba, Shape, Stroke, lerp, pos2, remap_clamp};
 
 use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{ResolvedTimeRangeF, TimeReal, TimeType, TimestampFormat};

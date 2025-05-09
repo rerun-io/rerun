@@ -14,6 +14,7 @@ pub mod collapse_expand;
 mod sub_menu;
 
 use actions::{
+    CopyEntityPathToClipboard,
     add_container::AddContainerAction,
     add_entities_to_new_view::AddEntitiesToNewViewAction,
     add_view::AddViewAction,
@@ -22,7 +23,6 @@ use actions::{
     move_contents_to_new_container::MoveContentsToNewContainerAction,
     remove::RemoveAction,
     show_hide::{HideAction, ShowAction},
-    CopyEntityPathToClipboard,
 };
 
 use sub_menu::SubMenu;

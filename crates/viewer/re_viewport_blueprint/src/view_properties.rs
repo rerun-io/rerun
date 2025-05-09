@@ -1,13 +1,13 @@
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::{external::re_query::LatestAtResults, EntityDb};
+use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
 use re_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, ComponentName,
     DeserializationError,
 };
 use re_viewer_context::{
-    external::re_entity_db::EntityTree, ComponentFallbackError, ComponentFallbackProvider,
-    QueryContext, ViewId, ViewSystemExecutionError, ViewerContext,
+    ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewId,
+    ViewSystemExecutionError, ViewerContext, external::re_entity_db::EntityTree,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -162,10 +162,8 @@ impl ViewProperty {
         component_descr: &ComponentDescriptor,
     ) -> Option<arrow::array::ArrayRef> {
         self.query_results
-            .get_by_name(&component_descr.component_name)
-            .and_then(|unit| {
-                unit.component_batch_raw_by_component_name(component_descr.component_name)
-            })
+            .get(component_descr)
+            .and_then(|unit| unit.component_batch_raw(component_descr))
     }
 
     fn component_or_fallback_raw(

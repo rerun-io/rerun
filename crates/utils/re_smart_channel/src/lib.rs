@@ -1,6 +1,6 @@
 //! A channel that keeps track of latency and queue length.
 
-use std::sync::{atomic::AtomicU64, Arc};
+use std::sync::{Arc, atomic::AtomicU64};
 
 use web_time::Instant;
 

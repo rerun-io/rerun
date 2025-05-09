@@ -1,20 +1,20 @@
 use egui::{Response, Ui};
 use smallvec::SmallVec;
 
-use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ApplicationId, EntityPath};
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    drag_and_drop::DropTarget, filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _,
+    ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget, list_item,
 };
 use re_viewer_context::{
-    contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
-    DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item, ItemContext,
-    SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
+    CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
+    Item, ItemContext, SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
+    contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
 use crate::data::{
     BlueprintTreeData, ContainerData, ContentsData, DataResultData, DataResultKind, ViewData,

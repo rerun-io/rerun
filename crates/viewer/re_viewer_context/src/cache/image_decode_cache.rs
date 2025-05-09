@@ -5,12 +5,12 @@ use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
+    Component as _, ComponentDescriptor,
     components::{self, ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
-    Component as _, ComponentDescriptor,
 };
 
-use crate::{image_info::StoredBlobCacheKey, Cache, ImageInfo};
+use crate::{Cache, ImageInfo, image_info::StoredBlobCacheKey};
 
 struct DecodedImageResult {
     /// Cached `Result` from decoding the image

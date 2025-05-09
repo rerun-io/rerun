@@ -1,6 +1,6 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 use ahash::{HashMap, HashSet};
@@ -11,12 +11,12 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{
-    components::{self, MediaType},
     Component as _, ComponentDescriptor,
+    components::{self, MediaType},
 };
 use re_video::decode::DecodeSettings;
 
-use crate::{image_info::StoredBlobCacheKey, Cache};
+use crate::{Cache, image_info::StoredBlobCacheKey};
 
 // ----------------------------------------------------------------------------
 

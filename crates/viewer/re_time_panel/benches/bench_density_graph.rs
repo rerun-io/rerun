@@ -4,9 +4,9 @@ use std::hint::black_box;
 use std::sync::Arc;
 use std::time::Duration;
 
-use criterion::measurement::WallTime;
 use criterion::Bencher;
 use criterion::Criterion;
+use criterion::measurement::WallTime;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::ResolvedTimeRange;
@@ -14,7 +14,7 @@ use re_log_types::StoreId;
 use re_log_types::StoreKind;
 use re_log_types::Timeline;
 use re_time_panel::__bench::{
-    build_density_graph, DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi,
+    DensityGraphBuilderConfig, TimePanelItem, TimeRangesUi, build_density_graph,
 };
 
 fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: ChunkEntry) {
@@ -92,7 +92,7 @@ fn add_data(
         log_times.push(time);
 
         if !sorted {
-            use rand::{seq::SliceRandom as _, SeedableRng as _};
+            use rand::{SeedableRng as _, seq::SliceRandom as _};
             let mut rng = rand::rngs::StdRng::seed_from_u64(0xbadf00d);
             log_times.shuffle(&mut rng);
         }

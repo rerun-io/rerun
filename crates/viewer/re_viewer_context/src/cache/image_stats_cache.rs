@@ -2,9 +2,9 @@ use ahash::{HashMap, HashSet};
 use itertools::Either;
 
 use re_chunk_store::ChunkStoreEvent;
-use re_types::{components, image::ImageKind, Component as _};
+use re_types::{Component as _, components, image::ImageKind};
 
-use crate::{image_info::StoredBlobCacheKey, Cache, ImageInfo, ImageStats};
+use crate::{Cache, ImageInfo, ImageStats, image_info::StoredBlobCacheKey};
 
 // Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]

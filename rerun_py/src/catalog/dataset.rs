@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
+use pyo3::{Py, PyAny, PyRef, PyResult, Python, exceptions::PyRuntimeError, pyclass, pymethods};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
@@ -11,18 +11,18 @@ use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
 use re_grpc_client::redap::get_chunks_response_to_chunk_and_partition_id;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
+use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::frontend::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
 use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
 use re_protos::manifest_registry::v1alpha1::{
-    index_query_properties, IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
+    IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery, index_query_properties,
 };
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
 use crate::catalog::task::PyTasks;
 use crate::catalog::{
-    dataframe_query::PyDataframeQueryView, to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike,
+    PyEntry, VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView, to_py_err,
 };
 use crate::dataframe::{
     AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,

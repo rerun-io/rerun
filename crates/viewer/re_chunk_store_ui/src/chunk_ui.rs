@@ -9,9 +9,9 @@ use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
 use re_log_types::{Timeline, TimestampFormat};
 use re_types::datatypes::TimeInt;
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
-use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
+use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
 
 /// Any column that can be sorted
 #[derive(Default, Clone, Copy, PartialEq)]
@@ -145,8 +145,7 @@ impl ChunkUi {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let component_data =
-                        chunk.component_batch_raw(&component_desc.component_name, row_index);
+                    let component_data = chunk.component_batch_raw(component_desc, row_index);
                     match component_data {
                         Some(Ok(data)) => {
                             re_ui::arrow_ui(ui, re_ui::UiLayout::List, &*data);

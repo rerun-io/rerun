@@ -1,5 +1,5 @@
 use egui::{NumExt as _, Ui};
-use ehttp::{fetch, Request};
+use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
@@ -454,7 +454,7 @@ fn open_example_url(
 
     #[cfg(target_arch = "wasm32")]
     if _is_history_enabled {
-        use crate::history::{history, HistoryEntry, HistoryExt as _};
+        use crate::history::{HistoryEntry, HistoryExt as _, history};
         use crate::web_tools::JsResultExt as _;
 
         if let Some(history) = history().ok_or_log_js_error() {

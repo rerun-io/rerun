@@ -10,10 +10,10 @@ use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_grpc_client::redap;
 use re_grpc_client::redap::ConnectionError;
 use re_log_types::EntryId;
+use re_protos::TypeConversionError;
 use re_protos::catalog::v1alpha1::ext::EntryDetails;
 use re_protos::catalog::v1alpha1::{EntryFilter, EntryKind, FindEntriesRequest};
 use re_protos::external::prost;
-use re_protos::TypeConversionError;
 use re_viewer_context::AsyncRuntimeHandle;
 
 #[derive(Debug, thiserror::Error)]
@@ -79,7 +79,7 @@ impl TablesSessionContext {
                 let table_name = table.name.as_str();
 
                 DataFusionTableWidget::clear_state(egui_ctx, &self.ctx, table_name);
-                let _ = self.ctx.deregister_table(table_name);
+                self.ctx.deregister_table(table_name).ok();
             }
         }
 

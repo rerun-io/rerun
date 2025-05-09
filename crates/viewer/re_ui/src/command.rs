@@ -1,5 +1,5 @@
-use egui::{os::OperatingSystem, Key, KeyboardShortcut, Modifiers};
-use smallvec::{smallvec, SmallVec};
+use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
+use smallvec::{SmallVec, smallvec};
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {

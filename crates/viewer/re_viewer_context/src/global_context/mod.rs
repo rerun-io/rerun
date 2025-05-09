@@ -12,7 +12,7 @@ mod item;
 pub use self::{
     app_options::AppOptions,
     command_sender::{
-        command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+        CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
     component_ui_registry::{ComponentUiRegistry, ComponentUiTypes},
     item::Item,
