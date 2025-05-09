@@ -57,7 +57,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
         &self,
     ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk {
         // TODO(#6889): Use the full descriptor instead.
-        self.chunk.iter_slices::<S>(self.descriptor)
+        self.chunk.iter_slices::<S>(self.descriptor.clone())
     }
 
     /// See [`Chunk::iter_component`].
