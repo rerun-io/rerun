@@ -505,7 +505,7 @@ impl EventLoop {
             }
 
             // Blueprint data
-            Msg::ArrowMsg(ref inner)
+            Msg::ArrowMsg(inner)
                 if inner
                     .store_id
                     .as_ref()
