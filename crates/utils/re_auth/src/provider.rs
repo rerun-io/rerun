@@ -91,7 +91,7 @@ impl From<VerificationOptions> for Validation {
 
 // Generate a random secret key of specified length
 fn generate_secret_key(mut rng: impl rand::Rng, length: usize) -> Vec<u8> {
-    (0..length).map(|_| rng.gen::<u8>()).collect()
+    (0..length).map(|_| rng.r#gen::<u8>()).collect()
 }
 
 impl RedapProvider {

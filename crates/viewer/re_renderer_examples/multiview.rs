@@ -162,9 +162,9 @@ struct Multiview {
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     Hsva {
-        h: rnd.gen::<f32>(),
-        s: rnd.gen::<f32>() * 0.5 + 0.5,
-        v: rnd.gen::<f32>() * 0.5 + 0.5,
+        h: rnd.r#gen::<f32>(),
+        s: rnd.r#gen::<f32>() * 0.5 + 0.5,
+        v: rnd.r#gen::<f32>() * 0.5 + 0.5,
         a: 1.0,
     }
     .into()

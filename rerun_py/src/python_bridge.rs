@@ -1618,7 +1618,7 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
     // solely by recording IDs.
     application_id.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
-    let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
+    let uuid = uuid::Builder::from_random_bytes(rng.r#gen()).into_uuid();
     StoreId::from_uuid(variant, uuid)
 }
 

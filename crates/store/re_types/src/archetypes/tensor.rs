@@ -32,7 +32,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
 ///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
-///     data.map_inplace(|x| *x = rng.gen());
+///     data.map_inplace(|x| *x = rng.r#gen());
 ///
 ///     let tensor =
 ///         rerun::Tensor::try_from(data)?.with_dim_names(["width", "height", "channel", "batch"]);
