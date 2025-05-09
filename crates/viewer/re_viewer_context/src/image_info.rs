@@ -1,11 +1,13 @@
 use std::{borrow::Cow, ops::RangeInclusive};
 
+use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_types::{
     components::Colormap,
     datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
     image::{rgb_from_yuv, ImageKind},
     tensor_data::TensorElement,
+    ComponentDescriptor,
 };
 
 /// Colormap together with the range of image values that is mapped to the colormap's range.
@@ -35,13 +37,25 @@ impl ColormapWithRange {
     }
 }
 
+/// Hash used for identifying blobs stored in a store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StoredBlobCacheKey(pub Hash64);
+
+impl StoredBlobCacheKey {
+    pub fn new(blob_row_id: RowId, component_descriptor: &ComponentDescriptor) -> Self {
+        // Row ID + component descriptor is enough because in a single row & column there
+        // can currently only be a single blob since blobs are internally stored as transparent dynamic byte arrays.
+        Self(Hash64::hash((blob_row_id, &component_descriptor)))
+    }
+}
+
 /// Represents the contents of an `Image`, `SegmentationImage` or `DepthImage`.
 #[derive(Clone)]
 pub struct ImageInfo {
-    /// The row id that contained the blob.
+    /// Hash for the contents of the blob.
     ///
-    /// Can be used instead of hashing [`Self::buffer`].
-    pub buffer_cache_key: Hash64,
+    /// This does **not** need to take into account the image format.
+    pub buffer_content_hash: StoredBlobCacheKey,
 
     /// The image data, row-wise, with stride=width.
     pub buffer: Blob,
@@ -54,6 +68,27 @@ pub struct ImageInfo {
 }
 
 impl ImageInfo {
+    pub fn from_stored_blob(
+        blob_row_id: RowId,
+        component_descriptor: &ComponentDescriptor,
+        buffer: Blob,
+        format: ImageFormat,
+        kind: ImageKind,
+    ) -> Self {
+        // TODO(andreas): Once we introduce descriptor overrides,
+        // we need to make sure that the descriptor is the one used for _querying_ the blob.
+        // This also means that the `ImageKind` may change!
+        // But until then, image kind and descriptor should be in sync.
+        debug_assert!(ImageKind::from_archetype_name(component_descriptor.archetype_name) == kind);
+
+        Self {
+            buffer_content_hash: StoredBlobCacheKey::new(blob_row_id, component_descriptor),
+            buffer,
+            format,
+            kind,
+        }
+    }
+
     #[inline]
     pub fn width(&self) -> u32 {
         self.format.width
@@ -392,6 +427,8 @@ mod tests {
     use re_log_types::hash::Hash64;
     use re_types::{datatypes::ColorModel, image::ImageChannelType};
 
+    use crate::image_info::StoredBlobCacheKey;
+
     use super::ImageInfo;
 
     fn new_2x2_image_info<T: ImageChannelType>(
@@ -400,7 +437,7 @@ mod tests {
     ) -> ImageInfo {
         assert_eq!(elements.len(), 2 * 2);
         ImageInfo {
-            buffer_cache_key: Hash64::ZERO, // unused
+            buffer_content_hash: StoredBlobCacheKey(Hash64::ZERO), // unused
             buffer: re_types::datatypes::Blob::from(bytemuck::cast_slice::<_, u8>(elements)),
             format: re_types::datatypes::ImageFormat::from_color_model(
                 [2, 2],

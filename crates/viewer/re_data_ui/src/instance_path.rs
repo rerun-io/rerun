@@ -2,14 +2,13 @@ use egui::Rangef;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::hash::Hash64;
 use re_log_types::ComponentPath;
 use re_types::{
-    archetypes, components,
+    components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
 };
-use re_types::{Archetype as _, ArchetypeName, Component, ComponentDescriptor};
+use re_types::{ArchetypeName, Component, ComponentDescriptor};
 use re_ui::UiExt as _;
 use re_viewer_context::{
     gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
@@ -296,7 +295,7 @@ fn preview_single_image(
     image_buffer_descr: &ComponentDescriptor,
     image_buffer_chunk: &UnitChunkShared,
 ) -> Option<()> {
-    let row_id = image_buffer_chunk.row_id()?;
+    let blob_row_id = image_buffer_chunk.row_id()?;
     let image_buffer = image_buffer_chunk
         .component_mono::<components::ImageBuffer>(image_buffer_descr)?
         .ok()?;
@@ -309,20 +308,14 @@ fn preview_single_image(
         .component_mono::<components::ImageFormat>(image_format_descr)?
         .ok()?;
 
-    let kind = if image_format_descr.archetype_name == Some(archetypes::DepthImage::name()) {
-        ImageKind::Depth
-    } else if image_format_descr.archetype_name == Some(archetypes::SegmentationImage::name()) {
-        ImageKind::Segmentation
-    } else {
-        ImageKind::Color
-    };
-
-    let image = ImageInfo {
-        buffer_cache_key: Hash64::hash(row_id),
-        buffer: image_buffer.0,
-        format: image_format.0,
+    let kind = ImageKind::from_archetype_name(image_format_descr.archetype_name);
+    let image = ImageInfo::from_stored_blob(
+        blob_row_id,
+        image_buffer_descr,
+        image_buffer.0,
+        image_format.0,
         kind,
-    };
+    );
     let image_stats = ctx
         .store_context
         .caches
@@ -545,7 +538,8 @@ fn preview_single_blob(
         ui_layout,
         query,
         entity_path,
-        blob_chunk.row_id().map(Hash64::hash),
+        blob_descr,
+        blob_chunk.row_id(),
         &blob,
         media_type.as_ref(),
         video_timestamp,
