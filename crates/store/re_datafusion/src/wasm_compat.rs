@@ -38,7 +38,7 @@ where
 
         match select(f, cancellation).await {
             Either::Left((result, _)) => {
-                let _ = tx.send(result);
+                tx.send(result).ok();
             }
 
             Either::Right(_) => {

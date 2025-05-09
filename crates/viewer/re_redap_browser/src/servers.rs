@@ -69,9 +69,9 @@ impl Server {
                 ui.horizontal(|ui| {
                     ui.heading(RichText::new("Catalog").strong());
                     if ui.small_icon_button(&icons::RESET).clicked() {
-                        let _ = ctx
-                            .command_sender
-                            .send(Command::RefreshCollection(self.origin.clone()));
+                        ctx.command_sender
+                            .send(Command::RefreshCollection(self.origin.clone()))
+                            .ok();
                     }
                 });
 
@@ -121,9 +121,9 @@ impl Server {
         )
         .title(dataset.name())
         .title_button(ItemActionButton::new(&re_ui::icons::RESET, || {
-            let _ = ctx
-                .command_sender
-                .send(Command::RefreshCollection(self.origin.clone()));
+            ctx.command_sender
+                .send(Command::RefreshCollection(self.origin.clone()))
+                .ok();
         }))
         .column_renamer(|desc| {
             //TODO(ab): with this strategy, we do not display relevant entity path if any.
@@ -159,9 +159,9 @@ impl Server {
                     .on_hover_text("Remove server");
 
                 if response.clicked() {
-                    let _ = ctx
-                        .command_sender
-                        .send(Command::RemoveServer(self.origin.clone()));
+                    ctx.command_sender
+                        .send(Command::RemoveServer(self.origin.clone()))
+                        .ok();
                 }
 
                 response
@@ -274,7 +274,7 @@ impl RedapServers {
 
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
-        let _ = self.command_sender.send(Command::AddServer(origin));
+        self.command_sender.send(Command::AddServer(origin)).ok();
     }
 
     /// Per-frame housekeeping.
@@ -283,7 +283,7 @@ impl RedapServers {
     /// - Update all servers.
     pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
         self.pending_servers.drain(..).for_each(|origin| {
-            let _ = self.command_sender.send(Command::AddServer(origin));
+            self.command_sender.send(Command::AddServer(origin)).ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(runtime, egui_ctx, command);
@@ -367,7 +367,7 @@ impl RedapServers {
     }
 
     pub fn open_add_server_modal(&self) {
-        let _ = self.command_sender.send(Command::OpenAddServerModal);
+        self.command_sender.send(Command::OpenAddServerModal).ok();
     }
 
     pub fn entry_ui(

@@ -79,7 +79,7 @@ impl TablesSessionContext {
                 let table_name = table.name.as_str();
 
                 DataFusionTableWidget::clear_state(egui_ctx, &self.ctx, table_name);
-                let _ = self.ctx.deregister_table(table_name);
+                self.ctx.deregister_table(table_name).ok();
             }
         }
 

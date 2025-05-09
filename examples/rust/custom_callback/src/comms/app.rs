@@ -45,7 +45,7 @@ impl ControlApp {
     pub async fn broadcast(&self, message: Message) -> tokio::io::Result<()> {
         let clients = self.clients.lock().await;
         clients.iter().for_each(|client| {
-            let _ = client.send(message.clone());
+            client.send(message.clone()).ok();
         });
 
         Ok(())
@@ -182,7 +182,7 @@ impl ControlAppHandle {
         let clients = self.app.clients.lock().await;
 
         clients.iter().for_each(|client| {
-            let _ = client.send(message.clone());
+            client.send(message.clone()).ok();
         });
     }
 }

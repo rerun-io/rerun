@@ -288,7 +288,7 @@ impl ViewClass for MapView {
         if map_response.double_clicked() {
             map_memory.follow_my_position();
             if let Some(zoom_level) = default_zoom_level {
-                let _ = map_memory.set_zoom(zoom_level);
+                map_memory.set_zoom(zoom_level).ok();
             }
         }
 
