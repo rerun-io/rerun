@@ -187,7 +187,7 @@ impl AsyncDecoder for WebVideoDecoder {
         // """
         // -> Nothing of this indicates that we _have_ to call it and rather discourages it,
         // but it points out that it might be a good idea once "all desired work is queued".
-        let _ = self.decoder.flush();
+        let _ignored = self.decoder.flush();
 
         Ok(())
     }
