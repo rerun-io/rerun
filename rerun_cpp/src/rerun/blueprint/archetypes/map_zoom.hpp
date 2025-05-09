@@ -49,8 +49,7 @@ namespace rerun::blueprint::archetypes {
         MapZoom& operator=(MapZoom&& other) = default;
 
         explicit MapZoom(rerun::blueprint::components::ZoomLevel _zoom)
-            : zoom(
-                  ComponentBatch::from_loggable(std::move(_zoom), Descriptor_zoom).value_or_throw()
+            : zoom(ComponentBatch::from_loggable(std::move(_zoom), Descriptor_zoom).value_or_throw()
               ) {}
 
         /// Update only some specific fields of a `MapZoom`.

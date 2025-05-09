@@ -104,8 +104,7 @@ namespace rerun::blueprint::archetypes {
         /// Which dimension to map to height.
         ///
         /// If not specified, the height will be determined automatically based on the name and index of the dimension.
-        TensorSliceSelection with_height(
-            const rerun::components::TensorHeightDimension& _height
+        TensorSliceSelection with_height(const rerun::components::TensorHeightDimension& _height
         ) && {
             height = ComponentBatch::from_loggable(_height, Descriptor_height).value_or_throw();
             return std::move(*this);

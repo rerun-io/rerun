@@ -50,12 +50,10 @@ namespace rerun::blueprint::archetypes {
                 past_viewer_recommendations.value().partitioned(lengths_).value_or_throw()
             );
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<ViewportBlueprint>(
-                static_cast<uint32_t>(lengths_.size())
-            )
-                .value_or_throw()
-        );
+        columns.push_back(ComponentColumn::from_indicators<ViewportBlueprint>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

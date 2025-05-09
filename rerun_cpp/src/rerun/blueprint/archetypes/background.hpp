@@ -55,8 +55,7 @@ namespace rerun::blueprint::archetypes {
         Background& operator=(Background&& other) = default;
 
         explicit Background(rerun::blueprint::components::BackgroundKind _kind)
-            : kind(
-                  ComponentBatch::from_loggable(std::move(_kind), Descriptor_kind).value_or_throw()
+            : kind(ComponentBatch::from_loggable(std::move(_kind), Descriptor_kind).value_or_throw()
               ) {}
 
         /// Update only some specific fields of a `Background`.

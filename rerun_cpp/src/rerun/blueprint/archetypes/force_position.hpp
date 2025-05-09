@@ -83,8 +83,7 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// The strength of the force.
-        ForcePosition with_strength(
-            const rerun::blueprint::components::ForceStrength& _strength
+        ForcePosition with_strength(const rerun::blueprint::components::ForceStrength& _strength
         ) && {
             strength =
                 ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();

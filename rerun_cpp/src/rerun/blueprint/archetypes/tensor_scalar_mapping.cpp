@@ -31,12 +31,10 @@ namespace rerun::blueprint::archetypes {
         if (gamma.has_value()) {
             columns.push_back(gamma.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<TensorScalarMapping>(
-                static_cast<uint32_t>(lengths_.size())
-            )
-                .value_or_throw()
-        );
+        columns.push_back(ComponentColumn::from_indicators<TensorScalarMapping>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

@@ -140,8 +140,7 @@ namespace rerun::blueprint::archetypes {
         /// If `true`, the viewer will only add views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
         /// and which aren't deemed redundant to existing views.
         /// This defaults to `false` and is automatically set to `false` when the user adds views manually in the viewer.
-        ViewportBlueprint with_auto_views(
-            const rerun::blueprint::components::AutoViews& _auto_views
+        ViewportBlueprint with_auto_views(const rerun::blueprint::components::AutoViews& _auto_views
         ) && {
             auto_views =
                 ComponentBatch::from_loggable(_auto_views, Descriptor_auto_views).value_or_throw();

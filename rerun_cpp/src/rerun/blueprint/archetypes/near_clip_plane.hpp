@@ -49,12 +49,10 @@ namespace rerun::blueprint::archetypes {
         NearClipPlane& operator=(NearClipPlane&& other) = default;
 
         explicit NearClipPlane(rerun::blueprint::components::NearClipPlane _near_clip_plane)
-            : near_clip_plane(
-                  ComponentBatch::from_loggable(
-                      std::move(_near_clip_plane), Descriptor_near_clip_plane
-                  )
-                      .value_or_throw()
-              ) {}
+            : near_clip_plane(ComponentBatch::from_loggable(
+                                  std::move(_near_clip_plane), Descriptor_near_clip_plane
+              )
+                                  .value_or_throw()) {}
 
         /// Update only some specific fields of a `NearClipPlane`.
         static NearClipPlane update_fields() {

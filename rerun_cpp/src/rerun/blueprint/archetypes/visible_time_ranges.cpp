@@ -20,12 +20,10 @@ namespace rerun::blueprint::archetypes {
         if (ranges.has_value()) {
             columns.push_back(ranges.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<VisibleTimeRanges>(
-                static_cast<uint32_t>(lengths_.size())
-            )
-                .value_or_throw()
-        );
+        columns.push_back(ComponentColumn::from_indicators<VisibleTimeRanges>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

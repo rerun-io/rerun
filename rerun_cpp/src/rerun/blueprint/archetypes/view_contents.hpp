@@ -86,10 +86,8 @@ namespace rerun::blueprint::archetypes {
         ViewContents& operator=(ViewContents&& other) = default;
 
         explicit ViewContents(Collection<rerun::blueprint::components::QueryExpression> _query)
-            : query(
-                  ComponentBatch::from_loggable(std::move(_query), Descriptor_query)
-                      .value_or_throw()
-              ) {}
+            : query(ComponentBatch::from_loggable(std::move(_query), Descriptor_query)
+                        .value_or_throw()) {}
 
         /// Update only some specific fields of a `ViewContents`.
         static ViewContents update_fields() {

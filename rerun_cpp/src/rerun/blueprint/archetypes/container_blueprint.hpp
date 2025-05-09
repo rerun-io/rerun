@@ -127,12 +127,10 @@ namespace rerun::blueprint::archetypes {
         ContainerBlueprint& operator=(ContainerBlueprint&& other) = default;
 
         explicit ContainerBlueprint(rerun::blueprint::components::ContainerKind _container_kind)
-            : container_kind(
-                  ComponentBatch::from_loggable(
-                      std::move(_container_kind), Descriptor_container_kind
-                  )
-                      .value_or_throw()
-              ) {}
+            : container_kind(ComponentBatch::from_loggable(
+                                 std::move(_container_kind), Descriptor_container_kind
+              )
+                                 .value_or_throw()) {}
 
         /// Update only some specific fields of a `ContainerBlueprint`.
         static ContainerBlueprint update_fields() {

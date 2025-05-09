@@ -65,13 +65,11 @@ namespace rerun {
             auto field_builder = static_cast<arrow::BooleanBuilder*>(builder->field_builder(0));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::datatypes::Bool>::fill_arrow_array_builder(
-                        field_builder,
-                        &elements[elem_idx].active,
-                        1
-                    )
-                );
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Bool>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].active,
+                    1
+                ));
             }
         }
         {

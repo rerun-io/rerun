@@ -24,14 +24,12 @@ namespace rerun {
             ),
             arrow::field(
                 "component_columns",
-                arrow::list(
-                    arrow::field(
-                        "item",
-                        Loggable<
-                            rerun::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(),
-                        false
-                    )
-                ),
+                arrow::list(arrow::field(
+                    "item",
+                    Loggable<rerun::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(
+                    ),
+                    false
+                )),
                 false
             ),
         });
@@ -84,13 +82,11 @@ namespace rerun {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
                 if (element.time_columns.data()) {
-                    RR_RETURN_NOT_OK(
-                        Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
-                            value_builder,
-                            element.time_columns.data(),
-                            element.time_columns.size()
-                        )
-                    );
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+                        value_builder,
+                        element.time_columns.data(),
+                        element.time_columns.size()
+                    ));
                 }
             }
         }

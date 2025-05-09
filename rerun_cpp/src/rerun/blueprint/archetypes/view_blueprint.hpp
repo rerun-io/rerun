@@ -82,12 +82,10 @@ namespace rerun::blueprint::archetypes {
         ViewBlueprint& operator=(ViewBlueprint&& other) = default;
 
         explicit ViewBlueprint(rerun::blueprint::components::ViewClass _class_identifier)
-            : class_identifier(
-                  ComponentBatch::from_loggable(
-                      std::move(_class_identifier), Descriptor_class_identifier
-                  )
-                      .value_or_throw()
-              ) {}
+            : class_identifier(ComponentBatch::from_loggable(
+                                   std::move(_class_identifier), Descriptor_class_identifier
+              )
+                                   .value_or_throw()) {}
 
         /// Update only some specific fields of a `ViewBlueprint`.
         static ViewBlueprint update_fields() {
