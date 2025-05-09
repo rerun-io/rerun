@@ -1,6 +1,7 @@
 use egui::NumExt as _;
 
 use re_data_ui::{DataUi as _, item_ui};
+use re_log::ResultExt as _;
 use re_log_types::Instance;
 use re_ui::{
     UiExt as _,
@@ -49,16 +50,18 @@ pub fn picking(
         .at_least(8.0)
         .at_most(128.0) as u32;
 
-    let _ = view_builder.schedule_picking_rect(
-        ctx.render_ctx(),
-        re_renderer::RectInt::from_middle_and_extent(
-            picking_context.pointer_in_pixel.as_ivec2(),
-            glam::uvec2(picking_rect_size, picking_rect_size),
-        ),
-        query.view_id.gpu_readback_id(),
-        (),
-        ctx.app_options().show_picking_debug_overlay,
-    );
+    view_builder
+        .schedule_picking_rect(
+            ctx.render_ctx(),
+            re_renderer::RectInt::from_middle_and_extent(
+                picking_context.pointer_in_pixel.as_ivec2(),
+                glam::uvec2(picking_rect_size, picking_rect_size),
+            ),
+            query.view_id.gpu_readback_id(),
+            (),
+            ctx.app_options().show_picking_debug_overlay,
+        )
+        .ok_or_log_error_once();
 
     let annotations = system_output
         .context_systems
