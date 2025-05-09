@@ -1,9 +1,9 @@
 //! Demonstrates how to implement custom archetypes and components, and extend existing ones.
 
 use rerun::{
-    ComponentBatch as _, SerializedComponentBatch,
     demo_util::grid,
     external::{arrow, glam, re_types},
+    ComponentBatch as _, SerializedComponentBatch,
 };
 
 // ---
