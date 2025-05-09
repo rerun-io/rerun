@@ -393,48 +393,57 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             });
 
             header_ui(ui, |ui| {
-                egui::Sides::new().show(
-                    ui,
-                    |ui| {
-                        ui.label(egui::RichText::new(name).strong().monospace());
+                egui::Sides::new()
+                    .show(
+                        ui,
+                        |ui| {
+                            let response = ui.label(egui::RichText::new(name).strong().monospace());
 
-                        if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
-                            ui.add_space(-5.0);
-                            ui.small_icon(
-                                dir_icon,
-                                Some(
-                                    ui.design_tokens()
-                                        .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
-                                ),
-                            );
-                        }
-                    },
-                    |ui| {
-                        egui::containers::menu::MenuButton::from_button(
-                            ui.small_icon_button_widget(&re_ui::icons::MORE),
-                        )
-                        .ui(ui, |ui| {
-                            for sort_direction in SortDirection::iter() {
-                                let already_sorted =
-                                    Some(&sort_direction) == current_sort_direction;
-
-                                if ui
-                                    .add_enabled_ui(!already_sorted, |ui| {
-                                        sort_direction.menu_button(ui)
-                                    })
-                                    .inner
-                                    .clicked()
-                                {
-                                    self.new_blueprint.sort_by = Some(SortBy {
-                                        column: column_name.to_owned(),
-                                        direction: sort_direction,
-                                    });
-                                    ui.close();
-                                }
+                            if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
+                            {
+                                ui.add_space(-5.0);
+                                ui.small_icon(
+                                    dir_icon,
+                                    Some(
+                                        ui.design_tokens()
+                                            .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
+                                    ),
+                                );
                             }
-                        });
-                    },
-                );
+
+                            response
+                        },
+                        |ui| {
+                            egui::containers::menu::MenuButton::from_button(
+                                ui.small_icon_button_widget(&re_ui::icons::MORE),
+                            )
+                            .ui(ui, |ui| {
+                                for sort_direction in SortDirection::iter() {
+                                    let already_sorted =
+                                        Some(&sort_direction) == current_sort_direction;
+
+                                    if ui
+                                        .add_enabled_ui(!already_sorted, |ui| {
+                                            sort_direction.menu_button(ui)
+                                        })
+                                        .inner
+                                        .clicked()
+                                    {
+                                        self.new_blueprint.sort_by = Some(SortBy {
+                                            column: column_name.to_owned(),
+                                            direction: sort_direction,
+                                        });
+                                        ui.close();
+                                    }
+                                }
+                            });
+                        },
+                    )
+                    .0
+            })
+            .inner
+            .on_hover_ui(|ui| {
+                header_tooltip_ui(ui, desc);
             });
         }
     }
@@ -480,4 +489,66 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn default_row_height(&self) -> f32 {
         re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
     }
+}
+
+fn header_tooltip_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
+    match column {
+        ColumnDescriptorRef::RowId(desc) => {
+            header_property_ui(ui, "Type", "row id");
+            header_property_ui(ui, "Sorted", sorted_text(desc.is_sorted));
+        }
+        ColumnDescriptorRef::Time(desc) => {
+            header_property_ui(ui, "Type", "index");
+            header_property_ui(ui, "Timeline", desc.timeline_name());
+            header_property_ui(ui, "Sorted", sorted_text(desc.is_sorted()));
+            datatype_ui(ui, desc.datatype());
+        }
+        ColumnDescriptorRef::Component(desc) => {
+            header_property_ui(ui, "Type", "component");
+            header_property_ui(ui, "Name", desc.component_name.full_name());
+            header_property_ui(ui, "Entity path", desc.entity_path.to_string());
+            datatype_ui(ui, &desc.store_datatype);
+            header_property_ui(
+                ui,
+                "Archetype",
+                desc.archetype_name.map(|a| a.full_name()).unwrap_or("-"),
+            );
+            header_property_ui(
+                ui,
+                "Archetype field",
+                desc.archetype_field_name.map(|a| a.as_str()).unwrap_or("-"),
+            );
+            header_property_ui(ui, "Static", format!("{}", desc.is_static));
+            header_property_ui(ui, "Indicator", format!("{}", desc.is_indicator));
+            header_property_ui(ui, "Tombstone", format!("{}", desc.is_tombstone));
+            header_property_ui(ui, "Empty", format!("{}", desc.is_semantically_empty));
+        }
+    }
+}
+
+fn sorted_text(sorted: bool) -> &'static str {
+    if sorted {
+        "true"
+    } else {
+        "unknown"
+    }
+}
+
+fn header_property_ui(ui: &mut egui::Ui, label: &str, value: impl AsRef<str>) {
+    egui::Sides::new().show(ui, |ui| ui.strong(label), |ui| ui.monospace(value.as_ref()));
+}
+
+fn datatype_ui(ui: &mut egui::Ui, datatype: &arrow::datatypes::DataType) {
+    egui::Sides::new().show(
+        ui,
+        |ui| ui.strong("Datatype"),
+        |ui| {
+            if ui
+                .button(egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace())
+                .clicked()
+            {
+                ui.ctx().copy_text(format!("{datatype:#?}"));
+            }
+        },
+    );
 }
