@@ -1,4 +1,4 @@
-use egui::NumExt as _;
+use egui::{NumExt as _, TextBuffer};
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
@@ -163,14 +163,14 @@ impl SelectionPanel {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
                     entity_path,
-                    component_name,
+                    component_descriptor,
                 } = component_path;
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
                 let is_static = db
                     .storage_engine()
                     .store()
-                    .entity_has_static_component(entity_path, component_name);
+                    .entity_has_static_component(entity_path, component_descriptor);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {
@@ -542,8 +542,12 @@ fn entity_path_filter_ui(
         job
     }
 
-    fn text_layouter(ui: &egui::Ui, string: &str, wrap_width: f32) -> std::sync::Arc<egui::Galley> {
-        let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), string);
+    fn text_layouter(
+        ui: &egui::Ui,
+        text: &dyn TextBuffer,
+        wrap_width: f32,
+    ) -> std::sync::Arc<egui::Galley> {
+        let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
         ui.fonts(|f| f.layout_job(layout_job))
     }

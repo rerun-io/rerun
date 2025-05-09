@@ -180,6 +180,27 @@ class Schema:
 
         """
 
+    def column_for_selector(
+        self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
+    ) -> ComponentColumnDescriptor:
+        """
+        Look up the column descriptor for a specific selector.
+
+        Parameters
+        ----------
+        selector: str | ComponentColumnDescriptor | ComponentColumnSelector
+            The selector to look up.
+
+            String arguments are expected to follow the following format:
+            `"<entity_path>:<component_name>"`
+
+        Returns
+        -------
+        ComponentColumnDescriptor
+            The column descriptor, if it exists. Raise an exception otherwise.
+
+        """
+
 class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -1017,8 +1038,36 @@ class Dataset(Entry):
     def partition_url(self, partition_id: str) -> str:
         """Return the URL for the given partition."""
 
-    def register(self, recording_uri: str) -> None:
-        """Register a RRD URI to the dataset."""
+    def register(self, recording_uri: str, timeout_secs: int = 60) -> None:
+        """
+        Register a RRD URI to the dataset and wait for completion.
+
+        This method registers a single recording to the dataset and blocks until the registration is
+        complete, or after a timeout (in which case, a `TimeoutError` is raised).
+
+        Parameters
+        ----------
+        recording_uri: str
+            The URI of the RRD to register
+
+        timeout_secs: int
+            The timeout after which this method returns.
+
+        """
+
+    def register_batch(self, recording_uris: list[str]) -> Tasks:
+        """
+        Register a batch of RRD URIs to the dataset and return a handle to the tasks.
+
+        This method initiates the registration of multiple recordings to the dataset, and returns
+        the corresponding task ids in a [`Tasks`] object.
+
+        Parameters
+        ----------
+        recording_uris: list[str]
+            The URIs of the RRDs to register
+
+        """
 
     def download_partition(self, partition_id: str) -> Recording:
         """Download a partition from the dataset."""
@@ -1037,7 +1086,7 @@ class Dataset(Entry):
     def create_fts_index(
         self,
         *,
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
         store_position: bool = False,
         base_tokenizer: str = "simple",
@@ -1047,7 +1096,7 @@ class Dataset(Entry):
     def create_vector_index(
         self,
         *,
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         time_index: IndexColumnSelector,
         num_partitions: int = 5,
         num_sub_vectors: int = 16,
@@ -1058,14 +1107,14 @@ class Dataset(Entry):
     def search_fts(
         self,
         query: str,
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
     ) -> DataFusionTable:
         """Search the dataset using a full-text search query."""
 
     def search_vector(
         self,
         query: Any,  # VectorLike
-        column: ComponentColumnSelector,
+        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
         top_k: int,
     ) -> DataFusionTable:
         """Search the dataset using a vector search query."""
@@ -1283,6 +1332,39 @@ class DataFusionTable:
     @property
     def name(self) -> str:
         """Name of this table."""
+
+class Task:
+    """A handle on a remote task."""
+
+    @property
+    def id(self) -> str:
+        """The task id."""
+
+    def wait(self, timeout_secs: int) -> None:
+        """
+        Block until the task is completed or the timeout is reached.
+
+        A `TimeoutError` is raised if the timeout is reached.
+        """
+
+class Tasks:
+    """A collection of [`Task`]."""
+
+    def wait(self, timeout_secs: int) -> None:
+        """
+        Block until all tasks are completed or the timeout is reached.
+
+        A `TimeoutError` is raised if the timeout is reached.
+        """
+
+    def status_table(self) -> DataFusionTable:
+        """Return a table with the status of all tasks."""
+
+    def __len__(self) -> int:
+        """Return the number of tasks."""
+
+    def __getitem__(self, index: int) -> Task:
+        """Return the task at the given index."""
 
 #####################################################################################################################
 ## SEND_TABLE                                                                                                      ##

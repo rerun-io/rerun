@@ -147,6 +147,8 @@ pub struct VideoFrameReference {
 
 impl VideoFrameReference {
     /// Returns the [`ComponentDescriptor`] for [`Self::timestamp`].
+    ///
+    /// The corresponding component is [`crate::components::VideoTimestamp`].
     #[inline]
     pub fn descriptor_timestamp() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -157,6 +159,8 @@ impl VideoFrameReference {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::video_reference`].
+    ///
+    /// The corresponding component is [`crate::components::EntityPath`].
     #[inline]
     pub fn descriptor_video_reference() -> ComponentDescriptor {
         ComponentDescriptor {

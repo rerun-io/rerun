@@ -90,6 +90,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.24.0-alpha.1", defaul
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.24.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.24.0-alpha.1", default-features = false }
+re_auth = { path = "crates/utils/re_auth", version = "=0.24.0-alpha.1", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.24.0-alpha.1", default-features = false }
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.24.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.24.0-alpha.1", default-features = false }
@@ -287,7 +288,6 @@ rustdoc-json = "0.9.4"
 rustdoc-types = "0.35.0"
 seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
-serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
 serde-wasm-bindgen = "0.6.5"
 serde_yaml = { version = "0.9.21", default-features = false }
@@ -652,13 +652,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# eframe = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui_extras = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -675,7 +675,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/71
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/76
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 

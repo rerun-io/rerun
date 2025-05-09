@@ -9,8 +9,7 @@ use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
         archetypes::{MapBackground, MapZoom},
-        components::MapProvider,
-        components::ZoomLevel,
+        components::{MapProvider, ZoomLevel},
     },
     View as _, ViewClassIdentifier,
 };
@@ -215,7 +214,12 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let map_provider = map_background.component_or_fallback::<MapProvider>(ctx, self, state)?;
+        let map_provider = map_background.component_or_fallback::<MapProvider>(
+            ctx,
+            self,
+            state,
+            &MapBackground::descriptor_provider(),
+        )?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
@@ -247,7 +251,7 @@ impl ViewClass for MapView {
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
-            .component_or_empty::<ZoomLevel>()?
+            .component_or_empty::<ZoomLevel>(&MapZoom::descriptor_zoom())?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
             span.zoom_for_screen_size(
@@ -295,6 +299,7 @@ impl ViewClass for MapView {
         if Some(map_memory.zoom()) != blueprint_zoom_level {
             map_zoom.save_blueprint_component(
                 ctx,
+                &MapZoom::descriptor_zoom(),
                 &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
             );
         }

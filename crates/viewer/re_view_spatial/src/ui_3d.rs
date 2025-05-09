@@ -31,6 +31,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
+    transform_cache::query_view_coordinates_at_closest_ancestor,
     ui::{create_labels, SpatialViewState},
     view_kind::SpatialViewKind,
     visualizers::{collect_ui_labels, image_view_coordinates, CamerasVisualizer},
@@ -443,12 +444,11 @@ impl SpatialView3D {
             .view_systems
             .get::<CamerasVisualizer>()?
             .space_cameras;
-        let scene_view_coordinates = ctx
-            .recording()
-            // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
-            // See https://github.com/rerun-io/rerun/issues/3538
-            .latest_at_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
-            .map(|(_, _index, c)| c);
+        let scene_view_coordinates = query_view_coordinates_at_closest_ancestor(
+            query.space_origin,
+            ctx.recording(),
+            &ctx.current_query(),
+        );
 
         let (ui_rect, mut response) =
             ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -725,17 +725,40 @@ impl SpatialView3D {
         grid_config: &ViewProperty,
         state: &SpatialViewState,
     ) -> Result<Option<re_renderer::renderer::WorldGridDrawData>, ViewSystemExecutionError> {
-        if !**grid_config.component_or_fallback::<Visible>(ctx, self, state)? {
+        if !**grid_config.component_or_fallback::<Visible>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_visible(),
+        )? {
             return Ok(None);
         }
 
-        let spacing = **grid_config.component_or_fallback::<GridSpacing>(ctx, self, state)?;
+        let spacing = **grid_config.component_or_fallback::<GridSpacing>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_spacing(),
+        )?;
         let thickness_ui = **grid_config
-            .component_or_fallback::<re_types::components::StrokeWidth>(ctx, self, state)?;
-        let color =
-            grid_config.component_or_fallback::<re_types::components::Color>(ctx, self, state)?;
-        let plane =
-            grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
+            .component_or_fallback::<re_types::components::StrokeWidth>(
+                ctx,
+                self,
+                state,
+                &LineGrid3D::descriptor_stroke_width(),
+            )?;
+        let color = grid_config.component_or_fallback::<re_types::components::Color>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_color(),
+        )?;
+        let plane = grid_config.component_or_fallback::<re_types::components::Plane3D>(
+            ctx,
+            self,
+            state,
+            &LineGrid3D::descriptor_plane(),
+        )?;
 
         Ok(Some(re_renderer::renderer::WorldGridDrawData::new(
             ctx.render_ctx(),

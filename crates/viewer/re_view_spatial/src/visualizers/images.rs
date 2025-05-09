@@ -1,9 +1,8 @@
 use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Image,
-    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
+    components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
-    Component as _,
 };
 use re_view::HybridResults;
 use re_viewer_context::{
@@ -120,19 +119,19 @@ impl ImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name()) else {
+        let Some(all_buffer_chunks) = results.get_required_chunks(Image::descriptor_buffer())
+        else {
             return;
         };
-        let Some(all_formats_chunks) = results.get_required_chunks(&ImageFormat::name()) else {
+        let Some(all_formats_chunks) = results.get_required_chunks(Image::descriptor_format())
+        else {
             return;
         };
 
         let timeline = ctx.query.timeline();
-        let all_buffers_indexed =
-            iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
-        let all_formats_indexed =
-            iter_component::<ImageFormat>(&all_formats_chunks, timeline, ImageFormat::name());
-        let all_opacities = results.iter_as(timeline, Opacity::name());
+        let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
+        let all_formats_indexed = iter_component::<ImageFormat>(&all_formats_chunks, timeline);
+        let all_opacities = results.iter_as(timeline, Image::descriptor_opacity());
 
         let data = re_query::range_zip_1x2(
             all_buffers_indexed,

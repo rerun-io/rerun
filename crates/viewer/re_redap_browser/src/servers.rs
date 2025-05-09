@@ -117,7 +117,6 @@ impl Server {
     ) {
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
-            //egui::Id::new(&self.origin),
             dataset.name(),
         )
         .title(dataset.name())
@@ -127,7 +126,9 @@ impl Server {
                 .send(Command::RefreshCollection(self.origin.clone()));
         }))
         .column_renamer(|desc| {
-            let name = desc.name();
+            //TODO(ab): with this strategy, we do not display relevant entity path if any.
+            let name = desc.short_name();
+
             name.strip_prefix("rerun_")
                 .unwrap_or(name)
                 .replace('_', " ")

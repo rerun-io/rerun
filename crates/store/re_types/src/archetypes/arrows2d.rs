@@ -89,6 +89,8 @@ pub struct Arrows2D {
 
 impl Arrows2D {
     /// Returns the [`ComponentDescriptor`] for [`Self::vectors`].
+    ///
+    /// The corresponding component is [`crate::components::Vector2D`].
     #[inline]
     pub fn descriptor_vectors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -99,6 +101,8 @@ impl Arrows2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::origins`].
+    ///
+    /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_origins() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -109,6 +113,8 @@ impl Arrows2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
+    ///
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -119,6 +125,8 @@ impl Arrows2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -129,6 +137,8 @@ impl Arrows2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    ///
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -139,6 +149,8 @@ impl Arrows2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    ///
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -149,6 +161,8 @@ impl Arrows2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
+    ///
+    /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -159,6 +173,8 @@ impl Arrows2D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    ///
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

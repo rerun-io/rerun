@@ -15,13 +15,13 @@ fn main() -> anyhow::Result<()> {
     let query = RangeQuery::new(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING);
 
     // Find all relevant data for a query:
-    let chunk = chunk.range(&query, MyPoint::name());
-    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoint::name());
+    let chunk = chunk.range(&query, &MyPoint::descriptor());
+    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoint::descriptor());
 
     // And then slice it as appropriate:
     let chunk = chunk
         .timeline_sliced(TimelineName::log_time())
-        .component_sliced(MyPoint::name());
+        .component_sliced(&MyPoint::descriptor());
     eprintln!("Sliced down to specific timeline and component:\n{chunk}");
 
     Ok(())

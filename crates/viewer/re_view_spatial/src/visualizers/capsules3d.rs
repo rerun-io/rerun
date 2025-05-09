@@ -3,8 +3,8 @@ use std::iter;
 use ordered_float::NotNan;
 use re_types::{
     archetypes::Capsules3D,
-    components::{self, ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels},
+    ArrowString,
 };
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
@@ -152,23 +152,25 @@ impl VisualizerSystem for Capsules3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_length_chunks) = results.get_required_chunks(&Length::name()) else {
+                let Some(all_length_chunks) =
+                    results.get_required_chunks(Capsules3D::descriptor_lengths())
+                else {
                     return Ok(());
                 };
                 let Some(all_radius_chunks) =
-                    results.get_required_chunks(&components::Radius::name())
+                    results.get_required_chunks(Capsules3D::descriptor_radii())
                 else {
                     return Ok(());
                 };
 
                 let num_lengths: usize = all_length_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>(Length::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|lengths| lengths.len())
                     .sum();
                 let num_radii: usize = all_radius_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<f32>(components::Radius::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<f32>())
                     .map(|radii| radii.len())
                     .sum();
                 let num_instances = num_lengths.max(num_radii);
@@ -177,14 +179,13 @@ impl VisualizerSystem for Capsules3DVisualizer {
                 }
 
                 let timeline = ctx.query.timeline();
-                let all_lengths_indexed =
-                    iter_slices::<f32>(&all_length_chunks, timeline, Length::name());
-                let all_radii_indexed =
-                    iter_slices::<f32>(&all_radius_chunks, timeline, components::Radius::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
+                let all_lengths_indexed = iter_slices::<f32>(&all_length_chunks, timeline);
+                let all_radii_indexed = iter_slices::<f32>(&all_radius_chunks, timeline);
+                let all_colors = results.iter_as(timeline, Capsules3D::descriptor_colors());
+                let all_labels = results.iter_as(timeline, Capsules3D::descriptor_labels());
+                let all_show_labels =
+                    results.iter_as(timeline, Capsules3D::descriptor_show_labels());
+                let all_class_ids = results.iter_as(timeline, Capsules3D::descriptor_class_ids());
 
                 let data = re_query::range_zip_2x4(
                     all_lengths_indexed,
@@ -242,7 +243,11 @@ impl TypedComponentFallbackProvider<Color> for Fallback {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Fallback {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<HalfSize3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Capsules3D::descriptor_radii(),
+            &Capsules3D::descriptor_labels(),
+        )
     }
 }
 

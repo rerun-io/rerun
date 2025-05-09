@@ -26,14 +26,16 @@ use re_chunk::{
     TimelineName, UnitChunkShared,
 };
 use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, Index, IndexColumnDescriptor, IndexValue, QueryExpression,
-    SparseFillStrategy, TimeColumnSelector,
+    ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
+    IndexValue, QueryExpression, SparseFillStrategy,
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
-use re_sorbet::SorbetColumnDescriptors;
-use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
+use re_sorbet::{
+    ChunkColumnDescriptors, ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor,
+    TimeColumnSelector,
+};
+use re_types_core::{archetypes, arrow_helpers::as_array_ref, ComponentDescriptor, Loggable as _};
 
 // ---
 
@@ -77,7 +79,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: SorbetColumnDescriptors,
+    view_contents: ChunkColumnDescriptors,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -335,20 +337,26 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             selected_contents
                 .iter()
                 .map(|(_view_idx, descr)| match descr {
-                    ColumnDescriptor::Time(_) => None,
+                    ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => None,
                     ColumnDescriptor::Component(descr) => {
                         descr.sanity_check();
 
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        let results = cache.latest_at(
-                            &query,
-                            &descr.entity_path,
-                            [ComponentDescriptor::from(descr)],
-                        );
+                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                        let component_descriptor = store
+                            .entity_component_descriptors_with_name(
+                                &descr.entity_path,
+                                descr.component_name,
+                            )
+                            .into_iter()
+                            .next()?;
 
-                        results.components.get(&descr.component_name).cloned()
+                        let results =
+                            cache.latest_at(&query, &descr.entity_path, [&component_descriptor]);
+
+                        results.components.into_values().next()
                     }
                 })
                 .collect_vec()
@@ -379,6 +387,23 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         selection
             .iter()
             .map(|column| match column {
+                ColumnSelector::RowId => {
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .find_map(|(idx, view_column)| {
+                            if let ColumnDescriptor::RowId(descr) = view_column {
+                                Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or((
+                            usize::MAX,
+                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                        ))
+                }
+
                 ColumnSelector::Time(selected_column) => {
                     let TimeColumnSelector {
                         timeline: selected_timeline,
@@ -387,9 +412,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     view_contents
                         .iter()
                         .enumerate()
-                        .filter_map(|(idx, view_column)| match view_column {
-                            ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                            ColumnDescriptor::Component(_) => None,
+                        .filter_map(|(idx, view_column)| if let ColumnDescriptor::Time(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
                         })
                         .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
                         .map_or_else(
@@ -419,9 +445,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     view_contents
                         .iter()
                         .enumerate()
-                        .filter_map(|(idx, view_column)| match view_column {
-                            ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
-                            ColumnDescriptor::Time(_) => None,
+                        .filter_map(|(idx, view_column)| if let ColumnDescriptor::Component(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
                         })
                         .find(|(_idx, view_descr)| {
                             view_descr.entity_path == *selected_entity_path
@@ -468,7 +495,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .iter()
             .enumerate()
             .map(|(idx, selected_column)| match selected_column {
-                ColumnDescriptor::Time(_) => Vec::new(),
+                ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => Vec::new(),
 
                 ColumnDescriptor::Component(column) => {
                     let chunks = self
@@ -522,7 +549,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns `None` if the chunk either doesn't contain a `ClearIsRecursive` column or if
         /// the end result is an empty chunk.
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
-            let list_array = chunk.components().get(&ClearIsRecursive::descriptor())?;
+            let list_array = chunk
+                .components()
+                .get(&archetypes::Clear::descriptor_is_recursive())?;
 
             let values = list_array
                 .values()
@@ -543,16 +572,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             (!chunk.is_empty()).then_some(chunk)
         }
 
-        use re_types_core::Component as _;
-        let component_descrs = [&ComponentDescriptor::new(ClearIsRecursive::name())];
+        let component_descrs = [&archetypes::Clear::descriptor_is_recursive()];
 
         // All unique entity paths present in the view contents.
         let entity_paths: IntSet<EntityPath> = view_contents
             .iter()
-            .filter_map(|col| match col {
-                ColumnDescriptor::Component(descr) => Some(descr.entity_path.clone()),
-                ColumnDescriptor::Time(_) => None,
-            })
+            .filter_map(|col| col.entity_path().cloned())
             .collect();
 
         entity_paths
@@ -658,7 +683,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
+    pub fn view_contents(&self) -> &ChunkColumnDescriptors {
         &self.init().view_contents
     }
 
@@ -1050,15 +1075,25 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
+                    // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                    let component_descriptor = store
+                        .entity_component_descriptors_with_name(
+                            &descr.entity_path,
+                            descr.component_name,
+                        )
+                        .into_iter()
+                        .next()?;
+
                     let results = cache.latest_at(
                         &query,
                         &descr.entity_path.clone(),
-                        [ComponentDescriptor::from(descr.clone())],
+                        [&component_descriptor],
                     );
 
                     *streaming_state = results
                         .components
-                        .get(&descr.component_name)
+                        .into_values()
+                        .next()
                         .map(|unit| StreamingJoinState::Retrofilled(unit.clone()));
                 }
             }
@@ -1163,16 +1198,15 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         }
 
                         StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| match col {
-                                ColumnDescriptor::Component(descr) => {
-                                    descr.component_name.sanity_check();
-                                    Some(re_types_core::ComponentDescriptor {
-                                        component_name: descr.component_name,
-                                        archetype_name: descr.archetype_name,
-                                        archetype_field_name: descr.archetype_field_name,
-                                    })
-                                },
-                                ColumnDescriptor::Time(_) => None,
+                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
+                                descr.component_name.sanity_check();
+                                Some(re_types_core::ComponentDescriptor {
+                                    component_name: descr.component_name,
+                                    archetype_name: descr.archetype_name,
+                                    archetype_field_name: descr.archetype_field_name,
+                                })
+                            } else {
+                                None
                             })?;
                             unit.components().get(&component_desc).cloned()
                         }
@@ -1197,6 +1231,19 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
+                ColumnDescriptor::RowId(_) => state
+                    .view_chunks
+                    .first()
+                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
+                    .map(|(row_idx, chunk)| {
+                        as_array_ref(
+                            chunk
+                                .row_ids_array()
+                                .slice(row_idx.load(Ordering::Acquire) as _, 1),
+                        )
+                    })
+                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+
                 ColumnDescriptor::Time(descr) => max_value_per_index
                     .get(descr.timeline().name())
                     .map_or_else(
@@ -1306,12 +1353,11 @@ mod tests {
     use re_format_arrow::format_record_batch;
     use re_log_types::{
         build_frame_nr, build_log_time,
-        example_components::{MyColor, MyLabel, MyPoint},
+        example_components::{MyColor, MyLabel, MyPoint, MyPoints},
         EntityPath, Timeline,
     };
     use re_query::StorageEngine;
-    use re_types::components::ClearIsRecursive;
-    use re_types_core::Component as _;
+    use re_types_core::{components, Component as _};
 
     use crate::{QueryCache, QueryEngine};
 
@@ -2441,41 +2487,41 @@ mod tests {
                 row_id1_1,
                 [build_frame_nr(frame1), build_log_time(frame1.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points1 as _)),
-                    (MyColor::descriptor(), None),
-                    (MyLabel::descriptor(), Some(&labels1 as _)), // shadowed by static
+                    (MyPoints::descriptor_points(), Some(&points1 as _)),
+                    (MyPoints::descriptor_colors(), None),
+                    (MyPoints::descriptor_labels(), Some(&labels1 as _)), // shadowed by static
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_3,
                 [build_frame_nr(frame3), build_log_time(frame3.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points3 as _)),
-                    (MyColor::descriptor(), Some(&colors3 as _)),
+                    (MyPoints::descriptor_points(), Some(&points3 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_5,
                 [build_frame_nr(frame5), build_log_time(frame5.into())],
                 [
-                    (MyPoint::descriptor(), Some(&points5 as _)),
-                    (MyColor::descriptor(), None),
+                    (MyPoints::descriptor_points(), Some(&points5 as _)),
+                    (MyPoints::descriptor_colors(), None),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_7_1,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_1 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_2,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_2 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_3,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::descriptor(), Some(&points7_3 as _))],
+                [(MyPoints::descriptor_points(), Some(&points7_3 as _))],
             )
             .build()?;
 
@@ -2493,20 +2539,20 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::descriptor(), Some(&points2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id2_3,
                 [build_frame_nr(frame3)],
                 [
-                    (MyPoint::descriptor(), Some(&points3 as _)),
-                    (MyColor::descriptor(), Some(&colors3 as _)),
+                    (MyPoints::descriptor_points(), Some(&points3 as _)),
+                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::descriptor(), Some(&points4 as _))],
+                [(MyPoints::descriptor_points(), Some(&points4 as _))],
             )
             .build()?;
 
@@ -2520,17 +2566,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::descriptor(), Some(&points2 as _))],
+                [(MyPoints::descriptor_points(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::descriptor(), Some(&points4 as _))],
+                [(MyPoints::descriptor_points(), Some(&points4 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_6,
                 [build_frame_nr(frame6)],
-                [(MyPoint::descriptor(), Some(&points6 as _))],
+                [(MyPoints::descriptor_points(), Some(&points6 as _))],
             )
             .build()?;
 
@@ -2544,17 +2590,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_4,
                 [build_frame_nr(frame4)],
-                [(MyColor::descriptor(), Some(&colors4 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors4 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_5,
                 [build_frame_nr(frame5)],
-                [(MyColor::descriptor(), Some(&colors5 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors5 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_7,
                 [build_frame_nr(frame7)],
-                [(MyColor::descriptor(), Some(&colors7 as _))],
+                [(MyPoints::descriptor_colors(), Some(&colors7 as _))],
             )
             .build()?;
 
@@ -2566,7 +2612,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 TimePoint::default(),
-                [(MyLabel::descriptor(), Some(&labels2 as _))],
+                [(MyPoints::descriptor_labels(), Some(&labels2 as _))],
             )
             .build()?;
 
@@ -2578,7 +2624,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id6_1,
                 TimePoint::default(),
-                [(MyLabel::descriptor(), Some(&labels3 as _))],
+                [(MyPoints::descriptor_labels(), Some(&labels3 as _))],
             )
             .build()?;
 
@@ -2598,15 +2644,18 @@ mod tests {
         let frame60 = TimeInt::new_temporal(60);
         let frame65 = TimeInt::new_temporal(65);
 
-        let clear_flat = ClearIsRecursive(false.into());
-        let clear_recursive = ClearIsRecursive(true.into());
+        let clear_flat = components::ClearIsRecursive(false.into());
+        let clear_recursive = components::ClearIsRecursive(true.into());
 
         let row_id1_1 = RowId::new();
         let chunk1 = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 row_id1_1,
                 TimePoint::default(),
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2628,7 +2677,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_1,
                 [build_frame_nr(frame35), build_log_time(frame35.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .build()?;
 
@@ -2640,17 +2692,26 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame55), build_log_time(frame55.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2662,7 +2723,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_flat as _),
+                )],
             )
             .build()?;
 
@@ -2674,7 +2738,10 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
+                [(
+                    archetypes::Clear::descriptor_is_recursive(),
+                    Some(&clear_recursive as _),
+                )],
             )
             .build()?;
 

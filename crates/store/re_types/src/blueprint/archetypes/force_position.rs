@@ -37,6 +37,8 @@ pub struct ForcePosition {
 
 impl ForcePosition {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -47,6 +49,8 @@ impl ForcePosition {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ForceStrength`].
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -57,6 +61,8 @@ impl ForcePosition {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::position`].
+    ///
+    /// The corresponding component is [`crate::components::Position2D`].
     #[inline]
     pub fn descriptor_position() -> ComponentDescriptor {
         ComponentDescriptor {

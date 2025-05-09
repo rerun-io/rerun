@@ -4,10 +4,11 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{
-    ApplicationId, ComponentPath, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName,
+use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
+use re_types::{
+    archetypes::RecordingProperties,
+    components::{Name, Timestamp},
 };
-use re_types::components::{Name, Timestamp};
 use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
@@ -457,70 +458,6 @@ fn entity_tree_stats_ui(
     }
 }
 
-/// Show a component path and make it selectable.
-pub fn component_path_button(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    component_path: &ComponentPath,
-    db: &re_entity_db::EntityDb,
-) -> egui::Response {
-    component_path_button_to(
-        ctx,
-        ui,
-        component_path.component_name.short_name(),
-        component_path,
-        db,
-    )
-}
-
-/// Show a component path and make it selectable.
-pub fn component_path_button_to(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    component_path: &ComponentPath,
-    db: &re_entity_db::EntityDb,
-) -> egui::Response {
-    let item = Item::ComponentPath(component_path.clone());
-    let is_static = db.storage_engine().store().entity_has_static_component(
-        component_path.entity_path(),
-        component_path.component_name(),
-    );
-    let icon = if is_static {
-        &icons::COMPONENT_STATIC
-    } else {
-        &icons::COMPONENT_TEMPORAL
-    };
-    let response = ui.selectable_label_with_icon(
-        icon,
-        text,
-        ctx.selection().contains_item(&item),
-        re_ui::LabelStyle::Normal,
-    );
-
-    let response = response.on_hover_ui(|ui| {
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // Make tooltip as wide as needed
-
-        list_item::list_item_scope(ui, "component_path_tooltip", |ui| {
-            ui.list_item().interactive(false).show_flat(
-                ui,
-                list_item::LabelContent::new(if is_static {
-                    "Static component"
-                } else {
-                    "Temporal component"
-                })
-                .with_icon(icon),
-            );
-
-            component_path
-                .component_name
-                .data_ui_recording(ctx, ui, UiLayout::Tooltip);
-        });
-    });
-
-    cursor_interact_with_selectable(ctx, response, item)
-}
-
 pub fn data_blueprint_button_to(
     ctx: &ViewerContext<'_>,
     query: &re_chunk_store::LatestAtQuery,
@@ -755,15 +692,19 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let recording_name = if let Some(recording_name) = entity_db.recording_property::<Name>() {
+    let recording_name = if let Some(recording_name) =
+        entity_db.recording_property::<Name>(&RecordingProperties::descriptor_name())
+    {
         Some(recording_name.to_string())
     } else {
-        entity_db.recording_property::<Timestamp>().map(|started| {
-            re_log_types::Timestamp::from(started.0)
-                .to_jiff_zoned(ctx.app_options().timestamp_format)
-                .strftime("%H:%M:%S")
-                .to_string()
-        })
+        entity_db
+            .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time())
+            .map(|started| {
+                re_log_types::Timestamp::from(started.0)
+                    .to_jiff_zoned(ctx.app_options().timestamp_format)
+                    .strftime("%H:%M:%S")
+                    .to_string()
+            })
     }
     .unwrap_or("<unknown>".to_owned());
 

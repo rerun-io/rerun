@@ -23,23 +23,23 @@ use re_types_core::Component as _;
 fn query_latest_array(
     store: &ChunkStore,
     entity_path: &EntityPath,
-    component_desc: &ComponentDescriptor,
+    component_descr: &ComponentDescriptor,
     query: &LatestAtQuery,
 ) -> Option<(TimeInt, RowId, ArrayRef)> {
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_desc.component_name)
+        .latest_at_relevant_chunks(query, entity_path, component_descr)
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at(query, component_desc.component_name)
+                .latest_at(query, component_descr)
                 .into_unit()
                 .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(&component_desc.component_name)
+    unit.component_batch_raw(component_descr)
         .map(|array| (data_time, row_id, array))
 }
 
@@ -58,7 +58,8 @@ fn all_components() -> anyhow::Result<()> {
         |store: &ChunkStore, entity_path: &EntityPath, expected: Option<&[ComponentDescriptor]>| {
             let timeline = TimelineName::new("frame_nr");
 
-            let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
+            let component_names =
+                store.all_components_on_timeline_sorted_by_name(&timeline, entity_path);
 
             let expected_component_names = expected.map(|expected| {
                 let expected: ComponentNameSet =
@@ -776,18 +777,17 @@ fn range() -> anyhow::Result<()> {
     #[allow(clippy::type_complexity)]
     let assert_range_components =
         |time_range: ResolvedTimeRange,
-         component_desc: ComponentDescriptor,
+         component_descr: ComponentDescriptor,
          row_ids_at_times: &[(TimeInt, RowId)]| {
             let timeline_frame_nr = TimelineName::new("frame_nr");
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let results =
-                store.range_relevant_chunks(&query, &entity_path, component_desc.component_name);
+            let results = store.range_relevant_chunks(&query, &entity_path, &component_descr);
 
-            eprintln!("================= {component_desc} @ {query:?} ===============");
+            eprintln!("================= {component_descr} @ {query:?} ===============");
             let mut results_processed = 0usize;
             for chunk in results {
-                let chunk = chunk.range(&query, component_desc.component_name);
+                let chunk = chunk.range(&query, &component_descr);
                 eprintln!("{chunk}");
                 for (data_time, row_id) in chunk.iter_indices(&timeline_frame_nr) {
                     let (expected_data_time, expected_row_id) = row_ids_at_times[results_processed];

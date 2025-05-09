@@ -2,8 +2,8 @@ use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, DrawOrder, Radius, ShowLabels},
+    ArrowString,
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
@@ -186,7 +186,8 @@ impl VisualizerSystem for Lines2DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_strip_chunks) = results.get_required_chunks(&LineStrip2D::name())
+                let Some(all_strip_chunks) =
+                    results.get_required_chunks(LineStrips2D::descriptor_strips())
                 else {
                     return Ok(());
                 };
@@ -195,7 +196,7 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                 let num_strips = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>(LineStrip2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>())
                     .map(|strips| strips.len())
                     .sum();
                 if num_strips == 0 {
@@ -205,18 +206,18 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                 let num_vertices = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>(LineStrip2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 2]]>())
                     .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
 
-                let all_strips_indexed =
-                    iter_slices::<&[[f32; 2]]>(&all_strip_chunks, timeline, LineStrip2D::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_strips_indexed = iter_slices::<&[[f32; 2]]>(&all_strip_chunks, timeline);
+                let all_colors = results.iter_as(timeline, LineStrips2D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, LineStrips2D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, LineStrips2D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, LineStrips2D::descriptor_class_ids());
+                let all_show_labels =
+                    results.iter_as(timeline, LineStrips2D::descriptor_show_labels());
 
                 let data = re_query::range_zip_1x5(
                     all_strips_indexed,
@@ -278,7 +279,11 @@ impl TypedComponentFallbackProvider<DrawOrder> for Lines2DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Lines2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<LineStrip2D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &LineStrips2D::descriptor_strips(),
+            &LineStrips2D::descriptor_labels(),
+        )
     }
 }
 

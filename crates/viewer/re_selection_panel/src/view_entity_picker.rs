@@ -48,16 +48,16 @@ impl ViewEntityPicker {
                     .set_side_margin(false)
                     .scrollable([false, false])
             },
-            |ui, open| {
+            |ui| {
                 // 80%, never more than 500px
                 ui.set_max_height(f32::min(ui.ctx().screen_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
-                    *open = false;
+                    ui.close();
                     return;
                 };
 
                 let Some(view) = viewport_blueprint.view(view_id) else {
-                    *open = false;
+                    ui.close();
                     return;
                 };
 

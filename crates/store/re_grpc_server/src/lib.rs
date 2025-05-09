@@ -71,7 +71,7 @@ pub async fn serve(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
     shutdown: shutdown::Shutdown,
-) -> Result<(), tonic::transport::Error> {
+) -> anyhow::Result<()> {
     serve_impl(addr, MessageProxy::new(memory_limit), shutdown).await
 }
 
@@ -79,13 +79,10 @@ async fn serve_impl(
     addr: SocketAddr,
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
-) -> Result<(), tonic::transport::Error> {
-    let tcp_listener = TcpListener::bind(addr)
-        .await
-        .unwrap_or_else(|err| panic!("failed to bind listener on {addr}: {err}"));
-
+) -> anyhow::Result<()> {
+    let tcp_listener = TcpListener::bind(addr).await?;
     let incoming =
-        TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
+        TcpIncoming::from_listener(tcp_listener, true, None).map_err(|err| anyhow::anyhow!(err))?;
 
     let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
         format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
@@ -115,7 +112,9 @@ async fn serve_impl(
         .layer(grpc_web) // Support `grpc-web` clients
         .add_routes(routes)
         .serve_with_incoming_shutdown(incoming, shutdown.wait())
-        .await
+        .await?;
+
+    Ok(())
 }
 
 /// Start a Rerun server, listening on `addr`.

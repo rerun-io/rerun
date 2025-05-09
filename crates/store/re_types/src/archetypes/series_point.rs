@@ -101,6 +101,8 @@ pub struct SeriesPoint {
 
 impl SeriesPoint {
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -111,6 +113,8 @@ impl SeriesPoint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::marker`].
+    ///
+    /// The corresponding component is [`crate::components::MarkerShape`].
     #[inline]
     pub fn descriptor_marker() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -121,6 +125,8 @@ impl SeriesPoint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::name`].
+    ///
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_name() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -131,6 +137,8 @@ impl SeriesPoint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
+    ///
+    /// The corresponding component is [`crate::components::SeriesVisible`].
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -141,6 +149,8 @@ impl SeriesPoint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::marker_size`].
+    ///
+    /// The corresponding component is [`crate::components::MarkerSize`].
     #[inline]
     pub fn descriptor_marker_size() -> ComponentDescriptor {
         ComponentDescriptor {

@@ -1,10 +1,10 @@
+use std::hash::Hasher;
 use std::sync::Arc;
 
+use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
+use crate::{invalid_field, missing_field, TypeConversionError};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
 use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
-
-use crate::{invalid_field, missing_field, TypeConversionError};
-
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
@@ -87,7 +87,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PartitionId {
     pub id: String,
 }
@@ -890,7 +890,17 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     }
 }
 
-// --
+// ---
+
+impl Eq for TaskId {}
+
+impl std::hash::Hash for TaskId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.as_str().hash(state)
+    }
+}
+
+// ---
 
 #[cfg(test)]
 mod tests {

@@ -79,6 +79,8 @@ pub struct AnnotationContext {
 
 impl AnnotationContext {
     /// Returns the [`ComponentDescriptor`] for [`Self::context`].
+    ///
+    /// The corresponding component is [`crate::components::AnnotationContext`].
     #[inline]
     pub fn descriptor_context() -> ComponentDescriptor {
         ComponentDescriptor {

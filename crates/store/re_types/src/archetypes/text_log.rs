@@ -74,6 +74,8 @@ pub struct TextLog {
 
 impl TextLog {
     /// Returns the [`ComponentDescriptor`] for [`Self::text`].
+    ///
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -84,6 +86,8 @@ impl TextLog {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::level`].
+    ///
+    /// The corresponding component is [`crate::components::TextLogLevel`].
     #[inline]
     pub fn descriptor_level() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -94,6 +98,8 @@ impl TextLog {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
         ComponentDescriptor {

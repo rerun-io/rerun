@@ -1,21 +1,22 @@
 use ahash::HashMap;
-use egui::{text_selection::LabelSelectionState, NumExt as _};
+use egui::{text_selection::LabelSelectionState, NumExt as _, Ui};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
+use re_log_types::{EntityPath, LogMsg, ResolvedTimeRangeF, StoreId, TableId};
 use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
+use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_uri::Origin;
 use re_viewer_context::{
-    blueprint_timeline, AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender,
-    ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
-    RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
-    SystemCommandSender as _, TableContext, ViewClassExt as _, ViewClassRegistry, ViewStates,
-    ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle,
+    BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
+    GlobalContext, Item, PlayState, RecordingConfig, SelectionChange, StorageContext, StoreContext,
+    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, ViewClassExt as _,
+    ViewClassRegistry, ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
@@ -168,6 +169,7 @@ impl AppState {
         welcome_screen_state: &WelcomeScreenState,
         is_history_enabled: bool,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
+        runtime: &AsyncRuntimeHandle,
     ) {
         re_tracing::profile_function!();
 
@@ -609,11 +611,7 @@ impl AppState {
                         match display_mode {
                             DisplayMode::LocalTable(table_id) => {
                                 if let Some(store) = ctx.storage_context.tables.get(table_id) {
-                                    let context = TableContext {
-                                        table_id: table_id.clone(),
-                                        store,
-                                    };
-                                    crate::ui::table_ui(&ctx, ui, &context);
+                                    table_ui(&ctx, runtime, ui, table_id, store);
                                 } else {
                                     re_log::error_once!(
                                         "Could not find batch store for table id {}",
@@ -736,6 +734,33 @@ impl AppState {
             undo_state.blueprint_query()
         }
     }
+}
+
+fn table_ui(
+    ctx: &ViewerContext<'_>,
+    runtime: &AsyncRuntimeHandle,
+    ui: &mut Ui,
+    table_id: &TableId,
+    store: &TableStore,
+) {
+    re_dataframe_ui::DataFusionTableWidget::new(store.session_context(), TableStore::TABLE_NAME)
+        .title(table_id.as_str())
+        .column_renamer(|desc| match desc {
+            ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => {
+                desc.short_name().to_owned()
+            }
+
+            // In most case, user tables don't have any entities, so we filter out the root entity
+            // noise in column names.
+            ColumnDescriptorRef::Component(desc) => {
+                if desc.entity_path == EntityPath::root() {
+                    desc.component_name.short_name().to_owned()
+                } else {
+                    desc.column_name(BatchType::Dataframe)
+                }
+            }
+        })
+        .show(ctx, runtime, ui);
 }
 
 fn move_time(

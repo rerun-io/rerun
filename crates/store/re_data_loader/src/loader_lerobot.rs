@@ -421,7 +421,7 @@ fn load_episode_video(
                         video_frame_reference_indicators_list_array,
                     ),
                     (
-                        video_timestamp_batch.descriptor().into_owned(),
+                        VideoFrameReference::descriptor_timestamp(),
                         video_timestamp_list_array,
                     ),
                 ]

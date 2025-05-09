@@ -5,7 +5,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_log_types::{build_frame_nr, ResolvedTimeRange, TimeType, Timeline};
-use re_types_core::{Archetype as _, Component as _};
+use re_types_core::Archetype as _;
 
 use re_query::{clamped_zip_1x2, range_zip_1x2, RangeResults};
 
@@ -31,9 +31,9 @@ fn main() -> anyhow::Result<()> {
 
     // * `get_required` returns an error if the chunk is missing.
     // * `get` returns an option.
-    let all_points_chunks = results.get_required(&MyPoint::name())?;
-    let all_colors_chunks = results.get(&MyColor::name());
-    let all_labels_chunks = results.get(&MyLabel::name());
+    let all_points_chunks = results.get_required(&MyPoints::descriptor_points())?;
+    let all_colors_chunks = results.get(&MyPoints::descriptor_colors());
+    let all_labels_chunks = results.get(&MyPoints::descriptor_labels());
 
     // You can always use the standard deserialization path.
     //
@@ -43,8 +43,8 @@ fn main() -> anyhow::Result<()> {
     // to reference to.
     let all_points_indexed = all_points_chunks.iter().flat_map(|chunk| {
         izip!(
-            chunk.iter_component_indices(query.timeline(), &MyPoint::name()),
-            chunk.iter_component::<MyPoint>()
+            chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_points()),
+            chunk.iter_component::<MyPoint>(&MyPoints::descriptor_points()),
         )
     });
     let all_labels_indexed = all_labels_chunks
@@ -52,8 +52,8 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .flat_map(|chunk| {
             izip!(
-                chunk.iter_component_indices(query.timeline(), &MyLabel::name()),
-                chunk.iter_component::<MyLabel>()
+                chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_labels()),
+                chunk.iter_component::<MyLabel>(&MyPoints::descriptor_labels())
             )
         });
 
@@ -64,8 +64,8 @@ fn main() -> anyhow::Result<()> {
         .iter()
         .flat_map(|chunk| {
             izip!(
-                chunk.iter_component_indices(query.timeline(), &MyColor::name()),
-                chunk.iter_slices::<u32>(MyColor::name()),
+                chunk.iter_component_indices(query.timeline(), &MyPoints::descriptor_colors()),
+                chunk.iter_slices::<u32>(MyPoints::descriptor_colors()),
             )
         });
 
@@ -109,15 +109,12 @@ fn store() -> anyhow::Result<ChunkStoreHandle> {
         let timepoint = [build_frame_nr(123)];
 
         let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(
+            .with_archetype(
                 RowId::new(),
                 timepoint,
-                [
-                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)]
-                        as &dyn re_types_core::ComponentBatch, //
-                    &[MyColor::from_rgb(255, 0, 0)],
-                    &[MyLabel("a".into()), MyLabel("b".into())],
-                ],
+                &MyPoints::new([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])
+                    .with_colors([MyColor::from_rgb(255, 0, 0)])
+                    .with_labels([MyLabel("a".into()), MyLabel("b".into())]),
             )
             .build()?;
 
@@ -128,17 +125,15 @@ fn store() -> anyhow::Result<ChunkStoreHandle> {
         let timepoint = [build_frame_nr(423)];
 
         let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(
+            .with_archetype(
                 RowId::new(),
                 timepoint,
-                [
-                    &[
-                        MyPoint::new(10.0, 20.0),
-                        MyPoint::new(30.0, 40.0),
-                        MyPoint::new(50.0, 60.0),
-                    ] as &dyn re_types_core::ComponentBatch, //
-                    &[MyColor::from_rgb(255, 0, 0), MyColor::from_rgb(0, 0, 255)],
-                ],
+                &MyPoints::new([
+                    MyPoint::new(10.0, 20.0),
+                    MyPoint::new(30.0, 40.0),
+                    MyPoint::new(50.0, 60.0),
+                ])
+                .with_colors([MyColor::from_rgb(255, 0, 0), MyColor::from_rgb(0, 0, 255)]),
             )
             .build()?;
 

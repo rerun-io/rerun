@@ -318,7 +318,13 @@ pub trait UiExt {
     ) -> Option<R> {
         let ui = self.ui();
 
-        if !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+        if !ui.memory_mut(|mem| {
+            let is_open = mem.is_popup_open(popup_id);
+            if is_open {
+                mem.keep_popup_open(popup_id);
+            }
+            is_open
+        }) {
             return None;
         }
 
@@ -356,7 +362,7 @@ pub trait UiExt {
             });
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere() {
-            ui.memory_mut(|mem| mem.close_popup());
+            ui.memory_mut(|mem| mem.close_popup(popup_id));
         }
         ret
     }

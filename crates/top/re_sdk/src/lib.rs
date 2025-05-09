@@ -52,7 +52,7 @@ pub fn default_server_addr() -> std::net::SocketAddr {
 #[allow(clippy::unnecessary_wraps)]
 pub fn default_flush_timeout() -> Option<std::time::Duration> {
     // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
-    Some(std::time::Duration::from_secs(2))
+    Some(std::time::Duration::from_secs(3))
 }
 
 pub use re_log_types::{

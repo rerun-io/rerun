@@ -142,6 +142,8 @@ pub struct Pinhole {
 
 impl Pinhole {
     /// Returns the [`ComponentDescriptor`] for [`Self::image_from_camera`].
+    ///
+    /// The corresponding component is [`crate::components::PinholeProjection`].
     #[inline]
     pub fn descriptor_image_from_camera() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -152,6 +154,8 @@ impl Pinhole {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::resolution`].
+    ///
+    /// The corresponding component is [`crate::components::Resolution`].
     #[inline]
     pub fn descriptor_resolution() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -162,6 +166,8 @@ impl Pinhole {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::camera_xyz`].
+    ///
+    /// The corresponding component is [`crate::components::ViewCoordinates`].
     #[inline]
     pub fn descriptor_camera_xyz() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -172,6 +178,8 @@ impl Pinhole {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::image_plane_distance`].
+    ///
+    /// The corresponding component is [`crate::components::ImagePlaneDistance`].
     #[inline]
     pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
         ComponentDescriptor {

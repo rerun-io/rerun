@@ -42,6 +42,8 @@ pub struct EntityBehavior {
 
 impl EntityBehavior {
     /// Returns the [`ComponentDescriptor`] for [`Self::interactive`].
+    ///
+    /// The corresponding component is [`crate::components::Interactive`].
     #[inline]
     pub fn descriptor_interactive() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -52,6 +54,8 @@ impl EntityBehavior {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    ///
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

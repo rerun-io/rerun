@@ -1,4 +1,5 @@
 use egui::{text::TextWrapping, Align, Align2, NumExt as _, RichText, Ui};
+use std::sync::Arc;
 
 use super::{ContentContext, DesiredWidth, ListItemContent, ListVisuals};
 use crate::{DesignTokens, Icon, LabelStyle};
@@ -253,8 +254,11 @@ impl ListItemContent for LabelContent<'_> {
             text_rect.max.x -= button_response.rect.width() + DesignTokens::text_to_icon_padding();
         }
 
-        let mut layout_job =
-            text.into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+        let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
+            ui.style(),
+            egui::FontSelection::Default,
+            Align::LEFT,
+        ));
         layout_job.wrap = TextWrapping::from_wrap_mode_and_width(text_wrap_mode, text_rect.width());
 
         let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
@@ -286,9 +290,11 @@ impl ListItemContent for LabelContent<'_> {
                 text = text.italics();
             }
 
-            let layout_job =
-                text.clone()
-                    .into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+            let layout_job = Arc::unwrap_or_clone(text.clone().into_layout_job(
+                ui.style(),
+                egui::FontSelection::Default,
+                Align::LEFT,
+            ));
             let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
 
             let mut desired_width = galley.size().x;

@@ -12,7 +12,7 @@ use re_renderer::{
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
     components::{Blob, MediaType, VideoTimestamp},
-    Archetype as _, Component as _,
+    Archetype as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,
@@ -87,19 +87,15 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                 let entity_path = ctx.target_entity_path;
 
                 let Some(all_video_timestamp_chunks) =
-                    results.get_required_chunks(&VideoTimestamp::name())
+                    results.get_required_chunks(VideoFrameReference::descriptor_timestamp())
                 else {
                     return Ok(());
                 };
                 let all_video_references =
-                    results.iter_as(timeline, re_types::components::EntityPath::name());
+                    results.iter_as(timeline, VideoFrameReference::descriptor_video_reference());
 
                 for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
-                    entity_iterator::iter_component(
-                        &all_video_timestamp_chunks,
-                        timeline,
-                        VideoTimestamp::name(),
-                    ),
+                    entity_iterator::iter_component(&all_video_timestamp_chunks, timeline),
                     all_video_references.slice::<String>(),
                 ) {
                     let Some(video_timestamp): Option<&VideoTimestamp> = video_timestamps.first()
@@ -397,7 +393,7 @@ fn latest_at_query_video_from_datastore(
         AssetVideo::all_components().iter(),
     );
 
-    let blob_row_id = results.component_row_id(&Blob::name())?;
+    let blob_row_id = results.component_row_id(&AssetVideo::descriptor_blob())?;
     let blob = results.component_instance::<Blob>(0)?;
     let media_type = results.component_instance::<MediaType>(0);
 

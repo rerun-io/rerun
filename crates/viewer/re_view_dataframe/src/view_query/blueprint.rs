@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
-use re_chunk_store::{ColumnDescriptor, ColumnSelector, ComponentColumnSelector};
+use re_chunk_store::ColumnDescriptor;
 use re_log_types::{EntityPath, ResolvedTimeRange, Timeline, TimelineName};
+use re_sorbet::{ColumnSelector, ComponentColumnSelector};
+use re_types::blueprint::archetypes::DataframeQuery;
 use re_types::blueprint::{components, datatypes};
 use re_viewer_context::{ViewSystemExecutionError, ViewerContext};
 
@@ -19,7 +21,9 @@ impl Query {
     ) -> Result<re_log_types::TimelineName, ViewSystemExecutionError> {
         let timeline_name = self
             .query_property
-            .component_or_empty::<components::TimelineName>()?;
+            .component_or_empty::<components::TimelineName>(
+                &DataframeQuery::descriptor_timeline(),
+            )?;
 
         // if the timeline is unset, we "freeze" it to the current time panel timeline
         if let Some(timeline_name) = timeline_name {
@@ -49,18 +53,23 @@ impl Query {
     /// Note: this resets the range filter timestamps to -inf/+inf as any other value might be
     /// invalidated.
     pub fn save_timeline_name(&self, ctx: &ViewerContext<'_>, timeline_name: &TimelineName) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::TimelineName::from(timeline_name.as_str()));
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_timeline(),
+            &components::TimelineName::from(timeline_name.as_str()),
+        );
 
         // clearing the range filter is equivalent to setting it to the default -inf/+inf
         self.query_property
-            .clear_blueprint_component::<components::FilterByRange>(ctx);
+            .clear_blueprint_component(ctx, DataframeQuery::descriptor_timeline());
     }
 
     pub fn filter_by_range(&self) -> Result<ResolvedTimeRange, ViewSystemExecutionError> {
         Ok(self
             .query_property
-            .component_or_empty::<components::FilterByRange>()?
+            .component_or_empty::<components::FilterByRange>(
+                &DataframeQuery::descriptor_filter_by_range(),
+            )?
             .map(|range_filter| (ResolvedTimeRange::new(range_filter.start, range_filter.end)))
             .unwrap_or(ResolvedTimeRange::EVERYTHING))
     }
@@ -68,10 +77,11 @@ impl Query {
     pub fn save_filter_by_range(&self, ctx: &ViewerContext<'_>, range: ResolvedTimeRange) {
         if range == ResolvedTimeRange::EVERYTHING {
             self.query_property
-                .clear_blueprint_component::<components::FilterByRange>(ctx);
+                .clear_blueprint_component(ctx, DataframeQuery::descriptor_filter_by_range());
         } else {
             self.query_property.save_blueprint_component(
                 ctx,
+                &DataframeQuery::descriptor_filter_by_range(),
                 &components::FilterByRange::new(range.min(), range.max()),
             );
         }
@@ -98,7 +108,9 @@ impl Query {
     ) -> Result<Option<components::FilterIsNotNull>, ViewSystemExecutionError> {
         Ok(self
             .query_property
-            .component_or_empty::<components::FilterIsNotNull>()?)
+            .component_or_empty::<components::FilterIsNotNull>(
+                &DataframeQuery::descriptor_filter_is_not_null(),
+            )?)
     }
 
     pub fn save_filter_is_not_null(
@@ -106,20 +118,28 @@ impl Query {
         ctx: &ViewerContext<'_>,
         filter_is_not_null: &components::FilterIsNotNull,
     ) {
-        self.query_property
-            .save_blueprint_component(ctx, filter_is_not_null);
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_filter_is_not_null(),
+            filter_is_not_null,
+        );
     }
 
     pub fn latest_at_enabled(&self) -> Result<bool, ViewSystemExecutionError> {
         Ok(self
             .query_property
-            .component_or_empty::<components::ApplyLatestAt>()?
+            .component_or_empty::<components::ApplyLatestAt>(
+                &DataframeQuery::descriptor_apply_latest_at(),
+            )?
             .is_some_and(|comp| *comp.0))
     }
 
     pub fn save_latest_at_enabled(&self, ctx: &ViewerContext<'_>, enabled: bool) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::ApplyLatestAt(enabled.into()));
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_apply_latest_at(),
+            &components::ApplyLatestAt(enabled.into()),
+        );
     }
 
     pub fn save_selected_columns(
@@ -130,6 +150,10 @@ impl Query {
         let mut selected_columns = datatypes::SelectedColumns::default();
         for column in columns {
             match column {
+                ColumnSelector::RowId => {
+                    // selected_columns.row_id = true.into(); // TODO(#9921)
+                }
+
                 ColumnSelector::Time(desc) => {
                     selected_columns
                         .time_columns
@@ -149,18 +173,24 @@ impl Query {
             }
         }
 
-        self.query_property
-            .save_blueprint_component(ctx, &components::SelectedColumns(selected_columns));
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_select(),
+            &components::SelectedColumns(selected_columns),
+        );
     }
 
     pub fn save_all_columns_selected(&self, ctx: &ViewerContext<'_>) {
         self.query_property
-            .clear_blueprint_component::<components::SelectedColumns>(ctx);
+            .clear_blueprint_component(ctx, DataframeQuery::descriptor_select());
     }
 
     pub fn save_all_columns_unselected(&self, ctx: &ViewerContext<'_>) {
-        self.query_property
-            .save_blueprint_component(ctx, &components::SelectedColumns::default());
+        self.query_property.save_blueprint_component(
+            ctx,
+            &DataframeQuery::descriptor_select(),
+            &components::SelectedColumns::default(),
+        );
     }
 
     /// Given some view columns, list the columns that should be visible (aka "selected columns"),
@@ -177,10 +207,13 @@ impl Query {
     ) -> Result<Option<Vec<ColumnSelector>>, ViewSystemExecutionError> {
         let selected_columns = self
             .query_property
-            .component_or_empty::<components::SelectedColumns>()?;
+            .component_or_empty::<components::SelectedColumns>(
+                &DataframeQuery::descriptor_select(),
+            )?;
 
         // no selected columns means all columns are visible
         let Some(datatypes::SelectedColumns {
+            // row_id, // TODO(#9921)
             time_columns,
             component_columns,
         }) = selected_columns.as_deref()
@@ -207,6 +240,8 @@ impl Query {
         let result = view_columns
             .iter()
             .filter(|column| match column {
+                ColumnDescriptor::RowId(_) => false, // TODO(#9921)
+
                 ColumnDescriptor::Time(desc) => {
                     // we always include the query timeline column because we need it for the dataframe ui
                     desc.timeline_name() == query_timeline_name
@@ -250,23 +285,31 @@ impl Query {
 
         for action in actions {
             match action {
-                HideColumnAction::HideTimeColumn { timeline_name } => {
-                    selected_columns.retain(|column| match column {
-                        ColumnSelector::Time(desc) => desc.timeline != timeline_name,
-                        ColumnSelector::Component(_) => true,
+                HideColumnAction::RowId => {
+                    selected_columns.retain(|column| column != &ColumnSelector::RowId);
+                }
+
+                HideColumnAction::Time { timeline_name } => {
+                    selected_columns.retain(|column| {
+                        if let ColumnSelector::Time(desc) = column {
+                            desc.timeline != timeline_name
+                        } else {
+                            true
+                        }
                     });
                 }
 
-                HideColumnAction::HideComponentColumn {
+                HideColumnAction::Component {
                     entity_path,
                     component_name,
                 } => {
-                    selected_columns.retain(|column| match column {
-                        ColumnSelector::Component(selector) => {
+                    selected_columns.retain(|column| {
+                        if let ColumnSelector::Component(selector) = column {
                             selector.entity_path != entity_path
                                 || !component_name.matches(&selector.component_name)
+                        } else {
+                            true
                         }
-                        ColumnSelector::Time(_) => true,
                     });
                 }
             }

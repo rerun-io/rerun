@@ -241,6 +241,10 @@ For details see [the test section above](#tests).
 It is not strictly required, but we recommend [`cargo nextest`](https://nexte.st/) for running Rust tests as it is significantly faster than `cargo test` and yields much more readable output.
 Note however, that as of writing `cargo nextest` does not yet support doc tests, those need to be run with `cargo test`.
 
+<!-- TODO(#9849): remove this paragraph when this issue is fixed -->
+
+To build the Wasm target on macOS, you will need to install LLVM/clang 18 or later (e.g. using MacPorts or Homebrew), because the Apple-provided toolchain fails compilation ("LLVM error: section too large"). See [this issue](https://github.com/rerun-io/rerun/issues/9849)
+
 ### Linting
 Prior to pushing changes to a PR, at a minimum, you should always run `pixi run fast-lint`. This is designed to run
 in a few seconds for repeated runs and should catch the more trivial issues to avoid wasting CI time.

@@ -5,6 +5,7 @@ use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::hash::Hash64;
 use re_log_types::{debug_assert_archetype_has_components, ComponentPath};
+use re_types::ComponentDescriptor;
 use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
@@ -65,7 +66,7 @@ impl DataUi for InstancePath {
         let components = crate::sorted_component_list_for_ui(&components);
         let indicator_count = components
             .iter()
-            .filter(|c| c.is_indicator_component())
+            .filter(|c| c.component_name.is_indicator_component())
             .count();
 
         let mut components = latest_at(db, query, entity_path, &components);
@@ -105,8 +106,9 @@ impl DataUi for InstancePath {
             // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
             // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
             if !self.is_all() {
-                components
-                    .retain(|(component, _chunk)| component != &components::GraphEdge::name());
+                components.retain(|(component, _chunk)| {
+                    component.component_name != components::GraphEdge::name()
+                });
             }
 
             component_list_ui(
@@ -122,7 +124,12 @@ impl DataUi for InstancePath {
         }
 
         if instance.is_all() {
-            let component_map = components.into_iter().collect();
+            let component_map = components
+                .into_iter()
+                // TODO(#6889): Below methods aren't handling multiple images yet.
+                .map(|(descr, chunk)| (descr.component_name, chunk))
+                .collect();
+
             preview_if_image_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
             preview_if_blob_ui(ctx, ui, ui_layout, query, entity_path, &component_map);
         }
@@ -133,21 +140,21 @@ fn latest_at(
     db: &re_entity_db::EntityDb,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    components: &[ComponentName],
-) -> Vec<(ComponentName, UnitChunkShared)> {
-    let components: Vec<(ComponentName, UnitChunkShared)> = components
+    components: &[ComponentDescriptor],
+) -> Vec<(ComponentDescriptor, UnitChunkShared)> {
+    let components: Vec<(ComponentDescriptor, UnitChunkShared)> = components
         .iter()
-        .filter_map(|&component_name| {
+        .filter_map(|component_descr| {
             let mut results =
                 db.storage_engine()
                     .cache()
-                    .latest_at(query, entity_path, [component_name]);
+                    .latest_at(query, entity_path, [component_descr]);
 
             // We ignore components that are unset at this point in time
             results
                 .components
-                .remove(&component_name)
-                .map(|unit| (component_name, unit))
+                .remove(component_descr)
+                .map(|unit| (component_descr.clone(), unit))
         })
         .collect();
     components
@@ -162,11 +169,11 @@ fn component_list_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &re_log_types::EntityPath,
     instance: &re_log_types::Instance,
-    components: &[(ComponentName, UnitChunkShared)],
+    components: &[(ComponentDescriptor, UnitChunkShared)],
 ) {
     let indicator_count = components
         .iter()
-        .filter(|(c, _)| c.is_indicator_component())
+        .filter(|(c, _)| c.component_name.is_indicator_component())
         .count();
 
     let show_indicator_comps = match ui_layout {
@@ -185,17 +192,19 @@ fn component_list_ui(
         ui,
         egui::Id::from("component list").with(entity_path),
         |ui| {
-            for (component_name, unit) in components {
-                let component_name = *component_name;
-                if !show_indicator_comps && component_name.is_indicator_component() {
+            for (component_descr, unit) in components {
+                if !show_indicator_comps && component_descr.component_name.is_indicator_component()
+                {
                     continue;
                 }
 
-                let component_path = ComponentPath::new(entity_path.clone(), component_name);
+                let component_path =
+                    ComponentPath::new(entity_path.clone(), component_descr.clone());
+
                 let is_static = db
                     .storage_engine()
                     .store()
-                    .entity_has_static_component(entity_path, &component_name);
+                    .entity_has_static_component(entity_path, component_descr);
                 let icon = if is_static {
                     &re_ui::icons::COMPONENT_STATIC
                 } else {
@@ -211,52 +220,57 @@ fn component_list_ui(
                     list_item = list_item.force_hovered(is_hovered);
                 }
 
-                let response = if component_name.is_indicator_component() {
+                let response = if component_descr.component_name.is_indicator_component() {
                     list_item.show_flat(
                         ui,
-                        re_ui::list_item::LabelContent::new(component_name.short_name())
-                            .with_icon(icon),
+                        re_ui::list_item::LabelContent::new(
+                            component_descr.component_name.short_name(),
+                        )
+                        .with_icon(icon),
                     )
                 } else {
-                    let content =
-                        re_ui::list_item::PropertyContent::new(component_name.short_name())
-                            .with_icon(icon)
-                            .value_fn(|ui, _| {
-                                if instance.is_all() {
-                                    crate::ComponentPathLatestAtResults {
-                                        component_path: ComponentPath::new(
-                                            entity_path.clone(),
-                                            component_name,
-                                        ),
-                                        unit,
-                                    }
-                                    .data_ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                    );
-                                } else {
-                                    ctx.component_ui_registry().ui(
-                                        ctx,
-                                        ui,
-                                        UiLayout::List,
-                                        query,
-                                        db,
-                                        entity_path,
-                                        component_name,
-                                        unit,
-                                        instance,
-                                    );
-                                }
-                            });
+                    let content = re_ui::list_item::PropertyContent::new(
+                        component_descr.component_name.short_name(),
+                    )
+                    .with_icon(icon)
+                    .value_fn(|ui, _| {
+                        if instance.is_all() {
+                            crate::ComponentPathLatestAtResults {
+                                component_path: ComponentPath::new(
+                                    entity_path.clone(),
+                                    component_descr.clone(),
+                                ),
+                                unit,
+                            }
+                            .data_ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                            );
+                        } else {
+                            ctx.component_ui_registry().ui(
+                                ctx,
+                                ui,
+                                UiLayout::List,
+                                query,
+                                db,
+                                entity_path,
+                                component_descr,
+                                unit,
+                                instance,
+                            );
+                        }
+                    });
 
                     list_item.show_flat(ui, content)
                 };
 
                 let response = response.on_hover_ui(|ui| {
-                    component_name.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    component_descr
+                        .component_name
+                        .data_ui_recording(ctx, ui, UiLayout::Tooltip);
                 });
 
                 if interactive {
@@ -295,13 +309,23 @@ fn preview_if_image_ui(
 
     let image_buffer = component_map.get(&components::ImageBuffer::name())?;
     let buffer_cache_key = Hash64::hash(image_buffer.row_id()?);
-    let image_buffer = image_buffer
-        .component_mono::<components::ImageBuffer>()?
-        .ok()?;
 
+    // TODO(andreas): why does this not use the query cache like other queries?
+    // Use first buffer that we find, but then use the same tags for the format.
+    // TODO(andreas): Handle multiple types of images.
+    let image_buffer_desc =
+        image_buffer.get_first_component_descriptor(components::ImageBuffer::name())?;
+    let image_format_desc = ComponentDescriptor {
+        component_name: components::ImageFormat::name(),
+        ..image_buffer_desc.clone()
+    };
+
+    let image_buffer = image_buffer
+        .component_mono::<components::ImageBuffer>(image_buffer_desc)?
+        .ok()?;
     let image_format = component_map
         .get(&components::ImageFormat::name())?
-        .component_mono::<components::ImageFormat>()?
+        .component_mono::<components::ImageFormat>(&image_format_desc)?
         .ok()?;
 
     // TODO(#8129): it's ugly but indicators are going away next anyway.
@@ -330,10 +354,24 @@ fn preview_if_image_ui(
 
     let colormap = component_map
         .get(&components::Colormap::name())
-        .and_then(|colormap| colormap.component_mono::<components::Colormap>()?.ok());
+        .and_then(|colormap| {
+            colormap
+                .component_mono::<components::Colormap>(&ComponentDescriptor {
+                    component_name: components::Colormap::name(),
+                    ..image_buffer_desc.clone()
+                })?
+                .ok()
+        });
     let value_range = component_map
         .get(&components::Range1D::name())
-        .and_then(|colormap| colormap.component_mono::<components::ValueRange>()?.ok());
+        .and_then(|colormap| {
+            colormap
+                .component_mono::<components::ValueRange>(&ComponentDescriptor {
+                    component_name: components::ValueRange::name(),
+                    ..image_buffer_desc.clone()
+                })?
+                .ok()
+        });
     let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
         colormap,
         value_range: value_range
@@ -492,17 +530,39 @@ fn preview_if_blob_ui(
     entity_path: &re_log_types::EntityPath,
     component_map: &IntMap<ComponentName, UnitChunkShared>,
 ) -> Option<()> {
-    let blob = component_map.get(&components::Blob::name())?;
-    let blob_row_id = blob.row_id();
-    let blob = blob.component_mono::<components::Blob>()?.ok()?;
+    let blob_chunk = component_map.get(&components::Blob::name())?;
+    let blob_row_id = blob_chunk.row_id();
+
+    // TODO(andreas): why does this not use the query cache like other queries?
+    // Pick the first blob component we find but have other types be consistent with those tags.
+    // TODO(andreas): Handle multiple types of blobs.
+    let blob_desc = blob_chunk.get_first_component_descriptor(components::Blob::name())?;
+    let media_type_desc = ComponentDescriptor {
+        component_name: components::MediaType::name(),
+        ..blob_desc.clone()
+    };
+    let video_stamp_desc = ComponentDescriptor {
+        component_name: components::VideoTimestamp::name(),
+        ..blob_desc.clone()
+    };
+
+    let blob = blob_chunk
+        .component_mono::<components::Blob>(blob_desc)?
+        .ok()?;
     let media_type = component_map
         .get(&components::MediaType::name())
-        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok())
+        .and_then(|unit| {
+            unit.component_mono::<components::MediaType>(&media_type_desc)?
+                .ok()
+        })
         .or_else(|| components::MediaType::guess_from_data(&blob));
 
     let video_timestamp = component_map
         .get(&components::VideoTimestamp::name())
-        .and_then(|unit| unit.component_mono::<components::VideoTimestamp>()?.ok());
+        .and_then(|unit| {
+            unit.component_mono::<components::VideoTimestamp>(&video_stamp_desc)?
+                .ok()
+        });
 
     blob_preview_and_save_ui(
         ctx,

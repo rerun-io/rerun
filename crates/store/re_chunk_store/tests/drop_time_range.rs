@@ -31,7 +31,7 @@ fn drop_time_range() -> anyhow::Result<()> {
             store.num_temporal_events_for_component_on_timeline(
                 timeline.name(),
                 &entity_path,
-                MyColor::name(),
+                &MyColor::descriptor(),
             )
         };
 

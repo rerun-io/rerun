@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
@@ -7,8 +6,11 @@ use pyo3::{
     Python,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
+use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
 
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
@@ -160,37 +162,94 @@ impl ConnectionHandle {
         })
     }
 
+    /// Initiate registration of the provided recording URIs with a dataset and return the
+    /// corresponding task IDs.
+    ///
+    /// NOTE: The server may pool multiple registrations into a single task. The result always has
+    /// the same length as the output, so task ids may be duplicated.
     pub fn register_with_dataset(
         &mut self,
         py: Python<'_>,
         dataset_id: EntryId,
-        recording_uri: String,
-    ) -> PyResult<TaskId> {
+        recording_uris: Vec<String>,
+    ) -> PyResult<Vec<TaskId>> {
         wait_for_future(py, async {
+            let data_sources = recording_uris
+                .iter()
+                .map(|uri| DataSource::new_rrd(uri).map(Into::into))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(to_py_err)?;
+
             let response = self
                 .client
                 .register_with_dataset(RegisterWithDatasetRequest {
                     dataset_id: Some(dataset_id.into()),
-                    data_sources: vec![DataSource::new_rrd(recording_uri)
-                        .map_err(to_py_err)?
-                        .into()],
+                    data_sources,
                     //TODO(ab): expose this to as a method argument
                     on_duplicate: IfDuplicateBehavior::Error as i32,
                 })
                 .await
                 .map_err(to_py_err)?
-                .into_inner();
+                .into_inner()
+                .data
+                .ok_or_else(|| PyValueError::new_err("missing data from response"))?
+                .decode()
+                .map_err(to_py_err)?;
+
+            // TODO(andrea): why is the schema completely off?
+            #[expect(clippy::overly_complex_bool_expr)]
+            if false
+                && !response
+                    .schema()
+                    .contains(&RegisterWithDatasetResponse::schema())
+            {
+                return Err(PyValueError::new_err(
+                    "invalid schema for RegisterWithDatasetResponse",
+                ));
+            }
 
             response
-                .id
-                .ok_or_else(|| PyValueError::new_err("received response without task id"))
+                .column_by_name(RegisterWithDatasetResponse::TASK_ID)
+                .and_then(|column| {
+                    column
+                        .try_downcast_array_ref::<arrow::array::StringArray>()
+                        .ok()
+                        .map(|col| {
+                            col.iter()
+                                .filter_map(|v| v.map(|id| TaskId { id: id.to_owned() }))
+                                .collect::<Vec<_>>()
+                        })
+                })
+                .ok_or_else(|| PyValueError::new_err("bug: invalid response schema"))
         })
     }
 
-    pub fn wait_for_task(
+    pub fn query_tasks(&mut self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
+        wait_for_future(py, async {
+            let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
+                ids: task_ids.to_vec(),
+            };
+
+            let status_table = self
+                .client
+                .query_tasks(request)
+                .await
+                .map_err(to_py_err)?
+                .into_inner()
+                .dataframe_part()
+                .map_err(to_py_err)?
+                .decode()
+                .map_err(to_py_err)?;
+
+            Ok(status_table)
+        })
+    }
+
+    /// Wait for the provided tasks to finish.
+    pub fn wait_for_tasks(
         &mut self,
         py: Python<'_>,
-        task_id: &TaskId,
+        task_ids: &[TaskId],
         timeout: std::time::Duration,
     ) -> PyResult<()> {
         wait_for_future(py, async {
@@ -200,7 +259,7 @@ impl ConnectionHandle {
                 ))
             })?;
             let request = re_protos::redap_tasks::v1alpha1::QueryTasksOnCompletionRequest {
-                ids: vec![task_id.clone()],
+                ids: task_ids.to_vec(),
                 timeout: Some(timeout),
             };
             let mut response_stream = self
@@ -210,8 +269,8 @@ impl ConnectionHandle {
                 .map_err(to_py_err)?
                 .into_inner();
 
-            // we know there is only one item in the stream
-            let task_status = if let Some(response) = response_stream.next().await {
+            // cheat: we know there is only one item in the stream
+            let tasks_statuses = if let Some(response) = response_stream.next().await {
                 response
                     .map_err(to_py_err)?
                     .data
@@ -219,29 +278,39 @@ impl ConnectionHandle {
                     .decode()
                     .map_err(to_py_err)?
             } else {
-                return Err(PyValueError::new_err("no response from task"));
+                return Err(PyConnectionError::new_err("no response from task"));
             };
 
             // TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather
             // than a nicely typed object should be revisited.
 
-            let exec_status = task_status
+            let exec_statuses = tasks_statuses
                 .column_by_name("exec_status")
-                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
-                .and_then(|arr| arr.value(0).into())
-                .ok_or_else(|| PyValueError::new_err("couldn't read exec_status column"))?;
+                .ok_or_else(|| {
+                    PyValueError::new_err("bug: exec_status column not found in response")
+                })?
+                .try_downcast_array_ref::<arrow::array::StringArray>()
+                .map_err(to_py_err)?;
 
-            let msgs = task_status
+            let msgs = tasks_statuses
                 .column_by_name("msgs")
-                .and_then(|col| col.as_any().downcast_ref::<arrow::array::StringArray>())
-                .and_then(|arr| arr.value(0).into())
-                .ok_or_else(|| PyValueError::new_err("couldn't read msgs column"))?;
+                .ok_or_else(|| PyValueError::new_err("bug: msgs column not found in response"))?
+                .try_downcast_array_ref::<arrow::array::StringArray>()
+                .map_err(to_py_err)?;
 
-            if exec_status == "success" {
-                Ok(())
-            } else {
-                Err(PyValueError::new_err(format!("task failed: {msgs}",)))
+            // report the first non success error
+            for (i, status) in exec_statuses.iter().enumerate() {
+                let status = status.ok_or_else(|| PyValueError::new_err("missing status value"))?;
+
+                if status != "success" {
+                    return Err(PyValueError::new_err(format!(
+                        "task failed: {}",
+                        msgs.value(i)
+                    )));
+                }
             }
+
+            Ok(())
         })
     }
 

@@ -2,8 +2,8 @@ use std::iter;
 
 use re_types::{
     archetypes::Boxes3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
+    ArrowString,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
@@ -130,14 +130,15 @@ impl VisualizerSystem for Boxes3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_half_size_chunks) = results.get_required_chunks(&HalfSize3D::name())
+                let Some(all_half_size_chunks) =
+                    results.get_required_chunks(Boxes3D::descriptor_half_sizes())
                 else {
                     return Ok(());
                 };
 
                 let num_boxes: usize = all_half_size_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>(HalfSize3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|vectors| vectors.len())
                     .sum();
                 if num_boxes == 0 {
@@ -146,15 +147,15 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed =
-                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline, HalfSize3D::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                    iter_slices::<[f32; 3]>(&all_half_size_chunks, timeline);
+                let all_colors = results.iter_as(timeline, Boxes3D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, Boxes3D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, Boxes3D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, Boxes3D::descriptor_class_ids());
+                let all_show_labels = results.iter_as(timeline, Boxes3D::descriptor_show_labels());
 
                 // Deserialized because it's a union.
-                let all_fill_modes = results.iter_as(timeline, FillMode::name());
+                let all_fill_modes = results.iter_as(timeline, Boxes3D::descriptor_fill_mode());
                 // fill mode is currently a non-repeated component
                 let fill_mode: FillMode = all_fill_modes
                     .slice::<u8>()
@@ -233,7 +234,11 @@ impl TypedComponentFallbackProvider<Color> for Fallback {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Fallback {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<HalfSize3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Boxes3D::descriptor_half_sizes(),
+            &Boxes3D::descriptor_labels(),
+        )
     }
 }
 

@@ -138,12 +138,17 @@ impl From<&ChunkBatch> for ArrowRecordBatch {
 impl TryFrom<&ArrowRecordBatch> for ChunkBatch {
     type Error = SorbetError;
 
-    /// Will automatically wrap data columns in `ListArrays` if they are not already.
+    /// Will perform some transformations:
+    /// * Will automatically wrap data columns in `ListArrays` if they are not already
+    /// * Will reorder columns so that Row ID comes before timelines, which come before data
+    /// * Will migrate legacy data to more modern form
     fn try_from(batch: &ArrowRecordBatch) -> Result<Self, Self::Error> {
         re_tracing::profile_function!();
 
+        let batch = crate::migration::reorder_columns(batch);
+
         Self::try_from(SorbetBatch::try_from_record_batch(
-            batch,
+            &batch,
             crate::BatchType::Chunk,
         )?)
     }

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arrow::datatypes::Fields;
 use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
 use egui::{Frame, Id, Margin, RichText};
@@ -7,7 +8,7 @@ use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntryId, TimelineName};
-use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_sorbet::{BatchType, ColumnDescriptorRef, SorbetSchema};
 use re_ui::list_item::ItemButton;
 use re_ui::UiExt as _;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
@@ -30,9 +31,9 @@ impl<'a> Columns<'a> {
     fn from(sorbet_schema: &'a SorbetSchema) -> Self {
         let inner = sorbet_schema
             .columns
-            .descriptors()
+            .iter()
             .enumerate()
-            .map(|(index, desc)| (egui::Id::new(&desc), (index, desc)))
+            .map(|(index, desc)| (egui::Id::new(desc), (index, desc.into())))
             .collect::<IntMap<_, _>>();
 
         Self { inner }
@@ -48,8 +49,11 @@ impl Columns<'_> {
         id.and_then(|id| self.inner.get(&id).map(|(index, _)| *index))
     }
 
-    fn descriptor_from_id(&self, id: Option<egui::Id>) -> Option<&ColumnDescriptorRef<'_>> {
-        id.and_then(|id| self.inner.get(&id).map(|(_, desc)| desc))
+    fn index_and_descriptor_from_id(
+        &self,
+        id: Option<egui::Id>,
+    ) -> Option<(usize, &ColumnDescriptorRef<'_>)> {
+        id.and_then(|id| self.inner.get(&id).map(|(index, desc)| (*index, desc)))
     }
 }
 
@@ -213,13 +217,13 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let sorbet_schema = {
+        let (fields, sorbet_schema) = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 ui.label(egui::RichText::new("This dataset is empty").italics());
                 return;
             };
 
-            sorbet_batch.sorbet_schema()
+            (sorbet_batch.fields(), sorbet_batch.sorbet_schema())
         };
 
         let num_rows = sorbet_batches
@@ -234,7 +238,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|sorbet_batch| {
                 DisplayRecordBatch::try_new(
                     sorbet_batch
-                        .all_columns()
+                        .all_columns_ref()
                         .map(|(desc, array)| (desc, array.clone())),
                 )
             })
@@ -256,7 +260,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 let name = if let Some(renamer) = &column_renamer {
                     renamer(c)
                 } else {
-                    c.name().to_owned()
+                    c.name(BatchType::Dataframe)
                 };
 
                 ColumnConfig::new(Id::new(c), name)
@@ -273,6 +277,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
+            fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
             column_renamer: &column_renamer,
@@ -340,6 +345,7 @@ fn title_ui<'a>(
 
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
+    fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
     column_renamer: &'a ColumnRenamerFn<'a>,
@@ -354,12 +360,12 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
-        if let Some(desc) = self.columns.descriptor_from_id(id) {
-            let column_name = desc.name();
+        if let Some((index, desc)) = self.columns.index_and_descriptor_from_id(id) {
+            let column_name = self.fields[index].name();
             let name = if let Some(renamer) = self.column_renamer {
                 renamer(desc)
             } else {
-                desc.name().to_owned()
+                desc.name(BatchType::Dataframe)
             };
 
             let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
@@ -384,30 +390,29 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                         }
                     },
                     |ui| {
-                        egui::menu::menu_custom_button(
-                            ui,
+                        egui::containers::menu::MenuButton::from_button(
                             ui.small_icon_button_widget(&re_ui::icons::MORE),
-                            |ui| {
-                                for sort_direction in SortDirection::iter() {
-                                    let already_sorted =
-                                        Some(&sort_direction) == current_sort_direction;
+                        )
+                        .ui(ui, |ui| {
+                            for sort_direction in SortDirection::iter() {
+                                let already_sorted =
+                                    Some(&sort_direction) == current_sort_direction;
 
-                                    if ui
-                                        .add_enabled_ui(!already_sorted, |ui| {
-                                            sort_direction.menu_button(ui)
-                                        })
-                                        .inner
-                                        .clicked()
-                                    {
-                                        self.new_blueprint.sort_by = Some(SortBy {
-                                            column: column_name.to_owned(),
-                                            direction: sort_direction,
-                                        });
-                                        ui.close_menu();
-                                    }
+                                if ui
+                                    .add_enabled_ui(!already_sorted, |ui| {
+                                        sort_direction.menu_button(ui)
+                                    })
+                                    .inner
+                                    .clicked()
+                                {
+                                    self.new_blueprint.sort_by = Some(SortBy {
+                                        column: column_name.to_owned(),
+                                        direction: sort_direction,
+                                    });
+                                    ui.close();
                                 }
-                            },
-                        );
+                            }
+                        });
                     },
                 );
             });

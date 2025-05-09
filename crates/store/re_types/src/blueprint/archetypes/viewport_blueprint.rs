@@ -53,6 +53,8 @@ pub struct ViewportBlueprint {
 
 impl ViewportBlueprint {
     /// Returns the [`ComponentDescriptor`] for [`Self::root_container`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::RootContainer`].
     #[inline]
     pub fn descriptor_root_container() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -63,6 +65,8 @@ impl ViewportBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::maximized`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ViewMaximized`].
     #[inline]
     pub fn descriptor_maximized() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -73,6 +77,8 @@ impl ViewportBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_layout`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::AutoLayout`].
     #[inline]
     pub fn descriptor_auto_layout() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -83,6 +89,8 @@ impl ViewportBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_views`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::AutoViews`].
     #[inline]
     pub fn descriptor_auto_views() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -93,6 +101,8 @@ impl ViewportBlueprint {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::past_viewer_recommendations`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ViewerRecommendationHash`].
     #[inline]
     pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
         ComponentDescriptor {
