@@ -59,7 +59,9 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
 
-            let Some(tensor) = results.get_required_mono::<components::TensorData>() else {
+            let Some(tensor) =
+                results.get_required_mono::<components::TensorData>(BarChart::descriptor_values())
+            else {
                 continue;
             };
 

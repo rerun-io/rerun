@@ -53,7 +53,8 @@ impl HybridLatestAtResults<'_> {
             .or_else(|| self.defaults.get_by_name(&component_name))
     }
 
-    pub fn fallback_raw(&self, component_descr: ComponentDescriptor) -> arrow::array::ArrayRef {
+    // TODO(#6889): Right now, fallbacks are on a per-component basis, so it's fine to pass the component name here.
+    pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
         let query_context = QueryContext {
             viewer_ctx: self.ctx.viewer_ctx,
             target_entity_path: &self.data_result.entity_path,
@@ -66,21 +67,26 @@ impl HybridLatestAtResults<'_> {
         self.data_result.best_fallback_for(
             &query_context,
             &self.ctx.visualizer_collection,
-            // TODO(#6889): Pass full descriptor here.
-            component_descr.component_name,
+            component_name,
         )
     }
 
     /// Utility for retrieving the first instance of a component, ignoring defaults.
     #[inline]
-    pub fn get_required_mono<C: re_types_core::Component>(&self) -> Option<C> {
-        self.get_required_instance(0)
+    pub fn get_required_mono<C: re_types_core::Component>(
+        &self,
+        component_descr: ComponentDescriptor,
+    ) -> Option<C> {
+        self.get_required_instance(0, component_descr)
     }
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
-    pub fn get_mono<C: re_types_core::Component>(&self) -> Option<C> {
-        self.get_instance(0)
+    pub fn get_mono<C: re_types_core::Component>(
+        &self,
+        component_descr: ComponentDescriptor,
+    ) -> Option<C> {
+        self.get_instance(0, component_descr)
     }
 
     /// Utility for retrieving the first instance of a component.
@@ -98,21 +104,35 @@ impl HybridLatestAtResults<'_> {
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_required_instance<C: re_types_core::Component>(&self, index: usize) -> Option<C> {
-        self.overrides.component_instance::<C>(index).or_else(||
+    pub fn get_required_instance<C: re_types_core::Component>(
+        &self,
+        index: usize,
+        component_descr: ComponentDescriptor,
+    ) -> Option<C> {
+        self.overrides
+            .component_instance::<C>(index, component_descr.clone())
+            .or_else(||
                 // No override -> try recording store instead
-                self.results.component_instance::<C>(index))
+                self.results.component_instance::<C>(index, component_descr))
     }
 
     /// Utility for retrieving a single instance of a component.
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_instance<C: re_types_core::Component>(&self, index: usize) -> Option<C> {
-        self.get_required_instance(index).or_else(|| {
-            // No override & no store -> try default instead
-            self.defaults.component_instance::<C>(index)
-        })
+    pub fn get_instance<C: re_types_core::Component>(
+        &self,
+        index: usize,
+        component_descr: ComponentDescriptor,
+    ) -> Option<C> {
+        debug_assert_eq!(component_descr.component_name, C::name());
+
+        self.get_required_instance(index, component_descr.clone())
+            .or_else(|| {
+                // No override & no store -> try default instead
+                self.defaults
+                    .component_instance::<C>(index, component_descr)
+            })
     }
 
     /// Utility for retrieving a single instance of a component.
@@ -126,10 +146,11 @@ impl HybridLatestAtResults<'_> {
     ) -> C {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        self.get_instance(index)
+        let component_name = component_descr.component_name;
+        self.get_instance(index, component_descr)
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
-                let raw_fallback = self.fallback_raw(component_descr);
+                let raw_fallback = self.fallback_raw(component_name);
                 C::from_arrow(raw_fallback.as_ref())
                     .ok()
                     .and_then(|r| r.first().cloned())

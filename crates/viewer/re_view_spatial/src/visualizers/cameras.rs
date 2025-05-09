@@ -3,7 +3,7 @@ use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{self},
+    components::{self, PinholeProjection},
     Archetype as _,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
@@ -249,20 +249,24 @@ impl VisualizerSystem for CamerasVisualizer {
                 query_shadowed_components,
             );
 
-            let Some(pinhole_projection) =
-                query_results.get_required_mono::<components::PinholeProjection>()
+            let Some(pinhole_projection) = query_results
+                .get_required_mono::<components::PinholeProjection>(
+                    Pinhole::descriptor_image_from_camera(),
+                )
             else {
                 continue;
             };
 
             let resolution = query_results
-                .get_mono::<components::Resolution>()
+                .get_mono::<components::Resolution>(Pinhole::descriptor_resolution())
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
             let camera_xyz = query_results
-                .get_mono::<components::ViewCoordinates>()
+                .get_mono::<components::ViewCoordinates>(Pinhole::descriptor_camera_xyz())
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
             let image_plane_distance = query_results
-                .get_mono::<components::ImagePlaneDistance>()
+                .get_mono::<components::ImagePlaneDistance>(
+                    Pinhole::descriptor_image_plane_distance(),
+                )
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             let component_data = CameraComponentDataWithFallbacks {
