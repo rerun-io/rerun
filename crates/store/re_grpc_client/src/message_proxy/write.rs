@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use re_log_encoding::Compression;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_uri::ProxyUri;
 use tokio::runtime;
 use tokio::sync::mpsc;

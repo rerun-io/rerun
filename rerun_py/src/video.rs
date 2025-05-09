@@ -1,6 +1,6 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use pyo3::{exceptions::PyRuntimeError, pyfunction, Bound, PyAny, PyResult};
+use pyo3::{Bound, PyAny, PyResult, exceptions::PyRuntimeError, pyfunction};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_video::VideoLoadError;

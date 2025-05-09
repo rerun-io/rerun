@@ -4,8 +4,8 @@ use re_chunk::UnitChunkShared;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
-use re_log_types::hash::Hash64;
 use re_log_types::Instance;
+use re_log_types::hash::Hash64;
 use re_types::{ComponentDescriptor, ComponentName};
 use re_ui::{UiExt as _, UiLayout};
 
@@ -137,9 +137,9 @@ impl ComponentUiRegistry {
     pub fn add_singleline_edit_or_view<C: re_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
-            + Send
-            + Sync
-            + 'static,
+        + Send
+        + Sync
+        + 'static,
     ) {
         let multiline = false;
         self.add_editor_ui(multiline, callback);
@@ -165,9 +165,9 @@ impl ComponentUiRegistry {
     pub fn add_multiline_edit_or_view<C: re_types::Component>(
         &mut self,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
-            + Send
-            + Sync
-            + 'static,
+        + Send
+        + Sync
+        + 'static,
     ) {
         let multiline = true;
         self.add_editor_ui(multiline, callback);
@@ -177,9 +177,9 @@ impl ComponentUiRegistry {
         &mut self,
         multiline: bool,
         callback: impl Fn(&ViewerContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
-            + Send
-            + Sync
-            + 'static,
+        + Send
+        + Sync
+        + 'static,
     ) {
         let untyped_callback: UntypedComponentEditOrViewCallback =
             Box::new(move |ui, ui_layout, value, edit_or_view| {

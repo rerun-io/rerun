@@ -4,9 +4,9 @@ use itertools::Either;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
+    Component as _,
     components::{ImageBuffer, MediaType},
     image::{ImageKind, ImageLoadError},
-    Component as _,
 };
 
 use crate::{Cache, ImageInfo};

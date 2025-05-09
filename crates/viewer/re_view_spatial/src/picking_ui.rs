@@ -1,10 +1,10 @@
 use egui::NumExt as _;
 
-use re_data_ui::{item_ui, DataUi as _};
+use re_data_ui::{DataUi as _, item_ui};
 use re_log_types::Instance;
 use re_ui::{
-    list_item::{list_item_scope, PropertyContent},
     UiExt as _,
+    list_item::{PropertyContent, list_item_scope},
 };
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
@@ -13,12 +13,12 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     picking::{PickableUiRect, PickingContext, PickingHitType},
-    picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
+    picking_ui_pixel::{PickedPixelInfo, textured_rect_hover_ui},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{CamerasVisualizer, DepthImageVisualizer, SpatialViewVisualizerData},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
 #[allow(clippy::too_many_arguments)]

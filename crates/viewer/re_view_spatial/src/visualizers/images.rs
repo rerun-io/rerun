@@ -13,13 +13,13 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 
 pub struct ImageVisualizer {
     pub data: SpatialViewVisualizerData,

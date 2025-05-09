@@ -2,7 +2,7 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
-use re_log_types::{hash::Hash64, EntityPath};
+use re_log_types::{EntityPath, hash::Hash64};
 use re_types::ComponentDescriptor;
 use re_viewer_context::{UiLayout, ViewerContext};
 

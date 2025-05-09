@@ -16,7 +16,7 @@ use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
     RegisterWithDatasetResponse,
 };
-use crate::{invalid_field, missing_field, TypeConversionError};
+use crate::{TypeConversionError, invalid_field, missing_field};
 
 use re_sorbet::ComponentColumnDescriptor;
 

@@ -1,6 +1,6 @@
 use re_types::{
-    archetypes::TextDocument, components::MediaType, Archetype as _, AsComponents as _,
-    ComponentBatch as _,
+    Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::TextDocument,
+    components::MediaType,
 };
 
 #[test]

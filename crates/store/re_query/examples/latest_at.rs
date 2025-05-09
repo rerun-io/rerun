@@ -12,7 +12,7 @@ use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_types::Component as _;
 use re_types_core::Archetype as _;
 
-use re_query::{clamped_zip_1x2, LatestAtResults};
+use re_query::{LatestAtResults, clamped_zip_1x2};
 
 // ---
 

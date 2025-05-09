@@ -1,6 +1,6 @@
 use super::{MessageHeader, MessageKind};
-use crate::codec::arrow::decode_arrow;
 use crate::codec::CodecError;
+use crate::codec::arrow::decode_arrow;
 use crate::decoder::DecodeError;
 use re_log_types::LogMsg;
 use re_protos::missing_field;

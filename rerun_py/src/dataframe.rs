@@ -10,17 +10,17 @@ use std::{
 };
 
 use arrow::{
-    array::{make_array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
+    array::{ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader, make_array},
     pyarrow::PyArrowType,
 };
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use numpy::PyArrayMethods as _;
 use pyo3::{
+    IntoPyObjectExt as _,
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::{PyCapsule, PyDict, PyTuple},
-    IntoPyObjectExt as _,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;

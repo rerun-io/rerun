@@ -25,8 +25,8 @@ where
     F: std::future::Future<Output = Result<T, DataFusionError>> + 'static,
     T: Send + 'static,
 {
-    use futures::{pin_mut, FutureExt as _};
-    use futures_util::future::{select, Either};
+    use futures::{FutureExt as _, pin_mut};
+    use futures_util::future::{Either, select};
 
     let (mut tx, rx) = futures::channel::oneshot::channel();
 

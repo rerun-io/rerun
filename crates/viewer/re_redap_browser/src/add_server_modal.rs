@@ -1,5 +1,5 @@
-use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::UiExt as _;
+use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_uri::Scheme;
 
 use crate::context::Context;

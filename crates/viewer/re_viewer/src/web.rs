@@ -17,7 +17,7 @@ use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender a
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
+use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray, url_to_receiver};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =

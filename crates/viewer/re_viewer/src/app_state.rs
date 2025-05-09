@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{text_selection::LabelSelectionState, NumExt as _, Ui};
+use egui::{NumExt as _, Ui, text_selection::LabelSelectionState};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -12,15 +12,15 @@ use re_types::blueprint::components::PanelState;
 use re_ui::{ContextExt as _, DesignTokens};
 use re_uri::Origin;
 use re_viewer_context::{
-    blueprint_timeline, AppOptions, ApplicationSelectionState, AsyncRuntimeHandle,
-    BlueprintUndoState, CommandSender, ComponentUiRegistry, DisplayMode, DragAndDropManager,
-    GlobalContext, Item, PlayState, RecordingConfig, SelectionChange, StorageContext, StoreContext,
-    StoreHub, SystemCommand, SystemCommandSender as _, TableStore, ViewClassExt as _,
-    ViewClassRegistry, ViewStates, ViewerContext,
+    AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
+    ComponentUiRegistry, DisplayMode, DragAndDropManager, GlobalContext, Item, PlayState,
+    RecordingConfig, SelectionChange, StorageContext, StoreContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableStore, ViewClassExt as _, ViewClassRegistry, ViewStates,
+    ViewerContext, blueprint_timeline,
 };
 use re_viewport::ViewportUi;
-use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
+use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::{
     app_blueprint::AppBlueprint,

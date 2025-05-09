@@ -1,33 +1,33 @@
-use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
+use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
+use re_log_types::hash::Hash64;
 use re_types::{
+    View as _, ViewClassIdentifier,
     blueprint::{
         archetypes::{self, TensorScalarMapping, TensorViewFit},
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::TensorData,
-    View as _, ViewClassIdentifier,
 };
-use re_ui::{list_item, Help, UiExt as _};
+use re_ui::{Help, UiExt as _, list_item};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
+    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
     ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
+    TensorDimension,
     dimension_mapping::TensorSliceSelection,
     tensor_dimension_mapper::dimension_mapping_ui,
     visualizer_system::{TensorSystem, TensorVisualization},
-    TensorDimension,
 };
 
 #[derive(Default)]

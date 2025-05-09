@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
 
-use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 use crate::DesignTokens;
+use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]

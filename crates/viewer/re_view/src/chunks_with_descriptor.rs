@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use re_chunk_store::{
-    external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer},
     Chunk,
+    external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer},
 };
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_types::{Component, ComponentDescriptor, RowId};

@@ -15,12 +15,12 @@ use re_types::{
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
 };
-use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
-use re_ui::{list_item, UiExt as _};
+use re_types_core::{Component, ComponentName, LoggableBatch, reflection::Reflection};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
-    external::re_chunk_store::{external::re_chunk, LatestAtQuery},
-    test_context::TestContext,
     UiLayout, ViewerContext,
+    external::re_chunk_store::{LatestAtQuery, external::re_chunk},
+    test_context::TestContext,
 };
 
 /// Test case master list.

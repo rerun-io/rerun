@@ -1,9 +1,9 @@
 use itertools::Itertools as _;
 
 use re_log_types::hash::Hash64;
-use re_renderer::{mesh::GpuMesh, RenderContext};
+use re_renderer::{RenderContext, mesh::GpuMesh};
 use re_types::{components::MediaType, datatypes};
-use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
+use re_viewer_context::{ImageInfo, gpu_bridge::texture_creation_desc_from_color_image};
 
 use crate::{mesh_cache::AnyMesh, visualizers::entity_iterator::clamped_vec_or};
 

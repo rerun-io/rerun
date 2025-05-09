@@ -12,10 +12,10 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
 use super::SpatialViewVisualizerData;

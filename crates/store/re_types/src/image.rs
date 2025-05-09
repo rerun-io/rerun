@@ -1,7 +1,7 @@
 //! Image-related utilities.
 
 use arrow::buffer::ScalarBuffer;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::{
     datatypes::ChannelDatatype,
@@ -221,11 +221,10 @@ pub fn find_non_empty_dim_indices(shape: &[u64]) -> SmallVec<[usize; 4]> {
     // [1, 1, 1, 480, 640, 3, 1, 1, 1]
     //           ^---------^   goal range
 
-    let mut non_unit_indices =
-        shape
-            .iter()
-            .enumerate()
-            .filter_map(|(ind, &dim)| if dim != 1 { Some(ind) } else { None });
+    let mut non_unit_indices = shape
+        .iter()
+        .enumerate()
+        .filter_map(|(ind, &dim)| if dim != 1 { Some(ind) } else { None });
 
     // 0 is always a valid index.
     let mut min = non_unit_indices.next().unwrap_or(0);

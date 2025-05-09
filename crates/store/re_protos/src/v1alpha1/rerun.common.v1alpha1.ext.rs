@@ -2,9 +2,9 @@ use std::hash::Hasher;
 use std::sync::Arc;
 
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
-use crate::{invalid_field, missing_field, TypeConversionError};
+use crate::{TypeConversionError, invalid_field, missing_field};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
+use re_log_types::{TableId, external::re_types_core::ComponentDescriptor};
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {

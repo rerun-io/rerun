@@ -2,9 +2,9 @@ use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
+    Archetype as _,
     archetypes::Pinhole,
     components::{self},
-    Archetype as _,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -14,7 +14,7 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 use crate::{
     contexts::TransformTreeContext, resolution_of_image_at, space_camera_3d::SpaceCamera3D,
     ui::SpatialViewState,

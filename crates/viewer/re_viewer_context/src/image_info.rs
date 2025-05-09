@@ -4,7 +4,7 @@ use re_log_types::hash::Hash64;
 use re_types::{
     components::Colormap,
     datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
-    image::{rgb_from_yuv, ImageKind},
+    image::{ImageKind, rgb_from_yuv},
     tensor_data::TensorElement,
 };
 

@@ -1,6 +1,6 @@
 use re_log_types::hash::Hash64;
 use re_types::{
-    blueprint::components::Enabled, Archetype, ArchetypeReflectionMarker, Component as _,
+    Archetype, ArchetypeReflectionMarker, Component as _, blueprint::components::Enabled,
 };
 use re_view::{view_property_component_ui, view_property_component_ui_custom};
 use re_viewer_context::{ComponentFallbackProvider, ViewId, ViewState, ViewerContext};

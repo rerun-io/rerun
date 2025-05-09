@@ -5,8 +5,8 @@ mod version;
 
 pub use ffmpeg::{Error, FFmpegCliH264Decoder};
 pub use version::{
-    FFmpegVersion, FFmpegVersionParseError, FFMPEG_MINIMUM_VERSION_MAJOR,
-    FFMPEG_MINIMUM_VERSION_MINOR,
+    FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
+    FFmpegVersionParseError,
 };
 
 /// Download URL for the latest version of `FFmpeg` on the current platform.

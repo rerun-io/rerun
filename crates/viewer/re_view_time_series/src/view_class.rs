@@ -7,6 +7,7 @@ use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
+    ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
         archetypes::{PlotLegend, ScalarAxis},
@@ -14,9 +15,8 @@ use re_types::{
     },
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
-    ComponentBatch as _, View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
+use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, list_item, shortcut_with_icon};
 use re_view::{
     controls::{
         self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
@@ -25,17 +25,18 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, IndicatedEntities,
-    MaybeVisualizableEntities, PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet,
-    SystemExecutionOutput, TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError,
-    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
+    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
+    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    line_visualizer_system::SeriesLineSystem, point_visualizer_system::SeriesPointSystem,
-    PlotSeriesKind,
+    PlotSeriesKind, line_visualizer_system::SeriesLineSystem,
+    point_visualizer_system::SeriesPointSystem,
 };
 
 // ---
@@ -367,7 +368,7 @@ impl ViewClass for TimeSeriesView {
             state,
             &ScalarAxis::descriptor_zoom_lock(),
         )?;
-        let y_zoom_lock = y_zoom_lock.0 .0;
+        let y_zoom_lock = y_zoom_lock.0.0;
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long

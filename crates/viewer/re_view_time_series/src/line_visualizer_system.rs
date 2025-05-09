@@ -3,16 +3,16 @@ use itertools::Itertools as _;
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
+    Archetype as _,
     archetypes::{self},
     components::{AggregationPolicy, Color, Name, SeriesVisible, StrokeWidth},
-    Archetype as _,
 };
-use re_view::{range_with_blueprint_resolved_data, RangeResultsExt as _};
+use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
+    ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path,
 };
 
 use crate::series_query::{

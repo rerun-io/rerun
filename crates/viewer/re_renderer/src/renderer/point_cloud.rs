@@ -16,14 +16,14 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use crate::{
+    DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
     include_shader_module,
     wgpu_resources::GpuRenderPipelinePoolAccessor,
-    DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
-use enumset::{enum_set, EnumSet};
+use enumset::{EnumSet, enum_set};
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
@@ -53,7 +53,7 @@ bitflags! {
 }
 
 pub mod gpu_data {
-    use crate::{draw_phases::PickingLayerObjectId, wgpu_buffer_types, Size};
+    use crate::{Size, draw_phases::PickingLayerObjectId, wgpu_buffer_types};
 
     // Don't use `wgsl_buffer_types` since this data doesn't go into a buffer, so alignment rules don't apply like on buffers..
 

@@ -13,8 +13,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(non_camel_case_types)]
 
-use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
@@ -59,7 +59,7 @@ impl ::re_types_core::Loggable for ViewFit {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -93,7 +93,7 @@ impl ::re_types_core::Loggable for ViewFit {
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
@@ -143,9 +143,7 @@ impl ::re_types_core::reflection::Enum for ViewFit {
             Self::Original => {
                 "No scaling, pixel size will match the image's width/height dimensions in pixels."
             }
-            Self::Fill => {
-                "Scale the image for the largest possible fit in the view's container."
-            }
+            Self::Fill => "Scale the image for the largest possible fit in the view's container.",
             Self::FillKeepAspectRatio => {
                 "Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."
             }

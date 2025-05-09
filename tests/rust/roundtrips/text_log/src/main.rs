@@ -1,9 +1,9 @@
 //! Logs a `Tensor` archetype for roundtrip checks.
 
 use rerun::{
+    RecordingStream,
     archetypes::TextLog,
     external::{re_log, re_types::components::TextLogLevel},
-    RecordingStream,
 };
 
 #[derive(Debug, clap::Parser)]

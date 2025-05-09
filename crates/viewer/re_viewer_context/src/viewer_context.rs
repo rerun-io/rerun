@@ -9,10 +9,10 @@ use re_query::StorageEngineReadGuard;
 
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
-    query_context::DataQueryResult, AppOptions, ApplicationSelectionState, CommandSender,
-    ComponentUiRegistry, DragAndDropManager, IndicatedEntities, ItemCollection,
-    MaybeVisualizableEntities, PerVisualizer, StoreContext, SystemCommandSender as _, TimeControl,
-    ViewClassRegistry, ViewId,
+    AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry, DragAndDropManager,
+    IndicatedEntities, ItemCollection, MaybeVisualizableEntities, PerVisualizer, StoreContext,
+    SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
+    query_context::DataQueryResult,
 };
 use crate::{GlobalContext, StorageContext, StoreHub};
 

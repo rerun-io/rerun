@@ -132,7 +132,7 @@ mod web_event_listener {
     use super::HttpMessageCallback;
     use js_sys::Uint8Array;
     use std::sync::Arc;
-    use wasm_bindgen::{closure::Closure, JsCast as _, JsValue};
+    use wasm_bindgen::{JsCast as _, JsValue, closure::Closure};
     use web_sys::MessageEvent;
 
     /// Install an event-listener on `window` which will decode the incoming event as an rrd

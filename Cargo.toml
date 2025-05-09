@@ -19,7 +19,7 @@ exclude = ["examples/rust/revy", "examples/rust/chess_robby_fischer"]
 
 [workspace.package]
 authors = ["rerun.io <opensource@rerun.io>"]
-edition = "2021"
+edition = "2024"
 homepage = "https://rerun.io"
 include = [
   "../../Cargo.lock",     # So that users can pass `--locked` to `cargo install rerun-cli`

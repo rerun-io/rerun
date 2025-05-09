@@ -1,12 +1,12 @@
 use std::iter;
 
-use itertools::{izip, Either};
+use itertools::{Either, izip};
 
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
-    components::{ShowLabels, Text},
     Component as _, ComponentDescriptor,
+    components::{ShowLabels, Text},
 };
 use re_viewer_context::ResolvedAnnotationInfos;
 

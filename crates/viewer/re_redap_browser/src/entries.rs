@@ -3,26 +3,26 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 use itertools::Itertools as _;
 
-use re_data_ui::item_ui::entity_db_button_ui;
 use re_data_ui::DataUi as _;
+use re_data_ui::item_ui::entity_db_button_ui;
 use re_dataframe_ui::RequestedObject;
 use re_grpc_client::redap::ConnectionError;
-use re_grpc_client::{redap, StreamError};
+use re_grpc_client::{StreamError, redap};
 use re_log_encoding::codec::CodecError;
-use re_log_types::{natural_ordering, ApplicationId, EntryId, StoreKind};
-use re_protos::catalog::v1alpha1::{
-    ext::{DatasetEntry, EntryDetails},
-    EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
-};
+use re_log_types::{ApplicationId, EntryId, StoreKind, natural_ordering};
 use re_protos::TypeConversionError;
+use re_protos::catalog::v1alpha1::{
+    EntryFilter, FindEntriesRequest, ReadDatasetEntryRequest,
+    ext::{DatasetEntry, EntryDetails},
+};
 use re_smart_channel::SmartChannelSource;
 use re_sorbet::SorbetError;
 use re_types::archetypes::RecordingProperties;
 use re_types::components::{Name, Timestamp};
-use re_ui::{icons, list_item, UiExt as _, UiLayout};
+use re_ui::{UiExt as _, UiLayout, icons, list_item};
 use re_viewer_context::{
-    external::re_entity_db::EntityDb, AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry,
-    SystemCommand, SystemCommandSender as _, ViewerContext,
+    AsyncRuntimeHandle, DisplayMode, Item, StoreHubEntry, SystemCommand, SystemCommandSender as _,
+    ViewerContext, external::re_entity_db::EntityDb,
 };
 
 use crate::context::Context;

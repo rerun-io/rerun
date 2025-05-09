@@ -1,6 +1,6 @@
 use ahash::HashSet;
 use egui::{Context, Frame, Id, Margin, RichText, Stroke, Style};
-use re_ui::{design_tokens, icons, Scale, UiExt as _};
+use re_ui::{Scale, UiExt as _, design_tokens, icons};
 
 pub const CELL_MARGIN: Margin = Margin::symmetric(8, 6);
 

@@ -39,7 +39,7 @@ pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn
 pub use channel_logger::*;
 
 #[cfg(feature = "setup")]
-pub use multi_logger::{add_boxed_logger, add_logger, MultiLoggerNotSetupError};
+pub use multi_logger::{MultiLoggerNotSetupError, add_boxed_logger, add_logger};
 
 #[cfg(feature = "setup")]
 pub use setup::{setup_logging, setup_logging_with_filter};

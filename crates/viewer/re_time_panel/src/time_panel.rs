@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use egui::emath::Rangef;
 use egui::{
-    pos2, scroll_area::ScrollSource, Color32, CursorIcon, Modifiers, NumExt as _, Painter,
-    PointerButton, Rect, Response, Shape, Ui, Vec2,
+    Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, Shape, Ui,
+    Vec2, pos2, scroll_area::ScrollSource,
 };
 
-use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
-use re_data_ui::item_ui::guess_instance_path_icon;
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
+use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{
     ApplicationId, ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, TimeReal,
@@ -17,8 +17,8 @@ use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentDescriptor;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget, icon_text, icons, list_item, maybe_plus, modifiers_text, ContextExt as _,
-    DesignTokens, Help, SyntaxHighlighting as _, UiExt as _,
+    ContextExt as _, DesignTokens, Help, SyntaxHighlighting as _, UiExt as _, filter_widget,
+    icon_text, icons, list_item, maybe_plus, modifiers_text,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
@@ -28,7 +28,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::{
     recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
-    streams_tree_data::{components_for_entity, EntityData, StreamsTreeData},
+    streams_tree_data::{EntityData, StreamsTreeData, components_for_entity},
     time_axis::TimelineAxis,
     time_control_ui::TimeControlUi,
     time_ranges_ui::TimeRangesUi,

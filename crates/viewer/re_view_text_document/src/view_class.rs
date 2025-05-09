@@ -4,8 +4,8 @@ use re_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_view::suggest_view_for_each_entity;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, Item, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    Item, ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext, external::re_log_types::EntityPath,
 };
 
 use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};

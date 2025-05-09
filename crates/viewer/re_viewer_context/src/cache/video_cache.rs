@@ -1,6 +1,6 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 use ahash::{HashMap, HashSet};
@@ -9,7 +9,7 @@ use itertools::Either;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
-use re_types::{components::MediaType, Component as _};
+use re_types::{Component as _, components::MediaType};
 use re_video::decode::DecodeSettings;
 
 use crate::Cache;

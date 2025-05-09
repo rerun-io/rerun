@@ -1,16 +1,16 @@
-use egui::{color_picker, Vec2};
+use egui::{Vec2, color_picker};
 use itertools::Itertools as _;
-use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
+use re_log_types::hash::Hash64;
 use re_types::{
+    Component as _,
     components::{self, AnnotationContext},
     datatypes::{
         AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
     },
-    Component as _,
 };
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{auto_color_egui, UiLayout, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext, auto_color_egui};
 
 use super::DataUi;
 

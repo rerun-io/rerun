@@ -202,7 +202,7 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::array::{
-        types::UInt32Type, Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray,
+        Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray, types::UInt32Type,
     };
     use itertools::Itertools as _;
     use similar_asserts::assert_eq;

@@ -1,6 +1,6 @@
 use egui::Ui;
 
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
 use crate::{drag_and_drop, hierarchical_drag_and_drop};
 

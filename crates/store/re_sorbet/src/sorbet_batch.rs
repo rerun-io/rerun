@@ -9,7 +9,7 @@ use arrow::{
     error::ArrowError,
 };
 
-use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_log::ResultExt as _;
 
 use crate::{

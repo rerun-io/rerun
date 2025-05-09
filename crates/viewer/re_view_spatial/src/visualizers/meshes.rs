@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
-use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_renderer::{renderer::GpuMeshInstance, RenderContext};
+use re_log_types::{Instance, TimeInt, hash::Hash64};
+use re_renderer::{RenderContext, renderer::GpuMeshInstance};
 use re_types::{archetypes::Mesh3D, components::ImageFormat};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
@@ -8,7 +8,7 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 use crate::{
     contexts::SpatialSceneEntityContext,

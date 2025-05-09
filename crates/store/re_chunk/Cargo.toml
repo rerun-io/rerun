@@ -2,7 +2,7 @@
 name = "re_chunk"
 authors.workspace = true
 description = "A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute."
-edition.workspace = true
+edition = "2021"                                                                                              # TODO(emilk): edition 2024
 homepage.workspace = true
 include.workspace = true
 license.workspace = true

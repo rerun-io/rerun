@@ -2,12 +2,12 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use egui::containers::menu;
 use egui::Modifiers;
+use egui::containers::menu;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget::FilterState, list_item, maybe_plus, modifiers_text, CommandPalette,
-    ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
+    CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
+    filter_widget::FilterState, list_item, maybe_plus, modifiers_text,
 };
 use re_ui::{icon_text, icons, notifications};
 

@@ -1,5 +1,6 @@
 use re_log_types::EntityPath;
 use re_types::{
+    ViewClassIdentifier,
     blueprint::{
         self,
         archetypes::{
@@ -7,9 +8,8 @@ use re_types::{
             VisualBounds2D,
         },
     },
-    ViewClassIdentifier,
 };
-use re_ui::{self, icon_text, icons, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
+use re_ui::{self, Help, MouseButtonText, UiExt as _, icon_text, icons, shortcut_with_icon};
 use re_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
     view_property_ui,
@@ -24,8 +24,8 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     graph::Graph,
     layout::{ForceLayoutParams, LayoutRequest},
-    ui::{draw_graph, view_property_force_ui, GraphViewState, LevelOfDetail},
-    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
+    ui::{GraphViewState, LevelOfDetail, draw_graph, view_property_force_ui},
+    visualizers::{EdgesVisualizer, NodeVisualizer, merge},
 };
 
 #[derive(Default)]

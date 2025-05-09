@@ -5,7 +5,7 @@ use egui::style::Widgets;
 use egui::{Color32, NumExt as _, Response, Shape, Ui};
 
 use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::{design_tokens, DesignTokens, Scale, UiExt as _};
+use crate::{DesignTokens, Scale, UiExt as _, design_tokens};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]

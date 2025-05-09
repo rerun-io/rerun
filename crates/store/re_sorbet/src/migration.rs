@@ -13,7 +13,7 @@ use arrow::{
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 use re_tuid::Tuid;
-use re_types_core::{arrow_helpers::as_array_ref, Loggable as _};
+use re_types_core::{Loggable as _, arrow_helpers::as_array_ref};
 
 use crate::ColumnKind;
 

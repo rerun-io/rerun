@@ -12,8 +12,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::try_serialize_field;
 use crate::SerializationResult;
+use crate::try_serialize_field;
 use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
@@ -57,7 +57,7 @@ impl crate::Loggable for VisibleTimeRange {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -149,7 +149,7 @@ impl crate::Loggable for VisibleTimeRange {
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data

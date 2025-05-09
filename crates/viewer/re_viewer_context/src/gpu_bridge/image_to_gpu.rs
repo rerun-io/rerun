@@ -3,25 +3,25 @@
 use std::borrow::Cow;
 
 use anyhow::Context as _;
-use egui::{util::hash, Rangef};
+use egui::{Rangef, util::hash};
 use wgpu::TextureFormat;
 
 use re_renderer::{
+    RenderContext,
     device_caps::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::{
         ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
     },
-    RenderContext,
 };
 use re_types::components::ClassId;
 use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 use re_types::image::ImageKind;
 
 use crate::{
-    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithRange, Annotations,
-    ImageInfo, ImageStats,
+    Annotations, ImageInfo, ImageStats, gpu_bridge::colormap::colormap_to_re_renderer,
+    image_info::ColormapWithRange,
 };
 
 use super::get_or_create_texture;

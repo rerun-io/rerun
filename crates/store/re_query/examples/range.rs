@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use itertools::{izip, Itertools as _};
+use itertools::{Itertools as _, izip};
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_log_types::{build_frame_nr, ResolvedTimeRange, TimeType, Timeline};
+use re_log_types::{ResolvedTimeRange, TimeType, Timeline, build_frame_nr};
 use re_types_core::Archetype as _;
 
-use re_query::{clamped_zip_1x2, range_zip_1x2, RangeResults};
+use re_query::{RangeResults, clamped_zip_1x2, range_zip_1x2};
 
 // ---
 

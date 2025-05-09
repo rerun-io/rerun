@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use re_log_types::{hash::Hash64, EntityPath};
+use re_log_types::{EntityPath, hash::Hash64};
 use re_renderer::{
     external::re_video::VideoLoadError,
     renderer::{
@@ -10,9 +10,9 @@ use re_renderer::{
     video::{Video, VideoFrameTexture},
 };
 use re_types::{
+    Archetype as _,
     archetypes::{AssetVideo, VideoFrameReference},
     components::{Blob, MediaType, VideoTimestamp},
-    Archetype as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,
@@ -22,16 +22,16 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect, SpatialView2D,
     contexts::SpatialSceneEntityContext,
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
-    visualizers::{entity_iterator, filter_visualizable_2d_entities, LoadingSpinner},
-    PickableRectSourceData, PickableTexturedRect, SpatialView2D,
+    visualizers::{LoadingSpinner, entity_iterator, filter_visualizable_2d_entities},
 };
 
 use super::{
-    entity_iterator::process_archetype, SpatialViewVisualizerData, UiLabel, UiLabelStyle,
-    UiLabelTarget,
+    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
+    entity_iterator::process_archetype,
 };
 
 pub struct VideoFrameReferenceVisualizer {

@@ -5,10 +5,10 @@ use std::io::Read as _;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::decoder::options_from_bytes;
 use crate::EncodingOptions;
 use crate::FileHeader;
 use crate::Serializer;
+use crate::decoder::options_from_bytes;
 
 use super::DecodeError;
 
@@ -226,8 +226,8 @@ mod tests {
     use re_chunk::RowId;
     use re_log_types::{ApplicationId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
 
-    use crate::encoder::Encoder;
     use crate::EncodingOptions;
+    use crate::encoder::Encoder;
 
     use super::*;
 

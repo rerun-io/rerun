@@ -1,4 +1,4 @@
-use std::sync::mpsc::{sync_channel, Receiver};
+use std::sync::mpsc::{Receiver, sync_channel};
 
 use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 

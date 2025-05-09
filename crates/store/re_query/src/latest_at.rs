@@ -12,8 +12,8 @@ use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    archetypes, components::ClearIsRecursive, external::arrow::array::ArrayRef, Component,
-    ComponentDescriptor, ComponentName,
+    Component, ComponentDescriptor, ComponentName, archetypes, components::ClearIsRecursive,
+    external::arrow::array::ArrayRef,
 };
 
 use crate::{QueryCache, QueryCacheKey, QueryError};

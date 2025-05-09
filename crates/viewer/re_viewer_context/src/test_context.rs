@@ -1,5 +1,5 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use ahash::HashMap;
 use egui::Context;
@@ -7,10 +7,10 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::{
-    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, GlobalContext, ItemCollection, RecordingConfig,
-    StorageContext, StoreContext, SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
-    ViewerContext,
+    ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry,
+    DataQueryResult, GlobalContext, ItemCollection, RecordingConfig, StorageContext, StoreContext,
+    SystemCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates, ViewerContext,
+    blueprint_timeline, command_channel,
 };
 use re_chunk::{Chunk, ChunkBuilder};
 use re_chunk_store::LatestAtQuery;

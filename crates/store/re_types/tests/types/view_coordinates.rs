@@ -1,6 +1,6 @@
 use re_types::{
-    archetypes::ViewCoordinates, components, view_coordinates::ViewDir, Archetype as _,
-    AsComponents as _, ComponentBatch as _,
+    Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::ViewCoordinates,
+    components, view_coordinates::ViewDir,
 };
 
 #[test]
@@ -33,7 +33,7 @@ fn roundtrip() {
 #[cfg(feature = "glam")]
 #[test]
 fn view_coordinates() {
-    use glam::{vec3, Mat3};
+    use glam::{Mat3, vec3};
     use re_types::view_coordinates::{Handedness, SignedAxis3};
 
     let rub_component =
@@ -42,9 +42,11 @@ fn view_coordinates() {
     assert_eq!(rub_component.from_rub(), Mat3::IDENTITY);
 
     {
-        assert!("UUDDLRLRBAStart"
-            .parse::<components::ViewCoordinates>()
-            .is_err());
+        assert!(
+            "UUDDLRLRBAStart"
+                .parse::<components::ViewCoordinates>()
+                .is_err()
+        );
         assert!("UUD".parse::<components::ViewCoordinates>().is_err());
 
         let rub = "RUB".parse::<components::ViewCoordinates>().unwrap();

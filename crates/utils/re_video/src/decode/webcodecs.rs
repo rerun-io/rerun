@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
-use wasm_bindgen::{closure::Closure, JsCast as _};
+use wasm_bindgen::{JsCast as _, closure::Closure};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,

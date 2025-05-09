@@ -7,8 +7,13 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
+    ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
+    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
+    ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    Type, TypeRegistry,
     codegen::{
-        autogen_warning,
+        Target, autogen_warning,
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -18,15 +23,9 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, quote_doc_line},
         },
-        Target,
     },
     format_path,
     objects::ObjectClass,
-    CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    TypeRegistry, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
-    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
-    ATTR_RUST_REPR,
 };
 
 use super::{

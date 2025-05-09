@@ -9,16 +9,16 @@ use ahash::{HashMap, HashMapExt as _};
 use smallvec::smallvec;
 
 use crate::{
+    Color32, CpuWriteGpuReadError, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh},
+    mesh::{GpuMesh, gpu_data::MaterialUniformBuffer, mesh_vertices},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    Color32, CpuWriteGpuReadError, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};

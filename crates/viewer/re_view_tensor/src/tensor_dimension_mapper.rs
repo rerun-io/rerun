@@ -6,7 +6,7 @@ use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{dimension_mapping::TensorSliceSelection, TensorDimension};
+use crate::{TensorDimension, dimension_mapping::TensorSliceSelection};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {

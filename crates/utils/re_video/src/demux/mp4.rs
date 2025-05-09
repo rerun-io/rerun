@@ -2,7 +2,7 @@
 
 use super::{Config, GroupOfPictures, Sample, VideoData, VideoLoadError};
 
-use crate::{demux::SamplesStatistics, Time, Timescale};
+use crate::{Time, Timescale, demux::SamplesStatistics};
 
 impl VideoData {
     pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {

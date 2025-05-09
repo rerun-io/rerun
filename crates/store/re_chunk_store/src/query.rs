@@ -14,7 +14,7 @@ use re_types_core::{
     UnorderedComponentDescriptorSet,
 };
 
-use crate::{store::ChunkIdSetPerTime, ChunkStore};
+use crate::{ChunkStore, store::ChunkIdSetPerTime};
 
 // Used all over in docstrings.
 #[allow(unused_imports)]

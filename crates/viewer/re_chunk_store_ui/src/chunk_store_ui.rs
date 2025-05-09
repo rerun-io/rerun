@@ -8,12 +8,12 @@ use re_chunk_store::{ChunkStore, LatestAtQuery, RangeQuery};
 use re_log_types::{
     ResolvedTimeRange, StoreKind, TimeType, Timeline, TimelineName, TimestampFormat,
 };
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::StoreContext;
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
-use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
+use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
 
 /// Any column that can be sorted.
 #[derive(Default, Clone, Copy, PartialEq)]

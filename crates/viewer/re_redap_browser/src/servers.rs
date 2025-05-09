@@ -6,7 +6,7 @@ use egui::{Frame, Margin, RichText};
 use re_log_types::EntryId;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_ui::list_item::ItemActionButton;
-use re_ui::{icons, list_item, UiExt as _};
+use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };

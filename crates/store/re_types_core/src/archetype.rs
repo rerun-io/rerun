@@ -1,8 +1,8 @@
 use std::{borrow::Cow, sync::Arc};
 
 use crate::{
-    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
-    SerializedComponentBatch, _Backtrace,
+    _Backtrace, ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult,
+    SerializationResult, SerializedComponentBatch,
 };
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings

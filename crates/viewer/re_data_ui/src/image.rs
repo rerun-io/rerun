@@ -2,8 +2,8 @@ use egui::{NumExt as _, Vec2};
 
 use re_renderer::renderer::ColormappedTexture;
 use re_viewer_context::{
-    gpu_bridge::{self, image_to_gpu},
     ColormapWithRange, ImageInfo, ImageStatsCache, UiLayout, ViewerContext,
+    gpu_bridge::{self, image_to_gpu},
 };
 
 /// Show a button letting the user copy the image

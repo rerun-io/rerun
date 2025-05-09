@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use egui::emath::Rangef;
-use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape, Tooltip};
+use egui::{Color32, NumExt as _, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;

@@ -9,9 +9,9 @@ use re_byte_size::SizeBytes;
 use re_chunk_store::Chunk;
 use re_log_types::{Timeline, TimestampFormat};
 use re_types::datatypes::TimeInt;
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
-use crate::sort::{sortable_column_header_ui, SortColumn, SortDirection};
+use crate::sort::{SortColumn, SortDirection, sortable_column_header_ui};
 
 /// Any column that can be sorted
 #[derive(Default, Clone, Copy, PartialEq)]

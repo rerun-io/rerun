@@ -12,8 +12,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::try_serialize_field;
 use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
@@ -50,7 +50,7 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -99,7 +99,7 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use ::re_types_core::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data

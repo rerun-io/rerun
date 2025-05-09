@@ -1,4 +1,4 @@
-use egui::{emath::Float as _, pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
+use egui::{Align2, Color32, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
 
 use crate::SUCCESS_COLOR;
 use crate::{DesignTokens, TopBarStyle};

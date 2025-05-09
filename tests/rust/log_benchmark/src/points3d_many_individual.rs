@@ -1,4 +1,4 @@
-use crate::points3d_shared::{prepare_points3d, Point3DInput};
+use crate::points3d_shared::{Point3DInput, prepare_points3d};
 
 const NUM_POINTS: usize = 1_000_000;
 

@@ -1,6 +1,6 @@
 //! Logs a `Tensor` archetype for roundtrip checks.
 
-use rerun::{archetypes::Tensor, RecordingStream};
+use rerun::{RecordingStream, archetypes::Tensor};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

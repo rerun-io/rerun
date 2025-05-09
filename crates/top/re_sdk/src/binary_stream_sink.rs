@@ -6,8 +6,8 @@ use re_log::ResultExt as _;
 use re_log_encoding::encoder::encode_as_bytes_local;
 use re_log_types::LogMsg;
 
-use crate::sink::LogSink;
 use crate::RecordingStream;
+use crate::sink::LogSink;
 
 /// The storage used by [`BinaryStreamSink`].
 ///

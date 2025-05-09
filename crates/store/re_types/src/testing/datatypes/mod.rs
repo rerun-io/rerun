@@ -20,12 +20,12 @@ mod valued_enum;
 
 pub use self::affix_fuzzer1::AffixFuzzer1;
 pub use self::affix_fuzzer2::AffixFuzzer2;
-pub use self::affix_fuzzer20::AffixFuzzer20;
-pub use self::affix_fuzzer21::AffixFuzzer21;
-pub use self::affix_fuzzer22::AffixFuzzer22;
 pub use self::affix_fuzzer3::AffixFuzzer3;
 pub use self::affix_fuzzer4::AffixFuzzer4;
 pub use self::affix_fuzzer5::AffixFuzzer5;
+pub use self::affix_fuzzer20::AffixFuzzer20;
+pub use self::affix_fuzzer21::AffixFuzzer21;
+pub use self::affix_fuzzer22::AffixFuzzer22;
 pub use self::enum_test::EnumTest;
 pub use self::flattened_scalar::FlattenedScalar;
 pub use self::multi_enum::MultiEnum;

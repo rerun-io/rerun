@@ -6,11 +6,10 @@ use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
 use re_types::{archetypes::RecordingProperties, components::Timestamp};
 use re_ui::{
-    icons,
+    SyntaxHighlighting as _, icons,
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
-    SyntaxHighlighting as _,
 };
-use re_viewer_context::{contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext, contents_name_style};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {

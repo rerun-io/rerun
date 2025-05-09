@@ -1,4 +1,4 @@
-use egui::{text::TextWrapping, Align, Align2, NumExt as _, RichText, Ui};
+use egui::{Align, Align2, NumExt as _, RichText, Ui, text::TextWrapping};
 use std::sync::Arc;
 
 use super::{ContentContext, DesiredWidth, ListItemContent, ListVisuals};

@@ -12,8 +12,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::try_serialize_field;
 use crate::SerializationResult;
+use crate::try_serialize_field;
 use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};

@@ -3,7 +3,7 @@ mod lib;
 use argh::FromArgs;
 use cargo_metadata::camino::Utf8PathBuf;
 
-use lib::{build, default_build_dir, Profile, Target};
+use lib::{Profile, Target, build, default_build_dir};
 
 /// Build the web-viewer.
 #[derive(FromArgs)]

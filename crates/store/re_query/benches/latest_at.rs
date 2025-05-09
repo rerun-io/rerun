@@ -3,18 +3,18 @@
 
 use std::sync::Arc;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber as _, LatestAtQuery};
-use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
+use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, entity_path};
 use re_query::clamped_zip_1x1;
 use re_query::{LatestAtResults, QueryCache};
 use re_types::{
+    Archetype as _,
     archetypes::Points2D,
     components::{Color, Position2D, Text},
-    Archetype as _,
 };
 
 // ---

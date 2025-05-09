@@ -4,18 +4,17 @@ use nohash_hasher::IntMap;
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::hash::Hash64;
-use re_log_types::{debug_assert_archetype_has_components, ComponentPath};
+use re_log_types::{ComponentPath, debug_assert_archetype_has_components};
 use re_types::ComponentDescriptor;
 use re_types::{
-    archetypes, components,
+    Component as _, ComponentName, archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Component as _, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
-    ImageStatsCache, Item, UiLayout, ViewerContext,
+    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
+    gpu_bridge::image_data_range_heuristic,
 };
 
 use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
