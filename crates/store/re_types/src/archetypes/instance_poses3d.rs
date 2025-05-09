@@ -110,6 +110,8 @@ pub struct InstancePoses3D {
 
 impl InstancePoses3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::translations`].
+    ///
+    /// The corresponding component is [`crate::components::PoseTranslation3D`].
     #[inline]
     pub fn descriptor_translations() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -120,6 +122,8 @@ impl InstancePoses3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
+    ///
+    /// The corresponding component is [`crate::components::PoseRotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -130,6 +134,8 @@ impl InstancePoses3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
+    ///
+    /// The corresponding component is [`crate::components::PoseRotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -140,6 +146,8 @@ impl InstancePoses3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scales`].
+    ///
+    /// The corresponding component is [`crate::components::PoseScale3D`].
     #[inline]
     pub fn descriptor_scales() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -150,6 +158,8 @@ impl InstancePoses3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
+    ///
+    /// The corresponding component is [`crate::components::PoseTransformMat3x3`].
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {

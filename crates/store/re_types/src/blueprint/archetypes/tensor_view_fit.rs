@@ -29,6 +29,8 @@ pub struct TensorViewFit {
 
 impl TensorViewFit {
     /// Returns the [`ComponentDescriptor`] for [`Self::scaling`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ViewFit`].
     #[inline]
     pub fn descriptor_scaling() -> ComponentDescriptor {
         ComponentDescriptor {

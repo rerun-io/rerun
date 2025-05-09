@@ -116,6 +116,8 @@ pub struct SeriesLines {
 
 impl SeriesLines {
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -126,6 +128,8 @@ impl SeriesLines {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::widths`].
+    ///
+    /// The corresponding component is [`crate::components::StrokeWidth`].
     #[inline]
     pub fn descriptor_widths() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -136,6 +140,8 @@ impl SeriesLines {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::names`].
+    ///
+    /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -146,6 +152,8 @@ impl SeriesLines {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
+    ///
+    /// The corresponding component is [`crate::components::SeriesVisible`].
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -156,6 +164,8 @@ impl SeriesLines {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::aggregation_policy`].
+    ///
+    /// The corresponding component is [`crate::components::AggregationPolicy`].
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
         ComponentDescriptor {

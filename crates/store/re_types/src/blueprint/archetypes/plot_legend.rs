@@ -36,6 +36,8 @@ pub struct PlotLegend {
 
 impl PlotLegend {
     /// Returns the [`ComponentDescriptor`] for [`Self::corner`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::Corner2D`].
     #[inline]
     pub fn descriptor_corner() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -46,6 +48,8 @@ impl PlotLegend {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
+    ///
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
         ComponentDescriptor {

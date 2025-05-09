@@ -127,6 +127,8 @@ pub struct Ellipsoids3D {
 
 impl Ellipsoids3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::half_sizes`].
+    ///
+    /// The corresponding component is [`crate::components::HalfSize3D`].
     #[inline]
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -137,6 +139,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
+    ///
+    /// The corresponding component is [`crate::components::PoseTranslation3D`].
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -147,6 +151,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
+    ///
+    /// The corresponding component is [`crate::components::PoseRotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -157,6 +163,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
+    ///
+    /// The corresponding component is [`crate::components::PoseRotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -167,6 +175,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
+    ///
+    /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -177,6 +187,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::line_radii`].
+    ///
+    /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_line_radii() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -187,6 +199,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fill_mode`].
+    ///
+    /// The corresponding component is [`crate::components::FillMode`].
     #[inline]
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -197,6 +211,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
+    ///
+    /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -207,6 +223,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
+    ///
+    /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -217,6 +235,8 @@ impl Ellipsoids3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
+    ///
+    /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {

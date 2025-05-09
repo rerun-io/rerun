@@ -31,6 +31,8 @@ pub struct NearClipPlane {
 
 impl NearClipPlane {
     /// Returns the [`ComponentDescriptor`] for [`Self::near_clip_plane`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::NearClipPlane`].
     #[inline]
     pub fn descriptor_near_clip_plane() -> ComponentDescriptor {
         ComponentDescriptor {

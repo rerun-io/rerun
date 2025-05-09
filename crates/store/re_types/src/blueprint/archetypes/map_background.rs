@@ -31,6 +31,8 @@ pub struct MapBackground {
 
 impl MapBackground {
     /// Returns the [`ComponentDescriptor`] for [`Self::provider`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::MapProvider`].
     #[inline]
     pub fn descriptor_provider() -> ComponentDescriptor {
         ComponentDescriptor {

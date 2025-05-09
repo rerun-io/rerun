@@ -39,6 +39,8 @@ pub struct ForceManyBody {
 
 impl ForceManyBody {
     /// Returns the [`ComponentDescriptor`] for [`Self::enabled`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_enabled() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -49,6 +51,8 @@ impl ForceManyBody {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::strength`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::ForceStrength`].
     #[inline]
     pub fn descriptor_strength() -> ComponentDescriptor {
         ComponentDescriptor {

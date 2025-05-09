@@ -360,6 +360,8 @@ pub struct Transform3D {
 
 impl Transform3D {
     /// Returns the [`ComponentDescriptor`] for [`Self::translation`].
+    ///
+    /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_translation() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -370,6 +372,8 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angle`].
+    ///
+    /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angle() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -380,6 +384,8 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternion`].
+    ///
+    /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternion() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -390,6 +396,8 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::scale`].
+    ///
+    /// The corresponding component is [`crate::components::Scale3D`].
     #[inline]
     pub fn descriptor_scale() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -400,6 +408,8 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::mat3x3`].
+    ///
+    /// The corresponding component is [`crate::components::TransformMat3x3`].
     #[inline]
     pub fn descriptor_mat3x3() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -410,6 +420,8 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::relation`].
+    ///
+    /// The corresponding component is [`crate::components::TransformRelation`].
     #[inline]
     pub fn descriptor_relation() -> ComponentDescriptor {
         ComponentDescriptor {
@@ -420,6 +432,8 @@ impl Transform3D {
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::axis_length`].
+    ///
+    /// The corresponding component is [`crate::components::AxisLength`].
     #[inline]
     pub fn descriptor_axis_length() -> ComponentDescriptor {
         ComponentDescriptor {
