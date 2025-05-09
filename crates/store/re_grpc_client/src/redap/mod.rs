@@ -130,7 +130,6 @@ pub async fn client(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-// pub type RedapClient = FrontendServiceClient<tonic::transport::Channel>;
 pub type RedapClient = FrontendServiceClient<
     tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>,
 >;
@@ -151,18 +150,20 @@ pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
 
     // Use the token from the env var if available, logging any error
     //
-    // TODO(#721): we should support configuring the token from
+    // TODO(rerun-io/dataplatform#721): we should support configuring the token from
     // the UI and/or API too
     let maybe_token = std::env::var("REDAP_TOKEN")
         .map_err(|err| match err {
             std::env::VarError::NotPresent => {}
             std::env::VarError::NotUnicode(..) => {
-                re_log::warn!("REDAP_TOKEN env var is malformed: {err}");
+                re_log::warn_once!("REDAP_TOKEN env var is malformed: {err}");
             }
         })
         .and_then(|t| {
             Jwt::try_from(t).map_err(|err| {
-                re_log::warn!("REDAP_TOKEN env var is present, but the token is invalid: {err}");
+                re_log::warn_once!(
+                    "REDAP_TOKEN env var is present, but the token is invalid: {err}"
+                );
             })
         })
         .ok();
