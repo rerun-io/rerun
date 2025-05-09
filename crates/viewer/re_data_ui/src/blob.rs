@@ -2,19 +2,19 @@ use std::sync::Arc;
 
 use re_log_types::EntityPath;
 use re_types::{
-    components::{Blob, MediaType, VideoTimestamp},
     ComponentDescriptor, RowId,
+    components::{Blob, MediaType, VideoTimestamp},
 };
 use re_ui::{
-    list_item::{self, PropertyContent},
     UiExt as _,
+    list_item::{self, PropertyContent},
 };
 use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
 
 use crate::{
+    EntityDataUi,
     image::image_preview_ui,
     video::{show_decoded_frame_info, video_result_ui},
-    EntityDataUi,
 };
 
 impl EntityDataUi for Blob {

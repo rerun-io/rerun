@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use base64::{engine::general_purpose, Engine as _};
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use base64::{Engine as _, engine::general_purpose};
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 
 use crate::{Error, Jwt};
 

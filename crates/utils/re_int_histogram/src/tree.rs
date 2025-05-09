@@ -6,9 +6,9 @@
 //! There are branch nodes, and two types of leaf nodes: dense, and sparse.
 //! Dense leaves are only found at the very bottom of the trie.
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
-use crate::{i64_key_from_u64_key, u64_key_from_i64_key, RangeI64, RangeU64};
+use crate::{RangeI64, RangeU64, i64_key_from_u64_key, u64_key_from_i64_key};
 
 // ----------------------------------------------------------------------------
 

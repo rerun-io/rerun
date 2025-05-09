@@ -7,13 +7,12 @@ use itertools::Itertools as _;
 
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::{
-    external::re_chunk::Chunk, ChunkStore, ChunkStoreSubscriber as _, RangeQuery,
-    ResolvedTimeRange, TimeInt,
+    ChunkStore, ChunkStoreSubscriber as _, RangeQuery, ResolvedTimeRange, TimeInt,
+    external::re_chunk::Chunk,
 };
 use re_log_types::{
-    build_frame_nr,
+    EntityPath, TimePoint, build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
-    EntityPath, TimePoint,
 };
 use re_query::QueryCache;
 use re_types_core::{Archetype as _, ComponentBatch as _};

@@ -8,13 +8,12 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
 };
 use re_log_types::{
-    build_frame_nr,
+    EntityPath, TimeType, Timeline, build_frame_nr,
     example_components::{MyColor, MyIndex, MyPoint},
-    EntityPath, TimeType, Timeline,
 };
 use re_types::{
-    testing::{build_some_large_structs, LargeStruct},
     ComponentDescriptor, ComponentNameSet,
+    testing::{LargeStruct, build_some_large_structs},
 };
 use re_types_core::Component as _;
 
@@ -162,24 +161,32 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
     store.insert_chunk(&Arc::new(chunk))?;
 
     // entity1 is on both timelines
-    assert!(!store
-        .all_components_on_timeline(timeline1.name(), &entity_path1)
-        .unwrap()
-        .is_empty());
-    assert!(!store
-        .all_components_on_timeline(timeline2.name(), &entity_path1)
-        .unwrap()
-        .is_empty());
+    assert!(
+        !store
+            .all_components_on_timeline(timeline1.name(), &entity_path1)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        !store
+            .all_components_on_timeline(timeline2.name(), &entity_path1)
+            .unwrap()
+            .is_empty()
+    );
 
     // entity2 is only on timeline1
-    assert!(!store
-        .all_components_on_timeline(timeline1.name(), &entity_path2)
-        .unwrap()
-        .is_empty());
+    assert!(
+        !store
+            .all_components_on_timeline(timeline1.name(), &entity_path2)
+            .unwrap()
+            .is_empty()
+    );
 
-    assert!(store
-        .all_components_on_timeline(timeline2.name(), &entity_path2)
-        .is_none());
+    assert!(
+        store
+            .all_components_on_timeline(timeline2.name(), &entity_path2)
+            .is_none()
+    );
 
     Ok(())
 }

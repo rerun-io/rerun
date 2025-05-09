@@ -11,8 +11,8 @@ mod view_uuid;
 
 pub use bool_toggle::edit_bool;
 pub use enum_combobox::{
-    edit_view_enum, edit_view_enum_with_variant_available, VariantAvailable,
-    VariantAvailableProvider,
+    VariantAvailable, VariantAvailableProvider, edit_view_enum,
+    edit_view_enum_with_variant_available,
 };
 pub use float_drag::{
     edit_f32_float_raw, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,

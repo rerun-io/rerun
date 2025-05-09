@@ -4,10 +4,9 @@ use once_cell::sync::OnceCell;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, StoreId};
 use re_types::{
-    archetypes,
+    Archetype as _, Component as _, Loggable as _, archetypes,
     components::{Blob, ImageFormat, MediaType},
     external::image,
-    Archetype as _, Component as _, Loggable as _,
 };
 
 bitflags::bitflags! {

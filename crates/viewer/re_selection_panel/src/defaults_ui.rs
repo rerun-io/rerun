@@ -8,10 +8,10 @@ use re_chunk_store::LatestAtQuery;
 use re_data_ui::DataUi as _;
 use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
-use re_ui::{list_item::LabelContent, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item::LabelContent};
 use re_viewer_context::{
-    blueprint_timeline, ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _,
-    UiLayout, ViewContext, ViewSystemIdentifier,
+    ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewContext,
+    ViewSystemIdentifier, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 

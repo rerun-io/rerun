@@ -4,11 +4,11 @@ pub mod encoder;
 #[cfg(test)]
 mod tests {
     use crate::codec::{
-        wire::{decoder::Decode as _, encoder::Encode as _},
         CodecError,
+        wire::{decoder::Decode as _, encoder::Encode as _},
     };
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{example_components::MyPoint, Timeline};
+    use re_log_types::{Timeline, example_components::MyPoint};
     use re_protos::common::v1alpha1::{DataframePart, EncoderVersion};
 
     fn get_test_chunk() -> Chunk {

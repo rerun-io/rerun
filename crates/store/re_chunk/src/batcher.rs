@@ -14,7 +14,7 @@ use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::ComponentDescriptor;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
 
 // ---
 

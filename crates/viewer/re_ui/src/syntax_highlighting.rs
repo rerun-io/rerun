@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use re_entity_db::InstancePath;
 use re_log_types::{
+    ComponentPath, EntityPath, EntityPathPart, Instance,
     external::re_types_core::{
         ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName,
     },
-    ComponentPath, EntityPath, EntityPathPart, Instance,
 };
 
-use egui::{text::LayoutJob, Color32, Style, TextFormat};
+use egui::{Color32, Style, TextFormat, text::LayoutJob};
 
 // ----------------------------------------------------------------------------
 pub trait SyntaxHighlighting {

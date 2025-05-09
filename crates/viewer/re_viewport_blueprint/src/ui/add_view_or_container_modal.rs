@@ -2,7 +2,7 @@
 
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, RecommendedView, ViewerContext,
+    ContainerId, RecommendedView, ViewerContext, blueprint_id_to_tile_id, icon_for_container_kind,
 };
 
 use crate::{ViewBlueprint, ViewportBlueprint};

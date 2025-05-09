@@ -3,11 +3,11 @@ use std::{borrow::Cow, ops::RangeInclusive};
 use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_types::{
+    ComponentDescriptor,
     components::Colormap,
     datatypes::{Blob, ChannelDatatype, ColorModel, ImageFormat},
-    image::{rgb_from_yuv, ImageKind},
+    image::{ImageKind, rgb_from_yuv},
     tensor_data::TensorElement,
-    ComponentDescriptor,
 };
 
 /// Colormap together with the range of image values that is mapped to the colormap's range.

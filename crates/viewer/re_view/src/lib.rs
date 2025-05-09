@@ -24,10 +24,10 @@ pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
 pub use outlines::{
-    outline_config, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };
 pub use query::{
-    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, DataResultQuery,
+    DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
 pub use results_ext::{
     HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,

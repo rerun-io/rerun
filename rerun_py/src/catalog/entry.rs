@@ -1,9 +1,9 @@
 use std::str::FromStr as _;
 
-use pyo3::{exceptions::PyTypeError, pyclass, pymethods, Py, PyErr, PyResult, Python};
+use pyo3::{Py, PyErr, PyResult, Python, exceptions::PyTypeError, pyclass, pymethods};
 
 use re_log_types::EntryId;
-use re_protos::catalog::v1alpha1::{ext::EntryDetails, EntryKind};
+use re_protos::catalog::v1alpha1::{EntryKind, ext::EntryDetails};
 
 use crate::catalog::PyCatalogClient;
 

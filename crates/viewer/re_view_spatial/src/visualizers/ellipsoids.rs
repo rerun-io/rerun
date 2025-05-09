@@ -1,23 +1,21 @@
 use std::iter;
 
 use re_types::{
+    ArrowString,
     archetypes::Ellipsoids3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
-    ArrowString,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialViewKind};
 
 use super::{
-    filter_visualizable_3d_entities,
+    SpatialViewVisualizerData, filter_visualizable_3d_entities,
     utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
-    SpatialViewVisualizerData,
 };
 
 // ---

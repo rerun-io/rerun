@@ -23,11 +23,11 @@ mod videos;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
-use re_types::{archetypes, ComponentDescriptor};
-pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
+use re_types::{ComponentDescriptor, archetypes};
+pub use transform3d_arrows::{AxisLengthDetector, Transform3DArrowsVisualizer, add_axis_arrows};
 pub use utilities::{
-    entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
-    UiLabel, UiLabelStyle, UiLabelTarget,
+    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
+    process_labels_3d, textured_rect_from_image,
 };
 
 /// Shows a loading animation in a spatial view.
@@ -51,9 +51,9 @@ use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_viewer_context::{
-    auto_color_egui, IdentifiedViewSystem as _, MaybeVisualizableEntities, ViewClassRegistryError,
+    IdentifiedViewSystem as _, MaybeVisualizableEntities, ViewClassRegistryError,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizableEntities,
-    VisualizableFilterContext, VisualizerCollection,
+    VisualizableFilterContext, VisualizerCollection, auto_color_egui,
 };
 
 use re_view::clamped_or_nothing;
@@ -119,8 +119,8 @@ pub fn register_3d_spatial_visualizers(
 
 /// List of all visualizers that read [`re_types::components::DrawOrder`] and the exact draw order component descriptor they use.
 // TODO(jan, andreas): consider adding DrawOrder to video
-pub fn visualizers_processing_draw_order(
-) -> impl Iterator<Item = (ViewSystemIdentifier, ComponentDescriptor)> {
+pub fn visualizers_processing_draw_order()
+-> impl Iterator<Item = (ViewSystemIdentifier, ComponentDescriptor)> {
     [
         (
             arrows2d::Arrows2DVisualizer::identifier(),

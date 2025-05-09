@@ -9,13 +9,13 @@ use itertools::Itertools as _;
 use re_renderer::Hsva;
 
 use re_renderer::{
+    Color32, LineDrawableBuilder, PointCloudBuilder, Size,
     renderer::{
         ColormappedTexture, LineStripFlags, RectangleDrawData, RectangleOptions, TextureFilterMag,
         TextureFilterMin, TexturedRect,
     },
     resource_managers::{GpuTexture2D, ImageDataDesc},
     view_builder::{self, Projection, TargetConfiguration, ViewBuilder},
-    Color32, LineDrawableBuilder, PointCloudBuilder, Size,
 };
 
 mod framework;

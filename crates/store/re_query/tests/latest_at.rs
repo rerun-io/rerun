@@ -5,12 +5,11 @@ use std::sync::Arc;
 
 use re_chunk::RowId;
 use re_chunk_store::{
-    external::re_chunk::Chunk, ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery,
+    ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery, external::re_chunk::Chunk,
 };
 use re_log_types::{
-    build_frame_nr,
+    EntityPath, TimeInt, TimePoint, build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
-    EntityPath, TimeInt, TimePoint,
 };
 use re_query::QueryCache;
 use re_types_core::{Archetype as _, ComponentBatch as _};

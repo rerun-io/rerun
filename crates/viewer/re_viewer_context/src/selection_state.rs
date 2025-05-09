@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use itertools::Itertools as _;
 use parking_lot::Mutex;
 
-use crate::{global_context::resolve_mono_instance_path_item, ViewerContext};
+use crate::{ViewerContext, global_context::resolve_mono_instance_path_item};
 use re_entity_db::EntityPath;
 use re_log_types::StoreKind;
 

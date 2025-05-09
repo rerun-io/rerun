@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use re_byte_size::SizeBytes;
 use re_string_interner::InternedString;
 
-use crate::{hash::Hash64, EntityPathPart};
+use crate::{EntityPathPart, hash::Hash64};
 
 // ----------------------------------------------------------------------------
 

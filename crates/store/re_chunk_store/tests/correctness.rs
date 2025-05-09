@@ -7,8 +7,8 @@ use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery};
 use re_log_types::example_components::{MyIndex, MyPoint};
 use re_log_types::{
-    build_frame_nr, build_log_time, Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline,
-    Timestamp,
+    Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
+    build_log_time,
 };
 use re_types_core::Component as _;
 
@@ -340,9 +340,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    assert!(store
-        .entity_min_time(timeline_wrong_name.name(), &entity_path)
-        .is_none());
+    assert!(
+        store
+            .entity_min_time(timeline_wrong_name.name(), &entity_path)
+            .is_none()
+    );
     assert_eq!(
         store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(42))
@@ -351,9 +353,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now))
     );
-    assert!(store
-        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
-        .is_none());
+    assert!(
+        store
+            .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
+            .is_none()
+    );
 
     // insert row in the future, these shouldn't be visible
     let chunk = Chunk::builder(entity_path.clone())
@@ -367,9 +371,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    assert!(store
-        .entity_min_time(timeline_wrong_name.name(), &entity_path)
-        .is_none());
+    assert!(
+        store
+            .entity_min_time(timeline_wrong_name.name(), &entity_path)
+            .is_none()
+    );
     assert_eq!(
         store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(42))
@@ -378,9 +384,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now))
     );
-    assert!(store
-        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
-        .is_none());
+    assert!(
+        store
+            .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
+            .is_none()
+    );
 
     // insert row in the past, these should be visible
     let chunk = Chunk::builder(entity_path.clone())
@@ -394,9 +402,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    assert!(store
-        .entity_min_time(timeline_wrong_name.name(), &entity_path)
-        .is_none());
+    assert!(
+        store
+            .entity_min_time(timeline_wrong_name.name(), &entity_path)
+            .is_none()
+    );
     assert_eq!(
         store.entity_min_time(timeline_frame_nr.name(), &entity_path),
         Some(TimeInt::new_temporal(32))
@@ -405,9 +415,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
         store.entity_min_time(timeline_log_time.name(), &entity_path),
         Some(TimeInt::from(now_minus_one))
     );
-    assert!(store
-        .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
-        .is_none());
+    assert!(
+        store
+            .entity_min_time(timeline_frame_nr.name(), &wrong_entity_path)
+            .is_none()
+    );
 
     Ok(())
 }

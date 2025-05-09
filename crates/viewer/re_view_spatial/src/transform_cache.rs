@@ -12,9 +12,9 @@ use re_chunk_store::{
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, TimelineName};
 use re_types::{
+    Archetype as _, Component as _, ComponentName,
     archetypes::{self},
     components::{self},
-    Archetype as _, Component as _, ComponentName,
 };
 
 /// Store subscriber that resolves all transform components at a given entity to an affine transform.
@@ -1038,7 +1038,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
     use re_log_types::{TimePoint, Timeline};
-    use re_types::{archetypes, Loggable as _, SerializedComponentBatch};
+    use re_types::{Loggable as _, SerializedComponentBatch, archetypes};
 
     use super::*;
 
@@ -1160,12 +1160,16 @@ mod tests {
         TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
             cache.apply_all_updates(&entity_db);
             let transforms_per_timeline = cache.transforms_for_timeline(*timeline.name());
-            assert!(transforms_per_timeline
-                .entity_transforms(&EntityPath::from("without_transform"))
-                .is_none());
-            assert!(transforms_per_timeline
-                .entity_transforms(&EntityPath::from("rando"))
-                .is_none());
+            assert!(
+                transforms_per_timeline
+                    .entity_transforms(&EntityPath::from("without_transform"))
+                    .is_none()
+            );
+            assert!(
+                transforms_per_timeline
+                    .entity_transforms(&EntityPath::from("rando"))
+                    .is_none()
+            );
             let transforms = transforms_per_timeline
                 .entity_transforms(&EntityPath::from("with_transform"))
                 .unwrap();

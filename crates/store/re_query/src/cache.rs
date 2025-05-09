@@ -12,7 +12,7 @@ use re_chunk_store::{
     ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
 };
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, TimelineName};
-use re_types_core::{archetypes, ComponentDescriptor};
+use re_types_core::{ComponentDescriptor, archetypes};
 
 use crate::{LatestAtCache, RangeCache};
 

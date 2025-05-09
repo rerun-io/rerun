@@ -4,15 +4,14 @@ use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
 use re_types::{
-    components,
+    ArchetypeName, Component, ComponentDescriptor, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
 };
-use re_types::{ArchetypeName, Component, ComponentDescriptor};
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
-    ImageStatsCache, Item, UiLayout, ViewerContext,
+    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
+    gpu_bridge::image_data_range_heuristic,
 };
 
 use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};

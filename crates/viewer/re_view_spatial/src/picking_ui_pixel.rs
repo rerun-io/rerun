@@ -3,9 +3,9 @@ use re_renderer::{external::wgpu, renderer::ColormappedTexture, resource_manager
 use re_types::{datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement};
 use re_ui::UiExt as _;
 use re_view::AnnotationSceneContext;
-use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ViewQuery, ViewerContext};
+use re_viewer_context::{Annotations, ImageInfo, ViewQuery, ViewerContext, gpu_bridge};
 
-use crate::{view_kind::SpatialViewKind, PickableRectSourceData};
+use crate::{PickableRectSourceData, view_kind::SpatialViewKind};
 
 pub struct PickedPixelInfo {
     pub source_data: PickableRectSourceData,
@@ -104,7 +104,7 @@ fn show_zoomed_image_region_area_outline(
     [center_x, center_y]: [isize; 2],
     image_rect: egui::Rect,
 ) {
-    use egui::{pos2, remap, Rect};
+    use egui::{Rect, pos2, remap};
 
     let width = image_resolution.x;
     let height = image_resolution.y;

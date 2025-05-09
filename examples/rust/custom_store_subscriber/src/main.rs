@@ -13,12 +13,12 @@
 use std::collections::{BTreeMap, HashMap};
 
 use rerun::{
+    ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId,
     external::{
         anyhow, re_build_info, re_chunk_store, re_log,
         re_log_types::{ResolvedTimeRange, TimelineName},
     },
     time::{TimeInt, TimeType},
-    ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId,
 };
 
 fn main() -> anyhow::Result<std::process::ExitCode> {

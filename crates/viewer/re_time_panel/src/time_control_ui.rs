@@ -2,7 +2,7 @@ use egui::NumExt as _;
 
 use re_entity_db::TimesPerTimeline;
 use re_log_types::TimeType;
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
 use re_viewer_context::{Looping, PlayState, TimeControl};
 

@@ -9,8 +9,8 @@ use parking_lot::Mutex;
 use re_sorbet::{BatchType, SorbetBatch};
 use re_viewer_context::AsyncRuntimeHandle;
 
-use crate::table_blueprint::{PartitionLinksSpec, SortBy, TableBlueprint};
 use crate::RequestedObject;
+use crate::table_blueprint::{PartitionLinksSpec, SortBy, TableBlueprint};
 
 /// Make sure we escape column names correctly for datafusion.
 ///
@@ -103,7 +103,7 @@ impl DataFusionQuery {
 
         if let Some(sort_by) = sort_by {
             dataframe = dataframe.sort(vec![
-                col(&sort_by.column).sort(sort_by.direction.is_ascending(), true)
+                col(&sort_by.column).sort(sort_by.direction.is_ascending(), true),
             ])?;
         }
 

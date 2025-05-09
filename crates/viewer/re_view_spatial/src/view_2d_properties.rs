@@ -1,14 +1,14 @@
 use re_types::{
+    Archetype as _,
     blueprint::{
         archetypes::Background,
         components::{BackgroundKind, VisualBounds2D},
     },
     components::Color,
-    Archetype as _,
 };
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
-use crate::{ui::SpatialViewState, SpatialView2D};
+use crate::{SpatialView2D, ui::SpatialViewState};
 
 impl TypedComponentFallbackProvider<Color> for SpatialView2D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {

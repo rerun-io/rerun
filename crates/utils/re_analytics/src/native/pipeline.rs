@@ -10,8 +10,8 @@ use crossbeam::{
     select,
 };
 
-use super::sink::PostHogSink;
 use super::AbortSignal;
+use super::sink::PostHogSink;
 use crate::{AnalyticsEvent, Config};
 
 #[derive(thiserror::Error, Debug)]

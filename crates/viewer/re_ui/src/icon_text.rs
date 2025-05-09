@@ -4,7 +4,7 @@ use std::{fmt, vec};
 
 use egui::{Context, ModifierNames, Modifiers, WidgetText};
 
-use crate::{icon_text, icons, Icon};
+use crate::{Icon, icon_text, icons};
 
 #[derive(Clone)]
 pub enum IconTextItem {

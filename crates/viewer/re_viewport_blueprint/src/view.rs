@@ -470,13 +470,13 @@ mod tests {
     use re_chunk::RowId;
     use re_entity_db::EntityDb;
     use re_log_types::{
-        example_components::{MyLabel, MyPoint, MyPoints},
         StoreId, StoreKind, TimePoint,
+        example_components::{MyLabel, MyPoint, MyPoints},
     };
-    use re_types::{blueprint::archetypes::EntityBehavior, ComponentDescriptor};
+    use re_types::{ComponentDescriptor, blueprint::archetypes::EntityBehavior};
     use re_viewer_context::{
-        test_context::TestContext, IndicatedEntities, MaybeVisualizableEntities, OverridePath,
-        PerVisualizer, StoreContext, VisualizableEntities,
+        IndicatedEntities, MaybeVisualizableEntities, OverridePath, PerVisualizer, StoreContext,
+        VisualizableEntities, test_context::TestContext,
     };
 
     use crate::view_contents::DataQueryPropertyResolver;

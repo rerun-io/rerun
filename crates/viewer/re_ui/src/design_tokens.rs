@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::color_table::Scale::{S100, S1000, S150, S200, S250, S300, S325, S350, S550, S775};
+use crate::color_table::Scale::{S100, S150, S200, S250, S300, S325, S350, S550, S775, S1000};
 use crate::color_table::{ColorTable, ColorToken};
-use crate::{design_tokens, CUSTOM_WINDOW_DECORATIONS};
+use crate::{CUSTOM_WINDOW_DECORATIONS, design_tokens};
 use std::sync::Arc;
 
 /// The look and feel of the UI.
@@ -558,7 +558,7 @@ fn test_design_tokens() {
     crate::apply_style_and_install_loaders(&ctx);
 
     // Make sure it works:
-    let _ = ctx.run(Default::default(), |ctx| {
+    let _ignored = ctx.run(Default::default(), |ctx| {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Hello Test!");
         });

@@ -1,17 +1,17 @@
 use re_log_types::EntityPath;
-use re_renderer::{renderer::PointCloudDrawDataError, PickingLayerInstanceId};
+use re_renderer::{PickingLayerInstanceId, renderer::PointCloudDrawDataError};
 use re_types::{
     archetypes::GeoPoints,
     components::{Color, Radius},
 };
 use re_view::{
-    process_annotation_slices, process_color_slice, AnnotationSceneContext, DataResultQuery as _,
-    RangeResultsExt as _,
+    AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
+    process_color_slice,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 #[derive(Debug, Default)]
@@ -95,7 +95,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 let radii = radii.unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0 .0);
+                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0.0);
 
                 // iterate over all instances
                 for (instance_index, (position, color, radius)) in itertools::izip!(

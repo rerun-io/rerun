@@ -9,13 +9,13 @@ use rand::Rng as _;
 use re_math::IsoTransform;
 
 use re_renderer::{
+    Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
+    Rgba, ScreenshotProcessor, Size,
     renderer::{
         GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
         TestTriangleDrawData,
     },
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
-    Rgba, ScreenshotProcessor, Size,
 };
 use winit::{event::ElementState, keyboard};
 

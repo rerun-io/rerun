@@ -87,7 +87,7 @@ mod ffmpeg_h264;
 
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_h264::{
-    ffmpeg_download_url, Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError,
+    Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
 };
 
 #[cfg(target_arch = "wasm32")]

@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, Instance};
 use re_renderer::{
-    renderer::{LineDrawDataError, LineStripFlags},
     PickingLayerInstanceId,
+    renderer::{LineDrawDataError, LineStripFlags},
 };
 use re_types::{
     archetypes::GeoLineStrings,
@@ -9,9 +9,9 @@ use re_types::{
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 #[derive(Debug, Default)]
@@ -77,8 +77,8 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 let radii = radii.unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_color = colors.last().copied().unwrap_or(fallback_color.0 .0);
-                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0 .0);
+                let last_color = colors.last().copied().unwrap_or(fallback_color.0.0);
+                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0.0);
 
                 // iterate over all instances
                 for (instance_index, (line, color, radius)) in itertools::izip!(

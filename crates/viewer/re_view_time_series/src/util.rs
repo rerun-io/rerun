@@ -3,11 +3,11 @@ use re_types::{
     components::AggregationPolicy,
     datatypes::{TimeRange, TimeRangeBoundary},
 };
-use re_viewer_context::{external::re_entity_db::InstancePath, ViewQuery, ViewerContext};
+use re_viewer_context::{ViewQuery, ViewerContext, external::re_entity_db::InstancePath};
 
 use crate::{
-    aggregation::{AverageAggregator, MinMaxAggregator},
     PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
+    aggregation::{AverageAggregator, MinMaxAggregator},
 };
 
 /// Find the number of time units per physical pixel.

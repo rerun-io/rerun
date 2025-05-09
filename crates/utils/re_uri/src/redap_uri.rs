@@ -1,8 +1,8 @@
 use re_log_types::StoreId;
 
 use crate::{
-    CatalogUri, DatasetDataUri, EntryUri, Error, Fragment, Origin, ProxyUri, DEFAULT_PROXY_PORT,
-    DEFAULT_REDAP_PORT,
+    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetDataUri, EntryUri, Error, Fragment,
+    Origin, ProxyUri,
 };
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`

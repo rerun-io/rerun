@@ -4,10 +4,10 @@
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, Timeline};
-use re_types::{archetypes::Points2D, datatypes::VisibleTimeRange, Archetype as _};
+use re_types::{Archetype as _, archetypes::Points2D, datatypes::VisibleTimeRange};
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::{test_context::TestContext, RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::{test_context_ext::TestContextExt as _, ViewBlueprint};
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId, test_context::TestContext};
+use re_viewport_blueprint::{ViewBlueprint, test_context_ext::TestContextExt as _};
 
 fn intra_timestamp_data(test_context: &mut TestContext) {
     let timeline = Timeline::new_sequence("frame");

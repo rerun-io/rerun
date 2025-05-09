@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use re_chunk_store::{
-    external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer},
     Chunk,
+    external::re_chunk::{ChunkComponentIter, ChunkComponentSlicer},
 };
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_types::{Component, ComponentDescriptor, RowId};
@@ -55,8 +55,7 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
     #[inline]
     pub fn iter_slices<S: ChunkComponentSlicer + 'chunk>(
         &self,
-    ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk {
-        // TODO(#6889): Use the full descriptor instead.
+    ) -> impl Iterator<Item = S::Item<'chunk>> + 'chunk + use<'chunk, S> {
         self.chunk.iter_slices::<S>(self.descriptor.clone())
     }
 

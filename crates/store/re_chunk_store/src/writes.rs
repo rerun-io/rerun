@@ -8,8 +8,8 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::{
-    store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
-    ChunkStoreError, ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
+    ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState, store::ChunkIdSetPerTime,
 };
 
 // Used all over in docstrings.

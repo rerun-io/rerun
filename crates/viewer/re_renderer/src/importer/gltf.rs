@@ -4,9 +4,9 @@ use itertools::Itertools as _;
 use smallvec::SmallVec;
 
 use crate::{
+    CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul,
     mesh::{CpuMesh, Material, MeshError},
     resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2D},
-    CpuMeshInstance, CpuModel, CpuModelMeshKey, RenderContext, Rgba32Unmul,
 };
 
 #[derive(thiserror::Error, Debug)]

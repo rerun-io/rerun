@@ -3,10 +3,10 @@ use std::sync::Arc;
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::{
+    Bound, PyAny, PyRef, PyRefMut, PyResult,
     exceptions::PyRuntimeError,
     pyclass, pymethods,
     types::{PyAnyMethods as _, PyCapsule},
-    Bound, PyAny, PyRef, PyRefMut, PyResult,
 };
 
 use re_datafusion::TableEntryTableProvider;

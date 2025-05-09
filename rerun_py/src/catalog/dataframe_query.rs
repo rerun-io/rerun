@@ -7,7 +7,7 @@ use datafusion_ffi::table_provider::FFI_TableProvider;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::types::{PyCapsule, PyDict, PyTuple};
-use pyo3::{pyclass, pymethods, Bound, Py, PyAny, PyRef, PyResult, Python};
+use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 
 use re_chunk::ComponentName;
 use re_chunk_store::{ChunkStoreHandle, QueryExpression, SparseFillStrategy, ViewContentsSelector};
@@ -17,7 +17,7 @@ use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
 use re_sdk::ComponentDescriptor;
 use re_sorbet::ColumnDescriptor;
 
-use crate::catalog::{to_py_err, PyDataset};
+use crate::catalog::{PyDataset, to_py_err};
 use crate::dataframe::ComponentLike;
 use crate::utils::get_tokio_runtime;
 

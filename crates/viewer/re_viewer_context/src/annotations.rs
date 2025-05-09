@@ -10,7 +10,7 @@ use re_types::archetypes;
 use re_types::components::AnnotationContext;
 use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
-use super::{auto_color_egui, ViewerContext};
+use super::{ViewerContext, auto_color_egui};
 
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 

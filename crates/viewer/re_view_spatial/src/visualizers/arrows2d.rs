@@ -1,16 +1,15 @@
 use re_log_types::Instance;
-use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, renderer::LineStripFlags};
 use re_types::{
+    ArrowString,
     archetypes::Arrows2D,
     components::{ClassId, Color, DrawOrder, Position2D, Radius, ShowLabels, Vector2D},
-    ArrowString,
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{
@@ -19,10 +18,10 @@ use crate::{
 };
 
 use super::{
+    SpatialViewVisualizerData,
     entity_iterator::clamped_or,
     process_radius_slice,
-    utilities::{process_labels_2d, LabeledBatch},
-    SpatialViewVisualizerData,
+    utilities::{LabeledBatch, process_labels_2d},
 };
 
 // ---
