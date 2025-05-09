@@ -436,9 +436,8 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
         instance_index: usize,
+        component_descr: &ComponentDescriptor,
     ) -> Option<C> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
         self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -452,8 +451,17 @@ impl LatestAtResults {
     ///
     /// Logs an error if the data cannot be deserialized, or if the instance index is out of bounds.
     #[inline]
-    pub fn component_instance<C: Component>(&self, instance_index: usize) -> Option<C> {
-        self.component_instance_with_log_level(re_log::Level::Error, instance_index)
+    pub fn component_instance<C: Component>(
+        &self,
+        instance_index: usize,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
+        debug_assert_eq!(component_descr.component_name, C::name());
+        self.component_instance_with_log_level(
+            re_log::Level::Error,
+            instance_index,
+            component_descr,
+        )
     }
 
     /// Returns the deserialized data for the specified component at the given instance index.

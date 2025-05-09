@@ -128,7 +128,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 false,
             );
 
-            let axis_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
+            let axis_length: f32 = results
+                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length())
+                .into();
 
             if axis_length == 0.0 {
                 // Don't draw axis and don't add to the bounding box!
@@ -236,7 +238,9 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
 
-                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>())
+                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
+                            &Pinhole::descriptor_image_plane_distance(),
+                        ))
                     } else {
                         None
                     }
