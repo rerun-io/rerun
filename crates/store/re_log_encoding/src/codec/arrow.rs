@@ -33,28 +33,87 @@ pub(crate) fn read_arrow_from_bytes<R: std::io::Read>(
 }
 
 #[cfg(feature = "encoder")]
-pub(crate) struct Payload {
+pub(crate) struct Payload<'a> {
     pub uncompressed_size: usize,
-    pub data: Vec<u8>,
+    data: &'a [u8],
+    capacity: usize,
 }
 
 #[cfg(feature = "encoder")]
-pub(crate) fn encode_arrow(
+impl Payload<'_> {
+    /// This version does not copy the data, but instead produces the `Vec`
+    /// from raw parts.
+    ///
+    /// The safe version of this is [`Payload::to_vec`].
+    ///
+    /// # Safety
+    ///
+    /// The returned `Vec` must NOT be dropped! Pass it to `mem::forget` before that happens.
+    #[allow(unsafe_code)]
+    pub(crate) unsafe fn to_fake_temp_vec(&self) -> Vec<u8> {
+        // SAFETY: User is required to uphold safety invariants.
+        unsafe {
+            Vec::from_raw_parts(
+                self.data.as_ptr().cast_mut(),
+                self.data.len(),
+                self.capacity,
+            )
+        }
+    }
+
+    /// Copy the data to a `Vec`.
+    pub(crate) fn to_vec(&self) -> Vec<u8> {
+        self.data.to_vec()
+    }
+}
+
+#[cfg(feature = "encoder")]
+pub(crate) struct ArrowEncodingContext {
+    uncompressed: Vec<u8>,
+    compressed: Vec<u8>,
+}
+
+#[cfg(feature = "encoder")]
+impl ArrowEncodingContext {
+    pub fn new() -> Self {
+        Self {
+            uncompressed: Vec::new(),
+            compressed: Vec::new(),
+        }
+    }
+}
+
+// NOTE: Externally, `Payload`'s borrow of `'a` is treated as if it was `&'a mut`.
+#[cfg(feature = "encoder")]
+pub(crate) fn encode_arrow_with_ctx<'a>(
+    arrow_ctx: &'a mut ArrowEncodingContext,
     batch: &ArrowRecordBatch,
     compression: crate::Compression,
-) -> Result<Payload, crate::encoder::EncodeError> {
-    let mut uncompressed = Vec::new();
-    write_arrow_to_bytes(&mut uncompressed, batch)?;
+) -> Result<Payload<'a>, crate::encoder::EncodeError> {
+    let ArrowEncodingContext {
+        uncompressed,
+        compressed,
+    } = arrow_ctx;
+
+    uncompressed.clear();
+
+    write_arrow_to_bytes(uncompressed, batch)?;
     let uncompressed_size = uncompressed.len();
 
-    let data = match compression {
-        crate::Compression::Off => uncompressed,
-        crate::Compression::LZ4 => lz4_flex::block::compress(&uncompressed),
+    let (capacity, data) = match compression {
+        crate::Compression::Off => (uncompressed.capacity(), &uncompressed[..]),
+        crate::Compression::LZ4 => {
+            let max_len = lz4_flex::block::get_maximum_output_size(uncompressed.len());
+            compressed.resize(max_len, 0);
+            let written_bytes = lz4_flex::block::compress_into(uncompressed, compressed)?;
+            (compressed.capacity(), &compressed[..written_bytes])
+        }
     };
 
     Ok(Payload {
         uncompressed_size,
         data,
+        capacity,
     })
 }
 
