@@ -29,7 +29,6 @@ fn main() -> Result<(), std::io::Error> {
 
     match protoc_prebuilt::init("22.0") {
         Ok((protoc_bin, _)) => {
-            // TODO: Audit that the environment access only happens in single-threaded code.
             unsafe { std::env::set_var("PROTOC", protoc_bin) };
         }
         Err(err) => {

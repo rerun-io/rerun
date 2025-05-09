@@ -209,11 +209,8 @@ fn chunk_store_config() {
     #[expect(unsafe_code)]
     unsafe {
         std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
-        // TODO: Audit that the environment access only happens in single-threaded code.
         std::env::set_var("RERUN_CHUNK_MAX_BYTES", "42");
-        // TODO: Audit that the environment access only happens in single-threaded code.
         std::env::set_var("RERUN_CHUNK_MAX_ROWS", "666");
-        // TODO: Audit that the environment access only happens in single-threaded code.
         std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "999");
     };
 
