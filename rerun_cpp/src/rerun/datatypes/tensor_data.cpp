@@ -33,11 +33,13 @@ namespace rerun {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<datatypes::TensorData>::fill_arrow_array_builder(
-                static_cast<arrow::StructBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
+            RR_RETURN_NOT_OK(
+                Loggable<datatypes::TensorData>::fill_arrow_array_builder(
+                    static_cast<arrow::StructBuilder*>(builder.get()),
+                    instances,
+                    num_instances
+                )
+            );
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
@@ -96,11 +98,13 @@ namespace rerun {
             auto field_builder = static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(2));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TensorBuffer>::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].buffer,
-                    1
-                ));
+                RR_RETURN_NOT_OK(
+                    Loggable<rerun::datatypes::TensorBuffer>::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].buffer,
+                        1
+                    )
+                );
             }
         }
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));

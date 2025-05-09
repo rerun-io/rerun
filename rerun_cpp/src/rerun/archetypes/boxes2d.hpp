@@ -224,7 +224,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
         /// be used when logging a single row's worth of data.
-        Boxes2D with_many_show_labels(const Collection<rerun::components::ShowLabels>& _show_labels
+        Boxes2D with_many_show_labels(
+            const Collection<rerun::components::ShowLabels>& _show_labels
         ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
@@ -246,7 +247,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
         /// be used when logging a single row's worth of data.
-        Boxes2D with_many_draw_order(const Collection<rerun::components::DrawOrder>& _draw_order
+        Boxes2D with_many_draw_order(
+            const Collection<rerun::components::DrawOrder>& _draw_order
         ) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();

@@ -35,10 +35,12 @@ namespace rerun::archetypes {
         if (draw_order.has_value()) {
             columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<SegmentationImage>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
+        columns.push_back(
+            ComponentColumn::from_indicators<SegmentationImage>(
+                static_cast<uint32_t>(lengths_.size())
+            )
+                .value_or_throw()
+        );
         return columns;
     }
 

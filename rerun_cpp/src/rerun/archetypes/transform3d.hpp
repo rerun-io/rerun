@@ -843,7 +843,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_mat3x3` should
         /// be used when logging a single row's worth of data.
-        Transform3D with_many_mat3x3(const Collection<rerun::components::TransformMat3x3>& _mat3x3
+        Transform3D with_many_mat3x3(
+            const Collection<rerun::components::TransformMat3x3>& _mat3x3
         ) && {
             mat3x3 = ComponentBatch::from_loggable(_mat3x3, Descriptor_mat3x3).value_or_throw();
             return std::move(*this);

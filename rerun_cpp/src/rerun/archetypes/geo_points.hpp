@@ -102,8 +102,10 @@ namespace rerun::archetypes {
         GeoPoints& operator=(GeoPoints&& other) = default;
 
         explicit GeoPoints(Collection<rerun::components::LatLon> _positions)
-            : positions(ComponentBatch::from_loggable(std::move(_positions), Descriptor_positions)
-                            .value_or_throw()) {}
+            : positions(
+                  ComponentBatch::from_loggable(std::move(_positions), Descriptor_positions)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `GeoPoints`.
         static GeoPoints update_fields() {
@@ -171,7 +173,8 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::GeoPoints> {
         /// Serialize all set component batches.
-        static Result<Collection<ComponentBatch>> as_batches(const archetypes::GeoPoints& archetype
+        static Result<Collection<ComponentBatch>> as_batches(
+            const archetypes::GeoPoints& archetype
         );
     };
 } // namespace rerun

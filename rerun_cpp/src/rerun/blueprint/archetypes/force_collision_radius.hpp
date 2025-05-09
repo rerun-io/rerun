@@ -80,7 +80,8 @@ namespace rerun::blueprint::archetypes {
         /// Whether the collision force is enabled.
         ///
         /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
-        ForceCollisionRadius with_enabled(const rerun::blueprint::components::Enabled& _enabled
+        ForceCollisionRadius with_enabled(
+            const rerun::blueprint::components::Enabled& _enabled
         ) && {
             enabled = ComponentBatch::from_loggable(_enabled, Descriptor_enabled).value_or_throw();
             return std::move(*this);

@@ -352,7 +352,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_xyz` should
         /// be used when logging a single row's worth of data.
-        ViewCoordinates with_many_xyz(const Collection<rerun::components::ViewCoordinates>& _xyz
+        ViewCoordinates with_many_xyz(
+            const Collection<rerun::components::ViewCoordinates>& _xyz
         ) && {
             xyz = ComponentBatch::from_loggable(_xyz, Descriptor_xyz).value_or_throw();
             return std::move(*this);

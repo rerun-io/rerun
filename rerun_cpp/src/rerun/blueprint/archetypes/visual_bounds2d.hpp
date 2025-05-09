@@ -55,8 +55,10 @@ namespace rerun::blueprint::archetypes {
         VisualBounds2D& operator=(VisualBounds2D&& other) = default;
 
         explicit VisualBounds2D(rerun::blueprint::components::VisualBounds2D _range)
-            : range(ComponentBatch::from_loggable(std::move(_range), Descriptor_range)
-                        .value_or_throw()) {}
+            : range(
+                  ComponentBatch::from_loggable(std::move(_range), Descriptor_range)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `VisualBounds2D`.
         static VisualBounds2D update_fields() {

@@ -175,7 +175,8 @@ namespace rerun::archetypes {
         Result<std::vector<std::chrono::nanoseconds>> read_frame_timestamps_nanos() const;
 
         /// DEPRECATED: Use `read_frame_timestamps_nanos` instead.
-        [[deprecated("Renamed to `read_frame_timestamps_nanos`"
+        [[deprecated(
+            "Renamed to `read_frame_timestamps_nanos`"
         )]] Result<std::vector<std::chrono::nanoseconds>>
             read_frame_timestamps_ns() const {
             return read_frame_timestamps_nanos();
@@ -191,7 +192,8 @@ namespace rerun::archetypes {
         AssetVideo& operator=(AssetVideo&& other) = default;
 
         explicit AssetVideo(rerun::components::Blob _blob)
-            : blob(ComponentBatch::from_loggable(std::move(_blob), Descriptor_blob).value_or_throw()
+            : blob(
+                  ComponentBatch::from_loggable(std::move(_blob), Descriptor_blob).value_or_throw()
               ) {}
 
         /// Update only some specific fields of a `AssetVideo`.
@@ -234,7 +236,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
         /// be used when logging a single row's worth of data.
-        AssetVideo with_many_media_type(const Collection<rerun::components::MediaType>& _media_type
+        AssetVideo with_many_media_type(
+            const Collection<rerun::components::MediaType>& _media_type
         ) && {
             media_type =
                 ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();
@@ -269,7 +272,8 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::AssetVideo> {
         /// Serialize all set component batches.
-        static Result<Collection<ComponentBatch>> as_batches(const archetypes::AssetVideo& archetype
+        static Result<Collection<ComponentBatch>> as_batches(
+            const archetypes::AssetVideo& archetype
         );
     };
 } // namespace rerun

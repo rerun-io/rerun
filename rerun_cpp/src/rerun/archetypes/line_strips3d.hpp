@@ -169,8 +169,10 @@ namespace rerun::archetypes {
         LineStrips3D& operator=(LineStrips3D&& other) = default;
 
         explicit LineStrips3D(Collection<rerun::components::LineStrip3D> _strips)
-            : strips(ComponentBatch::from_loggable(std::move(_strips), Descriptor_strips)
-                         .value_or_throw()) {}
+            : strips(
+                  ComponentBatch::from_loggable(std::move(_strips), Descriptor_strips)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `LineStrips3D`.
         static LineStrips3D update_fields() {

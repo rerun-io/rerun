@@ -264,7 +264,8 @@ namespace rerun::archetypes {
         ///
         /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
         /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
-        Boxes3D with_quaternions(const Collection<rerun::components::PoseRotationQuat>& _quaternions
+        Boxes3D with_quaternions(
+            const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {
             quaternions = ComponentBatch::from_loggable(_quaternions, Descriptor_quaternions)
                               .value_or_throw();
@@ -320,7 +321,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
         /// be used when logging a single row's worth of data.
-        Boxes3D with_many_show_labels(const Collection<rerun::components::ShowLabels>& _show_labels
+        Boxes3D with_many_show_labels(
+            const Collection<rerun::components::ShowLabels>& _show_labels
         ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();

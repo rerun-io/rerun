@@ -94,7 +94,8 @@ namespace rerun::blueprint::archetypes {
         /// Specifies how often this force should be applied per iteration.
         ///
         /// Increasing this parameter can lead to better results at the cost of longer computation time.
-        ForceLink with_iterations(const rerun::blueprint::components::ForceIterations& _iterations
+        ForceLink with_iterations(
+            const rerun::blueprint::components::ForceIterations& _iterations
         ) && {
             iterations =
                 ComponentBatch::from_loggable(_iterations, Descriptor_iterations).value_or_throw();

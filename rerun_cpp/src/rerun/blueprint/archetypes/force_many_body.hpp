@@ -82,7 +82,8 @@ namespace rerun::blueprint::archetypes {
         /// The strength of the force.
         ///
         /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
-        ForceManyBody with_strength(const rerun::blueprint::components::ForceStrength& _strength
+        ForceManyBody with_strength(
+            const rerun::blueprint::components::ForceStrength& _strength
         ) && {
             strength =
                 ComponentBatch::from_loggable(_strength, Descriptor_strength).value_or_throw();

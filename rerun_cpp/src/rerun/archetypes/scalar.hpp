@@ -109,8 +109,10 @@ namespace rerun::archetypes {
         Scalar& operator=(Scalar&& other) = default;
 
         explicit Scalar(rerun::components::Scalar _scalar)
-            : scalar(ComponentBatch::from_loggable(std::move(_scalar), Descriptor_scalar)
-                         .value_or_throw()) {}
+            : scalar(
+                  ComponentBatch::from_loggable(std::move(_scalar), Descriptor_scalar)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `Scalar`.
         static Scalar update_fields() {

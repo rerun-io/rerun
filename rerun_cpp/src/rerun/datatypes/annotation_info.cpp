@@ -30,11 +30,13 @@ namespace rerun {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<datatypes::AnnotationInfo>::fill_arrow_array_builder(
-                static_cast<arrow::StructBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
+            RR_RETURN_NOT_OK(
+                Loggable<datatypes::AnnotationInfo>::fill_arrow_array_builder(
+                    static_cast<arrow::StructBuilder*>(builder.get()),
+                    instances,
+                    num_instances
+                )
+            );
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
@@ -68,11 +70,13 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.label.has_value()) {
-                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
-                        field_builder,
-                        &element.label.value(),
-                        1
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+                            field_builder,
+                            &element.label.value(),
+                            1
+                        )
+                    );
                 } else {
                     ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                 }
@@ -84,11 +88,13 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.color.has_value()) {
-                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Rgba32>::fill_arrow_array_builder(
-                        field_builder,
-                        &element.color.value(),
-                        1
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::Rgba32>::fill_arrow_array_builder(
+                            field_builder,
+                            &element.color.value(),
+                            1
+                        )
+                    );
                 } else {
                     ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                 }

@@ -27,11 +27,13 @@ namespace rerun {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<components::GeoLineString>::fill_arrow_array_builder(
-                static_cast<arrow::ListBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
+            RR_RETURN_NOT_OK(
+                Loggable<components::GeoLineString>::fill_arrow_array_builder(
+                    static_cast<arrow::ListBuilder*>(builder.get()),
+                    instances,
+                    num_instances
+                )
+            );
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
@@ -59,11 +61,13 @@ namespace rerun {
             const auto& element = elements[elem_idx];
             ARROW_RETURN_NOT_OK(builder->Append());
             if (element.lat_lon.data()) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::DVec2D>::fill_arrow_array_builder(
-                    value_builder,
-                    element.lat_lon.data(),
-                    element.lat_lon.size()
-                ));
+                RR_RETURN_NOT_OK(
+                    Loggable<rerun::datatypes::DVec2D>::fill_arrow_array_builder(
+                        value_builder,
+                        element.lat_lon.data(),
+                        element.lat_lon.size()
+                    )
+                );
             }
         }
 

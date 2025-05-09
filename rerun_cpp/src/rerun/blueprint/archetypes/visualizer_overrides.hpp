@@ -59,8 +59,10 @@ namespace rerun::blueprint::archetypes {
         explicit VisualizerOverrides(
             Collection<rerun::blueprint::components::VisualizerOverride> _ranges
         )
-            : ranges(ComponentBatch::from_loggable(std::move(_ranges), Descriptor_ranges)
-                         .value_or_throw()) {}
+            : ranges(
+                  ComponentBatch::from_loggable(std::move(_ranges), Descriptor_ranges)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `VisualizerOverrides`.
         static VisualizerOverrides update_fields() {

@@ -26,7 +26,8 @@ namespace rerun::components {
       public:
         AffixFuzzer7() = default;
 
-        AffixFuzzer7(std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer1>> many_optional_
+        AffixFuzzer7(
+            std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer1>> many_optional_
         )
             : many_optional(std::move(many_optional_)) {}
 

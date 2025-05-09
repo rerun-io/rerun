@@ -165,8 +165,10 @@ namespace rerun::archetypes {
         LineStrips2D& operator=(LineStrips2D&& other) = default;
 
         explicit LineStrips2D(Collection<rerun::components::LineStrip2D> _strips)
-            : strips(ComponentBatch::from_loggable(std::move(_strips), Descriptor_strips)
-                         .value_or_throw()) {}
+            : strips(
+                  ComponentBatch::from_loggable(std::move(_strips), Descriptor_strips)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `LineStrips2D`.
         static LineStrips2D update_fields() {

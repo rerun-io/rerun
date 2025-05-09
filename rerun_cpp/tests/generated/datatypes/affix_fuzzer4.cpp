@@ -21,11 +21,13 @@ namespace rerun {
             ),
             arrow::field(
                 "many_required",
-                arrow::list(arrow::field(
-                    "item",
-                    Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(),
-                    true
-                )),
+                arrow::list(
+                    arrow::field(
+                        "item",
+                        Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(),
+                        true
+                    )
+                ),
                 false
             ),
         });
@@ -41,11 +43,13 @@ namespace rerun {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<datatypes::AffixFuzzer4>::fill_arrow_array_builder(
-                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
+            RR_RETURN_NOT_OK(
+                Loggable<datatypes::AffixFuzzer4>::fill_arrow_array_builder(
+                    static_cast<arrow::DenseUnionBuilder*>(builder.get()),
+                    instances,
+                    num_instances
+                )
+            );
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
@@ -69,7 +73,8 @@ namespace rerun {
         ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto& union_instance = elements[elem_idx];
-            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance.get_union_tag()))
+            ARROW_RETURN_NOT_OK(
+                builder->Append(static_cast<int8_t>(union_instance.get_union_tag()))
             );
 
             auto variant_index = static_cast<int>(union_instance.get_union_tag());

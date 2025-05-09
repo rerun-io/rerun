@@ -26,7 +26,8 @@ namespace rerun::blueprint::archetypes {
         return archetype;
     }
 
-    Collection<ComponentColumn> TensorSliceSelection::columns(const Collection<uint32_t>& lengths_
+    Collection<ComponentColumn> TensorSliceSelection::columns(
+        const Collection<uint32_t>& lengths_
     ) {
         std::vector<ComponentColumn> columns;
         columns.reserve(5);
@@ -42,10 +43,12 @@ namespace rerun::blueprint::archetypes {
         if (slider.has_value()) {
             columns.push_back(slider.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<TensorSliceSelection>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
+        columns.push_back(
+            ComponentColumn::from_indicators<TensorSliceSelection>(
+                static_cast<uint32_t>(lengths_.size())
+            )
+                .value_or_throw()
+        );
         return columns;
     }
 

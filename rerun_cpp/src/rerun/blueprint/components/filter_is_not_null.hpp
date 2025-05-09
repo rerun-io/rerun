@@ -25,7 +25,8 @@ namespace rerun::blueprint::components {
         FilterIsNotNull(rerun::blueprint::datatypes::FilterIsNotNull filter_is_not_null_)
             : filter_is_not_null(std::move(filter_is_not_null_)) {}
 
-        FilterIsNotNull& operator=(rerun::blueprint::datatypes::FilterIsNotNull filter_is_not_null_
+        FilterIsNotNull& operator=(
+            rerun::blueprint::datatypes::FilterIsNotNull filter_is_not_null_
         ) {
             filter_is_not_null = std::move(filter_is_not_null_);
             return *this;

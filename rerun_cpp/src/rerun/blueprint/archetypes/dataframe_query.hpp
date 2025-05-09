@@ -97,7 +97,8 @@ namespace rerun::blueprint::archetypes {
         /// The timeline for this query.
         ///
         /// If unset, the timeline currently active on the time panel is used.
-        DataframeQuery with_timeline(const rerun::blueprint::components::TimelineName& _timeline
+        DataframeQuery with_timeline(
+            const rerun::blueprint::components::TimelineName& _timeline
         ) && {
             timeline =
                 ComponentBatch::from_loggable(_timeline, Descriptor_timeline).value_or_throw();
@@ -137,7 +138,8 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Selected columns. If unset, all columns are selected.
-        DataframeQuery with_select(const rerun::blueprint::components::SelectedColumns& _select
+        DataframeQuery with_select(
+            const rerun::blueprint::components::SelectedColumns& _select
         ) && {
             select = ComponentBatch::from_loggable(_select, Descriptor_select).value_or_throw();
             return std::move(*this);

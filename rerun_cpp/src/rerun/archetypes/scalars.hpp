@@ -103,8 +103,10 @@ namespace rerun::archetypes {
         Scalars& operator=(Scalars&& other) = default;
 
         explicit Scalars(Collection<rerun::components::Scalar> _scalars)
-            : scalars(ComponentBatch::from_loggable(std::move(_scalars), Descriptor_scalars)
-                          .value_or_throw()) {}
+            : scalars(
+                  ComponentBatch::from_loggable(std::move(_scalars), Descriptor_scalars)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `Scalars`.
         static Scalars update_fields() {

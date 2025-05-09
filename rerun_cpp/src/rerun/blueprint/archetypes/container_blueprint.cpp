@@ -16,10 +16,10 @@ namespace rerun::blueprint::archetypes {
         archetype.display_name =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_display_name)
                 .value_or_throw();
-        archetype.contents =
-            ComponentBatch::empty<rerun::blueprint::components::IncludedContent>(Descriptor_contents
-            )
-                .value_or_throw();
+        archetype.contents = ComponentBatch::empty<rerun::blueprint::components::IncludedContent>(
+                                 Descriptor_contents
+        )
+                                 .value_or_throw();
         archetype.col_shares =
             ComponentBatch::empty<rerun::blueprint::components::ColumnShare>(Descriptor_col_shares)
                 .value_or_throw();
@@ -31,10 +31,10 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         archetype.visible =
             ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
-        archetype.grid_columns =
-            ComponentBatch::empty<rerun::blueprint::components::GridColumns>(Descriptor_grid_columns
-            )
-                .value_or_throw();
+        archetype.grid_columns = ComponentBatch::empty<rerun::blueprint::components::GridColumns>(
+                                     Descriptor_grid_columns
+        )
+                                     .value_or_throw();
         return archetype;
     }
 
@@ -65,10 +65,12 @@ namespace rerun::blueprint::archetypes {
         if (grid_columns.has_value()) {
             columns.push_back(grid_columns.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<ContainerBlueprint>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
+        columns.push_back(
+            ComponentColumn::from_indicators<ContainerBlueprint>(
+                static_cast<uint32_t>(lengths_.size())
+            )
+                .value_or_throw()
+        );
         return columns;
     }
 

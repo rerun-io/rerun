@@ -154,7 +154,8 @@ namespace rerun::archetypes {
         Asset3D& operator=(Asset3D&& other) = default;
 
         explicit Asset3D(rerun::components::Blob _blob)
-            : blob(ComponentBatch::from_loggable(std::move(_blob), Descriptor_blob).value_or_throw()
+            : blob(
+                  ComponentBatch::from_loggable(std::move(_blob), Descriptor_blob).value_or_throw()
               ) {}
 
         /// Update only some specific fields of a `Asset3D`.
@@ -200,7 +201,8 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_media_type` should
         /// be used when logging a single row's worth of data.
-        Asset3D with_many_media_type(const Collection<rerun::components::MediaType>& _media_type
+        Asset3D with_many_media_type(
+            const Collection<rerun::components::MediaType>& _media_type
         ) && {
             media_type =
                 ComponentBatch::from_loggable(_media_type, Descriptor_media_type).value_or_throw();

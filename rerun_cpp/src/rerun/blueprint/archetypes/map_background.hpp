@@ -49,8 +49,10 @@ namespace rerun::blueprint::archetypes {
         MapBackground& operator=(MapBackground&& other) = default;
 
         explicit MapBackground(rerun::blueprint::components::MapProvider _provider)
-            : provider(ComponentBatch::from_loggable(std::move(_provider), Descriptor_provider)
-                           .value_or_throw()) {}
+            : provider(
+                  ComponentBatch::from_loggable(std::move(_provider), Descriptor_provider)
+                      .value_or_throw()
+              ) {}
 
         /// Update only some specific fields of a `MapBackground`.
         static MapBackground update_fields() {

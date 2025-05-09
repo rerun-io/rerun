@@ -25,10 +25,12 @@ namespace rerun::archetypes {
         if (name.has_value()) {
             columns.push_back(name.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(ComponentColumn::from_indicators<RecordingProperties>(
-                              static_cast<uint32_t>(lengths_.size())
-        )
-                              .value_or_throw());
+        columns.push_back(
+            ComponentColumn::from_indicators<RecordingProperties>(
+                static_cast<uint32_t>(lengths_.size())
+            )
+                .value_or_throw()
+        );
         return columns;
     }
 
