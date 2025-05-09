@@ -1,10 +1,10 @@
 use std::f32::consts::TAU;
 
 use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
     archetypes::Transform3D,
     components::{RotationAxisAngle, Scale3D, TransformMat3x3, TransformRelation, Translation3D},
     datatypes::Angle,
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

@@ -1,8 +1,8 @@
 use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
     archetypes::Asset3D,
     components::{AlbedoFactor, Blob, MediaType},
     datatypes::{Rgba32, Utf8},
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

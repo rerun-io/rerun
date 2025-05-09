@@ -51,8 +51,8 @@ pub use self::{
         ComponentBatch, LoggableBatch, SerializedComponentBatch, SerializedComponentColumn,
     },
     result::{
-        _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
-        SerializationResult,
+        DeserializationError, DeserializationResult, ResultExt, SerializationError,
+        SerializationResult, _Backtrace,
     },
     tuid::tuids_to_arrow,
     view::{View, ViewClassIdentifier},

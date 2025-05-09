@@ -3,7 +3,7 @@ use crate::{
     datatypes::TensorData,
 };
 
-use re_types_core::{ArrowString, Loggable as _, try_serialize_field};
+use re_types_core::{try_serialize_field, ArrowString, Loggable as _};
 
 use super::Tensor;
 

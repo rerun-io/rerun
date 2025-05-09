@@ -2,8 +2,8 @@ use crate::{
     components::ImageBuffer,
     datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat, TensorData},
     image::{
-        ImageChannelType, ImageConstructionError, blob_and_datatype_from_tensor,
-        find_non_empty_dim_indices,
+        blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageChannelType,
+        ImageConstructionError,
     },
 };
 

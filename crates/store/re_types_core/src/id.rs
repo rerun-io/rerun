@@ -357,9 +357,7 @@ fn test_row_id_parse() {
             .0,
         tuid
     );
-    assert!(
-        "chunk_182342300C5F8C327a7b4a6e5a379ac4"
-            .parse::<RowId>()
-            .is_err()
-    );
+    assert!("chunk_182342300C5F8C327a7b4a6e5a379ac4"
+        .parse::<RowId>()
+        .is_err());
 }

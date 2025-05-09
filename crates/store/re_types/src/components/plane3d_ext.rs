@@ -24,8 +24,8 @@ impl From<Plane3D> for re_math::Plane3 {
     #[inline]
     fn from(plane: Plane3D) -> Self {
         Self {
-            normal: glam::vec3(plane.0.0[0], plane.0.0[1], plane.0.0[2]),
-            d: plane.0.0[3],
+            normal: glam::vec3(plane.0 .0[0], plane.0 .0[1], plane.0 .0[2]),
+            d: plane.0 .0[3],
         }
         .normalized()
     }

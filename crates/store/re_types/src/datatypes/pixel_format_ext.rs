@@ -1,4 +1,4 @@
-use crate::image::{YuvMatrixCoefficients, rgb_from_yuv};
+use crate::image::{rgb_from_yuv, YuvMatrixCoefficients};
 
 use super::{ChannelDatatype, ColorModel, PixelFormat};
 

@@ -13,8 +13,8 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 
-use crate::SerializationResult;
 use crate::try_serialize_field;
+use crate::SerializationResult;
 use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
@@ -41,7 +41,7 @@ impl crate::Loggable for TimeInt {
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{Loggable as _, ResultExt as _, arrow_helpers::as_array_ref};
+        use crate::{arrow_helpers::as_array_ref, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -75,7 +75,7 @@ impl crate::Loggable for TimeInt {
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
@@ -100,7 +100,7 @@ impl crate::Loggable for TimeInt {
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
-        use crate::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
+        use crate::{arrow_zip_validity::ZipValidity, Loggable as _, ResultExt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         if let Some(nulls) = arrow_data.nulls() {
             if nulls.null_count() != 0 {
@@ -119,7 +119,9 @@ impl crate::Loggable for TimeInt {
                 .with_context("rerun.datatypes.TimeInt#value")?
                 .values()
                 .as_ref();
-            { slice.iter().copied().map(Self).collect::<Vec<_>>() }
+            {
+                slice.iter().copied().map(Self).collect::<Vec<_>>()
+            }
         })
     }
 }

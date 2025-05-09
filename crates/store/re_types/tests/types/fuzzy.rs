@@ -1,11 +1,11 @@
 #![allow(clippy::redundant_clone)]
 
 use re_types::{
-    Archetype as _, AsComponents as _,
     testing::{
         archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4},
         components, datatypes,
     },
+    Archetype as _, AsComponents as _,
 };
 
 use half::f16;

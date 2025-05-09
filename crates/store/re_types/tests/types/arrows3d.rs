@@ -1,8 +1,8 @@
 use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _,
     archetypes::Arrows3D,
     components::{ClassId, Color, Position3D, Radius, ShowLabels, Text, Vector3D},
     datatypes::Vec3D,
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

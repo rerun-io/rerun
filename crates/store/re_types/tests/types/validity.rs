@@ -1,6 +1,6 @@
 use re_types::{
-    DeserializationError, Loggable as _,
     components::{self, Position2D},
+    DeserializationError, Loggable as _,
 };
 
 #[test]

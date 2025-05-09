@@ -1,5 +1,5 @@
 use re_types::{
-    Archetype as _, AsComponents as _, ComponentBatch as _, archetypes::Pinhole, components,
+    archetypes::Pinhole, components, Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]
