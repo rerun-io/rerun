@@ -281,7 +281,7 @@ rfd = { version = "0.15", default-features = false, features = [
   "async-std",
   "xdg-portal",
 ] }
-ron = "0.8.0"
+ron = { version = "0.10.1", features = ["integer128"] }
 roxmltree = "0.19.0"
 rust-format = "0.3"
 rustdoc-json = "0.9.4"
@@ -393,6 +393,13 @@ opt-level = 2
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+
+[profile.web-release]
+panic = 'abort'      # Removes panic handling code
+inherits = "release"
+lto = true
+opt-level = 'z'      # Optimize for size
+codegen-units = 1
 
 
 ## Bench

@@ -50,7 +50,7 @@ fn default_features() -> String {
 
 pub fn main(args: Args) -> anyhow::Result<()> {
     let profile = if args.release && !args.debug {
-        Profile::Release
+        Profile::WebRelease
     } else if !args.release && args.debug {
         Profile::Debug
     } else {

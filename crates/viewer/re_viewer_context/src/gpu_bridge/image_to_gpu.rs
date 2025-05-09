@@ -34,14 +34,14 @@ use super::get_or_create_texture;
 fn generate_texture_key(image: &ImageInfo) -> u64 {
     // We need to inclde anything that, if changes, should result in a new texture being uploaded.
     let ImageInfo {
-        buffer_cache_key,
+        buffer_content_hash,
         buffer: _, // we hash `blob_row_id` instead; much faster!
 
         format,
         kind,
     } = image;
 
-    hash((buffer_cache_key, format, kind))
+    hash((buffer_content_hash, format, kind))
 }
 
 /// `colormap` is currently only used for depth images.

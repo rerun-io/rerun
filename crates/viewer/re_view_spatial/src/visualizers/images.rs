@@ -1,4 +1,3 @@
-use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Image,
     components::{DrawOrder, ImageFormat, Opacity},
@@ -138,16 +137,17 @@ impl ImageVisualizer {
             all_formats_indexed,
             all_opacities.slice::<f32>(),
         )
-        .filter_map(|(index, buffers, formats, opacities)| {
+        .filter_map(|((_time, row_id), buffers, formats, opacities)| {
             let buffer = buffers.first()?;
 
             Some(ImageComponentData {
-                image: ImageInfo {
-                    buffer_cache_key: Hash64::hash(index.1),
-                    buffer: buffer.clone().into(),
-                    format: first_copied(formats.as_deref())?.0,
-                    kind: ImageKind::Color,
-                },
+                image: ImageInfo::from_stored_blob(
+                    row_id,
+                    &Image::descriptor_buffer(),
+                    buffer.clone().into(),
+                    first_copied(formats.as_deref())?.0,
+                    ImageKind::Color,
+                ),
                 opacity: first_copied(opacities).map(Into::into),
             })
         });

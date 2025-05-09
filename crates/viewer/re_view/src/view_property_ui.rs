@@ -1,4 +1,3 @@
-use re_log_types::hash::Hash64;
 use re_types::ComponentDescriptor;
 use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
 use re_ui::{UiExt as _, list_item};
@@ -92,9 +91,7 @@ pub fn view_property_component_ui(
     let component_descr = field.component_descriptor(property.archetype_name);
 
     let component_array = property.component_raw(&component_descr);
-    let cache_key = property
-        .component_row_id(field.component_name)
-        .map(Hash64::hash);
+    let row_id = property.component_row_id(field.component_name);
 
     let ui_types = ctx
         .viewer_ctx
@@ -108,7 +105,7 @@ pub fn view_property_component_ui(
             ctx.viewer_ctx.blueprint_db(),
             ctx.target_entity_path,
             &component_descr,
-            cache_key,
+            row_id,
             component_array.as_deref(),
             fallback_provider,
         );
@@ -121,7 +118,7 @@ pub fn view_property_component_ui(
             ctx.viewer_ctx.blueprint_db(),
             ctx.target_entity_path,
             &component_descr,
-            cache_key,
+            row_id,
             component_array.as_deref(),
             fallback_provider,
         );

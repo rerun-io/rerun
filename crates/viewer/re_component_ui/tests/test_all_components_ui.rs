@@ -14,6 +14,7 @@ use re_types::{
     blueprint::components::{ComponentColumnSelector, QueryExpression},
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
+    ComponentDescriptor,
 };
 use re_types_core::{Component, ComponentName, LoggableBatch, reflection::Reflection};
 use re_ui::{UiExt as _, list_item};
@@ -242,7 +243,9 @@ fn test_single_component_ui_as_list_item(
                     &LatestAtQuery::latest(TimelineName::log_time()),
                     ctx.recording(),
                     &EntityPath::root(),
-                    test_case.component_name,
+                    // As of writing, `ComponentDescriptor` the descriptor part is only used for
+                    // caching and actual lookup of uis is only done via `ComponentName`.
+                    &ComponentDescriptor::new(test_case.component_name),
                     None,
                     &*test_case.component_data,
                 );

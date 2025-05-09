@@ -1,8 +1,7 @@
 use itertools::Itertools as _;
 
-use re_log_types::EntityPath;
-use re_log_types::hash::Hash64;
-use re_types::datatypes::TensorData;
+use re_log_types::{EntityPath, hash::Hash64};
+use re_types::{ComponentDescriptor, RowId, datatypes::TensorData};
 use re_ui::UiExt as _;
 use re_viewer_context::{TensorStats, TensorStatsCache, UiLayout, ViewerContext};
 
@@ -39,13 +38,14 @@ impl EntityDataUi for re_types::components::TensorData {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _entity_path: &EntityPath,
-        cache_key: Option<Hash64>,
+        _component_descriptor: &ComponentDescriptor,
+        row_id: Option<RowId>,
         _query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!();
-
-        let tensor_cache_key = cache_key.unwrap_or(Hash64::ZERO);
+        // RowId is enough for cache keying the tensor stats right now since you can't have more than one per row.
+        let tensor_cache_key = row_id.map_or(Hash64::ZERO, Hash64::hash);
         tensor_ui(ctx, ui, ui_layout, tensor_cache_key, &self.0);
     }
 }
