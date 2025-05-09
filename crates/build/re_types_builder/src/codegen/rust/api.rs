@@ -159,6 +159,7 @@ fn generate_object_file(
         code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
     }
 
+    code.push_str("#![allow(unused_braces)]\n");
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
