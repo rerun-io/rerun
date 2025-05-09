@@ -45,12 +45,10 @@ namespace rerun::archetypes {
         if (mat3x3.has_value()) {
             columns.push_back(mat3x3.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<InstancePoses3D>(
-                static_cast<uint32_t>(lengths_.size())
-            )
-                .value_or_throw()
-        );
+        columns.push_back(ComponentColumn::from_indicators<InstancePoses3D>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

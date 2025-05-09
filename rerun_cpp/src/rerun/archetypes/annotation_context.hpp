@@ -94,10 +94,8 @@ namespace rerun::archetypes {
         AnnotationContext& operator=(AnnotationContext&& other) = default;
 
         explicit AnnotationContext(rerun::components::AnnotationContext _context)
-            : context(
-                  ComponentBatch::from_loggable(std::move(_context), Descriptor_context)
-                      .value_or_throw()
-              ) {}
+            : context(ComponentBatch::from_loggable(std::move(_context), Descriptor_context)
+                          .value_or_throw()) {}
 
         /// Update only some specific fields of a `AnnotationContext`.
         static AnnotationContext update_fields() {

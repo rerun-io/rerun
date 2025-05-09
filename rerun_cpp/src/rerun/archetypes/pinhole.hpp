@@ -217,12 +217,10 @@ namespace rerun::archetypes {
         Pinhole& operator=(Pinhole&& other) = default;
 
         explicit Pinhole(rerun::components::PinholeProjection _image_from_camera)
-            : image_from_camera(
-                  ComponentBatch::from_loggable(
-                      std::move(_image_from_camera), Descriptor_image_from_camera
-                  )
-                      .value_or_throw()
-              ) {}
+            : image_from_camera(ComponentBatch::from_loggable(
+                                    std::move(_image_from_camera), Descriptor_image_from_camera
+              )
+                                    .value_or_throw()) {}
 
         /// Update only some specific fields of a `Pinhole`.
         static Pinhole update_fields() {
@@ -273,8 +271,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_resolution` should
         /// be used when logging a single row's worth of data.
-        Pinhole with_many_resolution(
-            const Collection<rerun::components::Resolution>& _resolution
+        Pinhole with_many_resolution(const Collection<rerun::components::Resolution>& _resolution
         ) && {
             resolution =
                 ComponentBatch::from_loggable(_resolution, Descriptor_resolution).value_or_throw();

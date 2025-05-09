@@ -128,8 +128,7 @@ namespace rerun::archetypes {
         template <typename TElement>
         SegmentationImage(const TElement* pixels, WidthHeight resolution)
             : SegmentationImage{
-                  reinterpret_cast<const uint8_t*>(pixels), resolution, get_datatype(pixels)
-              } {}
+                  reinterpret_cast<const uint8_t*>(pixels), resolution, get_datatype(pixels)} {}
 
         /// Constructs image from pixel data + resolution with datatype inferred from the passed collection.
         ///
@@ -155,8 +154,7 @@ namespace rerun::archetypes {
             : SegmentationImage{
                   Collection<uint8_t>::borrow(bytes, num_bytes(resolution, datatype)),
                   resolution,
-                  datatype
-              } {}
+                  datatype} {}
 
         /// Constructs image from pixel data + resolution + datatype.
         ///
@@ -209,8 +207,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_buffer` should
         /// be used when logging a single row's worth of data.
-        SegmentationImage with_many_buffer(
-            const Collection<rerun::components::ImageBuffer>& _buffer
+        SegmentationImage with_many_buffer(const Collection<rerun::components::ImageBuffer>& _buffer
         ) && {
             buffer = ComponentBatch::from_loggable(_buffer, Descriptor_buffer).value_or_throw();
             return std::move(*this);
@@ -226,8 +223,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_format` should
         /// be used when logging a single row's worth of data.
-        SegmentationImage with_many_format(
-            const Collection<rerun::components::ImageFormat>& _format
+        SegmentationImage with_many_format(const Collection<rerun::components::ImageFormat>& _format
         ) && {
             format = ComponentBatch::from_loggable(_format, Descriptor_format).value_or_throw();
             return std::move(*this);
@@ -245,8 +241,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_opacity` should
         /// be used when logging a single row's worth of data.
-        SegmentationImage with_many_opacity(
-            const Collection<rerun::components::Opacity>& _opacity
+        SegmentationImage with_many_opacity(const Collection<rerun::components::Opacity>& _opacity
         ) && {
             opacity = ComponentBatch::from_loggable(_opacity, Descriptor_opacity).value_or_throw();
             return std::move(*this);

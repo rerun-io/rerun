@@ -126,8 +126,7 @@ namespace rerun::archetypes {
         Tensor& operator=(Tensor&& other) = default;
 
         explicit Tensor(rerun::components::TensorData _data)
-            : data(
-                  ComponentBatch::from_loggable(std::move(_data), Descriptor_data).value_or_throw()
+            : data(ComponentBatch::from_loggable(std::move(_data), Descriptor_data).value_or_throw()
               ) {}
 
         /// Update only some specific fields of a `Tensor`.
@@ -174,8 +173,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_value_range` should
         /// be used when logging a single row's worth of data.
-        Tensor with_many_value_range(
-            const Collection<rerun::components::ValueRange>& _value_range
+        Tensor with_many_value_range(const Collection<rerun::components::ValueRange>& _value_range
         ) && {
             value_range = ComponentBatch::from_loggable(_value_range, Descriptor_value_range)
                               .value_or_throw();

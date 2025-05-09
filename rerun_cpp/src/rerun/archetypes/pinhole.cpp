@@ -8,10 +8,10 @@
 namespace rerun::archetypes {
     Pinhole Pinhole::clear_fields() {
         auto archetype = Pinhole();
-        archetype.image_from_camera = ComponentBatch::empty<rerun::components::PinholeProjection>(
-                                          Descriptor_image_from_camera
-        )
-                                          .value_or_throw();
+        archetype.image_from_camera =
+            ComponentBatch::empty<rerun::components::PinholeProjection>(Descriptor_image_from_camera
+            )
+                .value_or_throw();
         archetype.resolution =
             ComponentBatch::empty<rerun::components::Resolution>(Descriptor_resolution)
                 .value_or_throw();

@@ -114,8 +114,7 @@ namespace rerun::archetypes {
         TextDocument& operator=(TextDocument&& other) = default;
 
         explicit TextDocument(rerun::components::Text _text)
-            : text(
-                  ComponentBatch::from_loggable(std::move(_text), Descriptor_text).value_or_throw()
+            : text(ComponentBatch::from_loggable(std::move(_text), Descriptor_text).value_or_throw()
               ) {}
 
         /// Update only some specific fields of a `TextDocument`.

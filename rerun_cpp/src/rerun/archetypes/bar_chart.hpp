@@ -187,10 +187,8 @@ namespace rerun::archetypes {
         BarChart& operator=(BarChart&& other) = default;
 
         explicit BarChart(rerun::components::TensorData _values)
-            : values(
-                  ComponentBatch::from_loggable(std::move(_values), Descriptor_values)
-                      .value_or_throw()
-              ) {}
+            : values(ComponentBatch::from_loggable(std::move(_values), Descriptor_values)
+                         .value_or_throw()) {}
 
         /// Update only some specific fields of a `BarChart`.
         static BarChart update_fields() {

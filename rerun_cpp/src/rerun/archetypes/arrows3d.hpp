@@ -208,8 +208,7 @@ namespace rerun::archetypes {
         ///
         /// This only makes sense when used in conjunction with `columns`. `with_show_labels` should
         /// be used when logging a single row's worth of data.
-        Arrows3D with_many_show_labels(
-            const Collection<rerun::components::ShowLabels>& _show_labels
+        Arrows3D with_many_show_labels(const Collection<rerun::components::ShowLabels>& _show_labels
         ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();

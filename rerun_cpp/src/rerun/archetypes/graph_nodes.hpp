@@ -110,10 +110,8 @@ namespace rerun::archetypes {
         GraphNodes& operator=(GraphNodes&& other) = default;
 
         explicit GraphNodes(Collection<rerun::components::GraphNode> _node_ids)
-            : node_ids(
-                  ComponentBatch::from_loggable(std::move(_node_ids), Descriptor_node_ids)
-                      .value_or_throw()
-              ) {}
+            : node_ids(ComponentBatch::from_loggable(std::move(_node_ids), Descriptor_node_ids)
+                           .value_or_throw()) {}
 
         /// Update only some specific fields of a `GraphNodes`.
         static GraphNodes update_fields() {
@@ -202,8 +200,7 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::GraphNodes> {
         /// Serialize all set component batches.
-        static Result<Collection<ComponentBatch>> as_batches(
-            const archetypes::GraphNodes& archetype
+        static Result<Collection<ComponentBatch>> as_batches(const archetypes::GraphNodes& archetype
         );
     };
 } // namespace rerun

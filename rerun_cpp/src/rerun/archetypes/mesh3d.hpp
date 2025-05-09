@@ -206,12 +206,10 @@ namespace rerun::archetypes {
         Mesh3D& operator=(Mesh3D&& other) = default;
 
         explicit Mesh3D(Collection<rerun::components::Position3D> _vertex_positions)
-            : vertex_positions(
-                  ComponentBatch::from_loggable(
-                      std::move(_vertex_positions), Descriptor_vertex_positions
-                  )
-                      .value_or_throw()
-              ) {}
+            : vertex_positions(ComponentBatch::from_loggable(
+                                   std::move(_vertex_positions), Descriptor_vertex_positions
+              )
+                                   .value_or_throw()) {}
 
         /// Update only some specific fields of a `Mesh3D`.
         static Mesh3D update_fields() {
@@ -244,8 +242,7 @@ namespace rerun::archetypes {
         }
 
         /// An optional normal for each vertex.
-        Mesh3D with_vertex_normals(
-            const Collection<rerun::components::Vector3D>& _vertex_normals
+        Mesh3D with_vertex_normals(const Collection<rerun::components::Vector3D>& _vertex_normals
         ) && {
             vertex_normals =
                 ComponentBatch::from_loggable(_vertex_normals, Descriptor_vertex_normals)

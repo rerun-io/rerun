@@ -120,8 +120,7 @@ namespace rerun::archetypes {
         TextLog& operator=(TextLog&& other) = default;
 
         explicit TextLog(rerun::components::Text _text)
-            : text(
-                  ComponentBatch::from_loggable(std::move(_text), Descriptor_text).value_or_throw()
+            : text(ComponentBatch::from_loggable(std::move(_text), Descriptor_text).value_or_throw()
               ) {}
 
         /// Update only some specific fields of a `TextLog`.

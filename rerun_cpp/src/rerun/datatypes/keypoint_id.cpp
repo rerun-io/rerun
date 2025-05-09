@@ -23,13 +23,11 @@ namespace rerun {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(
-                Loggable<datatypes::KeypointId>::fill_arrow_array_builder(
-                    static_cast<arrow::UInt16Builder*>(builder.get()),
-                    instances,
-                    num_instances
-                )
-            );
+            RR_RETURN_NOT_OK(Loggable<datatypes::KeypointId>::fill_arrow_array_builder(
+                static_cast<arrow::UInt16Builder*>(builder.get()),
+                instances,
+                num_instances
+            ));
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
@@ -50,8 +48,7 @@ namespace rerun {
         }
 
         static_assert(sizeof(*elements) == sizeof(elements->id));
-        ARROW_RETURN_NOT_OK(
-            builder->AppendValues(&elements->id, static_cast<int64_t>(num_elements))
+        ARROW_RETURN_NOT_OK(builder->AppendValues(&elements->id, static_cast<int64_t>(num_elements))
         );
 
         return Error::ok();

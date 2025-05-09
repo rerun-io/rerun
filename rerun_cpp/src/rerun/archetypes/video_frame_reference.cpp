@@ -26,12 +26,10 @@ namespace rerun::archetypes {
         if (video_reference.has_value()) {
             columns.push_back(video_reference.value().partitioned(lengths_).value_or_throw());
         }
-        columns.push_back(
-            ComponentColumn::from_indicators<VideoFrameReference>(
-                static_cast<uint32_t>(lengths_.size())
-            )
-                .value_or_throw()
-        );
+        columns.push_back(ComponentColumn::from_indicators<VideoFrameReference>(
+                              static_cast<uint32_t>(lengths_.size())
+        )
+                              .value_or_throw());
         return columns;
     }
 

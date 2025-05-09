@@ -158,10 +158,8 @@ namespace rerun::archetypes {
         VideoFrameReference& operator=(VideoFrameReference&& other) = default;
 
         explicit VideoFrameReference(rerun::components::VideoTimestamp _timestamp)
-            : timestamp(
-                  ComponentBatch::from_loggable(std::move(_timestamp), Descriptor_timestamp)
-                      .value_or_throw()
-              ) {}
+            : timestamp(ComponentBatch::from_loggable(std::move(_timestamp), Descriptor_timestamp)
+                            .value_or_throw()) {}
 
         /// Update only some specific fields of a `VideoFrameReference`.
         static VideoFrameReference update_fields() {
