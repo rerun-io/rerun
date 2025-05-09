@@ -32,7 +32,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Simple segmentation image
 /// ```ignore
-/// use ndarray::{Array, ShapeBuilder as _ , s};
+/// use ndarray::{s, Array, ShapeBuilder as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_segmentation_image").spawn()?;

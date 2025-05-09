@@ -27,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Depth to 3D example
 /// ```ignore
-/// use ndarray::{Array, ShapeBuilder as _, s};
+/// use ndarray::{s, Array, ShapeBuilder as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_depth_image_3d").spawn()?;

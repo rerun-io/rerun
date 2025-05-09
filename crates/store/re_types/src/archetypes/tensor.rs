@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ### Simple tensor
 /// ```ignore
-/// use ndarray::{Array, ShapeBuilder as _ };
+/// use ndarray::{Array, ShapeBuilder as _};
 /// use rand::prelude::*;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
