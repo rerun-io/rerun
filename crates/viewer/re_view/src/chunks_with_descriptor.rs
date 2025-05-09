@@ -69,7 +69,9 @@ impl<'chunk> ChunkWithDescriptor<'chunk, '_> {
 
     /// See [`Chunk::iter_component_timepoints`].
     #[inline]
-    pub fn iter_component_timepoints(&self) -> impl Iterator<Item = TimePoint> + 'chunk + use<'chunk> {
+    pub fn iter_component_timepoints(
+        &self,
+    ) -> impl Iterator<Item = TimePoint> + 'chunk + use<'chunk> {
         self.chunk.iter_component_timepoints(self.descriptor)
     }
 }
