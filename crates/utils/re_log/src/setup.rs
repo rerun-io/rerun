@@ -37,9 +37,10 @@ pub fn setup_logging_with_filter(log_filter: &str) {
             // `RUST_BACKTRACE` also turns on printing backtraces for `anyhow::Error`s that
             // are returned from `main` (i.e. if `main` returns `anyhow::Result`).
 
-            #[expect(unsafe_code)] // We should only call this at startup, from the main thread.
+            // SAFETY: the chances of this causing problems are slim
+            #[expect(unsafe_code)]
             unsafe {
-                std::env::set_var("RUST_BACKTRACE", "1"); // TODO: There should be a better way to do this.
+                std::env::set_var("RUST_BACKTRACE", "1"); // TODO(emilk): There should be a better way to do this.
             }
         }
 

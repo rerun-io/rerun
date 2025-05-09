@@ -203,9 +203,10 @@ impl ChunkStoreConfig {
 
 #[test]
 fn chunk_store_config() {
-    #![expect(unsafe_code)] // Ok for a test
-
     // Detect breaking changes in our environment variables.
+
+    // SAFETY: it's a test
+    #[expect(unsafe_code)]
     unsafe {
         std::env::set_var("RERUN_STORE_ENABLE_CHANGELOG", "false");
         // TODO: Audit that the environment access only happens in single-threaded code.

@@ -273,6 +273,7 @@ fn chunk_batcher_config() {
     #![allow(unsafe_code)] // It's only a test
 
     // Detect breaking changes in our environment variables.
+    // SAFETY: it's a test
     unsafe {
         std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.3");
         std::env::set_var("RERUN_FLUSH_NUM_BYTES", "42");
@@ -290,6 +291,7 @@ fn chunk_batcher_config() {
     };
     assert_eq!(expected, config);
 
+    // SAFETY: it's a test
     unsafe {
         std::env::set_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED", "9999");
     }

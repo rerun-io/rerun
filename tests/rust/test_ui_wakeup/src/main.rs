@@ -35,9 +35,10 @@ fn main() -> anyhow::Result<()> {
     let rust_log = "info,re_viewer=trace";
     eprintln!("Setting RUST_LOG={rust_log}");
 
-    #[expect(unsafe_code)] // OK: No multithreading here
+    // SAFETY: No multithreading here
+    #[expect(unsafe_code)]
     unsafe {
-        std::env::set_var("RUST_LOG", rust_log)
+        std::env::set_var("RUST_LOG", rust_log);
     };
 
     println!("Starting Viewer…");
