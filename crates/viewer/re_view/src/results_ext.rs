@@ -41,7 +41,11 @@ pub struct HybridRangeResults<'a> {
 impl HybridLatestAtResults<'_> {
     /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
     #[inline]
-    pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
+    // TODO(#6889): This method seems to be unused?
+    pub fn get_by_name(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> Option<&UnitChunkShared> {
         let component_name = component_name.into();
         self.overrides
             .get_by_name(&component_name)
@@ -49,7 +53,7 @@ impl HybridLatestAtResults<'_> {
             .or_else(|| self.defaults.get_by_name(&component_name))
     }
 
-    pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
+    pub fn fallback_raw(&self, component_descr: ComponentDescriptor) -> arrow::array::ArrayRef {
         let query_context = QueryContext {
             viewer_ctx: self.ctx.viewer_ctx,
             target_entity_path: &self.data_result.entity_path,
@@ -62,7 +66,8 @@ impl HybridLatestAtResults<'_> {
         self.data_result.best_fallback_for(
             &query_context,
             &self.ctx.visualizer_collection,
-            component_name,
+            // TODO(#6889): Pass full descriptor here.
+            component_descr.component_name,
         )
     }
 
@@ -80,8 +85,13 @@ impl HybridLatestAtResults<'_> {
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
-    pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(&self) -> C {
-        self.get_instance_with_fallback(0)
+    pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(
+        &self,
+        component_descr: ComponentDescriptor,
+    ) -> C {
+        debug_assert_eq!(component_descr.component_name, C::name());
+
+        self.get_instance_with_fallback(0, component_descr)
     }
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
@@ -112,11 +122,14 @@ impl HybridLatestAtResults<'_> {
     pub fn get_instance_with_fallback<C: re_types_core::Component + Default>(
         &self,
         index: usize,
+        component_descr: ComponentDescriptor,
     ) -> C {
+        debug_assert_eq!(component_descr.component_name, C::name());
+
         self.get_instance(index)
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
-                let raw_fallback = self.fallback_raw(C::name());
+                let raw_fallback = self.fallback_raw(component_descr);
                 C::from_arrow(raw_fallback.as_ref())
                     .ok()
                     .and_then(|r| r.first().cloned())

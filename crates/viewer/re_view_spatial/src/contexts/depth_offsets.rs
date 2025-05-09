@@ -94,7 +94,7 @@ fn collect_draw_order_per_visualizer(
             [draw_order_descriptor],
             query_shadowed_components,
         )
-        .get_mono_with_fallback::<DrawOrder>();
+        .get_mono_with_fallback::<DrawOrder>(draw_order_descriptor.clone());
 
         entities_per_draw_order
             .entry(draw_order)
