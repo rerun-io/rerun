@@ -44,8 +44,7 @@ namespace rerun {
         /// Automatically registers the descriptor the first time it is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
-            const rerun::Collection<T>& components,
-            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
+            const rerun::Collection<T>& components, const ComponentDescriptor& descriptor
         ) {
             static_assert(
                 rerun::is_loggable<T>,
@@ -64,8 +63,7 @@ namespace rerun {
         /// Automatically registers the descriptor the first time it is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
-            const T& component,
-            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
+            const T& component, const ComponentDescriptor& descriptor
         ) {
             // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
             const auto collection = Collection<T>::borrow(&component, 1);
@@ -79,8 +77,7 @@ namespace rerun {
         /// Automatically registers the descriptor the first time it is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(
-            const std::optional<T>& component,
-            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
+            const std::optional<T>& component, const ComponentDescriptor& descriptor
         ) {
             if (component.has_value()) {
                 return from_loggable(component.value(), descriptor);
@@ -97,7 +94,7 @@ namespace rerun {
         template <typename T>
         static Result<ComponentBatch> from_loggable(
             const std::optional<rerun::Collection<T>>& components,
-            const ComponentDescriptor& descriptor = rerun::Loggable<T>::Descriptor
+            const ComponentDescriptor& descriptor
         ) {
             if (components.has_value()) {
                 return from_loggable(components.value(), descriptor);
