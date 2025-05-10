@@ -4,8 +4,9 @@ use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, TimelineName};
 
 use crate::{
-    ColumnDescriptor, ColumnKind, ComponentColumnDescriptor, ComponentColumnSelector,
-    IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError, TimeColumnSelector,
+    ColumnDescriptor, ColumnDescriptorRef, ColumnKind, ComponentColumnDescriptor,
+    ComponentColumnSelector, IndexColumnDescriptor, RowIdColumnDescriptor, SorbetError,
+    TimeColumnSelector,
 };
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
@@ -70,6 +71,10 @@ impl SorbetColumnDescriptors {
             .iter()
             .filter_map(|col| col.entity_path().cloned())
             .collect()
+    }
+
+    pub fn iter_ref(&self) -> impl Iterator<Item = ColumnDescriptorRef<'_>> {
+        self.columns.iter().map(ColumnDescriptorRef::from)
     }
 
     pub fn row_id_columns(&self) -> impl Iterator<Item = &RowIdColumnDescriptor> {
