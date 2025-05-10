@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["IfDuplicateBehavior","IfMissingBehavior"],"struct":["DatasetHandle","PartitionId","ScanParameters","ScanParametersOrderClause"]};

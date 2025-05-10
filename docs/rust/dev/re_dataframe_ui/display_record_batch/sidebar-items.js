@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ComponentData","DisplayColumn","DisplayRecordBatchError"],"fn":["quick_partial_hash"],"struct":["DisplayRecordBatch"]};

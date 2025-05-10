@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"static":["COMPONENT_TYPES"],"struct":["ComponentType","ComponentTypeRegistry"]};

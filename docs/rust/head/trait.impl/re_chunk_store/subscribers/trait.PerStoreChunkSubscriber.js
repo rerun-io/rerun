@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["re_time_panel",[["impl <a class=\"trait\" href=\"re_chunk_store/subscribers/trait.PerStoreChunkSubscriber.html\" title=\"trait re_chunk_store::subscribers::PerStoreChunkSubscriber\">PerStoreChunkSubscriber</a> for <a class=\"struct\" href=\"re_time_panel/recursive_chunks_per_timeline_subscriber/struct.PathRecursiveChunksPerTimelineStoreSubscriber.html\" title=\"struct re_time_panel::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber\">PathRecursiveChunksPerTimelineStoreSubscriber</a>"]]],["re_view_spatial",[["impl <a class=\"trait\" href=\"re_chunk_store/subscribers/trait.PerStoreChunkSubscriber.html\" title=\"trait re_chunk_store::subscribers::PerStoreChunkSubscriber\">PerStoreChunkSubscriber</a> for <a class=\"struct\" href=\"re_view_spatial/max_image_dimension_subscriber/struct.MaxImageDimensionsStoreSubscriber.html\" title=\"struct re_view_spatial::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber\">MaxImageDimensionsStoreSubscriber</a>"],["impl <a class=\"trait\" href=\"re_chunk_store/subscribers/trait.PerStoreChunkSubscriber.html\" title=\"trait re_chunk_store::subscribers::PerStoreChunkSubscriber\">PerStoreChunkSubscriber</a> for <a class=\"struct\" href=\"re_view_spatial/transform_cache/struct.TransformCacheStoreSubscriber.html\" title=\"struct re_view_spatial::transform_cache::TransformCacheStoreSubscriber\">TransformCacheStoreSubscriber</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[531,900]}

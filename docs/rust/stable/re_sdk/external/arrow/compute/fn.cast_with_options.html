@@ -1,0 +1,89 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Try to cast `array` to `to_type` if possible."><title>cast_with_options in re_sdk::external::arrow::compute - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_sdk" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../re_sdk/index.html">re_sdk</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">cast_<wbr>with_<wbr>options</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#behavior" title="Behavior">Behavior</a></li><li><a href="#timestamps-and-timezones" title="Timestamps and Timezones">Timestamps and Timezones</a><ul><li><a href="#casting-timestamps-to-a-timestamp-without-timezone--utc" title="Casting timestamps to a timestamp without timezone / UTC">Casting timestamps to a timestamp without timezone / UTC</a></li><li><a href="#casting-timestamps-to-a-timestamp-with-timezone" title="Casting timestamps to a timestamp with timezone">Casting timestamps to a timestamp with timezone</a></li></ul></li><li><a href="#casting-timestamps-without-timezone-to-timestamps-with-timezone" title="Casting timestamps without timezone to timestamps with timezone">Casting timestamps without timezone to timestamps with timezone</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In re_<wbr>sdk::<wbr>external::<wbr>arrow::<wbr>compute</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../index.html">re_sdk</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">arrow</a>::<wbr><a href="index.html">compute</a></span><h1>Function <span class="fn">cast_with_options</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub fn cast_with_options(
+    array: &amp;dyn <a class="trait" href="../../re_types_core/external/arrow/array/trait.Array.html" title="trait re_sdk::external::re_types_core::external::arrow::array::Array">Array</a>,
+    to_type: &amp;<a class="enum" href="../../re_types_core/external/arrow/datatypes/enum.DataType.html" title="enum re_sdk::external::re_types_core::external::arrow::datatypes::DataType">DataType</a>,
+    cast_options: &amp;<a class="struct" href="../../re_types_core/external/arrow/compute/struct.CastOptions.html" title="struct re_sdk::external::re_types_core::external::arrow::compute::CastOptions">CastOptions</a>&lt;'_&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;dyn <a class="trait" href="../../re_types_core/external/arrow/array/trait.Array.html" title="trait re_sdk::external::re_types_core::external::arrow::array::Array">Array</a>&gt;, <a class="enum" href="../../re_types_core/external/arrow/error/enum.ArrowError.html" title="enum re_sdk::external::re_types_core::external::arrow::error::ArrowError">ArrowError</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Try to cast <code>array</code> to <code>to_type</code> if possible.</p>
+<p>Returns a new Array with type <code>to_type</code> if possible.</p>
+<p>Accepts <a href="../../re_types_core/external/arrow/compute/struct.CastOptions.html" title="struct re_sdk::external::re_types_core::external::arrow::compute::CastOptions"><code>CastOptions</code></a> to specify cast behavior. See also <a href="../../re_types_core/external/arrow/compute/fn.cast.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::cast"><code>cast()</code></a>.</p>
+<h2 id="behavior"><a class="doc-anchor" href="#behavior">§</a>Behavior</h2>
+<ul>
+<li><code>Boolean</code> to <code>Utf8</code>: <code>true</code> =&gt; ‘1’, <code>false</code> =&gt; <code>0</code></li>
+<li><code>Utf8</code> to <code>Boolean</code>: <code>true</code>, <code>yes</code>, <code>on</code>, <code>1</code> =&gt; <code>true</code>, <code>false</code>, <code>no</code>, <code>off</code>, <code>0</code> =&gt; <code>false</code>,
+short variants are accepted, other strings return null or error</li>
+<li><code>Utf8</code> to Numeric: strings that can’t be parsed to numbers return null, float strings
+in integer casts return null</li>
+<li>Numeric to <code>Boolean</code>: 0 returns <code>false</code>, any other value returns <code>true</code></li>
+<li><code>List</code> to <code>List</code>: the underlying data type is cast</li>
+<li><code>List</code> to <code>FixedSizeList</code>: the underlying data type is cast. If safe is true and a list element
+has the wrong length it will be replaced with NULL, otherwise an error will be returned</li>
+<li>Primitive to <code>List</code>: a list array with 1 value per slot is created</li>
+<li><code>Date32</code> and <code>Date64</code>: precision lost when going to higher interval</li>
+<li><code>Time32 and </code>Time64`: precision lost when going to higher interval</li>
+<li><code>Timestamp</code> and <code>Date{32|64}</code>: precision lost when going to higher interval</li>
+<li>Temporal to/from backing Primitive: zero-copy with data type change</li>
+<li><code>Float32/Float64</code> to <code>Decimal(precision, scale)</code> rounds to the <code>scale</code> decimals
+(i.e. casting <code>6.4999</code> to <code>Decimal(10, 1)</code> becomes <code>6.5</code>).</li>
+</ul>
+<p>Unsupported Casts (check with <code>can_cast_types</code> before calling):</p>
+<ul>
+<li>To or from <code>StructArray</code></li>
+<li><code>List</code> to <code>Primitive</code></li>
+<li><code>Interval</code> and <code>Duration</code></li>
+</ul>
+<h2 id="timestamps-and-timezones"><a class="doc-anchor" href="#timestamps-and-timezones">§</a>Timestamps and Timezones</h2>
+<p>Timestamps are stored with an optional timezone in Arrow.</p>
+<h3 id="casting-timestamps-to-a-timestamp-without-timezone--utc"><a class="doc-anchor" href="#casting-timestamps-to-a-timestamp-without-timezone--utc">§</a>Casting timestamps to a timestamp without timezone / UTC</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// can use "UTC" if chrono-tz feature is enabled, here use offset based timezone
+</span><span class="kw">let </span>data_type = DataType::Timestamp(TimeUnit::Second, <span class="prelude-val">None</span>);
+<span class="kw">let </span>a = Int64Array::from(<span class="macro">vec!</span>[<span class="number">1_000_000_000</span>, <span class="number">2_000_000_000</span>, <span class="number">3_000_000_000</span>]);
+<span class="kw">let </span>b = cast(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>data_type).unwrap();
+<span class="kw">let </span>b = b.as_primitive::&lt;TimestampSecondType&gt;(); <span class="comment">// downcast to result type
+</span><span class="macro">assert_eq!</span>(<span class="number">2_000_000_000</span>, b.value(<span class="number">1</span>)); <span class="comment">// values are the same as the type has no timezone
+// use display to show them (note has no trailing Z)
+</span><span class="macro">assert_eq!</span>(<span class="string">"2033-05-18T03:33:20"</span>, display::array_value_to_string(<span class="kw-2">&amp;</span>b, <span class="number">1</span>).unwrap());</code></pre></div>
+<h3 id="casting-timestamps-to-a-timestamp-with-timezone"><a class="doc-anchor" href="#casting-timestamps-to-a-timestamp-with-timezone">§</a>Casting timestamps to a timestamp with timezone</h3>
+<p>Similarly to the previous example, if you cast numeric values to a timestamp
+with timezone, the cast kernel will not change the underlying values
+but display and other functions will interpret them as being in the provided timezone.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// can use "Americas/New_York" if chrono-tz feature is enabled, here use offset based timezone
+</span><span class="kw">let </span>data_type = DataType::Timestamp(TimeUnit::Second, <span class="prelude-val">Some</span>(<span class="string">"-05:00"</span>.into()));
+<span class="kw">let </span>a = Int64Array::from(<span class="macro">vec!</span>[<span class="number">1_000_000_000</span>, <span class="number">2_000_000_000</span>, <span class="number">3_000_000_000</span>]);
+<span class="kw">let </span>b = cast(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>data_type).unwrap();
+<span class="kw">let </span>b = b.as_primitive::&lt;TimestampSecondType&gt;(); <span class="comment">// downcast to result type
+</span><span class="macro">assert_eq!</span>(<span class="number">2_000_000_000</span>, b.value(<span class="number">1</span>)); <span class="comment">// values are still the same
+// displayed in the target timezone (note the offset -05:00)
+</span><span class="macro">assert_eq!</span>(<span class="string">"2033-05-17T22:33:20-05:00"</span>, display::array_value_to_string(<span class="kw-2">&amp;</span>b, <span class="number">1</span>).unwrap());</code></pre></div>
+<h2 id="casting-timestamps-without-timezone-to-timestamps-with-timezone"><a class="doc-anchor" href="#casting-timestamps-without-timezone-to-timestamps-with-timezone">§</a>Casting timestamps without timezone to timestamps with timezone</h2>
+<p>When casting from a timestamp without timezone to a timestamp with
+timezone, the cast kernel interprets the timestamp values as being in
+the destination timezone and then adjusts the underlying value to UTC as required</p>
+<p>However, note that when casting from a timestamp with timezone BACK to a
+timestamp without timezone the cast kernel does not adjust the values.</p>
+<p>Thus round trip casting a timestamp without timezone to a timestamp with
+timezone and back to a timestamp without timezone results in different
+values than the starting values.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>data_type  = DataType::Timestamp(TimeUnit::Second, <span class="prelude-val">None</span>);
+<span class="kw">let </span>data_type_tz = DataType::Timestamp(TimeUnit::Second, <span class="prelude-val">Some</span>(<span class="string">"-05:00"</span>.into()));
+<span class="kw">let </span>a = Int64Array::from(<span class="macro">vec!</span>[<span class="number">1_000_000_000</span>, <span class="number">2_000_000_000</span>, <span class="number">3_000_000_000</span>]);
+<span class="kw">let </span>b = cast(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>data_type).unwrap(); <span class="comment">// cast to timestamp without timezone
+</span><span class="kw">let </span>b = b.as_primitive::&lt;TimestampSecondType&gt;(); <span class="comment">// downcast to result type
+</span><span class="macro">assert_eq!</span>(<span class="number">2_000_000_000</span>, b.value(<span class="number">1</span>)); <span class="comment">// values are still the same
+// displayed without a timezone (note lack of offset or Z)
+</span><span class="macro">assert_eq!</span>(<span class="string">"2033-05-18T03:33:20"</span>, display::array_value_to_string(<span class="kw-2">&amp;</span>b, <span class="number">1</span>).unwrap());
+
+<span class="comment">// Convert timestamps without a timezone to timestamps with a timezone
+</span><span class="kw">let </span>c = cast(<span class="kw-2">&amp;</span>b, <span class="kw-2">&amp;</span>data_type_tz).unwrap();
+<span class="kw">let </span>c = c.as_primitive::&lt;TimestampSecondType&gt;(); <span class="comment">// downcast to result type
+</span><span class="macro">assert_eq!</span>(<span class="number">2_000_018_000</span>, c.value(<span class="number">1</span>)); <span class="comment">// value has been adjusted by offset
+// displayed with the target timezone offset (-05:00)
+</span><span class="macro">assert_eq!</span>(<span class="string">"2033-05-18T03:33:20-05:00"</span>, display::array_value_to_string(<span class="kw-2">&amp;</span>c, <span class="number">1</span>).unwrap());
+
+<span class="comment">// Convert from timestamp with timezone back to timestamp without timezone
+</span><span class="kw">let </span>d = cast(<span class="kw-2">&amp;</span>c, <span class="kw-2">&amp;</span>data_type).unwrap();
+<span class="kw">let </span>d = d.as_primitive::&lt;TimestampSecondType&gt;(); <span class="comment">// downcast to result type
+</span><span class="macro">assert_eq!</span>(<span class="number">2_000_018_000</span>, d.value(<span class="number">1</span>)); <span class="comment">// value has not been adjusted
+// NOTE: the timestamp is adjusted (08:33:20 instead of 03:33:20 as in previous example)
+</span><span class="macro">assert_eq!</span>(<span class="string">"2033-05-18T08:33:20"</span>, display::array_value_to_string(<span class="kw-2">&amp;</span>d, <span class="number">1</span>).unwrap());</code></pre></div>
+</div></details></section></div></main></body></html>

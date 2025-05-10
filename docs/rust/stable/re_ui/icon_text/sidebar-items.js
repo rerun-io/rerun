@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["IconTextItem"],"fn":["is_mac","maybe_plus","modifiers_text","shortcut_with_icon"],"struct":["IconText","MouseButtonText"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["code_for_view","init_method"]};

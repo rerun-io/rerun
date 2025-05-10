@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DragAndDropFeedback","DragAndDropPayload"],"fn":["drag_pill_frame","try_item_collection_to_contents","try_item_collection_to_entities"],"struct":["DragAndDropManager","ItemCounter"]};

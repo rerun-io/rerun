@@ -1,0 +1,1 @@
+searchState.loadedDescShard("re_protos_builder", 0, "This crate contains logic for generating remote store gRPC …\nGenerate rust from protobuf definitions. We rely on …")

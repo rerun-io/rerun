@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["migrate_file_at","migrate_from_to"],"struct":["MigrateCommand"]};

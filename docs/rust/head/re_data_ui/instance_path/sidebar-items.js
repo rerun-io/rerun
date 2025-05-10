@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["component_list_ui","find_and_deserialize_archetype_mono_component","image_download_button_ui","preview_if_blob_ui","preview_if_image_ui","preview_single_blob","preview_single_image","rgb8_histogram_ui"]};

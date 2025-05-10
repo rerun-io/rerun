@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Slice argument constructor."><title>s in re_viewer::external::re_types::external::ndarray::prelude - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc macro"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../re_viewer/index.html">re_<wbr>viewer</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">s</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#example" title="Example">Example</a></li><li><a href="#negative-step" title="Negative step">Negative step</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In re_<wbr>viewer::<wbr>external::<wbr>re_<wbr>types::<wbr>external::<wbr>ndarray::<wbr>prelude</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">re_viewer</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">re_types</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">ndarray</a>::<wbr><a href="index.html">prelude</a></span><h1>Macro <span class="macro">s</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="https://docs.rs/ndarray/0.15/src/ndarray/slice.rs.html#810">Source</a> </span></div><pre class="rust item-decl"><code>macro_rules! s {
+    (@parse $in_dim:expr, $out_dim:expr, [$($stack:tt)*] $r:expr;$s:expr) =&gt; { ... };
+    (@parse $in_dim:expr, $out_dim:expr, [$($stack:tt)*] $r:expr) =&gt; { ... };
+    (@parse $in_dim:expr, $out_dim:expr, [$($stack:tt)*] $r:expr;$s:expr ,) =&gt; { ... };
+    (@parse $in_dim:expr, $out_dim:expr, [$($stack:tt)*] $r:expr ,) =&gt; { ... };
+    (@parse $in_dim:expr, $out_dim:expr, [$($stack:tt)*] $r:expr;$s:expr, $($t:tt)*) =&gt; { ... };
+    (@parse $in_dim:expr, $out_dim:expr, [$($stack:tt)*] $r:expr, $($t:tt)*) =&gt; { ... };
+    (@parse ::core::marker::PhantomData::&lt;$crate::Ix0&gt;, ::core::marker::PhantomData::&lt;$crate::Ix0&gt;, []) =&gt; { ... };
+    (@parse $($t:tt)*) =&gt; { ... };
+    (@convert $r:expr) =&gt; { ... };
+    (@convert $r:expr, $s:expr) =&gt; { ... };
+    ($($t:tt)*) =&gt; { ... };
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Slice argument constructor.</p>
+<p><code>s![]</code> takes a list of ranges/slices/indices/new-axes, separated by comma,
+with optional step sizes that are separated from the range by a semicolon.
+It is converted into a <a href="../struct.SliceInfo.html" title="struct re_viewer::external::re_types::external::ndarray::SliceInfo"><code>SliceInfo</code></a> instance.</p>
+<p>Each range/slice/index uses signed indices, where a negative value is
+counted from the end of the axis. Step sizes are also signed and may be
+negative, but must not be zero.</p>
+<p>The syntax is <code>s![</code> <em>[ elem [, elem [ , … ] ] ]</em> <code>]</code>, where <em>elem</em> is any
+of the following:</p>
+<ul>
+<li><em>index</em>: an index to use for taking a subview with respect to that axis.
+(The index is selected. The axis is removed except with
+<a href="../struct.ArrayBase.html#method.slice_collapse" title="method re_viewer::external::re_types::external::ndarray::ArrayBase::slice_collapse"><code>.slice_collapse()</code></a>.)</li>
+<li><em>range</em>: a range with step size 1 to use for slicing that axis.</li>
+<li><em>range</em> <code>;</code> <em>step</em>: a range with step size <em>step</em> to use for slicing that axis.</li>
+<li><em>slice</em>: a <a href="../struct.Slice.html" title="struct re_viewer::external::re_types::external::ndarray::Slice"><code>Slice</code></a> instance to use for slicing that axis.</li>
+<li><em>slice</em> <code>;</code> <em>step</em>: a range constructed from a <a href="../struct.Slice.html" title="struct re_viewer::external::re_types::external::ndarray::Slice"><code>Slice</code></a> instance,
+multiplying the step size by <em>step</em>, to use for slicing that axis.</li>
+<li><em>new-axis</em>: a <a href="../struct.NewAxis.html" title="struct re_viewer::external::re_types::external::ndarray::NewAxis"><code>NewAxis</code></a> instance that represents the creation of a new axis.
+(Except for <a href="../struct.ArrayBase.html#method.slice_collapse" title="method re_viewer::external::re_types::external::ndarray::ArrayBase::slice_collapse"><code>.slice_collapse()</code></a>, which panics on <a href="../struct.NewAxis.html" title="struct re_viewer::external::re_types::external::ndarray::NewAxis"><code>NewAxis</code></a> elements.)</li>
+</ul>
+<p>The number of <em>elem</em>, not including <em>new-axis</em>, must match the
+number of axes in the array. <em>index</em>, <em>range</em>, <em>slice</em>, <em>step</em>, and
+<em>new-axis</em> can be expressions. <em>index</em> must be of type <code>isize</code>, <code>usize</code>, or
+<code>i32</code>. <em>range</em> must be of type <code>Range&lt;I&gt;</code>, <code>RangeTo&lt;I&gt;</code>, <code>RangeFrom&lt;I&gt;</code>, or
+<code>RangeFull</code> where <code>I</code> is <code>isize</code>, <code>usize</code>, or <code>i32</code>. <em>step</em> must be a type
+that can be converted to <code>isize</code> with the <code>as</code> keyword.</p>
+<p>For example, <code>s![0..4;2, 6, 1..5, NewAxis]</code> is a slice of the first axis
+for 0..4 with step size 2, a subview of the second axis at index 6, a slice
+of the third axis for 1..5 with default step size 1, and a new axis of
+length 1 at the end of the shape. The input array must have 3 dimensions.
+The resulting slice would have shape <code>[2, 4, 1]</code> for <a href="../struct.ArrayBase.html#method.slice" title="method re_viewer::external::re_types::external::ndarray::ArrayBase::slice"><code>.slice()</code></a>,
+<a href="../struct.ArrayBase.html#method.slice_mut" title="method re_viewer::external::re_types::external::ndarray::ArrayBase::slice_mut"><code>.slice_mut()</code></a>, and <a href="../struct.ArrayBase.html#method.slice_move" title="method re_viewer::external::re_types::external::ndarray::ArrayBase::slice_move"><code>.slice_move()</code></a>, while <a href="../struct.ArrayBase.html#method.slice_collapse" title="method re_viewer::external::re_types::external::ndarray::ArrayBase::slice_collapse"><code>.slice_collapse()</code></a> would
+panic. Without the <code>NewAxis</code>, i.e. <code>s![0..4;2, 6, 1..5]</code>,
+<a href="../struct.ArrayBase.html#method.slice_collapse" title="method re_viewer::external::re_types::external::ndarray::ArrayBase::slice_collapse"><code>.slice_collapse()</code></a> would result in an array of shape <code>[2, 1, 4]</code>.</p>
+<p>See also <a href="../struct.ArrayBase.html#slicing" title="struct re_viewer::external::re_types::external::ndarray::ArrayBase"><em>Slicing</em></a>.</p>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ndarray::{s, Array2, ArrayView2};
+
+<span class="kw">fn </span>laplacian(v: <span class="kw-2">&amp;</span>ArrayView2&lt;f32&gt;) -&gt; Array2&lt;f32&gt; {
+    -<span class="number">4. </span>* <span class="kw-2">&amp;</span>v.slice(<span class="macro">s!</span>[<span class="number">1</span>..-<span class="number">1</span>, <span class="number">1</span>..-<span class="number">1</span>])
+    + v.slice(<span class="macro">s!</span>[ ..-<span class="number">2</span>, <span class="number">1</span>..-<span class="number">1</span>])
+    + v.slice(<span class="macro">s!</span>[<span class="number">1</span>..-<span class="number">1</span>,  ..-<span class="number">2</span>])
+    + v.slice(<span class="macro">s!</span>[<span class="number">1</span>..-<span class="number">1</span>, <span class="number">2</span>..  ])
+    + v.slice(<span class="macro">s!</span>[<span class="number">2</span>..  , <span class="number">1</span>..-<span class="number">1</span>])
+}</code></pre></div>
+<h2 id="negative-step"><a class="doc-anchor" href="#negative-step">§</a>Negative <em>step</em></h2>
+<p>The behavior of negative <em>step</em> arguments is most easily understood with
+slicing as a two-step process:</p>
+<ol>
+<li>
+<p>First, perform a slice with <em>range</em>.</p>
+</li>
+<li>
+<p>If <em>step</em> is positive, start with the front of the slice; if <em>step</em> is
+negative, start with the back of the slice. Then, add <em>step</em> until
+reaching the other end of the slice (inclusive).</p>
+</li>
+</ol>
+<p>An equivalent way to think about step 2 is, “If <em>step</em> is negative, reverse
+the slice. Start at the front of the (possibly reversed) slice, and add
+<em>step.abs()</em> until reaching the back of the slice (inclusive).”</p>
+<p>For example,</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>arr = <span class="macro">array!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
+<span class="macro">assert_eq!</span>(arr.slice(<span class="macro">s!</span>[<span class="number">1</span>..<span class="number">3</span>;-<span class="number">1</span>]), <span class="macro">array!</span>[<span class="number">2</span>, <span class="number">1</span>]);
+<span class="macro">assert_eq!</span>(arr.slice(<span class="macro">s!</span>[<span class="number">1</span>..;-<span class="number">2</span>]), <span class="macro">array!</span>[<span class="number">3</span>, <span class="number">1</span>]);
+<span class="macro">assert_eq!</span>(arr.slice(<span class="macro">s!</span>[<span class="number">0</span>..<span class="number">4</span>;-<span class="number">2</span>]), <span class="macro">array!</span>[<span class="number">3</span>, <span class="number">1</span>]);
+<span class="macro">assert_eq!</span>(arr.slice(<span class="macro">s!</span>[<span class="number">0</span>..;-<span class="number">2</span>]), <span class="macro">array!</span>[<span class="number">3</span>, <span class="number">1</span>]);
+<span class="macro">assert_eq!</span>(arr.slice(<span class="macro">s!</span>[..;-<span class="number">2</span>]), <span class="macro">array!</span>[<span class="number">3</span>, <span class="number">1</span>]);</code></pre></div>
+</div></details></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AtomicDataType","DataType","LazyDatatype","UnionMode"],"struct":["GenericField"],"type":["Field","LazyField"]};

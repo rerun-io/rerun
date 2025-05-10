@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="This library safely implements WebGPU on native platforms. It is designed for integration into browsers, as well as wrapping into other language-specific user-friendly libraries."><title>rerun::external::eframe::egui_wgpu::wgpu::core - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="../../../../../../crates.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#feature-flags" title="Feature flags">Feature flags</a><ul><li><a href="#backends-passed-through-to-wgpu-hal" title="Backends, passed through to wgpu-hal">Backends, passed through to wgpu-hal</a></li></ul></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#macros" title="Macros">Macros</a></li><li><a href="#constants" title="Constants">Constants</a></li><li><a href="#functions" title="Functions">Functions</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>eframe::<wbr>egui_<wbr>wgpu::<wbr>wgpu</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">rerun</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">eframe</a>::<wbr><a href="../../index.html">egui_wgpu</a>::<wbr><a href="../index.html">wgpu</a></span><h1>Crate <span>core</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This library safely implements WebGPU on native platforms.
+It is designed for integration into browsers, as well as wrapping
+into other language-specific user-friendly libraries.</p>
+<h3 id="feature-flags"><a class="doc-anchor" href="#feature-flags">§</a>Feature flags</h3>
+<ul>
+<li>
+<p><strong><code>counters</code></strong> —  Internally count resources and events for debugging purposes. If the counters
+feature is disabled, the counting infrastructure is removed from the build and
+the exposed counters always return 0.</p>
+</li>
+<li>
+<p><strong><code>api_log_info</code></strong> —  Log all API entry points at info instead of trace level.
+Also, promotes certain debug log calls to info.</p>
+</li>
+<li>
+<p><strong><code>resource_log_info</code></strong> —  Log resource lifecycle management at info instead of trace level.</p>
+</li>
+<li>
+<p><strong><code>renderdoc</code></strong> —  Support the Renderdoc graphics debugger:
+<a href="https://renderdoc.org/">https://renderdoc.org/</a></p>
+</li>
+<li>
+<p><strong><code>strict_asserts</code></strong> —  Apply run-time checks, even in release builds. These are in addition
+to the validation carried out at public APIs in all builds.</p>
+</li>
+<li>
+<p><strong><code>indirect-validation</code></strong> —  Validates indirect draw/dispatch calls. This will also enable naga’s
+WGSL frontend since we use a WGSL compute shader to do the validation.</p>
+</li>
+<li>
+<p><strong><code>serde</code></strong> —  Enables serialization via <code>serde</code> on common wgpu types.</p>
+</li>
+<li>
+<p><strong><code>trace</code></strong> —  Enable API tracing.</p>
+</li>
+<li>
+<p><strong><code>observe_locks</code></strong> —  Enable lock order observation.</p>
+</li>
+<li>
+<p><strong><code>replay</code></strong> —  Enable API replaying</p>
+</li>
+<li>
+<p><strong><code>raw-window-handle</code></strong> —  Enable creating instances using raw-window-handle</p>
+</li>
+<li>
+<p><strong><code>wgsl</code></strong> —  Enable <code>ShaderModuleSource::Wgsl</code></p>
+</li>
+<li>
+<p><strong><code>glsl</code></strong> —  Enable <code>ShaderModuleSource::Glsl</code></p>
+</li>
+<li>
+<p><strong><code>spirv</code></strong> —  Enable <code>ShaderModuleSource::SpirV</code></p>
+</li>
+<li>
+<p><strong><code>fragile-send-sync-non-atomic-wasm</code></strong> —  Implement <code>Send</code> and <code>Sync</code> on Wasm, but only if atomics are not enabled.</p>
+<p>WebGL/WebGPU objects can not be shared between threads.
+However, it can be useful to artificially mark them as <code>Send</code> and <code>Sync</code>
+anyways to make it easier to write cross-platform code.
+This is technically <em>very</em> unsafe in a multithreaded environment,
+but on a wasm binary compiled without atomics we know we are definitely
+not in a multithreaded environment.</p>
+</li>
+</ul>
+<h4 id="backends-passed-through-to-wgpu-hal"><a class="doc-anchor" href="#backends-passed-through-to-wgpu-hal">§</a>Backends, passed through to wgpu-hal</h4>
+<ul>
+<li>
+<p><strong><code>metal</code></strong> —  Enable the <code>metal</code> backend.</p>
+</li>
+<li>
+<p><strong><code>vulkan</code></strong> —  Enable the <code>vulkan</code> backend.</p>
+</li>
+<li>
+<p><strong><code>gles</code></strong> —  Enable the <code>GLES</code> backend.</p>
+<p>This is used for all of GLES, OpenGL, and WebGL.</p>
+</li>
+<li>
+<p><strong><code>dx12</code></strong> —  Enable the <code>dx12</code> backend.</p>
+</li>
+</ul>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="api/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::api">api</a></div></li><li><div class="item-name"><a class="mod" href="binding_model/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::binding_model">binding_<wbr>model</a></div></li><li><div class="item-name"><a class="mod" href="command/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::command">command</a></div></li><li><div class="item-name"><a class="mod" href="device/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::device">device</a></div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::error">error</a></div></li><li><div class="item-name"><a class="mod" href="global/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::global">global</a></div></li><li><div class="item-name"><a class="mod" href="hal_api/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::hal_api">hal_api</a></div></li><li><div class="item-name"><a class="mod" href="hub/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::hub">hub</a></div><div class="desc docblock-short">Allocating resource ids, and tracking the resources they refer to.</div></li><li><div class="item-name"><a class="mod" href="id/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::id">id</a></div></li><li><div class="item-name"><a class="mod" href="identity/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::identity">identity</a></div></li><li><div class="item-name"><a class="mod" href="instance/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::instance">instance</a></div></li><li><div class="item-name"><a class="mod" href="naga/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::naga">naga</a></div><div class="desc docblock-short">Universal shader translator.</div></li><li><div class="item-name"><a class="mod" href="pipeline/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::pipeline">pipeline</a></div></li><li><div class="item-name"><a class="mod" href="present/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::present">present</a></div><div class="desc docblock-short">Presentation.</div></li><li><div class="item-name"><a class="mod" href="ray_tracing/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::ray_tracing">ray_<wbr>tracing</a></div></li><li><div class="item-name"><a class="mod" href="registry/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::registry">registry</a></div></li><li><div class="item-name"><a class="mod" href="resource/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::resource">resource</a></div></li><li><div class="item-name"><a class="mod" href="storage/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::storage">storage</a></div></li><li><div class="item-name"><a class="mod" href="validation/index.html" title="mod rerun::external::eframe::egui_wgpu::wgpu::core::validation">validation</a></div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.impl_labeled.html" title="macro rerun::external::eframe::egui_wgpu::wgpu::core::impl_labeled">impl_<wbr>labeled</a></div></li><li><div class="item-name"><a class="macro" href="macro.impl_parent_device.html" title="macro rerun::external::eframe::egui_wgpu::wgpu::core::impl_parent_device">impl_<wbr>parent_<wbr>device</a></div></li><li><div class="item-name"><a class="macro" href="macro.impl_resource_type.html" title="macro rerun::external::eframe::egui_wgpu::wgpu::core::impl_resource_type">impl_<wbr>resource_<wbr>type</a></div></li><li><div class="item-name"><a class="macro" href="macro.impl_storage_item.html" title="macro rerun::external::eframe::egui_wgpu::wgpu::core::impl_storage_item">impl_<wbr>storage_<wbr>item</a></div></li><li><div class="item-name"><a class="macro" href="macro.impl_trackable.html" title="macro rerun::external::eframe::egui_wgpu::wgpu::core::impl_trackable">impl_<wbr>trackable</a></div></li></ul><h2 id="constants" class="section-header">Constants<a href="#constants" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="constant" href="constant.MAX_BIND_GROUPS.html" title="constant rerun::external::eframe::egui_wgpu::wgpu::core::MAX_BIND_GROUPS">MAX_<wbr>BIND_<wbr>GROUPS</a></div></li><li><div class="item-name"><a class="constant" href="constant.MAX_COLOR_ATTACHMENTS.html" title="constant rerun::external::eframe::egui_wgpu::wgpu::core::MAX_COLOR_ATTACHMENTS">MAX_<wbr>COLOR_<wbr>ATTACHMENTS</a></div></li><li><div class="item-name"><a class="constant" href="constant.MAX_VERTEX_BUFFERS.html" title="constant rerun::external::eframe::egui_wgpu::wgpu::core::MAX_VERTEX_BUFFERS">MAX_<wbr>VERTEX_<wbr>BUFFERS</a></div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.hal_label.html" title="fn rerun::external::eframe::egui_wgpu::wgpu::core::hal_label">hal_<wbr>label</a></div></li><li><div class="item-name"><a class="fn" href="fn.map_storage_format_from_naga.html" title="fn rerun::external::eframe::egui_wgpu::wgpu::core::map_storage_format_from_naga">map_<wbr>storage_<wbr>format_<wbr>from_<wbr>naga</a></div></li><li><div class="item-name"><a class="fn" href="fn.map_storage_format_to_naga.html" title="fn rerun::external::eframe::egui_wgpu::wgpu::core::map_storage_format_to_naga">map_<wbr>storage_<wbr>format_<wbr>to_<wbr>naga</a></div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.Label.html" title="type rerun::external::eframe::egui_wgpu::wgpu::core::Label">Label</a></div></li><li><div class="item-name"><a class="type" href="type.RawString.html" title="type rerun::external::eframe::egui_wgpu::wgpu::core::RawString">RawString</a></div></li><li><div class="item-name"><a class="type" href="type.SubmissionIndex.html" title="type rerun::external::eframe::egui_wgpu::wgpu::core::SubmissionIndex">Submission<wbr>Index</a></div><div class="desc docblock-short">The index of a queue submission.</div></li></ul></section></div></main></body></html>

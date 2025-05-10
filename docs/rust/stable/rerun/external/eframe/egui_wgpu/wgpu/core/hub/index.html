@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Allocating resource ids, and tracking the resources they refer to."><title>rerun::external::eframe::egui_wgpu::wgpu::core::hub - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../" data-static-root-path="../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module hub</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#assigning-ids-to-resources" title="Assigning ids to resources">Assigning ids to resources</a></li><li><a href="#id-allocation-and-streaming" title="Id allocation and streaming">Id allocation and streaming</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>eframe::<wbr>egui_<wbr>wgpu::<wbr>wgpu::<wbr>core</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../index.html">external</a>::<wbr><a href="../../../../index.html">eframe</a>::<wbr><a href="../../../index.html">egui_wgpu</a>::<wbr><a href="../../index.html">wgpu</a>::<wbr><a href="../index.html">core</a></span><h1>Module <span>hub</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Allocating resource ids, and tracking the resources they refer to.</p>
+<p>The <code>wgpu_core</code> API uses identifiers of type <a href="../id/struct.Id.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::id::Id"><code>Id&lt;R&gt;</code></a> to refer to
+resources of type <code>R</code>. For example, <a href="../id/type.DeviceId.html" title="type rerun::external::eframe::egui_wgpu::wgpu::core::id::DeviceId"><code>id::DeviceId</code></a> is an alias for
+<code>Id&lt;markers::Device&gt;</code>, and <a href="../id/type.BufferId.html" title="type rerun::external::eframe::egui_wgpu::wgpu::core::id::BufferId"><code>id::BufferId</code></a> is an alias for
+<code>Id&lt;markers::Buffer&gt;</code>. <code>Id</code> implements <code>Copy</code>, <code>Hash</code>, <code>Eq</code>, <code>Ord</code>, and
+of course <code>Debug</code>.</p>
+<p>Each <code>Id</code> contains not only an index for the resource it denotes but
+also a Backend indicating which <code>wgpu</code> backend it belongs to.</p>
+<p><code>Id</code>s also incorporate a generation number, for additional validation.</p>
+<p>The resources to which identifiers refer are freed explicitly.
+Attempting to use an identifier for a resource that has been freed
+elicits an error result.</p>
+<h3 id="assigning-ids-to-resources"><a class="doc-anchor" href="#assigning-ids-to-resources">§</a>Assigning ids to resources</h3>
+<p>The users of <code>wgpu_core</code> generally want resource ids to be assigned
+in one of two ways:</p>
+<ul>
+<li>
+<p>Users like <code>wgpu</code> want <code>wgpu_core</code> to assign ids to resources itself.
+For example, <code>wgpu</code> expects to call <code>Global::device_create_buffer</code>
+and have the return value indicate the newly created buffer’s id.</p>
+</li>
+<li>
+<p>Users like <code>player</code> and Firefox want to allocate ids themselves, and
+pass <code>Global::device_create_buffer</code> and friends the id to assign the
+new resource.</p>
+</li>
+</ul>
+<p>To accommodate either pattern, <code>wgpu_core</code> methods that create
+resources all expect an <code>id_in</code> argument that the caller can use to
+specify the id, and they all return the id used. For example, the
+declaration of <code>Global::device_create_buffer</code> looks like this:</p>
+
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="kw">impl </span>Global {
+    <span class="comment">/* ... */
+    </span><span class="kw">pub fn </span>device_create_buffer&lt;A: HalApi&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        device_id: id::DeviceId,
+        desc: <span class="kw-2">&amp;</span>resource::BufferDescriptor,
+        id_in: Input&lt;G&gt;,
+    ) -&gt; (id::BufferId, <span class="prelude-ty">Option</span>&lt;resource::CreateBufferError&gt;) {
+        <span class="comment">/* ... */
+    </span>}
+    <span class="comment">/* ... */
+</span>}</code></pre></div>
+<p>Users that want to assign resource ids themselves pass in the id they
+want as the <code>id_in</code> argument, whereas users that want <code>wgpu_core</code>
+itself to choose ids always pass <code>()</code>. In either case, the id
+ultimately assigned is returned as the first element of the tuple.</p>
+<p>Producing true identifiers from <code>id_in</code> values is the job of an
+<a href="../identity/struct.IdentityManager.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::identity::IdentityManager"><code>crate::identity::IdentityManager</code></a> or ids will be received from outside through <code>Option&lt;Id&gt;</code> arguments.</p>
+<h3 id="id-allocation-and-streaming"><a class="doc-anchor" href="#id-allocation-and-streaming">§</a>Id allocation and streaming</h3>
+<p>Perhaps surprisingly, allowing users to assign resource ids themselves
+enables major performance improvements in some applications.</p>
+<p>The <code>wgpu_core</code> API is designed for use by Firefox’s <a href="https://www.w3.org/TR/webgpu/">WebGPU</a>
+implementation. For security, web content and GPU use must be kept
+segregated in separate processes, with all interaction between them
+mediated by an inter-process communication protocol. As web content uses
+the WebGPU API, the content process sends messages to the GPU process,
+which interacts with the platform’s GPU APIs on content’s behalf,
+occasionally sending results back.</p>
+<p>In a classic Rust API, a resource allocation function takes parameters
+describing the resource to create, and if creation succeeds, it returns
+the resource id in a <code>Result::Ok</code> value. However, this design is a poor
+fit for the split-process design described above: content must wait for
+the reply to its buffer-creation message (say) before it can know which
+id it can use in the next message that uses that buffer. On a common
+usage pattern, the classic Rust design imposes the latency of a full
+cross-process round trip.</p>
+<p>We can avoid incurring these round-trip latencies simply by letting the
+content process assign resource ids itself. With this approach, content
+can choose an id for the new buffer, send a message to create the
+buffer, and then immediately send the next message operating on that
+buffer, since it already knows its id. Allowing content and GPU process
+activity to be pipelined greatly improves throughput.</p>
+<p>To help propagate errors correctly in this style of usage, when resource
+creation fails, the id supplied for that resource is marked to indicate
+as much, allowing subsequent operations using that id to be properly
+flagged as errors as well.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Hub.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::hub::Hub">Hub</a></div><div class="desc docblock-short">All the resources tracked by a <a href="../global/struct.Global.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::global::Global"><code>crate::global::Global</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.HubReport.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::hub::HubReport">HubReport</a></div></li></ul></section></div></main></body></html>

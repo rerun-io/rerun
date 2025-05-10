@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["DefaultVisualizabilityFilter","VisualizerEntityMapping","VisualizerEntitySubscriber"],"trait":["DataBasedVisualizabilityFilter"]};

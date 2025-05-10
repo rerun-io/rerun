@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="CSV Writer"><title>re_viewer::external::re_types::external::re_types_core::external::arrow::csv::writer - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../" data-static-root-path="../../../../../../../../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../../../re_viewer/index.html">re_<wbr>viewer</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module writer</a></h2><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In re_<wbr>viewer::<wbr>external::<wbr>re_<wbr>types::<wbr>external::<wbr>re_<wbr>types_<wbr>core::<wbr>external::<wbr>arrow::<wbr>csv</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../../../index.html">re_viewer</a>::<wbr><a href="../../../../../../../index.html">external</a>::<wbr><a href="../../../../../../index.html">re_types</a>::<wbr><a href="../../../../../index.html">external</a>::<wbr><a href="../../../../index.html">re_types_core</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">arrow</a>::<wbr><a href="../index.html">csv</a></span><h1>Module <span>writer</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>CSV Writer</p>
+<p>This CSV writer allows Arrow data (in record batches) to be written as CSV files.
+The writer does not support writing <code>ListArray</code> and <code>StructArray</code>.</p>
+<p>Example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>
+<span class="kw">let </span>schema = Schema::new(<span class="macro">vec!</span>[
+    Field::new(<span class="string">"c1"</span>, DataType::Utf8, <span class="bool-val">false</span>),
+    Field::new(<span class="string">"c2"</span>, DataType::Float64, <span class="bool-val">true</span>),
+    Field::new(<span class="string">"c3"</span>, DataType::UInt32, <span class="bool-val">false</span>),
+    Field::new(<span class="string">"c4"</span>, DataType::Boolean, <span class="bool-val">true</span>),
+]);
+<span class="kw">let </span>c1 = StringArray::from(<span class="macro">vec!</span>[
+    <span class="string">"Lorem ipsum dolor sit amet"</span>,
+    <span class="string">"consectetur adipiscing elit"</span>,
+    <span class="string">"sed do eiusmod tempor"</span>,
+]);
+<span class="kw">let </span>c2 = PrimitiveArray::&lt;Float64Type&gt;::from(<span class="macro">vec!</span>[
+    <span class="prelude-val">Some</span>(<span class="number">123.564532</span>),
+    <span class="prelude-val">None</span>,
+    <span class="prelude-val">Some</span>(-<span class="number">556132.25</span>),
+]);
+<span class="kw">let </span>c3 = PrimitiveArray::&lt;UInt32Type&gt;::from(<span class="macro">vec!</span>[<span class="number">3</span>, <span class="number">2</span>, <span class="number">1</span>]);
+<span class="kw">let </span>c4 = BooleanArray::from(<span class="macro">vec!</span>[<span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">None</span>]);
+
+<span class="kw">let </span>batch = RecordBatch::try_new(
+    Arc::new(schema),
+    <span class="macro">vec!</span>[Arc::new(c1), Arc::new(c2), Arc::new(c3), Arc::new(c4)],
+)
+.unwrap();
+
+<span class="kw">let </span><span class="kw-2">mut </span>output = Vec::with_capacity(<span class="number">1024</span>);
+
+<span class="kw">let </span><span class="kw-2">mut </span>writer = Writer::new(<span class="kw-2">&amp;mut </span>output);
+<span class="kw">let </span>batches = <span class="macro">vec!</span>[<span class="kw-2">&amp;</span>batch, <span class="kw-2">&amp;</span>batch];
+<span class="kw">for </span>batch <span class="kw">in </span>batches {
+    writer.write(batch).unwrap();
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Writer.html" title="struct re_viewer::external::re_types::external::re_types_core::external::arrow::csv::writer::Writer">Writer</a></div><div class="desc docblock-short">A CSV writer</div></li><li><div class="item-name"><a class="struct" href="struct.WriterBuilder.html" title="struct re_viewer::external::re_types::external::re_types_core::external::arrow::csv::writer::WriterBuilder">Writer<wbr>Builder</a></div><div class="desc docblock-short">A CSV writer builder</div></li></ul></section></div></main></body></html>

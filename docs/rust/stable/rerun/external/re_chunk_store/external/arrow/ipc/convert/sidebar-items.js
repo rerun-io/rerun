@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["fb_to_schema","metadata_to_fb","schema_to_fb","schema_to_fb_offset","try_schema_from_flatbuffer_bytes","try_schema_from_ipc_buffer"],"struct":["IpcSchemaEncoder","MessageBuffer"]};

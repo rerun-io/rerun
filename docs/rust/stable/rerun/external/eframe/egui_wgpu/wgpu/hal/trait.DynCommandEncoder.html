@@ -1,0 +1,320 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `DynCommandEncoder` trait in crate `rerun`."><title>DynCommandEncoder in rerun::external::eframe::egui_wgpu::wgpu::hal - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">DynCommand<wbr>Encoder</a></h2><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.begin_compute_pass" title="begin_compute_pass">begin_compute_pass</a></li><li><a href="#tymethod.begin_debug_marker" title="begin_debug_marker">begin_debug_marker</a></li><li><a href="#tymethod.begin_encoding" title="begin_encoding">begin_encoding</a></li><li><a href="#tymethod.begin_query" title="begin_query">begin_query</a></li><li><a href="#tymethod.begin_render_pass" title="begin_render_pass">begin_render_pass</a></li><li><a href="#tymethod.build_acceleration_structures" title="build_acceleration_structures">build_acceleration_structures</a></li><li><a href="#tymethod.clear_buffer" title="clear_buffer">clear_buffer</a></li><li><a href="#tymethod.copy_buffer_to_buffer" title="copy_buffer_to_buffer">copy_buffer_to_buffer</a></li><li><a href="#tymethod.copy_buffer_to_texture" title="copy_buffer_to_texture">copy_buffer_to_texture</a></li><li><a href="#tymethod.copy_query_results" title="copy_query_results">copy_query_results</a></li><li><a href="#tymethod.copy_texture_to_buffer" title="copy_texture_to_buffer">copy_texture_to_buffer</a></li><li><a href="#tymethod.copy_texture_to_texture" title="copy_texture_to_texture">copy_texture_to_texture</a></li><li><a href="#tymethod.discard_encoding" title="discard_encoding">discard_encoding</a></li><li><a href="#tymethod.dispatch" title="dispatch">dispatch</a></li><li><a href="#tymethod.dispatch_indirect" title="dispatch_indirect">dispatch_indirect</a></li><li><a href="#tymethod.draw" title="draw">draw</a></li><li><a href="#tymethod.draw_indexed" title="draw_indexed">draw_indexed</a></li><li><a href="#tymethod.draw_indexed_indirect" title="draw_indexed_indirect">draw_indexed_indirect</a></li><li><a href="#tymethod.draw_indexed_indirect_count" title="draw_indexed_indirect_count">draw_indexed_indirect_count</a></li><li><a href="#tymethod.draw_indirect" title="draw_indirect">draw_indirect</a></li><li><a href="#tymethod.draw_indirect_count" title="draw_indirect_count">draw_indirect_count</a></li><li><a href="#tymethod.end_compute_pass" title="end_compute_pass">end_compute_pass</a></li><li><a href="#tymethod.end_debug_marker" title="end_debug_marker">end_debug_marker</a></li><li><a href="#tymethod.end_encoding" title="end_encoding">end_encoding</a></li><li><a href="#tymethod.end_query" title="end_query">end_query</a></li><li><a href="#tymethod.end_render_pass" title="end_render_pass">end_render_pass</a></li><li><a href="#tymethod.insert_debug_marker" title="insert_debug_marker">insert_debug_marker</a></li><li><a href="#tymethod.place_acceleration_structure_barrier" title="place_acceleration_structure_barrier">place_acceleration_structure_barrier</a></li><li><a href="#tymethod.reset_all" title="reset_all">reset_all</a></li><li><a href="#tymethod.reset_queries" title="reset_queries">reset_queries</a></li><li><a href="#tymethod.set_bind_group" title="set_bind_group">set_bind_group</a></li><li><a href="#tymethod.set_blend_constants" title="set_blend_constants">set_blend_constants</a></li><li><a href="#tymethod.set_compute_pipeline" title="set_compute_pipeline">set_compute_pipeline</a></li><li><a href="#tymethod.set_index_buffer" title="set_index_buffer">set_index_buffer</a></li><li><a href="#tymethod.set_push_constants" title="set_push_constants">set_push_constants</a></li><li><a href="#tymethod.set_render_pipeline" title="set_render_pipeline">set_render_pipeline</a></li><li><a href="#tymethod.set_scissor_rect" title="set_scissor_rect">set_scissor_rect</a></li><li><a href="#tymethod.set_stencil_reference" title="set_stencil_reference">set_stencil_reference</a></li><li><a href="#tymethod.set_vertex_buffer" title="set_vertex_buffer">set_vertex_buffer</a></li><li><a href="#tymethod.set_viewport" title="set_viewport">set_viewport</a></li><li><a href="#tymethod.transition_buffers" title="transition_buffers">transition_buffers</a></li><li><a href="#tymethod.transition_textures" title="transition_textures">transition_textures</a></li><li><a href="#tymethod.write_timestamp" title="write_timestamp">write_timestamp</a></li></ul><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>eframe::<wbr>egui_<wbr>wgpu::<wbr>wgpu::<wbr>hal</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">rerun</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">eframe</a>::<wbr><a href="../../index.html">egui_wgpu</a>::<wbr><a href="../index.html">wgpu</a>::<wbr><a href="index.html">hal</a></span><h1>Trait <span class="trait">DynCommandEncoder</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub trait DynCommandEncoder: <a class="trait" href="trait.DynResource.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynResource">DynResource</a> + <a class="trait" href="https://doc.rust-lang.org/1.84.0/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> {
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 43 methods</span></summary>    // Required methods
+    unsafe fn <a href="#tymethod.begin_encoding" class="fn">begin_encoding</a>(
+        &amp;mut self,
+        label: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.str.html">str</a>&gt;,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.unit.html">()</a>, <a class="enum" href="enum.DeviceError.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::hal::DeviceError">DeviceError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.discard_encoding" class="fn">discard_encoding</a>(&amp;mut self);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.end_encoding" class="fn">end_encoding</a>(
+        &amp;mut self,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="trait.DynCommandBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynCommandBuffer">DynCommandBuffer</a>&gt;, <a class="enum" href="enum.DeviceError.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::hal::DeviceError">DeviceError</a>&gt;;
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.reset_all" class="fn">reset_all</a>(
+        &amp;mut self,
+        command_buffers: <a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="trait.DynCommandBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynCommandBuffer">DynCommandBuffer</a>&gt;&gt;,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.transition_buffers" class="fn">transition_buffers</a>(
+        &amp;mut self,
+        barriers: &amp;[<a class="struct" href="struct.BufferBarrier.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferBarrier">BufferBarrier</a>&lt;'_, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>&gt;],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.transition_textures" class="fn">transition_textures</a>(
+        &amp;mut self,
+        barriers: &amp;[<a class="struct" href="struct.TextureBarrier.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureBarrier">TextureBarrier</a>&lt;'_, dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a>&gt;],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.clear_buffer" class="fn">clear_buffer</a>(
+        &amp;mut self,
+        buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>&gt;,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.copy_buffer_to_buffer" class="fn">copy_buffer_to_buffer</a>(
+        &amp;mut self,
+        src: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        dst: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        regions: &amp;[<a class="struct" href="struct.BufferCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferCopy">BufferCopy</a>],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.copy_texture_to_texture" class="fn">copy_texture_to_texture</a>(
+        &amp;mut self,
+        src: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+        src_usage: <a class="struct" href="struct.TextureUses.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureUses">TextureUses</a>,
+        dst: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+        regions: &amp;[<a class="struct" href="struct.TextureCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureCopy">TextureCopy</a>],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.copy_buffer_to_texture" class="fn">copy_buffer_to_texture</a>(
+        &amp;mut self,
+        src: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        dst: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+        regions: &amp;[<a class="struct" href="struct.BufferTextureCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferTextureCopy">BufferTextureCopy</a>],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.copy_texture_to_buffer" class="fn">copy_texture_to_buffer</a>(
+        &amp;mut self,
+        src: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+        src_usage: <a class="struct" href="struct.TextureUses.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureUses">TextureUses</a>,
+        dst: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        regions: &amp;[<a class="struct" href="struct.BufferTextureCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferTextureCopy">BufferTextureCopy</a>],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_bind_group" class="fn">set_bind_group</a>(
+        &amp;mut self,
+        layout: &amp;(dyn <a class="trait" href="trait.DynPipelineLayout.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynPipelineLayout">DynPipelineLayout</a> + 'static),
+        index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        group: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;(dyn <a class="trait" href="trait.DynBindGroup.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBindGroup">DynBindGroup</a> + 'static)&gt;,
+        dynamic_offsets: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_push_constants" class="fn">set_push_constants</a>(
+        &amp;mut self,
+        layout: &amp;(dyn <a class="trait" href="trait.DynPipelineLayout.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynPipelineLayout">DynPipelineLayout</a> + 'static),
+        stages: <a class="struct" href="../struct.ShaderStages.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::ShaderStages">ShaderStages</a>,
+        offset_bytes: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        data: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.insert_debug_marker" class="fn">insert_debug_marker</a>(&amp;mut self, label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.str.html">str</a>);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.begin_debug_marker" class="fn">begin_debug_marker</a>(&amp;mut self, group_label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.str.html">str</a>);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.end_debug_marker" class="fn">end_debug_marker</a>(&amp;mut self);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.begin_query" class="fn">begin_query</a>(
+        &amp;mut self,
+        set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+        index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.end_query" class="fn">end_query</a>(
+        &amp;mut self,
+        set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+        index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.write_timestamp" class="fn">write_timestamp</a>(
+        &amp;mut self,
+        set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+        index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.reset_queries" class="fn">reset_queries</a>(
+        &amp;mut self,
+        set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+        range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>&gt;,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.copy_query_results" class="fn">copy_query_results</a>(
+        &amp;mut self,
+        set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+        range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>&gt;,
+        buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+        stride: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/num/nonzero/struct.NonZero.html" title="struct core::num::nonzero::NonZero">NonZero</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>&gt;,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.begin_render_pass" class="fn">begin_render_pass</a>(
+        &amp;mut self,
+        desc: &amp;<a class="struct" href="struct.RenderPassDescriptor.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::RenderPassDescriptor">RenderPassDescriptor</a>&lt;'_, dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a>, dyn <a class="trait" href="trait.DynTextureView.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTextureView">DynTextureView</a>&gt;,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.end_render_pass" class="fn">end_render_pass</a>(&amp;mut self);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_render_pipeline" class="fn">set_render_pipeline</a>(
+        &amp;mut self,
+        pipeline: &amp;(dyn <a class="trait" href="trait.DynRenderPipeline.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynRenderPipeline">DynRenderPipeline</a> + 'static),
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_index_buffer" class="fn">set_index_buffer</a>&lt;'a&gt;(
+        &amp;mut self,
+        binding: <a class="struct" href="struct.BufferBinding.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferBinding">BufferBinding</a>&lt;'a, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>&gt;,
+        format: <a class="enum" href="../enum.IndexFormat.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::IndexFormat">IndexFormat</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_vertex_buffer" class="fn">set_vertex_buffer</a>&lt;'a&gt;(
+        &amp;mut self,
+        index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        binding: <a class="struct" href="struct.BufferBinding.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferBinding">BufferBinding</a>&lt;'a, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>&gt;,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_viewport" class="fn">set_viewport</a>(&amp;mut self, rect: &amp;<a class="struct" href="struct.Rect.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::Rect">Rect</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.f32.html">f32</a>&gt;, depth_range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.f32.html">f32</a>&gt;);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_scissor_rect" class="fn">set_scissor_rect</a>(&amp;mut self, rect: &amp;<a class="struct" href="struct.Rect.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::Rect">Rect</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>&gt;);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_stencil_reference" class="fn">set_stencil_reference</a>(&amp;mut self, value: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_blend_constants" class="fn">set_blend_constants</a>(&amp;mut self, color: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.f32.html">f32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.array.html">4</a>]);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.draw" class="fn">draw</a>(
+        &amp;mut self,
+        first_vertex: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        vertex_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        first_instance: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        instance_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.draw_indexed" class="fn">draw_indexed</a>(
+        &amp;mut self,
+        first_index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        index_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        base_vertex: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.i32.html">i32</a>,
+        first_instance: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+        instance_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.draw_indirect" class="fn">draw_indirect</a>(
+        &amp;mut self,
+        buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+        draw_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.draw_indexed_indirect" class="fn">draw_indexed_indirect</a>(
+        &amp;mut self,
+        buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+        draw_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.draw_indirect_count" class="fn">draw_indirect_count</a>(
+        &amp;mut self,
+        buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+        count_buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        count_offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+        max_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.draw_indexed_indirect_count" class="fn">draw_indexed_indirect_count</a>(
+        &amp;mut self,
+        buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+        count_buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        count_offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+        max_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.begin_compute_pass" class="fn">begin_compute_pass</a>(
+        &amp;mut self,
+        desc: &amp;<a class="struct" href="struct.ComputePassDescriptor.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::ComputePassDescriptor">ComputePassDescriptor</a>&lt;'_, dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a>&gt;,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.end_compute_pass" class="fn">end_compute_pass</a>(&amp;mut self);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.set_compute_pipeline" class="fn">set_compute_pipeline</a>(
+        &amp;mut self,
+        pipeline: &amp;(dyn <a class="trait" href="trait.DynComputePipeline.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynComputePipeline">DynComputePipeline</a> + 'static),
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.dispatch" class="fn">dispatch</a>(&amp;mut self, count: [<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.array.html">3</a>]);
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.dispatch_indirect" class="fn">dispatch_indirect</a>(
+        &amp;mut self,
+        buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+        offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.build_acceleration_structures" class="fn">build_acceleration_structures</a>&lt;'a&gt;(
+        &amp;mut self,
+        descriptors: &amp;'a [<a class="struct" href="struct.BuildAccelerationStructureDescriptor.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BuildAccelerationStructureDescriptor">BuildAccelerationStructureDescriptor</a>&lt;'a, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>, dyn <a class="trait" href="trait.DynAccelerationStructure.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynAccelerationStructure">DynAccelerationStructure</a>&gt;],
+    );
+<span class="item-spacer"></span>    unsafe fn <a href="#tymethod.place_acceleration_structure_barrier" class="fn">place_acceleration_structure_barrier</a>(
+        &amp;mut self,
+        barrier: <a class="struct" href="struct.AccelerationStructureBarrier.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::AccelerationStructureBarrier">AccelerationStructureBarrier</a>,
+    );
+</details>}</code></pre><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><section id="tymethod.begin_encoding" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.begin_encoding" class="fn">begin_encoding</a>(
+    &amp;mut self,
+    label: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.str.html">str</a>&gt;,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.unit.html">()</a>, <a class="enum" href="enum.DeviceError.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::hal::DeviceError">DeviceError</a>&gt;</h4></section><section id="tymethod.discard_encoding" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.discard_encoding" class="fn">discard_encoding</a>(&amp;mut self)</h4></section><section id="tymethod.end_encoding" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.end_encoding" class="fn">end_encoding</a>(
+    &amp;mut self,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="trait.DynCommandBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynCommandBuffer">DynCommandBuffer</a>&gt;, <a class="enum" href="enum.DeviceError.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::hal::DeviceError">DeviceError</a>&gt;</h4></section><section id="tymethod.reset_all" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.reset_all" class="fn">reset_all</a>(&amp;mut self, command_buffers: <a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="trait.DynCommandBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynCommandBuffer">DynCommandBuffer</a>&gt;&gt;)</h4></section><section id="tymethod.transition_buffers" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.transition_buffers" class="fn">transition_buffers</a>(
+    &amp;mut self,
+    barriers: &amp;[<a class="struct" href="struct.BufferBarrier.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferBarrier">BufferBarrier</a>&lt;'_, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>&gt;],
+)</h4></section><section id="tymethod.transition_textures" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.transition_textures" class="fn">transition_textures</a>(
+    &amp;mut self,
+    barriers: &amp;[<a class="struct" href="struct.TextureBarrier.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureBarrier">TextureBarrier</a>&lt;'_, dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a>&gt;],
+)</h4></section><section id="tymethod.clear_buffer" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.clear_buffer" class="fn">clear_buffer</a>(
+    &amp;mut self,
+    buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>&gt;,
+)</h4></section><section id="tymethod.copy_buffer_to_buffer" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.copy_buffer_to_buffer" class="fn">copy_buffer_to_buffer</a>(
+    &amp;mut self,
+    src: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    dst: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    regions: &amp;[<a class="struct" href="struct.BufferCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferCopy">BufferCopy</a>],
+)</h4></section><section id="tymethod.copy_texture_to_texture" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.copy_texture_to_texture" class="fn">copy_texture_to_texture</a>(
+    &amp;mut self,
+    src: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+    src_usage: <a class="struct" href="struct.TextureUses.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureUses">TextureUses</a>,
+    dst: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+    regions: &amp;[<a class="struct" href="struct.TextureCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureCopy">TextureCopy</a>],
+)</h4></section><section id="tymethod.copy_buffer_to_texture" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.copy_buffer_to_texture" class="fn">copy_buffer_to_texture</a>(
+    &amp;mut self,
+    src: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    dst: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+    regions: &amp;[<a class="struct" href="struct.BufferTextureCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferTextureCopy">BufferTextureCopy</a>],
+)</h4></section><section id="tymethod.copy_texture_to_buffer" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.copy_texture_to_buffer" class="fn">copy_texture_to_buffer</a>(
+    &amp;mut self,
+    src: &amp;(dyn <a class="trait" href="trait.DynTexture.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTexture">DynTexture</a> + 'static),
+    src_usage: <a class="struct" href="struct.TextureUses.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::TextureUses">TextureUses</a>,
+    dst: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    regions: &amp;[<a class="struct" href="struct.BufferTextureCopy.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferTextureCopy">BufferTextureCopy</a>],
+)</h4></section><section id="tymethod.set_bind_group" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_bind_group" class="fn">set_bind_group</a>(
+    &amp;mut self,
+    layout: &amp;(dyn <a class="trait" href="trait.DynPipelineLayout.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynPipelineLayout">DynPipelineLayout</a> + 'static),
+    index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    group: <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;(dyn <a class="trait" href="trait.DynBindGroup.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBindGroup">DynBindGroup</a> + 'static)&gt;,
+    dynamic_offsets: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>],
+)</h4></section><section id="tymethod.set_push_constants" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_push_constants" class="fn">set_push_constants</a>(
+    &amp;mut self,
+    layout: &amp;(dyn <a class="trait" href="trait.DynPipelineLayout.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynPipelineLayout">DynPipelineLayout</a> + 'static),
+    stages: <a class="struct" href="../struct.ShaderStages.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::ShaderStages">ShaderStages</a>,
+    offset_bytes: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    data: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>],
+)</h4></section><section id="tymethod.insert_debug_marker" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.insert_debug_marker" class="fn">insert_debug_marker</a>(&amp;mut self, label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.str.html">str</a>)</h4></section><section id="tymethod.begin_debug_marker" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.begin_debug_marker" class="fn">begin_debug_marker</a>(&amp;mut self, group_label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.str.html">str</a>)</h4></section><section id="tymethod.end_debug_marker" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.end_debug_marker" class="fn">end_debug_marker</a>(&amp;mut self)</h4></section><section id="tymethod.begin_query" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.begin_query" class="fn">begin_query</a>(&amp;mut self, set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static), index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>)</h4></section><section id="tymethod.end_query" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.end_query" class="fn">end_query</a>(&amp;mut self, set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static), index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>)</h4></section><section id="tymethod.write_timestamp" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.write_timestamp" class="fn">write_timestamp</a>(
+    &amp;mut self,
+    set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+    index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+)</h4></section><section id="tymethod.reset_queries" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.reset_queries" class="fn">reset_queries</a>(
+    &amp;mut self,
+    set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+    range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>&gt;,
+)</h4></section><section id="tymethod.copy_query_results" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.copy_query_results" class="fn">copy_query_results</a>(
+    &amp;mut self,
+    set: &amp;(dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a> + 'static),
+    range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>&gt;,
+    buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    stride: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/num/nonzero/struct.NonZero.html" title="struct core::num::nonzero::NonZero">NonZero</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>&gt;,
+)</h4></section><section id="tymethod.begin_render_pass" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.begin_render_pass" class="fn">begin_render_pass</a>(
+    &amp;mut self,
+    desc: &amp;<a class="struct" href="struct.RenderPassDescriptor.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::RenderPassDescriptor">RenderPassDescriptor</a>&lt;'_, dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a>, dyn <a class="trait" href="trait.DynTextureView.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynTextureView">DynTextureView</a>&gt;,
+)</h4></section><section id="tymethod.end_render_pass" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.end_render_pass" class="fn">end_render_pass</a>(&amp;mut self)</h4></section><section id="tymethod.set_render_pipeline" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_render_pipeline" class="fn">set_render_pipeline</a>(
+    &amp;mut self,
+    pipeline: &amp;(dyn <a class="trait" href="trait.DynRenderPipeline.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynRenderPipeline">DynRenderPipeline</a> + 'static),
+)</h4></section><section id="tymethod.set_index_buffer" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_index_buffer" class="fn">set_index_buffer</a>&lt;'a&gt;(
+    &amp;mut self,
+    binding: <a class="struct" href="struct.BufferBinding.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferBinding">BufferBinding</a>&lt;'a, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>&gt;,
+    format: <a class="enum" href="../enum.IndexFormat.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::IndexFormat">IndexFormat</a>,
+)</h4></section><section id="tymethod.set_vertex_buffer" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_vertex_buffer" class="fn">set_vertex_buffer</a>&lt;'a&gt;(
+    &amp;mut self,
+    index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    binding: <a class="struct" href="struct.BufferBinding.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BufferBinding">BufferBinding</a>&lt;'a, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>&gt;,
+)</h4></section><section id="tymethod.set_viewport" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_viewport" class="fn">set_viewport</a>(&amp;mut self, rect: &amp;<a class="struct" href="struct.Rect.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::Rect">Rect</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.f32.html">f32</a>&gt;, depth_range: <a class="struct" href="https://doc.rust-lang.org/1.84.0/core/ops/range/struct.Range.html" title="struct core::ops::range::Range">Range</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.f32.html">f32</a>&gt;)</h4></section><section id="tymethod.set_scissor_rect" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_scissor_rect" class="fn">set_scissor_rect</a>(&amp;mut self, rect: &amp;<a class="struct" href="struct.Rect.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::Rect">Rect</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>&gt;)</h4></section><section id="tymethod.set_stencil_reference" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_stencil_reference" class="fn">set_stencil_reference</a>(&amp;mut self, value: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>)</h4></section><section id="tymethod.set_blend_constants" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_blend_constants" class="fn">set_blend_constants</a>(&amp;mut self, color: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.f32.html">f32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.array.html">4</a>])</h4></section><section id="tymethod.draw" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.draw" class="fn">draw</a>(
+    &amp;mut self,
+    first_vertex: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    vertex_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    first_instance: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    instance_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+)</h4></section><section id="tymethod.draw_indexed" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.draw_indexed" class="fn">draw_indexed</a>(
+    &amp;mut self,
+    first_index: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    index_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    base_vertex: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.i32.html">i32</a>,
+    first_instance: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+    instance_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+)</h4></section><section id="tymethod.draw_indirect" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.draw_indirect" class="fn">draw_indirect</a>(
+    &amp;mut self,
+    buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    draw_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+)</h4></section><section id="tymethod.draw_indexed_indirect" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.draw_indexed_indirect" class="fn">draw_indexed_indirect</a>(
+    &amp;mut self,
+    buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    draw_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+)</h4></section><section id="tymethod.draw_indirect_count" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.draw_indirect_count" class="fn">draw_indirect_count</a>(
+    &amp;mut self,
+    buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    count_buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    count_offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    max_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+)</h4></section><section id="tymethod.draw_indexed_indirect_count" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.draw_indexed_indirect_count" class="fn">draw_indexed_indirect_count</a>(
+    &amp;mut self,
+    buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    count_buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    count_offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+    max_count: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>,
+)</h4></section><section id="tymethod.begin_compute_pass" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.begin_compute_pass" class="fn">begin_compute_pass</a>(
+    &amp;mut self,
+    desc: &amp;<a class="struct" href="struct.ComputePassDescriptor.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::ComputePassDescriptor">ComputePassDescriptor</a>&lt;'_, dyn <a class="trait" href="trait.DynQuerySet.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynQuerySet">DynQuerySet</a>&gt;,
+)</h4></section><section id="tymethod.end_compute_pass" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.end_compute_pass" class="fn">end_compute_pass</a>(&amp;mut self)</h4></section><section id="tymethod.set_compute_pipeline" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.set_compute_pipeline" class="fn">set_compute_pipeline</a>(
+    &amp;mut self,
+    pipeline: &amp;(dyn <a class="trait" href="trait.DynComputePipeline.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynComputePipeline">DynComputePipeline</a> + 'static),
+)</h4></section><section id="tymethod.dispatch" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.dispatch" class="fn">dispatch</a>(&amp;mut self, count: [<a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u32.html">u32</a>; <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.array.html">3</a>])</h4></section><section id="tymethod.dispatch_indirect" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.dispatch_indirect" class="fn">dispatch_indirect</a>(
+    &amp;mut self,
+    buffer: &amp;(dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a> + 'static),
+    offset: <a class="primitive" href="https://doc.rust-lang.org/1.84.0/std/primitive.u64.html">u64</a>,
+)</h4></section><section id="tymethod.build_acceleration_structures" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.build_acceleration_structures" class="fn">build_acceleration_structures</a>&lt;'a&gt;(
+    &amp;mut self,
+    descriptors: &amp;'a [<a class="struct" href="struct.BuildAccelerationStructureDescriptor.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::BuildAccelerationStructureDescriptor">BuildAccelerationStructureDescriptor</a>&lt;'a, dyn <a class="trait" href="trait.DynBuffer.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynBuffer">DynBuffer</a>, dyn <a class="trait" href="trait.DynAccelerationStructure.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynAccelerationStructure">DynAccelerationStructure</a>&gt;],
+)</h4></section><section id="tymethod.place_acceleration_structure_barrier" class="method"><h4 class="code-header">unsafe fn <a href="#tymethod.place_acceleration_structure_barrier" class="fn">place_acceleration_structure_barrier</a>(
+    &amp;mut self,
+    barrier: <a class="struct" href="struct.AccelerationStructureBarrier.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::hal::AccelerationStructureBarrier">AccelerationStructureBarrier</a>,
+)</h4></section></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-DynCommandEncoder-for-C" class="impl"><a href="#impl-DynCommandEncoder-for-C" class="anchor">§</a><h3 class="code-header">impl&lt;C&gt; <a class="trait" href="trait.DynCommandEncoder.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynCommandEncoder">DynCommandEncoder</a> for C<div class="where">where
+    C: <a class="trait" href="trait.CommandEncoder.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::CommandEncoder">CommandEncoder</a> + <a class="trait" href="trait.DynResource.html" title="trait rerun::external::eframe::egui_wgpu::wgpu::hal::DynResource">DynResource</a>,</div></h3></section></div><script src="../../../../../../trait.impl/wgpu_hal/dynamic/command/trait.DynCommandEncoder.js" async></script></section></div></main></body></html>

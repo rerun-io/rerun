@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["forward_array_views"]};
