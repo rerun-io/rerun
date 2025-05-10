@@ -16,6 +16,7 @@ See <https://rerun.io/docs/reference/video> for details of what is and isn't sup
 
 ### Optional
 * `video_reference`: [`EntityPath`](../components/entity_path.md)
+* `draw_order`: [`DrawOrder`](../components/draw_order.md)
 
 
 ## Can be shown in
