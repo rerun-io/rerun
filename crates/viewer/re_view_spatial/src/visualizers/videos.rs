@@ -11,7 +11,7 @@ use re_renderer::{
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
-    components::{Blob, MediaType, VideoTimestamp},
+    components::{self, Blob, MediaType, VideoTimestamp},
     Archetype as _, Component as _,
 };
 use re_viewer_context::{
@@ -159,7 +159,11 @@ impl VideoFrameReferenceVisualizer {
         // Follow the reference to the video asset.
         let video_reference: EntityPath = video_references
             .and_then(|v| v.first().map(|e| e.as_str().into()))
-            .unwrap_or_else(|| self.fallback_for(ctx).as_str().into());
+            .unwrap_or_else(|| {
+                TypedComponentFallbackProvider::<components::EntityPath>::fallback_for(self, ctx)
+                    .as_str()
+                    .into()
+            });
         let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
 
         let world_from_entity = spatial_ctx
@@ -233,6 +237,7 @@ impl VideoFrameReferenceVisualizer {
                                     texture_filter_magnification: TextureFilterMag::Nearest,
                                     texture_filter_minification: TextureFilterMin::Linear,
                                     outline_mask: spatial_ctx.highlight.overall,
+                                    depth_offset: spatial_ctx.depth_offset,
                                     ..Default::default()
                                 },
                             };
@@ -414,15 +419,16 @@ fn latest_at_query_video_from_datastore(
     Some((video, blob))
 }
 
-impl TypedComponentFallbackProvider<re_types::components::EntityPath>
-    for VideoFrameReferenceVisualizer
-{
-    fn fallback_for(
-        &self,
-        ctx: &re_viewer_context::QueryContext<'_>,
-    ) -> re_types::components::EntityPath {
+impl TypedComponentFallbackProvider<components::EntityPath> for VideoFrameReferenceVisualizer {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> components::EntityPath {
         ctx.target_entity_path.to_string().into()
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [re_types::components::EntityPath]);
+impl TypedComponentFallbackProvider<components::DrawOrder> for VideoFrameReferenceVisualizer {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::DrawOrder {
+        components::DrawOrder::DEFAULT_VIDEO_FRAME_REFERENCE
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [components::EntityPath, components::DrawOrder]);

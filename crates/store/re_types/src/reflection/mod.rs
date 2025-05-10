@@ -1338,7 +1338,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\n\nThe default for 2D boxes is 10.0.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `10.0`.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "class_ids", display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1491,7 +1491,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-20.0`.",
                     is_required : false, },
                 ],
             },
@@ -1695,7 +1695,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-10.0`.",
                     is_required : false, },
                 ],
             },
@@ -1756,7 +1756,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order of each line strip.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order of each line strip.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `20.0`.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "class_ids", display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1904,7 +1904,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `30.0`.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "class_ids", display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -2024,7 +2024,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order", display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `0.0`.",
                     is_required : false, },
                 ],
             },
@@ -2262,6 +2262,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "video_reference", display_name : "Video reference", component_name :
                     "rerun.components.EntityPath".into(), docstring_md :
                     "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "draw_order", display_name : "Draw order", component_name :
+                    "rerun.components.DrawOrder".into(), docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-15.0`.",
                     is_required : false, },
                 ],
             },

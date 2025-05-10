@@ -128,6 +128,7 @@ pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIde
         lines2d::Lines2DVisualizer::identifier(),
         points2d::Points2DVisualizer::identifier(),
         segmentation_images::SegmentationImageVisualizer::identifier(),
+        videos::VideoFrameReferenceVisualizer::identifier(),
     ]
     .into_iter()
 }
