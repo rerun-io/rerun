@@ -7,7 +7,10 @@ use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
-use re_types::{Component as _, components::MediaType};
+use re_types::{
+    archetypes::{Asset3D, Mesh3D},
+    components::MediaType,
+};
 use re_viewer_context::Cache;
 
 use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
@@ -93,12 +96,12 @@ impl Cache for MeshCache {
                     let contains_asset_blob = event
                         .chunk
                         .components()
-                        .contains_component_name(re_types::components::Blob::name());
+                        .contains_component(&Asset3D::descriptor_blob());
 
                     let contains_vertex_positions = event
                         .chunk
                         .components()
-                        .contains_component_name(re_types::components::Position3D::name());
+                        .contains_component(&Mesh3D::descriptor_vertex_positions());
 
                     contains_asset_blob || contains_vertex_positions
                 };

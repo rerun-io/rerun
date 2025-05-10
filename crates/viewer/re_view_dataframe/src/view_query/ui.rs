@@ -7,10 +7,14 @@ use re_log_types::{
 };
 use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
-use re_types_core::{ComponentName, ComponentNameSet};
+use re_types_core::ComponentName;
 use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
 use std::collections::{BTreeSet, HashSet};
+
+// TODO(#6889): This should be a `ComponentDescriptorSet`, but we first need to figure out
+//              how to handle descriptors for dataframe view queries in general.
+type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
 
 // UI implementation
 impl Query {
@@ -226,7 +230,7 @@ impl Query {
         let all_components = ctx
             .recording_engine()
             .store()
-            .all_components_on_timeline_sorted_by_name(timeline, &filter_entity)
+            .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
 
         // The list of suggested components is built as follows:
@@ -237,7 +241,8 @@ impl Query {
             all_components
                 .iter()
                 .filter_map(|c| {
-                    c.indicator_component_archetype_short_name()
+                    c.component_name
+                        .indicator_component_archetype_short_name()
                         .and_then(|archetype_short_name| {
                             ctx.reflection()
                                 .archetype_reflection_from_short_name(&archetype_short_name)
@@ -248,13 +253,24 @@ impl Query {
                         .required_fields()
                         .map(|field| field.component_name)
                 })
-                .filter(|c| all_components.contains(c))
+                .filter(|c| {
+                    all_components
+                        .iter()
+                        // TODO(#6889): Should we filter by the component descriptor instead?
+                        .any(|descr| &descr.component_name == c)
+                })
                 .collect::<ComponentNameSet>()
         };
 
         // If the currently saved component, we auto-switch it to a reasonable one.
         let mut filter_component = filter_component
-            .and_then(|component| all_components.contains(&component).then_some(component))
+            .and_then(|component| {
+                all_components
+                    .iter()
+                    // TODO(#6889): Should we filter by the component descriptor instead?
+                    .any(|descr| descr.component_name == component)
+                    .then_some(component)
+            })
             .or_else(|| suggested_components().first().copied())
             .unwrap_or_else(|| ComponentName::from("-"));
 
@@ -283,9 +299,13 @@ impl Query {
                     egui::ComboBox::new("pov_component", "")
                         .selected_text(filter_component.short_name())
                         .show_ui(ui, |ui| {
-                            for component in all_components {
-                                let label = component.short_name();
-                                ui.selectable_value(&mut filter_component, component, label);
+                            for descr in all_components {
+                                let label = descr.short_name();
+                                ui.selectable_value(
+                                    &mut filter_component,
+                                    descr.component_name,
+                                    label,
+                                );
                             }
                         });
                 }),

@@ -79,15 +79,15 @@ impl ContainerBlueprint {
         // This is a required component. Note that when loading containers we crawl the subtree and so
         // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
         // is the marker that the have been cleared and not an error.
-        let container_kind = results.component_instance::<ContainerKind>(0)?;
+        let container_kind = results.component_mono::<ContainerKind>()?;
 
-        let display_name = results.component_instance::<Name>(0);
+        let display_name = results.component_mono::<Name>();
         let contents = results.component_batch::<IncludedContent>();
         let col_shares = results.component_batch::<ColumnShare>();
         let row_shares = results.component_batch::<RowShare>();
-        let active_tab = results.component_instance::<ActiveTab>(0);
-        let visible = results.component_instance::<Visible>(0);
-        let grid_columns = results.component_instance::<GridColumns>(0);
+        let active_tab = results.component_mono::<ActiveTab>();
+        let visible = results.component_mono::<Visible>();
+        let grid_columns = results.component_mono::<GridColumns>();
 
         // ----
 
