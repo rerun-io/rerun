@@ -62,17 +62,23 @@ jobs:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}
     runs-on: ${{ matrix.runs_on }}
     steps:
+      # Skipping the entire step would apparently require a separate job, not doing that here.
+      # Instead we keep checking for the `matrix.pr_ci` flag.
+      # See https://stackoverflow.com/questions/77186893/how-can-i-skip-the-whole-job-for-a-matrix-match-in-github-action
       - uses: actions/checkout@v4
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - uses: prefix-dev/setup-pixi@v0.8.1
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
           pixi-version: v0.41.4
           environments: cpp
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
           cache_key: ${{ matrix.cache_key }}
           # Cache will be produced by `reusable_checks/rs-lints`
@@ -82,19 +88,22 @@ jobs:
 
       # Workaround for ASAN issues on Github images https://github.com/actions/runner-images/issues/9491
       - name: Fix kernel mmap rnd bits
-        if: runner.os == 'Linux'
+        if: ${{ (github.event_name != 'pull_request' || matrix.pr_ci != false) && runner.os == 'Linux' }}
         # Asan in llvm 14 provided in ubuntu 22.04 is incompatible with
         # high-entropy ASLR in much newer kernels that GitHub runners are
         # using leading to random crashes: https://reviews.llvm.org/D148280
         run: sudo sysctl vm.mmap_rnd_bits=28
 
       - name: pixi run -e cpp cpp-clean
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         run: pixi run -e cpp cpp-clean
 
       - name: pixi run -e cpp cpp-build-all
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run -e cpp cpp-build-all
 
       - name: pixi run -e cpp cpp-test
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run -e cpp cpp-test
 
       - name: pixi run -e cpp cpp-build-all-shared-libs
@@ -102,6 +111,7 @@ jobs:
         run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run -e cpp cpp-build-all-shared-libs
 
       - name: additional_commands
+        if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         run: ${{ matrix.additional_commands }}
 
   cpp-formatting:
