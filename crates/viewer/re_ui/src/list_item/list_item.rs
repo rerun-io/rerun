@@ -145,7 +145,7 @@ impl ListVisuals {
                 } else if self.hovered {
                     design_tokens.color_table.gray(Scale::S250)
                 } else {
-                    design_tokens.color_table.gray(Scale::S250)
+                    design_tokens.color_table.gray(Scale::S350)
                 }
             }
         }
