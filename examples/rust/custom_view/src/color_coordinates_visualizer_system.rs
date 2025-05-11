@@ -38,7 +38,7 @@ impl VisualizerSystem for Point3DColorVisualizer {
             VisualizerQueryInfo {
                 indicators: Default::default(),
                 required: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
-                queried: Default::default(),
+                queried: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
             }
         }
     }
