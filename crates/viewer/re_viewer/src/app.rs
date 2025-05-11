@@ -10,7 +10,7 @@ use re_entity_db::{InstancePath, entity_db::EntityDb};
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_ui::{DesignTokens, UICommand, UICommandSender as _, notifications};
+use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, notifications};
 use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
@@ -1242,7 +1242,7 @@ impl App {
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..DesignTokens::bottom_panel_frame()
+            ..ui.design_tokens().bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("memory_panel")
@@ -1265,7 +1265,7 @@ impl App {
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
-            .frame(DesignTokens::top_panel_frame())
+            .frame(ui.design_tokens().top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if ui
@@ -2329,7 +2329,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
     painter.rect_stroke(
         egui_ctx.screen_rect(),
         re_ui::DesignTokens::native_window_corner_radius(),
-        re_ui::design_tokens().native_frame_stroke,
+        egui_ctx.design_tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );
 }

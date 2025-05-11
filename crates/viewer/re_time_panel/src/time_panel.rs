@@ -1522,8 +1522,7 @@ fn paint_time_ranges_gaps(
             mesh.colored_vertex(right_pos, fill_color);
 
             shadow_mesh.colored_vertex(pos2(right - shadow_width, y), Color32::TRANSPARENT);
-            shadow_mesh
-                .colored_vertex(right_pos, re_ui::design_tokens().shadow_gradient_dark_start);
+            shadow_mesh.colored_vertex(right_pos, ui.design_tokens().shadow_gradient_dark_start);
 
             left_line_strip.push(left_pos);
             right_line_strip.push(right_pos);
