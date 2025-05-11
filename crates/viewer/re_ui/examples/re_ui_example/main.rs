@@ -191,6 +191,11 @@ impl eframe::App for ExampleApp {
         // bottom section closure
         let left_panel_bottom_section_ui = |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
+                ui.label("Theme:");
+                egui::global_theme_preference_buttons(ui);
+            });
+
+            ui.horizontal(|ui| {
                 ui.label("Toggle switch:");
                 ui.toggle_switch(8.0, &mut self.dummy_bool);
             });

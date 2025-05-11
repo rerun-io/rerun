@@ -98,13 +98,19 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
     static DESIGN_TOKENS_LIGHT: OnceCell<DesignTokens> = OnceCell::new();
 
     match theme {
-        egui::Theme::Dark => DESIGN_TOKENS_DARK.get_or_init(DesignTokens::load), // TODO(#3058): load different tokens
-        egui::Theme::Light => DESIGN_TOKENS_LIGHT.get_or_init(DesignTokens::load), // TODO(#3058): load different tokens
+        egui::Theme::Dark => {
+            DESIGN_TOKENS_DARK.get_or_init(|| DesignTokens::load(egui::Theme::Dark))
+        }
+        egui::Theme::Light => {
+            DESIGN_TOKENS_LIGHT.get_or_init(|| DesignTokens::load(egui::Theme::Light))
+        }
     }
 }
 
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
+    re_tracing::profile_function!();
+
     egui_extras::install_image_loaders(egui_ctx);
 
     egui_ctx.include_bytes(
@@ -117,15 +123,12 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     );
 
     egui_ctx.options_mut(|o| {
-        o.theme_preference = egui::ThemePreference::Dark;
+        o.theme_preference = egui::ThemePreference::System; // TODO: might be too early to use system theme as default
         o.fallback_theme = egui::Theme::Dark;
     });
 
-    design_tokens_of(egui::Theme::Dark).apply(egui_ctx); // TODO(#3058): support light mode
-
-    egui_ctx.style_mut(|style| {
-        style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
-    });
+    design_tokens_of(egui::Theme::Dark).apply(egui_ctx); // TODO: this is a bit weird
+    design_tokens_of(egui::Theme::Light).apply(egui_ctx); // TODO: this is a bit weird
 }
 
 fn format_with_decimals_in_range(

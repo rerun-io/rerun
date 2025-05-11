@@ -1,9 +1,15 @@
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::enum_glob_use)] // Nice to have for the color variants
 
-use crate::CUSTOM_WINDOW_DECORATIONS;
-use crate::color_table::Scale::{S100, S150, S200, S250, S300, S325, S350, S550, S775, S1000};
-use crate::color_table::{ColorTable, ColorToken};
 use std::sync::Arc;
+
+use egui::Theme;
+
+use crate::{
+    CUSTOM_WINDOW_DECORATIONS,
+    color_table::{ColorTable, ColorToken, Scale::*},
+    format_with_decimals_in_range,
+};
 
 /// The look and feel of the UI.
 ///
@@ -11,6 +17,7 @@ use std::sync::Arc;
 /// A lot of other design tokens are put straight into the [`egui::Style`]
 #[derive(Debug)]
 pub struct DesignTokens {
+    pub theme: egui::Theme,
     pub json: serde_json::Value,
 
     /// Color table for all colors used in the UI.
@@ -29,85 +36,135 @@ pub struct DesignTokens {
 }
 
 impl DesignTokens {
-    /// Load design tokens from `data/design_tokens.json`.
-    pub fn load() -> Self {
-        let json: serde_json::Value =
-            serde_json::from_str(include_str!("../data/design_tokens.json"))
-                .expect("Failed to parse data/design_tokens.json");
+    /// Load design tokens from `data/design_tokens_*.json`.
+    pub fn load(theme: Theme) -> Self {
+        match theme {
+            egui::Theme::Dark => {
+                let json: serde_json::Value =
+                    serde_json::from_str(include_str!("../data/design_tokens_dark.json"))
+                        .expect("Failed to parse data/design_tokens_dark.json");
 
-        let color_table = load_color_table(&json);
+                let color_table = load_color_table(&json);
 
-        Self {
-            top_bar_color: color_table.gray(S100),
-            bottom_bar_color: color_table.gray(S150),
-            bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-            bottom_bar_corner_radius: egui::CornerRadius {
-                nw: 6,
-                ne: 6,
-                sw: 0,
-                se: 0,
-            }, // copied from figma, should be top only
-            shadow_gradient_dark_start: egui::Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
-            tab_bar_color: color_table.gray(S200),
-            native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-            json,
-            color_table,
+                Self {
+                    theme,
+                    top_bar_color: color_table.gray(S100),
+                    bottom_bar_color: color_table.gray(S150),
+                    bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
+                    bottom_bar_corner_radius: egui::CornerRadius {
+                        nw: 0,
+                        ne: 0,
+                        sw: 0,
+                        se: 0,
+                    }, // copied from figma, should be top only
+                    shadow_gradient_dark_start: egui::Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
+                    tab_bar_color: color_table.gray(S200),
+                    native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
+                    json,
+                    color_table,
+                }
+            }
+            egui::Theme::Light => {
+                let json: serde_json::Value =
+                    serde_json::from_str(include_str!("../data/design_tokens_light.json"))
+                        .expect("Failed to parse data/design_tokens_light.json");
+
+                let color_table = load_color_table(&json);
+
+                Self {
+                    theme,
+                    top_bar_color: color_table.gray(S800),
+                    bottom_bar_color: color_table.gray(S950),
+                    bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S800)),
+                    bottom_bar_corner_radius: egui::CornerRadius {
+                        nw: 0,
+                        ne: 0,
+                        sw: 0,
+                        se: 0,
+                    }, // copied from figma, should be top only
+                    shadow_gradient_dark_start: egui::Color32::from_black_alpha(10), //TODO(ab): use ColorToken!
+                    tab_bar_color: color_table.gray(S900),
+                    native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
+                    json,
+                    color_table,
+                }
+            }
         }
     }
 
     /// Apply style to the given egui context.
     pub(crate) fn apply(&self, ctx: &egui::Context) {
-        let apply_font = true;
-        let apply_font_size = true;
+        re_tracing::profile_function!();
 
+        self.set_fonts(ctx);
+
+        let mut style = Arc::unwrap_or_clone(ctx.style_of(self.theme));
+
+        self.set_text_styles(&mut style);
+        Self::set_common_style(&mut style);
+
+        match self.theme {
+            egui::Theme::Dark => {
+                self.set_dark_style(&mut style);
+            }
+            egui::Theme::Light => {
+                self.set_light_style(&mut style);
+            }
+        }
+
+        style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
+
+        ctx.set_style_of(self.theme, style);
+    }
+
+    fn set_fonts(&self, ctx: &egui::Context) {
         let typography_default: Typography =
             get_alias(&self.json, "{Alias.Typography.Default.value}");
 
-        if apply_font {
-            assert_eq!(typography_default.fontFamily, "Inter");
-            assert_eq!(typography_default.fontWeight, "Medium");
-            let mut font_definitions = egui::FontDefinitions::default();
-            font_definitions.font_data.insert(
-                "Inter-Medium".into(),
-                std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-                    "../data/Inter-Medium.otf"
-                ))),
-            );
-            font_definitions
-                .families
-                .get_mut(&egui::FontFamily::Proportional)
-                .unwrap()
-                .insert(0, "Inter-Medium".into());
-            ctx.set_fonts(font_definitions);
+        assert_eq!(typography_default.fontFamily, "Inter");
+        assert_eq!(typography_default.fontWeight, "Medium");
+        let mut font_definitions = egui::FontDefinitions::default();
+        font_definitions.font_data.insert(
+            "Inter-Medium".into(),
+            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../data/Inter-Medium.otf"
+            ))),
+        );
+        font_definitions
+            .families
+            .get_mut(&egui::FontFamily::Proportional)
+            .unwrap()
+            .insert(0, "Inter-Medium".into());
+        ctx.set_fonts(font_definitions);
+    }
+
+    fn set_text_styles(&self, egui_style: &mut egui::Style) {
+        let typography_default: Typography =
+            get_alias(&self.json, "{Alias.Typography.Default.value}");
+
+        let font_size = parse_px(&typography_default.fontSize);
+
+        for text_style in [
+            egui::TextStyle::Body,
+            egui::TextStyle::Monospace,
+            egui::TextStyle::Button,
+        ] {
+            egui_style.text_styles.get_mut(&text_style).unwrap().size = font_size;
         }
 
-        let mut egui_style = Arc::unwrap_or_clone(ctx.style_of(egui::Theme::Dark));
+        egui_style
+            .text_styles
+            .get_mut(&egui::TextStyle::Heading)
+            .unwrap()
+            .size = 16.0;
 
-        if apply_font_size {
-            let font_size = parse_px(&typography_default.fontSize);
+        // We want labels and buttons to have the same height.
+        // Intuitively, we would just assign font_size to
+        // the interact_size, but in practice text height does not match
+        // font size (for unknown reason), so we fudge it for now:
 
-            for text_style in [
-                egui::TextStyle::Body,
-                egui::TextStyle::Monospace,
-                egui::TextStyle::Button,
-            ] {
-                egui_style.text_styles.get_mut(&text_style).unwrap().size = font_size;
-            }
-
-            egui_style
-                .text_styles
-                .get_mut(&egui::TextStyle::Heading)
-                .unwrap()
-                .size = 16.0;
-
-            // We want labels and buttons to have the same height.
-            // Intuitively, we would just assign font_size to
-            // the interact_size, but in practice text height does not match
-            // font size (for unknown reason), so we fudge it for now:
-
-            egui_style.spacing.interact_size.y = 15.0;
-            // egui_style.spacing.interact_size.y = font_size;
-        }
+        egui_style.spacing.interact_size.y = 15.0;
+        // egui_style.spacing.interact_size.y = font_size;
 
         // fonts used in the welcome screen
         // TODO(ab): font sizes should come from design tokens
@@ -128,7 +185,59 @@ impl DesignTokens {
         egui_style
             .text_styles
             .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
+    }
 
+    fn set_common_style(egui_style: &mut egui::Style) {
+        egui_style.visuals.button_frame = true;
+
+        {
+            // Turn off strokes around buttons:
+            egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
+            egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
+            egui_style.visuals.widgets.active.bg_stroke = Default::default();
+            egui_style.visuals.widgets.open.bg_stroke = Default::default();
+        }
+
+        {
+            // egui_style.visuals.widgets.hovered.expansion = 2.0;
+            // egui_style.visuals.widgets.active.expansion = 2.0;
+            // egui_style.visuals.widgets.open.expansion = 2.0;
+        }
+
+        egui_style.visuals.window_corner_radius = Self::window_corner_radius().into();
+        egui_style.visuals.menu_corner_radius = Self::window_corner_radius().into();
+        let small_corner_radius = Self::small_corner_radius().into();
+        egui_style.visuals.widgets.noninteractive.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.inactive.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.hovered.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.active.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.open.corner_radius = small_corner_radius;
+
+        egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+        egui_style.spacing.menu_margin = Self::view_padding().into();
+        egui_style.spacing.menu_spacing = 1.0;
+
+        // avoid some visual glitches with the default non-zero value
+        egui_style.visuals.clip_rect_margin = 0.0;
+
+        // Add stripes to grids and tables?
+        egui_style.visuals.striped = false;
+        egui_style.visuals.indent_has_left_vline = false;
+        egui_style.spacing.button_padding = egui::Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
+        egui_style.spacing.indent = 14.0; // From figma
+
+        egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
+
+        egui_style.spacing.scroll.bar_inner_margin = 2.0;
+        egui_style.spacing.scroll.bar_width = 6.0;
+        egui_style.spacing.scroll.bar_outer_margin = 2.0;
+
+        egui_style.spacing.tooltip_width = 720.0;
+
+        egui_style.visuals.image_loading_spinners = false;
+    }
+
+    fn set_dark_style(&self, egui_style: &mut egui::Style) {
         let panel_bg_color = self.color(ColorToken::gray(S100));
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
         let floating_color = self.color(ColorToken::gray(S250));
@@ -144,7 +253,6 @@ impl DesignTokens {
         egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
         egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
-        egui_style.visuals.button_frame = true;
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
@@ -159,20 +267,6 @@ impl DesignTokens {
             egui_style.visuals.widgets.active.bg_fill = hovered_color;
             egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.open.bg_fill = hovered_color;
-        }
-
-        {
-            // Turn off strokes around buttons:
-            egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
-            egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
-            egui_style.visuals.widgets.active.bg_stroke = Default::default();
-            egui_style.visuals.widgets.open.bg_stroke = Default::default();
-        }
-
-        {
-            egui_style.visuals.widgets.hovered.expansion = 2.0;
-            egui_style.visuals.widgets.active.expansion = 2.0;
-            egui_style.visuals.widgets.open.expansion = 2.0;
         }
 
         egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S350));
@@ -210,46 +304,94 @@ impl DesignTokens {
         egui_style.visuals.window_stroke = egui::Stroke::NONE;
         egui_style.visuals.panel_fill = panel_bg_color;
 
-        egui_style.visuals.window_corner_radius = Self::window_corner_radius().into();
-        egui_style.visuals.menu_corner_radius = Self::window_corner_radius().into();
-        let small_corner_radius = Self::small_corner_radius().into();
-        egui_style.visuals.widgets.noninteractive.corner_radius = small_corner_radius;
-        egui_style.visuals.widgets.inactive.corner_radius = small_corner_radius;
-        egui_style.visuals.widgets.hovered.corner_radius = small_corner_radius;
-        egui_style.visuals.widgets.active.corner_radius = small_corner_radius;
-        egui_style.visuals.widgets.open.corner_radius = small_corner_radius;
-
-        egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
-        egui_style.spacing.menu_margin = Self::view_padding().into();
-        egui_style.spacing.menu_spacing = 1.0;
-
-        // avoid some visual glitches with the default non-zero value
-        egui_style.visuals.clip_rect_margin = 0.0;
-
-        // Add stripes to grids and tables?
-        egui_style.visuals.striped = false;
-        egui_style.visuals.indent_has_left_vline = false;
-        egui_style.spacing.button_padding = egui::Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
-        egui_style.spacing.indent = 14.0; // From figma
-
-        egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
-
-        egui_style.spacing.scroll.bar_inner_margin = 2.0;
-        egui_style.spacing.scroll.bar_width = 6.0;
-        egui_style.spacing.scroll.bar_outer_margin = 2.0;
-
-        egui_style.spacing.tooltip_width = 720.0;
-
         // don't color hyperlinks #2733
         egui_style.visuals.hyperlink_color = default;
-
-        egui_style.visuals.image_loading_spinners = false;
 
         //TODO(#8333): use ColorToken!
         egui_style.visuals.error_fg_color = egui::Color32::from_rgb(0xAB, 0x01, 0x16);
         egui_style.visuals.warn_fg_color = egui::Color32::from_rgb(0xFF, 0x7A, 0x0C);
+    }
 
-        ctx.set_style(egui_style);
+    fn set_light_style(&self, egui_style: &mut egui::Style) {
+        let panel_bg_color = self.color(ColorToken::gray(S1000));
+        // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
+        let floating_color = self.color(ColorToken::gray(S1000));
+
+        // For table zebra stripes.
+        egui_style.visuals.faint_bg_color = self.color(ColorToken::gray(S900));
+
+        // Used as the background of text edits, scroll bars and others things
+        // that needs to look different from other interactive stuff.
+        // We need this very dark, since the theme overall is very, very dark.
+        egui_style.visuals.extreme_bg_color = self.color(ColorToken::gray(S900));
+
+        egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.color(ColorToken::gray(S550));
+        egui_style.visuals.widgets.noninteractive.bg_fill = self.color(ColorToken::gray(S800));
+
+        egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
+
+        // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
+        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::gray(S800));
+
+        {
+            // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
+            // defaulted to egui light theme for now
+            //let hovered_color = egui::Color32::RED;
+            egui_style.visuals.widgets.hovered.weak_bg_fill = self.color(ColorToken::gray(S800));
+            egui_style.visuals.widgets.hovered.bg_fill = self.color(ColorToken::gray(S700));
+            egui_style.visuals.widgets.active.weak_bg_fill = self.color(ColorToken::gray(S750)); //ms after weak_bg_fill is pressed
+            egui_style.visuals.widgets.active.bg_fill = self.color(ColorToken::gray(S650)); //ms after btn on timeline is pressed
+            egui_style.visuals.widgets.open.weak_bg_fill = self.color(ColorToken::gray(S650));
+            //when dropdown is opened
+            //egui_style.visuals.widgets.open.bg_fill = egui::Color32::GREEN; //have no idea when its triggered
+        }
+
+        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S450));
+        egui_style.visuals.selection.stroke.color = self.color(ColorToken::blue(S800)); // Brighter version of the above
+
+        // separator lines, panel lines, etc
+        egui_style.visuals.widgets.noninteractive.bg_stroke.color =
+            self.color(ColorToken::gray(S800));
+
+        let subdued = self.color(ColorToken::gray(S500));
+        let default = self.color(ColorToken::gray(S250));
+        let strong = self.color(ColorToken::gray(S0));
+
+        egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
+        egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
+        egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
+
+        let wide_stroke_width = 2.0; // Make it a bit more visible, especially important for spatial primitives.
+        egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
+        egui_style.visuals.selection.stroke.width = wide_stroke_width;
+
+        // From figma
+        let shadow = egui::epaint::Shadow {
+            offset: [0, 15],
+            blur: 50,
+            spread: 0,
+            color: egui::Color32::from_black_alpha(32),
+        };
+        egui_style.visuals.popup_shadow = shadow;
+        egui_style.visuals.window_shadow = shadow;
+
+        egui_style.visuals.window_fill = floating_color; // tooltips and menus
+        egui_style.visuals.window_stroke = egui::Stroke::NONE;
+        egui_style.visuals.panel_fill = panel_bg_color;
+
+        // don't color hyperlinks #2733
+        egui_style.visuals.hyperlink_color = default;
+
+        //TODO(#8333): use ColorToken!
+        egui_style.visuals.error_fg_color = egui::Color32::from_rgb(0xAB, 0x01, 0x16);
+        egui_style.visuals.warn_fg_color = egui::Color32::from_rgb(0xFF, 0x7A, 0x0C);
+    }
+
+    pub fn strong_fg_color(&self) -> egui::Color32 {
+        match self.theme {
+            Theme::Dark => egui::Color32::WHITE,
+            Theme::Light => egui::Color32::BLACK,
+        }
     }
 
     /// Get the [`egui::Color32`] corresponding to the provided [`ColorToken`].
@@ -422,7 +564,10 @@ impl DesignTokens {
     /// The color for the background of [`crate::SectionCollapsingHeader`].
     pub fn section_collapsing_header_color(&self) -> egui::Color32 {
         // same as visuals.widgets.inactive.bg_fill
-        self.color(ColorToken::gray(S200))
+        match self.theme {
+            Theme::Dark => self.color(ColorToken::gray(S200)),
+            Theme::Light => self.color(ColorToken::gray(S900)),
+        }
     }
 
     /// The color we use to mean "loop this selection"
@@ -437,7 +582,10 @@ impl DesignTokens {
 
     /// Used by the "add view or container" modal.
     pub fn thumbnail_background_color(&self) -> egui::Color32 {
-        self.color(ColorToken::gray(S250))
+        match self.theme {
+            Theme::Dark => self.color(ColorToken::gray(S250)),
+            Theme::Light => self.color(ColorToken::gray(S800)),
+        }
     }
 
     /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
