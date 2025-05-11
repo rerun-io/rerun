@@ -3,6 +3,7 @@ use arrow::array::ArrayRef;
 use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
+use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
@@ -14,7 +15,7 @@ use crate::{
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
     query_context::DataQueryResult,
 };
-use crate::{GlobalContext, StorageContext, StoreHub};
+use crate::{GlobalContext, Item, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -188,7 +189,7 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        let interacted_items = interacted_items.into().into_mono_instance_path_items(self);
+        let mut interacted_items = interacted_items.into().into_mono_instance_path_items(self);
         let selection_state = self.selection_state();
 
         if response.hovered() {
@@ -228,6 +229,18 @@ impl ViewerContext<'_> {
         } else if response.clicked() {
             if response.double_clicked() {
                 if let Some(item) = interacted_items.first_item() {
+                    // Double click always selects the whole instance and nothing else.
+                    let item = if let Item::DataResult(view_id, instance) = item {
+                        interacted_items = Item::DataResult(
+                            *view_id,
+                            InstancePath::entity_all(instance.entity_path.clone()),
+                        )
+                        .into();
+                        interacted_items.first_item().unwrap() // Just set it
+                    } else {
+                        item
+                    };
+
                     self.global_context
                         .command_sender
                         .send_system(crate::SystemCommand::SetFocus(item.clone()));
