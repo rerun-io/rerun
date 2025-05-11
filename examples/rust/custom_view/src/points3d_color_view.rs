@@ -259,6 +259,7 @@ fn color_space_ui(
     ui.painter().add(egui::Shape::mesh(mesh));
 
     // Circles for the colors in the scene.
+    let mut hovering_any_point = false;
     for (ent_path, colors) in &colors.colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
         for ColorWithInstance { instance, color } in colors {
@@ -307,6 +308,8 @@ fn color_space_ui(
                     &ctx.current_query(),
                     ctx.recording(),
                 );
+
+                hovering_any_point = true;
             });
             ctx.handle_select_hover_drag_interactions(
                 &interact,
@@ -314,6 +317,11 @@ fn color_space_ui(
                 false,
             );
         }
+    }
+
+    // If no point was selected, then select the view.
+    if !hovering_any_point {
+        ctx.handle_select_hover_drag_interactions(&response, Item::View(query.view_id), false);
     }
 
     response
