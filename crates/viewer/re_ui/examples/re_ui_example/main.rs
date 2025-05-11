@@ -143,7 +143,11 @@ impl ExampleApp {
 
 impl eframe::App for ExampleApp {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            [0.0; 4] // transparent
+        } else {
+            [1.0, 0.0, 1.0, 1.0] // Find any background color peaking through that shouldn't
+        }
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
