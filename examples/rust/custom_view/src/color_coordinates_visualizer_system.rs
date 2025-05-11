@@ -1,4 +1,4 @@
-use rerun::Component as _;
+use rerun::external::re_view::{DataResultQuery, RangeResultsExt};
 use rerun::external::{
     egui,
     re_log_types::{EntityPath, Instance},
@@ -8,8 +8,6 @@ use rerun::external::{
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
     },
 };
-
-use crate::color_archetype::ColorArchetype;
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
@@ -30,7 +28,19 @@ impl IdentifiedViewSystem for InstanceColorSystem {
 
 impl VisualizerSystem for InstanceColorSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<ColorArchetype>()
+        // Usually, visualizers are closely tied to archetypes.
+        // However, here we're adding a visualizer that queries only parts of an existing archetype.
+        if false {
+            // This is what it looks like to query all the fields of an archetype.
+            VisualizerQueryInfo::from_archetype::<rerun::Points3D>()
+        } else {
+            // Instead, we create a custom query that is solely interested in Points3D's colors.
+            VisualizerQueryInfo {
+                indicators: Default::default(),
+                required: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),
+                queried: Default::default(),
+            }
+        }
     }
 
     /// Populates the visualizer with data from the store.
@@ -42,53 +52,42 @@ impl VisualizerSystem for InstanceColorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         // For each entity in the view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // TODO(#6889): This is an _interesting_ but really strange example.
-            // UI doesn't play nicely with it as it won't show anything when one of these color points is selected.
-
-            // First gather all kinds of colors that are logged on this path.
-            let recording_engine = ctx.recording_engine();
-            let color_descriptors = recording_engine
-                .store()
-                .entity_component_descriptors_with_name(
-                    &data_result.entity_path,
-                    rerun::Color::name(),
-                );
-
-            // Query them from the cache.
-            let results = ctx.recording_engine().cache().latest_at(
-                &ctx.current_query(),
-                &data_result.entity_path,
-                color_descriptors.iter(),
+            // Query components while taking into account blueprint overrides
+            // and visible history if enabled.
+            let results = data_result.query_components_with_history(
+                ctx,
+                query,
+                [&rerun::Points3D::descriptor_colors()],
             );
 
-            // Collect all different kinds of colors that are returned from the cache.
-            let colors = results
-                .components
-                .iter()
-                .flat_map(|(descr, chunk)| chunk.iter_slices::<u32>(descr.clone()).flatten())
-                .collect::<Vec<_>>();
+            // From the query result, get all the color arrays as `[u32]` slices.
+            // For latest-at queries should be only a single slice`,
+            // but if visible history is enabled, there might be several!
+            let colors_per_time =
+                results.iter_as(query.timeline, rerun::Points3D::descriptor_colors());
+            let color_slices_per_time = colors_per_time.slice::<u32>();
 
-            if colors.is_empty() {
-                continue;
+            // Collect all different kinds of colors that are returned from the cache.
+            let mut colors_for_entity = Vec::new();
+            for ((_time, _row_id), colors_slice) in color_slices_per_time {
+                for (instance, color) in (0..).zip(colors_slice) {
+                    let [r, g, b, _] = rerun::Color::from_u32(*color).to_array();
+                    colors_for_entity.push(ColorWithInstance {
+                        color: egui::Color32::from_rgb(r, g, b),
+                        instance: instance.into(),
+                    });
+                }
             }
 
-            self.colors.push((
-                data_result.entity_path.clone(),
-                (0..)
-                    .zip(colors)
-                    .map(|(instance, color)| {
-                        let [r, g, b, _] = rerun::Color::from_u32(*color).to_array();
-                        ColorWithInstance {
-                            color: egui::Color32::from_rgb(r, g, b),
-                            instance: instance.into(),
-                        }
-                    })
-                    .collect(),
-            ));
+            if !colors_for_entity.is_empty() {
+                self.colors
+                    .push((data_result.entity_path.clone(), colors_for_entity));
+            }
         }
 
         // We're not using `re_renderer` here, so return an empty vector.
-        // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
+        // If you want to draw additional primitives here, you can emit re_renderer draw data here directly,
+        // but your custom view's `ui` implementation has to set up an re_renderer output for this.
         Ok(Vec::new())
     }
 
