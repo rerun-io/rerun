@@ -559,12 +559,7 @@ impl ViewClass for TimeSeriesView {
         let hovered_data_result = hovered_plot_item
             .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
             .map(|instance_path| {
-                let mut instance_path = instance_path.clone();
-                if response.double_clicked() {
-                    // Select entire entity on double-click:
-                    instance_path.instance = re_log_types::Instance::ALL;
-                }
-                re_viewer_context::Item::DataResult(query.view_id, instance_path)
+                re_viewer_context::Item::DataResult(query.view_id, instance_path.clone())
             });
         if let Some(hovered) = hovered_data_result.clone().or_else(|| {
             if response.hovered() {

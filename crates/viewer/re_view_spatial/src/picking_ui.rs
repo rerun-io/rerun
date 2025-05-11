@@ -90,11 +90,6 @@ pub fn picking(
             continue;
         };
 
-        if response.double_clicked() {
-            // Select entire entity on double-click:
-            instance_path.instance = Instance::ALL;
-        }
-
         let query_result = ctx.lookup_query_result(query.view_id);
         let Some(data_result) = query_result
             .tree
