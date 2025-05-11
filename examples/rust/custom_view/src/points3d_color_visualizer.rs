@@ -11,7 +11,7 @@ use rerun::external::{
 
 /// Our view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
-pub struct Point3DColorVisualizer {
+pub struct Points3DColorVisualizer {
     pub colors: Vec<(EntityPath, Vec<ColorWithInstance>)>,
 }
 
@@ -20,13 +20,13 @@ pub struct ColorWithInstance {
     pub instance: Instance,
 }
 
-impl IdentifiedViewSystem for Point3DColorVisualizer {
+impl IdentifiedViewSystem for Points3DColorVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "Point3DColorVisualizer".into()
+        "Points3DColorVisualizer".into()
     }
 }
 
-impl VisualizerSystem for Point3DColorVisualizer {
+impl VisualizerSystem for Points3DColorVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         // Usually, visualizers are closely tied to archetypes.
         // However, here we're adding a visualizer that queries only parts of an existing archetype.
@@ -103,4 +103,4 @@ impl VisualizerSystem for Point3DColorVisualizer {
 // Implements a `ComponentFallbackProvider` trait for the `InstanceColorSystem`.
 // It is left empty here but could be used to provides fallback values for optional components in case they're missing.
 use rerun::external::re_types;
-re_viewer_context::impl_component_fallback_provider!(Point3DColorVisualizer => []);
+re_viewer_context::impl_component_fallback_provider!(Points3DColorVisualizer => []);
