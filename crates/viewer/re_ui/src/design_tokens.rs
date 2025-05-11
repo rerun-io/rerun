@@ -199,9 +199,9 @@ impl DesignTokens {
         }
 
         {
-            // egui_style.visuals.widgets.hovered.expansion = 2.0;
-            // egui_style.visuals.widgets.active.expansion = 2.0;
-            // egui_style.visuals.widgets.open.expansion = 2.0;
+            egui_style.visuals.widgets.hovered.expansion = 2.0; // TODO: consider removing this
+            egui_style.visuals.widgets.active.expansion = 2.0; // TODO: consider removing this
+            egui_style.visuals.widgets.open.expansion = 2.0; // TODO: consider removing this
         }
 
         egui_style.visuals.window_corner_radius = Self::window_corner_radius().into();
