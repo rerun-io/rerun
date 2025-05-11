@@ -455,7 +455,7 @@ impl DesignTokens {
     }
 
     pub fn top_bar_margin() -> egui::Margin {
-        egui::Margin::symmetric(8, 2)
+        egui::Margin::symmetric(8, 0) // TODO: vertical spacing
     }
 
     pub fn text_to_icon_padding() -> f32 {
