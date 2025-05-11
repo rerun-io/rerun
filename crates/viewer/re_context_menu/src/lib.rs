@@ -330,7 +330,7 @@ trait ContextMenuAction {
         let label = self.label(ctx);
 
         let response = if let Some(icon) = self.icon() {
-            ui.add(egui::Button::image_and_text(icon.as_image(), label))
+            ui.add(icon.as_button(label))
         } else {
             ui.button(label)
         };

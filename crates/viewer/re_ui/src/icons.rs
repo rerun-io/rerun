@@ -28,6 +28,11 @@ impl Icon {
         const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
         Image::new(self.as_image_source()).fit_to_original_size(ICON_SCALE)
     }
+
+    #[inline]
+    pub fn as_button(&self, label: impl Into<egui::WidgetText>) -> egui::Button<'_> {
+        egui::Button::image_and_text(self.as_image(), label).image_tint_follows_text_color(true)
+    }
 }
 
 impl From<&'static Icon> for Image<'static> {

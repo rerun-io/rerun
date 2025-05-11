@@ -206,7 +206,7 @@ fn last_part_of_item_heading(
     };
 
     let button = if with_icon {
-        egui::Button::image_and_text(icon.as_image(), label).image_tint_follows_text_color(true)
+        icon.as_button(label)
     } else {
         egui::Button::new(label)
     };

@@ -1140,10 +1140,7 @@ fn add_new_view_or_container_menu_button(
     ui: &mut egui::Ui,
 ) {
     if ui
-        .add(egui::Button::image_and_text(
-            &re_ui::icons::ADD,
-            "Add view or container…",
-        ))
+        .add(re_ui::icons::ADD.as_button("Add view or container…"))
         .clicked()
     {
         ui.close();
@@ -1188,7 +1185,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let mut response = ui
         .add_enabled(
             enabled,
-            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to default blueprint"),
+            re_ui::icons::RESET.as_button("Reset to default blueprint"),
         )
         .on_hover_text("Reset to the default blueprint for this app");
 
@@ -1214,7 +1211,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
     if ui
         .add_enabled(
             enabled,
-            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to heuristic blueprint"),
+            re_ui::icons::RESET.as_button("Reset to heuristic blueprint"),
         )
         .on_hover_text("Re-populate viewport with automatically chosen views")
         .clicked()

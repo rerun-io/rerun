@@ -532,6 +532,7 @@ impl UICommand {
                     .fit_to_exact_size(crate::DesignTokens::small_icon_size()),
                 self.text(),
             )
+            .image_tint_follows_text_color(true)
         } else {
             egui::Button::new(self.text())
         };
