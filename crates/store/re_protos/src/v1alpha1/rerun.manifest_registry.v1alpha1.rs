@@ -637,9 +637,9 @@ pub struct QueryLatestAt {
     ///
     /// This will perform a basic fuzzy match on the available columns' descriptors.
     /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLine`, etc.
+    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+    /// `SeriesLines`, etc.
     ///
     /// TODO(cmc): I shall bring that back into a more structured form later.
     /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
@@ -673,9 +673,9 @@ pub struct QueryRange {
     ///
     /// This will perform a basic fuzzy match on the available columns' descriptors.
     /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLine`, etc.
+    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+    /// `SeriesLines`, etc.
     ///
     /// TODO(cmc): I shall bring that back into a more structured form later.
     /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;

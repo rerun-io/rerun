@@ -14,17 +14,23 @@ namespace rerun::archetypes {
         archetype.video_reference =
             ComponentBatch::empty<rerun::components::EntityPath>(Descriptor_video_reference)
                 .value_or_throw();
+        archetype.draw_order =
+            ComponentBatch::empty<rerun::components::DrawOrder>(Descriptor_draw_order)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> VideoFrameReference::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
+        columns.reserve(4);
         if (timestamp.has_value()) {
             columns.push_back(timestamp.value().partitioned(lengths_).value_or_throw());
         }
         if (video_reference.has_value()) {
             columns.push_back(video_reference.value().partitioned(lengths_).value_or_throw());
+        }
+        if (draw_order.has_value()) {
+            columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
         }
         columns.push_back(ComponentColumn::from_indicators<VideoFrameReference>(
                               static_cast<uint32_t>(lengths_.size())
@@ -40,6 +46,9 @@ namespace rerun::archetypes {
         if (video_reference.has_value()) {
             return columns(std::vector<uint32_t>(video_reference.value().length(), 1));
         }
+        if (draw_order.has_value()) {
+            return columns(std::vector<uint32_t>(draw_order.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -51,13 +60,16 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(4);
 
         if (archetype.timestamp.has_value()) {
             cells.push_back(archetype.timestamp.value());
         }
         if (archetype.video_reference.has_value()) {
             cells.push_back(archetype.video_reference.value());
+        }
+        if (archetype.draw_order.has_value()) {
+            cells.push_back(archetype.draw_order.value());
         }
         {
             auto result = ComponentBatch::from_indicator<VideoFrameReference>();

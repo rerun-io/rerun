@@ -122,6 +122,7 @@ pub struct Points2D {
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `30.0`.
     pub draw_order: Option<SerializedComponentBatch>,
 
     /// Optional class Ids for the points.
@@ -624,6 +625,7 @@ impl Points2D {
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `30.0`.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);

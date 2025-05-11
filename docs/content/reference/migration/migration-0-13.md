@@ -3,13 +3,13 @@ title: Migrating from 0.12 to 0.13
 order: 996
 ---
 
-## `TimeSeriesScalar` deprecated in favor of [Scalar](../types/archetypes/scalar.md) & [SeriesLine](../types/archetypes/series_line.md)/[SeriesPoint](../types/archetypes/series_point.md)
+## `TimeSeriesScalar` deprecated in favor of `Scalar` & `SeriesLine`/`SeriesPoint`
 
 Previously, `TimeSeriesScalar` was used to define both
 data and styling of time series plots.
-Going forward, this is done separately: data is now logged via [Scalar](../types/archetypes/scalar.md).
-Styling for point/marker series via [SeriesPoint](../types/archetypes/series_point.md) and styling for
-line series via [SeriesLine](../types/archetypes/series_line.md).
+Going forward, this is done separately: data is now logged via `Scalar`.
+Styling for point/marker series via `SeriesPoint` and styling for
+line series via `SeriesLine`.
 (Both styling archetypes are typically logged as `timeless` but this is not a requirement and any property may change over time!)
 
 `TimeSeriesScalar` will be removed in a future release.

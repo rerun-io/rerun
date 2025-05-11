@@ -1345,7 +1345,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\n\nThe default for 2D boxes is 10.0.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `10.0`.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1503,7 +1503,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-20.0`.",
                     is_required : false, },
                 ],
             },
@@ -1710,7 +1710,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-10.0`.",
                     is_required : false, },
                 ],
             },
@@ -1774,7 +1774,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order of each line strip.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order of each line strip.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `20.0`.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -1874,7 +1874,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Pinhole",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["Spatial2DView", "Spatial2DView"],
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { name : "image_from_camera".into(),
                     display_name : "Image from camera", component_name :
@@ -1928,7 +1928,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `30.0`.",
                     is_required : false, }, ArchetypeFieldReflection { name : "class_ids"
                     .into(), display_name : "Class ids", component_name :
                     "rerun.components.ClassId".into(), docstring_md :
@@ -2001,20 +2001,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Scalar"),
-            ArchetypeReflection {
-                display_name: "Scalar",
-                deprecation_summary: Some("since 0.23.0: Use `Scalars` instead."),
-                scope: None,
-                view_types: &["TimeSeriesView"],
-                fields: vec![
-                    ArchetypeFieldReflection { name : "scalar".into(), display_name :
-                    "Scalar", component_name : "rerun.components.Scalar".into(),
-                    docstring_md : "The scalar value to log.", is_required : true, },
-                ],
-            },
-        ),
-        (
             ArchetypeName::new("rerun.archetypes.Scalars"),
             ArchetypeReflection {
                 display_name: "Scalars",
@@ -2049,38 +2035,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "draw_order".into(), display_name : "Draw order", component_name :
                     "rerun.components.DrawOrder".into(), docstring_md :
-                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
-                    is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.archetypes.SeriesLine"),
-            ArchetypeReflection {
-                display_name: "Series line",
-                deprecation_summary: Some("since 0.23.0: Use `SeriesLines` instead."),
-                scope: None,
-                view_types: &["TimeSeriesView"],
-                fields: vec![
-                    ArchetypeFieldReflection { name : "color".into(), display_name :
-                    "Color", component_name : "rerun.components.Color".into(),
-                    docstring_md : "Color for the corresponding series.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "width".into(),
-                    display_name : "Width", component_name :
-                    "rerun.components.StrokeWidth".into(), docstring_md :
-                    "Stroke width for the corresponding series.", is_required : false, },
-                    ArchetypeFieldReflection { name : "name".into(), display_name :
-                    "Name", component_name : "rerun.components.Name".into(), docstring_md
-                    : "Display name of the series.\n\nUsed in the legend.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "visible_series".into(),
-                    display_name : "Visible series", component_name :
-                    "rerun.components.SeriesVisible".into(), docstring_md :
-                    "Which lines are visible.\n\nIf not set, all line series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "aggregation_policy".into(), display_name : "Aggregation policy",
-                    component_name : "rerun.components.AggregationPolicy".into(),
-                    docstring_md :
-                    "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `0.0`.",
                     is_required : false, },
                 ],
             },
@@ -2116,35 +2071,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "Configures the zoom-dependent scalar aggregation.\n\nThis is done only if steps on the X axis go below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.\n\nExpected to be unchanging over time.",
                     is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.archetypes.SeriesPoint"),
-            ArchetypeReflection {
-                display_name: "Series point",
-                deprecation_summary: Some("since 0.23.0: Use `SeriesPoints` instead."),
-                scope: None,
-                view_types: &["TimeSeriesView"],
-                fields: vec![
-                    ArchetypeFieldReflection { name : "color".into(), display_name :
-                    "Color", component_name : "rerun.components.Color".into(),
-                    docstring_md : "Color for the corresponding series.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "marker".into(),
-                    display_name : "Marker", component_name :
-                    "rerun.components.MarkerShape".into(), docstring_md :
-                    "What shape to use to represent the point", is_required : false, },
-                    ArchetypeFieldReflection { name : "name".into(), display_name :
-                    "Name", component_name : "rerun.components.Name".into(), docstring_md
-                    : "Display name of the series.\n\nUsed in the legend.", is_required :
-                    false, }, ArchetypeFieldReflection { name : "visible_series".into(),
-                    display_name : "Visible series", component_name :
-                    "rerun.components.SeriesVisible".into(), docstring_md :
-                    "Which point series are visible.\n\nIf not set, all point series on this entity are visible.\nUnlike with the regular visibility property of the entire entity, any series that is hidden\nvia this property will still be visible in the legend.",
-                    is_required : false, }, ArchetypeFieldReflection { name :
-                    "marker_size".into(), display_name : "Marker size", component_name :
-                    "rerun.components.MarkerSize".into(), docstring_md :
-                    "Size of the marker.", is_required : false, },
                 ],
             },
         ),
@@ -2294,6 +2220,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "video_reference".into(), display_name : "Video reference",
                     component_name : "rerun.components.EntityPath".into(), docstring_md :
                     "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
+                    is_required : false, }, ArchetypeFieldReflection { name :
+                    "draw_order".into(), display_name : "Draw order", component_name :
+                    "rerun.components.DrawOrder".into(), docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-15.0`.",
                     is_required : false, },
                 ],
             },

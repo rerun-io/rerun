@@ -44,5 +44,4 @@ uint8
 
 ## Used by
 
-* [`SeriesLine`](../archetypes/series_line.md)
 * [`SeriesLines`](../archetypes/series_lines.md)

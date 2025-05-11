@@ -23,7 +23,5 @@ utf8
 ## Used by
 
 * [`RecordingProperties`](../archetypes/recording_properties.md)
-* [`SeriesLine`](../archetypes/series_line.md)
 * [`SeriesLines`](../archetypes/series_lines.md)
-* [`SeriesPoint`](../archetypes/series_point.md)
 * [`SeriesPoints`](../archetypes/series_points.md)
