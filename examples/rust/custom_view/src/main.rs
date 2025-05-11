@@ -2,7 +2,6 @@
 
 use rerun::external::{re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer, tokio};
 
-mod color_archetype;
 mod color_coordinates_view;
 mod color_coordinates_visualizer_system;
 
