@@ -98,8 +98,8 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
     static DESIGN_TOKENS_LIGHT: OnceCell<DesignTokens> = OnceCell::new();
 
     match theme {
-        egui::Theme::Dark => DESIGN_TOKENS_DARK.get_or_init(DesignTokens::load), // TODO: load different tokens
-        egui::Theme::Light => DESIGN_TOKENS_LIGHT.get_or_init(DesignTokens::load), // TODO: load different tokens
+        egui::Theme::Dark => DESIGN_TOKENS_DARK.get_or_init(DesignTokens::load), // TODO(#3058): load different tokens
+        egui::Theme::Light => DESIGN_TOKENS_LIGHT.get_or_init(DesignTokens::load), // TODO(#3058): load different tokens
     }
 }
 
