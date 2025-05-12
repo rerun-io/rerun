@@ -509,7 +509,23 @@ fn load_scalar(
                 make_scalar_batch_entity_chunks(entity_path, feature, timelines, fixed_size_array)?;
             Ok(ScalarChunkIterator::Batch(Box::new(batch_chunks)))
         }
-        DataType::Float32 => {
+        DataType::List(_field) => {
+            let list_array = data
+                .column_by_name(feature_key)
+                .and_then(|col| col.downcast_array_ref::<arrow::array::ListArray>())
+                .ok_or_else(|| {
+                    DataLoaderError::Other(anyhow!("Failed to downcast feature to ListArray"))
+                })?;
+
+            let sliced = extract_list_array_elements_as_f64(list_array).with_context(|| {
+                format!("Failed to cast scalar feature {entity_path} to Float64")
+            })?;
+
+            Ok(ScalarChunkIterator::Single(std::iter::once(
+                make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
+            )))
+        }
+        DataType::Float32 | DataType::Float64 => {
             let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
                 DataLoaderError::Other(anyhow!(
                     "Failed to get LeRobot dataset column data for: {:?}",
@@ -546,7 +562,7 @@ fn make_scalar_batch_entity_chunks(
 
     let mut chunks = Vec::with_capacity(num_elements);
 
-    let sliced = extract_list_elements_as_f64(data)
+    let sliced = extract_fixed_size_list_array_elements_as_f64(data)
         .with_context(|| format!("Failed to cast scalar feature {entity_path} to Float64"))?;
 
     chunks.push(make_scalar_entity_chunk(
@@ -612,7 +628,20 @@ fn extract_scalar_slices_as_f64(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>
         .collect::<Vec<_>>())
 }
 
-fn extract_list_elements_as_f64(data: &FixedSizeListArray) -> anyhow::Result<Vec<ArrayRef>> {
+fn extract_fixed_size_list_array_elements_as_f64(
+    data: &FixedSizeListArray,
+) -> anyhow::Result<Vec<ArrayRef>> {
+    (0..data.len())
+        .map(|idx| {
+            cast(&data.value(idx), &DataType::Float64)
+                .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))
+        })
+        .collect::<Result<Vec<_>, _>>()
+}
+
+fn extract_list_array_elements_as_f64(
+    data: &arrow::array::ListArray,
+) -> anyhow::Result<Vec<ArrayRef>> {
     (0..data.len())
         .map(|idx| {
             cast(&data.value(idx), &DataType::Float64)
