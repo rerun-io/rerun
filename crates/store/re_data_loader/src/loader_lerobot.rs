@@ -1,26 +1,32 @@
-use std::sync::Arc;
-use std::sync::mpsc::Sender;
-use std::thread;
+use std::{
+    sync::{Arc, mpsc::Sender},
+    thread,
+};
 
 use anyhow::{Context as _, anyhow};
-use arrow::array::{
-    ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray, StructArray,
+use arrow::{
+    array::{
+        ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray,
+        StructArray,
+    },
+    compute::cast,
+    datatypes::{DataType, Field},
 };
-use arrow::compute::cast;
-use arrow::datatypes::{DataType, Field};
 use itertools::Either;
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    TimelineName, external::nohash_hasher::IntMap,
 };
-use re_chunk::{TimelineName, external::nohash_hasher::IntMap};
-
 use re_log_types::{ApplicationId, StoreId};
-use re_types::archetypes::{
-    AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
+use re_types::{
+    Archetype, Component, ComponentBatch,
+    archetypes::{
+        AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
+    },
+    components::{Name, VideoTimestamp},
 };
-use re_types::components::{Name, Scalar, VideoTimestamp};
-use re_types::{Archetype, Component, ComponentBatch};
 
 use crate::lerobot::{
     DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex, is_lerobot_dataset,
@@ -592,11 +598,7 @@ fn make_scalar_entity_chunk(
         ChunkId::new(),
         entity_path,
         timelines.clone(),
-        std::iter::once((
-            <Scalar as Component>::descriptor().clone(),
-            data_field_array,
-        ))
-        .collect(),
+        std::iter::once((Scalars::descriptor_scalars().clone(), data_field_array)).collect(),
     )?)
 }
 
