@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use egui::emath::Rangef;
@@ -134,6 +135,12 @@ pub struct TimePanel {
     #[serde(skip)]
     range_selection_anchor_item: Option<Item>,
 
+    /// Used when the selection is modified using key navigation.
+    ///
+    /// IMPORTANT: Always make sure that the item will be drawn this or next frame with setting this
+    /// to `Some`, so that this flag is immediately consumed.
+    scroll_to_me_item: Option<Item>,
+
     /// If the timestamp is being edited, the current value.
     ///
     /// It is applied only after removing focus.
@@ -155,6 +162,7 @@ impl Default for TimePanel {
             filter_state: Default::default(),
             filter_state_app_id: None,
             range_selection_anchor_item: None,
+            scroll_to_me_item: None,
             time_edit_string: None,
         }
     }
@@ -1004,7 +1012,136 @@ impl TimePanel {
         );
         ctx.handle_select_hover_drag_interactions(response, item.clone(), is_draggable);
 
-        self.handle_range_selection(ctx, streams_tree_data, entity_db, item, response);
+        self.handle_range_selection(ctx, streams_tree_data, entity_db, item.clone(), response);
+
+        self.handle_key_navigation(ctx, streams_tree_data, entity_db, item.clone());
+
+        if Some(item) == self.scroll_to_me_item {
+            response.scroll_to_me(None);
+            self.scroll_to_me_item = None;
+        }
+    }
+
+    fn handle_key_navigation(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        streams_tree_data: &StreamsTreeData,
+        entity_db: &re_entity_db::EntityDb,
+        item: Item,
+    ) {
+        if ctx.selection_state().selected_items().single_item() != Some(&item) {
+            return;
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), true);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), false);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+        {
+            let mut found_current = false;
+
+            let result = streams_tree_data.visit(entity_db, |tree_item, component| {
+                let (tree_item, is_item_collapsed) = match component {
+                    None => (
+                        tree_item.item(),
+                        !tree_item
+                            .is_open(ctx.egui_ctx(), self.collapse_scope())
+                            .unwrap_or(tree_item.default_open),
+                    ),
+
+                    Some(desc) => (
+                        Item::ComponentPath(ComponentPath::new(
+                            tree_item.entity_path.clone(),
+                            desc,
+                        )),
+                        false,
+                    ),
+                };
+
+                if tree_item == item {
+                    found_current = true;
+
+                    return if is_item_collapsed {
+                        VisitorControlFlow::SkipBranch
+                    } else {
+                        VisitorControlFlow::Continue
+                    };
+                }
+
+                if found_current {
+                    VisitorControlFlow::Break(Some(tree_item))
+                } else if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+        {
+            let mut last_item = None;
+
+            let result = streams_tree_data.visit(entity_db, |tree_item, component| {
+                let (tree_item, is_item_collapsed) = match component {
+                    None => (
+                        tree_item.item(),
+                        !tree_item
+                            .is_open(ctx.egui_ctx(), self.collapse_scope())
+                            .unwrap_or(tree_item.default_open),
+                    ),
+
+                    Some(desc) => (
+                        Item::ComponentPath(ComponentPath::new(
+                            tree_item.entity_path.clone(),
+                            desc,
+                        )),
+                        false,
+                    ),
+                };
+
+                if tree_item == item {
+                    return VisitorControlFlow::Break(last_item.clone());
+                }
+
+                last_item = Some(tree_item);
+
+                if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item);
+            }
+        }
     }
 
     /// Handle setting/extending the selection based on shift-clicking.

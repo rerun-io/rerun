@@ -61,11 +61,11 @@ impl StreamsTreeData {
     /// Visit the entire tree.
     ///
     /// Note that we ALSO visit components, despite them not being part of the data structures. This
-    /// is because _currently_, we rarely need to visit, but when we do, we need to components, and
+    /// is because _currently_, we rarely need to visit, but when we do, we need components, and
     /// having them in the structure would be too expensive for the cases where it's unnecessary
     /// (e.g., when the tree is collapsed).
     ///
-    /// The provided closure is called once for each entity with `None` as component name argument.
+    /// The provided closure is called once for each entity with `None` as component argument.
     /// Then, consistent with the display order, its children entities are visited, and then its
     /// components are visited.
     pub fn visit<B>(

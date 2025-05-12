@@ -1,5 +1,6 @@
 use egui::{Response, Ui};
 use smallvec::SmallVec;
+use std::ops::ControlFlow;
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
@@ -55,6 +56,12 @@ pub struct BlueprintTree {
     /// This is the item we used as a starting point for range selection. It is set and remembered
     /// everytime the user clicks on an item _without_ holding shift.
     range_selection_anchor_item: Option<Item>,
+
+    /// Used when the selection is modified using key navigation.
+    ///
+    /// IMPORTANT: Always make sure that the item will be drawn this or next frame with setting this
+    /// to `Some`, so that this flag is immediately consumed.
+    scroll_to_me_item: Option<Item>,
 }
 
 impl BlueprintTree {
@@ -649,7 +656,109 @@ impl BlueprintTree {
         self.scroll_to_me_if_needed(ui, &item, response);
         ctx.handle_select_hover_drag_interactions(response, item.clone(), true);
 
-        self.handle_range_selection(ctx, blueprint_tree_data, item, response);
+        self.handle_range_selection(ctx, blueprint_tree_data, item.clone(), response);
+
+        self.handle_key_navigation(ctx, blueprint_tree_data, item.clone());
+
+        if Some(item) == self.scroll_to_me_item {
+            response.scroll_to_me(None);
+            self.scroll_to_me_item = None;
+        }
+    }
+
+    fn handle_key_navigation(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        blueprint_tree_data: &BlueprintTreeData,
+        item: Item,
+    ) {
+        if ctx.selection_state().selected_items().single_item() != Some(&item) {
+            return;
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), true);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), false);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+        {
+            let mut found_current = false;
+
+            let result = blueprint_tree_data.visit(|tree_item| {
+                let is_item_collapsed = !tree_item
+                    .is_open(ctx.egui_ctx(), self.collapse_scope())
+                    .unwrap_or(tree_item.default_open());
+
+                if tree_item.item() == item {
+                    found_current = true;
+
+                    return if is_item_collapsed {
+                        VisitorControlFlow::SkipBranch
+                    } else {
+                        VisitorControlFlow::Continue
+                    };
+                }
+
+                if found_current {
+                    VisitorControlFlow::Break(Some(tree_item.item()))
+                } else if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+        {
+            let mut last_item = None;
+
+            let result = blueprint_tree_data.visit(|tree_item| {
+                let is_item_collapsed = !tree_item
+                    .is_open(ctx.egui_ctx(), self.collapse_scope())
+                    .unwrap_or(tree_item.default_open());
+
+                if tree_item.item() == item {
+                    return VisitorControlFlow::Break(last_item.clone());
+                }
+
+                last_item = Some(tree_item.item());
+
+                if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item);
+            }
+        }
     }
 
     /// Handle setting/extending the selection based on shift-clicking.
