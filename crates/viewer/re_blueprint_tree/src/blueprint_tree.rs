@@ -193,6 +193,14 @@ impl BlueprintTree {
     ) {
         let item = Item::Container(container_data.id);
 
+        // It's possible that the root becomes technically collapsed (e.g. context menu or arrow
+        // navigation), even though we don't allow that in the ui. We really don't want that,
+        // though, because it breaks the collapse-based tree data visiting. To avoid that, we always
+        // force uncollapse this item.
+        self.collapse_scope()
+            .container(container_data.id)
+            .set_open(ctx.egui_ctx(), true);
+
         let item_response = ui
             .list_item()
             .render_offscreen(false)
