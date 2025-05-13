@@ -3,22 +3,14 @@ use re_types::components::TextLogLevel;
 use re_ui::UiExt as _;
 
 pub fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
+    let design_tokens = ui.design_tokens();
+
     let error_color = ui.visuals().error_fg_color;
     let warn_color = ui.visuals().warn_fg_color;
+    let info_color = design_tokens.info_log_text_color();
+    let debug_color = design_tokens.debug_log_text_color();
+    let trace_color = design_tokens.trace_log_text_color();
     let text_color = ui.visuals().text_color();
-    let (info_color, debug_color, trace_color);
-    match ui.theme() {
-        egui::Theme::Dark => {
-            info_color = Color32::LIGHT_GREEN;
-            debug_color = Color32::LIGHT_BLUE;
-            trace_color = Color32::LIGHT_GRAY;
-        }
-        egui::Theme::Light => {
-            info_color = Color32::DARK_GREEN;
-            debug_color = Color32::DARK_BLUE;
-            trace_color = Color32::DARK_GRAY;
-        }
-    }
 
     match lvl {
         TextLogLevel::CRITICAL => RichText::new(lvl)

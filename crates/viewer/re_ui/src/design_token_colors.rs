@@ -22,6 +22,27 @@ impl DesignTokens {
         }
     }
 
+    pub fn info_log_text_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => Color32::LIGHT_GREEN,
+            Theme::Light => Color32::DARK_GREEN,
+        }
+    }
+
+    pub fn debug_log_text_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => Color32::LIGHT_BLUE,
+            Theme::Light => Color32::DARK_BLUE,
+        }
+    }
+
+    pub fn trace_log_text_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => Color32::LIGHT_GRAY,
+            Theme::Light => Color32::DARK_GRAY,
+        }
+    }
+
     /// Color of an icon next to a label
     pub fn label_button_icon_color(&self) -> Color32 {
         match self.theme {
