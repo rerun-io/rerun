@@ -709,9 +709,7 @@ impl BlueprintTree {
             let mut found_current = false;
 
             let result = blueprint_tree_data.visit(|tree_item| {
-                let is_item_collapsed = !tree_item
-                    .is_open(ctx.egui_ctx(), self.collapse_scope())
-                    .unwrap_or(tree_item.default_open());
+                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
 
                 if &tree_item.item() == item {
                     found_current = true;
@@ -745,9 +743,7 @@ impl BlueprintTree {
             let mut last_item = None;
 
             let result = blueprint_tree_data.visit(|tree_item| {
-                let is_item_collapsed = !tree_item
-                    .is_open(ctx.egui_ctx(), self.collapse_scope())
-                    .unwrap_or(tree_item.default_open());
+                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
 
                 if &tree_item.item() == item {
                     return VisitorControlFlow::Break(last_item.clone());
@@ -855,9 +851,7 @@ impl BlueprintTree {
                 return VisitorControlFlow::Break(());
             }
 
-            let is_expanded = blueprint_tree_item
-                .is_open(ctx.egui_ctx(), collapse_scope)
-                .unwrap_or(false);
+            let is_expanded = blueprint_tree_item.is_open(ctx.egui_ctx(), collapse_scope);
 
             if is_expanded {
                 VisitorControlFlow::Continue
