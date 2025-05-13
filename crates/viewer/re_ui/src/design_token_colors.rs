@@ -77,4 +77,12 @@ impl DesignTokens {
             Theme::Light => self.color(ColorToken::gray(S800)),
         }
     }
+
+    pub fn example_card_background_color(&self) -> Color32 {
+        //TODO(ab): as per figma, use design tokens instead
+        match self.theme {
+            Theme::Dark => Color32::WHITE.gamma_multiply(0.04),
+            Theme::Light => Color32::BLACK.gamma_multiply(0.05),
+        }
+    }
 }

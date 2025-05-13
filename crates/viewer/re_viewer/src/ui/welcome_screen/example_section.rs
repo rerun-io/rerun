@@ -344,11 +344,7 @@ impl ExampleSection {
                                 ui.painter().rect_filled(
                                     example.rect,
                                     THUMBNAIL_RADIUS,
-                                    //TODO(ab): as per figma, use design tokens instead
-                                    match ui.theme() {
-                                        Theme::Dark => Color32::WHITE.gamma_multiply(0.04),
-                                        Theme::Light => Color32::BLACK.gamma_multiply(0.05),
-                                    },
+                                    ui.design_tokens().example_card_background_color(),
                                 );
 
                                 if response.clicked() {

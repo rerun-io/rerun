@@ -65,6 +65,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("General");
 
     ui.horizontal(|ui| {
+        // TODO: mark as experimental, or only show in dev mode
         ui.label("Theme:");
         egui::global_theme_preference_buttons(ui);
     });
