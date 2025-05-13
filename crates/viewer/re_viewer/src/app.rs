@@ -7,6 +7,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
+use re_log::ResultExt as _;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -16,7 +17,7 @@ use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
     StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel,
+    ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -28,6 +29,7 @@ use crate::{
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
 };
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -416,10 +418,11 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, store_context, cmd);
+            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
         }
     }
 
@@ -738,6 +741,7 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
@@ -768,8 +772,47 @@ impl App {
 
         match cmd {
             UICommand::SaveRecording => {
-                if let Err(err) = save_recording(self, store_context, None) {
-                    re_log::error!("Failed to save recording: {err}");
+                #[cfg(target_arch = "wasm32")] // Web
+                {
+                    if let Err(err) = save_recording(self, store_context, None) {
+                        re_log::error!("Failed to save recording: {err}");
+                    }
+                }
+
+                #[cfg(not(target_arch = "wasm32"))] // Native
+                {
+                    let mut selected_stores = vec![];
+                    for item in self.state.selection_state.selected_items().iter_items() {
+                        match item {
+                            Item::AppId(selected_app_id) => {
+                                for recording in storage_context.bundle.recordings() {
+                                    if recording.app_id() == Some(selected_app_id) {
+                                        selected_stores.push(recording.store_id().clone());
+                                    }
+                                }
+                            }
+                            Item::StoreId(store_id) => {
+                                selected_stores.push(store_id.clone());
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if selected_stores.is_empty() {
+                        if let Err(err) = save_recording(self, store_context, None) {
+                            re_log::error!("Failed to save recording: {err}");
+                        }
+                    } else {
+                        // Save all selected recordings to a folder:
+                        if let Some(folder) = rfd::FileDialog::new()
+                            .set_title("Save recordings to folder")
+                            .pick_folder()
+                        {
+                            self.save_all_recordings(storage_context, &selected_stores, &folder);
+                        } else {
+                            re_log::warn!("No folder selected");
+                        }
+                    }
                 }
             }
             UICommand::SaveRecordingSelection => {
@@ -1082,6 +1125,45 @@ impl App {
                 self.state.redap_servers.open_add_server_modal();
             }
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_all_recordings(
+        &mut self,
+        storage_context: &StorageContext<'_>,
+        selected_stores: &[StoreId],
+        folder: &std::path::Path,
+    ) {
+        re_tracing::profile_function!();
+
+        re_log::info!(
+            "Saving {} recordings to {}…",
+            selected_stores.len(),
+            folder.display()
+        );
+
+        for store_id in selected_stores {
+            if let Some(store) = storage_context.bundle.get(store_id) {
+                let messages = store.to_messages(None).collect_vec();
+                let recording_name = santitize_file_name(&store_id.to_string());
+                let file_path = folder.join(format!("{recording_name}.rrd"));
+                self.background_tasks
+                    .spawn_threaded_promise(recording_name.clone(), move || {
+                        crate::saving::encode_to_file(
+                            re_build_info::CrateVersion::LOCAL,
+                            &file_path,
+                            messages.into_iter(),
+                        )
+                    })
+                    .ok_or_log_error_once();
+            }
+        }
+
+        re_log::info!(
+            "Saved {} recordings to {}.",
+            selected_stores.len(),
+            folder.display()
+        );
     }
 
     fn run_time_control_command(
@@ -2248,7 +2330,12 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
+            );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

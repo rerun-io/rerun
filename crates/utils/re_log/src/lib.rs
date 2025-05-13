@@ -76,6 +76,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "h2",
     "hyper",
     "prost_build",
+    "sqlparser",
     "tower",
     "ureq",
     // only let rustls log in debug mode: https://github.com/rerun-io/rerun/issues/3104
