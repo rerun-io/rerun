@@ -6,7 +6,7 @@ use egui::{
     pos2,
 };
 
-use crate::{DesignTokens, Icon, LabelStyle, SUCCESS_COLOR, design_tokens, icons, list_item};
+use crate::{DesignTokens, Icon, LabelStyle, SUCCESS_COLOR, icons, list_item};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -52,6 +52,14 @@ fn notification_label(
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
+
+    fn theme(&self) -> egui::Theme {
+        self.ui().ctx().theme()
+    }
+
+    fn design_tokens(&self) -> &'static DesignTokens {
+        crate::design_tokens_of(self.theme())
+    }
 
     /// Shows a success label with a large border.
     ///
@@ -611,7 +619,7 @@ pub trait UiExt {
 
     /// Draws a shadow into the given rect with the shadow direction given from dark to light
     fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
-        let color_dark = design_tokens().shadow_gradient_dark_start;
+        let color_dark = self.design_tokens().shadow_gradient_dark_start;
         let color_bright = Color32::TRANSPARENT;
 
         let (left_top, right_top, left_bottom, right_bottom) = match direction {
@@ -1157,7 +1165,7 @@ pub trait UiExt {
 
         egui::Frame {
             inner_margin: egui::Margin::same(3),
-            stroke: design_tokens().bottom_bar_stroke,
+            stroke: ui.design_tokens().bottom_bar_stroke,
             corner_radius: ui.visuals().widgets.hovered.corner_radius + egui::CornerRadius::same(3),
             ..Default::default()
         }

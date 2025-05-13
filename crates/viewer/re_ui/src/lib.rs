@@ -91,10 +91,16 @@ pub enum LabelStyle {
 // ----------------------------------------------------------------------------
 
 /// Return a reference to the global design tokens structure.
-pub fn design_tokens() -> &'static DesignTokens {
+pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
     use once_cell::sync::OnceCell;
-    static DESIGN_TOKENS: OnceCell<DesignTokens> = OnceCell::new();
-    DESIGN_TOKENS.get_or_init(DesignTokens::load)
+
+    static DESIGN_TOKENS_DARK: OnceCell<DesignTokens> = OnceCell::new();
+    static DESIGN_TOKENS_LIGHT: OnceCell<DesignTokens> = OnceCell::new();
+
+    match theme {
+        egui::Theme::Dark => DESIGN_TOKENS_DARK.get_or_init(DesignTokens::load), // TODO(#3058): load different tokens
+        egui::Theme::Light => DESIGN_TOKENS_LIGHT.get_or_init(DesignTokens::load), // TODO(#3058): load different tokens
+    }
 }
 
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
@@ -115,7 +121,7 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
         o.fallback_theme = egui::Theme::Dark;
     });
 
-    design_tokens().apply(egui_ctx);
+    design_tokens_of(egui::Theme::Dark).apply(egui_ctx); // TODO(#3058): support light mode
 
     egui_ctx.style_mut(|style| {
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);

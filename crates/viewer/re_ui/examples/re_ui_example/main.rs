@@ -152,7 +152,7 @@ impl eframe::App for ExampleApp {
         self.top_bar(egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(DesignTokens::bottom_panel_frame())
+            .frame(egui_ctx.design_tokens().bottom_panel_frame())
             .show_animated(egui_ctx, self.show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
@@ -390,7 +390,7 @@ impl ExampleApp {
         let top_bar_style = egui_ctx.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
-            .frame(DesignTokens::top_panel_frame())
+            .frame(egui_ctx.design_tokens().top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
