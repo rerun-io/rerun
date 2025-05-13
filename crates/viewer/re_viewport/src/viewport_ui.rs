@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _, design_tokens};
+use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
@@ -144,7 +144,7 @@ impl ViewportUi {
                     };
 
                     let stroke = if should_display_drop_destination_frame {
-                        design_tokens().drop_target_container_stroke()
+                        ui.design_tokens().drop_target_container_stroke()
                     } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
@@ -572,8 +572,13 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     // Styling:
 
-    fn tab_bar_color(&self, _visuals: &egui::Visuals) -> egui::Color32 {
-        re_ui::design_tokens().tab_bar_color
+    fn tab_bar_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        let theme = if visuals.dark_mode {
+            egui::Theme::Dark
+        } else {
+            egui::Theme::Light
+        };
+        re_ui::design_tokens_of(theme).tab_bar_color
     }
 
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {

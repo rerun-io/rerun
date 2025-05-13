@@ -7,7 +7,6 @@ use time::OffsetDateTime;
 use crate::ColorToken;
 use crate::Scale;
 use crate::UiExt as _;
-use crate::design_tokens;
 use crate::icons;
 
 fn now() -> OffsetDateTime {
@@ -222,7 +221,7 @@ impl NotificationPanel {
         let notification_list = |ui: &mut egui::Ui| {
             if notifications.is_empty() {
                 ui.label(
-                    design_tokens()
+                    ui.design_tokens()
                         .text("No notifications yet.", ColorToken::gray(Scale::S450))
                         .weak(),
                 );
@@ -246,7 +245,7 @@ impl NotificationPanel {
             .movable(false)
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
-                    .fill(design_tokens().color(ColorToken::gray(Scale::S150)))
+                    .fill(ui.design_tokens().color(ColorToken::gray(Scale::S150)))
                     .corner_radius(8)
                     .inner_margin(8.0)
                     .show(ui, |ui| {
@@ -375,9 +374,9 @@ fn show_notification(
     mut on_dismiss: impl FnMut(),
 ) -> egui::Response {
     let background_color = if mode == DisplayMode::Toast || notification.is_unread {
-        design_tokens().color(ColorToken::gray(Scale::S200))
+        ui.design_tokens().color(ColorToken::gray(Scale::S200))
     } else {
-        design_tokens().color(ColorToken::gray(Scale::S150))
+        ui.design_tokens().color(ColorToken::gray(Scale::S150))
     };
 
     egui::Frame::window(ui.style())
@@ -393,7 +392,7 @@ fn show_notification(
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                         ui.set_width(270.0);
                         ui.label(
-                            design_tokens()
+                            ui.design_tokens()
                                 .text(notification.text.clone(), ColorToken::gray(Scale::S775))
                                 .weak(),
                         );
@@ -444,7 +443,7 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
         ui.set_min_width(30.0);
         ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
             ui.label(
-                design_tokens()
+                ui.design_tokens()
                     .text(formatted, ColorToken::gray(Scale::S450))
                     .weak(),
             )

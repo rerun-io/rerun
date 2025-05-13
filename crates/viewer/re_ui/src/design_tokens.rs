@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::CUSTOM_WINDOW_DECORATIONS;
 use crate::color_table::Scale::{S100, S150, S200, S250, S300, S325, S350, S550, S775, S1000};
 use crate::color_table::{ColorTable, ColorToken};
-use crate::{CUSTOM_WINDOW_DECORATIONS, design_tokens};
 use std::sync::Arc;
 
 /// The look and feel of the UI.
@@ -347,10 +347,10 @@ impl DesignTokens {
         10
     }
 
-    pub fn top_panel_frame() -> egui::Frame {
+    pub fn top_panel_frame(&self) -> egui::Frame {
         let mut frame = egui::Frame {
             inner_margin: Self::top_bar_margin(),
-            fill: design_tokens().top_bar_color,
+            fill: self.top_bar_color,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
@@ -365,27 +365,25 @@ impl DesignTokens {
     }
 
     /// For the streams view (time panel)
-    pub fn bottom_panel_frame() -> egui::Frame {
+    pub fn bottom_panel_frame(&self) -> egui::Frame {
         // Show a stroke only on the top. To achieve this, we add a negative outer margin.
         // (on the inner margin we counteract this again)
-        let margin_offset = (design_tokens().bottom_bar_stroke.width * 0.5) as i8;
+        let margin_offset = (self.bottom_bar_stroke.width * 0.5) as i8;
 
         let margin = Self::bottom_panel_margin();
 
-        let design_tokens = design_tokens();
-
         let mut frame = egui::Frame {
-            fill: design_tokens.bottom_bar_color,
+            fill: self.bottom_bar_color,
             inner_margin: margin + margin_offset,
             outer_margin: egui::Margin {
                 left: -margin_offset,
                 right: -margin_offset,
                 // Add a proper stoke width thick margin on the top.
-                top: design_tokens.bottom_bar_stroke.width as i8,
+                top: self.bottom_bar_stroke.width as i8,
                 bottom: -margin_offset,
             },
-            stroke: design_tokens.bottom_bar_stroke,
-            corner_radius: design_tokens.bottom_bar_corner_radius,
+            stroke: self.bottom_bar_stroke,
+            corner_radius: self.bottom_bar_corner_radius,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
@@ -397,6 +395,11 @@ impl DesignTokens {
 
     pub fn small_icon_size() -> egui::Vec2 {
         egui::Vec2::splat(14.0)
+    }
+
+    /// Color of an icon next to a label
+    pub fn label_button_icon_color(&self) -> egui::Color32 {
+        self.color_table.gray(crate::Scale::S500)
     }
 
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}

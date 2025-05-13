@@ -122,17 +122,22 @@ impl PerStoreChunkSubscriber for MaxImageDimensionsStoreSubscriber {
             {
                 let blobs = chunk.iter_slices::<&[u8]>(blob_descr.clone());
 
-                let media_type_descr = components
-                    .keys()
-                    .find(|desc| {
-                        desc.component_name == MediaType::name()
-                            && desc.archetype_name == blob_descr.archetype_name
-                    })
-                    .unwrap();
-                let media_types = chunk.iter_slices::<String>(media_type_descr.clone());
-                for (blob, media_type) in
-                    itertools::izip!(blobs, media_types.map(Some).chain(std::iter::repeat(None)))
-                {
+                let media_type_descr = components.keys().find(|desc| {
+                    desc.component_name == MediaType::name()
+                        && desc.archetype_name == blob_descr.archetype_name
+                });
+                let media_types = media_type_descr.map_or(Vec::new(), |media_type_descr| {
+                    chunk
+                        .iter_slices::<String>(media_type_descr.clone())
+                        .collect()
+                });
+                for (blob, media_type) in itertools::izip!(
+                    blobs,
+                    media_types
+                        .into_iter()
+                        .map(Some)
+                        .chain(std::iter::repeat(None))
+                ) {
                     if let Some(blob) = blob.first() {
                         let media_type =
                             media_type.and_then(|v| v.first().map(|v| MediaType(v.clone().into())));
