@@ -93,31 +93,25 @@ impl DesignTokens {
     }
 
     /// Apply style to the given egui context.
-    pub(crate) fn apply(&self, ctx: &egui::Context) {
+    pub(crate) fn apply(&self, style: &mut egui::Style) {
         re_tracing::profile_function!();
 
-        self.set_fonts(ctx);
-
-        let mut style = Arc::unwrap_or_clone(ctx.style_of(self.theme));
-
-        self.set_text_styles(&mut style);
-        Self::set_common_style(&mut style);
+        self.set_text_styles(style);
+        Self::set_common_style(style);
 
         match self.theme {
             egui::Theme::Dark => {
-                self.set_dark_style(&mut style);
+                self.set_dark_style(style);
             }
             egui::Theme::Light => {
-                self.set_light_style(&mut style);
+                self.set_light_style(style);
             }
         }
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
-
-        ctx.set_style_of(self.theme, style);
     }
 
-    fn set_fonts(&self, ctx: &egui::Context) {
+    pub(crate) fn set_fonts(&self, ctx: &egui::Context) {
         let typography_default: Typography =
             get_alias(&self.json, "{Alias.Typography.Default.value}");
 
@@ -199,9 +193,9 @@ impl DesignTokens {
         }
 
         {
-            egui_style.visuals.widgets.hovered.expansion = 2.0; // TODO: consider removing this
-            egui_style.visuals.widgets.active.expansion = 2.0; // TODO: consider removing this
-            egui_style.visuals.widgets.open.expansion = 2.0; // TODO: consider removing this
+            egui_style.visuals.widgets.hovered.expansion = 2.0;
+            egui_style.visuals.widgets.active.expansion = 2.0;
+            egui_style.visuals.widgets.open.expansion = 2.0;
         }
 
         egui_style.visuals.window_corner_radius = Self::window_corner_radius().into();
@@ -442,7 +436,7 @@ impl DesignTokens {
     }
 
     pub fn top_bar_margin() -> egui::Margin {
-        egui::Margin::symmetric(8, 0) // TODO: vertical spacing
+        egui::Margin::symmetric(8, 0)
     }
 
     pub fn text_to_icon_padding() -> f32 {
