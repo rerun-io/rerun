@@ -1,8 +1,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::enum_glob_use)] // Nice to have for the color variants
 
-use std::sync::Arc;
-
 use egui::{Color32, Theme};
 
 use crate::{
