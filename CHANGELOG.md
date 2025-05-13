@@ -1259,7 +1259,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Add an explicit "mode" view property to the dataframe view [#6927](https://github.com/rerun-io/rerun/pull/6927)
 - Introduce a "Selectable Toggle" widget and use it for the 3D view's camera kind [#7064](https://github.com/rerun-io/rerun/pull/7064)
 - Improve entity stats when hovered [#7074](https://github.com/rerun-io/rerun/pull/7074)
-- Update the UI colors to use our (blueish) ramp instead of pure greys [#7075](https://github.com/rerun-io/rerun/pull/7075)
+- Update the UI colors to use our (blueish) ramp instead of pure grays [#7075](https://github.com/rerun-io/rerun/pull/7075)
 - Query editor for the dataframe view [#7071](https://github.com/rerun-io/rerun/pull/7071)
 - Better ui for `Blob`s, especially those representing images [#7128](https://github.com/rerun-io/rerun/pull/7128)
 - Add button for copying and saving images [#7156](https://github.com/rerun-io/rerun/pull/7156)

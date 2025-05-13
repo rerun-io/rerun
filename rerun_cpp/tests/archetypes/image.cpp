@@ -8,7 +8,7 @@ using namespace rerun::datatypes;
 #define TEST_TAG "[image][archetypes]"
 
 SCENARIO("Image archetype can be created" TEST_TAG) {
-    GIVEN("simple 8bit greyscale image") {
+    GIVEN("simple 8bit grayscale image") {
         std::vector<uint8_t> data(10 * 10, 0);
         Image reference_image;
         reference_image.buffer = rerun::ComponentBatch::from_loggable(
@@ -24,9 +24,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
                 .value_or_throw();
 
         THEN("no error occurs on image construction from a pointer") {
-            auto image_from_ptr = check_logged_error([&] {
-                return Image(data.data(), {10, 10}, ColorModel::L);
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return Image(data.data(), {10, 10}, ColorModel::L); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }
@@ -39,10 +38,9 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
                 test_compare_archetype_serialization(image_from_collection, reference_image);
             }
         }
-        THEN("no error occurs on image construction from the greyscale utility") {
-            auto image_from_util = check_logged_error([&] {
-                return Image::from_greyscale8(data, {10, 10});
-            });
+        THEN("no error occurs on image construction from the grayscale utility") {
+            auto image_from_util =
+                check_logged_error([&] { return Image::from_grayscale8(data, {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_util, reference_image);
             }
@@ -65,9 +63,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
                 .value_or_throw();
 
         THEN("no error occurs on image construction from a pointer") {
-            auto image_from_ptr = check_logged_error([&] {
-                return Image(data.data(), {10, 10}, ColorModel::RGB);
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return Image(data.data(), {10, 10}, ColorModel::RGB); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }
@@ -81,9 +78,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
             }
         }
         THEN("no error occurs on image construction from the rgb utility") {
-            auto image_from_util = check_logged_error([&] {
-                return Image::from_rgb24(data, {10, 10});
-            });
+            auto image_from_util =
+                check_logged_error([&] { return Image::from_rgb24(data, {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_util, reference_image);
             }
@@ -106,9 +102,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
                 .value_or_throw();
 
         THEN("no error occurs on image construction from a pointer") {
-            auto image_from_ptr = check_logged_error([&] {
-                return Image(data.data(), {10, 10}, ColorModel::RGBA);
-            });
+            auto image_from_ptr =
+                check_logged_error([&] { return Image(data.data(), {10, 10}, ColorModel::RGBA); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_ptr, reference_image);
             }
@@ -122,9 +117,8 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
             }
         }
         THEN("no error occurs on image construction from the rgba utility") {
-            auto image_from_util = check_logged_error([&] {
-                return Image::from_rgba32(data, {10, 10});
-            });
+            auto image_from_util =
+                check_logged_error([&] { return Image::from_rgba32(data, {10, 10}); });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_util, reference_image);
             }
