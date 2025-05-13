@@ -233,7 +233,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &item_response,
         );
 
@@ -351,7 +351,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &response,
         );
 
@@ -463,7 +463,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &response,
         );
 
@@ -633,7 +633,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &response,
         );
     }
@@ -647,13 +647,13 @@ impl BlueprintTree {
         viewport_blueprint: &ViewportBlueprint,
         blueprint_tree_data: &BlueprintTreeData,
         ui: &egui::Ui,
-        item: Item,
+        item: &Item,
         response: &Response,
     ) {
         context_menu_ui_for_item_with_context(
             ctx,
             viewport_blueprint,
-            &item,
+            item,
             // expand/collapse context menu actions need this information
             ItemContext::BlueprintTree {
                 filter_session_id: self.filter_state.session_id(),
@@ -661,17 +661,12 @@ impl BlueprintTree {
             response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_needed(ui, &item, response);
+        self.scroll_to_me_if_needed(ui, item, response);
         ctx.handle_select_hover_drag_interactions(response, item.clone(), true);
 
         self.handle_range_selection(ctx, blueprint_tree_data, item.clone(), response);
 
-        self.handle_key_navigation(ctx, blueprint_tree_data, &item);
-
-        if Some(item) == self.scroll_to_me_item {
-            response.scroll_to_me(None);
-            self.scroll_to_me_item = None;
-        }
+        self.handle_key_navigation(ctx, blueprint_tree_data, item);
     }
 
     fn handle_key_navigation(
@@ -868,7 +863,7 @@ impl BlueprintTree {
     }
 
     /// Check if the provided item should be scrolled to.
-    fn scroll_to_me_if_needed(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
+    fn scroll_to_me_if_needed(&mut self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
         if Some(item) == self.blueprint_tree_scroll_to_item.as_ref() {
             // Scroll only if the entity isn't already visible. This is important because that's what
             // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
@@ -876,6 +871,13 @@ impl BlueprintTree {
             if !ui.clip_rect().contains_rect(response.rect) {
                 response.scroll_to_me(Some(egui::Align::Center));
             }
+        }
+
+        if Some(item) == self.scroll_to_me_item.as_ref() {
+            // This is triggered by keyboard navigation, so in this case we just want to scroll
+            // minimally for the item to be visible.
+            response.scroll_to_me(None);
+            self.scroll_to_me_item = None;
         }
     }
 
