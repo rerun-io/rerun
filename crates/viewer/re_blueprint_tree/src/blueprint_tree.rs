@@ -1,6 +1,7 @@
+use std::ops::ControlFlow;
+
 use egui::{Response, Ui};
 use smallvec::SmallVec;
-use std::ops::ControlFlow;
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
