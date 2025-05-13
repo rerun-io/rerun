@@ -727,7 +727,8 @@ impl BlueprintTree {
 
             if let ControlFlow::Break(Some(item)) = result {
                 ctx.selection_state().set_selection(item.clone());
-                self.scroll_to_me_item = Some(item);
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
             }
         }
 
@@ -755,7 +756,8 @@ impl BlueprintTree {
 
             if let ControlFlow::Break(Some(item)) = result {
                 ctx.selection_state().set_selection(item.clone());
-                self.scroll_to_me_item = Some(item);
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
             }
         }
     }
