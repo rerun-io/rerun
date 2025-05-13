@@ -137,7 +137,7 @@ impl ListVisuals {
 
             egui::Theme::Light => {
                 if self.selected {
-                    design_tokens.color_table.blue(Scale::S800)
+                    design_tokens.color_table.blue(Scale::S100)
                 } else if self.active {
                     design_tokens.color_table.gray(Scale::S0)
                 } else if !self.interactive {

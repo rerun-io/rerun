@@ -346,7 +346,7 @@ impl DesignTokens {
             //egui_style.visuals.widgets.open.bg_fill = egui::Color32::GREEN; //have no idea when its triggered
         }
 
-        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S450));
+        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S550));
         egui_style.visuals.selection.stroke.color = self.color(ColorToken::blue(S800)); // Brighter version of the above
 
         // separator lines, panel lines, etc
