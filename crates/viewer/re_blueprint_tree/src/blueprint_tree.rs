@@ -666,7 +666,7 @@ impl BlueprintTree {
 
         self.handle_range_selection(ctx, blueprint_tree_data, item.clone(), response);
 
-        self.handle_key_navigation(ctx, blueprint_tree_data, item.clone());
+        self.handle_key_navigation(ctx, blueprint_tree_data, &item);
 
         if Some(item) == self.scroll_to_me_item {
             response.scroll_to_me(None);
@@ -678,9 +678,9 @@ impl BlueprintTree {
         &mut self,
         ctx: &ViewerContext<'_>,
         blueprint_tree_data: &BlueprintTreeData,
-        item: Item,
+        item: &Item,
     ) {
-        if ctx.selection_state().selected_items().single_item() != Some(&item) {
+        if ctx.selection_state().selected_items().single_item() != Some(item) {
             return;
         }
 
@@ -713,7 +713,7 @@ impl BlueprintTree {
                     .is_open(ctx.egui_ctx(), self.collapse_scope())
                     .unwrap_or(tree_item.default_open());
 
-                if tree_item.item() == item {
+                if &tree_item.item() == item {
                     found_current = true;
 
                     return if is_item_collapsed {
@@ -749,7 +749,7 @@ impl BlueprintTree {
                     .is_open(ctx.egui_ctx(), self.collapse_scope())
                     .unwrap_or(tree_item.default_open());
 
-                if tree_item.item() == item {
+                if &tree_item.item() == item {
                     return VisitorControlFlow::Break(last_item.clone());
                 }
 

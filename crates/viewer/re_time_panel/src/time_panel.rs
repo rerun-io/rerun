@@ -1014,7 +1014,7 @@ impl TimePanel {
 
         self.handle_range_selection(ctx, streams_tree_data, entity_db, item.clone(), response);
 
-        self.handle_key_navigation(ctx, streams_tree_data, entity_db, item.clone());
+        self.handle_key_navigation(ctx, streams_tree_data, entity_db, &item);
 
         if Some(item) == self.scroll_to_me_item {
             response.scroll_to_me(None);
@@ -1027,9 +1027,9 @@ impl TimePanel {
         ctx: &ViewerContext<'_>,
         streams_tree_data: &StreamsTreeData,
         entity_db: &re_entity_db::EntityDb,
-        item: Item,
+        item: &Item,
     ) {
-        if ctx.selection_state().selected_items().single_item() != Some(&item) {
+        if ctx.selection_state().selected_items().single_item() != Some(item) {
             return;
         }
 
@@ -1075,7 +1075,7 @@ impl TimePanel {
                     ),
                 };
 
-                if tree_item == item {
+                if &tree_item == item {
                     found_current = true;
 
                     return if is_item_collapsed {
@@ -1124,7 +1124,7 @@ impl TimePanel {
                     ),
                 };
 
-                if tree_item == item {
+                if &tree_item == item {
                     return VisitorControlFlow::Break(last_item.clone());
                 }
 
