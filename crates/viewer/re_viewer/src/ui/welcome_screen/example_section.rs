@@ -3,6 +3,7 @@ use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
+use re_ui::UiExt as _;
 use re_viewer_context::{CommandSender, DisplayMode, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
@@ -566,7 +567,7 @@ impl ExampleDescLayout {
                 if ui
                     .add_enabled(
                         source_url.is_some(),
-                        re_ui::icons::GITHUB.as_button("Source code"),
+                        re_ui::icons::GITHUB.as_button(ui.design_tokens(), "Source code"),
                     )
                     .on_hover_cursor(egui::CursorIcon::PointingHand)
                     .on_disabled_hover_text("Source code is not available for this example")

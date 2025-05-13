@@ -1,6 +1,8 @@
 use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
 use smallvec::{SmallVec, smallvec};
 
+use crate::ContextExt as _;
+
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
     fn send_ui(&self, command: UICommand);
@@ -529,10 +531,10 @@ impl UICommand {
         let mut button = if let Some(icon) = self.icon() {
             egui::Button::image_and_text(
                 icon.as_image()
+                    .tint(egui_ctx.design_tokens().label_button_icon_color())
                     .fit_to_exact_size(crate::DesignTokens::small_icon_size()),
                 self.text(),
             )
-            .image_tint_follows_text_color(true)
         } else {
             egui::Button::new(self.text())
         };

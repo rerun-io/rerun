@@ -993,7 +993,7 @@ pub trait UiExt {
             style.visuals.button_frame = false;
 
             let response = ui
-                .add(crate::icons::EXTERNAL_LINK.as_button(text))
+                .add(crate::icons::EXTERNAL_LINK.as_button(ui.design_tokens(), text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             // Inspired from `egui::Ui::Hyperlink::ui()`

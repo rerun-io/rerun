@@ -1,5 +1,7 @@
 use egui::{Image, ImageSource};
 
+use crate::DesignTokens;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Icon {
     /// Human readable unique id
@@ -30,8 +32,16 @@ impl Icon {
     }
 
     #[inline]
-    pub fn as_button(&self, label: impl Into<egui::WidgetText>) -> egui::Button<'_> {
-        egui::Button::image_and_text(self.as_image(), label).image_tint_follows_text_color(true)
+    pub fn as_button(
+        &self,
+        design_tokens: &DesignTokens,
+        label: impl Into<egui::WidgetText>,
+    ) -> egui::Button<'_> {
+        egui::Button::image_and_text(
+            self.as_image()
+                .tint(design_tokens.label_button_icon_color()),
+            label,
+        )
     }
 }
 

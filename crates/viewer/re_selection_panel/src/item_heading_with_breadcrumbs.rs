@@ -206,7 +206,7 @@ fn last_part_of_item_heading(
     };
 
     let button = if with_icon {
-        icon.as_button(label)
+        icon.as_button(ui.design_tokens(), label)
     } else {
         egui::Button::new(label)
     };
