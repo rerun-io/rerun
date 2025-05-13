@@ -331,7 +331,7 @@ trait ContextMenuAction {
         let label = self.label(ctx);
 
         let response = if let Some(icon) = self.icon() {
-            ui.add(icon.as_button(ui.design_tokens(), label))
+            ui.add(icon.as_button_with_label(ui.design_tokens(), label))
         } else {
             ui.button(label)
         };

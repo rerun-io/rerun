@@ -32,7 +32,12 @@ impl Icon {
     }
 
     #[inline]
-    pub fn as_button(
+    pub fn as_button(&self) -> egui::Button<'_> {
+        egui::Button::image(self.as_image()).image_tint_follows_text_color(true)
+    }
+
+    #[inline]
+    pub fn as_button_with_label(
         &self,
         design_tokens: &DesignTokens,
         label: impl Into<egui::WidgetText>,

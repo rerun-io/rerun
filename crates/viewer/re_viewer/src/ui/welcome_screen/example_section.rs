@@ -567,7 +567,8 @@ impl ExampleDescLayout {
                 if ui
                     .add_enabled(
                         source_url.is_some(),
-                        re_ui::icons::GITHUB.as_button(ui.design_tokens(), "Source code"),
+                        re_ui::icons::GITHUB
+                            .as_button_with_label(ui.design_tokens(), "Source code"),
                     )
                     .on_hover_cursor(egui::CursorIcon::PointingHand)
                     .on_disabled_hover_text("Source code is not available for this example")

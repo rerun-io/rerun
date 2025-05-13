@@ -206,7 +206,7 @@ fn last_part_of_item_heading(
     };
 
     let button = if with_icon {
-        icon.as_button(ui.design_tokens(), label)
+        icon.as_button_with_label(ui.design_tokens(), label)
     } else {
         egui::Button::new(label)
     };
@@ -238,8 +238,7 @@ fn viewport_breadcrumbs(
         tooltip,
     } = ItemTitle::from_contents(ctx, viewport, &contents);
 
-    let mut response =
-        ui.add(egui::Button::image(icon.as_image()).image_tint_follows_text_color(true));
+    let mut response = ui.add(icon.as_button());
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
@@ -293,7 +292,7 @@ fn entity_path_breadcrumbs(
             // just to make it clear that this is a different kind of hierarchy.
             &icons::RECORDING // streams hierarchy
         };
-        egui::Button::image(icon.as_image()).image_tint_follows_text_color(true)
+        icon.as_button()
     };
 
     let response = ui.add(button);
