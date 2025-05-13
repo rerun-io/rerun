@@ -85,4 +85,20 @@ impl DesignTokens {
             Theme::Light => Color32::BLACK.gamma_multiply(0.05),
         }
     }
+
+    /// Color for notification panel background
+    pub fn notification_panel_background_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color(ColorToken::gray(S150)),
+            Theme::Light => self.color(ColorToken::gray(S850)),
+        }
+    }
+
+    /// Color for notification background
+    pub fn notification_background_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color(ColorToken::gray(S200)),
+            Theme::Light => self.color(ColorToken::gray(S800)),
+        }
+    }
 }
