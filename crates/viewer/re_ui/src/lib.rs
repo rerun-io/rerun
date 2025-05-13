@@ -4,6 +4,7 @@ mod color_table;
 mod command;
 mod command_palette;
 mod context_ext;
+mod design_token_colors;
 mod design_tokens;
 pub mod drag_and_drop;
 pub mod filter_widget;

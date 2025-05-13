@@ -3,10 +3,10 @@
 
 use std::sync::Arc;
 
-use egui::Theme;
+use egui::{Color32, Theme};
 
 use crate::{
-    CUSTOM_WINDOW_DECORATIONS, Scale,
+    CUSTOM_WINDOW_DECORATIONS,
     color_table::{ColorTable, ColorToken, Scale::*},
     format_with_decimals_in_range,
 };
@@ -26,12 +26,12 @@ pub struct DesignTokens {
     pub color_table: ColorTable,
 
     // TODO(ab): get rid of these, they should be function calls like the rest.
-    pub top_bar_color: egui::Color32,
-    pub bottom_bar_color: egui::Color32,
+    pub top_bar_color: Color32,
+    pub bottom_bar_color: Color32,
     pub bottom_bar_stroke: egui::Stroke,
     pub bottom_bar_corner_radius: egui::CornerRadius,
-    pub shadow_gradient_dark_start: egui::Color32,
-    pub tab_bar_color: egui::Color32,
+    pub shadow_gradient_dark_start: Color32,
+    pub tab_bar_color: Color32,
     pub native_frame_stroke: egui::Stroke,
 }
 
@@ -57,7 +57,7 @@ impl DesignTokens {
                         sw: 0,
                         se: 0,
                     }, // copied from figma, should be top only
-                    shadow_gradient_dark_start: egui::Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
+                    shadow_gradient_dark_start: Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
                     tab_bar_color: color_table.gray(S200),
                     native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
                     json,
@@ -82,7 +82,7 @@ impl DesignTokens {
                         sw: 0,
                         se: 0,
                     }, // copied from figma, should be top only
-                    shadow_gradient_dark_start: egui::Color32::from_black_alpha(10), //TODO(ab): use ColorToken!
+                    shadow_gradient_dark_start: Color32::from_black_alpha(10), //TODO(ab): use ColorToken!
                     tab_bar_color: color_table.gray(S900),
                     native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
                     json,
@@ -248,7 +248,7 @@ impl DesignTokens {
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
         // We need this very dark, since the theme overall is very, very dark.
-        egui_style.visuals.extreme_bg_color = egui::Color32::BLACK;
+        egui_style.visuals.extreme_bg_color = Color32::BLACK;
 
         egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
         egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
@@ -272,7 +272,7 @@ impl DesignTokens {
         egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S350));
 
         //TODO(ab): use ColorToken!
-        egui_style.visuals.selection.stroke.color = egui::Color32::from_rgb(173, 184, 255); // Brighter version of the above
+        egui_style.visuals.selection.stroke.color = Color32::from_rgb(173, 184, 255); // Brighter version of the above
 
         // separator lines, panel lines, etc
         egui_style.visuals.widgets.noninteractive.bg_stroke.color =
@@ -295,7 +295,7 @@ impl DesignTokens {
             offset: [0, 15],
             blur: 50,
             spread: 0,
-            color: egui::Color32::from_black_alpha(128),
+            color: Color32::from_black_alpha(128),
         };
         egui_style.visuals.popup_shadow = shadow;
         egui_style.visuals.window_shadow = shadow;
@@ -308,8 +308,8 @@ impl DesignTokens {
         egui_style.visuals.hyperlink_color = default;
 
         //TODO(#8333): use ColorToken!
-        egui_style.visuals.error_fg_color = egui::Color32::from_rgb(0xAB, 0x01, 0x16);
-        egui_style.visuals.warn_fg_color = egui::Color32::from_rgb(0xFF, 0x7A, 0x0C);
+        egui_style.visuals.error_fg_color = Color32::from_rgb(0xAB, 0x01, 0x16);
+        egui_style.visuals.warn_fg_color = Color32::from_rgb(0xFF, 0x7A, 0x0C);
     }
 
     fn set_light_style(&self, egui_style: &mut egui::Style) {
@@ -370,7 +370,7 @@ impl DesignTokens {
             offset: [0, 15],
             blur: 50,
             spread: 0,
-            color: egui::Color32::from_black_alpha(32),
+            color: Color32::from_black_alpha(32),
         };
         egui_style.visuals.popup_shadow = shadow;
         egui_style.visuals.window_shadow = shadow;
@@ -383,21 +383,8 @@ impl DesignTokens {
         egui_style.visuals.hyperlink_color = default;
 
         //TODO(#8333): use ColorToken!
-        egui_style.visuals.error_fg_color = egui::Color32::from_rgb(0xAB, 0x01, 0x16);
-        egui_style.visuals.warn_fg_color = egui::Color32::from_rgb(0xFF, 0x7A, 0x0C);
-    }
-
-    pub fn strong_fg_color(&self) -> egui::Color32 {
-        match self.theme {
-            Theme::Dark => egui::Color32::WHITE,
-            Theme::Light => egui::Color32::BLACK,
-        }
-    }
-
-    /// Get the [`egui::Color32`] corresponding to the provided [`ColorToken`].
-    #[inline]
-    pub fn color(&self, token: ColorToken) -> egui::Color32 {
-        self.color_table.get(token)
+        egui_style.visuals.error_fg_color = Color32::from_rgb(0xAB, 0x01, 0x16);
+        egui_style.visuals.warn_fg_color = Color32::from_rgb(0xFF, 0x7A, 0x0C);
     }
 
     #[inline]
@@ -539,14 +526,6 @@ impl DesignTokens {
         egui::Vec2::splat(14.0)
     }
 
-    /// Color of an icon next to a label
-    pub fn label_button_icon_color(&self) -> egui::Color32 {
-        match self.theme {
-            egui::Theme::Dark => self.color_table.gray(Scale::S500),
-            egui::Theme::Light => self.color_table.gray(Scale::S600),
-        }
-    }
-
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
 
     pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
@@ -562,33 +541,6 @@ impl DesignTokens {
     /// properly aligned in [`crate::list_item::ListItem`].
     pub fn collapsing_triangle_area() -> egui::Vec2 {
         Self::small_icon_size()
-    }
-
-    /// The color for the background of [`crate::SectionCollapsingHeader`].
-    pub fn section_collapsing_header_color(&self) -> egui::Color32 {
-        // same as visuals.widgets.inactive.bg_fill
-        match self.theme {
-            Theme::Dark => self.color(ColorToken::gray(S200)),
-            Theme::Light => self.color(ColorToken::gray(S900)),
-        }
-    }
-
-    /// The color we use to mean "loop this selection"
-    pub fn loop_selection_color() -> egui::Color32 {
-        egui::Color32::from_rgb(1, 37, 105) // from figma 2023-02-09
-    }
-
-    /// The color we use to mean "loop all the data"
-    pub fn loop_everything_color() -> egui::Color32 {
-        egui::Color32::from_rgb(2, 80, 45) // from figma 2023-02-09
-    }
-
-    /// Used by the "add view or container" modal.
-    pub fn thumbnail_background_color(&self) -> egui::Color32 {
-        match self.theme {
-            Theme::Dark => self.color(ColorToken::gray(S250)),
-            Theme::Light => self.color(ColorToken::gray(S800)),
-        }
     }
 
     /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
@@ -611,7 +563,7 @@ impl DesignTokens {
 
 /// Build the [`ColorTable`] based on the content of `design_token.json`
 fn load_color_table(json: &serde_json::Value) -> ColorTable {
-    fn get_color_from_json(json: &serde_json::Value, global_path: &str) -> egui::Color32 {
+    fn get_color_from_json(json: &serde_json::Value, global_path: &str) -> Color32 {
         parse_color(global_path_value(json, global_path).as_str().unwrap())
     }
 
@@ -678,14 +630,14 @@ fn parse_px(pixels: &str) -> f32 {
     pixels.strip_suffix("px").unwrap().parse().unwrap()
 }
 
-fn parse_color(color: &str) -> egui::Color32 {
+fn parse_color(color: &str) -> Color32 {
     #![allow(clippy::identity_op)]
 
     let color = color.strip_prefix('#').unwrap();
     if color.len() == 6 {
         // RGB
         let color = u32::from_str_radix(color, 16).unwrap();
-        egui::Color32::from_rgb(
+        Color32::from_rgb(
             ((color >> 16) & 0xff) as u8,
             ((color >> 8) & 0xff) as u8,
             ((color >> 0) & 0xff) as u8,
@@ -693,7 +645,7 @@ fn parse_color(color: &str) -> egui::Color32 {
     } else if color.len() == 8 {
         // RGBA
         let color = u32::from_str_radix(color, 16).unwrap();
-        egui::Color32::from_rgba_unmultiplied(
+        Color32::from_rgba_unmultiplied(
             ((color >> 24) & 0xff) as u8,
             ((color >> 16) & 0xff) as u8,
             ((color >> 8) & 0xff) as u8,
