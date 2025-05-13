@@ -397,6 +397,11 @@ impl DesignTokens {
         egui::Vec2::splat(14.0)
     }
 
+    /// Color of an icon next to a label
+    pub fn label_button_icon_color(&self) -> egui::Color32 {
+        self.color_table.gray(crate::Scale::S500)
+    }
+
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
 
     pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {

@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use egui::{
-    Align2, Button, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2, Widget as _,
+    Align2, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2, Widget as _,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -992,10 +992,8 @@ pub trait UiExt {
             let style = ui.style_mut();
             style.visuals.button_frame = false;
 
-            let tint = ui.style().visuals.widgets.noninteractive.fg_stroke.color;
-            let image = crate::icons::EXTERNAL_LINK.as_image().tint(tint);
             let response = ui
-                .add(Button::image_and_text(image, text))
+                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(ui.design_tokens(), text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             // Inspired from `egui::Ui::Hyperlink::ui()`
