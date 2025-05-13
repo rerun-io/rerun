@@ -9,6 +9,8 @@ extend-exclude = [
   "crates/viewer/re_ui/data/design_tokens.json",
   "crates/viewer/re_ui/src/design_tokens.rs",
   "examples/assets",
+  "rerun_cpp/src/rerun/archetypes/image.hpp",     # TODO(emilk): remove once we remove from_greyscale8
+  "rerun_cpp/src/rerun/archetypes/image_ext.cpp", # TODO(emilk): remove once we remove from_greyscale8
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
 ]
 
@@ -74,6 +76,8 @@ flavour = "flavor"
 fulfil = "fufill"
 gaol = "jail"
 grey = "gray"
+greys = "grays"
+greyscale = "grayscale"
 harbour = "habor"
 honour = "honor"
 humour = "humor"
