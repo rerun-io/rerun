@@ -6,7 +6,7 @@ use std::sync::Arc;
 use egui::Theme;
 
 use crate::{
-    CUSTOM_WINDOW_DECORATIONS,
+    CUSTOM_WINDOW_DECORATIONS, Scale,
     color_table::{ColorTable, ColorToken, Scale::*},
     format_with_decimals_in_range,
 };
@@ -541,7 +541,10 @@ impl DesignTokens {
 
     /// Color of an icon next to a label
     pub fn label_button_icon_color(&self) -> egui::Color32 {
-        self.color_table.gray(crate::Scale::S500)
+        match self.theme {
+            egui::Theme::Dark => self.color_table.gray(Scale::S500),
+            egui::Theme::Light => self.color_table.gray(Scale::S600),
+        }
     }
 
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}

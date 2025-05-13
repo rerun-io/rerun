@@ -153,14 +153,30 @@ impl ListVisuals {
 
     pub fn icon_tint(self) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
-        if self.selected {
-            design_tokens.color_table.blue(Scale::S600)
-        } else if self.active {
-            design_tokens.color_table.gray(Scale::S800)
-        } else if self.hovered {
-            design_tokens.color_table.gray(Scale::S600)
-        } else {
-            design_tokens.label_button_icon_color()
+
+        match self.theme {
+            egui::Theme::Dark => {
+                if self.selected {
+                    design_tokens.color_table.blue(Scale::S600)
+                } else if self.active {
+                    design_tokens.color_table.gray(Scale::S800)
+                } else if self.hovered {
+                    design_tokens.color_table.gray(Scale::S600)
+                } else {
+                    design_tokens.label_button_icon_color()
+                }
+            }
+            egui::Theme::Light => {
+                if self.selected {
+                    design_tokens.color_table.blue(Scale::S300)
+                } else if self.active {
+                    design_tokens.color_table.gray(Scale::S400)
+                } else if self.hovered {
+                    design_tokens.color_table.gray(Scale::S500)
+                } else {
+                    design_tokens.label_button_icon_color()
+                }
+            }
         }
     }
 
