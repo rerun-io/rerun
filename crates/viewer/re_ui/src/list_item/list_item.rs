@@ -1,12 +1,9 @@
 //! Core list item functionality.
 
-use egui::emath::GuiRounding as _;
-use egui::style::Widgets;
-use egui::{Color32, NumExt as _, Response, Shape, Ui};
+use egui::{Color32, NumExt as _, Response, Shape, Ui, emath::GuiRounding as _};
 
-use crate::{DesignTokens, Scale, UiExt as _};
 use crate::{
-    design_tokens_of,
+    DesignTokens, Scale, UiExt as _, design_tokens_of,
     list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
 };
 
@@ -87,13 +84,13 @@ pub struct ListVisuals {
 }
 
 impl ListVisuals {
-    pub fn bg_color(self) -> Option<Color32> {
+    pub fn bg_color(self, visuals: &egui::Visuals) -> Option<Color32> {
         let design_tokens = design_tokens_of(self.theme);
 
         match self.theme {
             egui::Theme::Dark => {
                 if self.selected {
-                    Some(design_tokens.color_table.blue(Scale::S350))
+                    Some(visuals.selection.bg_fill)
                 } else if self.hovered {
                     Some(design_tokens.color_table.gray(Scale::S250))
                 } else if self.active {
@@ -105,7 +102,7 @@ impl ListVisuals {
 
             egui::Theme::Light => {
                 if self.selected {
-                    Some(design_tokens.color_table.blue(Scale::S450))
+                    Some(visuals.selection.bg_fill)
                 } else if self.hovered {
                     Some(design_tokens.color_table.gray(Scale::S900))
                 } else if self.active {
@@ -168,11 +165,11 @@ impl ListVisuals {
             }
             egui::Theme::Light => {
                 if self.selected {
-                    design_tokens.color_table.blue(Scale::S300)
+                    design_tokens.color_table.blue(Scale::S250)
                 } else if self.active {
-                    design_tokens.color_table.gray(Scale::S400)
+                    design_tokens.color_table.gray(Scale::S300)
                 } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S500)
+                    design_tokens.color_table.gray(Scale::S400)
                 } else {
                     design_tokens.label_button_icon_color()
                 }
@@ -200,18 +197,6 @@ impl ListVisuals {
             }
         } else {
             self.interactive_icon_tint(icon_hovered)
-        }
-    }
-
-    fn apply_visuals(self, visuals: &mut Widgets) {
-        let design_tokens = design_tokens_of(self.theme);
-        if self.selected {
-            visuals.hovered.bg_fill = design_tokens.color_table.blue(Scale::S400);
-            visuals.hovered.weak_bg_fill = design_tokens.color_table.blue(Scale::S400);
-            visuals.hovered.fg_stroke.color = design_tokens.color_table.blue(Scale::S800);
-            visuals.active.bg_fill = design_tokens.color_table.blue(Scale::S450);
-            visuals.active.weak_bg_fill = design_tokens.color_table.blue(Scale::S450);
-            visuals.active.fg_stroke.color = design_tokens.color_table.blue(Scale::S850);
         }
     }
 }
@@ -591,7 +576,6 @@ impl ListItem {
         };
 
         let prev_widgets = ui.style_mut().visuals.widgets.clone();
-        visuals.apply_visuals(&mut ui.style_mut().visuals.widgets);
         content.ui(ui, &content_ctx);
         ui.style_mut().visuals.widgets = prev_widgets;
 
@@ -614,7 +598,7 @@ impl ListItem {
                 );
             }
 
-            if let Some(bg_fill) = force_background.or_else(|| visuals.bg_color()) {
+            if let Some(bg_fill) = force_background.or_else(|| visuals.bg_color(ui.visuals())) {
                 ui.painter().set(
                     background_frame,
                     Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),

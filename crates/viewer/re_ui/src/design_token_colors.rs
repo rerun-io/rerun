@@ -47,7 +47,7 @@ impl DesignTokens {
     pub fn label_button_icon_color(&self) -> Color32 {
         match self.theme {
             Theme::Dark => self.color_table.gray(S500),
-            Theme::Light => self.color_table.gray(S600),
+            Theme::Light => self.color_table.gray(S550),
         }
     }
 
