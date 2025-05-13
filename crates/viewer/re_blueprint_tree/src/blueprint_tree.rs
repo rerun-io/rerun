@@ -1185,7 +1185,8 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let mut response = ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET.as_button_with_label(ui.design_tokens(), "Reset to default blueprint"),
+            re_ui::icons::RESET
+                .as_button_with_label(ui.design_tokens(), "Reset to default blueprint"),
         )
         .on_hover_text("Reset to the default blueprint for this app");
 
@@ -1211,7 +1212,8 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
     if ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET.as_button_with_label(ui.design_tokens(), "Reset to heuristic blueprint"),
+            re_ui::icons::RESET
+                .as_button_with_label(ui.design_tokens(), "Reset to heuristic blueprint"),
         )
         .on_hover_text("Re-populate viewport with automatically chosen views")
         .clicked()

@@ -124,7 +124,7 @@ impl ListVisuals {
         } else if self.hovered {
             design_tokens.color_table.gray(Scale::S600)
         } else {
-            design_tokens.color_table.gray(Scale::S500)
+            design_tokens.label_button_icon_color()
         }
     }
 
