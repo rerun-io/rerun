@@ -1057,23 +1057,10 @@ impl TimePanel {
         {
             let mut found_current = false;
 
-            let result = streams_tree_data.visit(entity_db, |tree_item, component| {
-                let (tree_item, is_item_collapsed) = match component {
-                    None => (
-                        tree_item.item(),
-                        !tree_item
-                            .is_open(ctx.egui_ctx(), self.collapse_scope())
-                            .unwrap_or(tree_item.default_open),
-                    ),
-
-                    Some(desc) => (
-                        Item::ComponentPath(ComponentPath::new(
-                            tree_item.entity_path.clone(),
-                            desc,
-                        )),
-                        false,
-                    ),
-                };
+            let result = streams_tree_data.visit(entity_db, |entity_or_component| {
+                let tree_item = entity_or_component.item();
+                let is_item_collapsed =
+                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
 
                 if &tree_item == item {
                     found_current = true;
@@ -1106,23 +1093,10 @@ impl TimePanel {
         {
             let mut last_item = None;
 
-            let result = streams_tree_data.visit(entity_db, |tree_item, component| {
-                let (tree_item, is_item_collapsed) = match component {
-                    None => (
-                        tree_item.item(),
-                        !tree_item
-                            .is_open(ctx.egui_ctx(), self.collapse_scope())
-                            .unwrap_or(tree_item.default_open),
-                    ),
-
-                    Some(desc) => (
-                        Item::ComponentPath(ComponentPath::new(
-                            tree_item.entity_path.clone(),
-                            desc,
-                        )),
-                        false,
-                    ),
-                };
+            let result = streams_tree_data.visit(entity_db, |entity_or_component| {
+                let tree_item = entity_or_component.item();
+                let is_item_collapsed =
+                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
 
                 if &tree_item == item {
                     return VisitorControlFlow::Break(last_item.clone());
@@ -1214,15 +1188,8 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(entity_db, |entity_data, component_descr| {
-            let item = if let Some(component_descr) = component_descr {
-                Item::ComponentPath(ComponentPath::new(
-                    entity_data.entity_path.clone(),
-                    component_descr,
-                ))
-            } else {
-                entity_data.item()
-            };
+        streams_tree_data.visit(entity_db, |entity_or_component| {
+            let item = entity_or_component.item();
 
             if &item == anchor_item {
                 found_last_clicked_items = true;
@@ -1240,9 +1207,7 @@ impl TimePanel {
                 return VisitorControlFlow::Break(());
             }
 
-            let is_expanded = entity_data
-                .is_open(ctx.egui_ctx(), collapse_scope)
-                .unwrap_or(false);
+            let is_expanded = entity_or_component.is_open(ctx.egui_ctx(), collapse_scope);
 
             if is_expanded {
                 VisitorControlFlow::Continue
