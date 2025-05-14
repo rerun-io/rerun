@@ -2,16 +2,18 @@ use egui::Rangef;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::ComponentPath;
+use re_log_types::{ComponentPath, EntityPath, TimePoint};
 use re_types::{
-    ArchetypeName, Component, ComponentDescriptor, components,
+    Archetype as _, ArchetypeName, Component, ComponentDescriptor,
+    archetypes::RecordingProperties,
+    components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
-    gpu_bridge::image_data_range_heuristic,
+    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, SystemCommandSender as _,
+    UiLayout, ViewerContext, gpu_bridge::image_data_range_heuristic,
 };
 
 use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
@@ -37,12 +39,18 @@ impl DataUi for InstancePath {
             return;
         }
 
-        let components = db
+        let component_descriptors = db
             .storage_engine()
             .store()
             .all_components_on_timeline(&query.timeline(), entity_path);
 
-        let Some(components) = components else {
+        if entity_path == &EntityPath::recording_properties() {
+            // TODO: add button for adding missing properties (like name)
+        } else if entity_path.starts_with(&EntityPath::properties()) {
+            // TODO: add button for adding a custom property
+        }
+
+        let Some(component_descriptors) = component_descriptors else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
@@ -54,7 +62,7 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::sorted_component_list_for_ui(&components);
+        let components = crate::sorted_component_list_for_ui(&component_descriptors);
         let indicator_count = components
             .iter()
             .filter(|c| c.component_name.is_indicator_component())
@@ -121,6 +129,50 @@ impl DataUi for InstancePath {
                 instance,
                 &components,
             );
+        }
+
+        if entity_path == &EntityPath::recording_properties() {
+            let arch_name = RecordingProperties::name();
+            if let Some(archetype_refl) = ctx.reflection().archetypes.get(&arch_name) {
+                for field in &archetype_refl.fields {
+                    let comp_descr = field.component_descriptor(arch_name);
+                    if !component_descriptors.contains(&comp_descr) {
+                        if let Some(comp_refl) =
+                            ctx.reflection().components.get(&field.component_name)
+                        {
+                            if let Some(array_ctor) =
+                                re_arrow_util::constructors::default_constructor_for_type(
+                                    &comp_refl.datatype,
+                                )
+                            {
+                                // We're missing this component, so show a button to add it:
+                                if ui.button(format!("Add '{}'", field.name)).clicked() {
+                                    let array = array_ctor(1);
+                                    let chunk = re_chunk_store::Chunk::builder(entity_path.clone())
+                                        .with_row(
+                                            re_types::RowId::new(),
+                                            TimePoint::STATIC,
+                                            [(comp_descr, array)],
+                                        )
+                                        .build()
+                                        .expect("This chunk build should never fail");
+
+                                    ctx.command_sender().send_system(
+                                        re_viewer_context::SystemCommand::AppendToStore(
+                                            db.store_id(),
+                                            vec![chunk],
+                                        ),
+                                    );
+                                }
+                            }
+                        } else if cfg!(debug_assertions) {
+                            panic!("Missing reflection component {:?}", field.component_name);
+                        }
+                    }
+                }
+            } else if cfg!(debug_assertions) {
+                panic!("Missing reflection archetype for {arch_name}");
+            }
         }
 
         if instance.is_all() {

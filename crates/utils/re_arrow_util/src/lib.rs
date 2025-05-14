@@ -3,6 +3,7 @@
 mod arrays;
 mod batches;
 mod compare;
+pub mod constructors;
 mod format_data_type;
 
 pub use self::arrays::*;
