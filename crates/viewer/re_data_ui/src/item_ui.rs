@@ -813,7 +813,7 @@ pub fn entity_db_button_ui(
                     .expect("Failed to build name update chunk");
 
             ctx.command_sender()
-                .send_system(SystemCommand::UpdateRecording(
+                .send_system(SystemCommand::AppendToStore(
                     store_id.clone(),
                     vec![name_update_chunk],
                 ));

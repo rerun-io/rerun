@@ -62,20 +62,15 @@ pub enum SystemCommand {
     /// Close all stores and show the welcome screen again.
     CloseAllEntries,
 
-    /// Update the blueprint with additional data
+    /// Add more data to a store (blueprint or recording).
     ///
-    /// The [`StoreId`] should generally be the currently selected blueprint
-    /// but is tracked manually to ensure self-consistency if the blueprint
-    /// is both modified and changed in the same frame.
+    /// Edit recordings with case: we generally regard recordings as immutable.
+    ///
+    /// For blueprints,the [`StoreId`] should generally be the currently selected blueprint.
     ///
     /// Instead of using this directly, consider using
     /// [`crate::ViewerContext::save_blueprint_archetype`] or similar.
-    UpdateBlueprint(StoreId, Vec<Chunk>),
-
-    /// Update a recording with additional data.
-    ///
-    /// Use with care, generally we regard recordings as immutable.
-    UpdateRecording(StoreId, Vec<Chunk>),
+    AppendToStore(StoreId, Vec<Chunk>),
 
     UndoBlueprint {
         blueprint_id: StoreId,

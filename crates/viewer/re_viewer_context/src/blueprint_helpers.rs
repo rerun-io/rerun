@@ -52,7 +52,7 @@ impl ViewerContext<'_> {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::UpdateBlueprint(
+            .send_system(SystemCommand::AppendToStore(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
             ));
@@ -94,7 +94,7 @@ impl ViewerContext<'_> {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::UpdateBlueprint(
+            .send_system(SystemCommand::AppendToStore(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
             ));
@@ -135,16 +135,8 @@ impl ViewerContext<'_> {
             }
         };
 
-        match store_id.kind {
-            re_log_types::StoreKind::Recording => {
-                self.command_sender()
-                    .send_system(SystemCommand::UpdateRecording(store_id, vec![chunk]));
-            }
-            re_log_types::StoreKind::Blueprint => {
-                self.command_sender()
-                    .send_system(SystemCommand::UpdateBlueprint(store_id, vec![chunk]));
-            }
-        }
+        self.command_sender()
+            .send_system(SystemCommand::AppendToStore(store_id, vec![chunk]));
     }
 
     /// Queries a raw component from the default blueprint.
@@ -213,7 +205,7 @@ impl ViewerContext<'_> {
         match chunk {
             Ok(chunk) => self
                 .command_sender()
-                .send_system(SystemCommand::UpdateBlueprint(
+                .send_system(SystemCommand::AppendToStore(
                     blueprint.store_id().clone(),
                     vec![chunk],
                 )),

@@ -221,7 +221,7 @@ impl ViewBlueprint {
         contents.save_to_blueprint_store(ctx);
 
         ctx.command_sender()
-            .send_system(SystemCommand::UpdateBlueprint(
+            .send_system(SystemCommand::AppendToStore(
                 ctx.store_context.blueprint.store_id().clone(),
                 deltas,
             ));
