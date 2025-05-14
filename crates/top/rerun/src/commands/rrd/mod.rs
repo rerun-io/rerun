@@ -1,4 +1,5 @@
 mod compare;
+mod compress_video;
 mod filter;
 mod merge_compact;
 mod migrate;
@@ -7,6 +8,7 @@ mod verify;
 
 use self::{
     compare::CompareCommand,
+    compress_video::CompressVideo,
     filter::FilterCommand,
     merge_compact::{CompactCommand, MergeCommand},
     migrate::MigrateCommand,
@@ -81,6 +83,12 @@ pub enum RrdCommands {
     ///
     /// Can be used to ensure that the current Rerun version can load the data.
     Verify(VerifyCommand),
+
+    /// Compress `EncodedImage`s in .rrd files to `AssetVideo`s.
+    /// ///
+    /// Example: `rerun rrd compress-video foo.rrd`
+    /// Results in a `foo.backup.rrd` (copy of the old file) and a new `foo.rrd` (compressed).
+    CompressVideo(CompressVideo),
 }
 
 impl RrdCommands {
@@ -97,6 +105,7 @@ impl RrdCommands {
             Self::Migrate(cmd) => cmd.run(),
             Self::Print(cmd) => cmd.run(),
             Self::Verify(cmd) => cmd.run(),
+            Self::CompressVideo(cmd) => cmd.run(),
         }
     }
 }
