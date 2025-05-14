@@ -19,7 +19,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",
     "crates/viewer/re_ui/data/Inter-Medium.otf",
-    "crates/viewer/re_viewer/src/app.rs", # TODO(emilk): break this up into smaller files
+    "crates/viewer/re_viewer/src/app.rs",  # TODO(emilk): break this up into smaller files
     "docs/snippets/INDEX.md",
     "pixi.lock",
     "rerun_cpp/docs/Doxyfile",
