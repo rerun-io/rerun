@@ -241,7 +241,7 @@ impl AppBlueprint<'_> {
                 // All builtin types, no reason for this to ever fail.
                 .expect("Failed to build chunk.");
 
-            command_sender.send_system(SystemCommand::UpdateBlueprint(
+            command_sender.send_system(SystemCommand::UpdateRecording(
                 blueprint_db.store_id().clone(),
                 vec![chunk],
             ));

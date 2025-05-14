@@ -72,6 +72,11 @@ pub enum SystemCommand {
     /// [`crate::ViewerContext::save_blueprint_archetype`] or similar.
     UpdateBlueprint(StoreId, Vec<Chunk>),
 
+    /// Update a recording with additional data.
+    ///
+    /// Use with care, generally we regard recordings as immutable.
+    UpdateRecording(StoreId, Vec<Chunk>),
+
     UndoBlueprint {
         blueprint_id: StoreId,
     },

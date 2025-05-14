@@ -586,6 +586,26 @@ impl App {
                     }
                 }
             }
+            SystemCommand::UpdateRecording(recording_id, chunks) => {
+                re_log::trace!(
+                    "Update recording entities: {}",
+                    chunks.iter().map(|c| c.entity_path()).join(", ")
+                );
+
+                // TODO(andreas): Can we somehow implement undo for this as well?
+                // Tricky, all our undo/redo is on the blueprint timeline.
+
+                let recording_db = store_hub.entity_db_mut(&recording_id);
+
+                for chunk in chunks {
+                    match recording_db.add_chunk(&Arc::new(chunk)) {
+                        Ok(_store_events) => {}
+                        Err(err) => {
+                            re_log::warn_once!("Failed to store recording delta: {err}");
+                        }
+                    }
+                }
+            }
             SystemCommand::UndoBlueprint { blueprint_id } => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 self.state

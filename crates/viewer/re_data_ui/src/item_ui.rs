@@ -2,11 +2,15 @@
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
+use re_log_types::{
+    ApplicationId, EntityPath, TableId, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+};
 use re_types::{
-    archetypes::RecordingProperties,
+    RowId,
+    archetypes::{self, RecordingProperties},
     components::{Name, Timestamp},
 };
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
@@ -785,6 +789,36 @@ pub fn entity_db_button_ui(
         ctx.command_sender()
             .send_system(SystemCommand::SetSelection(item));
     }
+
+    response.context_menu(|ui| {
+        let is_redap_recording = matches!(
+            entity_db.data_source,
+            Some(re_smart_channel::SmartChannelSource::RedapGrpcStream(_))
+        );
+
+        let rename_response = ui.add_enabled(!is_redap_recording, egui::Button::new("Rename"));
+        let rename_response = rename_response
+            .on_disabled_hover_text("Renaming is currently only supported for local datasets");
+        if rename_response.clicked() {
+            let name_update_chunk =
+                ChunkBuilder::new(re_types::ChunkId::new(), EntityPath::recording_properties())
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::RecordingProperties::update_fields()
+                            .with_name("yes. you renamed it"),
+                    )
+                    .build()
+                    // All internal types, can't fail.
+                    .expect("Failed to build name update chunk");
+
+            ctx.command_sender()
+                .send_system(SystemCommand::UpdateRecording(
+                    store_id.clone().into(),
+                    vec![name_update_chunk],
+                ));
+        }
+    });
 }
 
 pub fn table_id_button_ui(
