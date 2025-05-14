@@ -7,7 +7,6 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
-use re_log::ResultExt as _;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -17,7 +16,7 @@ use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
     StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
+    ViewClassRegistry, ViewClassRegistryError, command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -741,7 +740,7 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
-        storage_context: &StorageContext<'_>,
+        _storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
@@ -785,7 +784,7 @@ impl App {
                     for item in self.state.selection_state.selected_items().iter_items() {
                         match item {
                             Item::AppId(selected_app_id) => {
-                                for recording in storage_context.bundle.recordings() {
+                                for recording in _storage_context.bundle.recordings() {
                                     if recording.app_id() == Some(selected_app_id) {
                                         selected_stores.push(recording.store_id().clone());
                                     }
@@ -808,7 +807,7 @@ impl App {
                             .set_title("Save recordings to folder")
                             .pick_folder()
                         {
-                            self.save_all_recordings(storage_context, &selected_stores, &folder);
+                            self.save_all_recordings(_storage_context, &selected_stores, &folder);
                         } else {
                             re_log::warn!("No folder selected");
                         }
@@ -1134,6 +1133,8 @@ impl App {
         selected_stores: &[StoreId],
         folder: &std::path::Path,
     ) {
+        use re_log::ResultExt as _;
+
         re_tracing::profile_function!();
 
         re_log::info!(
@@ -1145,7 +1146,7 @@ impl App {
         for store_id in selected_stores {
             if let Some(store) = storage_context.bundle.get(store_id) {
                 let messages = store.to_messages(None).collect_vec();
-                let recording_name = santitize_file_name(&store_id.to_string());
+                let recording_name = re_viewer_context::santitize_file_name(&store_id.to_string());
                 let file_path = folder.join(format!("{recording_name}.rrd"));
                 self.background_tasks
                     .spawn_threaded_promise(recording_name.clone(), move || {
