@@ -294,36 +294,36 @@ impl SelectionPanel {
             });
         }
 
-        if let Item::StoreId(_) = item {
-            ui.section_collapsing_header("Properties").show(ui, |ui| {
-                let filtered = db
-                    .entity_paths()
-                    .into_iter()
-                    .filter(|entity_path| {
-                        // Only check for properties, but skip the recording properties,
-                        // because we display them already elsewhere in the UI.
-                        entity_path.is_descendant_of(&EntityPath::properties())
-                    })
-                    .collect::<Vec<_>>();
-
-                if filtered.is_empty() {
-                    ui.label("No properties found for this recording.");
-                } else {
-                    for entity_path in filtered {
-                        // We strip the property part
-                        let name = entity_path
-                            .to_string()
-                            .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                            .map(re_case::to_human_case)
-                            .unwrap_or("<unknown>".to_owned());
-                        ui.label(name);
-                        entity_path.data_ui(ctx, ui, ui_layout, &query, db);
-                    }
-                }
-            });
-        }
-
         match item {
+            Item::StoreId(_) => {
+                ui.section_collapsing_header("Properties").show(ui, |ui| {
+                    let filtered = db
+                        .entity_paths()
+                        .into_iter()
+                        .filter(|entity_path| {
+                            // Only check for properties, but skip the recording properties,
+                            // because we display them already elsewhere in the UI.
+                            entity_path.is_descendant_of(&EntityPath::properties())
+                        })
+                        .collect::<Vec<_>>();
+
+                    if filtered.is_empty() {
+                        ui.label("No properties found for this recording.");
+                    } else {
+                        for entity_path in filtered {
+                            // We strip the property part
+                            let name = entity_path
+                                .to_string()
+                                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                                .map(re_case::to_human_case)
+                                .unwrap_or("<unknown>".to_owned());
+                            ui.label(name);
+                            entity_path.data_ui(ctx, ui, ui_layout, &query, db);
+                        }
+                    }
+                });
+            }
+
             Item::View(view_id) => {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
