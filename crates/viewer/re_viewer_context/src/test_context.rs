@@ -474,6 +474,16 @@ impl TestContext {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
+                SystemCommand::UpdateRecording(store_id, chunks) => {
+                    assert_eq!(store_id, self.recording_store.store_id());
+
+                    for chunk in chunks {
+                        self.recording_store
+                            .add_chunk(&Arc::new(chunk))
+                            .expect("Updating the recording chunk store failed");
+                    }
+                }
+
                 SystemCommand::UpdateBlueprint(store_id, chunks) => {
                     assert_eq!(store_id, self.blueprint_store.store_id());
 

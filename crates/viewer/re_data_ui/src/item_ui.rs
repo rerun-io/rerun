@@ -814,7 +814,7 @@ pub fn entity_db_button_ui(
 
             ctx.command_sender()
                 .send_system(SystemCommand::UpdateRecording(
-                    store_id.clone().into(),
+                    store_id.clone(),
                     vec![name_update_chunk],
                 ));
         }

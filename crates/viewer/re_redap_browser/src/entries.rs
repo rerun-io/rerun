@@ -336,7 +336,7 @@ pub fn dataset_and_its_recordings_ui(
                         entity_db,
                         UiLayout::SelectionPanel,
                         include_app_id,
-                    )
+                    );
                 }
             })
             .item_response
