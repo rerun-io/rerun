@@ -64,6 +64,15 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.strong("General");
 
+    ui.horizontal(|ui| {
+        ui.label("Theme:");
+        egui::global_theme_preference_buttons(ui);
+        let theme_preference = ui.ctx().options(|opt| opt.theme_preference);
+        if theme_preference != egui::ThemePreference::Dark {
+            ui.warning_label("Light mode support is experimental!");
+        }
+    });
+
     ui.re_checkbox(
         &mut app_options.include_welcome_screen_button_in_recordings_panel,
         "Show 'Welcome screen' button",
