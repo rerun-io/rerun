@@ -1,4 +1,4 @@
-use egui::{NumExt as _, ThemePreference, Ui};
+use egui::{NumExt as _, Ui};
 
 use re_log_types::TimestampFormat;
 use re_ui::UiExt as _;
@@ -68,7 +68,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         ui.label("Theme:");
         egui::global_theme_preference_buttons(ui);
         let theme_preference = ui.ctx().options(|opt| opt.theme_preference);
-        if theme_preference != ThemePreference::Dark {
+        if theme_preference != egui::ThemePreference::Dark {
             ui.warning_label("Light mode support is experimental!");
         }
     });
