@@ -124,7 +124,7 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     );
 
     egui_ctx.options_mut(|o| {
-        o.theme_preference = egui::ThemePreference::System; // TODO: might be too early to use system theme as default
+        o.theme_preference = egui::ThemePreference::Dark; // TODO(#3058): switch this to system
         o.fallback_theme = egui::Theme::Dark;
     });
 
