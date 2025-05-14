@@ -1,0 +1,54 @@
+[package]
+name = "redap_server"
+authors.workspace = true
+description = "In-memory opensource implementation of the Redap server"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false # TODO
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+
+[[bin]]
+name = "redap-server"
+path = "src/bin/main.rs"
+
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+
+[dependencies]
+
+# Rerun
+re_error.workspace = true
+re_log = { workspace = true, features = ["setup"] }
+re_memory.workspace = true
+re_protos.workspace = true
+
+# External
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+futures.workspace = true
+http.workspace = true
+mimalloc.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+tokio-stream.workspace = true
+tonic-web.workspace = true
+tonic.workspace = true
+tower.workspace = true
+tower-service.workspace = true
+tracing.workspace = true
