@@ -32,22 +32,17 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let component = if ctx.recording().is_known_entity(entity_path) {
-            // We are looking at an entity in the recording
-            ctx.recording_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else if ctx.blueprint_db().is_known_entity(entity_path) {
-            // We are looking at an entity in the blueprint
-            ctx.blueprint_db()
-                .storage_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else {
+        if !db.is_known_entity(entity_path) {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
-        };
-        let Some(components) = component else {
+        }
+
+        let components = db
+            .storage_engine()
+            .store()
+            .all_components_on_timeline(&query.timeline(), entity_path);
+
+        let Some(components) = components else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
