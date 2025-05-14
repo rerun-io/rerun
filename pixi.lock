@@ -11478,6 +11478,19 @@ packages:
   - jinja2 ; extra == 'compiler'
   - protobuf ; extra == 'compiler'
   requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
+  name: betterproto
+  version: 1.2.5
+  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
+  requires_dist:
+  - grpclib
+  - stringcase
+  - dataclasses ; python_full_version < '3.7'
+  - backports-datetime-fromisoformat ; python_full_version < '3.7'
+  - black ; extra == 'compiler'
+  - jinja2 ; extra == 'compiler'
+  - protobuf ; extra == 'compiler'
+  requires_python: '>=3.6'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/binaryen-117-h59595ed_0.conda
   sha256: f6d7f876c514d2d138fd8b06e485b042598cf3dcda40a8a346252bb7e1adf8d7
   md5: 58aea5eaef8cb663104654734d432ba3
@@ -25583,6 +25596,15 @@ packages:
   - dataclasses-json>=0.0.25
   - deprecated
   requires_python: '>=3.6'
+- pypi: https://files.pythonhosted.org/packages/38/d7/0b8e35cb3ff69dd981e358e72e0a5632f847d4bd61876be04518cb4e075a/pygltflib-1.16.2.tar.gz
+  name: pygltflib
+  version: 1.16.2
+  sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
+  requires_dist:
+  - dataclasses-json>=0.0.25
+  - deprecated
+  - dataclasses ; python_full_version == '3.6.*'
+  requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/f7/3f/01c8b82017c199075f8f788d0d906b9ffbbc5a47dc9918a945e13d5a2bda/pygments-2.18.0-py3-none-any.whl
   name: pygments
   version: 2.18.0
@@ -26355,8 +26377,8 @@ packages:
   - watchfiles ; extra == 'dev'
 - pypi: rerun_notebook
   name: rerun-notebook
-  version: 0.24.0a1+dev
-  sha256: 49b71001ac9a2e8ea7a9b19e0a8c369317faf2adc3b866f05887752211e2e668
+  version: 0.24.0a1
+  sha256: 07bb6d4e6ff73abf619fe70d8c4a72a4894fcd01a5344cd3c1fb295345bd4812
   requires_dist:
   - anywidget
   - jupyter-ui-poll
@@ -26418,8 +26440,8 @@ packages:
   requires_python: '>=3.8'
 - pypi: rerun_py
   name: rerun-sdk
-  version: 0.24.0a1+dev
-  sha256: b9daa6c2b4c0a3451a73e1bc2c75322443da1f074406d2a93d3d975f08222be4
+  version: 0.24.0a1
+  sha256: e6b3b4548d224ce7a5e58053e3381c3328b65e5e9df88a803e2b28264ed08f13
   requires_dist:
   - attrs>=23.1.0
   - numpy>=2
@@ -26427,7 +26449,7 @@ packages:
   - pyarrow>=18.0.0
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.24.0a1+dev ; extra == 'notebook'
+  - rerun-notebook==0.24.0a1 ; extra == 'notebook'
   requires_python: '>=3.9'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/7b/44/4e421b96b67b2daff264473f7465db72fbdf36a07e05494f50300cc7b0c6/rfc3339_validator-0.1.4-py2.py3-none-any.whl
