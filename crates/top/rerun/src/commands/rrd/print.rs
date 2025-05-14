@@ -1,4 +1,5 @@
 use anyhow::Context as _;
+use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 
 use re_byte_size::SizeBytes as _;
@@ -11,7 +12,7 @@ use crate::commands::read_rrd_streams_from_file_or_stdin;
 #[derive(Debug, Clone, clap::Parser)]
 pub struct PrintCommand {
     /// Paths to read from. Reads from standard input if none are specified.
-    path_to_input_rrds: Vec<String>,
+    path_to_input_rrds: Vec<Utf8PathBuf>,
 
     /// If set, print out table contents.
     ///

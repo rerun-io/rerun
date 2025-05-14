@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context as _;
+use camino::Utf8PathBuf;
 use crossbeam::channel;
 use itertools::Itertools as _;
 
@@ -38,14 +39,14 @@ impl std::fmt::Display for InputSource {
 ///
 /// This function is capable of decoding multiple independent recordings from a single stream.
 pub fn read_rrd_streams_from_file_or_stdin(
-    paths: &[String],
+    paths: &[Utf8PathBuf],
 ) -> (
     channel::Receiver<(InputSource, anyhow::Result<LogMsg>)>,
     channel::Receiver<u64>,
 ) {
     let path_to_input_rrds = paths
         .iter()
-        .filter(|s| !s.is_empty()) // Avoid a problem with `pixi run check-backwards-compatibility`
+        .filter(|s| !s.as_str().is_empty()) // Avoid a problem with `pixi run check-backwards-compatibility`
         .map(PathBuf::from)
         .collect_vec();
 

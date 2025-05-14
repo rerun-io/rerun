@@ -1,25 +1,22 @@
-use std::io::{IsTerminal as _, Write as _};
+use std::io::IsTerminal as _;
 
-use anyhow::Context as _;
-use itertools::Either;
-
+use camino::Utf8PathBuf;
 use re_chunk_store::ChunkStoreConfig;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
-use re_sdk::StoreKind;
 
-use crate::commands::read_rrd_streams_from_file_or_stdin;
+use crate::commands::{read_rrd_streams_from_file_or_stdin, save_entity_dbs_to_rrd};
 
 // ---
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct MergeCommand {
     /// Paths to read from. Reads from standard input if none are specified.
-    path_to_input_rrds: Vec<String>,
+    path_to_input_rrds: Vec<Utf8PathBuf>,
 
     /// Path to write to. Writes to standard output if unspecified.
     #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
-    path_to_output_rrd: Option<String>,
+    path_to_output_rrd: Option<Utf8PathBuf>,
 
     /// If set, will try to proceed even in the face of IO and/or decoding errors in the input data.
     #[clap(long = "continue-on-error", default_value_t = false)]
@@ -61,11 +58,11 @@ impl MergeCommand {
 #[derive(Debug, Clone, clap::Parser)]
 pub struct CompactCommand {
     /// Paths to read from. Reads from standard input if none are specified.
-    path_to_input_rrds: Vec<String>,
+    path_to_input_rrds: Vec<Utf8PathBuf>,
 
     /// Path to write to. Writes to standard output if unspecified.
     #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
-    path_to_output_rrd: Option<String>,
+    path_to_output_rrd: Option<Utf8PathBuf>,
 
     /// What is the threshold, in bytes, after which a Chunk cannot be compacted any further?
     ///
@@ -137,8 +134,8 @@ impl CompactCommand {
 fn merge_and_compact(
     continue_on_error: bool,
     store_config: &ChunkStoreConfig,
-    path_to_input_rrds: &[String],
-    path_to_output_rrd: Option<&String>,
+    path_to_input_rrds: &[Utf8PathBuf],
+    path_to_output_rrd: Option<&Utf8PathBuf>,
 ) -> anyhow::Result<()> {
     let file_size_to_string = |size: Option<u64>| {
         size.map_or_else(
@@ -193,44 +190,7 @@ fn merge_and_compact(
         }
     }
 
-    let mut rrd_out = if let Some(path) = path_to_output_rrd {
-        Either::Left(std::io::BufWriter::new(
-            std::fs::File::create(path).with_context(|| format!("{path:?}"))?,
-        ))
-    } else {
-        Either::Right(std::io::BufWriter::new(std::io::stdout().lock()))
-    };
-
-    let messages_rbl = entity_dbs
-        .values()
-        .filter(|entity_db| entity_db.store_kind() == StoreKind::Blueprint)
-        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
-
-    let messages_rrd = entity_dbs
-        .values()
-        .filter(|entity_db| entity_db.store_kind() == StoreKind::Recording)
-        .flat_map(|entity_db| entity_db.to_messages(None /* time selection */));
-
-    // TODO(cmc): encoding options should match the original.
-    let encoding_options = re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED;
-    let version = entity_dbs
-        .values()
-        .next()
-        .and_then(|db| db.store_info())
-        .and_then(|info| info.store_version)
-        .unwrap_or(re_build_info::CrateVersion::LOCAL);
-    let rrd_out_size = re_log_encoding::encoder::encode(
-        version,
-        encoding_options,
-        // NOTE: We want to make sure all blueprints come first, so that the viewer can immediately
-        // set up the viewport correctly.
-        messages_rbl.chain(messages_rrd),
-        &mut rrd_out,
-    )
-    .context("couldn't encode messages")?;
-
-    rrd_out.flush().context("couldn't flush output")?;
-
+    let rrd_out_size = save_entity_dbs_to_rrd(path_to_output_rrd, entity_dbs)?;
     let rrds_in_size = rx_size_bytes.recv().ok();
     let size_reduction = if let (Some(rrds_in_size), rrd_out_size) = (rrds_in_size, rrd_out_size) {
         format!(

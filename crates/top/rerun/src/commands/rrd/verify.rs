@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use arrow::array::AsArray as _;
 
+use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 use re_log_types::LogMsg;
 use re_types::reflection::Reflection;
@@ -13,7 +14,7 @@ use crate::commands::read_rrd_streams_from_file_or_stdin;
 #[derive(Debug, Clone, clap::Parser)]
 pub struct VerifyCommand {
     /// Paths to read from. Reads from standard input if none are specified.
-    path_to_input_rrds: Vec<String>,
+    path_to_input_rrds: Vec<Utf8PathBuf>,
 }
 
 impl VerifyCommand {

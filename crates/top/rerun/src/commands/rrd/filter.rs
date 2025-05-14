@@ -5,6 +5,7 @@ use arrow::{
     array::RecordBatch as ArrowRecordBatch,
     datatypes::{Field as ArrowField, Schema as ArrowSchema},
 };
+use camino::Utf8PathBuf;
 use itertools::Either;
 
 use re_build_info::CrateVersion;
@@ -18,11 +19,11 @@ use crate::commands::read_rrd_streams_from_file_or_stdin;
 #[derive(Debug, Clone, clap::Parser)]
 pub struct FilterCommand {
     /// Paths to read from. Reads from standard input if none are specified.
-    path_to_input_rrds: Vec<String>,
+    path_to_input_rrds: Vec<Utf8PathBuf>,
 
     /// Path to write to. Writes to standard output if unspecified.
     #[arg(short = 'o', long = "output", value_name = "dst.(rrd|rbl)")]
-    path_to_output_rrd: Option<String>,
+    path_to_output_rrd: Option<Utf8PathBuf>,
 
     /// Names of the timelines to be filtered out.
     #[clap(long = "drop-timeline")]

@@ -5,12 +5,16 @@ use camino::Utf8PathBuf;
 use indicatif::ProgressBar;
 use itertools::Itertools as _;
 use rayon::iter::{IntoParallelRefIterator as _, ParallelIterator as _};
-use re_build_info::CrateVersion;
-use re_log_encoding::EncodingOptions;
+
+use re_entity_db::EntityDb;
+use re_sdk::StoreId;
+
+use crate::commands::{read_rrd_streams_from_file_or_stdin, save_entity_dbs_to_rrd};
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct CompressVideo {
-    /// Paths to rrd files to compress.
+    /// Path to rrd files to migrate
+    // TODO: allow folders
     path_to_input_rrds: Vec<Utf8PathBuf>,
 }
 
@@ -101,40 +105,43 @@ fn video_compress_file_at(original_path: &Utf8PathBuf) -> anyhow::Result<()> {
 
 /// Stream-convert an rrd file
 fn video_compress_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Result<()> {
-    let from_file =
-        std::fs::File::open(from_path).with_context(|| format!("Failed to open {from_path:?}"))?;
+    let (rx, _rrd_in_size) = read_rrd_streams_from_file_or_stdin(&[from_path.clone()]);
 
-    let decoder = re_log_encoding::decoder::Decoder::new(std::io::BufReader::new(from_file))?;
+    let mut entity_dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
 
     let mut errors = indexmap::IndexSet::new();
 
-    let messages = decoder.into_iter().filter_map(|result| match result {
-        Ok(msg) => {
-            // TODO do stuff
-            Some(Ok(msg))
+    for (_source, res) in rx {
+        match res {
+            Ok(msg) => {
+                if let Err(err) = entity_dbs
+                    .entry(msg.store_id().clone())
+                    .or_insert_with(|| re_entity_db::EntityDb::new(msg.store_id().clone()))
+                    .add(&msg)
+                {
+                    errors.insert(err.to_string());
+                }
+            }
+
+            Err(err) => {
+                errors.insert(err.to_string());
+            }
         }
-        Err(err) => {
-            errors.insert(err.to_string());
-            None
-        }
-    });
+    }
 
-    let new_file =
-        std::fs::File::create(to_path).with_context(|| format!("Failed to create {to_path:?}"))?;
+    // TODO: compress stuff
 
-    let mut buffered_writer = std::io::BufWriter::new(new_file);
-
-    re_log_encoding::encoder::encode(
-        CrateVersion::LOCAL,
-        EncodingOptions::PROTOBUF_COMPRESSED,
-        messages,
-        &mut buffered_writer,
-    )
-    .with_context(|| format!("Failed to write new .rrd file to {to_path:?}"))?;
+    // TODO: report size difference
+    let _rrd_out_size = save_entity_dbs_to_rrd(Some(to_path), entity_dbs)?;
 
     if errors.is_empty() {
         Ok(())
     } else {
         anyhow::bail!("{}", errors.iter().join("\n"))
     }
+}
+
+fn video_compress_entity_db(entity_db: &EntityDb) -> anyhow::Result<()> {
+    // TODO: do stuff
+    Ok(())
 }
