@@ -4,10 +4,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{
-    ComponentBatch,
-    blueprint::{archetypes::PanelBlueprint, components::PanelState},
-};
+use re_types::blueprint::{archetypes::PanelBlueprint, components::PanelState};
 use re_viewer_context::{
     CommandSender, SystemCommand, SystemCommandSender as _, blueprint_timepoint_for_writes,
 };
