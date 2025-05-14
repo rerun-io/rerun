@@ -1,6 +1,8 @@
-use egui::{NumExt as _, TextBuffer};
+use arrow::datatypes::DataType;
+use egui::{Id, NumExt as _, TextBuffer};
 use egui_tiles::ContainerKind;
 
+use re_arrow_util::format_data_type;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::{
     DataUi,
@@ -8,13 +10,15 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_types::ComponentDescriptor;
 use re_ui::{
     ContextExt as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
 };
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, UiLayout,
-    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item,
+    SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
+    contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -296,32 +300,41 @@ impl SelectionPanel {
 
         match item {
             Item::StoreId(_) => {
-                ui.section_collapsing_header("Properties").show(ui, |ui| {
-                    let filtered = db
-                        .entity_paths()
-                        .into_iter()
-                        .filter(|entity_path| {
-                            // Only check for properties, but skip the recording properties,
-                            // because we display them already elsewhere in the UI.
-                            entity_path.is_descendant_of(&EntityPath::properties())
-                        })
-                        .collect::<Vec<_>>();
+                ui.section_collapsing_header("Properties")
+                    .button(list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
+                        let mut add_prop_ui = ui.data(|data| {
+                            data.get_temp::<AddRecordingPropertyUi>(Id::NULL)
+                                .unwrap_or_default()
+                        });
+                        add_prop_ui.ui(ctx, ui);
+                        ui.data_mut(|data| data.insert_temp(Id::NULL, add_prop_ui));
+                    }))
+                    .show(ui, |ui| {
+                        let filtered = db
+                            .entity_paths()
+                            .into_iter()
+                            .filter(|entity_path| {
+                                // Only check for properties, but skip the recording properties,
+                                // because we display them already elsewhere in the UI.
+                                entity_path.is_descendant_of(&EntityPath::properties())
+                            })
+                            .collect::<Vec<_>>();
 
-                    if filtered.is_empty() {
-                        ui.label("No properties found for this recording.");
-                    } else {
-                        for entity_path in filtered {
-                            // We strip the property part
-                            let name = entity_path
-                                .to_string()
-                                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                                .map(re_case::to_human_case)
-                                .unwrap_or("<unknown>".to_owned());
-                            ui.label(name);
-                            entity_path.data_ui(ctx, ui, ui_layout, &query, db);
+                        if filtered.is_empty() {
+                            ui.label("No properties found for this recording.");
+                        } else {
+                            for entity_path in filtered {
+                                // We strip the property part
+                                let name = entity_path
+                                    .to_string()
+                                    .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                                    .map(re_case::to_human_case)
+                                    .unwrap_or("<unknown>".to_owned());
+                                ui.label(name);
+                                entity_path.data_ui(ctx, ui, ui_layout, &query, db);
+                            }
                         }
-                    }
-                });
+                    });
             }
 
             Item::View(view_id) => {
@@ -1009,4 +1022,81 @@ fn visible_interactive_toggle_ui(
             data_result.save_interactive(ctx.viewer_ctx, &query_result.tree, interactive);
         }
     }
+}
+
+#[derive(Clone, Debug)]
+struct AddRecordingPropertyUi {
+    name: String,
+    data_type: DataType,
+}
+
+impl Default for AddRecordingPropertyUi {
+    fn default() -> Self {
+        Self {
+            name: "Thing".to_owned(),
+            data_type: DataType::Utf8,
+        }
+    }
+}
+
+impl AddRecordingPropertyUi {
+    fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        ui.label("Add a new property to the recording");
+
+        egui::Grid::new("add_rec_prop")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Name");
+                ui.add(egui::TextEdit::singleline(&mut self.name));
+                ui.end_row();
+
+                ui.label("Type");
+                data_type_selection_ui(ui, &mut self.data_type);
+                ui.end_row();
+            });
+
+        if ui.button("Add").clicked() {
+            let array_ctor =
+                re_arrow_util::constructors::default_constructor_for_type(&self.data_type).unwrap();
+
+            let array = array_ctor(1);
+            let chunk = re_chunk_store::Chunk::builder(EntityPath::properties())
+                .with_row(
+                    re_types::RowId::new(),
+                    re_chunk::TimePoint::STATIC,
+                    [(
+                        ComponentDescriptor {
+                            archetype_name: None,
+                            archetype_field_name: None,
+                            component_name: self.name.clone().into(),
+                        },
+                        array,
+                    )],
+                )
+                .build()
+                .expect("This chunk build should never fail");
+
+            ctx.command_sender()
+                .send_system(re_viewer_context::SystemCommand::AppendToStore(
+                    ctx.recording().store_id(),
+                    vec![chunk],
+                ));
+        }
+    }
+}
+
+fn data_type_selection_ui(ui: &mut egui::Ui, selected: &mut DataType) {
+    egui::ComboBox::from_id_salt("arrow_datatype")
+        .selected_text(format_data_type(selected))
+        .show_ui(ui, |ui| {
+            for alternative in [
+                DataType::Boolean,
+                DataType::Int64,
+                DataType::Float64,
+                DataType::Utf8,
+            ] {
+                let text = format_data_type(&alternative);
+                ui.selectable_value(selected, alternative, text);
+            }
+        });
 }

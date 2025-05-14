@@ -146,7 +146,10 @@ impl DataUi for InstancePath {
                                 )
                             {
                                 // We're missing this component, so show a button to add it:
-                                if ui.button(format!("Add '{}'", field.name)).clicked() {
+                                if ui
+                                    .button(format!("Add '{}'", field.component_name))
+                                    .clicked()
+                                {
                                     let array = array_ctor(1);
                                     let chunk = re_chunk_store::Chunk::builder(entity_path.clone())
                                         .with_row(
