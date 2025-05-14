@@ -5,8 +5,8 @@ import subprocess
 
 # These files are allowed to be larger than our limit
 FILES_ALLOWED_TO_BE_LARGE = {
-    "CHANGELOG.md",
     "Cargo.lock",
+    "CHANGELOG.md",
     "crates/build/re_types_builder/src/codegen/cpp/mod.rs",  # TODO(andreas): This file should really be split up.
     "crates/build/re_types_builder/src/reflection.rs",
     "crates/store/re_dataframe/src/query.rs",
@@ -19,6 +19,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",
     "crates/viewer/re_ui/data/Inter-Medium.otf",
+    "crates/viewer/re_viewer/src/app.rs", # TODO(emilk): break this up into smaller files
     "docs/snippets/INDEX.md",
     "pixi.lock",
     "rerun_cpp/docs/Doxyfile",
