@@ -8,6 +8,7 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_types::ComponentDescriptor;
 use re_ui::{
     ContextExt as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
@@ -183,6 +184,29 @@ impl SelectionPanel {
                     } else {
                         "Temporal"
                     }),
+                );
+
+                let ComponentDescriptor {
+                    archetype_name,
+                    archetype_field_name,
+                    component_name,
+                } = component_descriptor;
+
+                if let Some(archetype_name) = archetype_name {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Archetype").value_text(archetype_name.short_name()), // TODO: show docs on hover
+                    );
+                }
+
+                if let Some(archetype_field_name) = archetype_field_name {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Archetype field")
+                            .value_text(archetype_field_name.to_string()), // TODO: show docs on hover
+                    );
+                }
+
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Component").value_text(component_name.short_name()), // TODO: show docs on hover
                 );
 
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
