@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
-use re_chunk::{RowId, UnitChunkShared};
+use re_chunk::{RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt as _;
-use re_log_types::Instance;
+use re_log_types::{Instance, StoreId};
 use re_types::{ComponentDescriptor, ComponentName};
 use re_ui::{UiExt as _, UiLayout};
 
@@ -481,6 +481,7 @@ impl ComponentUiRegistry {
         }
     }
 
+    /// For blueprint editing
     #[allow(clippy::too_many_arguments)]
     pub fn edit_ui_raw(
         &self,
@@ -496,6 +497,10 @@ impl ComponentUiRegistry {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx,
             ui,
+            ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
+            ctx.viewer_ctx
+                .store_context
+                .blueprint_timepoint_for_writes(),
             component_raw,
             blueprint_write_path,
             component_descr.clone(),
@@ -520,12 +525,15 @@ impl ComponentUiRegistry {
     ///
     /// Returns `true` if the passed component is a single value and has a registered
     /// editor for multiline or singleline editing respectively.
+    #[allow(clippy::too_many_arguments)]
     pub fn try_show_edit_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
+        store_id: StoreId,
+        timepoint: TimePoint,
         raw_current_value: &dyn arrow::array::Array,
-        blueprint_write_path: &EntityPath,
+        entity_path: &EntityPath,
         component_descr: ComponentDescriptor,
         allow_multiline: bool,
     ) -> bool {
@@ -549,7 +557,13 @@ impl ComponentUiRegistry {
 
         if let Some(edit_or_view) = edit_or_view {
             if let Some(updated) = (*edit_or_view)(ctx, ui, raw_current_value, EditOrView::Edit) {
-                ctx.save_blueprint_array(blueprint_write_path, component_descr, updated);
+                ctx.append_array_to_store(
+                    store_id,
+                    timepoint,
+                    entity_path,
+                    component_descr,
+                    updated,
+                );
             }
             return true;
         }

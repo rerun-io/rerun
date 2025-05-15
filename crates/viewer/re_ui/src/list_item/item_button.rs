@@ -1,7 +1,7 @@
 //! Abstraction for buttons to be used in list items.
 
 use crate::{Icon, UiExt as _};
-use egui::containers::menu::MenuButton;
+use egui::containers::menu::{MenuButton, MenuConfig};
 
 // -------------------------------------------------------------------------------------------------
 
@@ -12,6 +12,7 @@ pub struct ItemMenuButton<'a> {
     enabled: bool,
     hover_text: Option<String>,
     disabled_hover_text: Option<String>,
+    config: Option<MenuConfig>,
 }
 
 impl<'a> ItemMenuButton<'a> {
@@ -22,6 +23,7 @@ impl<'a> ItemMenuButton<'a> {
             enabled: true,
             hover_text: None,
             disabled_hover_text: None,
+            config: Default::default(),
         }
     }
 
@@ -45,19 +47,38 @@ impl<'a> ItemMenuButton<'a> {
         self.disabled_hover_text = Some(hover_text.into());
         self
     }
+
+    #[inline]
+    pub fn config(mut self, config: MenuConfig) -> Self {
+        self.config = Some(config);
+        self
+    }
 }
 
 impl super::ItemButton for ItemMenuButton<'_> {
     fn ui(self: Box<Self>, ui: &mut egui::Ui) -> egui::Response {
-        ui.add_enabled_ui(self.enabled, |ui| {
+        let Self {
+            icon,
+            add_contents,
+            enabled,
+            hover_text,
+            disabled_hover_text,
+            config,
+        } = *self;
+
+        ui.add_enabled_ui(enabled, |ui| {
             ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
 
-            let (mut response, _) = MenuButton::from_button(ui.small_icon_button_widget(self.icon))
-                .ui(ui, self.add_contents);
-            if let Some(hover_text) = self.hover_text {
+            let mut button = MenuButton::from_button(ui.small_icon_button_widget(icon));
+            if let Some(config) = config {
+                button = button.config(config);
+            }
+
+            let (mut response, _) = button.ui(ui, add_contents);
+            if let Some(hover_text) = hover_text {
                 response = response.on_hover_text(hover_text);
             }
-            if let Some(disabled_hover_text) = self.disabled_hover_text {
+            if let Some(disabled_hover_text) = disabled_hover_text {
                 response = response.on_disabled_hover_text(disabled_hover_text);
             }
 

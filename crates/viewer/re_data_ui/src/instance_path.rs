@@ -2,16 +2,18 @@ use egui::Rangef;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::ComponentPath;
+use re_log_types::{ComponentPath, EntityPath, TimePoint};
 use re_types::{
-    ArchetypeName, Component, ComponentDescriptor, components,
+    Archetype as _, ArchetypeName, Component, ComponentDescriptor,
+    archetypes::RecordingProperties,
+    components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, UiLayout, ViewerContext,
-    gpu_bridge::image_data_range_heuristic,
+    ColormapWithRange, HoverHighlight, ImageInfo, ImageStatsCache, Item, SystemCommandSender as _,
+    UiLayout, ViewerContext, gpu_bridge::image_data_range_heuristic,
 };
 
 use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
@@ -32,22 +34,17 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let component = if ctx.recording().is_known_entity(entity_path) {
-            // We are looking at an entity in the recording
-            ctx.recording_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else if ctx.blueprint_db().is_known_entity(entity_path) {
-            // We are looking at an entity in the blueprint
-            ctx.blueprint_db()
-                .storage_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else {
+        if !db.is_known_entity(entity_path) {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
-        };
-        let Some(components) = component else {
+        }
+
+        let component_descriptors = db
+            .storage_engine()
+            .store()
+            .all_components_on_timeline(&query.timeline(), entity_path);
+
+        let Some(component_descriptors) = component_descriptors else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
@@ -59,7 +56,7 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::sorted_component_list_for_ui(&components);
+        let components = crate::sorted_component_list_for_ui(&component_descriptors);
         let indicator_count = components
             .iter()
             .filter(|c| c.component_name.is_indicator_component())
@@ -126,6 +123,56 @@ impl DataUi for InstancePath {
                 instance,
                 &components,
             );
+        }
+
+        if entity_path == &EntityPath::recording_properties() {
+            let arch_name = RecordingProperties::name();
+            if let Some(archetype_refl) = ctx.reflection().archetypes.get(&arch_name) {
+                for field in &archetype_refl.fields {
+                    let comp_descr = field.component_descriptor(arch_name);
+                    if !component_descriptors.contains(&comp_descr) {
+                        if let Some(comp_refl) =
+                            ctx.reflection().components.get(&field.component_name)
+                        {
+                            if let Some(array_ctor) =
+                                re_arrow_util::constructors::default_constructor_for_type(
+                                    &comp_refl.datatype,
+                                )
+                            {
+                                // We're missing this component, so show a button to add it:
+                                if ui
+                                    .add(re_ui::icons::ADD.as_button_with_label(
+                                        ui.design_tokens(),
+                                        field.component_name.short_name(),
+                                    ))
+                                    .clicked()
+                                {
+                                    let array = array_ctor(1);
+                                    let chunk = re_chunk_store::Chunk::builder(entity_path.clone())
+                                        .with_row(
+                                            re_types::RowId::new(),
+                                            TimePoint::STATIC,
+                                            [(comp_descr, array)],
+                                        )
+                                        .build()
+                                        .expect("This chunk build should never fail");
+
+                                    ctx.command_sender().send_system(
+                                        re_viewer_context::SystemCommand::AppendToStore(
+                                            db.store_id(),
+                                            vec![chunk],
+                                        ),
+                                    );
+                                }
+                            }
+                        } else if cfg!(debug_assertions) {
+                            panic!("Missing reflection component {:?}", field.component_name);
+                        }
+                    }
+                }
+            } else if cfg!(debug_assertions) {
+                panic!("Missing reflection archetype for {arch_name}");
+            }
         }
 
         if instance.is_all() {
@@ -198,46 +245,43 @@ fn component_list_ui(
                 let response = if component_descr.component_name.is_indicator_component() {
                     list_item.show_flat(
                         ui,
-                        re_ui::list_item::LabelContent::new(
-                            component_descr.component_name.short_name(),
-                        )
-                        .with_icon(icon),
+                        re_ui::list_item::LabelContent::new(component_descr.display_name())
+                            .with_icon(icon),
                     )
                 } else {
-                    let content = re_ui::list_item::PropertyContent::new(
-                        component_descr.component_name.short_name(),
-                    )
-                    .with_icon(icon)
-                    .value_fn(|ui, _| {
-                        if instance.is_all() {
-                            crate::ComponentPathLatestAtResults {
-                                component_path: ComponentPath::new(
-                                    entity_path.clone(),
-                                    component_descr.clone(),
-                                ),
-                                unit,
-                            }
-                            .data_ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                            );
-                        } else {
-                            ctx.component_ui_registry().ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                                entity_path,
-                                component_descr,
-                                unit,
-                                instance,
-                            );
-                        }
-                    });
+                    let content =
+                        re_ui::list_item::PropertyContent::new(component_descr.display_name())
+                            .with_icon(icon)
+                            .value_fn(|ui, _| {
+                                if instance.is_all() {
+                                    crate::ComponentPathLatestAtResults {
+                                        component_path: ComponentPath::new(
+                                            entity_path.clone(),
+                                            component_descr.clone(),
+                                        ),
+                                        unit,
+                                    }
+                                    .data_ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                    );
+                                } else {
+                                    ctx.component_ui_registry().ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                        entity_path,
+                                        component_descr,
+                                        unit,
+                                        instance,
+                                    );
+                                }
+                            });
 
                     list_item.show_flat(ui, content)
                 };
@@ -246,6 +290,12 @@ fn component_list_ui(
                     component_descr
                         .component_name
                         .data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    if let Some(data) = unit.component_batch_raw(component_descr) {
+                        ui.list_item_flat_noninteractive(
+                            re_ui::list_item::PropertyContent::new("Data type")
+                                .value_text(re_arrow_util::format_data_type(data.data_type())),
+                        );
+                    }
                 });
 
                 if interactive {

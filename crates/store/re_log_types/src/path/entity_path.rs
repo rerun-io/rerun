@@ -127,6 +127,12 @@ impl EntityPath {
         ])
     }
 
+    /// The reserved namespace for user-specified properties.
+    #[inline]
+    pub fn user_properties() -> Self {
+        Self::from(vec![EntityPathPart::properties(), "user".into()])
+    }
+
     /// Returns `true` if the [`EntityPath`] belongs to a reserved namespace.
     ///
     /// Returns `true` iff the root entity starts with `__`.

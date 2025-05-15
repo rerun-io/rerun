@@ -231,6 +231,8 @@ fn visualizer_components(
                 || !ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
+                    ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
+                    ctx.viewer_ctx.store_context.blueprint_timepoint_for_writes(),
                     raw_current_value.as_ref(),
                     override_path,
                     component_descr.clone(),
