@@ -4,7 +4,7 @@ use std::str::FromStr;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
-pub struct EntryId {
+pub struct  EntryId {
     pub id: re_tuid::Tuid,
 }
 

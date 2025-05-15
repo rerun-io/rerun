@@ -4,8 +4,11 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
 
+use re_grpc_client::redap::RedapClient;
 use re_log_encoding::codec::wire::encoder::Encode;
+use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntryId, StoreId};
+use re_protos::catalog::v1alpha1::CreateDatasetEntryRequest;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
@@ -198,11 +201,12 @@ impl Server {
         }
     }
 
-    fn upload_dataset(
+    fn upload_to_dataset(
         &self,
         dataset_name: String,
         entity_db: &EntityDb,
         command_sender: Sender<Command>,
+        create_new: bool,
     ) {
         let chunks: Vec<Arc<Chunk>> = entity_db
             .storage_engine()
@@ -211,16 +215,43 @@ impl Server {
             .cloned()
             .collect();
         let recording_id = entity_db.store_id();
-        let Some(dataset) = self.entries.find_dataset_by_name(&dataset_name) else {
-            re_log::error!("Dataset not found: {dataset_name}");
-            return;
+
+        let dataset_id = if create_new {
+            None
+        } else {
+            let Some(dataset) = self.entries.find_dataset_by_name(&dataset_name) else {
+                re_log::error!("Dataset not found: {dataset_name}");
+                return;
+            };
+            Some(dataset.id())
         };
-        let dataset_id = dataset.id();
+
         let origin = self.origin.clone();
 
         self.runtime.spawn_future(async move {
+            let mut client = match re_grpc_client::redap::client(origin.clone()).await {
+                Ok(client) => client,
+                Err(err) => {
+                    re_log::error!("Failed to connect to {origin:?}: {err}");
+                    return;
+                }
+            };
+
+            let dataset_id = if let Some(dataset_id) = dataset_id {
+                dataset_id
+            } else {
+                let result = create_new_dataset(&mut client, dataset_name).await;
+                match result {
+                    Ok(id) => id,
+                    Err(err) => {
+                        re_log::error!("Failed to create new dataset: {err}");
+                        return;
+                    }
+                }
+            };
+
             let result =
-                write_chunks_to_dataset(origin.clone(), &dataset_id, &recording_id, &chunks).await;
+                write_chunks_to_dataset(&mut client, &dataset_id, &recording_id, &chunks).await;
             if let Err(err) = result {
                 re_log::error!("Failed to upload dataset: {err}");
             } else {
@@ -454,34 +485,35 @@ impl RedapServers {
         func(&ctx)
     }
 
-    pub fn upload_dataset(
+    pub fn upload_to_dataset(
         &self,
         recording: &EntityDb,
         target_server: re_uri::Origin,
         dataset_name: String,
         create_new: bool,
     ) {
-        if create_new {
-            re_log::error!("creating new not implemented yet");
-        }
-
         let Some(server) = self.servers.get(&target_server) else {
             re_log::error!("Not connected to server at {target_server:?}");
             return;
         };
 
-        server.upload_dataset(dataset_name, recording, self.command_sender.clone());
+        if create_new {}
+
+        server.upload_to_dataset(
+            dataset_name,
+            recording,
+            self.command_sender.clone(),
+            create_new,
+        );
     }
 }
 
 async fn write_chunks_to_dataset(
-    origin: re_uri::Origin,
+    client: &mut RedapClient,
     dataset_id: &EntryId,
     _partition_id: &StoreId,
     chunks: &[Arc<Chunk>],
 ) -> Result<(), crate::entries::EntryError> {
-    let mut client = re_grpc_client::redap::client(origin).await?;
-
     // TODO: it's a bit unclear what the semantics of duplicating the partition are.
     // Viewer gets very confused if it sees the same partition ID twice.
     let partition_id_new = StoreId::random(re_log_types::StoreKind::Recording);
@@ -519,4 +551,37 @@ async fn write_chunks_to_dataset(
     client.write_chunks(request).await?;
 
     Ok(())
+}
+
+async fn create_new_dataset(
+    client: &mut RedapClient,
+    dataset_name: String,
+) -> Result<EntryId, crate::entries::EntryError> {
+    let response = client
+        .create_dataset_entry(CreateDatasetEntryRequest {
+            name: Some(dataset_name),
+        })
+        .await?;
+
+    let response = response.into_inner();
+
+    let id = response
+        .dataset
+        .ok_or(crate::entries::EntryError::FieldNotSet("dataset"))?
+        .dataset_handle
+        .ok_or(crate::entries::EntryError::FieldNotSet("dataset_handle"))?
+        .entry_id
+        .ok_or(crate::entries::EntryError::FieldNotSet("entry_id"))?
+        .id
+        .ok_or(crate::entries::EntryError::FieldNotSet("id"))?;
+    let time_ns = id
+        .time_ns
+        .ok_or(crate::entries::EntryError::FieldNotSet("time_ns"))?;
+    let inc = id
+        .inc
+        .ok_or(crate::entries::EntryError::FieldNotSet("inc"))?;
+
+    Ok(EntryId {
+        id: Tuid::from_nanos_and_inc(time_ns, inc),
+    })
 }

@@ -704,7 +704,7 @@ impl App {
                 create_new,
             } => {
                 if let Some(entity_db) = store_hub.entity_db(&store_id) {
-                    self.state.redap_servers.upload_dataset(
+                    self.state.redap_servers.upload_to_dataset(
                         entity_db,
                         target_server,
                         dataset_name,

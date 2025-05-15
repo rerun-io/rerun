@@ -796,7 +796,10 @@ pub fn entity_db_button_ui(
                                 .send_system(SystemCommand::UploadDataset {
                                     store_id: entity_db.store_id().clone(),
                                     target_server: server.clone(),
-                                    dataset_name: String::new(), // TODO: asd;flkajsdf;laskdjf;aslkdjf
+                                    dataset_name: entity_db
+                                        .app_id()
+                                        .map(|app_id| app_id.0.clone())
+                                        .unwrap_or("New Dataset".to_owned()),
                                     create_new: true,
                                 });
                             ui.close();
