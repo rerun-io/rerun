@@ -1,4 +1,3 @@
-use rerun::Component as _;
 use rerun::external::{
     egui,
     re_log_types::{EntityPath, Instance},
@@ -8,6 +7,7 @@ use rerun::external::{
         ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
     },
 };
+use rerun::Component as _;
 
 use crate::color_archetype::ColorArchetype;
 

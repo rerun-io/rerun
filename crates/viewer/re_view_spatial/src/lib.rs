@@ -31,8 +31,12 @@ mod visualizers;
 
 mod transform_cache;
 
+// Export the views.
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
+
+// Export some other types that are useful for extensions.
+pub use contexts::TransformTreeContext;
 
 pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 pub(crate) use pinhole::Pinhole;
