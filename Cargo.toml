@@ -380,213 +380,79 @@ debug = false
 
 
 # Use the following command to grab the list of workspace crates:
-#   cargo metadata --no-deps --format-version 1 | jq '.packages[].name'
+#   cargo metadata --no-deps --format-version 1 | jq '.packages[].name' | rg '"re_'
 #
 # There is, as far we know, no way to do this without enumerating all crates manually.
 
-[profile.dev.package."re_build_info"]
-debug = true
-
-[profile.dev.package."re_byte_size"]
-debug = true
-
-[profile.dev.package."re_build_tools"]
-debug = true
-
-[profile.dev.package."re_dev_tools"]
-debug = true
-
-[profile.dev.package."re_format"]
-debug = true
-
-[profile.dev.package."re_protos_builder"]
-debug = true
-
-[profile.dev.package."re_log"]
-debug = true
-
-[profile.dev.package."re_types_builder"]
-debug = true
-
-[profile.dev.package."re_case"]
-debug = true
-
-[profile.dev.package."re_error"]
-debug = true
-
-[profile.dev.package."re_tracing"]
-debug = true
-
-[profile.dev.package."re_chunk"]
-debug = true
-
-[profile.dev.package."re_arrow_util"]
-debug = true
-
-[profile.dev.package."re_format_arrow"]
-debug = true
-
-[profile.dev.package."re_tuid"]
-debug = true
-
-[profile.dev.package."re_types_core"]
-debug = true
-
-[profile.dev.package."re_string_interner"]
-debug = true
-
-[profile.dev.package."re_log_types"]
-debug = true
-
-[profile.dev.package."re_sorbet"]
-debug = true
-
-[profile.dev.package."re_chunk_store"]
-debug = true
-
-[profile.dev.package."re_log_encoding"]
-debug = true
-
-[profile.dev.package."re_protos"]
-debug = true
-
-[profile.dev.package."re_smart_channel"]
-debug = true
-
-[profile.dev.package."re_uri"]
-debug = true
-
-[profile.dev.package."re_types"]
-debug = true
-
-[profile.dev.package."re_video"]
-debug = true
-
-[profile.dev.package."re_data_loader"]
-debug = true
-
-[profile.dev.package."re_crash_handler"]
-debug = true
-
-[profile.dev.package."re_analytics"]
-debug = true
-
-[profile.dev.package."re_data_source"]
-debug = true
-
-[profile.dev.package."re_grpc_client"]
-debug = true
-
-[profile.dev.package."re_auth"]
-debug = true
-
-[profile.dev.package."re_dataframe"]
-debug = true
-
-[profile.dev.package."re_query"]
-debug = true
-
-[profile.dev.package."re_datafusion"]
-debug = true
-
-[profile.dev.package."re_entity_db"]
-debug = true
-
-[profile.dev.package."re_int_histogram"]
-debug = true
-
-[profile.dev.package."re_grpc_server"]
-debug = true
-
-[profile.dev.package."re_memory"]
-debug = true
-
-[profile.dev.package."re_sdk"]
-debug = true
-
-[profile.dev.package."re_web_viewer_server"]
-debug = true
-
-[profile.dev.package."re_capabilities"]
-debug = true
-
-[profile.dev.package."re_viewer"]
-debug = true
-
-[profile.dev.package."re_blueprint_tree"]
-debug = true
-
-[profile.dev.package."re_context_menu"]
-debug = true
-
-[profile.dev.package."re_ui"]
-debug = true
-
-[profile.dev.package."re_viewer_context"]
-debug = true
-
-[profile.dev.package."re_renderer"]
-debug = true
-
-[profile.dev.package."re_viewport_blueprint"]
-debug = true
-
-[profile.dev.package."re_data_ui"]
-debug = true
-
-[profile.dev.package."re_view_spatial"]
-debug = true
-
-[profile.dev.package."re_view"]
-debug = true
-
-[profile.dev.package."re_component_ui"]
-debug = true
-
-[profile.dev.package."re_viewport"]
-debug = true
-
-[profile.dev.package."re_chunk_store_ui"]
-debug = true
-
-[profile.dev.package."re_dataframe_ui"]
-debug = true
-
-[profile.dev.package."re_redap_browser"]
-debug = true
-
-[profile.dev.package."re_selection_panel"]
-debug = true
-
-[profile.dev.package."re_time_panel"]
-debug = true
-
-[profile.dev.package."re_view_bar_chart"]
-debug = true
-
-[profile.dev.package."re_view_dataframe"]
-debug = true
-
-[profile.dev.package."re_view_graph"]
-debug = true
-
-[profile.dev.package."re_view_map"]
-debug = true
-
-[profile.dev.package."re_view_tensor"]
-debug = true
-
-[profile.dev.package."re_view_text_document"]
-debug = true
-
-[profile.dev.package."re_view_text_log"]
-debug = true
-
-[profile.dev.package."re_view_time_series"]
-debug = true
-
-[profile.dev.package."re_renderer_examples"]
-debug = true
+[profile.dev.package]
+"re_analytics".debug = true
+"re_arrow_util".debug = true
+"re_auth".debug = true
+"re_blueprint_tree".debug = true
+"re_build_info".debug = true
+"re_build_tools".debug = true
+"re_byte_size".debug = true
+"re_capabilities".debug = true
+"re_case".debug = true
+"re_chunk".debug = true
+"re_chunk_store".debug = true
+"re_chunk_store_ui".debug = true
+"re_component_ui".debug = true
+"re_context_menu".debug = true
+"re_crash_handler".debug = true
+"re_data_loader".debug = true
+"re_data_source".debug = true
+"re_data_ui".debug = true
+"re_dataframe".debug = true
+"re_dataframe_ui".debug = true
+"re_datafusion".debug = true
+"re_dev_tools".debug = true
+"re_entity_db".debug = true
+"re_error".debug = true
+"re_format".debug = true
+"re_format_arrow".debug = true
+"re_grpc_client".debug = true
+"re_grpc_server".debug = true
+"re_int_histogram".debug = true
+"re_log".debug = true
+"re_log_encoding".debug = true
+"re_log_types".debug = true
+"re_memory".debug = true
+"re_protos".debug = true
+"re_protos_builder".debug = true
+"re_query".debug = true
+"re_redap_browser".debug = true
+"re_renderer".debug = true
+"re_renderer_examples".debug = true
+"re_sdk".debug = true
+"re_selection_panel".debug = true
+"re_smart_channel".debug = true
+"re_sorbet".debug = true
+"re_string_interner".debug = true
+"re_time_panel".debug = true
+"re_tracing".debug = true
+"re_tuid".debug = true
+"re_types".debug = true
+"re_types_builder".debug = true
+"re_types_core".debug = true
+"re_ui".debug = true
+"re_uri".debug = true
+"re_video".debug = true
+"re_view".debug = true
+"re_view_bar_chart".debug = true
+"re_view_dataframe".debug = true
+"re_view_graph".debug = true
+"re_view_map".debug = true
+"re_view_spatial".debug = true
+"re_view_tensor".debug = true
+"re_view_text_document".debug = true
+"re_view_text_log".debug = true
+"re_view_time_series".debug = true
+"re_viewer".debug = true
+"re_viewer_context".debug = true
+"re_viewport".debug = true
+"re_viewport_blueprint".debug = true
+"re_web_viewer_server".debug = true
 
 
 # panic = "abort" leads to better optimizations and smaller binaries (and is the default in Wasm anyways),
