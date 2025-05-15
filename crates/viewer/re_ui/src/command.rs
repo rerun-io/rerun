@@ -18,6 +18,8 @@ pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
     Import,
+
+    /// Save the current recording, or all selected recordings
     SaveRecording,
     SaveRecordingSelection,
     SaveBlueprint,
