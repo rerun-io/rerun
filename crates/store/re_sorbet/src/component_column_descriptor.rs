@@ -263,11 +263,15 @@ impl ComponentColumnDescriptor {
         match batch_type {
             BatchType::Chunk => {
                 // All columns are of the same entity
-                self.display_name()
+                self.component_descriptor().column_name()
             }
             BatchType::Dataframe => {
                 // Each column can be of a different entity
-                format!("{}:{}", self.entity_path, self.display_name())
+                format!(
+                    "{}:{}",
+                    self.entity_path,
+                    self.component_descriptor().column_name()
+                )
 
                 // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
                 // I'm not doing that right now, to avoid breaking changes (and we need to talk about

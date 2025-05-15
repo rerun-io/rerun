@@ -74,6 +74,7 @@ impl ColumnDescriptor {
         }
     }
 
+    /// Short and usually unique, used in UI.
     #[inline]
     pub fn display_name(&self) -> String {
         match self {

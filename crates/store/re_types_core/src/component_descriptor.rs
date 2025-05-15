@@ -54,7 +54,7 @@ impl nohash_hasher::IsEnabled for ComponentDescriptor {}
 
 impl std::fmt::Display for ComponentDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.display_name())
+        f.write_str(&self.column_name())
     }
 }
 
@@ -73,6 +73,13 @@ impl<'d> From<&'d ComponentDescriptor> for Cow<'d, ComponentDescriptor> {
 }
 
 impl ComponentDescriptor {
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        self.component_name.sanity_check();
+    }
+
+    /// Short and usually unique, used in UI.
     pub fn display_name(&self) -> String {
         self.sanity_check();
 
@@ -89,10 +96,26 @@ impl ComponentDescriptor {
         }
     }
 
+    /// Used for column names etc.
+    ///
+    /// `Archetype.field_name` if set, otherwise the component name.
     #[inline]
-    #[track_caller]
-    pub fn sanity_check(&self) {
-        self.component_name.sanity_check();
+    pub fn column_name(&self) -> String {
+        self.sanity_check();
+
+        let Self {
+            archetype_name,
+            archetype_field_name,
+            component_name,
+        } = self;
+
+        if let (Some(archetype_name), Some(archetype_field_name)) =
+            (&archetype_name, &archetype_field_name)
+        {
+            format!("{}.{archetype_field_name}", archetype_name.short_name())
+        } else {
+            component_name.short_name().to_owned()
+        }
     }
 
     /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:rerun.components.Position3D#positions`.
