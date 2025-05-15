@@ -129,11 +129,9 @@ impl FrontendService for FrontendHandler {
         _request: tonic::Request<re_protos::catalog::v1alpha1::FindEntriesRequest>,
     ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::FindEntriesResponse>, tonic::Status>
     {
+        let store = self.read_store()?;
         let response = re_protos::catalog::v1alpha1::FindEntriesResponse {
-            entries: self
-                .store
-                .read()
-                .unwrap()
+            entries: store
                 .iter_datasets()
                 .map(Dataset::as_entry_details)
                 .map(Into::into)
@@ -220,14 +218,15 @@ impl FrontendService for FrontendHandler {
         ))
     }
 
-    type WriteChunksStream = WriteChunksResponseStream;
-
     async fn write_chunks(
         &self,
         _request: tonic::Request<
-            tonic::Streaming<re_protos::frontend::v1alpha1::WriteChunksRequest>,
+            tonic::Streaming<re_protos::manifest_registry::v1alpha1::WriteChunksRequest>,
         >,
-    ) -> Result<tonic::Response<Self::WriteChunksStream>, tonic::Status> {
+    ) -> Result<
+        tonic::Response<re_protos::manifest_registry::v1alpha1::WriteChunksResponse>,
+        tonic::Status,
+    > {
         Err(tonic::Status::unimplemented("write_chunks not implemented"))
     }
 
