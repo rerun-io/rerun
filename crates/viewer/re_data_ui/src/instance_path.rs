@@ -296,6 +296,12 @@ fn component_list_ui(
                     component_descr
                         .component_name
                         .data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    if let Some(data) = unit.component_batch_raw(component_descr) {
+                        ui.list_item_flat_noninteractive(
+                            re_ui::list_item::PropertyContent::new("Data type")
+                                .value_text(re_arrow_util::format_data_type(data.data_type())),
+                        );
+                    }
                 });
 
                 if interactive {
