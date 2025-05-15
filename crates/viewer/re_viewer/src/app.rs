@@ -1160,11 +1160,7 @@ impl App {
             }
         }
 
-        re_log::info!(
-            "Saved {} recordings to {}.",
-            selected_stores.len(),
-            folder.display()
-        );
+        // TODO: log when they have all finished
     }
 
     fn run_time_control_command(
