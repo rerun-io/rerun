@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use tokio::signal::unix::{SignalKind, signal};
 use tracing::{info, warn};
@@ -17,6 +18,10 @@ struct Args {
     /// Port to bind to.
     #[clap(long, short = 'p', default_value_t = 51234)]
     port: u16,
+
+    /// Load a directory of RRD as dataset (can be specified multiple times).
+    #[clap(long = "dataset", short = 'd')]
+    datasets: Vec<PathBuf>,
 }
 
 pub fn run<I, T>(args: I) -> Result<(), Box<dyn std::error::Error>>
@@ -38,7 +43,14 @@ where
 async fn run_async(args: Args) -> anyhow::Result<()> {
     let frontend_server = {
         use re_protos::frontend::v1alpha1::frontend_service_server::FrontendServiceServer;
-        FrontendServiceServer::new(crate::FrontendHandlerBuilder::new().build())
+
+        let mut builder = crate::FrontendHandlerBuilder::new();
+
+        for dataset in &args.datasets {
+            builder = builder.with_directory_as_dataset(dataset)?;
+        }
+
+        FrontendServiceServer::new(builder.build())
     };
 
     let addr = SocketAddr::new(args.addr.parse()?, args.port);

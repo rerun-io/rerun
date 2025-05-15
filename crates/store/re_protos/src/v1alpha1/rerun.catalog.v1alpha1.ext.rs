@@ -107,7 +107,7 @@ impl From<DatasetEntry> for crate::catalog::v1alpha1::DatasetEntry {
     }
 }
 
-// --- ReadDatasetEntryResponse ---
+// --- CreateDatasetEntryResponse ---
 
 #[derive(Debug, Clone)]
 pub struct CreateDatasetEntryResponse {
@@ -137,6 +137,14 @@ impl TryFrom<crate::catalog::v1alpha1::CreateDatasetEntryResponse> for CreateDat
 #[derive(Debug, Clone)]
 pub struct ReadDatasetEntryResponse {
     pub dataset_entry: DatasetEntry,
+}
+
+impl From<ReadDatasetEntryResponse> for crate::catalog::v1alpha1::ReadDatasetEntryResponse {
+    fn from(value: ReadDatasetEntryResponse) -> Self {
+        Self {
+            dataset: Some(value.dataset_entry.into()),
+        }
+    }
 }
 
 impl TryFrom<crate::catalog::v1alpha1::ReadDatasetEntryResponse> for ReadDatasetEntryResponse {

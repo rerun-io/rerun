@@ -1,6 +1,7 @@
 mod entrypoint;
 mod frontend;
 mod server;
+mod store;
 
 pub use self::{
     entrypoint::run,

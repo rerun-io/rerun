@@ -33,15 +33,20 @@ default = []
 [dependencies]
 
 # Rerun
+re_entity_db.workspace = true
 re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
+re_log_encoding.workspace = true
+re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
 
 # External
 anyhow.workspace = true
+arrow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 futures.workspace = true
+jiff.workspace = true
 http.workspace = true
 mimalloc.workspace = true
 thiserror.workspace = true
@@ -52,3 +57,4 @@ tonic.workspace = true
 tower.workspace = true
 tower-service.workspace = true
 tracing.workspace = true
+url.workspace = true
