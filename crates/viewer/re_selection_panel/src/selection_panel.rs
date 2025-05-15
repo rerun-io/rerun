@@ -1048,7 +1048,7 @@ struct AddRecordingPropertyUi {
 impl Default for AddRecordingPropertyUi {
     fn default() -> Self {
         Self {
-            name: "Thing".to_owned(),
+            name: "thing".to_owned(),
             component: re_types::components::Text::name(),
         }
     }
