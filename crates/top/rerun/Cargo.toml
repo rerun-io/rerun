@@ -142,6 +142,7 @@ arrow.workspace = true
 camino.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
+gstreamer.workspace = true                                   # TODO: opt-in?
 indexmap.workspace = true
 indicatif.workspace = true
 itertools.workspace = true

@@ -218,6 +218,7 @@ getrandom = "0.2"
 glam = { version = "0.28", features = ["debug-glam-assert"] }
 glob = "0.3"
 gltf = "1.1"
+gstreamer = "0.23.6"
 half = { version = "2.3.1", features = ["bytemuck"] }
 hexasphere = "14.1.0"
 home = "=0.5.9"
@@ -240,7 +241,6 @@ memory-stats = "1.1"
 mimalloc = "0.1.43"
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
-re_mp4 = "0.3.0"
 natord = "1.0.9"
 ndarray = "0.16"
 ndarray-rand = "0.15"
@@ -276,6 +276,7 @@ quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
+re_mp4 = "0.3.0"
 rexif = "0.7.5"
 rfd = { version = "0.15", default-features = false, features = [
   "async-std",

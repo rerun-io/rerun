@@ -22,3 +22,11 @@ rustflags = ["--cfg=web_sys_unstable_apis"]
 # See https://blog.rust-lang.org/2025/01/09/Rust-1.84.0.html#cargo-considers-rust-versions-for-dependency-version-selection
 [resolver]
 incompatible-rust-versions = "fallback"
+
+# https://github.com/rust-lang/cargo/issues/5077
+# TODO: more docs why this is needed
+[target.'cfg(target_os = "macos")']
+rustflags = [
+  "-C",
+  "link-arg=-Wl,-rpath,/Library/Frameworks/GStreamer.framework/Libraries",
+]
