@@ -1,3 +1,5 @@
+use std::sync::{RwLock, RwLockReadGuard};
+
 use arrow::array::RecordBatch;
 
 use re_entity_db::EntityDb;
@@ -16,6 +18,7 @@ use re_protos::{
     },
 };
 use re_sorbet::{ChunkBatch, SorbetBatch};
+use tonic::Status;
 
 use crate::store::{Dataset, InMemoryStore};
 
@@ -53,12 +56,21 @@ impl FrontendHandlerBuilder {
 pub struct FrontendHandler {
     settings: FrontendHandlerSettings,
 
-    store: InMemoryStore,
+    store: std::sync::RwLock<InMemoryStore>,
 }
 
 impl FrontendHandler {
     pub fn new(settings: FrontendHandlerSettings, store: InMemoryStore) -> Self {
-        Self { settings, store }
+        Self {
+            settings,
+            store: RwLock::new(store),
+        }
+    }
+
+    fn read_store<'a>(&'a self) -> Result<RwLockReadGuard<'a, InMemoryStore>, tonic::Status> {
+        self.store
+            .read()
+            .map_err(|_| Status::resource_exhausted("failed to acquire lock"))
     }
 }
 
@@ -120,6 +132,8 @@ impl FrontendService for FrontendHandler {
         let response = re_protos::catalog::v1alpha1::FindEntriesResponse {
             entries: self
                 .store
+                .read()
+                .unwrap()
                 .iter_datasets()
                 .map(Dataset::as_entry_details)
                 .map(Into::into)
@@ -157,7 +171,8 @@ impl FrontendService for FrontendHandler {
             })?
             .try_into()?;
 
-        let dataset = self.store.dataset(entry_id).ok_or_else(|| {
+        let store = self.read_store()?;
+        let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
 
@@ -236,7 +251,8 @@ impl FrontendService for FrontendHandler {
             })?
             .try_into()?;
 
-        let _ = self.store.dataset(entry_id).ok_or_else(|| {
+        let store = self.read_store()?;
+        let _ = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
 
@@ -270,7 +286,8 @@ impl FrontendService for FrontendHandler {
             })?
             .try_into()?;
 
-        let dataset = self.store.dataset(entry_id).ok_or_else(|| {
+        let store = self.read_store()?;
+        let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
 
