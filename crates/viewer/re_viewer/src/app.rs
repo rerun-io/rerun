@@ -16,7 +16,7 @@ use re_viewer_context::{
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
     StoreContext, StoreHubEntry, SystemCommand, SystemCommandSender as _, TableStore, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel,
+    ViewClassRegistry, ViewClassRegistryError, command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
@@ -2473,7 +2473,14 @@ fn save_recording(
         .and_then(|info| info.store_version)
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
-    let file_name = "data.rrd";
+    let file_name = if let Some(recording_name) = entity_db
+        .recording_property::<re_types::components::Name>(
+            &re_types::archetypes::RecordingProperties::descriptor_name(),
+        ) {
+        format!("{}.rrd", santitize_file_name(&recording_name))
+    } else {
+        "data.rrd".to_owned()
+    };
 
     let title = if loop_selection.is_some() {
         "Save loop selection"
@@ -2484,7 +2491,7 @@ fn save_recording(
     save_entity_db(
         app,
         rrd_version,
-        file_name.to_owned(),
+        file_name,
         title.to_owned(),
         entity_db.to_messages(loop_selection),
     )
