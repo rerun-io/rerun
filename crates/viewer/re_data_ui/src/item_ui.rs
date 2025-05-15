@@ -808,6 +808,11 @@ pub fn entity_db_button_ui(
                                 });
                             ui.close();
                         }
+
+                        if !datasets.is_empty() {
+                            ui.separator();
+                        }
+
                         for dataset in datasets {
                             if ui.button(dataset).clicked() {
                                 ctx.command_sender()
