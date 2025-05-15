@@ -2,9 +2,10 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
-use tonic::Status;
 
+use re_entity_db::external::re_chunk_store::external::re_chunk::external::nohash_hasher::IntSet;
 use re_log_encoding::codec::wire::encoder::Encode as _;
+use re_log_types::EntityPath;
 use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
 use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::{
@@ -69,7 +70,7 @@ impl FrontendHandler {
     fn read_store<'a>(&'a self) -> Result<RwLockReadGuard<'a, InMemoryStore>, tonic::Status> {
         self.store
             .read()
-            .map_err(|_| Status::resource_exhausted("failed to acquire lock"))
+            .map_err(|_| tonic::Status::resource_exhausted("failed to acquire lock"))
     }
 }
 
@@ -392,9 +393,9 @@ impl FrontendService for FrontendHandler {
             dataset_id,
             mut partition_ids,
             chunk_ids,
+            entity_paths,
 
-            // We don't support querying for specific chunks, so you always get everything
-            entity_paths: _,
+            // We don't support queries, so you always get everything
             query: _,
         } = GetChunksRequest::try_from(request.into_inner())?;
 
@@ -403,6 +404,8 @@ impl FrontendService for FrontendHandler {
                 "get_chunks: querying specific chunk ids is not implemented",
             ));
         }
+
+        let entity_paths: IntSet<EntityPath> = IntSet::from_iter(entity_paths.into_iter());
 
         let store = self.read_store()?;
         let dataset = store.dataset(dataset_id).ok_or_else(|| {
@@ -432,11 +435,14 @@ impl FrontendService for FrontendHandler {
             .collect::<Result<Vec<_>, _>>()?;
 
         let stream = futures::stream::iter(storage_engines.into_iter().flat_map(
-            |(partition_id, storage_engine)| {
+            move |(partition_id, storage_engine)| {
                 storage_engine
                     .read()
                     .store()
                     .iter_chunks()
+                    .filter(|chunk| {
+                        entity_paths.is_empty() || entity_paths.contains(&chunk.entity_path())
+                    })
                     .map(|chunk| {
                         let record_batch: RecordBatch = chunk
                             .to_chunk_batch()

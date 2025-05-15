@@ -8247,6 +8247,7 @@ dependencies = [
  "http",
  "jiff",
  "mimalloc",
+ "nohash-hasher",
  "re_entity_db",
  "re_error",
  "re_log",

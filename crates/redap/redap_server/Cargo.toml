@@ -50,6 +50,7 @@ futures.workspace = true
 jiff.workspace = true
 http.workspace = true
 mimalloc.workspace = true
+nohash-hasher.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-stream.workspace = true
