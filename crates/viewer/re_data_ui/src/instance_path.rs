@@ -44,12 +44,6 @@ impl DataUi for InstancePath {
             .store()
             .all_components_on_timeline(&query.timeline(), entity_path);
 
-        if entity_path == &EntityPath::recording_properties() {
-            // TODO: add button for adding missing properties (like name)
-        } else if entity_path.starts_with(&EntityPath::properties()) {
-            // TODO: add button for adding a custom property
-        }
-
         let Some(component_descriptors) = component_descriptors else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
@@ -147,7 +141,10 @@ impl DataUi for InstancePath {
                             {
                                 // We're missing this component, so show a button to add it:
                                 if ui
-                                    .button(format!("Add '{}'", field.component_name))
+                                    .add(re_ui::icons::ADD.as_button_with_label(
+                                        ui.design_tokens(),
+                                        field.component_name.short_name(),
+                                    ))
                                     .clicked()
                                 {
                                     let array = array_ctor(1);

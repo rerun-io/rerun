@@ -311,7 +311,7 @@ impl SelectionPanel {
                         })
                         .config(
                             MenuConfig::default()
-                                .close_behavior(egui::PopupCloseBehavior::IgnoreClicks),
+                                .close_behavior(egui::PopupCloseBehavior::IgnoreClicks), // TODO: this doesn't work :(
                         ),
                     )
                     .show(ui, |ui| {
@@ -461,8 +461,6 @@ fn show_recording_properties(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
-    EntityPath::properties().data_ui(ctx, ui, ui_layout, query, db);
-
     let filtered = db
         .entity_paths()
         .into_iter()
@@ -1043,7 +1041,6 @@ fn visible_interactive_toggle_ui(
 
 #[derive(Clone, Debug)]
 struct AddRecordingPropertyUi {
-    /// Archetype field name of the `/__properties/user` entity
     name: String,
     component: ComponentName,
 }
@@ -1063,11 +1060,15 @@ impl AddRecordingPropertyUi {
 
         ui.label("Add a new property to the recording");
 
+        let mut add_it = false;
+
         egui::Grid::new("add_rec_prop")
             .num_columns(2)
             .show(ui, |ui| {
                 ui.label("Name");
-                ui.add(egui::TextEdit::singleline(name));
+                if ui.add(egui::TextEdit::singleline(name)).lost_focus() {
+                    add_it = true;
+                }
                 ui.end_row();
 
                 ui.label("Type");
@@ -1076,6 +1077,10 @@ impl AddRecordingPropertyUi {
             });
 
         if ui.button("Add").clicked() {
+            add_it = true;
+        }
+
+        if add_it {
             let comp_refl = &ctx.reflection().components[component];
             let array_ctor =
                 re_arrow_util::constructors::default_constructor_for_type(&comp_refl.datatype)
@@ -1114,6 +1119,7 @@ fn component_selection_ui(ui: &mut egui::Ui, selected: &mut ComponentName) {
         .selected_text(selected.short_name())
         .show_ui(ui, |ui| {
             for alternative in [
+                // TODO: bools
                 re_types::components::Scalar::name(),
                 re_types::components::Text::name(),
             ] {
