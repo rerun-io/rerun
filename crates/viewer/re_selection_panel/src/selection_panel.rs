@@ -302,12 +302,12 @@ impl SelectionPanel {
                 ui.section_collapsing_header("Properties")
                     .button(
                         list_item::ItemMenuButton::new(&re_ui::icons::ADD, |ui| {
-                            let mut add_prop_ui = ui.data(|data| {
-                                data.get_temp::<AddRecordingPropertyUi>(Id::NULL)
+                            let mut add_prop_ui = ui.data_mut(|data| {
+                                data.get_persisted::<AddRecordingPropertyUi>(Id::NULL)
                                     .unwrap_or_default()
                             });
                             add_prop_ui.ui(ctx, ui);
-                            ui.data_mut(|data| data.insert_temp(Id::NULL, add_prop_ui));
+                            ui.data_mut(|data| data.insert_persisted(Id::NULL, add_prop_ui));
                         })
                         .config(
                             MenuConfig::default()
@@ -1039,7 +1039,7 @@ fn visible_interactive_toggle_ui(
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 struct AddRecordingPropertyUi {
     name: String,
     component: ComponentName,
