@@ -8,7 +8,7 @@ use arrow::datatypes::{
 };
 
 use re_log_types::EntityPath;
-use re_types_core::{ComponentDescriptor as _, ComponentName};
+use re_types_core::ComponentName;
 
 use crate::{ColumnKind, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor};
 
