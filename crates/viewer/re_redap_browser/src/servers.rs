@@ -204,17 +204,24 @@ impl Server {
     fn upload_to_dataset(
         &self,
         dataset_name: String,
-        entity_db: &EntityDb,
+        entity_dbs: &[&EntityDb],
         command_sender: Sender<Command>,
         create_new: bool,
     ) {
-        let chunks: Vec<Arc<Chunk>> = entity_db
-            .storage_engine()
-            .store()
-            .iter_chunks()
-            .cloned()
+        let chunks: Vec<(StoreId, Vec<Arc<Chunk>>)> = entity_dbs
+            .iter()
+            .map(|entity_db| {
+                (
+                    entity_db.store_id(),
+                    entity_db
+                        .storage_engine()
+                        .store()
+                        .iter_chunks()
+                        .cloned()
+                        .collect(),
+                )
+            })
             .collect();
-        let recording_id = entity_db.store_id();
 
         let dataset_id = if create_new {
             None
@@ -250,8 +257,7 @@ impl Server {
                 }
             };
 
-            let result =
-                write_chunks_to_dataset(&mut client, &dataset_id, &recording_id, &chunks).await;
+            let result = write_chunks_to_dataset(&mut client, &dataset_id, &chunks).await;
             if let Err(err) = result {
                 re_log::error!("Failed to upload dataset: {err}");
             } else {
@@ -487,7 +493,7 @@ impl RedapServers {
 
     pub fn upload_to_dataset(
         &self,
-        recording: &EntityDb,
+        entity_dbs: &[&EntityDb],
         target_server: re_uri::Origin,
         dataset_name: String,
         create_new: bool,
@@ -501,7 +507,7 @@ impl RedapServers {
 
         server.upload_to_dataset(
             dataset_name,
-            recording,
+            entity_dbs,
             self.command_sender.clone(),
             create_new,
         );
@@ -511,44 +517,54 @@ impl RedapServers {
 async fn write_chunks_to_dataset(
     client: &mut RedapClient,
     dataset_id: &EntryId,
-    _partition_id: &StoreId,
-    chunks: &[Arc<Chunk>],
+    chunks_per_partition: &[(StoreId, Vec<Arc<Chunk>>)],
 ) -> Result<(), crate::entries::EntryError> {
-    // TODO: it's a bit unclear what the semantics of duplicating the partition are.
-    // Viewer gets very confused if it sees the same partition ID twice.
-    let partition_id_new = StoreId::random(re_log_types::StoreKind::Recording);
-    let partition_id = &partition_id_new;
-
-    let chunk_requests = chunks
-        .iter()
-        .map(|chunk| {
-            // TODO: Have to patch partition id in the metadata.
-            let sorbet_batch = chunk.to_chunk_batch().unwrap();
-            let mut metadata = sorbet_batch.schema().metadata().clone();
-            metadata.insert(
-                "rerun.partition_id".to_owned(),
-                partition_id.as_str().to_owned(),
-            );
-            let schema = (*sorbet_batch.schema()).clone().with_metadata(metadata);
-            let patched_batch =
-                <datafusion::arrow::array::RecordBatch as Clone>::clone(&sorbet_batch)
-                    .with_schema(Arc::new(schema))
-                    .unwrap();
-
-            let chunk: re_protos::common::v1alpha1::RerunChunk = patched_batch.encode().unwrap();
-
-            re_protos::manifest_registry::v1alpha1::WriteChunksRequest { chunk: Some(chunk) }
-        })
-        .collect::<Vec<_>>(); // TODO: no.
-
-    let reqs = ::futures::stream::iter(chunk_requests);
-    let mut request = tonic::Request::new(reqs);
-    request.metadata_mut().insert(
-        "x-rerun-dataset-id",
-        dataset_id.to_string().parse().unwrap(),
+    re_log::debug!(
+        "Writing {} recordings to dataset",
+        chunks_per_partition.len()
     );
 
-    client.write_chunks(request).await?;
+    // TODO: can't bundle those chunks into a single request.
+    for (_store_id, chunks) in chunks_per_partition {
+        // TODO: it's a bit unclear what the semantics of duplicating the partition are.
+        // Viewer gets very confused if it sees the same partition ID twice.
+        let partition_id_new = StoreId::random(re_log_types::StoreKind::Recording);
+        let partition_id = &partition_id_new;
+
+        let chunk_requests = chunks
+            .iter()
+            .map(move |chunk| {
+                // TODO: Have to patch partition id in the metadata.
+                let sorbet_batch = chunk.to_chunk_batch().unwrap();
+                let mut metadata = sorbet_batch.schema().metadata().clone();
+                metadata.insert(
+                    "rerun.partition_id".to_owned(),
+                    partition_id.as_str().to_owned(),
+                );
+                let schema = (*sorbet_batch.schema()).clone().with_metadata(metadata);
+                let patched_batch =
+                    <datafusion::arrow::array::RecordBatch as Clone>::clone(&sorbet_batch)
+                        .with_schema(Arc::new(schema))
+                        .unwrap();
+
+                let chunk: re_protos::common::v1alpha1::RerunChunk =
+                    patched_batch.encode().unwrap();
+
+                re_protos::manifest_registry::v1alpha1::WriteChunksRequest { chunk: Some(chunk) }
+            })
+            .collect::<Vec<_>>(); // TODO: no.
+
+        re_log::debug!("Writing {} chunks to dataset", chunk_requests.len());
+
+        let reqs = ::futures::stream::iter(chunk_requests);
+        let mut request = tonic::Request::new(reqs);
+        request.metadata_mut().insert(
+            "x-rerun-dataset-id",
+            dataset_id.to_string().parse().unwrap(),
+        );
+
+        client.write_chunks(request).await?;
+    }
 
     Ok(())
 }

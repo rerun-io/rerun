@@ -706,22 +706,22 @@ impl App {
                 }
             }
 
-            SystemCommand::UploadDataset {
+            SystemCommand::UploadToDataset {
                 store_id,
                 target_server,
                 dataset_name,
                 create_new,
             } => {
-                if let Some(entity_db) = store_hub.entity_db(&store_id) {
-                    self.state.redap_servers.upload_to_dataset(
-                        entity_db,
-                        target_server,
-                        dataset_name,
-                        create_new,
-                    );
-                } else {
-                    re_log::error!("No entity db for {store_id:?}.");
-                }
+                let entity_dbs = store_id
+                    .into_iter()
+                    .filter_map(|store_id| store_hub.entity_db(&store_id))
+                    .collect::<Vec<_>>();
+                self.state.redap_servers.upload_to_dataset(
+                    &entity_dbs,
+                    target_server,
+                    dataset_name,
+                    create_new,
+                );
             }
         }
     }

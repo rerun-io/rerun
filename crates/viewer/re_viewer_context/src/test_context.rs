@@ -544,7 +544,7 @@ impl TestContext {
                 #[cfg(not(target_arch = "wasm32"))]
                 SystemCommand::FileSaver(_) => handled = false,
 
-                SystemCommand::UploadDataset { .. } => {
+                SystemCommand::UploadToDataset { .. } => {
                     handled = false;
                 }
             }

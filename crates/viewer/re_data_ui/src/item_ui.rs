@@ -3,7 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_entity_db::{EntityTree, InstancePath};
+use re_entity_db::{EntityDb, EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{
     ApplicationId, EntityPath, TableId, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
@@ -797,8 +797,8 @@ pub fn entity_db_button_ui(
                     ui.menu_button(server.to_string(), |ui| {
                         if ui.button("Upload to new dataset").clicked() {
                             ctx.command_sender()
-                                .send_system(SystemCommand::UploadDataset {
-                                    store_id: entity_db.store_id().clone(),
+                                .send_system(SystemCommand::UploadToDataset {
+                                    store_id: vec![entity_db.store_id().clone()],
                                     target_server: server.clone(),
                                     dataset_name: entity_db
                                         .app_id()
@@ -816,8 +816,8 @@ pub fn entity_db_button_ui(
                         for dataset in datasets {
                             if ui.button(dataset).clicked() {
                                 ctx.command_sender()
-                                    .send_system(SystemCommand::UploadDataset {
-                                        store_id: entity_db.store_id().clone(),
+                                    .send_system(SystemCommand::UploadToDataset {
+                                        store_id: vec![entity_db.store_id().clone()],
                                         target_server: server.clone(),
                                         dataset_name: dataset.clone(),
                                         create_new: false,
@@ -827,23 +827,21 @@ pub fn entity_db_button_ui(
                         }
                     });
                 }
+            });
+        }
 
-                let is_redap_recording = matches!(
-                    entity_db.data_source,
-                    Some(re_smart_channel::SmartChannelSource::RedapGrpcStream(_))
-                );
+        let is_redap_recording = matches!(
+            entity_db.data_source,
+            Some(re_smart_channel::SmartChannelSource::RedapGrpcStream(_))
+        );
 
-                let rename_response =
-                    ui.add_enabled(!is_redap_recording, egui::Button::new("Rename"));
-                let rename_response = rename_response.on_disabled_hover_text(
-                    "Renaming is currently only supported for local datasets",
-                );
-                if rename_response.clicked() {
-                    // TODO: fix this
-                    let name_update_chunk = ChunkBuilder::new(
-                        re_types::ChunkId::new(),
-                        EntityPath::recording_properties(),
-                    )
+        let rename_response = ui.add_enabled(!is_redap_recording, egui::Button::new("Rename"));
+        let rename_response = rename_response
+            .on_disabled_hover_text("Renaming is currently only supported for local datasets");
+        if rename_response.clicked() {
+            // TODO: fix this
+            let name_update_chunk =
+                ChunkBuilder::new(re_types::ChunkId::new(), EntityPath::recording_properties())
                     .with_archetype(
                         RowId::new(),
                         TimePoint::STATIC,
@@ -854,13 +852,11 @@ pub fn entity_db_button_ui(
                     // All internal types, can't fail.
                     .expect("Failed to build name update chunk");
 
-                    ctx.command_sender()
-                        .send_system(SystemCommand::AppendToStore(
-                            store_id.clone(),
-                            vec![name_update_chunk],
-                        ));
-                }
-            });
+            ctx.command_sender()
+                .send_system(SystemCommand::AppendToStore(
+                    store_id.clone(),
+                    vec![name_update_chunk],
+                ));
         }
     });
 }

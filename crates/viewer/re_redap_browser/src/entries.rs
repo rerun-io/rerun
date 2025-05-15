@@ -361,6 +361,10 @@ pub fn dataset_and_its_recordings_ui(
         dataset_list_item.show_hierarchical(ui, dataset_list_item_content)
     };
 
+    item_response.context_menu(|ui| {
+        local_dataset_context_menu_ui(ctx, ui, &entity_dbs);
+    });
+
     if let EntryKind::Local(app) = &kind {
         item_response = item_response.on_hover_ui(|ui| {
             app.data_ui_recording(ctx, ui, UiLayout::Tooltip);
@@ -414,4 +418,56 @@ async fn fetch_dataset_entries(
     }
 
     Ok(datasets)
+}
+
+fn local_dataset_context_menu_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_dbs: &[&EntityDb],
+) {
+    // TODO: add save all button here as well.
+
+    if !ctx.global_context.servers.is_empty() && !entity_dbs.is_empty() {
+        ui.menu_button("Upload all to dataset", |ui| {
+            for (server, datasets) in ctx.global_context.servers {
+                ui.menu_button(server.to_string(), |ui| {
+                    if ui.button("Upload to new dataset").clicked() {
+                        let app_id = entity_dbs[0].app_id().unwrap(); // TODO: unwrap
+
+                        ctx.command_sender()
+                            .send_system(SystemCommand::UploadToDataset {
+                                store_id: entity_dbs
+                                    .iter()
+                                    .map(|entity_db| entity_db.store_id().clone())
+                                    .collect(),
+                                target_server: server.clone(),
+                                dataset_name: app_id.0.clone(),
+                                create_new: true,
+                            });
+                        ui.close();
+                    }
+
+                    if !datasets.is_empty() {
+                        ui.separator();
+                    }
+
+                    for dataset in datasets {
+                        if ui.button(dataset).clicked() {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::UploadToDataset {
+                                    store_id: entity_dbs
+                                        .iter()
+                                        .map(|entity_db| entity_db.store_id().clone())
+                                        .collect(),
+                                    target_server: server.clone(),
+                                    dataset_name: dataset.clone(),
+                                    create_new: false,
+                                });
+                            ui.close();
+                        }
+                    }
+                });
+            }
+        });
+    }
 }

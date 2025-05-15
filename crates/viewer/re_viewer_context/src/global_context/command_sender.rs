@@ -130,8 +130,8 @@ pub enum SystemCommand {
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
 
     /// Upload dataset.
-    UploadDataset {
-        store_id: StoreId,
+    UploadToDataset {
+        store_id: Vec<StoreId>,
         target_server: re_uri::Origin,
         dataset_name: String,
         create_new: bool,
