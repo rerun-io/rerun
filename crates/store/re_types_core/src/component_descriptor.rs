@@ -45,7 +45,7 @@ impl std::hash::Hash for ComponentDescriptor {
         let component_name = component_name.hash();
 
         // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
-        // called one, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
+        // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
         state.write_u64(archetype_name ^ archetype_field_name ^ component_name);
     }
 }
@@ -54,7 +54,7 @@ impl nohash_hasher::IsEnabled for ComponentDescriptor {}
 
 impl std::fmt::Display for ComponentDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&&self.display_name())
+        f.write_str(&self.display_name())
     }
 }
 
@@ -89,21 +89,23 @@ impl ComponentDescriptor {
         }
     }
 
-    fn to_any_string(&self, use_short_names: bool) -> String {
+    #[inline]
+    #[track_caller]
+    pub fn sanity_check(&self) {
+        self.component_name.sanity_check();
+    }
+
+    /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:rerun.components.Position3D#positions`.
+    #[inline]
+    pub fn full_name(&self) -> String {
         let Self {
             archetype_name,
             archetype_field_name,
             component_name,
         } = self;
 
-        let (archetype_name, component_name) = if use_short_names {
-            (
-                archetype_name.map(|s| s.short_name()),
-                component_name.short_name(),
-            )
-        } else {
-            (archetype_name.map(|s| s.as_str()), component_name.as_str())
-        };
+        let (archetype_name, component_name) =
+            (archetype_name.map(|s| s.as_str()), component_name.as_str());
 
         match (archetype_name, component_name, archetype_field_name) {
             (None, component_name, None) => component_name.to_owned(),
@@ -117,28 +119,6 @@ impl ComponentDescriptor {
                 format!("{archetype_name}:{component_name}#{archetype_field_name}")
             }
         }
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn sanity_check(&self) {
-        self.component_name.sanity_check();
-    }
-
-    /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:rerun.components.Position3D#positions`.
-    ///
-    /// This is the default `Display` implementation for [`ComponentDescriptor`].
-    #[inline]
-    pub fn full_name(&self) -> String {
-        self.sanity_check();
-        self.to_any_string(false)
-    }
-
-    /// Returns the unqualified name, e.g. `Points3D:Position3D#positions`.
-    #[inline]
-    pub fn short_name(&self) -> String {
-        self.sanity_check();
-        self.to_any_string(true)
     }
 }
 

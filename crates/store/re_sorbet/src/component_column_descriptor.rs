@@ -112,7 +112,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             is_semantically_empty: _,
         } = self;
 
-        let s = format!("{entity_path}@{}", descriptor.short_name());
+        let s = format!("{entity_path}@{}", descriptor.display_name());
 
         if *is_static {
             f.write_fmt(format_args!("|{s}|"))

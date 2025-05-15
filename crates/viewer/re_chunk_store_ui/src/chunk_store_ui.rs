@@ -203,10 +203,11 @@ impl DatastoreUi {
         } else {
             let component_filter = self.component_filter.to_lowercase();
             Either::Right(chunk_iterator.filter(move |chunk| {
-                chunk
-                    .components()
-                    .keys()
-                    .any(|name| name.short_name().to_lowercase().contains(&component_filter))
+                chunk.components().keys().any(|name| {
+                    name.display_name()
+                        .to_lowercase()
+                        .contains(&component_filter)
+                })
             }))
         };
 
@@ -323,7 +324,7 @@ impl DatastoreUi {
                     chunk
                         .components()
                         .keys()
-                        .map(|name| name.short_name())
+                        .map(|name| name.display_name())
                         .join(", "),
                 );
             });
