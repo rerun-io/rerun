@@ -76,6 +76,7 @@ pub struct ArrowMsg {
     ///
     /// Used to timestamp the batch as a whole for e.g. latency measurements without having to
     /// deserialize the arrow payload.
+    // TODO: remove!
     pub timepoint_max: TimePoint,
 
     /// Schema and data for all control & data columns.
