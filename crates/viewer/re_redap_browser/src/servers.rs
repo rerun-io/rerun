@@ -198,7 +198,12 @@ impl Server {
         }
     }
 
-    fn upload_dataset(&self, dataset_name: String, entity_db: &EntityDb) {
+    fn upload_dataset(
+        &self,
+        dataset_name: String,
+        entity_db: &EntityDb,
+        command_sender: Sender<Command>,
+    ) {
         let chunks: Vec<Arc<Chunk>> = entity_db
             .storage_engine()
             .store()
@@ -217,9 +222,12 @@ impl Server {
             let result =
                 write_chunks_to_dataset(origin.clone(), &dataset_id, &recording_id, &chunks).await;
             if let Err(err) = result {
-                re_log::error!("Failed to upl7oad dataset: {err}");
+                re_log::error!("Failed to upload dataset: {err}");
             } else {
                 re_log::info!("Successfully uploaded to {origin:?}");
+
+                // Kick off a refresh of the server.
+                command_sender.send(Command::RefreshCollection(origin)).ok();
             }
         });
     }
@@ -462,7 +470,7 @@ impl RedapServers {
             return;
         };
 
-        server.upload_dataset(dataset_name, recording);
+        server.upload_dataset(dataset_name, recording, self.command_sender.clone());
     }
 }
 
