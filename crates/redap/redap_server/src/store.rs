@@ -7,7 +7,7 @@ use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::catalog::v1alpha1::ext::{DatasetEntry, EntryDetails};
-use re_protos::common::v1alpha1::ext::DatasetHandle;
+use re_protos::common::v1alpha1::ext::{DatasetHandle, PartitionId};
 use re_protos::manifest_registry::v1alpha1::ScanPartitionTableResponse;
 
 #[derive(thiserror::Error, Debug)]
@@ -26,7 +26,7 @@ pub enum Error {
 pub struct Dataset {
     id: EntryId,
     name: String,
-    partitions: HashMap<StoreId, EntityDb>,
+    partitions: HashMap<PartitionId, EntityDb>,
     //TODO
     // storage url
     // created/modified time
@@ -90,6 +90,10 @@ impl Dataset {
             partition_manifest_urls,
         )
     }
+
+    pub fn partition(&self, partition_id: PartitionId) -> Option<&EntityDb> {
+        self.partitions.get(&partition_id)
+    }
 }
 
 #[derive(Default)]
@@ -143,7 +147,7 @@ impl InMemoryStore {
                                     partitions: HashMap::new(),
                                 })
                                 .partitions
-                                .insert(store_id, entity_db);
+                                .insert(PartitionId::new((*store_id.id).clone()), entity_db);
                         }
                     }
                 }

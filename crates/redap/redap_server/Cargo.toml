@@ -40,6 +40,7 @@ re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
+re_sorbet.workspace = true
 
 # External
 anyhow.workspace = true

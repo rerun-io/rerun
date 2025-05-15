@@ -1,7 +1,12 @@
+use arrow::array::RecordBatch;
+
+use re_entity_db::EntityDb;
+use re_entity_db::external::re_query::StorageEngineArcReadGuard;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
+use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::{
-    GetPartitionTableSchemaResponse, ScanPartitionTableResponse,
+    GetChunksResponse, GetPartitionTableSchemaResponse, ScanPartitionTableResponse,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -10,6 +15,7 @@ use re_protos::{
         QueryTasksRequest, QueryTasksResponse,
     },
 };
+use re_sorbet::{ChunkBatch, SorbetBatch};
 
 use crate::store::{Dataset, InMemoryStore};
 
