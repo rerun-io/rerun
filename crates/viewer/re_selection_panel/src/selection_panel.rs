@@ -310,30 +310,7 @@ impl SelectionPanel {
                         ui.data_mut(|data| data.insert_temp(Id::NULL, add_prop_ui));
                     }))
                     .show(ui, |ui| {
-                        let filtered = db
-                            .entity_paths()
-                            .into_iter()
-                            .filter(|entity_path| {
-                                // Only check for properties, but skip the recording properties,
-                                // because we display them already elsewhere in the UI.
-                                entity_path.is_descendant_of(&EntityPath::properties())
-                            })
-                            .collect::<Vec<_>>();
-
-                        if filtered.is_empty() {
-                            ui.label("No properties found for this recording.");
-                        } else {
-                            for entity_path in filtered {
-                                // We strip the property part
-                                let name = entity_path
-                                    .to_string()
-                                    .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                                    .map(re_case::to_human_case)
-                                    .unwrap_or("<unknown>".to_owned());
-                                ui.label(name);
-                                entity_path.data_ui(ctx, ui, ui_layout, &query, db);
-                            }
-                        }
+                        show_recording_properties(ctx, db, &query, ui, ui_layout);
                     });
             }
 
@@ -468,6 +445,41 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             view_components_defaults_section_ui(&view_ctx, ui, view);
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
+        }
+    }
+}
+
+fn show_recording_properties(
+    ctx: &ViewerContext<'_>,
+    db: &re_entity_db::EntityDb,
+    query: &re_chunk::LatestAtQuery,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+) {
+    EntityPath::properties().data_ui(ctx, ui, ui_layout, query, db);
+
+    let filtered = db
+        .entity_paths()
+        .into_iter()
+        .filter(|entity_path| {
+            // Only check for properties, but skip the recording properties,
+            // because we display them already elsewhere in the UI.
+            entity_path.is_descendant_of(&EntityPath::properties())
+        })
+        .collect::<Vec<_>>();
+
+    if filtered.is_empty() {
+        ui.label("No properties found for this recording.");
+    } else {
+        for entity_path in filtered {
+            // We strip the property part
+            let name = entity_path
+                .to_string()
+                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                .map(re_case::to_human_case)
+                .unwrap_or("<unknown>".to_owned());
+            ui.label(name);
+            entity_path.data_ui(ctx, ui, ui_layout, query, db);
         }
     }
 }
