@@ -475,13 +475,21 @@ impl TestContext {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
-                SystemCommand::UpdateBlueprint(store_id, chunks) => {
-                    assert_eq!(store_id, self.blueprint_store.store_id());
-
-                    for chunk in chunks {
-                        self.blueprint_store
-                            .add_chunk(&Arc::new(chunk))
-                            .expect("Updating the blueprint chunk store failed");
+                SystemCommand::AppendToStore(store_id, chunks) => {
+                    if store_id == self.recording_store.store_id() {
+                        for chunk in chunks {
+                            self.recording_store
+                                .add_chunk(&Arc::new(chunk))
+                                .expect("Updating the recording chunk store failed");
+                        }
+                    } else if store_id == self.blueprint_store.store_id() {
+                        for chunk in chunks {
+                            self.blueprint_store
+                                .add_chunk(&Arc::new(chunk))
+                                .expect("Updating the blueprint chunk store failed");
+                        }
+                    } else {
+                        panic!("Unknown store id: {store_id:?}");
                     }
                 }
 

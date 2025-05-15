@@ -406,7 +406,7 @@ impl Query {
 
                 ui.add_enabled_ui(is_enabled, |ui| {
                     if ui
-                        .re_checkbox(&mut is_visible, column.short_name())
+                        .re_checkbox(&mut is_visible, column.display_name())
                         .on_disabled_hover_text("The query timeline must always be visible")
                         .changed()
                     {
@@ -439,7 +439,7 @@ impl Query {
                 let mut is_visible = selected_columns.contains(&column_selector);
 
                 if ui
-                    .re_checkbox(&mut is_visible, column.short_name())
+                    .re_checkbox(&mut is_visible, column.display_name())
                     .changed()
                 {
                     if is_visible {

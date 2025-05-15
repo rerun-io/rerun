@@ -1,7 +1,7 @@
 use arrow::array::ArrayRef;
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
-use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
 use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
@@ -52,7 +52,7 @@ impl ViewerContext<'_> {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::UpdateBlueprint(
+            .send_system(SystemCommand::AppendToStore(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
             ));
@@ -94,7 +94,7 @@ impl ViewerContext<'_> {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::UpdateBlueprint(
+            .send_system(SystemCommand::AppendToStore(
                 self.store_context.blueprint.store_id().clone(),
                 vec![chunk],
             ));
@@ -106,24 +106,37 @@ impl ViewerContext<'_> {
         component_descr: ComponentDescriptor,
         array: ArrayRef,
     ) {
-        let timepoint = self.store_context.blueprint_timepoint_for_writes();
+        self.append_array_to_store(
+            self.store_context.blueprint.store_id().clone(),
+            self.store_context.blueprint_timepoint_for_writes(),
+            entity_path,
+            component_descr,
+            array,
+        );
+    }
 
+    /// Append an array to the given store.
+    pub fn append_array_to_store(
+        &self,
+        store_id: StoreId,
+        timepoint: TimePoint,
+        entity_path: &EntityPath,
+        component_descr: ComponentDescriptor,
+        array: ArrayRef,
+    ) {
         let chunk = match Chunk::builder(entity_path.clone())
-            .with_row(RowId::new(), timepoint.clone(), [(component_descr, array)])
+            .with_row(RowId::new(), timepoint, [(component_descr, array)])
             .build()
         {
             Ok(chunk) => chunk,
             Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint components: {}", err);
+                re_log::error_once!("Failed to create Chunk: {err}");
                 return;
             }
         };
 
         self.command_sender()
-            .send_system(SystemCommand::UpdateBlueprint(
-                self.store_context.blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+            .send_system(SystemCommand::AppendToStore(store_id, vec![chunk]));
     }
 
     /// Queries a raw component from the default blueprint.
@@ -192,7 +205,7 @@ impl ViewerContext<'_> {
         match chunk {
             Ok(chunk) => self
                 .command_sender()
-                .send_system(SystemCommand::UpdateBlueprint(
+                .send_system(SystemCommand::AppendToStore(
                     blueprint.store_id().clone(),
                     vec![chunk],
                 )),

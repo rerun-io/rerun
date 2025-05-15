@@ -30,6 +30,8 @@ impl crate::DataUi for EntityDb {
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
             {
                 ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind));
                 ui.label(self.store_id().to_string());

@@ -54,7 +54,7 @@ impl nohash_hasher::IsEnabled for ComponentDescriptor {}
 
 impl std::fmt::Display for ComponentDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_any_string(false))
+        f.write_str(&self.display_name())
     }
 }
 
@@ -73,6 +73,22 @@ impl<'d> From<&'d ComponentDescriptor> for Cow<'d, ComponentDescriptor> {
 }
 
 impl ComponentDescriptor {
+    pub fn display_name(&self) -> String {
+        self.sanity_check();
+
+        let Self {
+            archetype_name: _,
+            archetype_field_name,
+            component_name,
+        } = self;
+
+        if let Some(archetype_field_name) = &archetype_field_name {
+            archetype_field_name.to_string()
+        } else {
+            component_name.short_name().to_owned()
+        }
+    }
+
     fn to_any_string(&self, use_short_names: bool) -> String {
         let Self {
             archetype_name,
