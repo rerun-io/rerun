@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::fs::File;
 
 use arrow::array::RecordBatch;
+use arrow::datatypes::Schema;
 
 use re_entity_db::{EntityDb, StoreBundle};
-use re_log_types::{EntryId, StoreId, StoreKind};
+use re_log_types::{EntryId, StoreKind};
 use re_protos::catalog::v1alpha1::EntryKind;
 use re_protos::catalog::v1alpha1::ext::{DatasetEntry, EntryDetails};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, PartitionId};
@@ -63,6 +64,20 @@ impl Dataset {
                 url: url::Url::parse("file:///tmp/unsupported").expect("valid url"),
             },
         }
+    }
+
+    pub fn schema(&self) -> arrow::error::Result<Schema> {
+        let schemas = self.partitions.values().map(|entity_db| {
+            let columns = entity_db.storage_engine().store().schema();
+            let fields = columns.arrow_fields();
+            Schema::new(fields)
+        });
+
+        Schema::try_merge(schemas)
+    }
+
+    pub fn partition_ids(&self) -> impl Iterator<Item = PartitionId> {
+        self.partitions.keys().cloned()
     }
 
     pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {

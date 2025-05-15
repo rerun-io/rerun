@@ -1,14 +1,15 @@
-use std::sync::{RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use arrow::array::RecordBatch;
+use arrow::datatypes::Schema;
+use tonic::Status;
 
-use re_entity_db::EntityDb;
-use re_entity_db::external::re_query::StorageEngineArcReadGuard;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
 use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::{
-    GetChunksResponse, GetPartitionTableSchemaResponse, ScanPartitionTableResponse,
+    GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
+    ScanPartitionTableResponse,
 };
 use re_protos::{
     frontend::v1alpha1::frontend_service_server::FrontendService,
@@ -17,8 +18,6 @@ use re_protos::{
         QueryTasksRequest, QueryTasksResponse,
     },
 };
-use re_sorbet::{ChunkBatch, SorbetBatch};
-use tonic::Status;
 
 use crate::store::{Dataset, InMemoryStore};
 
@@ -308,14 +307,33 @@ impl FrontendService for FrontendHandler {
 
     async fn get_dataset_schema(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::GetDatasetSchemaRequest>,
+        request: tonic::Request<re_protos::frontend::v1alpha1::GetDatasetSchemaRequest>,
     ) -> std::result::Result<
         tonic::Response<re_protos::manifest_registry::v1alpha1::GetDatasetSchemaResponse>,
         tonic::Status,
     > {
-        Err(tonic::Status::unimplemented(
-            "get_dataset_schema not implemented",
-        ))
+        let entry_id = request
+            .into_inner()
+            .dataset_id
+            .ok_or_else(|| {
+                tonic::Status::invalid_argument("Missing dataset ID in GetDatasetSchemaRequest")
+            })?
+            .try_into()?;
+
+        let store = self.read_store()?;
+        let dataset = store.dataset(entry_id).ok_or_else(|| {
+            tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
+        })?;
+
+        let schema = dataset.schema().map_err(|err| {
+            tonic::Status::internal(format!("Unable to read dataset schema: {err}"))
+        })?;
+
+        Ok(tonic::Response::new(GetDatasetSchemaResponse {
+            schema: Some((&schema).try_into().map_err(|err| {
+                tonic::Status::internal(format!("Unable to serialize Arrow schema: {err}"))
+            })?),
+        }))
     }
 
     /* Indexing */
@@ -368,9 +386,89 @@ impl FrontendService for FrontendHandler {
 
     async fn get_chunks(
         &self,
-        _request: tonic::Request<re_protos::frontend::v1alpha1::GetChunksRequest>,
+        request: tonic::Request<re_protos::frontend::v1alpha1::GetChunksRequest>,
     ) -> std::result::Result<tonic::Response<Self::GetChunksStream>, tonic::Status> {
-        Err(tonic::Status::unimplemented("get_chunks not implemented"))
+        let GetChunksRequest {
+            dataset_id,
+            mut partition_ids,
+            chunk_ids,
+
+            // We don't support querying for specific chunks, so you always get everything
+            entity_paths: _,
+            query: _,
+        } = GetChunksRequest::try_from(request.into_inner())?;
+
+        if !chunk_ids.is_empty() {
+            return Err(tonic::Status::unimplemented(
+                "get_chunks: querying specific chunk ids is not implemented",
+            ));
+        }
+
+        let store = self.read_store()?;
+        let dataset = store.dataset(dataset_id).ok_or_else(|| {
+            tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
+        })?;
+
+        if partition_ids.is_empty() {
+            partition_ids = dataset.partition_ids().collect();
+        }
+
+        let storage_engines = partition_ids
+            .into_iter()
+            .map(|partition_id| {
+                dataset
+                    .partition(partition_id.clone())
+                    .ok_or_else(|| {
+                        tonic::Status::not_found(format!(
+                            "Partition with ID {partition_id} not found"
+                        ))
+                    })
+                    .map(|partition| {
+                        #[expect(unsafe_code)]
+                        unsafe { partition.storage_engine_raw() }.clone()
+                    })
+                    .map(|storage_engine| (partition_id, storage_engine))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let stream = futures::stream::iter(storage_engines.into_iter().flat_map(
+            |(partition_id, storage_engine)| {
+                storage_engine
+                    .read()
+                    .store()
+                    .iter_chunks()
+                    .map(|chunk| {
+                        let record_batch: RecordBatch = chunk
+                            .to_chunk_batch()
+                            .map_err(|err| {
+                                tonic::Status::internal(format!(
+                                    "Unable to convert chunk to RecordBatch: {err}"
+                                ))
+                            })?
+                            .into();
+
+                        let schema = (*record_batch.schema()).clone();
+                        let mut metadata = schema.metadata().clone();
+                        metadata.insert("rerun.partition_id".to_owned(), partition_id.id.clone());
+                        let new_schema = Schema::new_with_metadata(schema.fields, metadata);
+                        let record_batch = record_batch
+                            .with_schema(Arc::new(new_schema))
+                            .expect("can't fail, was a sane record batch to begin with");
+
+                        record_batch
+                            .encode()
+                            .map(|data| GetChunksResponse { chunk: Some(data) })
+                            .map_err(|err| {
+                                tonic::Status::internal(format!("failed encoding metadata: {err}"))
+                            })
+                    })
+                    .collect::<Vec<_>>()
+            },
+        ));
+
+        Ok(tonic::Response::new(
+            Box::pin(stream) as Self::GetChunksStream
+        ))
     }
 
     // --- Table APIs ---
