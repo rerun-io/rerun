@@ -13,7 +13,7 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{notifications, DesignTokens, UICommand, UICommandSender as _};
 use re_uri::Origin;
 use re_viewer_context::{
-    command_channel,
+    command_channel, santitize_file_name,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, AsyncRuntimeHandle, BlueprintUndoState, CommandReceiver, CommandSender,
     ComponentUiRegistry, DisplayMode, Item, PlayState, RecordingConfig, StorageContext,
@@ -2442,7 +2442,13 @@ fn save_recording(
         .and_then(|info| info.store_version)
         .unwrap_or(re_build_info::CrateVersion::LOCAL);
 
-    let file_name = "data.rrd";
+    let file_name = if let Some(recording_name) =
+        entity_db.recording_property::<re_types::components::Name>()
+    {
+        format!("{}.rrd", santitize_file_name(&recording_name))
+    } else {
+        "data.rrd".to_owned()
+    };
 
     let title = if loop_selection.is_some() {
         "Save loop selection"
@@ -2453,7 +2459,7 @@ fn save_recording(
     save_entity_db(
         app,
         rrd_version,
-        file_name.to_owned(),
+        file_name,
         title.to_owned(),
         entity_db.to_messages(loop_selection),
     )
