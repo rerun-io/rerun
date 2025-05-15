@@ -7,12 +7,10 @@ use egui::{Frame, Margin, RichText};
 use re_log_encoding::codec::wire::encoder::Encode;
 use re_log_types::{EntryId, StoreId};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
-use re_sorbet::{SorbetBatch, SorbetError};
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::external::re_chunk_store::Chunk;
 use re_viewer_context::external::re_entity_db::EntityDb;
-use re_viewer_context::external::tokio::sync::futures;
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
@@ -471,38 +469,33 @@ impl RedapServers {
 async fn write_chunks_to_dataset(
     origin: re_uri::Origin,
     dataset_id: &EntryId,
-    partition_id: &StoreId,
+    _partition_id: &StoreId,
     chunks: &[Arc<Chunk>],
 ) -> Result<(), crate::entries::EntryError> {
     let mut client = re_grpc_client::redap::client(origin).await?;
 
+    // TODO: it's a bit unclear what the semantics of duplicating the partition are.
+    // Viewer gets very confused if it sees the same partition ID twice.
+    let partition_id_new = StoreId::random(re_log_types::StoreKind::Recording);
+    let partition_id = &partition_id_new;
+
     let chunk_requests = chunks
         .iter()
         .map(|chunk| {
-            // TODO: have to patch because stuff. not htere yet
+            // TODO: Have to patch partition id in the metadata.
             let sorbet_batch = chunk.to_chunk_batch().unwrap();
-            // let mut schema = sorbet_batch.chunk_schema().clone();
-            // schema.partition_id = Some(partition_id.as_str().to_owned());
-
-            // let sorbet_batch = sorbet_batch.with_schema(schema);
-
-            // let encoded_batch: re_protos::common::v1alpha1::RerunChunk =
-            //     sorbet_batch.encode().unwrap();
-
-            // TODO: Put into `re_sorbet`
             let mut metadata = sorbet_batch.schema().metadata().clone();
             metadata.insert(
                 "rerun.partition_id".to_owned(),
                 partition_id.as_str().to_owned(),
             );
-            let schema = sorbet_batch.clone().schema();
-            let schema = Arc::new((*schema).clone().with_metadata(metadata));
-            let amended = <datafusion::arrow::array::RecordBatch as Clone>::clone(&sorbet_batch)
-                .with_schema(schema)
-                .unwrap();
+            let schema = (*sorbet_batch.schema()).clone().with_metadata(metadata);
+            let patched_batch =
+                <datafusion::arrow::array::RecordBatch as Clone>::clone(&sorbet_batch)
+                    .with_schema(Arc::new(schema))
+                    .unwrap();
 
-            //let amended = RecordBatch::try_new(schema, sorbet_batch.columns().to_vec()).unwrap();
-            let mut chunk: re_protos::common::v1alpha1::RerunChunk = amended.encode().unwrap();
+            let chunk: re_protos::common::v1alpha1::RerunChunk = patched_batch.encode().unwrap();
 
             re_protos::manifest_registry::v1alpha1::WriteChunksRequest { chunk: Some(chunk) }
         })
