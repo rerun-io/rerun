@@ -148,6 +148,8 @@ impl InMemoryStore {
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
                 if is_rrd {
+                    re_log::info!("Loading RRD: {}", entry.path().display());
+
                     let mut contents = StoreBundle::from_rrd(File::open(entry.path())?)?;
 
                     for entity_db in contents.drain_entity_dbs() {
