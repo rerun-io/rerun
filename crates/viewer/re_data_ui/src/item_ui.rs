@@ -800,6 +800,7 @@ pub fn entity_db_button_ui(
         let rename_response = rename_response
             .on_disabled_hover_text("Renaming is currently only supported for local datasets");
         if rename_response.clicked() {
+            // TODO: fix this
             let name_update_chunk =
                 ChunkBuilder::new(re_types::ChunkId::new(), EntityPath::recording_properties())
                     .with_archetype(
