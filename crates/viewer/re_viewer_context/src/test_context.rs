@@ -374,6 +374,7 @@ impl TestContext {
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
+                servers: &[],
             },
             store_context: &store_context,
             active_redap_entry: None,
@@ -534,6 +535,10 @@ impl TestContext {
 
                 #[cfg(not(target_arch = "wasm32"))]
                 SystemCommand::FileSaver(_) => handled = false,
+
+                SystemCommand::UploadDataset { .. } => {
+                    handled = false;
+                }
             }
 
             if !handled {

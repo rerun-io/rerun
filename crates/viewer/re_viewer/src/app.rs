@@ -696,6 +696,24 @@ impl App {
                     re_log::error!("Failed to save file: {err}");
                 }
             }
+
+            SystemCommand::UploadDataset {
+                store_id,
+                target_server,
+                dataset_name,
+                create_new,
+            } => {
+                if let Some(entity_db) = store_hub.entity_db(&store_id) {
+                    self.state.redap_servers.upload_dataset(
+                        entity_db,
+                        target_server,
+                        dataset_name,
+                        create_new,
+                    );
+                } else {
+                    re_log::error!("No entity db for {store_id:?}.");
+                }
+            }
         }
     }
 

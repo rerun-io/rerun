@@ -1,24 +1,30 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
 
-use re_log_types::EntryId;
+use re_log_encoding::codec::wire::encoder::Encode;
+use re_log_types::{EntryId, StoreId};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_sorbet::{SorbetBatch, SorbetError};
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
+use re_viewer_context::external::re_chunk_store::Chunk;
+use re_viewer_context::external::re_entity_db::EntityDb;
+use re_viewer_context::external::tokio::sync::futures;
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
-use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
+use crate::entries::{Dataset, DatasetRecordings, RemoteRecordings, ServerEntry};
 use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
     origin: re_uri::Origin,
-    entries: Entries,
+    entries: ServerEntry,
 
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: TablesSessionContext,
@@ -28,7 +34,7 @@ struct Server {
 
 impl Server {
     fn new(runtime: AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        let entries = Entries::new(&runtime, egui_ctx, origin.clone());
+        let entries = ServerEntry::new(&runtime, egui_ctx, origin.clone());
 
         let tables_session_ctx = TablesSessionContext::new(&runtime, egui_ctx, origin.clone());
 
@@ -41,7 +47,7 @@ impl Server {
     }
 
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
+        self.entries = ServerEntry::new(runtime, egui_ctx, self.origin.clone());
 
         // Note: this also drops the DataFusionTableWidget caches
         self.tables_session_ctx = TablesSessionContext::new(runtime, egui_ctx, self.origin.clone());
@@ -193,6 +199,32 @@ impl Server {
                 )));
         }
     }
+
+    fn upload_dataset(&self, dataset_name: String, entity_db: &EntityDb) {
+        let chunks: Vec<Arc<Chunk>> = entity_db
+            .storage_engine()
+            .store()
+            .iter_chunks()
+            .cloned()
+            .collect();
+        let recording_id = entity_db.store_id();
+        let Some(dataset) = self.entries.find_dataset_by_name(&dataset_name) else {
+            re_log::error!("Dataset not found: {dataset_name}");
+            return;
+        };
+        let dataset_id = dataset.id();
+        let origin = self.origin.clone();
+
+        self.runtime.spawn_future(async move {
+            let result =
+                write_chunks_to_dataset(origin.clone(), &dataset_id, &recording_id, &chunks).await;
+            if let Err(err) = result {
+                re_log::error!("Failed to upl7oad dataset: {err}");
+            } else {
+                re_log::info!("Successfully uploaded to {origin:?}");
+            }
+        });
+    }
 }
 
 /// All servers known to the viewer, and their catalog data.
@@ -275,6 +307,17 @@ impl RedapServers {
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         self.command_sender.send(Command::AddServer(origin)).ok();
+    }
+
+    pub fn that_list(&self) -> impl Iterator<Item = (re_uri::Origin, Vec<String>)> {
+        self.servers.iter().map(|(origin, server)| {
+            (
+                origin.clone(),
+                server.entries.dataset_names().map_or(Vec::new(), |names| {
+                    names.map(|name| name.to_owned()).collect::<Vec<String>>()
+                }),
+            )
+        })
     }
 
     /// Per-frame housekeeping.
@@ -404,4 +447,75 @@ impl RedapServers {
 
         func(&ctx)
     }
+
+    pub fn upload_dataset(
+        &self,
+        recording: &EntityDb,
+        target_server: re_uri::Origin,
+        dataset_name: String,
+        create_new: bool,
+    ) {
+        if create_new {
+            re_log::error!("creating new not implemented yet");
+        }
+
+        let Some(server) = self.servers.get(&target_server) else {
+            re_log::error!("Not connected to server at {target_server:?}");
+            return;
+        };
+
+        server.upload_dataset(dataset_name, recording);
+    }
+}
+
+async fn write_chunks_to_dataset(
+    origin: re_uri::Origin,
+    dataset_id: &EntryId,
+    partition_id: &StoreId,
+    chunks: &[Arc<Chunk>],
+) -> Result<(), crate::entries::EntryError> {
+    let mut client = re_grpc_client::redap::client(origin).await?;
+
+    let chunk_requests = chunks
+        .iter()
+        .map(|chunk| {
+            // TODO: have to patch because stuff. not htere yet
+            let sorbet_batch = chunk.to_chunk_batch().unwrap();
+            // let mut schema = sorbet_batch.chunk_schema().clone();
+            // schema.partition_id = Some(partition_id.as_str().to_owned());
+
+            // let sorbet_batch = sorbet_batch.with_schema(schema);
+
+            // let encoded_batch: re_protos::common::v1alpha1::RerunChunk =
+            //     sorbet_batch.encode().unwrap();
+
+            // TODO: Put into `re_sorbet`
+            let mut metadata = sorbet_batch.schema().metadata().clone();
+            metadata.insert(
+                "rerun.partition_id".to_owned(),
+                partition_id.as_str().to_owned(),
+            );
+            let schema = sorbet_batch.clone().schema();
+            let schema = Arc::new((*schema).clone().with_metadata(metadata));
+            let amended = <datafusion::arrow::array::RecordBatch as Clone>::clone(&sorbet_batch)
+                .with_schema(schema)
+                .unwrap();
+
+            //let amended = RecordBatch::try_new(schema, sorbet_batch.columns().to_vec()).unwrap();
+            let mut chunk: re_protos::common::v1alpha1::RerunChunk = amended.encode().unwrap();
+
+            re_protos::manifest_registry::v1alpha1::WriteChunksRequest { chunk: Some(chunk) }
+        })
+        .collect::<Vec<_>>(); // TODO: no.
+
+    let reqs = ::futures::stream::iter(chunk_requests);
+    let mut request = tonic::Request::new(reqs);
+    request.metadata_mut().insert(
+        "x-rerun-dataset-id",
+        dataset_id.to_string().parse().unwrap(),
+    );
+
+    client.write_chunks(request).await?;
+
+    Ok(())
 }

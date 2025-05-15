@@ -68,7 +68,7 @@ impl Dataset {
 }
 
 /// All the entries of a server.
-pub struct Entries {
+pub struct ServerEntry {
     //TODO(ab): in the future, there will be more kinds of entries
 
     // TODO(ab): we currently load the ENTIRE list of datasets, including their partition tables. We
@@ -76,7 +76,7 @@ pub struct Entries {
     datasets: RequestedObject<Result<HashMap<EntryId, Dataset>, EntryError>>,
 }
 
-impl Entries {
+impl ServerEntry {
     pub fn new(
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
@@ -97,10 +97,27 @@ impl Entries {
         self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
+    pub fn find_dataset_by_name(&self, entry_name: &str) -> Option<&Dataset> {
+        self.datasets
+            .try_as_ref()?
+            .as_ref()
+            .ok()?
+            .values()
+            .find(|d| d.name() == entry_name)
+    }
+
     pub fn dataset_count(&self) -> Option<Result<usize, &EntryError>> {
         self.datasets
             .try_as_ref()
             .map(|r| r.as_ref().map(|datasets| datasets.len()))
+    }
+
+    pub fn dataset_names(&self) -> Option<impl Iterator<Item = &str>> {
+        self.datasets.try_as_ref().and_then(|r| {
+            r.as_ref()
+                .ok()
+                .map(|datasets| datasets.values().map(|d| d.name()))
+        })
     }
 
     #[expect(clippy::unused_self)]

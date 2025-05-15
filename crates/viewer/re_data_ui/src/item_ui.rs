@@ -785,6 +785,69 @@ pub fn entity_db_button_ui(
         ctx.command_sender()
             .send_system(SystemCommand::SetSelection(item));
     }
+
+    response.context_menu(|ui| {
+        if !ctx.global_context.servers.is_empty() {
+            ui.menu_button("Upload partiation", |ui| {
+                for (server, datasets) in ctx.global_context.servers {
+                    ui.menu_button(server.to_string(), |ui| {
+                        if ui.button("Upload to new dataset").clicked() {
+                            ctx.command_sender()
+                                .send_system(SystemCommand::UploadDataset {
+                                    store_id: entity_db.store_id().clone(),
+                                    target_server: server.clone(),
+                                    dataset_name: String::new(), // TODO: asd;flkajsdf;laskdjf;aslkdjf
+                                    create_new: true,
+                                });
+                            ui.close();
+                        }
+                        for dataset in datasets {
+                            if ui.button(dataset).clicked() {
+                                ctx.command_sender()
+                                    .send_system(SystemCommand::UploadDataset {
+                                        store_id: entity_db.store_id().clone(),
+                                        target_server: server.clone(),
+                                        dataset_name: dataset.clone(),
+                                        create_new: false,
+                                    });
+                                ui.close();
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //
+
+        // let is_redap_recording = matches!(
+        //     entity_db.data_source,
+        //     Some(re_smart_channel::SmartChannelSource::RedapGrpcStream(_))
+        // );
+
+        // let rename_response = ui.add_enabled(!is_redap_recording, egui::Button::new("Rename"));
+        // let rename_response = rename_response
+        //     .on_disabled_hover_text("Renaming is currently only supported for local datasets");
+        // if rename_response.clicked() {
+        //     let name_update_chunk =
+        //         ChunkBuilder::new(re_types::ChunkId::new(), EntityPath::recording_properties())
+        //             .with_archetype(
+        //                 RowId::new(),
+        //                 TimePoint::STATIC,
+        //                 &archetypes::RecordingProperties::update_fields()
+        //                     .with_name("yes. you renamed it"),
+        //             )
+        //             .build()
+        //             // All internal types, can't fail.
+        //             .expect("Failed to build name update chunk");
+
+        //     ctx.command_sender()
+        //         .send_system(SystemCommand::UpdateRecording(
+        //             store_id.clone().into(),
+        //             vec![name_update_chunk],
+        //         ));
+        // }
+    });
 }
 
 pub fn table_id_button_ui(
