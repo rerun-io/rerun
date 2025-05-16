@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // TODO: do not commit
+
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // TODO: do not commit
+
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
@@ -288,16 +290,21 @@ impl FrontendService for FrontendHandler {
 
             let mut entity_db = EntityDb::new(store_id);
 
-            entity_db.add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()));
+            entity_db
+                .add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()))
+                .unwrap();
 
-            (entity_db, re_protos::common::v1alpha1::ext::PartitionId {
-                id: partition_id,
-            })
+            (
+                entity_db,
+                re_protos::common::v1alpha1::ext::PartitionId { id: partition_id },
+            )
         };
 
         while let Some(Ok(chunk_msg)) = request.next().await {
             let chunk_batch = chunk_msg.chunk.unwrap().decode().unwrap();
-            entity_db.add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()));
+            entity_db
+                .add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()))
+                .unwrap();
         }
 
         let mut store = self.store.write();

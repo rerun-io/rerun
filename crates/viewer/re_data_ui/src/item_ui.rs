@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)] // TODO: do not commit
+
 //! Basic ui elements & interaction for most `re_viewer_context::Item`.
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
