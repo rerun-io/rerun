@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="github crates-io docs-rs"><title>rerun::external::re_entity_db::external::re_query::external::seq_macro - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../" data-static-root-path="../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../static.files/storage-59e33391.js"></script><script defer src="../../../../../../../crates.js"></script><script defer src="../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#imagine-for-loops-in-a-macro" title="Imagine for-loops in a macro">Imagine for-loops in a macro</a></li></ul><h3><a href="#macros">Crate Items</a></h3><ul class="block"><li><a href="#macros" title="Macros">Macros</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>re_<wbr>entity_<wbr>db::<wbr>external::<wbr>re_<wbr>query::<wbr>external</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../index.html">external</a>::<wbr><a href="../../../../index.html">re_entity_db</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_query</a>::<wbr><a href="../index.html">external</a></span><h1>Crate <span>seq_macro</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="https://docs.rs/seq-macro/0.3.5/src/seq_macro/lib.rs.html#1-372">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p><a href="https://github.com/dtolnay/seq-macro"><img src="https://img.shields.io/badge/github-8da0cb?style=for-the-badge&amp;labelColor=555555&amp;logo=github" alt="github" /></a> <a href="https://crates.io/crates/seq-macro"><img src="https://img.shields.io/badge/crates.io-fc8d62?style=for-the-badge&amp;labelColor=555555&amp;logo=rust" alt="crates-io" /></a> <a href="https://docs.rs/seq-macro"><img src="https://img.shields.io/badge/docs.rs-66c2a5?style=for-the-badge&amp;labelColor=555555&amp;logo=docs.rs" alt="docs-rs" /></a></p>
+<br>
+<h2 id="imagine-for-loops-in-a-macro"><a class="doc-anchor" href="#imagine-for-loops-in-a-macro">§</a>Imagine for-loops in a macro</h2>
+<p>This crate provides a <code>seq!</code> macro to repeat a fragment of source code and
+substitute into each repetition a sequential numeric counter.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>seq_macro::seq;
+
+<span class="kw">fn </span>main() {
+    <span class="kw">let </span>tuple = (<span class="number">1000</span>, <span class="number">100</span>, <span class="number">10</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>sum = <span class="number">0</span>;
+
+    <span class="comment">// Expands to:
+    //
+    //     sum += tuple.0;
+    //     sum += tuple.1;
+    //     sum += tuple.2;
+    //
+    // This cannot be written using an ordinary for-loop because elements of
+    // a tuple can only be accessed by their integer literal index, not by a
+    // variable.
+    </span><span class="macro">seq!</span>(N <span class="kw">in </span><span class="number">0</span>..=<span class="number">2 </span>{
+        sum += tuple.N;
+    });
+
+    <span class="macro">assert_eq!</span>(sum, <span class="number">1110</span>);
+}</code></pre></div>
+<ul>
+<li>
+<p>If the input tokens contain a section surrounded by <code>#(</code> … <code>)*</code> then
+only that part is repeated.</p>
+</li>
+<li>
+<p>The numeric counter can be pasted onto the end of some prefix to form
+sequential identifiers.</p>
+</li>
+</ul>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>seq_macro::seq;
+
+<span class="macro">seq!</span>(N <span class="kw">in </span><span class="number">64</span>..=<span class="number">127 </span>{
+    <span class="attr">#[derive(Debug)]
+    </span><span class="kw">enum </span>Demo {
+        <span class="comment">// Expands to Variant64, Variant65, ...
+        </span>#(
+            Variant~N,
+        )*
+    }
+});
+
+<span class="kw">fn </span>main() {
+    <span class="macro">assert_eq!</span>(<span class="string">"Variant99"</span>, <span class="macro">format!</span>(<span class="string">"{:?}"</span>, Demo::Variant99));
+}</code></pre></div>
+<ul>
+<li>
+<p>Byte and character ranges are supported: <code>b'a'..=b'z'</code>, <code>'a'..='z'</code>.</p>
+</li>
+<li>
+<p>If the range bounds are written in binary, octal, hex, or with zero
+padding, those features are preserved in any generated tokens.</p>
+</li>
+</ul>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>seq_macro::seq;
+
+<span class="macro">seq!</span>(P <span class="kw">in </span><span class="number">0x000</span>..=<span class="number">0x00F </span>{
+    <span class="comment">// expands to structs Pin000, ..., Pin009, Pin00A, ..., Pin00F
+    </span><span class="kw">struct </span>Pin~P;
+});</code></pre></div>
+</div></details><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.seq.html" title="macro rerun::external::re_entity_db::external::re_query::external::seq_macro::seq">seq</a></div></li></ul></section></div></main></body></html>

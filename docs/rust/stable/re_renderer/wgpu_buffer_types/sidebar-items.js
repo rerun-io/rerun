@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["F32RowPadded","Mat3","Mat4","Mat4x3","PaddingRow","U32RowPadded","UVec2","UVec2RowPadded","Vec2","Vec2RowPadded","Vec3RowPadded","Vec3Unpadded","Vec4"]};

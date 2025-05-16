@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="TUID: Time-based Unique Identifiers."><title>rerun::external::re_log_types::external::re_tuid - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../static.files/storage-59e33391.js"></script><script defer src="../../../../../crates.js"></script><script defer src="../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#format" title="Format">Format</a></li><li><a href="#namespace-prefix" title="Namespace prefix">Namespace prefix</a></li><li><a href="#feature-flags" title="Feature flags">Feature flags</a></li></ul><h3><a href="#structs">Crate Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>re_<wbr>log_<wbr>types::<wbr>external</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../index.html">rerun</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">re_log_types</a>::<wbr><a href="../index.html">external</a></span><h1>Crate <span>re_tuid</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../../../src/re_tuid/lib.rs.html#1-377">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>TUID: Time-based Unique Identifiers.</p>
+<p>Time-ordered unique 128-bit identifiers.</p>
+<h3 id="format"><a class="doc-anchor" href="#format">§</a>Format</h3>
+<p>The default string format is big-endian hex, e.g. <code>182342300C5F8C327a7b4a6e5a379ac4</code>.
+This means the string representation sorts the same.</p>
+<h3 id="namespace-prefix"><a class="doc-anchor" href="#namespace-prefix">§</a>Namespace prefix</h3>
+<p>It is common to prefix an TUID with a <em>namespace</em>. This is done as:
+<code>{namespace}_{tuid}</code> where <code>namespace</code> can be anything but is <em>recommended</em> to be:</p>
+<ul>
+<li>Lowercase</li>
+<li>ASCII</li>
+<li>Short (“row”, “user”, “chunk”, …)</li>
+</ul>
+<p>For instance, <code>user_182342300C5F8C327a7b4a6e5a379ac4</code>.</p>
+<p>The idiomatic way of implementing this is to wrap <a href="../../../re_types_core/external/re_tuid/struct.Tuid.html" title="struct rerun::external::re_types_core::external::re_tuid::Tuid"><code>Tuid</code></a> in a newtype struct
+(e.g. <code>struct UserId(Tuid)</code>) and implement the prefix there.</p>
+<p>It is recommended that</p>
+<ul>
+<li>Finding the wrong prefix is an error</li>
+<li>A missing prefix is NOT an error</li>
+</ul>
+<p>Thus, <code>user_182342300C5F8C327a7b4a6e5a379ac4</code> and <code>182342300C5F8C327a7b4a6e5a379ac4</code>
+are both valid <code>UserId</code>:s, but <code>chunk_182342300C5F8C327a7b4a6e5a379ac4</code> is NOT.</p>
+<p>The namespace if ONLY part of the <em>string</em> representation, and is there to help
+a user identify what would otherwise be just random hex.
+In other words, it’s mainly for <em>debugging</em> purposes.</p>
+<p>When storing the TUID in e.g. an Arrow column, use 16 bytes for each id.</p>
+<h3 id="feature-flags"><a class="doc-anchor" href="#feature-flags">§</a>Feature flags</h3>
+<ul>
+<li><strong><code>bytemuck</code></strong> —  Enable bytemuck support.</li>
+<li><strong><code>serde</code></strong> —  Enable (de)serialization using serde.</li>
+</ul>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Tuid.html" title="struct rerun::external::re_log_types::external::re_tuid::Tuid">Tuid</a></div><div class="desc docblock-short">TUID: Time-based Unique Identifier.</div></li></ul></section></div></main></body></html>

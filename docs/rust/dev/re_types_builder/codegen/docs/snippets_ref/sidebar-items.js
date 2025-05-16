@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["collect_snippets_recursively","contains_whole_word","is_speculative","make_speculative_if_needed"],"struct":["Config","KnownObjects","OptOut","Snippet","Snippets","SnippetsRef","SnippetsRefCodeGenerator"]};

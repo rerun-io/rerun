@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["color_archetype","color_coordinates_view","color_coordinates_visualizer_system"],"static":["GLOBAL"]};

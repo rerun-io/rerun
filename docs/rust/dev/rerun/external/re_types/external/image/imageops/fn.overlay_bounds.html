@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Calculate the region that can be copied from top to bottom."><title>overlay_bounds in rerun::external::re_types::external::image::imageops - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>re_<wbr>types::<wbr>external::<wbr>image::<wbr>imageops</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">rerun</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">re_types</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">image</a>::<wbr><a href="index.html">imageops</a></span><h1>Function <span class="fn">overlay_bounds</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub fn overlay_bounds(
+    _: (<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>, <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>),
+    _: (<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>, <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>),
+    x: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>,
+    y: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>,
+) -&gt; (<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>, <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.u32.html">u32</a>)</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Calculate the region that can be copied from top to bottom.</p>
+<p>Given image size of bottom and top image, and a point at which we want to place the top image
+onto the bottom image, how large can we be? Have to wary of the following issues:</p>
+<ul>
+<li>Top might be larger than bottom</li>
+<li>Overflows in the computation</li>
+<li>Coordinates could be completely out of bounds</li>
+</ul>
+<p>The main idea is to make use of inequalities provided by the nature of <code>saturating_add</code> and
+<code>saturating_sub</code>. These intrinsically validate that all resulting coordinates will be in bounds
+for both images.</p>
+<p>We want that all these coordinate accesses are safe:</p>
+<ol>
+<li><code>bottom.get_pixel(x + [0..x_range), y + [0..y_range))</code></li>
+<li><code>top.get_pixel([0..x_range), [0..y_range))</code></li>
+</ol>
+<p>Proof that the function provides the necessary bounds for width. Note that all unaugmented math
+operations are to be read in standard arithmetic, not integer arithmetic. Since no direct
+integer arithmetic occurs in the implementation, this is unambiguous.</p>
+<div class="example-wrap"><pre class="language-text"><code>Three short notes/lemmata:
+- Iff `(a - b) &lt;= 0` then `a.saturating_sub(b) = 0`
+- Iff `(a - b) &gt;= 0` then `a.saturating_sub(b) = a - b`
+- If  `a &lt;= c` then `a.saturating_sub(b) &lt;= c.saturating_sub(b)`
+
+1.1 We show that if `bottom_width &lt;= x`, then `x_range = 0` therefore `x + [0..x_range)` is empty.
+
+x_range
+ = (top_width.saturating_add(x).min(bottom_width)).saturating_sub(x)
+&lt;= bottom_width.saturating_sub(x)
+
+bottom_width &lt;= x
+&lt;==&gt; bottom_width - x &lt;= 0
+&lt;==&gt; bottom_width.saturating_sub(x) = 0
+ ==&gt; x_range &lt;= 0
+ ==&gt; x_range  = 0
+
+1.2 If `x &lt; bottom_width` then `x + x_range &lt; bottom_width`
+
+x + x_range
+&lt;= x + bottom_width.saturating_sub(x)
+ = x + (bottom_width - x)
+ = bottom_width
+
+2. We show that `x_range &lt;= top_width`
+
+x_range
+ = (top_width.saturating_add(x).min(bottom_width)).saturating_sub(x)
+&lt;= top_width.saturating_add(x).saturating_sub(x)
+&lt;= (top_wdith + x).saturating_sub(x)
+ = top_width (due to `top_width &gt;= 0` and `x &gt;= 0`)</code></pre></div>
+<p>Proof is the same for height.</p>
+</div></details></section></div></main></body></html>

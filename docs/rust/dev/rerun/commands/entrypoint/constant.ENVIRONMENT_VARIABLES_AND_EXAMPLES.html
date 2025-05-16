@@ -1,0 +1,46 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `ENVIRONMENT_VARIABLES_AND_EXAMPLES` constant in crate `rerun`."><title>ENVIRONMENT_VARIABLES_AND_EXAMPLES in rerun::commands::entrypoint - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc constant"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>commands::<wbr>entrypoint</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../index.html">rerun</a>::<wbr><a href="../index.html">commands</a>::<wbr><a href="index.html">entrypoint</a></span><h1>Constant <span class="constant">ENVIRONMENT_VARIABLES_AND_EXAMPLES</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/rerun/commands/entrypoint.rs.html#34-79">Source</a> </span></div><pre class="rust item-decl"><code>const ENVIRONMENT_VARIABLES_AND_EXAMPLES: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a> = r#&quot;
+Environment variables:
+    RERUN_CHUNK_MAX_BYTES     Maximum chunk size threshold for the compactor.
+    RERUN_CHUNK_MAX_ROWS      Maximum chunk row count threshold for the compactor (sorted chunks).
+    RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
+                              Maximum chunk row count threshold for the compactor (unsorted chunks).
+    RERUN_SHADER_PATH         The search path for shader/shader-imports. Only available in developer builds.
+    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer.
+                              WARNING: slows down the viewer by a lot!
+    RERUN_MAPBOX_ACCESS_TOKEN The Mapbox access token to use the Mapbox-provided backgrounds in the map view.
+    RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
+    WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.
+                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is
+                              supported depends on your OS.
+    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high`
+                              or `low`. (Default is `high`)
+
+
+Examples:
+    Open a Rerun Viewer that listens for incoming SDK connections:
+        rerun
+
+    Load some files and show them in the Rerun Viewer:
+        rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd
+
+    Open an .rrd file and stream it to a Web Viewer:
+        rerun recording.rrd --web-viewer
+
+    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results:
+        rerun --serve-web
+
+    Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers:
+        rerun --serve-web recording.rrd
+
+    Host a Rerun gRPC server without spawning a Viewer:
+        rerun --serve-grpc
+
+    Spawn a Viewer without also hosting a gRPC server:
+        rerun --connect
+
+    Connect to a Rerun Server:
+        rerun rerun+http://localhost:9877/proxy
+
+    Listen for incoming gRPC connections from the logging SDK and stream the results to disk:
+        rerun --save new_recording.rrd
+&quot;#;</code></pre></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_multiline_string","edit_multiline_string_impl","edit_singleline_string","edit_singleline_string_impl"]};

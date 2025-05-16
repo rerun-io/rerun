@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GenError","ProcMeshKey"],"fn":["generate_solid","generate_wireframe","materials_for_uncolored_mesh","mesh_from_mesh_gen"],"struct":["OctahedronBase","SolidCache","SolidMesh","WireframeCache","WireframeMesh"]};

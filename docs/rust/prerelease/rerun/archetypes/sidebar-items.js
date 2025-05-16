@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AnnotationContext","Arrows3D","Asset3D","BarChart","Boxes2D","Boxes3D","Clear","DepthImage","DisconnectedSpace","Image","LineStrips2D","LineStrips3D","Mesh3D","Pinhole","Points2D","Points3D","SegmentationImage","Tensor","TextDocument","TextLog","TimeSeriesScalar","Transform3D","ViewCoordinates"]};

@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Determine whether `index` is statically known to be in bounds for `base`."><title>access_needs_check in rerun::external::eframe::egui_wgpu::wgpu::core::naga::proc::index - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../" data-static-root-path="../../../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>eframe::<wbr>egui_<wbr>wgpu::<wbr>wgpu::<wbr>core::<wbr>naga::<wbr>proc::<wbr>index</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../../../index.html">external</a>::<wbr><a href="../../../../../../index.html">eframe</a>::<wbr><a href="../../../../../index.html">egui_wgpu</a>::<wbr><a href="../../../../index.html">wgpu</a>::<wbr><a href="../../../index.html">core</a>::<wbr><a href="../../index.html">naga</a>::<wbr><a href="../index.html">proc</a>::<wbr><a href="index.html">index</a></span><h1>Function <span class="fn">access_needs_check</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub fn access_needs_check(
+    base: <a class="struct" href="../../struct.Handle.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::naga::Handle">Handle</a>&lt;<a class="enum" href="../../enum.Expression.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::core::naga::Expression">Expression</a>&gt;,
+    index: <a class="enum" href="enum.GuardedIndex.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::core::naga::proc::index::GuardedIndex">GuardedIndex</a>,
+    module: &amp;<a class="struct" href="../../struct.Module.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::naga::Module">Module</a>,
+    expressions: &amp;<a class="struct" href="../../struct.Arena.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::naga::Arena">Arena</a>&lt;<a class="enum" href="../../enum.Expression.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::core::naga::Expression">Expression</a>&gt;,
+    info: &amp;<a class="struct" href="../../valid/struct.FunctionInfo.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::core::naga::valid::FunctionInfo">FunctionInfo</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../enum.IndexableLength.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::core::naga::proc::IndexableLength">IndexableLength</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Determine whether <code>index</code> is statically known to be in bounds for <code>base</code>.</p>
+<p>If we can’t be sure that the index is in bounds, return the limit within
+which valid indices must fall.</p>
+<p>The return value is one of the following:</p>
+<ul>
+<li>
+<p><code>Some(Known(n))</code> indicates that <code>n</code> is the largest valid index.</p>
+</li>
+<li>
+<p><code>Some(Computed(global))</code> indicates that the largest valid index is one
+less than the length of the array that is the last member of the
+struct held in <code>global</code>.</p>
+</li>
+<li>
+<p><code>None</code> indicates that the index need not be checked, either because it
+is statically known to be in bounds, or because the applicable policy
+is <code>Unchecked</code>.</p>
+</li>
+</ul>
+<p>This function only handles subscriptable types: arrays, vectors, and
+matrices. It does not handle struct member indices; those never require
+run-time checks, so it’s best to deal with them further up the call
+chain.</p>
+</div></details></section></div></main></body></html>

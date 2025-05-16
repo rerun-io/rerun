@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CollectionUiError"],"fn":["catalog_sorbet_batch_to_display_record_batch","component_uri_descriptor","dataset_ui"],"struct":["CollectionTableDelegate"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["infer_json_schema","infer_json_schema_from_iterator","infer_json_schema_from_seekable"],"struct":["Decoder","Reader","ReaderBuilder","ValueIter"]};

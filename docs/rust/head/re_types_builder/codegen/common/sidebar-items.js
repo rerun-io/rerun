@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ImageUrl"],"fn":["collect_snippets_for_api_docs","is_blank","remove_orphaned_files","write_file"],"struct":["Example","ExampleInfo","ImageStack","RerunImageUrl","SnippetId"],"trait":["StringExt"]};

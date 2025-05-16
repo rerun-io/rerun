@@ -1,0 +1,41 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Given a list of lexicographically sorted columns, computes the `Partitions`, where a partition consists of the set of consecutive rows with equal values"><title>partition in re_viewer::external::re_chunk::external::arrow::compute::kernels::partition - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../" data-static-root-path="../../../../../../../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../../re_viewer/index.html">re_<wbr>viewer</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">partition</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#example" title="Example:">Example:</a></li><li><a href="#example-code" title="Example Code">Example Code</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In re_<wbr>viewer::<wbr>external::<wbr>re_<wbr>chunk::<wbr>external::<wbr>arrow::<wbr>compute::<wbr>kernels::<wbr>partition</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../../index.html">re_viewer</a>::<wbr><a href="../../../../../../index.html">external</a>::<wbr><a href="../../../../../index.html">re_chunk</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">arrow</a>::<wbr><a href="../../index.html">compute</a>::<wbr><a href="../index.html">kernels</a>::<wbr><a href="index.html">partition</a></span><h1>Function <span class="fn">partition</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub fn partition(columns: &amp;[<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;dyn <a class="trait" href="../../../../../trait.ArrowArray.html" title="trait re_viewer::external::re_chunk::ArrowArray">Array</a>&gt;]) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../../../../../../arrow/compute/struct.Partitions.html" title="struct re_viewer::external::arrow::compute::Partitions">Partitions</a>, <a class="enum" href="../../../../../../arrow/error/enum.ArrowError.html" title="enum re_viewer::external::arrow::error::ArrowError">ArrowError</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Given a list of lexicographically sorted columns, computes the <a href="../../../../../../arrow/compute/struct.Partitions.html" title="struct re_viewer::external::arrow::compute::Partitions"><code>Partitions</code></a>,
+where a partition consists of the set of consecutive rows with equal values</p>
+<p>Returns an error if no columns are specified or all columns do not
+have the same number of rows.</p>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example:</h2>
+<p>For example, given columns <code>x</code>, <code>y</code> and <code>z</code>, calling
+<a href="../../../../../../arrow/compute/fn.partition.html" title="fn re_viewer::external::arrow::compute::partition"><code>partition</code></a><code>(values, (x, y))</code> will divide the
+rows into ranges where the values of <code>(x, y)</code> are equal:</p>
+<div class="example-wrap"><pre class="language-text"><code>┌ ─ ┬───┬ ─ ─┌───┐─ ─ ┬───┬ ─ ─ ┐
+    │ 1 │    │ 1 │    │ A │        Range: 0..1 (x=1, y=1)
+├ ─ ┼───┼ ─ ─├───┤─ ─ ┼───┼ ─ ─ ┤
+    │ 1 │    │ 2 │    │ B │
+│   ├───┤    ├───┤    ├───┤     │
+    │ 1 │    │ 2 │    │ C │        Range: 1..4 (x=1, y=2)
+│   ├───┤    ├───┤    ├───┤     │
+    │ 1 │    │ 2 │    │ D │
+├ ─ ┼───┼ ─ ─├───┤─ ─ ┼───┼ ─ ─ ┤
+    │ 2 │    │ 1 │    │ E │        Range: 4..5 (x=2, y=1)
+├ ─ ┼───┼ ─ ─├───┤─ ─ ┼───┼ ─ ─ ┤
+    │ 3 │    │ 1 │    │ F │        Range: 5..6 (x=3, y=1)
+└ ─ ┴───┴ ─ ─└───┘─ ─ ┴───┴ ─ ─ ┘
+
+      x        y        z     partition(&amp;[x, y])</code></pre></div><h2 id="example-code"><a class="doc-anchor" href="#example-code">§</a>Example Code</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>batch = RecordBatch::try_from_iter(<span class="macro">vec!</span>[
+    (<span class="string">"x"</span>, Arc::new(Int64Array::from(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])) <span class="kw">as </span>ArrayRef),
+    (<span class="string">"y"</span>, Arc::new(Int64Array::from(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">2</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">1</span>])) <span class="kw">as </span>ArrayRef),
+    (<span class="string">"z"</span>, Arc::new(StringArray::from(<span class="macro">vec!</span>[<span class="string">"A"</span>, <span class="string">"B"</span>, <span class="string">"C"</span>, <span class="string">"D"</span>, <span class="string">"E"</span>, <span class="string">"F"</span>])) <span class="kw">as </span>ArrayRef),
+]).unwrap();
+
+<span class="comment">// Partition on first two columns
+</span><span class="kw">let </span>ranges = partition(<span class="kw-2">&amp;</span>batch.columns()[..<span class="number">2</span>]).unwrap().ranges();
+
+<span class="kw">let </span>expected = <span class="macro">vec!</span>[
+    (<span class="number">0</span>..<span class="number">1</span>),
+    (<span class="number">1</span>..<span class="number">4</span>),
+    (<span class="number">4</span>..<span class="number">5</span>),
+    (<span class="number">5</span>..<span class="number">6</span>),
+];
+
+<span class="macro">assert_eq!</span>(ranges, expected);</code></pre></div>
+</div></details></section></div></main></body></html>

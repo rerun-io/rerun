@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Zip two arrays by some boolean mask."><title>zip in rerun::external::re_log_types::external::arrow::compute::kernels::zip - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../" data-static-root-path="../../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">zip</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#example-zip-two-arrays" title="Example: `zip` two arrays">Example: <code>zip</code> two arrays</a></li><li><a href="#example-zip-and-array-with-a-scalar" title="Example: `zip` and array with a scalar">Example: <code>zip</code> and array with a scalar</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>re_<wbr>log_<wbr>types::<wbr>external::<wbr>arrow::<wbr>compute::<wbr>kernels::<wbr>zip</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../../index.html">external</a>::<wbr><a href="../../../../../index.html">re_log_types</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">arrow</a>::<wbr><a href="../../index.html">compute</a>::<wbr><a href="../index.html">kernels</a>::<wbr><a href="index.html">zip</a></span><h1>Function <span class="fn">zip</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub fn zip(
+    mask: &amp;<a class="struct" href="../../../../../../re_types_core/external/arrow/array/struct.BooleanArray.html" title="struct rerun::external::re_types_core::external::arrow::array::BooleanArray">BooleanArray</a>,
+    truthy: &amp;dyn <a class="trait" href="../../../../../../re_types_core/external/arrow/array/trait.Datum.html" title="trait rerun::external::re_types_core::external::arrow::array::Datum">Datum</a>,
+    falsy: &amp;dyn <a class="trait" href="../../../../../../re_types_core/external/arrow/array/trait.Datum.html" title="trait rerun::external::re_types_core::external::arrow::array::Datum">Datum</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.84.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.84.0/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;dyn <a class="trait" href="../../../../../../re_types_core/external/arrow/array/trait.Array.html" title="trait rerun::external::re_types_core::external::arrow::array::Array">Array</a>&gt;, <a class="enum" href="../../../../../../re_types_core/external/arrow/error/enum.ArrowError.html" title="enum rerun::external::re_types_core::external::arrow::error::ArrowError">ArrowError</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Zip two arrays by some boolean mask.</p>
+<ul>
+<li>Where <code>mask</code> is <code>true</code>, values of <code>truthy</code> are taken</li>
+<li>Where <code>mask</code> is <code>false</code> or <code>NULL</code>, values of <code>falsy</code> are taken</li>
+</ul>
+<h2 id="example-zip-two-arrays"><a class="doc-anchor" href="#example-zip-two-arrays">§</a>Example: <code>zip</code> two arrays</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// mask: [true, true, false, NULL, true]
+</span><span class="kw">let </span>mask = BooleanArray::from(<span class="macro">vec!</span>[
+  <span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
+]);
+<span class="comment">// truthy array: [1, NULL, 3, 4, 5]
+</span><span class="kw">let </span>truthy = Int32Array::from(<span class="macro">vec!</span>[
+  <span class="prelude-val">Some</span>(<span class="number">1</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>), <span class="prelude-val">Some</span>(<span class="number">4</span>), <span class="prelude-val">Some</span>(<span class="number">5</span>)
+]);
+<span class="comment">// falsy array: [10, 20, 30, 40, 50]
+</span><span class="kw">let </span>falsy = Int32Array::from(<span class="macro">vec!</span>[
+  <span class="prelude-val">Some</span>(<span class="number">10</span>), <span class="prelude-val">Some</span>(<span class="number">20</span>), <span class="prelude-val">Some</span>(<span class="number">30</span>), <span class="prelude-val">Some</span>(<span class="number">40</span>), <span class="prelude-val">Some</span>(<span class="number">50</span>)
+]);
+<span class="comment">// zip with this mask select the first, second and last value from `truthy`
+// and the third and fourth value from `falsy`
+</span><span class="kw">let </span>result = zip(<span class="kw-2">&amp;</span>mask, <span class="kw-2">&amp;</span>truthy, <span class="kw-2">&amp;</span>falsy).unwrap();
+<span class="comment">// Expected: [1, NULL, 30, 40, 5]
+</span><span class="kw">let </span>expected: ArrayRef = Arc::new(Int32Array::from(<span class="macro">vec!</span>[
+  <span class="prelude-val">Some</span>(<span class="number">1</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">30</span>), <span class="prelude-val">Some</span>(<span class="number">40</span>), <span class="prelude-val">Some</span>(<span class="number">5</span>)
+]));
+<span class="macro">assert_eq!</span>(<span class="kw-2">&amp;</span>result, <span class="kw-2">&amp;</span>expected);</code></pre></div>
+<h2 id="example-zip-and-array-with-a-scalar"><a class="doc-anchor" href="#example-zip-and-array-with-a-scalar">§</a>Example: <code>zip</code> and array with a scalar</h2>
+<p>Use <code>zip</code> to replace certain values in an array with a scalar</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// mask: [true, true, false, NULL, true]
+</span><span class="kw">let </span>mask = BooleanArray::from(<span class="macro">vec!</span>[
+  <span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>), <span class="prelude-val">Some</span>(<span class="bool-val">false</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
+]);
+<span class="comment">//  array: [1, NULL, 3, 4, 5]
+</span><span class="kw">let </span>arr = Int32Array::from(<span class="macro">vec!</span>[
+  <span class="prelude-val">Some</span>(<span class="number">1</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>), <span class="prelude-val">Some</span>(<span class="number">4</span>), <span class="prelude-val">Some</span>(<span class="number">5</span>)
+]);
+<span class="comment">// scalar: 42
+</span><span class="kw">let </span>scalar = Int32Array::new_scalar(<span class="number">42</span>);
+<span class="comment">// zip the array with the  mask select the first, second and last value from `arr`
+// and fill the third and fourth value with the scalar 42
+</span><span class="kw">let </span>result = zip(<span class="kw-2">&amp;</span>mask, <span class="kw-2">&amp;</span>arr, <span class="kw-2">&amp;</span>scalar).unwrap();
+<span class="comment">// Expected: [1, NULL, 42, 42, 5]
+</span><span class="kw">let </span>expected: ArrayRef = Arc::new(Int32Array::from(<span class="macro">vec!</span>[
+  <span class="prelude-val">Some</span>(<span class="number">1</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">42</span>), <span class="prelude-val">Some</span>(<span class="number">42</span>), <span class="prelude-val">Some</span>(<span class="number">5</span>)
+]));
+<span class="macro">assert_eq!</span>(<span class="kw-2">&amp;</span>result, <span class="kw-2">&amp;</span>expected);</code></pre></div>
+</div></details></section></div></main></body></html>

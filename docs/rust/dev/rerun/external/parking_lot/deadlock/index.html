@@ -1,0 +1,31 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="[Experimental] Deadlock detection"><title>rerun::external::parking_lot::deadlock - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module deadlock</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#example" title="Example">Example</a></li></ul><h3><a href="#functions">Module Items</a></h3><ul class="block"><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>parking_<wbr>lot</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../index.html">rerun</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">parking_lot</a></span><h1>Module <span>deadlock</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>[Experimental] Deadlock detection</p>
+<p>This feature is optional and can be enabled via the <code>deadlock_detection</code> feature flag.</p>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[cfg(feature = <span class="string">"deadlock_detection"</span>)]
+</span>{ <span class="comment">// only for #[cfg]
+</span><span class="kw">use </span>std::thread;
+<span class="kw">use </span>std::time::Duration;
+<span class="kw">use </span>parking_lot::deadlock;
+
+<span class="comment">// Create a background thread which checks for deadlocks every 10s
+</span>thread::spawn(<span class="kw">move </span>|| {
+    <span class="kw">loop </span>{
+        thread::sleep(Duration::from_secs(<span class="number">10</span>));
+        <span class="kw">let </span>deadlocks = deadlock::check_deadlock();
+        <span class="kw">if </span>deadlocks.is_empty() {
+            <span class="kw">continue</span>;
+        }
+
+        <span class="macro">println!</span>(<span class="string">"{} deadlocks detected"</span>, deadlocks.len());
+        <span class="kw">for </span>(i, threads) <span class="kw">in </span>deadlocks.iter().enumerate() {
+            <span class="macro">println!</span>(<span class="string">"Deadlock #{}"</span>, i);
+            <span class="kw">for </span>t <span class="kw">in </span>threads {
+                <span class="macro">println!</span>(<span class="string">"Thread Id {:#?}"</span>, t.thread_id());
+                <span class="macro">println!</span>(<span class="string">"{:#?}"</span>, t.backtrace());
+            }
+        }
+    }
+});
+} <span class="comment">// only for #[cfg]</span></code></pre></div>
+</div></details><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.check_deadlock.html" title="fn rerun::external::parking_lot::deadlock::check_deadlock">check_<wbr>deadlock</a></div><div class="desc docblock-short">Returns all deadlocks detected <em>since</em> the last call.
+Each cycle consist of a vector of <code>DeadlockedThread</code>.</div></li></ul></section></div></main></body></html>

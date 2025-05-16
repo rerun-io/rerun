@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["total_ram_in_bytes"],"mod":["accounting_allocator","util"],"struct":["AccountingAllocator","CallstackStatistics","CountAndSize","MemoryHistory","MemoryLimit","MemoryUse","RamLimitWarner","ReadableBacktrace","TrackingStatistics"]};

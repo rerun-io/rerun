@@ -1,0 +1,1 @@
+searchState.loadedDescShard("test_pinhole_projection", 0, "Visual test for how we project 3D into 2D using Pinhole.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

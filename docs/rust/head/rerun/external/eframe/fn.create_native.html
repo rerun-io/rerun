@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Provides a proxy for your native eframe application to run on your own event loop."><title>create_native in rerun::external::eframe - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>eframe</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../index.html">rerun</a>::<wbr><a href="../index.html">external</a>::<wbr><a href="index.html">eframe</a></span><h1>Function <span class="fn">create_native</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub fn create_native&lt;'a&gt;(
+    app_name: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    native_options: <a class="struct" href="struct.NativeOptions.html" title="struct rerun::external::eframe::NativeOptions">NativeOptions</a>,
+    app_creator: <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;<a class="struct" href="struct.CreationContext.html" title="struct rerun::external::eframe::CreationContext">CreationContext</a>&lt;'_&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="trait.App.html" title="trait rerun::external::eframe::App">App</a> + 'a&gt;, <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/error/trait.Error.html" title="trait core::error::Error">Error</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>&gt;&gt; + 'a&gt;,
+    event_loop: &amp;EventLoop&lt;<a class="enum" href="enum.UserEvent.html" title="enum rerun::external::eframe::UserEvent">UserEvent</a>&gt;,
+) -&gt; <a class="struct" href="struct.EframeWinitApplication.html" title="struct rerun::external::eframe::EframeWinitApplication">EframeWinitApplication</a>&lt;'a&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Provides a proxy for your native eframe application to run on your own event loop.</p>
+<p>See <code>run_native</code> for details about <code>app_name</code>.</p>
+<p>Call from <code>fn main</code> like this:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>eframe::{egui, UserEvent};
+<span class="kw">use </span>winit::event_loop::{ControlFlow, EventLoop};
+
+<span class="kw">fn </span>main() -&gt; eframe::Result {
+    <span class="kw">let </span>native_options = eframe::NativeOptions::default();
+    <span class="kw">let </span>eventloop = EventLoop::&lt;UserEvent&gt;::with_user_event().build()<span class="question-mark">?</span>;
+    eventloop.set_control_flow(ControlFlow::Poll);
+
+    <span class="kw">let </span><span class="kw-2">mut </span>winit_app = eframe::create_native(
+        <span class="string">"MyExtApp"</span>,
+        native_options,
+        Box::new(|cc| <span class="prelude-val">Ok</span>(Box::new(MyEguiApp::new(cc)))),
+        <span class="kw-2">&amp;</span>eventloop,
+    );
+
+    eventloop.run_app(<span class="kw-2">&amp;mut </span>winit_app)<span class="question-mark">?</span>;
+
+    <span class="prelude-val">Ok</span>(())
+}
+
+<span class="attr">#[derive(Default)]
+</span><span class="kw">struct </span>MyEguiApp {}
+
+<span class="kw">impl </span>MyEguiApp {
+    <span class="kw">fn </span>new(cc: <span class="kw-2">&amp;</span>eframe::CreationContext&lt;<span class="lifetime">'_</span>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::default()
+    }
+}
+
+<span class="kw">impl </span>eframe::App <span class="kw">for </span>MyEguiApp {
+   <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>egui::Context, frame: <span class="kw-2">&amp;mut </span>eframe::Frame) {
+       egui::CentralPanel::default().show(ctx, |ui| {
+           ui.heading(<span class="string">"Hello World!"</span>);
+       });
+   }
+}</code></pre></div>
+<p>See the <code>external_eventloop</code> example for a more complete example.</p>
+</div></details></section></div></main></body></html>

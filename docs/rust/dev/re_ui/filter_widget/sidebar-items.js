@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MatchState"],"fn":["format_matching_text","single_keyword_matches"],"struct":["FilterMatcher","FilterState","InnerState","Keyword","MatchStateMachine","MergeRanges","PathRanges"]};

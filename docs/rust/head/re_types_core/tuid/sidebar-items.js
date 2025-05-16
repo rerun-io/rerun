@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["BYTE_WIDTH"],"fn":["tuids_to_arrow"]};

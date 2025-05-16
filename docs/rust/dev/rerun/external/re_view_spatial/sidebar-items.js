@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["SpatialView2D","SpatialView3D"]};

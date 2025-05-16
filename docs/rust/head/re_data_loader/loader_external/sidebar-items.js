@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE","EXTERNAL_DATA_LOADER_PREFIX"],"fn":["decode_and_stream","iter_external_loaders"],"static":["EXTERNAL_LOADER_PATHS"],"struct":["ExternalLoader"]};

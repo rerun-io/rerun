@@ -1,0 +1,85 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="JSON reader"><title>rerun::external::re_chunk_store::external::arrow::json::reader - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../" data-static-root-path="../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module reader</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#basic-usage" title="Basic Usage">Basic Usage</a></li><li><a href="#async-usage" title="Async Usage">Async Usage</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>re_<wbr>chunk_<wbr>store::<wbr>external::<wbr>arrow::<wbr>json</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../index.html">external</a>::<wbr><a href="../../../../index.html">re_chunk_store</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">arrow</a>::<wbr><a href="../index.html">json</a></span><h1>Module <span>reader</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>JSON reader</p>
+<p>This JSON reader allows JSON records to be read into the Arrow memory
+model. Records are loaded in batches and are then converted from the record-oriented
+representation to the columnar arrow data model.</p>
+<p>The reader ignores whitespace between JSON values, including <code>\n</code> and <code>\r</code>, allowing
+parsing of sequences of one or more arbitrarily formatted JSON values, including
+but not limited to newline-delimited JSON.</p>
+<h2 id="basic-usage"><a class="doc-anchor" href="#basic-usage">§</a>Basic Usage</h2>
+<p><a href="../../../../../re_types_core/external/arrow/json/struct.Reader.html" title="struct rerun::external::re_types_core::external::arrow::json::Reader"><code>Reader</code></a> can be used directly with synchronous data sources, such as <a href="https://doc.rust-lang.org/1.84.0/std/fs/struct.File.html" title="struct std::fs::File"><code>std::fs::File</code></a></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>
+<span class="kw">let </span>schema = Arc::new(Schema::new(<span class="macro">vec!</span>[
+    Field::new(<span class="string">"a"</span>, DataType::Float64, <span class="bool-val">false</span>),
+    Field::new(<span class="string">"b"</span>, DataType::Float64, <span class="bool-val">false</span>),
+    Field::new(<span class="string">"c"</span>, DataType::Boolean, <span class="bool-val">true</span>),
+]));
+
+<span class="kw">let </span>file = File::open(<span class="string">"test/data/basic.json"</span>).unwrap();
+
+<span class="kw">let </span><span class="kw-2">mut </span>json = arrow_json::ReaderBuilder::new(schema).build(BufReader::new(file)).unwrap();
+<span class="kw">let </span>batch = json.next().unwrap().unwrap();</code></pre></div>
+<h2 id="async-usage"><a class="doc-anchor" href="#async-usage">§</a>Async Usage</h2>
+<p>The lower-level <a href="../../../../../re_types_core/external/arrow/json/reader/struct.Decoder.html" title="struct rerun::external::re_types_core::external::arrow::json::reader::Decoder"><code>Decoder</code></a> can be integrated with various forms of async data streams,
+and is designed to be agnostic to the various different kinds of async IO primitives found
+within the Rust ecosystem.</p>
+<p>For example, see below for how it can be used with an arbitrary <code>Stream</code> of <code>Bytes</code></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>decode_stream&lt;S: Stream&lt;Item = Bytes&gt; + Unpin&gt;(
+    <span class="kw-2">mut </span>decoder: Decoder,
+    <span class="kw-2">mut </span>input: S,
+) -&gt; <span class="kw">impl </span>Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;RecordBatch, ArrowError&gt;&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>buffered = Bytes::new();
+    futures::stream::poll_fn(<span class="kw">move </span>|cx| {
+        <span class="kw">loop </span>{
+            <span class="kw">if </span>buffered.is_empty() {
+                buffered = <span class="kw">match </span><span class="macro">ready!</span>(input.poll_next_unpin(cx)) {
+                    <span class="prelude-val">Some</span>(b) =&gt; b,
+                    <span class="prelude-val">None </span>=&gt; <span class="kw">break</span>,
+                };
+            }
+            <span class="kw">let </span>decoded = <span class="kw">match </span>decoder.decode(buffered.as_ref()) {
+                <span class="prelude-val">Ok</span>(decoded) =&gt; decoded,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>Poll::Ready(<span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e))),
+            };
+            <span class="kw">let </span>read = buffered.len();
+            buffered.advance(decoded);
+            <span class="kw">if </span>decoded != read {
+                <span class="kw">break
+            </span>}
+        }
+
+        Poll::Ready(decoder.flush().transpose())
+    })
+}
+</code></pre></div>
+<p>In a similar vein, it can also be used with tokio-based IO primitives</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>decode_stream&lt;R: AsyncBufRead + Unpin&gt;(
+    <span class="kw-2">mut </span>decoder: Decoder,
+    <span class="kw-2">mut </span>reader: R,
+) -&gt; <span class="kw">impl </span>Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;RecordBatch, ArrowError&gt;&gt; {
+    futures::stream::poll_fn(<span class="kw">move </span>|cx| {
+        <span class="kw">loop </span>{
+            <span class="kw">let </span>b = <span class="kw">match </span><span class="macro">ready!</span>(Pin::new(<span class="kw-2">&amp;mut </span>reader).poll_fill_buf(cx)) {
+                <span class="prelude-val">Ok</span>(b) <span class="kw">if </span>b.is_empty() =&gt; <span class="kw">break</span>,
+                <span class="prelude-val">Ok</span>(b) =&gt; b,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>Poll::Ready(<span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e.into()))),
+            };
+            <span class="kw">let </span>read = b.len();
+            <span class="kw">let </span>decoded = <span class="kw">match </span>decoder.decode(b) {
+                <span class="prelude-val">Ok</span>(decoded) =&gt; decoded,
+                <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>Poll::Ready(<span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(e))),
+            };
+            Pin::new(<span class="kw-2">&amp;mut </span>reader).consume(decoded);
+            <span class="kw">if </span>decoded != read {
+                <span class="kw">break</span>;
+            }
+        }
+
+        Poll::Ready(decoder.flush().transpose())
+    })
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Decoder.html" title="struct rerun::external::re_chunk_store::external::arrow::json::reader::Decoder">Decoder</a></div><div class="desc docblock-short">A low-level interface for reading JSON data from a byte stream</div></li><li><div class="item-name"><a class="struct" href="struct.Reader.html" title="struct rerun::external::re_chunk_store::external::arrow::json::reader::Reader">Reader</a></div><div class="desc docblock-short">Reads JSON data with a known schema directly into arrow <a href="../../../../../re_types_core/external/arrow/record_batch/struct.RecordBatch.html" title="struct rerun::external::re_types_core::external::arrow::record_batch::RecordBatch"><code>RecordBatch</code></a></div></li><li><div class="item-name"><a class="struct" href="struct.ReaderBuilder.html" title="struct rerun::external::re_chunk_store::external::arrow::json::reader::ReaderBuilder">Reader<wbr>Builder</a></div><div class="desc docblock-short">A builder for <a href="../../../../../re_types_core/external/arrow/json/struct.Reader.html" title="struct rerun::external::re_types_core::external::arrow::json::Reader"><code>Reader</code></a> and <a href="../../../../../re_types_core/external/arrow/json/reader/struct.Decoder.html" title="struct rerun::external::re_types_core::external::arrow::json::reader::Decoder"><code>Decoder</code></a></div></li><li><div class="item-name"><a class="struct" href="struct.ValueIter.html" title="struct rerun::external::re_chunk_store::external::arrow::json::reader::ValueIter">Value<wbr>Iter</a></div><div class="desc docblock-short">JSON file reader that produces a serde_json::Value iterator from a Read trait</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.infer_json_schema.html" title="fn rerun::external::re_chunk_store::external::arrow::json::reader::infer_json_schema">infer_<wbr>json_<wbr>schema</a></div><div class="desc docblock-short">Infer the fields of a JSON file by reading the first n records of the buffer, with
+<code>max_read_records</code> controlling the maximum number of records to read.</div></li><li><div class="item-name"><a class="fn" href="fn.infer_json_schema_from_iterator.html" title="fn rerun::external::re_chunk_store::external::arrow::json::reader::infer_json_schema_from_iterator">infer_<wbr>json_<wbr>schema_<wbr>from_<wbr>iterator</a></div><div class="desc docblock-short">Infer the fields of a JSON file by reading all items from the JSON Value Iterator.</div></li><li><div class="item-name"><a class="fn" href="fn.infer_json_schema_from_seekable.html" title="fn rerun::external::re_chunk_store::external::arrow::json::reader::infer_json_schema_from_seekable">infer_<wbr>json_<wbr>schema_<wbr>from_<wbr>seekable</a></div><div class="desc docblock-short">Infer the fields of a JSON file by reading the first n records of the file, with
+<code>max_read_records</code> controlling the maximum number of records to read.</div></li></ul></section></div></main></body></html>
