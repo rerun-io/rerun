@@ -82,7 +82,7 @@ impl DesignTokens {
         //TODO(ab): as per figma, use design tokens instead
         match self.theme {
             Theme::Dark => Color32::WHITE.gamma_multiply(0.04),
-            Theme::Light => Color32::BLACK.gamma_multiply(0.05),
+            Theme::Light => self.color(ColorToken::gray(S850)),
         }
     }
 
@@ -99,6 +99,39 @@ impl DesignTokens {
         match self.theme {
             Theme::Dark => self.color(ColorToken::gray(S200)),
             Theme::Light => self.color(ColorToken::gray(S800)),
+        }
+    }
+
+    pub fn table_header_bg_fill(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color(ColorToken::gray(S150)),
+            Theme::Light => self.color(ColorToken::gray(S850)),
+        }
+    }
+
+    pub fn table_header_stroke_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color(ColorToken::gray(S300)),
+            Theme::Light => self.color(ColorToken::gray(S700)),
+        }
+    }
+
+    pub fn table_interaction_hovered_bg_stroke(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color_table.gray(S300),
+            Theme::Light => self.color_table.gray(S700),
+        }
+    }
+    pub fn table_interaction_active_bg_stroke(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color_table.gray(S350),
+            Theme::Light => self.color_table.gray(S650),
+        }
+    }
+    pub fn table_interaction_noninteractive_bg_stroke(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color_table.gray(S200),
+            Theme::Light => self.color_table.gray(S800),
         }
     }
 }
