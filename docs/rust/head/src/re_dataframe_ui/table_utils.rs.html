@@ -210,9 +210,15 @@
 <a href="#209" id="209">209</a>
 <a href="#210" id="210">210</a>
 <a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashSet;
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashSet;
 <span class="kw">use </span>egui::{Context, Frame, Id, Margin, RichText, Stroke, Style};
-<span class="kw">use </span>re_ui::{Scale, UiExt <span class="kw">as _</span>, design_tokens_of, icons};
+<span class="kw">use </span>re_ui::{UiExt <span class="kw">as _</span>, design_tokens_of, icons};
 
 <span class="kw">pub const </span>CELL_MARGIN: Margin = Margin::symmetric(<span class="number">8</span>, <span class="number">6</span>);
 
@@ -230,11 +236,13 @@
     <span class="kw">let </span>design_tokens = design_tokens_of(theme);
 
     style.visuals.widgets.hovered.bg_stroke =
-        Stroke::new(<span class="number">1.0</span>, design_tokens.color_table.gray(Scale::S300));
+        Stroke::new(<span class="number">1.0</span>, design_tokens.table_interaction_hovered_bg_stroke());
     style.visuals.widgets.active.bg_stroke =
-        Stroke::new(<span class="number">1.0</span>, design_tokens.color_table.gray(Scale::S350));
-    style.visuals.widgets.noninteractive.bg_stroke =
-        Stroke::new(<span class="number">1.0</span>, design_tokens.color_table.gray(Scale::S200));
+        Stroke::new(<span class="number">1.0</span>, design_tokens.table_interaction_active_bg_stroke());
+    style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(
+        <span class="number">1.0</span>,
+        design_tokens.table_interaction_noninteractive_bg_stroke(),
+    );
 }
 
 <span class="kw">pub fn </span>header_title(ui: <span class="kw-2">&amp;mut </span>egui::Ui, title: <span class="kw">impl </span>Into&lt;RichText&gt;) -&gt; egui::Response {
@@ -250,7 +258,7 @@
 ) -&gt; egui::InnerResponse&lt;R&gt; {
     <span class="kw">let </span>response = Frame::new()
         .inner_margin(CELL_MARGIN)
-        .fill(ui.design_tokens().color_table.gray(Scale::S150))
+        .fill(ui.design_tokens().table_header_bg_fill())
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             content(ui)
@@ -261,7 +269,7 @@
     ui.painter().hline(
         rect.x_range(),
         rect.max.y - <span class="number">1.0</span>, <span class="comment">// - 1.0 prevents it from being overdrawn by the following row
-        </span>Stroke::new(<span class="number">1.0</span>, ui.design_tokens().color_table.gray(Scale::S300)),
+        </span>Stroke::new(<span class="number">1.0</span>, ui.design_tokens().table_header_stroke_color()),
     );
 
     response
@@ -281,7 +289,11 @@
     ui.painter().hline(
         rect.x_range(),
         rect.max.y - <span class="number">1.0</span>, <span class="comment">// - 1.0 prevents it from being overdrawn by the following row
-        </span>Stroke::new(<span class="number">1.0</span>, ui.design_tokens().color_table.gray(Scale::S200)),
+        </span>Stroke::new(
+            <span class="number">1.0</span>,
+            ui.design_tokens()
+                .table_interaction_noninteractive_bg_stroke(),
+        ),
     );
 
     response

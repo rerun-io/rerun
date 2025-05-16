@@ -75,7 +75,7 @@
 
     <span class="kw">pub fn </span>replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>, display_mode: DisplayMode) -&gt; <span class="prelude-ty">Option</span>&lt;DisplayMode&gt; {
         <span class="kw">let </span>previous = <span class="self">self</span>.history.pop();
-        <span class="macro">re_log::debug!</span>(<span class="string">"Replaced `{:?}` with `{:?}`"</span>, previous, display_mode);
+        <span class="macro">re_log::trace!</span>(<span class="string">"Navigated from {previous:?} to {display_mode:?}"</span>);
         <span class="self">self</span>.history.push(display_mode);
         previous
     }

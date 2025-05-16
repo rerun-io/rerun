@@ -685,9 +685,9 @@
     <span class="doccomment">/// Color table for all colors used in the UI.
     ///
     /// Loaded at startup from `design_tokens.json`.
-    </span><span class="kw">pub </span>color_table: ColorTable,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) color_table: ColorTable, <span class="comment">// Not public, because all colors should go via design_token_colors.rs
 
-    <span class="comment">// TODO(ab): get rid of these, they should be function calls like the rest.
+    // TODO(ab): get rid of these, they should be function calls like the rest.
     </span><span class="kw">pub </span>top_bar_color: Color32,
     <span class="kw">pub </span>bottom_bar_color: Color32,
     <span class="kw">pub </span>bottom_bar_stroke: egui::Stroke,
