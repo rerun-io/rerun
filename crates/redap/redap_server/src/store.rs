@@ -183,6 +183,12 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         self.id_by_name.insert(name.clone(), entry_id);
 
+        self.datasets.insert(entry_id, Dataset {
+            id: entry_id,
+            name,
+            partitions: HashMap::new(),
+        });
+
         Ok(entry_id)
     }
 

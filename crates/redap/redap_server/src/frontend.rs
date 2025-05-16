@@ -6,7 +6,7 @@ use arrow::datatypes::Schema;
 use re_entity_db::external::re_chunk_store::external::re_chunk::external::nohash_hasher::IntSet;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::EntityPath;
-use re_protos::catalog::v1alpha1::ext::ReadDatasetEntryResponse;
+use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
 use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
@@ -143,13 +143,34 @@ impl FrontendService for FrontendHandler {
 
     async fn create_dataset_entry(
         &self,
-        _request: tonic::Request<re_protos::catalog::v1alpha1::CreateDatasetEntryRequest>,
+        request: tonic::Request<re_protos::catalog::v1alpha1::CreateDatasetEntryRequest>,
     ) -> Result<
         tonic::Response<re_protos::catalog::v1alpha1::CreateDatasetEntryResponse>,
         tonic::Status,
     > {
-        Err(tonic::Status::unimplemented(
-            "create_dataset_entry not implemented",
+        let dataset_name = request.into_inner().name.ok_or_else(|| {
+            tonic::Status::invalid_argument("Missing dataset name in CreateDatasetEntryRequest")
+        })?;
+
+        let mut store = self
+            .store
+            .write()
+            .map_err(|_| tonic::Status::resource_exhausted("failed to acquire lock"))?;
+
+        let entry_id = store.create_dataset(&dataset_name).map_err(|err| {
+            tonic::Status::internal(format!("Failed to create dataset entry: {err}"))
+        })?;
+
+        let dataset_entry = store
+            .dataset(entry_id)
+            .expect("was just successfully created")
+            .as_dataset_entry();
+
+        Ok(tonic::Response::new(
+            CreateDatasetEntryResponse {
+                dataset: dataset_entry,
+            }
+            .into(),
         ))
     }
 

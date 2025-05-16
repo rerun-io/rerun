@@ -114,6 +114,14 @@ pub struct CreateDatasetEntryResponse {
     pub dataset: DatasetEntry,
 }
 
+impl From<CreateDatasetEntryResponse> for crate::catalog::v1alpha1::CreateDatasetEntryResponse {
+    fn from(value: CreateDatasetEntryResponse) -> Self {
+        Self {
+            dataset: Some(value.dataset.into()),
+        }
+    }
+}
+
 impl TryFrom<crate::catalog::v1alpha1::CreateDatasetEntryResponse> for CreateDatasetEntryResponse {
     type Error = TypeConversionError;
 
