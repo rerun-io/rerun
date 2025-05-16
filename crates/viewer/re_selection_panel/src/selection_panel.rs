@@ -1118,7 +1118,7 @@ impl AddRecordingPropertyUi {
         egui::Grid::new("add_rec_prop")
             .num_columns(2)
             .show(ui, |ui| {
-                ui.label("Name");
+                ui.label("Property name");
                 if ui.add(egui::TextEdit::singleline(name)).lost_focus() {
                     add_it = true;
                 }
@@ -1129,7 +1129,7 @@ impl AddRecordingPropertyUi {
                 ui.end_row();
             });
 
-        if ui.button("Add").clicked() {
+        if ui.button("Add property").clicked() {
             add_it = true;
         }
 
