@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
@@ -42,6 +42,13 @@ impl Deref for ChunkSchema {
     }
 }
 
+impl DerefMut for ChunkSchema {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.sorbet
+    }
+}
+
 /// ## Builders
 impl ChunkSchema {
     pub fn new(
@@ -61,6 +68,7 @@ impl ChunkSchema {
                     )
                     .collect(),
                 },
+                partition_id: None, // TODO(#9977): This should be required in the future.
                 chunk_id: Some(chunk_id),
                 entity_path: Some(entity_path.clone()),
                 heap_size_bytes: None,

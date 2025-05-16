@@ -1,24 +1,31 @@
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
 
-use re_log_types::EntryId;
+use re_grpc_client::redap::RedapClient;
+use re_log_encoding::codec::wire::encoder::Encode;
+use re_log_types::external::re_tuid::Tuid;
+use re_log_types::{EntryId, StoreId};
+use re_protos::catalog::v1alpha1::CreateDatasetEntryRequest;
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
+use re_viewer_context::external::re_chunk_store::Chunk;
+use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{
     AsyncRuntimeHandle, DisplayMode, Item, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
 use crate::add_server_modal::AddServerModal;
 use crate::context::Context;
-use crate::entries::{Dataset, DatasetRecordings, Entries, RemoteRecordings};
+use crate::entries::{Dataset, DatasetRecordings, RemoteRecordings, ServerEntry};
 use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
     origin: re_uri::Origin,
-    entries: Entries,
+    entries: ServerEntry,
 
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: TablesSessionContext,
@@ -28,7 +35,7 @@ struct Server {
 
 impl Server {
     fn new(runtime: AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        let entries = Entries::new(&runtime, egui_ctx, origin.clone());
+        let entries = ServerEntry::new(&runtime, egui_ctx, origin.clone());
 
         let tables_session_ctx = TablesSessionContext::new(&runtime, egui_ctx, origin.clone());
 
@@ -41,10 +48,10 @@ impl Server {
     }
 
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
+        self.entries = ServerEntry::new(runtime, egui_ctx, self.origin.clone());
 
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx.refresh(runtime, egui_ctx);
+        self.tables_session_ctx = TablesSessionContext::new(runtime, egui_ctx, self.origin.clone());
     }
 
     fn on_frame_start(&mut self) {
@@ -193,6 +200,68 @@ impl Server {
                 )));
         }
     }
+
+    fn upload_to_dataset(
+        &self,
+        dataset_name: String,
+        entity_db: &EntityDb,
+        command_sender: Sender<Command>,
+        create_new: bool,
+    ) {
+        let chunks: Vec<Arc<Chunk>> = entity_db
+            .storage_engine()
+            .store()
+            .iter_chunks()
+            .cloned()
+            .collect();
+        let recording_id = entity_db.store_id();
+
+        let dataset_id = if create_new {
+            None
+        } else {
+            let Some(dataset) = self.entries.find_dataset_by_name(&dataset_name) else {
+                re_log::error!("Dataset not found: {dataset_name}");
+                return;
+            };
+            Some(dataset.id())
+        };
+
+        let origin = self.origin.clone();
+
+        self.runtime.spawn_future(async move {
+            let mut client = match re_grpc_client::redap::client(origin.clone()).await {
+                Ok(client) => client,
+                Err(err) => {
+                    re_log::error!("Failed to connect to {origin:?}: {err}");
+                    return;
+                }
+            };
+
+            let dataset_id = if let Some(dataset_id) = dataset_id {
+                dataset_id
+            } else {
+                let result = create_new_dataset(&mut client, dataset_name).await;
+                match result {
+                    Ok(id) => id,
+                    Err(err) => {
+                        re_log::error!("Failed to create new dataset: {err}");
+                        return;
+                    }
+                }
+            };
+
+            let result =
+                write_chunks_to_dataset(&mut client, &dataset_id, &recording_id, &chunks).await;
+            if let Err(err) = result {
+                re_log::error!("Failed to upload dataset: {err}");
+            } else {
+                re_log::info!("Successfully uploaded to {origin:?}");
+
+                // Kick off a refresh of the server.
+                command_sender.send(Command::RefreshCollection(origin)).ok();
+            }
+        });
+    }
 }
 
 /// All servers known to the viewer, and their catalog data.
@@ -275,6 +344,17 @@ impl RedapServers {
     /// Add a server to the hub.
     pub fn add_server(&self, origin: re_uri::Origin) {
         self.command_sender.send(Command::AddServer(origin)).ok();
+    }
+
+    pub fn that_list(&self) -> impl Iterator<Item = (re_uri::Origin, Vec<String>)> {
+        self.servers.iter().map(|(origin, server)| {
+            (
+                origin.clone(),
+                server.entries.dataset_names().map_or(Vec::new(), |names| {
+                    names.map(|name| name.to_owned()).collect::<Vec<String>>()
+                }),
+            )
+        })
     }
 
     /// Per-frame housekeeping.
@@ -404,4 +484,104 @@ impl RedapServers {
 
         func(&ctx)
     }
+
+    pub fn upload_to_dataset(
+        &self,
+        recording: &EntityDb,
+        target_server: re_uri::Origin,
+        dataset_name: String,
+        create_new: bool,
+    ) {
+        let Some(server) = self.servers.get(&target_server) else {
+            re_log::error!("Not connected to server at {target_server:?}");
+            return;
+        };
+
+        if create_new {}
+
+        server.upload_to_dataset(
+            dataset_name,
+            recording,
+            self.command_sender.clone(),
+            create_new,
+        );
+    }
+}
+
+async fn write_chunks_to_dataset(
+    client: &mut RedapClient,
+    dataset_id: &EntryId,
+    _partition_id: &StoreId,
+    chunks: &[Arc<Chunk>],
+) -> Result<(), crate::entries::EntryError> {
+    // TODO: it's a bit unclear what the semantics of duplicating the partition are.
+    // Viewer gets very confused if it sees the same partition ID twice.
+    let partition_id_new = StoreId::random(re_log_types::StoreKind::Recording);
+    let partition_id = &partition_id_new;
+
+    let chunk_requests = chunks
+        .iter()
+        .map(|chunk| {
+            // TODO: Have to patch partition id in the metadata.
+            let sorbet_batch = chunk.to_chunk_batch().unwrap();
+            let mut metadata = sorbet_batch.schema().metadata().clone();
+            metadata.insert(
+                "rerun.partition_id".to_owned(),
+                partition_id.as_str().to_owned(),
+            );
+            let schema = (*sorbet_batch.schema()).clone().with_metadata(metadata);
+            let patched_batch =
+                <datafusion::arrow::array::RecordBatch as Clone>::clone(&sorbet_batch)
+                    .with_schema(Arc::new(schema))
+                    .unwrap();
+
+            let chunk: re_protos::common::v1alpha1::RerunChunk = patched_batch.encode().unwrap();
+
+            re_protos::manifest_registry::v1alpha1::WriteChunksRequest { chunk: Some(chunk) }
+        })
+        .collect::<Vec<_>>(); // TODO: no.
+
+    let reqs = ::futures::stream::iter(chunk_requests);
+    let mut request = tonic::Request::new(reqs);
+    request.metadata_mut().insert(
+        "x-rerun-dataset-id",
+        dataset_id.to_string().parse().unwrap(),
+    );
+
+    client.write_chunks(request).await?;
+
+    Ok(())
+}
+
+async fn create_new_dataset(
+    client: &mut RedapClient,
+    dataset_name: String,
+) -> Result<EntryId, crate::entries::EntryError> {
+    let response = client
+        .create_dataset_entry(CreateDatasetEntryRequest {
+            name: Some(dataset_name),
+        })
+        .await?;
+
+    let response = response.into_inner();
+
+    let id = response
+        .dataset
+        .ok_or(crate::entries::EntryError::FieldNotSet("dataset"))?
+        .dataset_handle
+        .ok_or(crate::entries::EntryError::FieldNotSet("dataset_handle"))?
+        .entry_id
+        .ok_or(crate::entries::EntryError::FieldNotSet("entry_id"))?
+        .id
+        .ok_or(crate::entries::EntryError::FieldNotSet("id"))?;
+    let time_ns = id
+        .time_ns
+        .ok_or(crate::entries::EntryError::FieldNotSet("time_ns"))?;
+    let inc = id
+        .inc
+        .ok_or(crate::entries::EntryError::FieldNotSet("inc"))?;
+
+    Ok(EntryId {
+        id: Tuid::from_nanos_and_inc(time_ns, inc),
+    })
 }

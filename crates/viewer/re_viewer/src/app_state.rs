@@ -308,6 +308,7 @@ impl AppState {
                         .collect::<_>()
                 };
 
+                let server_list = redap_servers.that_list().collect::<Vec<_>>();
                 let rec_cfg = recording_config_entry(recording_configs, recording);
                 let egui_ctx = ui.ctx().clone();
                 let ctx = ViewerContext {
@@ -319,6 +320,7 @@ impl AppState {
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
+                        servers: &server_list,
                     },
                     store_context,
                     storage_context,
@@ -401,6 +403,7 @@ impl AppState {
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
+                        servers: &server_list,
                     },
                     store_context,
                     storage_context,
