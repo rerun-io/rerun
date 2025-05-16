@@ -3,22 +3,23 @@ source: crates/store/re_dataframe/src/query.rs
 expression: DisplayRB(dataframe)
 snapshot_kind: text
 ---
-┌──────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬─────────────────────────────┬─────────────────────────────┐
-│ frame_nr             ┆ log_time             ┆ log_tick             ┆ /this/that:example.MyPoint ┆ /this/that:example.MyColor  ┆ /this/that:example.MyLabel  │
-│ ---                  ┆ ---                  ┆ ---                  ┆ ---                        ┆ ---                         ┆ ---                         │
-│ type: i64            ┆ type: Timestamp(ns)  ┆ type: null           ┆ type: null                 ┆ type: List[u32]             ┆ type: List[Utf8]            │
-│ index_name: frame_nr ┆ index_name: log_time ┆ index_name: log_tick ┆ component: example.MyPoint ┆ archetype: example.MyPoints ┆ archetype: example.MyPoints │
-│ kind: index          ┆ kind: index          ┆ is_sorted: true      ┆ entity_path: /this/that    ┆ archetype_field: colors     ┆ archetype_field: labels     │
-│                      ┆                      ┆ kind: index          ┆ kind: data                 ┆ component: example.MyColor  ┆ component: example.MyLabel  │
-│                      ┆                      ┆                      ┆                            ┆ entity_path: /this/that     ┆ entity_path: /this/that     │
-│                      ┆                      ┆                      ┆                            ┆ kind: data                  ┆ is_static: true             │
-│                      ┆                      ┆                      ┆                            ┆                             ┆ kind: data                  │
-╞══════════════════════╪══════════════════════╪══════════════════════╪════════════════════════════╪═════════════════════════════╪═════════════════════════════╡
-│ 30                   ┆ null                 ┆ null                 ┆ null                       ┆ [2]                         ┆ [c]                         │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 40                   ┆ null                 ┆ null                 ┆ null                       ┆ [3]                         ┆ [c]                         │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 50                   ┆ null                 ┆ null                 ┆ null                       ┆ [4]                         ┆ [c]                         │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ 70                   ┆ null                 ┆ null                 ┆ null                       ┆ [6]                         ┆ [c]                         │
-└──────────────────────┴──────────────────────┴──────────────────────┴────────────────────────────┴─────────────────────────────┴─────────────────────────────┘
+┌──────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
+│ frame_nr             ┆ log_time             ┆ log_tick             ┆ /this/that:example.MyPoint ┆ /this/that:example.MyPoints. ┆ /this/that:example.MyPoints. │
+│ ---                  ┆ ---                  ┆ ---                  ┆ ---                        ┆ colors                       ┆ labels                       │
+│ type: i64            ┆ type: Timestamp(ns)  ┆ type: null           ┆ type: null                 ┆ ---                          ┆ ---                          │
+│ index_name: frame_nr ┆ index_name: log_time ┆ index_name: log_tick ┆ component: example.MyPoint ┆ type: List[u32]              ┆ type: List[Utf8]             │
+│ kind: index          ┆ kind: index          ┆ is_sorted: true      ┆ entity_path: /this/that    ┆ archetype: example.MyPoints  ┆ archetype: example.MyPoints  │
+│                      ┆                      ┆ kind: index          ┆ kind: data                 ┆ archetype_field: colors      ┆ archetype_field: labels      │
+│                      ┆                      ┆                      ┆                            ┆ component: example.MyColor   ┆ component: example.MyLabel   │
+│                      ┆                      ┆                      ┆                            ┆ entity_path: /this/that      ┆ entity_path: /this/that      │
+│                      ┆                      ┆                      ┆                            ┆ kind: data                   ┆ is_static: true              │
+│                      ┆                      ┆                      ┆                            ┆                              ┆ kind: data                   │
+╞══════════════════════╪══════════════════════╪══════════════════════╪════════════════════════════╪══════════════════════════════╪══════════════════════════════╡
+│ 30                   ┆ null                 ┆ null                 ┆ null                       ┆ [2]                          ┆ [c]                          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 40                   ┆ null                 ┆ null                 ┆ null                       ┆ [3]                          ┆ [c]                          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 50                   ┆ null                 ┆ null                 ┆ null                       ┆ [4]                          ┆ [c]                          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 70                   ┆ null                 ┆ null                 ┆ null                       ┆ [6]                          ┆ [c]                          │
+└──────────────────────┴──────────────────────┴──────────────────────┴────────────────────────────┴──────────────────────────────┴──────────────────────────────┘

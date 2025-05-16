@@ -127,10 +127,10 @@ impl Server {
         }))
         .column_renamer(|desc| {
             //TODO(ab): with this strategy, we do not display relevant entity path if any.
-            let name = desc.short_name();
+            let name = desc.display_name();
 
             name.strip_prefix("rerun_")
-                .unwrap_or(name)
+                .unwrap_or(name.as_ref())
                 .replace('_', " ")
         })
         .generate_partition_links(
