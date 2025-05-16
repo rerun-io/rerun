@@ -40,13 +40,20 @@ impl From<Error> for tonic::Status {
     }
 }
 
+pub struct Partition {
+    entity_db: EntityDb,
+    registration_time: jiff::Timestamp,
+}
+
 pub struct Dataset {
     id: EntryId,
     name: String,
-    partitions: HashMap<PartitionId, EntityDb>,
-    //TODO
-    // storage url
-    // created/modified time
+    partitions: HashMap<PartitionId, Partition>,
+
+    created_at: jiff::Timestamp,
+    updated_at: jiff::Timestamp,
+    //TODO:
+    //storage url
 }
 
 impl Dataset {
@@ -54,11 +61,9 @@ impl Dataset {
         EntryDetails {
             id: self.id,
             name: self.name.clone(),
-
             kind: EntryKind::Dataset,
-            //TODO
-            created_at: jiff::Timestamp::default(),
-            updated_at: jiff::Timestamp::default(),
+            created_at: self.created_at,
+            updated_at: self.updated_at,
         }
     }
 
@@ -68,10 +73,8 @@ impl Dataset {
                 id: self.id,
                 name: self.name.clone(),
                 kind: EntryKind::Dataset,
-
-                //TODO
-                created_at: jiff::Timestamp::default(),
-                updated_at: jiff::Timestamp::default(),
+                created_at: self.created_at,
+                updated_at: self.updated_at,
             },
 
             handle: DatasetHandle {
@@ -83,8 +86,8 @@ impl Dataset {
     }
 
     pub fn schema(&self) -> arrow::error::Result<Schema> {
-        let schemas = self.partitions.values().map(|entity_db| {
-            let columns = entity_db.storage_engine().store().schema();
+        let schemas = self.partitions.values().map(|partition| {
+            let columns = partition.entity_db.storage_engine().store().schema();
             let fields = columns.arrow_fields();
             Schema::new(fields)
         });
@@ -97,17 +100,21 @@ impl Dataset {
     }
 
     pub fn partition_table(&self) -> arrow::error::Result<RecordBatch> {
-        let partition_ids = self
+        let (partition_ids, registration_times): (Vec<_>, Vec<_>) = self
             .partitions
-            .keys()
-            .map(|store_id| store_id.to_string())
-            .collect::<Vec<_>>();
+            .iter()
+            .map(|(store_id, partition)| {
+                (
+                    store_id.to_string(),
+                    partition.registration_time.as_nanosecond() as i64,
+                )
+            })
+            .unzip();
 
         let partition_types = vec!["rrd".to_owned(); partition_ids.len()];
 
         //TODO
         let storage_urls = vec!["file:///tmp/unsupported".to_owned(); partition_ids.len()];
-        let registration_times = vec![jiff::Timestamp::default().as_second(); partition_ids.len()];
 
         let partition_manifest_updated_ats = vec![None; partition_ids.len()];
         let partition_manifest_urls = vec![None; partition_ids.len()];
@@ -123,11 +130,15 @@ impl Dataset {
     }
 
     pub fn partition(&self, partition_id: PartitionId) -> Option<&EntityDb> {
-        self.partitions.get(&partition_id)
+        self.partitions.get(&partition_id).map(|p| &p.entity_db)
     }
 
     pub fn add_partition(&mut self, partition_id: PartitionId, entity_db: EntityDb) {
-        self.partitions.insert(partition_id, entity_db);
+        self.partitions.insert(partition_id, Partition {
+            entity_db,
+            registration_time: jiff::Timestamp::now(),
+        });
+        self.updated_at = jiff::Timestamp::now();
     }
 }
 
@@ -182,9 +193,14 @@ impl InMemoryStore {
                                     id: entry_id,
                                     name: entry_name.to_string(),
                                     partitions: HashMap::new(),
+                                    created_at: jiff::Timestamp::now(),
+                                    updated_at: jiff::Timestamp::now(),
                                 })
                                 .partitions
-                                .insert(PartitionId::new((*store_id.id).clone()), entity_db);
+                                .insert(PartitionId::new((*store_id.id).clone()), Partition {
+                                    entity_db,
+                                    registration_time: jiff::Timestamp::now(),
+                                });
                         }
                     }
                 }
@@ -207,6 +223,8 @@ impl InMemoryStore {
             id: entry_id,
             name,
             partitions: HashMap::new(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
         });
 
         Ok(entry_id)
