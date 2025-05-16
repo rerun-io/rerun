@@ -1,10 +1,10 @@
-use arrow::datatypes::Fields as ArrowFields;
+use arrow::datatypes::{Field as ArrowField, Fields as ArrowFields};
 
 use re_log_types::EntityPath;
 
 use crate::{
-    ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
-    SorbetColumnDescriptors, SorbetError,
+    BatchType, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
+    RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetError,
 };
 
 /// Requires a specific ordering of the columns.
@@ -72,6 +72,17 @@ impl ChunkColumnDescriptors {
     pub fn filter_components(mut self, keep: impl Fn(&ComponentColumnDescriptor) -> bool) -> Self {
         self.components.retain(keep);
         self
+    }
+
+    pub fn arrow_fields(&self) -> Vec<ArrowField> {
+        std::iter::once(self.row_id.to_arrow_field())
+            .chain(self.indices.iter().map(|c| c.to_arrow_field()))
+            .chain(
+                self.components
+                    .iter()
+                    .map(|c| c.to_arrow_field(BatchType::Dataframe)),
+            )
+            .collect()
     }
 }
 
