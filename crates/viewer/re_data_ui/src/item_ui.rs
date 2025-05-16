@@ -787,10 +787,9 @@ pub fn entity_db_button_ui(
             ctx.command_sender()
                 .send_system(SystemCommand::ActivateEntry(store_id.clone().into()));
         }
-
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
     }
+
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 
     response.context_menu(|ui| {
         if !ctx.global_context.servers.is_empty() {
@@ -942,7 +941,6 @@ pub fn table_id_button_ui(
     if response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
     }
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 }
