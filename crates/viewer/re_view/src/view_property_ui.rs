@@ -165,7 +165,7 @@ pub fn view_property_component_ui_custom(
 
     let list_item_response = if let Some(multiline_ui) = multiline_ui {
         let default_open = false;
-        let id = egui::Id::new((ctx.target_entity_path.hash(), component_descr.full_name()));
+        let id = egui::Id::new((ctx.target_entity_path.hash(), &component_descr));
         ui.list_item()
             .interactive(false)
             .show_hierarchical_with_children(

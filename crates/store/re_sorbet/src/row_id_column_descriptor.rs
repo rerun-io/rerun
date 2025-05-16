@@ -26,7 +26,7 @@ impl RowIdColumnDescriptor {
     #[inline]
     #[expect(clippy::unused_self)]
     pub fn short_name(&self) -> String {
-        RowId::descriptor().short_name()
+        RowId::descriptor().display_name()
     }
 
     /// Human-readable name for this column.

@@ -301,7 +301,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                     };
 
                     let header_ui = |ui: &mut egui::Ui| {
-                        let text = egui::RichText::new(column.short_name()).strong();
+                        let text = egui::RichText::new(column.display_name()).strong();
 
                         let is_selected = match column {
                             ColumnDescriptor::RowId(_) => {

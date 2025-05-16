@@ -4,7 +4,7 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_ui::DataUi as _;
-use re_data_ui::item_ui::entity_db_button_ui;
+use re_data_ui::item_ui::{entity_db_button_ui, upload_to_dataset_context_menu};
 use re_dataframe_ui::RequestedObject;
 use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{StreamError, redap};
@@ -68,7 +68,7 @@ impl Dataset {
 }
 
 /// All the entries of a server.
-pub struct Entries {
+pub struct ServerEntry {
     //TODO(ab): in the future, there will be more kinds of entries
 
     // TODO(ab): we currently load the ENTIRE list of datasets, including their partition tables. We
@@ -76,7 +76,7 @@ pub struct Entries {
     datasets: RequestedObject<Result<HashMap<EntryId, Dataset>, EntryError>>,
 }
 
-impl Entries {
+impl ServerEntry {
     pub fn new(
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
@@ -97,10 +97,27 @@ impl Entries {
         self.datasets.try_as_ref()?.as_ref().ok()?.get(&entry_id)
     }
 
+    pub fn find_dataset_by_name(&self, entry_name: &str) -> Option<&Dataset> {
+        self.datasets
+            .try_as_ref()?
+            .as_ref()
+            .ok()?
+            .values()
+            .find(|d| d.name() == entry_name)
+    }
+
     pub fn dataset_count(&self) -> Option<Result<usize, &EntryError>> {
         self.datasets
             .try_as_ref()
             .map(|r| r.as_ref().map(|datasets| datasets.len()))
+    }
+
+    pub fn dataset_names(&self) -> Option<impl Iterator<Item = &str>> {
+        self.datasets.try_as_ref().and_then(|r| {
+            r.as_ref()
+                .ok()
+                .map(|datasets| datasets.values().map(|d| d.name()))
+        })
     }
 
     #[expect(clippy::unused_self)]
@@ -350,6 +367,26 @@ pub fn dataset_and_its_recordings_ui(
         });
 
         ctx.handle_select_hover_drag_interactions(&item_response, Item::AppId(app.clone()), false);
+
+        item_response.context_menu(|ui| {
+            local_dataset_context_menu_ui(ctx, ui, &entity_dbs);
+        });
+    } else if let EntryKind::Remote {
+        entry_id,
+        origin,
+        name: _,
+    } = kind
+    {
+        item_response.context_menu(|ui| {
+            if ui
+                .button("Delete dataset")
+                .on_hover_text("Delete this dataset. This cannot be undone.")
+                .clicked()
+            {
+                ctx.command_sender()
+                    .send_system(SystemCommand::DeleteEntry(origin.clone(), *entry_id));
+            }
+        });
     }
 
     if item_response.clicked() {
@@ -397,4 +434,25 @@ async fn fetch_dataset_entries(
     }
 
     Ok(datasets)
+}
+
+fn local_dataset_context_menu_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_dbs: &[&EntityDb],
+) {
+    // TODO: add save all button here as well.
+
+    if !ctx.global_context.servers.is_empty() && !entity_dbs.is_empty() {
+        let app_id = entity_dbs[0].app_id().unwrap().0.clone(); // TODO: unwrap
+        upload_to_dataset_context_menu(
+            ctx,
+            ui,
+            &app_id,
+            &entity_dbs
+                .iter()
+                .map(|db| db.store_id().clone())
+                .collect_vec(),
+        );
+    }
 }

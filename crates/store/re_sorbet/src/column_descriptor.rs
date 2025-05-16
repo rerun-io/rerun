@@ -74,12 +74,13 @@ impl ColumnDescriptor {
         }
     }
 
+    /// Short and usually unique, used in UI.
     #[inline]
-    pub fn short_name(&self) -> String {
+    pub fn display_name(&self) -> String {
         match self {
             Self::RowId(descr) => descr.short_name(),
             Self::Time(descr) => descr.column_name().to_owned(),
-            Self::Component(descr) => descr.component_name.short_name().to_owned(),
+            Self::Component(descr) => descr.display_name(),
         }
     }
 

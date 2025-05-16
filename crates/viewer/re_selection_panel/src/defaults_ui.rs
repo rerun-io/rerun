@@ -284,7 +284,7 @@ fn components_to_show_in_add_menu(
         if components_to_show_in_add_menu.is_empty() {
             return Err(format!(
                 "Rerun lacks edit UI for: {}",
-                missing_editors.iter().map(|c| c.short_name()).join(", ")
+                missing_editors.iter().map(|c| c.display_name()).join(", ")
             ));
         }
     }
@@ -368,7 +368,7 @@ fn add_new_default(
         Ok(chunk) => {
             ctx.viewer_ctx
                 .command_sender()
-                .send_system(SystemCommand::UpdateBlueprint(
+                .send_system(SystemCommand::AppendToStore(
                     ctx.blueprint_db().store_id().clone(),
                     vec![chunk],
                 ));

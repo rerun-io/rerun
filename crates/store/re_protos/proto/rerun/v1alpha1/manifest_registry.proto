@@ -14,7 +14,7 @@ service ManifestRegistryService {
   rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
 
   // Unimplemented.
-  rpc WriteChunks(stream WriteChunksRequest) returns (stream WriteChunksResponse) {}
+  rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   // --- Query schemas ---
 
@@ -148,7 +148,7 @@ message RegisterWithDatasetBlockingResponse {
 }
 
 message WriteChunksRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message WriteChunksResponse {}

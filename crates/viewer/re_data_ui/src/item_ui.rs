@@ -1,12 +1,19 @@
+#![allow(clippy::unwrap_used)] // TODO: do not commit
+
 //! Basic ui elements & interaction for most `re_viewer_context::Item`.
 //!
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
+use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
-use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
+use re_log_types::{
+    ApplicationId, EntityPath, StoreId, TableId, TimeInt, TimePoint, TimeType, Timeline,
+    TimelineName,
+};
 use re_types::{
-    archetypes::RecordingProperties,
+    RowId,
+    archetypes::{self, RecordingProperties},
     components::{Name, Timestamp},
 };
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
@@ -781,10 +788,129 @@ pub fn entity_db_button_ui(
             ctx.command_sender()
                 .send_system(SystemCommand::ActivateEntry(store_id.clone().into()));
         }
-
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
     }
+
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
+
+    response.context_menu(|ui| {
+        // TODO: use re_context_menu instead
+
+        // TODO: this code is duplicated in app.rs
+        let mut selected_stores = vec![];
+        for item in ctx.selection().iter_items() {
+            match item {
+                Item::AppId(selected_app_id) => {
+                    for recording in ctx.storage_context.bundle.recordings() {
+                        if recording.app_id() == Some(selected_app_id) {
+                            selected_stores.push(recording.store_id().clone());
+                        }
+                    }
+                }
+                Item::StoreId(store_id) => {
+                    selected_stores.push(store_id.clone());
+                }
+                _ => {}
+            }
+        }
+
+        if !selected_stores.is_empty() {
+            let app_id = entity_db.app_id().unwrap().0.clone(); // TODO: unwrap
+            upload_to_dataset_context_menu(ctx, ui, &app_id, &selected_stores);
+        }
+
+        let is_redap_recording = matches!(
+            entity_db.data_source,
+            Some(re_smart_channel::SmartChannelSource::RedapGrpcStream(_))
+        );
+
+        let rename_response = ui.add_enabled(!is_redap_recording, egui::Button::new("Rename"));
+        let rename_response = rename_response
+            .on_disabled_hover_text("Renaming is currently only supported for local datasets");
+        if rename_response.clicked() {
+            // TODO: fix this
+            let name_update_chunk =
+                ChunkBuilder::new(re_types::ChunkId::new(), EntityPath::recording_properties())
+                    .with_archetype(
+                        RowId::new(),
+                        TimePoint::STATIC,
+                        &archetypes::RecordingProperties::update_fields()
+                            .with_name("yes. you renamed it"),
+                    )
+                    .build()
+                    // All internal types, can't fail.
+                    .expect("Failed to build name update chunk");
+
+            ctx.command_sender()
+                .send_system(SystemCommand::AppendToStore(
+                    store_id.clone(),
+                    vec![name_update_chunk],
+                ));
+        }
+    });
+}
+
+pub fn upload_to_dataset_context_menu(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    suggested_name: &str,
+    recording_ids: &[StoreId],
+) {
+    let item_name = if recording_ids.is_empty() {
+        "No recordings selected"
+    } else if recording_ids.len() == 1 {
+        "Upload to dataset"
+    } else {
+        "Upload all to dataset"
+    };
+
+    ui.menu_button(item_name, |ui| {
+        for (server, datasets) in ctx.global_context.servers {
+            ui.menu_button(server.to_string(), |ui| {
+                ui.horizontal(|ui| {
+                    let button_response = ui.button("Create new");
+
+                    let mut dataset_name = ui.memory_mut(|memory| {
+                        memory
+                            .data
+                            .get_temp_mut_or(ui.id(), suggested_name.to_owned())
+                            .clone()
+                    });
+                    ui.text_edit_singleline(&mut dataset_name);
+                    ui.memory_mut(|memory| {
+                        memory.data.insert_temp(ui.id(), dataset_name.clone());
+                    });
+
+                    if button_response.clicked() {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::UploadToDataset {
+                                store_id: recording_ids.to_vec(),
+                                target_server: server.clone(),
+                                dataset_name,
+                                create_new: true,
+                            });
+                        ui.close();
+                    }
+                });
+
+                if !datasets.is_empty() {
+                    ui.separator();
+                }
+
+                for dataset in datasets {
+                    if ui.button(dataset).clicked() {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::UploadToDataset {
+                                store_id: recording_ids.to_vec(),
+                                target_server: server.clone(),
+                                dataset_name: dataset.clone(),
+                                create_new: false,
+                            });
+                        ui.close();
+                    }
+                }
+            });
+        }
+    });
 }
 
 pub fn table_id_button_ui(
@@ -835,7 +961,6 @@ pub fn table_id_button_ui(
     if response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
     }
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

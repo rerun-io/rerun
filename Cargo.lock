@@ -6860,6 +6860,7 @@ dependencies = [
  "egui_extras",
  "egui_plot",
  "itertools 0.14.0",
+ "re_arrow_util",
  "re_byte_size",
  "re_capabilities",
  "re_chunk_store",
@@ -7328,6 +7329,7 @@ dependencies = [
  "ahash",
  "datafusion",
  "egui",
+ "futures",
  "itertools 0.14.0",
  "re_data_ui",
  "re_dataframe_ui",
@@ -7467,6 +7469,7 @@ dependencies = [
  "egui_tiles",
  "itertools 0.14.0",
  "nohash-hasher",
+ "re_arrow_util",
  "re_case",
  "re_chunk",
  "re_chunk_store",
@@ -8234,6 +8237,39 @@ checksum = "76009fbe0614077fc1a2ce255e3a1881a2e3a3527097d5dc6d8212c585e7e38b"
 dependencies = [
  "quote",
  "syn 2.0.99",
+]
+
+[[package]]
+name = "redap_server"
+version = "0.24.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "arrow",
+ "clap",
+ "futures",
+ "http",
+ "jiff",
+ "mimalloc",
+ "nohash-hasher",
+ "parking_lot",
+ "re_entity_db",
+ "re_error",
+ "re_grpc_server",
+ "re_log",
+ "re_log_encoding",
+ "re_log_types",
+ "re_memory",
+ "re_protos",
+ "re_sorbet",
+ "thiserror 1.0.65",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-web",
+ "tower 0.5.2",
+ "tower-service",
+ "tracing",
+ "url",
 ]
 
 [[package]]

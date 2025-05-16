@@ -51,6 +51,9 @@ pub struct GlobalContext<'a> {
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
+
+    /// List of all servers we're connected to right now.
+    pub servers: &'a [(re_uri::Origin, Vec<String>)], // TODO: need proper datastructures here.
 }
 
 /// Which display mode are we currently in?

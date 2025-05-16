@@ -374,6 +374,7 @@ impl TestContext {
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
+                servers: &[],
             },
             store_context: &store_context,
             active_redap_entry: None,
@@ -474,13 +475,21 @@ impl TestContext {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
-                SystemCommand::UpdateBlueprint(store_id, chunks) => {
-                    assert_eq!(store_id, self.blueprint_store.store_id());
-
-                    for chunk in chunks {
-                        self.blueprint_store
-                            .add_chunk(&Arc::new(chunk))
-                            .expect("Updating the blueprint chunk store failed");
+                SystemCommand::AppendToStore(store_id, chunks) => {
+                    if store_id == self.recording_store.store_id() {
+                        for chunk in chunks {
+                            self.recording_store
+                                .add_chunk(&Arc::new(chunk))
+                                .expect("Updating the recording chunk store failed");
+                        }
+                    } else if store_id == self.blueprint_store.store_id() {
+                        for chunk in chunks {
+                            self.blueprint_store
+                                .add_chunk(&Arc::new(chunk))
+                                .expect("Updating the blueprint chunk store failed");
+                        }
+                    } else {
+                        panic!("Unknown store id: {store_id:?}");
                     }
                 }
 
@@ -516,6 +525,7 @@ impl TestContext {
                 | SystemCommand::ActivateEntry(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseEntry(_)
+                | SystemCommand::DeleteEntry { .. }
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }
@@ -534,6 +544,10 @@ impl TestContext {
 
                 #[cfg(not(target_arch = "wasm32"))]
                 SystemCommand::FileSaver(_) => handled = false,
+
+                SystemCommand::UploadToDataset { .. } => {
+                    handled = false;
+                }
             }
 
             if !handled {

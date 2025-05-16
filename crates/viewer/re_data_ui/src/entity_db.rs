@@ -30,6 +30,8 @@ impl crate::DataUi for EntityDb {
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+
             {
                 ui.grid_left_hand_label(&format!("{} ID", self.store_id().kind));
                 ui.label(self.store_id().to_string());
@@ -105,12 +107,12 @@ impl crate::DataUi for EntityDb {
                 } = self.storage_engine().store().config();
 
                 ui.grid_left_hand_label("Compaction");
-                ui.label(format!(
+                ui.add(egui::Label::new(format!(
                     "{} rows ({} if unsorted) or {}",
                     re_format::format_uint(chunk_max_rows),
                     re_format::format_uint(chunk_max_rows_if_unsorted),
                     re_format::format_bytes(chunk_max_bytes as _),
-                ))
+                )).truncate())
                 .on_hover_text(
                     unindent::unindent(&format!("\
                         The current compaction configuration for this recording is to merge chunks until they \

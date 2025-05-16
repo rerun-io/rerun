@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
-use re_log_types::{ResolvedTimeRangeF, StoreId};
+use re_log_types::{EntryId, ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 use crate::StoreHubEntry;
@@ -59,18 +59,21 @@ pub enum SystemCommand {
     /// Close an [`StoreHubEntry`] and free its memory.
     CloseEntry(StoreHubEntry),
 
+    /// Delete an entry by name.
+    DeleteEntry(re_uri::Origin, EntryId),
+
     /// Close all stores and show the welcome screen again.
     CloseAllEntries,
 
-    /// Update the blueprint with additional data
+    /// Add more data to a store (blueprint or recording).
     ///
-    /// The [`StoreId`] should generally be the currently selected blueprint
-    /// but is tracked manually to ensure self-consistency if the blueprint
-    /// is both modified and changed in the same frame.
+    /// Edit recordings with case: we generally regard recordings as immutable.
+    ///
+    /// For blueprints,the [`StoreId`] should generally be the currently selected blueprint.
     ///
     /// Instead of using this directly, consider using
     /// [`crate::ViewerContext::save_blueprint_archetype`] or similar.
-    UpdateBlueprint(StoreId, Vec<Chunk>),
+    AppendToStore(StoreId, Vec<Chunk>),
 
     UndoBlueprint {
         blueprint_id: StoreId,
@@ -128,6 +131,14 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+
+    /// Upload dataset.
+    UploadToDataset {
+        store_id: Vec<StoreId>,
+        target_server: re_uri::Origin,
+        dataset_name: String,
+        create_new: bool,
+    },
 }
 
 impl std::fmt::Debug for SystemCommand {

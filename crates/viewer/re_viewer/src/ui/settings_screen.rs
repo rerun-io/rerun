@@ -64,7 +64,8 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.strong("General");
 
-    if cfg!(debug_assertions) {
+    // TODO: revert this - don't merge it
+    {
         // TODO(#3058): finish light node
         ui.horizontal(|ui| {
             ui.label("Theme:");
