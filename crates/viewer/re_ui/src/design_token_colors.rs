@@ -122,12 +122,14 @@ impl DesignTokens {
             Theme::Light => self.color_table.gray(S700),
         }
     }
+
     pub fn table_interaction_active_bg_stroke(&self) -> Color32 {
         match self.theme {
             Theme::Dark => self.color_table.gray(S350),
             Theme::Light => self.color_table.gray(S650),
         }
     }
+
     pub fn table_interaction_noninteractive_bg_stroke(&self) -> Color32 {
         match self.theme {
             Theme::Dark => self.color_table.gray(S200),
