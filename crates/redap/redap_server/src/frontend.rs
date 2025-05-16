@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
+use tokio_stream::StreamExt as _;
 
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_chunk_store::Chunk;
@@ -10,6 +11,7 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::EntityPath;
 use re_log_types::{EntryId, StoreId, StoreKind};
+use re_protos::catalog::v1alpha1::DeleteEntryResponse;
 use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
 use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::{
@@ -23,9 +25,9 @@ use re_protos::{
         QueryTasksRequest, QueryTasksResponse,
     },
 };
-use tokio_stream::StreamExt as _;
 
 use crate::store::{Dataset, InMemoryStore};
+
 #[derive(Debug, Default)]
 pub struct FrontendHandlerSettings {}
 
@@ -192,7 +194,7 @@ impl FrontendService for FrontendHandler {
 
         Ok(tonic::Response::new(
             ReadDatasetEntryResponse {
-                dataset_entry: dataset.as_dataset_entry().into(),
+                dataset_entry: dataset.as_dataset_entry(),
             }
             .into(),
         ))
@@ -212,10 +214,20 @@ impl FrontendService for FrontendHandler {
 
     async fn delete_entry(
         &self,
-        _request: tonic::Request<re_protos::catalog::v1alpha1::DeleteEntryRequest>,
+        request: tonic::Request<re_protos::catalog::v1alpha1::DeleteEntryRequest>,
     ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::DeleteEntryResponse>, tonic::Status>
     {
-        Err(tonic::Status::unimplemented("delete_entry not implemented"))
+        let entry_id = request
+            .into_inner()
+            .id
+            .ok_or_else(|| {
+                tonic::Status::invalid_argument("Missing entry ID in DeleteEntryRequest")
+            })?
+            .try_into()?;
+
+        self.store.write().delete_dataset(entry_id)?;
+
+        Ok(tonic::Response::new(DeleteEntryResponse {}))
     }
 
     // --- Manifest Registry ---
@@ -249,7 +261,7 @@ impl FrontendService for FrontendHandler {
             .metadata()
             .get("x-rerun-dataset-id")
             .cloned()
-            .ok_or_else(|| tonic::Status::not_found(format!("missing dataset id found")))?;
+            .ok_or_else(|| tonic::Status::not_found("missing dataset id found"))?;
 
         let dataset_id: re_log_types::external::re_tuid::Tuid =
             dataset_id.to_str().unwrap().parse().unwrap();
@@ -278,10 +290,9 @@ impl FrontendService for FrontendHandler {
 
             entity_db.add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()));
 
-            (
-                entity_db,
-                re_protos::common::v1alpha1::ext::PartitionId { id: partition_id },
-            )
+            (entity_db, re_protos::common::v1alpha1::ext::PartitionId {
+                id: partition_id,
+            })
         };
 
         while let Some(Ok(chunk_msg)) = request.next().await {
