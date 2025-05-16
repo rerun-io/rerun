@@ -263,7 +263,10 @@ impl Server {
             if let Err(err) = result {
                 re_log::error!("Failed to upload dataset: {err}");
             } else {
-                re_log::info!("Successfully uploaded to {origin:?}");
+                re_log::info!(
+                    "Successfully uploaded {} recordings to {origin:?}",
+                    entity_dbs.len()
+                );
 
                 // Kick off a refresh of the server.
                 command_sender.send(Command::RefreshCollection(origin)).ok();
