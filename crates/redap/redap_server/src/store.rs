@@ -109,6 +109,10 @@ impl Dataset {
     pub fn partition(&self, partition_id: PartitionId) -> Option<&EntityDb> {
         self.partitions.get(&partition_id)
     }
+
+    pub fn add_partition(&mut self, partition_id: PartitionId, entity_db: EntityDb) {
+        self.partitions.insert(partition_id, entity_db);
+    }
 }
 
 #[derive(Default)]
@@ -194,6 +198,10 @@ impl InMemoryStore {
 
     pub fn dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
         self.datasets.get(&entry_id)
+    }
+
+    pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {
+        self.datasets.get_mut(&entry_id)
     }
 
     pub fn iter_datasets(&self) -> impl Iterator<Item = &Dataset> {

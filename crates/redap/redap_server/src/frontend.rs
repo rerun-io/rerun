@@ -1,11 +1,15 @@
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 
+use re_entity_db::EntityDb;
+use re_entity_db::external::re_chunk_store::Chunk;
 use re_entity_db::external::re_chunk_store::external::re_chunk::external::nohash_hasher::IntSet;
+use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::EntityPath;
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
 use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::{
@@ -19,9 +23,9 @@ use re_protos::{
         QueryTasksRequest, QueryTasksResponse,
     },
 };
+use tokio_stream::StreamExt as _;
 
 use crate::store::{Dataset, InMemoryStore};
-
 #[derive(Debug, Default)]
 pub struct FrontendHandlerSettings {}
 
@@ -56,21 +60,15 @@ impl FrontendHandlerBuilder {
 pub struct FrontendHandler {
     settings: FrontendHandlerSettings,
 
-    store: std::sync::RwLock<InMemoryStore>,
+    store: parking_lot::RwLock<InMemoryStore>,
 }
 
 impl FrontendHandler {
     pub fn new(settings: FrontendHandlerSettings, store: InMemoryStore) -> Self {
         Self {
             settings,
-            store: RwLock::new(store),
+            store: parking_lot::RwLock::new(store),
         }
-    }
-
-    fn read_store<'a>(&'a self) -> Result<RwLockReadGuard<'a, InMemoryStore>, tonic::Status> {
-        self.store
-            .read()
-            .map_err(|_| tonic::Status::resource_exhausted("failed to acquire lock"))
     }
 }
 
@@ -129,9 +127,10 @@ impl FrontendService for FrontendHandler {
         _request: tonic::Request<re_protos::catalog::v1alpha1::FindEntriesRequest>,
     ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::FindEntriesResponse>, tonic::Status>
     {
-        let store = self.read_store()?;
         let response = re_protos::catalog::v1alpha1::FindEntriesResponse {
-            entries: store
+            entries: self
+                .store
+                .read()
                 .iter_datasets()
                 .map(Dataset::as_entry_details)
                 .map(Into::into)
@@ -152,11 +151,7 @@ impl FrontendService for FrontendHandler {
             tonic::Status::invalid_argument("Missing dataset name in CreateDatasetEntryRequest")
         })?;
 
-        let mut store = self
-            .store
-            .write()
-            .map_err(|_| tonic::Status::resource_exhausted("failed to acquire lock"))?;
-
+        let mut store = self.store.write();
         let entry_id = store.create_dataset(&dataset_name).map_err(|err| {
             tonic::Status::internal(format!("Failed to create dataset entry: {err}"))
         })?;
@@ -190,7 +185,7 @@ impl FrontendService for FrontendHandler {
             })?
             .try_into()?;
 
-        let store = self.read_store()?;
+        let store = self.store.read();
         let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
@@ -241,14 +236,69 @@ impl FrontendService for FrontendHandler {
 
     async fn write_chunks(
         &self,
-        _request: tonic::Request<
+        request: tonic::Request<
             tonic::Streaming<re_protos::manifest_registry::v1alpha1::WriteChunksRequest>,
         >,
     ) -> Result<
         tonic::Response<re_protos::manifest_registry::v1alpha1::WriteChunksResponse>,
         tonic::Status,
     > {
-        Err(tonic::Status::unimplemented("write_chunks not implemented"))
+        // let store = self.store.write();
+
+        let dataset_id = request
+            .metadata()
+            .get("x-rerun-dataset-id")
+            .cloned()
+            .ok_or_else(|| tonic::Status::not_found(format!("missing dataset id found")))?;
+
+        let dataset_id: re_log_types::external::re_tuid::Tuid =
+            dataset_id.to_str().unwrap().parse().unwrap();
+
+        let entry_id: EntryId = EntryId::from(dataset_id);
+
+        let mut request = request.into_inner();
+
+        let (mut entity_db, partition_id) = {
+            let Some(Ok(chunk_msg)) = request.next().await else {
+                return Err(tonic::Status::unknown("no chunks"));
+            };
+            let chunk_batch = chunk_msg.chunk.unwrap().decode().unwrap();
+            let partition_id = chunk_batch
+                .schema()
+                .metadata()
+                .get("rerun.partition_id")
+                .unwrap()
+                .clone();
+            let store_id = StoreId {
+                kind: StoreKind::Recording,
+                id: Arc::new(partition_id.clone()),
+            };
+
+            let mut entity_db = EntityDb::new(store_id);
+
+            entity_db.add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()));
+
+            (
+                entity_db,
+                re_protos::common::v1alpha1::ext::PartitionId { id: partition_id },
+            )
+        };
+
+        while let Some(Ok(chunk_msg)) = request.next().await {
+            let chunk_batch = chunk_msg.chunk.unwrap().decode().unwrap();
+            entity_db.add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()));
+        }
+
+        let mut store = self.store.write();
+        let Some(dataset) = store.dataset_mut(entry_id) else {
+            return Err(tonic::Status::not_found("dataset not found"));
+        };
+
+        dataset.add_partition(partition_id, entity_db);
+
+        Ok(tonic::Response::new(
+            re_protos::manifest_registry::v1alpha1::WriteChunksResponse {},
+        ))
     }
 
     /* Query schemas */
@@ -271,7 +321,7 @@ impl FrontendService for FrontendHandler {
             })?
             .try_into()?;
 
-        let store = self.read_store()?;
+        let store = self.store.read();
         let _ = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
@@ -306,7 +356,7 @@ impl FrontendService for FrontendHandler {
             })?
             .try_into()?;
 
-        let store = self.read_store()?;
+        let store = self.store.read();
         let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
@@ -342,7 +392,7 @@ impl FrontendService for FrontendHandler {
             })?
             .try_into()?;
 
-        let store = self.read_store()?;
+        let store = self.store.read();
         let dataset = store.dataset(entry_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {entry_id} not found"))
         })?;
@@ -428,7 +478,7 @@ impl FrontendService for FrontendHandler {
 
         let entity_paths: IntSet<EntityPath> = IntSet::from_iter(entity_paths.into_iter());
 
-        let store = self.read_store()?;
+        let store = self.store.read();
         let dataset = store.dataset(dataset_id).ok_or_else(|| {
             tonic::Status::not_found(format!("Entry with ID {dataset_id} not found"))
         })?;

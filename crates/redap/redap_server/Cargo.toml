@@ -6,7 +6,7 @@ edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-publish = false # TODO
+publish = false                                                         # TODO
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
@@ -51,6 +51,7 @@ jiff.workspace = true
 http.workspace = true
 mimalloc.workspace = true
 nohash-hasher.workspace = true
+parking_lot.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-stream.workspace = true
