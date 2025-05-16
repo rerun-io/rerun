@@ -20,8 +20,24 @@ pub enum Error {
     #[error(transparent)]
     StoreLoadError(#[from] re_entity_db::StoreLoadError),
 
-    #[error("Entry name '{0}'already exists")]
+    #[error("Entry name '{0}' already exists")]
     DuplicateEntryNameError(String),
+
+    #[error("Entry id '{0}' not found")]
+    EntryIdNotFound(EntryId),
+}
+
+impl From<Error> for tonic::Status {
+    fn from(value: Error) -> Self {
+        match value {
+            Error::IoError(err) => Self::internal(format!("IO error: {err}")),
+            Error::StoreLoadError(err) => Self::internal(format!("Store load error: {err}")),
+            Error::DuplicateEntryNameError(name) => {
+                Self::already_exists(format!("Entry name already exists: {name}"))
+            }
+            Error::EntryIdNotFound(id) => Self::not_found(format!("Entry ID not found: {id}")),
+        }
+    }
 }
 
 pub struct Dataset {
@@ -194,6 +210,15 @@ impl InMemoryStore {
         });
 
         Ok(entry_id)
+    }
+
+    pub fn delete_dataset(&mut self, entry_id: EntryId) -> Result<(), Error> {
+        if let Some(dataset) = self.datasets.remove(&entry_id) {
+            self.id_by_name.remove(&dataset.name);
+            Ok(())
+        } else {
+            Err(Error::EntryIdNotFound(entry_id))
+        }
     }
 
     pub fn dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
