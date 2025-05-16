@@ -836,9 +836,9 @@ pub fn upload_to_dataset_context_menu(
     let item_name = if entity_dbs.is_empty() {
         "No recordings selected"
     } else if entity_dbs.len() == 1 {
-        "Upload all to dataset"
-    } else {
         "Upload to dataset"
+    } else {
+        "Upload all to dataset"
     };
 
     ui.menu_button(item_name, |ui| {
