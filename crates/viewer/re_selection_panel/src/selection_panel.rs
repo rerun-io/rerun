@@ -1146,7 +1146,7 @@ impl AddRecordingPropertyUi {
                     re_chunk::TimePoint::STATIC,
                     [(
                         ComponentDescriptor {
-                            archetype_name: None,
+                            archetype_name: Some("User".into()), // TODO: we need this or redap queries fail
                             archetype_field_name: Some(self.name.clone().into()),
                             component_name: *component,
                         },
