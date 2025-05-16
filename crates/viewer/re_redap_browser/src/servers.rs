@@ -5,7 +5,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use egui::{Frame, Margin, RichText};
 
 use re_grpc_client::redap::RedapClient;
-use re_log_encoding::codec::wire::encoder::Encode;
+use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntryId, StoreId};
 use re_protos::catalog::v1alpha1::CreateDatasetEntryRequest;

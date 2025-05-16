@@ -74,21 +74,13 @@ impl ColumnDescriptor {
         }
     }
 
+    /// Short and usually unique, used in UI.
     #[inline]
     pub fn display_name(&self) -> String {
         match self {
             Self::RowId(descr) => descr.short_name(),
             Self::Time(descr) => descr.column_name().to_owned(),
-            // Self::Component(descr) => descr.component_name.short_name().to_owned(),
-            Self::Component(descr) => {
-                if let (Some(archetype_name), Some(archetype_field_name)) =
-                    (&descr.archetype_name, &descr.archetype_field_name)
-                {
-                    format!("{}.{}", archetype_name.short_name(), archetype_field_name)
-                } else {
-                    descr.component_name.short_name().to_owned()
-                }
-            }
+            Self::Component(descr) => descr.display_name(),
         }
     }
 

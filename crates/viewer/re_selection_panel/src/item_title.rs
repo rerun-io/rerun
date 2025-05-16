@@ -149,7 +149,7 @@ impl ItemTitle {
         } = component_path;
 
         Self::new(
-            component_descriptor.short_name(),
+            component_descriptor.display_name(),
             if is_static {
                 &icons::COMPONENT_STATIC
             } else {
@@ -159,7 +159,7 @@ impl ItemTitle {
         .with_tooltip(format!(
             "{} component {} of entity '{}'",
             if is_static { "Static" } else { "Temporal" },
-            component_descriptor.full_name(),
+            component_descriptor.display_name(),
             entity_path
         ))
     }

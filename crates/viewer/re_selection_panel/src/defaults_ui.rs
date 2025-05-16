@@ -284,7 +284,7 @@ fn components_to_show_in_add_menu(
         if components_to_show_in_add_menu.is_empty() {
             return Err(format!(
                 "Rerun lacks edit UI for: {}",
-                missing_editors.iter().map(|c| c.short_name()).join(", ")
+                missing_editors.iter().map(|c| c.display_name()).join(", ")
             ));
         }
     }

@@ -313,7 +313,7 @@ impl ComponentUiRegistry {
         row_id: Option<RowId>,
         component_raw: &dyn arrow::array::Array,
     ) {
-        re_tracing::profile_function!(component_descr.full_name());
+        re_tracing::profile_function!(component_descr.display_name());
 
         if component_raw.len() != 1 {
             (*self.fallback_ui)(
@@ -455,7 +455,7 @@ impl ComponentUiRegistry {
         fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
     ) {
-        re_tracing::profile_function!(component_descr.full_name());
+        re_tracing::profile_function!(component_descr.display_name());
 
         let component_name_for_fallback = component_descr.component_name;
 
@@ -537,7 +537,7 @@ impl ComponentUiRegistry {
         component_descr: ComponentDescriptor,
         allow_multiline: bool,
     ) -> bool {
-        re_tracing::profile_function!(component_descr.full_name());
+        re_tracing::profile_function!(component_descr.display_name());
 
         // We use the component name to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)

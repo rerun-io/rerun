@@ -903,7 +903,8 @@ impl TimePanel {
                             .show_flat(
                                 ui,
                                 list_item::LabelContent::new(format!(
-                                    "{kind} component, logged {num_messages}"
+                                    "{kind} {} component, logged {num_messages}",
+                                    component_descr.component_name.short_name()
                                 ))
                                 .truncate(false)
                                 .with_icon(if is_static {

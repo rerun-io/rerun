@@ -24,7 +24,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_path.component_descriptor.short_name());
+        re_tracing::profile_function!(self.component_path.component_descriptor.display_name());
 
         let ComponentPath {
             entity_path,
@@ -170,7 +170,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                         ui.label("Index");
                     });
                     header.col(|ui| {
-                        ui.label(component_descriptor.short_name());
+                        ui.label(component_descriptor.display_name());
                     });
                 })
                 .body(|mut body| {

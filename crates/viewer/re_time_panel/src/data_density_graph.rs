@@ -5,16 +5,17 @@
 
 use std::sync::Arc;
 
-use egui::emath::Rangef;
-use egui::{Color32, NumExt as _, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
+use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
 
-use re_chunk_store::Chunk;
-use re_chunk_store::RangeQuery;
+use re_chunk_store::{Chunk, RangeQuery};
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, TimelineName};
+use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
-use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
-use crate::time_panel::TimePanelItem;
+use crate::{
+    recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
+    time_panel::TimePanelItem,
+};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -734,11 +735,22 @@ impl<'a> DensityGraphBuilder<'a> {
 
 fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains_item(item);
-    if is_selected {
-        make_brighter(ui.visuals().widgets.active.fg_stroke.color)
-    } else {
-        //TODO(ab): tokenize that!
-        Color32::from_gray(225)
+
+    match ui.theme() {
+        egui::Theme::Dark => {
+            if is_selected {
+                make_brighter(ui.visuals().widgets.active.fg_stroke.color)
+            } else {
+                Color32::from_gray(225) //TODO(ab): tokenize
+            }
+        }
+        egui::Theme::Light => {
+            if is_selected {
+                make_darker(ui.visuals().widgets.active.fg_stroke.color)
+            } else {
+                Color32::from_gray(64) //TODO(ab): tokenize
+            }
+        }
     }
 }
 
@@ -748,5 +760,14 @@ fn make_brighter(color: Color32) -> Color32 {
         r.saturating_add(64),
         g.saturating_add(64),
         b.saturating_add(64),
+    )
+}
+
+fn make_darker(color: Color32) -> Color32 {
+    let [r, g, b, _] = color.to_array();
+    egui::Color32::from_rgb(
+        r.saturating_sub(64),
+        g.saturating_sub(64),
+        b.saturating_sub(64),
     )
 }

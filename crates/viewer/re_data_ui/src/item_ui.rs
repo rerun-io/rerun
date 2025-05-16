@@ -3,7 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_chunk_store::external::re_chunk::ChunkBuilder;
-use re_entity_db::{EntityDb, EntityTree, InstancePath};
+use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{
     ApplicationId, EntityPath, TableId, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
