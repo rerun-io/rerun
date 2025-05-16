@@ -8,7 +8,8 @@ use re_chunk_store::external::re_chunk::ChunkBuilder;
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{
-    ApplicationId, EntityPath, TableId, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    ApplicationId, EntityPath, StoreId, TableId, TimeInt, TimePoint, TimeType, Timeline,
+    TimelineName,
 };
 use re_types::{
     RowId,
@@ -792,8 +793,29 @@ pub fn entity_db_button_ui(
     ctx.handle_select_hover_drag_interactions(&response, item, false);
 
     response.context_menu(|ui| {
-        if !ctx.global_context.servers.is_empty() {
-            upload_to_dataset_context_menu(ctx, ui, &[entity_db]);
+        // TODO: use re_context_menu instead
+
+        // TODO: this code is duplicated in app.rs
+        let mut selected_stores = vec![];
+        for item in ctx.selection().iter_items() {
+            match item {
+                Item::AppId(selected_app_id) => {
+                    for recording in ctx.storage_context.bundle.recordings() {
+                        if recording.app_id() == Some(selected_app_id) {
+                            selected_stores.push(recording.store_id().clone());
+                        }
+                    }
+                }
+                Item::StoreId(store_id) => {
+                    selected_stores.push(store_id.clone());
+                }
+                _ => {}
+            }
+        }
+
+        if !selected_stores.is_empty() {
+            let app_id = entity_db.app_id().unwrap().0.clone(); // TODO: unwrap
+            upload_to_dataset_context_menu(ctx, ui, &app_id, &selected_stores);
         }
 
         let is_redap_recording = matches!(
@@ -830,11 +852,12 @@ pub fn entity_db_button_ui(
 pub fn upload_to_dataset_context_menu(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    entity_dbs: &[&re_entity_db::EntityDb],
+    suggested_name: &str,
+    recording_ids: &[StoreId],
 ) {
-    let item_name = if entity_dbs.is_empty() {
+    let item_name = if recording_ids.is_empty() {
         "No recordings selected"
-    } else if entity_dbs.len() == 1 {
+    } else if recording_ids.len() == 1 {
         "Upload to dataset"
     } else {
         "Upload all to dataset"
@@ -845,10 +868,13 @@ pub fn upload_to_dataset_context_menu(
             ui.menu_button(server.to_string(), |ui| {
                 ui.horizontal(|ui| {
                     let button_response = ui.button("Create new");
-                    let app_id = entity_dbs[0].app_id().unwrap().0.clone(); // TODO: unwrap
 
-                    let mut dataset_name = ui
-                        .memory_mut(|memory| memory.data.get_temp_mut_or(ui.id(), app_id).clone());
+                    let mut dataset_name = ui.memory_mut(|memory| {
+                        memory
+                            .data
+                            .get_temp_mut_or(ui.id(), suggested_name.to_owned())
+                            .clone()
+                    });
                     ui.text_edit_singleline(&mut dataset_name);
                     ui.memory_mut(|memory| {
                         memory.data.insert_temp(ui.id(), dataset_name.clone());
@@ -857,10 +883,7 @@ pub fn upload_to_dataset_context_menu(
                     if button_response.clicked() {
                         ctx.command_sender()
                             .send_system(SystemCommand::UploadToDataset {
-                                store_id: entity_dbs
-                                    .iter()
-                                    .map(|entity_db| entity_db.store_id().clone())
-                                    .collect(),
+                                store_id: recording_ids.to_vec(),
                                 target_server: server.clone(),
                                 dataset_name,
                                 create_new: true,
@@ -877,10 +900,7 @@ pub fn upload_to_dataset_context_menu(
                     if ui.button(dataset).clicked() {
                         ctx.command_sender()
                             .send_system(SystemCommand::UploadToDataset {
-                                store_id: entity_dbs
-                                    .iter()
-                                    .map(|entity_db| entity_db.store_id().clone())
-                                    .collect(),
+                                store_id: recording_ids.to_vec(),
                                 target_server: server.clone(),
                                 dataset_name: dataset.clone(),
                                 create_new: false,

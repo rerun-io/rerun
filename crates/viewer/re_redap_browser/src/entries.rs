@@ -444,6 +444,15 @@ fn local_dataset_context_menu_ui(
     // TODO: add save all button here as well.
 
     if !ctx.global_context.servers.is_empty() && !entity_dbs.is_empty() {
-        upload_to_dataset_context_menu(ctx, ui, entity_dbs);
+        let app_id = entity_dbs[0].app_id().unwrap().0.clone(); // TODO: unwrap
+        upload_to_dataset_context_menu(
+            ctx,
+            ui,
+            &app_id,
+            &entity_dbs
+                .iter()
+                .map(|db| db.store_id().clone())
+                .collect_vec(),
+        );
     }
 }

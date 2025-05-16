@@ -400,12 +400,22 @@ impl ApplicationSelectionState {
     ///
     /// Clears the selected item context if none was specified.
     pub fn set_selection(&self, items: impl Into<ItemCollection>) {
-        *self.selection_this_frame.lock() = items.into();
+        let items = items.into();
+        re_log::debug!(
+            "set_selection {items:?} {}",
+            std::backtrace::Backtrace::capture()
+        );
+        *self.selection_this_frame.lock() = items;
     }
 
     /// Extend the selection with the provided items.
     pub fn extend_selection(&self, items: impl Into<ItemCollection>) {
-        self.selection_this_frame.lock().extend(items.into());
+        let items = items.into();
+        re_log::debug!(
+            "extend_selection {items:?} {}",
+            std::backtrace::Backtrace::capture()
+        );
+        self.selection_this_frame.lock().extend(items);
     }
 
     /// Returns the current selection.
