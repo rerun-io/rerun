@@ -71,8 +71,11 @@ const CRATES_AT_WARN_LEVEL: &[&str] = &[
 ];
 
 /// Never log anything less serious than a `INFO` from these crates.
+///
+/// These creates are quite spammy on debug, drowning out what we care about:
 const CRATES_AT_INFO_LEVEL: &[&str] = &[
-    // These are quite spammy on debug, drowning out what we care about:
+    "datafusion_optimizer",
+    "datafusion",
     "h2",
     "hyper",
     "prost_build",
