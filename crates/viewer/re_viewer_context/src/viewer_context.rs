@@ -226,6 +226,8 @@ impl ViewerContext<'_> {
 
             egui::DragAndDrop::set_payload(&response.ctx, payload);
         } else if response.clicked() {
+            // TODO: if right-clicking something that _isn't_ selected, we should select it.
+            // If we right-click something that _is_ selected, we should show a context menu.
             if response.double_clicked() {
                 if let Some(item) = interacted_items.first_item() {
                     self.global_context
