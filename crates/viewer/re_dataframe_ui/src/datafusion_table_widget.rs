@@ -260,7 +260,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 let name = if let Some(renamer) = &column_renamer {
                     renamer(c)
                 } else {
-                    c.name(BatchType::Dataframe)
+                    c.column_name(BatchType::Dataframe)
                 };
 
                 ColumnConfig::new(Id::new(c), name)
@@ -365,7 +365,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             let name = if let Some(renamer) = self.column_renamer {
                 renamer(desc)
             } else {
-                desc.name(BatchType::Dataframe)
+                desc.column_name(BatchType::Dataframe)
             };
 
             let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {

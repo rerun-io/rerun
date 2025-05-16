@@ -113,6 +113,8 @@ impl ComponentDescriptor {
             (&archetype_name, &archetype_field_name)
         {
             format!("{}.{archetype_field_name}", archetype_name.short_name())
+        } else if let Some(archetype_field_name) = &archetype_field_name {
+            archetype_field_name.to_string()
         } else {
             component_name.short_name().to_owned()
         }

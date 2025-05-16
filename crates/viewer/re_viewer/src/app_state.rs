@@ -752,7 +752,7 @@ fn table_ui(
         .title(table_id.as_str())
         .column_renamer(|desc| match desc {
             ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => {
-                desc.short_name().to_owned()
+                desc.display_name().to_owned()
             }
 
             // In most case, user tables don't have any entities, so we filter out the root entity
