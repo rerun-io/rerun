@@ -35,6 +35,7 @@ default = []
 # Rerun
 re_entity_db.workspace = true
 re_error.workspace = true
+re_grpc_server.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_encoding.workspace = true
 re_log_types.workspace = true

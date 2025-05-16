@@ -51,6 +51,8 @@ async fn run_async(args: Args) -> anyhow::Result<()> {
         }
 
         FrontendServiceServer::new(builder.build())
+            .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
+            .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE)
     };
 
     let addr = SocketAddr::new(args.addr.parse()?, args.port);

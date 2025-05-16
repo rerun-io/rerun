@@ -8251,6 +8251,7 @@ dependencies = [
  "parking_lot",
  "re_entity_db",
  "re_error",
+ "re_grpc_server",
  "re_log",
  "re_log_encoding",
  "re_log_types",
