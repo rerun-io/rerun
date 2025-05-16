@@ -8,7 +8,7 @@ use re_grpc_client::redap::RedapClient;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{EntryId, StoreId};
-use re_protos::catalog::v1alpha1::CreateDatasetEntryRequest;
+use re_protos::catalog::v1alpha1::{CreateDatasetEntryRequest, DeleteEntryRequest};
 use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
@@ -268,6 +268,30 @@ impl Server {
             }
         });
     }
+
+    fn delete_entry(&self, entry: EntryId, command_sender: Sender<Command>) {
+        let origin = self.origin.clone();
+
+        self.runtime.spawn_future(async move {
+            let mut client = match re_grpc_client::redap::client(origin.clone()).await {
+                Ok(client) => client,
+                Err(err) => {
+                    re_log::error!("Failed to connect to {origin:?}: {err}");
+                    return;
+                }
+            };
+
+            let result = delete_entry(&mut client, entry).await;
+            if let Err(err) = result {
+                re_log::error!("Failed to delete entry: {err}");
+            } else {
+                re_log::info!("Successfully deleted entry: {origin:?}");
+
+                // Kick off a refresh of the server.
+                command_sender.send(Command::RefreshCollection(origin)).ok();
+            }
+        });
+    }
 }
 
 /// All servers known to the viewer, and their catalog data.
@@ -512,6 +536,15 @@ impl RedapServers {
             create_new,
         );
     }
+
+    pub fn delete_entry(&self, target_server: re_uri::Origin, entry: EntryId) {
+        let Some(server) = self.servers.get(&target_server) else {
+            re_log::error!("Not connected to server at {target_server:?}");
+            return;
+        };
+
+        server.delete_entry(entry, self.command_sender.clone());
+    }
 }
 
 async fn write_chunks_to_dataset(
@@ -600,4 +633,17 @@ async fn create_new_dataset(
     Ok(EntryId {
         id: Tuid::from_nanos_and_inc(time_ns, inc),
     })
+}
+
+async fn delete_entry(
+    client: &mut RedapClient,
+    entry: EntryId,
+) -> Result<(), crate::entries::EntryError> {
+    client
+        .delete_entry(DeleteEntryRequest {
+            id: Some(entry.into()),
+        })
+        .await?;
+
+    Ok(())
 }

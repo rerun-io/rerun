@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
-use re_log_types::{ResolvedTimeRangeF, StoreId};
+use re_log_types::{EntryId, ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
 use crate::StoreHubEntry;
@@ -58,6 +58,9 @@ pub enum SystemCommand {
 
     /// Close an [`StoreHubEntry`] and free its memory.
     CloseEntry(StoreHubEntry),
+
+    /// Delete an entry by name.
+    DeleteEntry(re_uri::Origin, EntryId),
 
     /// Close all stores and show the welcome screen again.
     CloseAllEntries,

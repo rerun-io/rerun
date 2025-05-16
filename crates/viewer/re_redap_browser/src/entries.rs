@@ -361,16 +361,32 @@ pub fn dataset_and_its_recordings_ui(
         dataset_list_item.show_hierarchical(ui, dataset_list_item_content)
     };
 
-    item_response.context_menu(|ui| {
-        local_dataset_context_menu_ui(ctx, ui, &entity_dbs);
-    });
-
     if let EntryKind::Local(app) = &kind {
         item_response = item_response.on_hover_ui(|ui| {
             app.data_ui_recording(ctx, ui, UiLayout::Tooltip);
         });
 
         ctx.handle_select_hover_drag_interactions(&item_response, Item::AppId(app.clone()), false);
+
+        item_response.context_menu(|ui| {
+            local_dataset_context_menu_ui(ctx, ui, &entity_dbs);
+        });
+    } else if let EntryKind::Remote {
+        entry_id,
+        origin,
+        name: _,
+    } = kind
+    {
+        item_response.context_menu(|ui| {
+            if ui
+                .button("Delete dataset")
+                .on_hover_text("Delete this dataset. This cannot be undone.")
+                .clicked()
+            {
+                ctx.command_sender()
+                    .send_system(SystemCommand::DeleteEntry(origin.clone(), *entry_id));
+            }
+        });
     }
 
     if item_response.clicked() {

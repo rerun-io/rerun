@@ -459,6 +459,10 @@ impl App {
                 store_hub.remove(&entry);
             }
 
+            SystemCommand::DeleteEntry(origin, entry) => {
+                self.state.redap_servers.delete_entry(origin, entry);
+            }
+
             SystemCommand::CloseAllEntries => {
                 store_hub.clear_entries();
 
@@ -926,6 +930,7 @@ impl App {
                         .send_system(SystemCommand::CloseEntry(cur_rec.clone().into()));
                 }
             }
+
             UICommand::CloseAllEntries => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllEntries);

@@ -525,6 +525,7 @@ impl TestContext {
                 | SystemCommand::ActivateEntry(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseEntry(_)
+                | SystemCommand::DeleteEntry(_)
                 | SystemCommand::LoadDataSource(_)
                 | SystemCommand::ClearSourceAndItsStores(_)
                 | SystemCommand::AddReceiver { .. }
