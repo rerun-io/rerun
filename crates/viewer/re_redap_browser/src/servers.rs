@@ -236,6 +236,7 @@ impl Server {
         };
 
         let origin = self.origin.clone();
+        let num_dbs = entity_dbs.len();
 
         self.runtime.spawn_future(async move {
             let mut client = match re_grpc_client::redap::client(origin.clone()).await {
@@ -263,10 +264,7 @@ impl Server {
             if let Err(err) = result {
                 re_log::error!("Failed to upload dataset: {err}");
             } else {
-                re_log::info!(
-                    "Successfully uploaded {} recordings to {origin:?}",
-                    entity_dbs.len()
-                );
+                re_log::info!("Successfully uploaded {} recordings to {origin:?}", num_dbs);
 
                 // Kick off a refresh of the server.
                 command_sender.send(Command::RefreshCollection(origin)).ok();
