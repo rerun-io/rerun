@@ -1,5 +1,5 @@
 use re_data_ui::item_ui::table_id_button_ui;
-use re_log_types::{ApplicationId, LogMsg};
+use re_log_types::LogMsg;
 use re_redap_browser::{
     EXAMPLES_ORIGIN, EntryKind, LOCAL_ORIGIN, RedapServers, dataset_and_its_recordings_ui,
 };
