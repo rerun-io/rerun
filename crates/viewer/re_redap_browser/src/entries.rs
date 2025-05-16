@@ -4,7 +4,7 @@ use ahash::HashMap;
 use itertools::Itertools as _;
 
 use re_data_ui::DataUi as _;
-use re_data_ui::item_ui::entity_db_button_ui;
+use re_data_ui::item_ui::{entity_db_button_ui, upload_to_dataset_context_menu};
 use re_dataframe_ui::RequestedObject;
 use re_grpc_client::redap::ConnectionError;
 use re_grpc_client::{StreamError, redap};
@@ -428,46 +428,6 @@ fn local_dataset_context_menu_ui(
     // TODO: add save all button here as well.
 
     if !ctx.global_context.servers.is_empty() && !entity_dbs.is_empty() {
-        ui.menu_button("Upload all to dataset", |ui| {
-            for (server, datasets) in ctx.global_context.servers {
-                ui.menu_button(server.to_string(), |ui| {
-                    if ui.button("Upload to new dataset").clicked() {
-                        let app_id = entity_dbs[0].app_id().unwrap(); // TODO: unwrap
-
-                        ctx.command_sender()
-                            .send_system(SystemCommand::UploadToDataset {
-                                store_id: entity_dbs
-                                    .iter()
-                                    .map(|entity_db| entity_db.store_id().clone())
-                                    .collect(),
-                                target_server: server.clone(),
-                                dataset_name: app_id.0.clone(),
-                                create_new: true,
-                            });
-                        ui.close();
-                    }
-
-                    if !datasets.is_empty() {
-                        ui.separator();
-                    }
-
-                    for dataset in datasets {
-                        if ui.button(dataset).clicked() {
-                            ctx.command_sender()
-                                .send_system(SystemCommand::UploadToDataset {
-                                    store_id: entity_dbs
-                                        .iter()
-                                        .map(|entity_db| entity_db.store_id().clone())
-                                        .collect(),
-                                    target_server: server.clone(),
-                                    dataset_name: dataset.clone(),
-                                    create_new: false,
-                                });
-                            ui.close();
-                        }
-                    }
-                });
-            }
-        });
+        upload_to_dataset_context_menu(ctx, ui, entity_dbs);
     }
 }

@@ -792,42 +792,7 @@ pub fn entity_db_button_ui(
 
     response.context_menu(|ui| {
         if !ctx.global_context.servers.is_empty() {
-            ui.menu_button("Upload partiation", |ui| {
-                for (server, datasets) in ctx.global_context.servers {
-                    ui.menu_button(server.to_string(), |ui| {
-                        if ui.button("Upload to new dataset").clicked() {
-                            ctx.command_sender()
-                                .send_system(SystemCommand::UploadToDataset {
-                                    store_id: vec![entity_db.store_id().clone()],
-                                    target_server: server.clone(),
-                                    dataset_name: entity_db
-                                        .app_id()
-                                        .map(|app_id| app_id.0.clone())
-                                        .unwrap_or("New Dataset".to_owned()),
-                                    create_new: true,
-                                });
-                            ui.close();
-                        }
-
-                        if !datasets.is_empty() {
-                            ui.separator();
-                        }
-
-                        for dataset in datasets {
-                            if ui.button(dataset).clicked() {
-                                ctx.command_sender()
-                                    .send_system(SystemCommand::UploadToDataset {
-                                        store_id: vec![entity_db.store_id().clone()],
-                                        target_server: server.clone(),
-                                        dataset_name: dataset.clone(),
-                                        create_new: false,
-                                    });
-                                ui.close();
-                            }
-                        }
-                    });
-                }
-            });
+            upload_to_dataset_context_menu(ctx, ui, &[entity_db]);
         }
 
         let is_redap_recording = matches!(
@@ -857,6 +822,72 @@ pub fn entity_db_button_ui(
                     store_id.clone(),
                     vec![name_update_chunk],
                 ));
+        }
+    });
+}
+
+pub fn upload_to_dataset_context_menu(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_dbs: &[&EntityDb],
+) {
+    let item_name = if entity_dbs.is_empty() {
+        "No recordings selected"
+    } else if entity_dbs.len() == 1 {
+        "Upload all to dataset"
+    } else {
+        "Upload to dataset"
+    };
+
+    ui.menu_button(item_name, |ui| {
+        for (server, datasets) in ctx.global_context.servers {
+            ui.menu_button(server.to_string(), |ui| {
+                ui.horizontal(|ui| {
+                    let button_response = ui.button("Create new");
+                    let app_id = entity_dbs[0].app_id().unwrap().0.clone(); // TODO: unwrap
+
+                    let mut dataset_name = ui
+                        .memory_mut(|memory| memory.data.get_temp_mut_or(ui.id(), app_id).clone());
+                    ui.text_edit_singleline(&mut dataset_name);
+                    ui.memory_mut(|memory| {
+                        memory.data.insert_temp(ui.id(), dataset_name.clone());
+                    });
+
+                    if button_response.clicked() {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::UploadToDataset {
+                                store_id: entity_dbs
+                                    .iter()
+                                    .map(|entity_db| entity_db.store_id().clone())
+                                    .collect(),
+                                target_server: server.clone(),
+                                dataset_name,
+                                create_new: true,
+                            });
+                        ui.close();
+                    }
+                });
+
+                if !datasets.is_empty() {
+                    ui.separator();
+                }
+
+                for dataset in datasets {
+                    if ui.button(dataset).clicked() {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::UploadToDataset {
+                                store_id: entity_dbs
+                                    .iter()
+                                    .map(|entity_db| entity_db.store_id().clone())
+                                    .collect(),
+                                target_server: server.clone(),
+                                dataset_name: dataset.clone(),
+                                create_new: false,
+                            });
+                        ui.close();
+                    }
+                }
+            });
         }
     });
 }
