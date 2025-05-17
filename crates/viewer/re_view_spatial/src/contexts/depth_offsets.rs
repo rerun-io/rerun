@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ahash::HashMap;
 
 use re_log_types::EntityPathHash;
-use re_types::{Component as _, ComponentNameSet, components::DrawOrder};
+use re_types::{ComponentDescriptorSet, archetypes, components::DrawOrder};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier};
 
@@ -23,8 +23,21 @@ impl IdentifiedViewSystem for EntityDepthOffsets {
 }
 
 impl ViewContextSystem for EntityDepthOffsets {
-    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
-        vec![std::iter::once(DrawOrder::name()).collect()]
+    fn compatible_component_sets(&self) -> Vec<ComponentDescriptorSet> {
+        vec![
+            [
+                archetypes::Arrows2D::descriptor_indicator(),
+                archetypes::Boxes2D::descriptor_indicator(),
+                archetypes::DepthImage::descriptor_indicator(),
+                archetypes::EncodedImage::descriptor_indicator(),
+                archetypes::Image::descriptor_indicator(),
+                archetypes::LineStrips2D::descriptor_indicator(),
+                archetypes::Points2D::descriptor_indicator(),
+                archetypes::SegmentationImage::descriptor_indicator(),
+            ]
+            .into_iter()
+            .collect(),
+        ]
     }
 
     fn execute(
@@ -94,7 +107,7 @@ fn collect_draw_order_per_visualizer(
             [draw_order_descriptor],
             query_shadowed_components,
         )
-        .get_mono_with_fallback::<DrawOrder>();
+        .get_mono_with_fallback::<DrawOrder>(draw_order_descriptor);
 
         entities_per_draw_order
             .entry(draw_order)
