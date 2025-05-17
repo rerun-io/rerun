@@ -117,7 +117,13 @@ impl EntityDb {
         self.storage_engine.read()
     }
 
-    //TODO: SAFETY yolo
+    /// Returns a reference to the backing [`StorageEngine`].
+    ///
+    /// This can be used to obtain a clone of the [`StorageEngine`].
+    ///
+    /// # Safety
+    ///
+    /// TODO: cmc?
     #[expect(unsafe_code)]
     pub unsafe fn storage_engine_raw(&self) -> &StorageEngine {
         &self.storage_engine

@@ -7,7 +7,7 @@ static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
 fn main() -> std::process::ExitCode {
     re_log::setup_logging();
 
-    let result = redap_server::run(std::env::args());
+    let result = rerun_server::run(std::env::args());
 
     match result {
         Ok(_) => std::process::ExitCode::SUCCESS,

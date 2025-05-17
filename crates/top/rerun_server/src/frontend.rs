@@ -60,6 +60,7 @@ impl FrontendHandlerBuilder {
 // ---
 
 pub struct FrontendHandler {
+    #[expect(dead_code)]
     settings: FrontendHandlerSettings,
 
     store: parking_lot::RwLock<InMemoryStore>,
@@ -116,7 +117,7 @@ decl_stream!(GetChunksResponseStream<manifest:GetChunksResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(ScanPartitionTableResponseStream<manifest:ScanPartitionTableResponse>);
 decl_stream!(SearchDatasetResponseStream<manifest:SearchDatasetResponse>);
-decl_stream!(WriteChunksResponseStream<manifest:WriteChunksResponse>);
+//decl_stream!(WriteChunksResponseStream<manifest:WriteChunksResponse>);
 decl_stream!(ScanTableResponseStream<frontend:ScanTableResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
 
@@ -132,12 +133,11 @@ impl FrontendService for FrontendHandler {
         let filter = request.into_inner().filter;
         let entry_id = filter
             .as_ref()
-            .map(|filter| filter.id.clone())
-            .flatten()
+            .and_then(|filter| filter.id)
             .map(TryInto::try_into)
             .transpose()?;
-        let name = filter.as_ref().map(|filter| filter.name.clone()).flatten();
-        let kind = filter.map(|filter| filter.entry_kind).flatten();
+        let name = filter.as_ref().and_then(|filter| filter.name.clone());
+        let kind = filter.and_then(|filter| filter.entry_kind);
 
         if kind.is_some_and(|kind| kind != EntryKind::Dataset as i32) {
             return Err(tonic::Status::unimplemented(

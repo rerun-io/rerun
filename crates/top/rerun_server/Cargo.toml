@@ -1,12 +1,12 @@
 [package]
-name = "redap_server"
+name = "rerun_server"
 authors.workspace = true
-description = "In-memory opensource implementation of the Redap server"
+description = "A Rerun server implementation backed by an in-memory store "
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-publish = false                                                         # TODO
+publish = false  # TODO
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
@@ -14,7 +14,7 @@ version.workspace = true
 
 
 [[bin]]
-name = "redap-server"
+name = "rerun-server"
 path = "src/bin/main.rs"
 
 
