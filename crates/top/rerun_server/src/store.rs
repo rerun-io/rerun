@@ -93,7 +93,7 @@ impl Dataset {
         let schemas = self.partitions.values().map(|partition| {
             let columns = partition.entity_db.storage_engine().store().schema();
             let fields = columns.arrow_fields();
-            Schema::new(fields)
+            Schema::new_with_metadata(fields, HashMap::default())
         });
 
         Schema::try_merge(schemas)
@@ -133,8 +133,8 @@ impl Dataset {
         )
     }
 
-    pub fn partition(&self, partition_id: PartitionId) -> Option<&EntityDb> {
-        self.partitions.get(&partition_id).map(|p| &p.entity_db)
+    pub fn partition(&self, partition_id: &PartitionId) -> Option<&EntityDb> {
+        self.partitions.get(partition_id).map(|p| &p.entity_db)
     }
 
     pub fn add_partition(&mut self, partition_id: PartitionId, entity_db: EntityDb) {
@@ -252,7 +252,7 @@ impl InMemoryStore {
     }
 
     pub fn dataset_by_name(&self, name: &str) -> Option<&Dataset> {
-        let entry_id = self.id_by_name.get(name).cloned()?;
+        let entry_id = self.id_by_name.get(name).copied()?;
         self.dataset(entry_id)
     }
 

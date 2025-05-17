@@ -600,7 +600,7 @@ impl FrontendService for FrontendHandler {
             .into_iter()
             .map(|partition_id| {
                 dataset
-                    .partition(partition_id.clone())
+                    .partition(&partition_id)
                     .ok_or_else(|| {
                         tonic::Status::not_found(format!(
                             "Partition with ID {partition_id} not found"
@@ -608,6 +608,7 @@ impl FrontendService for FrontendHandler {
                     })
                     .map(|partition| {
                         #[expect(unsafe_code)]
+                        // Safety: TODO cmc?
                         unsafe { partition.storage_engine_raw() }.clone()
                     })
                     .map(|storage_engine| (partition_id, storage_engine))
@@ -621,7 +622,7 @@ impl FrontendService for FrontendHandler {
                     .store()
                     .iter_chunks()
                     .filter(|chunk| {
-                        entity_paths.is_empty() || entity_paths.contains(&chunk.entity_path())
+                        entity_paths.is_empty() || entity_paths.contains(chunk.entity_path())
                     })
                     .map(|chunk| {
                         let record_batch: RecordBatch = chunk
