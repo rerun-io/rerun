@@ -52,8 +52,6 @@ pub struct Dataset {
 
     created_at: jiff::Timestamp,
     updated_at: jiff::Timestamp,
-    //TODO:
-    //storage url
 }
 
 impl Dataset {
@@ -83,8 +81,7 @@ impl Dataset {
 
             handle: DatasetHandle {
                 id: Some(self.id),
-                //TODO
-                url: url::Url::parse("file:///tmp/unsupported").expect("valid url"),
+                url: url::Url::parse(&format!("memory:///{}", self.id)).expect("valid url"),
             },
         }
     }
@@ -117,8 +114,10 @@ impl Dataset {
 
         let partition_types = vec!["rrd".to_owned(); partition_ids.len()];
 
-        //TODO
-        let storage_urls = vec!["file:///tmp/unsupported".to_owned(); partition_ids.len()];
+        let storage_urls = partition_ids
+            .iter()
+            .map(|partition_id| format!("memory:///{}/{partition_id}", self.id))
+            .collect();
 
         let partition_manifest_updated_ats = vec![None; partition_ids.len()];
         let partition_manifest_urls = vec![None; partition_ids.len()];
