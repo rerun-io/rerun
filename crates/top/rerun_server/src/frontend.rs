@@ -312,16 +312,21 @@ impl FrontendService for FrontendHandler {
         tonic::Response<re_protos::manifest_registry::v1alpha1::WriteChunksResponse>,
         tonic::Status,
     > {
-        // let store = self.store.write();
-
         let dataset_id = request
             .metadata()
             .get("x-rerun-dataset-id")
             .cloned()
-            .ok_or_else(|| tonic::Status::not_found("missing dataset id found"))?;
+            .ok_or_else(|| tonic::Status::not_found("dataset id not provided in the headers"))?;
 
-        let dataset_id: re_log_types::external::re_tuid::Tuid =
-            dataset_id.to_str().unwrap().parse().unwrap();
+        let dataset_id: re_tuid::Tuid = dataset_id
+            .to_str()
+            .map_err(|_err| {
+                tonic::Status::unknown("could not convert dataset id header to string")
+            })?
+            .parse()
+            .map_err(|err| {
+                tonic::Status::invalid_argument(format!("could not parse dataset id: {err}"))
+            })?;
 
         let entry_id: EntryId = EntryId::from(dataset_id);
 
@@ -329,15 +334,26 @@ impl FrontendService for FrontendHandler {
 
         let (mut entity_db, partition_id) = {
             let Some(Ok(chunk_msg)) = request.next().await else {
-                return Err(tonic::Status::unknown("no chunks"));
+                return Err(tonic::Status::invalid_argument("no chunks provided"));
             };
-            let chunk_batch = chunk_msg.chunk.unwrap().decode().unwrap();
+
+            let chunk_batch = chunk_msg
+                .chunk
+                .ok_or_else(|| tonic::Status::invalid_argument("no chunk in WriteChunksRequest"))?
+                .decode()
+                .map_err(|err| tonic::Status::internal(format!("Could not decode chunk: {err}")))?;
+
             let partition_id = chunk_batch
                 .schema()
                 .metadata()
                 .get("rerun.partition_id")
-                .unwrap()
+                .ok_or_else(|| {
+                    tonic::Status::invalid_argument(
+                        "Received chunk without 'rerun.partition_id' metadata",
+                    )
+                })?
                 .clone();
+
             let store_id = StoreId {
                 kind: StoreKind::Recording,
                 id: Arc::new(partition_id.clone()),
@@ -345,7 +361,17 @@ impl FrontendService for FrontendHandler {
 
             let mut entity_db = EntityDb::new(store_id);
 
-            entity_db.add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()));
+            entity_db
+                .add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).map_err(
+                    |err| {
+                        tonic::Status::internal(format!(
+                            "error decoding chunk from record batch: {err}"
+                        ))
+                    },
+                )?))
+                .map_err(|err| {
+                    tonic::Status::internal(format!("error adding chunk to store: {err}"))
+                })?;
 
             (entity_db, re_protos::common::v1alpha1::ext::PartitionId {
                 id: partition_id,
@@ -353,8 +379,23 @@ impl FrontendService for FrontendHandler {
         };
 
         while let Some(Ok(chunk_msg)) = request.next().await {
-            let chunk_batch = chunk_msg.chunk.unwrap().decode().unwrap();
-            entity_db.add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).unwrap()));
+            let chunk_batch = chunk_msg
+                .chunk
+                .ok_or_else(|| tonic::Status::invalid_argument("no chunk in WriteChunksRequest"))?
+                .decode()
+                .map_err(|err| tonic::Status::internal(format!("Could not decode chunk: {err}")))?;
+
+            entity_db
+                .add_chunk(&Arc::new(Chunk::from_record_batch(&chunk_batch).map_err(
+                    |err| {
+                        tonic::Status::internal(format!(
+                            "error decoding chunk from record batch: {err}"
+                        ))
+                    },
+                )?))
+                .map_err(|err| {
+                    tonic::Status::internal(format!("error adding chunk to store: {err}"))
+                })?;
         }
 
         let mut store = self.store.write();
@@ -544,7 +585,7 @@ impl FrontendService for FrontendHandler {
             ));
         }
 
-        let entity_paths: IntSet<EntityPath> = IntSet::from_iter(entity_paths.into_iter());
+        let entity_paths: IntSet<EntityPath> = entity_paths.into_iter().collect();
 
         let store = self.store.read();
         let dataset = store.dataset(dataset_id).ok_or_else(|| {

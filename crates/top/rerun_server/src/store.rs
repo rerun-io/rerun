@@ -247,13 +247,13 @@ impl InMemoryStore {
         self.datasets.get(&entry_id)
     }
 
+    pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {
+        self.datasets.get_mut(&entry_id)
+    }
+
     pub fn dataset_by_name(&self, name: &str) -> Option<&Dataset> {
         let entry_id = self.id_by_name.get(name).cloned()?;
         self.dataset(entry_id)
-    }
-
-    pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {
-        self.datasets.get_mut(&entry_id)
     }
 
     pub fn iter_datasets(&self) -> impl Iterator<Item = &Dataset> {

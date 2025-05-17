@@ -42,6 +42,7 @@ re_log_types.workspace = true
 re_memory.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
+re_tuid.workspace = true
 
 # External
 anyhow.workspace = true

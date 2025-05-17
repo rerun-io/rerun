@@ -8543,6 +8543,7 @@ dependencies = [
  "re_memory",
  "re_protos",
  "re_sorbet",
+ "re_tuid",
  "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
