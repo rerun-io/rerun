@@ -136,7 +136,7 @@ impl Server {
                 })
                 .await
                 .map_err(|err| {
-                    error!("Server error: {:?}", err);
+                    error!("Server error: {err}");
                     err
                 });
 
