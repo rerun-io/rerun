@@ -13,7 +13,7 @@ use re_log_types::EntityPath;
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
 use re_protos::catalog::v1alpha1::{DeleteEntryResponse, EntryKind};
-use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
+use re_protos::frontend::v1alpha1::ext::{GetChunksRequest, ScanPartitionTableRequest};
 use re_protos::manifest_registry::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
     ScanPartitionTableResponse,
@@ -206,9 +206,7 @@ impl FrontendService for FrontendHandler {
         tonic::Response<re_protos::catalog::v1alpha1::CreateDatasetEntryResponse>,
         tonic::Status,
     > {
-        let dataset_name = request.into_inner().name.ok_or_else(|| {
-            tonic::Status::invalid_argument("Missing dataset name in CreateDatasetEntryRequest")
-        })?;
+        let dataset_name: String = request.into_inner().try_into()?;
 
         let mut store = self.store.write();
         let entry_id = store.create_dataset(&dataset_name).map_err(|err| {
@@ -235,14 +233,7 @@ impl FrontendService for FrontendHandler {
         tonic::Response<re_protos::catalog::v1alpha1::ReadDatasetEntryResponse>,
         tonic::Status,
     > {
-        //TODO: add ext helper
-        let entry_id = request
-            .into_inner()
-            .id
-            .ok_or_else(|| {
-                tonic::Status::invalid_argument("Missing entry ID in ReadDatasetEntryRequest")
-            })?
-            .try_into()?;
+        let entry_id = request.into_inner().try_into()?;
 
         let store = self.store.read();
         let dataset = store.dataset(entry_id).ok_or_else(|| {
@@ -274,13 +265,7 @@ impl FrontendService for FrontendHandler {
         request: tonic::Request<re_protos::catalog::v1alpha1::DeleteEntryRequest>,
     ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::DeleteEntryResponse>, tonic::Status>
     {
-        let entry_id = request
-            .into_inner()
-            .id
-            .ok_or_else(|| {
-                tonic::Status::invalid_argument("Missing entry ID in DeleteEntryRequest")
-            })?
-            .try_into()?;
+        let entry_id = request.into_inner().try_into()?;
 
         self.store.write().delete_dataset(entry_id)?;
 
@@ -419,16 +404,7 @@ impl FrontendService for FrontendHandler {
         tonic::Response<re_protos::manifest_registry::v1alpha1::GetPartitionTableSchemaResponse>,
         tonic::Status,
     > {
-        // ensure we know about the requested entry
-        let entry_id = request
-            .into_inner()
-            .dataset_id
-            .ok_or_else(|| {
-                tonic::Status::invalid_argument(
-                    "Missing dataset ID in GetPartitionTableSchemaRequest",
-                )
-            })?
-            .try_into()?;
+        let entry_id = request.into_inner().try_into()?;
 
         let store = self.store.read();
         let _ = store.dataset(entry_id).ok_or_else(|| {
@@ -452,18 +428,13 @@ impl FrontendService for FrontendHandler {
         &self,
         request: tonic::Request<re_protos::frontend::v1alpha1::ScanPartitionTableRequest>,
     ) -> Result<tonic::Response<Self::ScanPartitionTableStream>, tonic::Status> {
-        let request = request.into_inner();
+        let request: ScanPartitionTableRequest = request.into_inner().try_into()?;
         if request.scan_parameters.is_some() {
             return Err(tonic::Status::unimplemented(
                 "scan_partition_table: scan_parameters not implemented",
             ));
         }
-        let entry_id = request
-            .dataset_id
-            .ok_or_else(|| {
-                tonic::Status::invalid_argument("Missing dataset ID in ScanPartitionTableRequest")
-            })?
-            .try_into()?;
+        let entry_id = request.dataset_id;
 
         let store = self.store.read();
         let dataset = store.dataset(entry_id).ok_or_else(|| {
@@ -493,13 +464,7 @@ impl FrontendService for FrontendHandler {
         tonic::Response<re_protos::manifest_registry::v1alpha1::GetDatasetSchemaResponse>,
         tonic::Status,
     > {
-        let entry_id = request
-            .into_inner()
-            .dataset_id
-            .ok_or_else(|| {
-                tonic::Status::invalid_argument("Missing dataset ID in GetDatasetSchemaRequest")
-            })?
-            .try_into()?;
+        let entry_id = request.into_inner().try_into()?;
 
         let store = self.store.read();
         let dataset = store.dataset(entry_id).ok_or_else(|| {

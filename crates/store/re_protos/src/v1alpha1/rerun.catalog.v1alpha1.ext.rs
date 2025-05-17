@@ -1,4 +1,5 @@
-use crate::{TypeConversionError, common::v1alpha1::ext::DatasetHandle, missing_field};
+use crate::v1alpha1::rerun_common_v1alpha1_ext::DatasetHandle;
+use crate::{TypeConversionError, missing_field};
 
 // --- EntryDetails ---
 
@@ -107,6 +108,21 @@ impl From<DatasetEntry> for crate::catalog::v1alpha1::DatasetEntry {
     }
 }
 
+// --- CreateDatasetEntryRequest ---
+
+impl TryFrom<crate::catalog::v1alpha1::CreateDatasetEntryRequest> for String {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::CreateDatasetEntryRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(value.name.ok_or(missing_field!(
+            crate::catalog::v1alpha1::CreateDatasetEntryRequest,
+            "name"
+        ))?)
+    }
+}
+
 // --- CreateDatasetEntryResponse ---
 
 #[derive(Debug, Clone)]
@@ -140,6 +156,24 @@ impl TryFrom<crate::catalog::v1alpha1::CreateDatasetEntryResponse> for CreateDat
     }
 }
 
+// --- ReadDatasetEntryRequest ---
+
+impl TryFrom<crate::catalog::v1alpha1::ReadDatasetEntryRequest> for re_log_types::EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::catalog::v1alpha1::ReadDatasetEntryRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(value
+            .id
+            .ok_or(missing_field!(
+                crate::catalog::v1alpha1::ReadDatasetEntryRequest,
+                "id"
+            ))?
+            .try_into()?)
+    }
+}
+
 // --- ReadDatasetEntryResponse ---
 
 #[derive(Debug, Clone)]
@@ -170,6 +204,22 @@ impl TryFrom<crate::catalog::v1alpha1::ReadDatasetEntryResponse> for ReadDataset
                 ))?
                 .try_into()?,
         })
+    }
+}
+
+// --- DeleteEntryRequest ---
+
+impl TryFrom<crate::catalog::v1alpha1::DeleteEntryRequest> for re_log_types::EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::catalog::v1alpha1::DeleteEntryRequest) -> Result<Self, Self::Error> {
+        Ok(value
+            .id
+            .ok_or(missing_field!(
+                crate::catalog::v1alpha1::DeleteEntryRequest,
+                "id"
+            ))?
+            .try_into()?)
     }
 }
 

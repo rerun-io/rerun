@@ -1,7 +1,72 @@
 use re_log_types::{EntityPath, EntryId};
 
+use crate::v1alpha1::rerun_common_v1alpha1_ext::ScanParameters;
 use crate::v1alpha1::rerun_manifest_registry_v1alpha1_ext::Query;
+use crate::{TypeConversionError, missing_field};
 
+// --- GetPartitionTableSchemaRequest ---
+
+impl TryFrom<crate::frontend::v1alpha1::GetPartitionTableSchemaRequest> for re_log_types::EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::frontend::v1alpha1::GetPartitionTableSchemaRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(value
+            .dataset_id
+            .ok_or(missing_field!(
+                crate::frontend::v1alpha1::GetPartitionTableSchemaRequest,
+                "dataset_id"
+            ))?
+            .try_into()?)
+    }
+}
+
+// --- ScanPartitionTableRequest ---
+
+pub struct ScanPartitionTableRequest {
+    pub dataset_id: EntryId,
+    pub scan_parameters: Option<ScanParameters>,
+}
+
+impl TryFrom<crate::frontend::v1alpha1::ScanPartitionTableRequest> for ScanPartitionTableRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::frontend::v1alpha1::ScanPartitionTableRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            dataset_id: value
+                .dataset_id
+                .ok_or(missing_field!(
+                    crate::frontend::v1alpha1::ScanPartitionTableRequest,
+                    "dataset_id"
+                ))?
+                .try_into()?,
+            scan_parameters: value.scan_parameters.map(TryInto::try_into).transpose()?,
+        })
+    }
+}
+
+// --- GetDatasetSchemaRequest ---
+
+impl TryFrom<crate::frontend::v1alpha1::GetDatasetSchemaRequest> for re_log_types::EntryId {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::frontend::v1alpha1::GetDatasetSchemaRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(value
+            .dataset_id
+            .ok_or(missing_field!(
+                crate::frontend::v1alpha1::GetDatasetSchemaRequest,
+                "dataset_id"
+            ))?
+            .try_into()?)
+    }
+}
+
+// --- GetChunksRequest --
 #[derive(Debug, Clone)]
 pub struct GetChunksRequest {
     pub dataset_id: EntryId,
