@@ -8245,6 +8245,7 @@ dependencies = [
  "clap",
  "futures",
  "http",
+ "itertools 0.14.0",
  "jiff",
  "mimalloc",
  "nohash-hasher",

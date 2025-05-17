@@ -57,6 +57,10 @@ pub struct Dataset {
 }
 
 impl Dataset {
+    pub fn id(&self) -> EntryId {
+        self.id
+    }
+
     pub fn as_entry_details(&self) -> EntryDetails {
         EntryDetails {
             id: self.id,
@@ -241,6 +245,11 @@ impl InMemoryStore {
 
     pub fn dataset(&self, entry_id: EntryId) -> Option<&Dataset> {
         self.datasets.get(&entry_id)
+    }
+
+    pub fn dataset_by_name(&self, name: &str) -> Option<&Dataset> {
+        let entry_id = self.id_by_name.get(name).cloned()?;
+        self.dataset(entry_id)
     }
 
     pub fn dataset_mut(&mut self, entry_id: EntryId) -> Option<&mut Dataset> {

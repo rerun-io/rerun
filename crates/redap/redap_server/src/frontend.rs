@@ -11,8 +11,8 @@ use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::EntityPath;
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::catalog::v1alpha1::DeleteEntryResponse;
 use re_protos::catalog::v1alpha1::ext::{CreateDatasetEntryResponse, ReadDatasetEntryResponse};
+use re_protos::catalog::v1alpha1::{DeleteEntryResponse, EntryKind};
 use re_protos::frontend::v1alpha1::ext::GetChunksRequest;
 use re_protos::manifest_registry::v1alpha1::{
     GetChunksResponse, GetDatasetSchemaResponse, GetPartitionTableSchemaResponse,
@@ -126,14 +126,71 @@ impl FrontendService for FrontendHandler {
 
     async fn find_entries(
         &self,
-        _request: tonic::Request<re_protos::catalog::v1alpha1::FindEntriesRequest>,
+        request: tonic::Request<re_protos::catalog::v1alpha1::FindEntriesRequest>,
     ) -> Result<tonic::Response<re_protos::catalog::v1alpha1::FindEntriesResponse>, tonic::Status>
     {
+        let filter = request.into_inner().filter;
+        let entry_id = filter
+            .as_ref()
+            .map(|filter| filter.id.clone())
+            .flatten()
+            .map(TryInto::try_into)
+            .transpose()?;
+        let name = filter.as_ref().map(|filter| filter.name.clone()).flatten();
+        let kind = filter.map(|filter| filter.entry_kind).flatten();
+
+        if kind.is_some_and(|kind| kind != EntryKind::Dataset as i32) {
+            return Err(tonic::Status::unimplemented(
+                "find_entries: only datasets are implemented",
+            ));
+        }
+
+        let store = self.store.read();
+
+        let dataset = match (entry_id, name) {
+            (None, None) => None,
+
+            (Some(entry_id), None) => {
+                let Some(dataset) = store.dataset(entry_id) else {
+                    return Err(tonic::Status::not_found(format!(
+                        "Dataset with ID {entry_id} not found"
+                    )));
+                };
+                Some(dataset)
+            }
+
+            (None, Some(name)) => {
+                let Some(dataset) = store.dataset_by_name(&name) else {
+                    return Err(tonic::Status::not_found(format!(
+                        "Dataset with name {name} not found"
+                    )));
+                };
+                Some(dataset)
+            }
+
+            (Some(entry_id), Some(name)) => {
+                let Some(dataset) = store.dataset_by_name(&name) else {
+                    return Err(tonic::Status::not_found(format!(
+                        "Dataset with name {name} not found"
+                    )));
+                };
+                if dataset.id() != entry_id {
+                    return Err(tonic::Status::not_found(format!(
+                        "Dataset with ID {entry_id} not found"
+                    )));
+                }
+                Some(dataset)
+            }
+        };
+
+        let dataset_iter = if let Some(dataset) = dataset {
+            itertools::Either::Left(std::iter::once(dataset))
+        } else {
+            itertools::Either::Right(store.iter_datasets())
+        };
+
         let response = re_protos::catalog::v1alpha1::FindEntriesResponse {
-            entries: self
-                .store
-                .read()
-                .iter_datasets()
+            entries: dataset_iter
                 .map(Dataset::as_entry_details)
                 .map(Into::into)
                 .collect(),
