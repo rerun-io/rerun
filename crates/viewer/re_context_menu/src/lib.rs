@@ -4,6 +4,7 @@ use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
 use re_log_types::TableId;
+use re_ui::UiExt as _;
 use re_viewer_context::{
     ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
 };
@@ -330,7 +331,7 @@ trait ContextMenuAction {
         let label = self.label(ctx);
 
         let response = if let Some(icon) = self.icon() {
-            ui.add(egui::Button::image_and_text(icon.as_image(), label))
+            ui.add(icon.as_button_with_label(ui.design_tokens(), label))
         } else {
             ui.button(label)
         };

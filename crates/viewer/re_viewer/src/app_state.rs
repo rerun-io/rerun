@@ -9,7 +9,7 @@ use re_redap_browser::RedapServers;
 use re_smart_channel::ReceiveSet;
 use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_types::blueprint::components::PanelState;
-use re_ui::{ContextExt as _, DesignTokens};
+use re_ui::{ContextExt as _, UiExt as _};
 use re_uri::Origin;
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, AsyncRuntimeHandle, BlueprintUndoState, CommandSender,
@@ -465,7 +465,9 @@ impl AppState {
                         ui,
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
-                        DesignTokens::bottom_panel_frame().fill(egui::hex_color!("#141326")),
+                        ui.design_tokens()
+                            .bottom_panel_frame()
+                            .fill(egui::hex_color!("#141326")),
                     );
 
                     {
@@ -503,7 +505,7 @@ impl AppState {
                         ctx.rec_cfg,
                         ui,
                         app_blueprint.time_panel_state(),
-                        DesignTokens::bottom_panel_frame(),
+                        ui.design_tokens().bottom_panel_frame(),
                     );
                 }
 

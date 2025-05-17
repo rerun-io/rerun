@@ -225,7 +225,7 @@ impl DragAndDropManager {
                 }
 
                 let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
-                let response = drag_pill_frame(payload_is_currently_droppable)
+                let response = drag_pill_frame(ui.design_tokens(), payload_is_currently_droppable)
                     .show(&mut ui, |ui| {
                         let text_color = ui.visuals().widgets.inactive.text_color();
 
@@ -245,15 +245,12 @@ impl DragAndDropManager {
     }
 }
 
-fn drag_pill_frame(droppable: bool) -> egui::Frame {
+fn drag_pill_frame(design_tokens: &re_ui::DesignTokens, droppable: bool) -> egui::Frame {
     let hue = if droppable { Hue::Blue } else { Hue::Gray };
 
     egui::Frame {
-        fill: re_ui::design_tokens().color(ColorToken::new(hue, S325)),
-        stroke: egui::Stroke::new(
-            1.0,
-            re_ui::design_tokens().color(ColorToken::new(hue, S375)),
-        ),
+        fill: design_tokens.color(ColorToken::new(hue, S325)),
+        stroke: egui::Stroke::new(1.0, design_tokens.color(ColorToken::new(hue, S375))),
         corner_radius: 2.into(),
         inner_margin: egui::Margin {
             left: 6,

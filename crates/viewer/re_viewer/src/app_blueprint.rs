@@ -4,10 +4,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
-use re_types::{
-    ComponentBatch,
-    blueprint::{archetypes::PanelBlueprint, components::PanelState},
-};
+use re_types::blueprint::{archetypes::PanelBlueprint, components::PanelState};
 use re_viewer_context::{
     CommandSender, SystemCommand, SystemCommandSender as _, blueprint_timepoint_for_writes,
 };
@@ -205,9 +202,14 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
         let timepoint = re_viewer_context::blueprint_timepoint_for_writes(welcome_screen_blueprint);
 
         let chunk = Chunk::builder(entity_path)
-            .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+            .with_archetype(
+                RowId::new(),
+                timepoint,
+                &PanelBlueprint::update_fields().with_state(value),
+            )
             .build()
-            .expect("Failed to build chunk - incorrect number of instances for the component");
+            // All builtin types, no reason for this to ever fail.
+            .expect("Failed to build chunk.");
 
         welcome_screen_blueprint
             .add_chunk(&Arc::new(chunk))
@@ -230,9 +232,14 @@ impl AppBlueprint<'_> {
             let timepoint = blueprint_timepoint_for_writes(blueprint_db);
 
             let chunk = Chunk::builder(entity_path)
-                .with_component_batches(RowId::new(), timepoint, [&value as &dyn ComponentBatch])
+                .with_archetype(
+                    RowId::new(),
+                    timepoint,
+                    &PanelBlueprint::update_fields().with_state(value),
+                )
                 .build()
-                .expect("Failed to build chunk - incorrect number of instances for the component");
+                // All builtin types, no reason for this to ever fail.
+                .expect("Failed to build chunk.");
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 blueprint_db.store_id().clone(),

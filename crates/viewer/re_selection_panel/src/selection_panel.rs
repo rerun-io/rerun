@@ -510,6 +510,7 @@ fn entity_path_filter_ui(
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn syntax_highlight_entity_path_filter(
+        design_tokens: &re_ui::DesignTokens,
         style: &egui::Style,
         mut string: &str,
     ) -> egui::text::LayoutJob {
@@ -524,9 +525,9 @@ fn entity_path_filter_ui(
             let is_exclusion = line.trim_start().starts_with('-');
 
             let color = if is_exclusion {
-                egui::Color32::LIGHT_RED
+                style.visuals.error_fg_color
             } else {
-                egui::Color32::LIGHT_GREEN
+                design_tokens.info_log_text_color()
             };
 
             let text_format = egui::TextFormat {
@@ -546,7 +547,8 @@ fn entity_path_filter_ui(
         text: &dyn TextBuffer,
         wrap_width: f32,
     ) -> std::sync::Arc<egui::Galley> {
-        let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), text.as_str());
+        let mut layout_job =
+            syntax_highlight_entity_path_filter(ui.design_tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
         ui.fonts(|f| f.layout_job(layout_job))
     }

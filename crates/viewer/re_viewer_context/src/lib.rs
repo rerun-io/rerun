@@ -19,7 +19,6 @@ mod query_context;
 mod query_range;
 mod selection_state;
 mod storage_context;
-mod store_bundle;
 mod store_context;
 pub mod store_hub;
 mod tables;
@@ -67,7 +66,6 @@ pub use self::{
         ItemContext, SelectionChange, SelectionHighlight,
     },
     storage_context::StorageContext,
-    store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
     store_hub::{StoreHub, StoreHubEntry},
     tables::{TableStore, TableStores},

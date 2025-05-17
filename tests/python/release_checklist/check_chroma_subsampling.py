@@ -20,7 +20,7 @@ README = """\
 All images should look roughly the same except for some chroma artifacts
 and slight color differences due to different yuv conversion matrix coefficients.
 
-Naturally, Y8 formats are greyscale.
+Naturally, Y8 formats are grayscale.
 """
 
 
