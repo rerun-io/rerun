@@ -8,14 +8,12 @@ use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
 };
-use re_entity_db::EntityDb;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId};
 use re_query::CachesStats;
 use re_types::{archetypes, components::Timestamp};
 
-use crate::{
-    BlueprintUndoState, Caches, StorageContext, StoreBundle, StoreContext, TableStore, TableStores,
-};
+use crate::{BlueprintUndoState, Caches, StorageContext, StoreContext, TableStore, TableStores};
 
 #[derive(Clone, Debug)]
 pub enum StoreHubEntry {

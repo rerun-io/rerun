@@ -60,7 +60,7 @@ impl RecordingProperties {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.RecordingProperties".into()),
+            archetype_name: None,
             component_name: "rerun.components.RecordingPropertiesIndicator".into(),
             archetype_field_name: None,
         }

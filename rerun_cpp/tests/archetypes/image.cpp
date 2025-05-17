@@ -8,7 +8,7 @@ using namespace rerun::datatypes;
 #define TEST_TAG "[image][archetypes]"
 
 SCENARIO("Image archetype can be created" TEST_TAG) {
-    GIVEN("simple 8bit greyscale image") {
+    GIVEN("simple 8bit grayscale image") {
         std::vector<uint8_t> data(10 * 10, 0);
         Image reference_image;
         reference_image.buffer = rerun::ComponentBatch::from_loggable(
@@ -39,9 +39,9 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
                 test_compare_archetype_serialization(image_from_collection, reference_image);
             }
         }
-        THEN("no error occurs on image construction from the greyscale utility") {
+        THEN("no error occurs on image construction from the grayscale utility") {
             auto image_from_util = check_logged_error([&] {
-                return Image::from_greyscale8(data, {10, 10});
+                return Image::from_grayscale8(data, {10, 10});
             });
             AND_THEN("serialization succeeds") {
                 test_compare_archetype_serialization(image_from_util, reference_image);

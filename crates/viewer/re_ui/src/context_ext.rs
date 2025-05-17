@@ -10,6 +10,10 @@ use crate::{DesignTokens, TopBarStyle};
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
 
+    fn design_tokens(&self) -> &'static DesignTokens {
+        crate::design_tokens_of(self.ctx().theme())
+    }
+
     // -----------------------------------------------------
     // Style-related stuff.
     // We could have this on a `StyleExt` trait, but we prefer to have it here on `Context`

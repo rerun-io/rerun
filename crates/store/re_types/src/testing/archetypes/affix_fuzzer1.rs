@@ -314,7 +314,7 @@ impl AffixFuzzer1 {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer1".into()),
+            archetype_name: None,
             component_name: "rerun.testing.components.AffixFuzzer1Indicator".into(),
             archetype_field_name: None,
         }
