@@ -228,11 +228,11 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component_descr]);
+        let results =
+            self.storage_engine
+                .read()
+                .cache()
+                .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono()
             .map(|value| (results.index(), value))
@@ -255,11 +255,11 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component_descr]);
+        let results =
+            self.storage_engine
+                .read()
+                .cache()
+                .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono_quiet()
             .map(|value| (results.index(), value))
