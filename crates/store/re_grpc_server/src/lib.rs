@@ -41,8 +41,8 @@ use re_protos::{
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
-const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
-const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
+pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 
 // Channel capacity is completely arbitrary, e just want something large enough
 // to handle bursts of messages. This is roughly 16 MiB of `Msg` (excluding their contents).
