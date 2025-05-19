@@ -2,7 +2,7 @@ use std::{borrow::Cow, sync::Arc};
 
 use itertools::Itertools as _;
 
-use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
+use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types::ComponentDescriptor;
@@ -39,16 +39,7 @@ pub struct HybridRangeResults<'a> {
 }
 
 impl HybridLatestAtResults<'_> {
-    /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
-    #[inline]
-    pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
-        let component_name = component_name.into();
-        self.overrides
-            .get_by_name(&component_name)
-            .or_else(|| self.results.get_by_name(&component_name))
-            .or_else(|| self.defaults.get_by_name(&component_name))
-    }
-
+    // TODO(#6889): Right now, fallbacks are on a per-component basis, so it's fine to pass the component name here.
     pub fn fallback_raw(&self, component_name: ComponentName) -> arrow::array::ArrayRef {
         let query_context = QueryContext {
             viewer_ctx: self.ctx.viewer_ctx,
@@ -68,41 +59,66 @@ impl HybridLatestAtResults<'_> {
 
     /// Utility for retrieving the first instance of a component, ignoring defaults.
     #[inline]
-    pub fn get_required_mono<C: re_types_core::Component>(&self) -> Option<C> {
-        self.get_required_instance(0)
+    pub fn get_required_mono<C: re_types_core::Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
+        self.get_required_instance(0, component_descr)
     }
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
-    pub fn get_mono<C: re_types_core::Component>(&self) -> Option<C> {
-        self.get_instance(0)
+    pub fn get_mono<C: re_types_core::Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
+        self.get_instance(0, component_descr)
     }
 
     /// Utility for retrieving the first instance of a component.
     #[inline]
-    pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(&self) -> C {
-        self.get_instance_with_fallback(0)
+    pub fn get_mono_with_fallback<C: re_types_core::Component + Default>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> C {
+        debug_assert_eq!(component_descr.component_name, C::name());
+
+        self.get_instance_with_fallback(0, component_descr)
     }
 
     /// Utility for retrieving a single instance of a component, not checking for defaults.
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_required_instance<C: re_types_core::Component>(&self, index: usize) -> Option<C> {
-        self.overrides.component_instance::<C>(index).or_else(||
+    pub fn get_required_instance<C: re_types_core::Component>(
+        &self,
+        index: usize,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
+        self.overrides
+            .component_instance::<C>(index, component_descr)
+            .or_else(||
                 // No override -> try recording store instead
-                self.results.component_instance::<C>(index))
+                self.results.component_instance::<C>(index, component_descr))
     }
 
     /// Utility for retrieving a single instance of a component.
     ///
     /// If overrides or defaults are present, they will only be used respectively if they have a component at the specified index.
     #[inline]
-    pub fn get_instance<C: re_types_core::Component>(&self, index: usize) -> Option<C> {
-        self.get_required_instance(index).or_else(|| {
-            // No override & no store -> try default instead
-            self.defaults.component_instance::<C>(index)
-        })
+    pub fn get_instance<C: re_types_core::Component>(
+        &self,
+        index: usize,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
+        debug_assert_eq!(component_descr.component_name, C::name());
+
+        self.get_required_instance(index, component_descr)
+            .or_else(|| {
+                // No override & no store -> try default instead
+                self.defaults
+                    .component_instance::<C>(index, component_descr)
+            })
     }
 
     /// Utility for retrieving a single instance of a component.
@@ -112,11 +128,15 @@ impl HybridLatestAtResults<'_> {
     pub fn get_instance_with_fallback<C: re_types_core::Component + Default>(
         &self,
         index: usize,
+        component_descr: &ComponentDescriptor,
     ) -> C {
-        self.get_instance(index)
+        debug_assert_eq!(component_descr.component_name, C::name());
+
+        let component_name = component_descr.component_name;
+        self.get_instance(index, component_descr)
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
-                let raw_fallback = self.fallback_raw(C::name());
+                let raw_fallback = self.fallback_raw(component_name);
                 C::from_arrow(raw_fallback.as_ref())
                     .ok()
                     .and_then(|r| r.first().cloned())
