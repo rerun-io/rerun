@@ -4,7 +4,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
 use re_types::{
-    Archetype as _, ComponentDescriptorSet,
+    Archetype as _, ArchetypeName, ComponentDescriptorSet,
     archetypes::{self, InstancePoses3D, Transform3D},
     components::ImagePlaneDistance,
 };
@@ -19,6 +19,7 @@ use crate::{
     visualizers::image_view_coordinates,
 };
 
+// TODO(andreas): this is struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
 #[derive(Clone, Debug)]
 pub struct TransformInfo {
     /// The transform from the entity to the reference space.
@@ -32,7 +33,13 @@ pub struct TransformInfo {
     /// If no poses are present, this is always the same as `reference_from_entity`.
     /// (also implying that in this case there is only a single element).
     /// If there are poses there may be more than one element.
-    pub reference_from_instances: SmallVec1<[glam::Affine3A; 1]>,
+    ///
+    /// Does not take into account archetype specific transforms.
+    reference_from_instances_overall: SmallVec1<[glam::Affine3A; 1]>,
+
+    /// Like [`Self::reference_from_instances_overall`] but _on top_ also has archetype specific transforms applied
+    /// if there are any present.
+    reference_from_instances_per_archetype: IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>>,
 
     /// If this entity is under (!) a pinhole camera, this contains additional information.
     ///
@@ -57,7 +64,8 @@ impl Default for TransformInfo {
     fn default() -> Self {
         Self {
             reference_from_entity: glam::Affine3A::IDENTITY,
-            reference_from_instances: SmallVec1::new(glam::Affine3A::IDENTITY),
+            reference_from_instances_overall: SmallVec1::new(glam::Affine3A::IDENTITY),
+            reference_from_instances_per_archetype: Default::default(),
             twod_in_threed_info: None,
         }
     }
@@ -66,14 +74,10 @@ impl Default for TransformInfo {
 impl TransformInfo {
     /// Warns that multiple transforms within the entity are not supported.
     #[inline]
-    pub fn warn_on_per_instance_transform(
-        &self,
-        entity_name: &EntityPath,
-        visualizer_name: &'static str,
-    ) {
-        if self.reference_from_instances.len() > 1 {
+    fn warn_on_per_instance_transform(&self, entity_name: &EntityPath, archetype: ArchetypeName) {
+        if self.reference_from_instances_overall.len() > 1 {
             re_log::warn_once!(
-                "There are multiple poses for entity {entity_name:?}. Visualizer {visualizer_name:?} supports only one transform per entity. Using the first one."
+                "There are multiple poses for entity {entity_name:?}. {archetype:?} supports only one transform per entity. Using the first one."
             );
         }
     }
@@ -83,25 +87,28 @@ impl TransformInfo {
     pub fn single_entity_transform_required(
         &self,
         entity_name: &EntityPath,
-        visualizer_name: &'static str,
+        archetype: ArchetypeName,
     ) -> glam::Affine3A {
-        self.warn_on_per_instance_transform(entity_name, visualizer_name);
-        *self.reference_from_instances.first()
+        self.warn_on_per_instance_transform(entity_name, archetype);
+
+        if let Some(transform) = self.reference_from_instances_per_archetype.get(&archetype) {
+            *transform.first()
+        } else {
+            *self.reference_from_instances_overall.first()
+        }
     }
 
-    /// Returns the first instance transform and does not warn if there are multiple.
+    /// Returns reference from instance transforms.
     #[inline]
-    pub fn single_entity_transform_silent(&self) -> glam::Affine3A {
-        *self.reference_from_instances.first()
-    }
-
-    /// Returns reference from instance transforms, repeating the last value indefinitely.
-    #[inline]
-    pub fn clamped_reference_from_instances(&self) -> impl Iterator<Item = glam::Affine3A> + '_ {
-        self.reference_from_instances
-            .iter()
-            .chain(std::iter::repeat(self.reference_from_instances.last()))
-            .copied()
+    pub fn reference_from_instances(
+        &self,
+        archetype: ArchetypeName,
+    ) -> &SmallVec1<[glam::Affine3A; 1]> {
+        if let Some(transform) = self.reference_from_instances_per_archetype.get(&archetype) {
+            transform
+        } else {
+            &self.reference_from_instances_overall
+        }
     }
 }
 
@@ -423,7 +430,8 @@ fn transform_info_for_upward_propagation(
 
     TransformInfo {
         reference_from_entity,
-        reference_from_instances,
+        reference_from_instances_overall: reference_from_instances, // TODO: patch up.
+        reference_from_instances_per_archetype: Default::default(),
 
         // Going up the tree, we can only encounter 2D->3D transforms.
         // 3D->2D transforms can't happen because `Pinhole` represents 3D->2D (and we're walking backwards!)
@@ -486,7 +494,8 @@ fn transform_info_for_downward_propagation(
 
     TransformInfo {
         reference_from_entity,
-        reference_from_instances,
+        reference_from_instances_overall: reference_from_instances, // TODO: patch up.
+        reference_from_instances_per_archetype: Default::default(),
         twod_in_threed_info,
     }
 }
@@ -599,7 +608,8 @@ fn transforms_at<'a>(
     };
 
     let parent_from_entity_tree_transform = entity_transforms.latest_at_tree_transform(query);
-    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(query);
+    let entity_from_instance_poses =
+        entity_transforms.latest_at_instance_poses(query, archetypes::InstancePoses3D::name());
     let instance_from_pinhole_image_plane =
         entity_transforms
             .latest_at_pinhole(query)

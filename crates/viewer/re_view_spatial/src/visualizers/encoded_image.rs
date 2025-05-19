@@ -1,4 +1,5 @@
 use re_types::{
+    Archetype as _,
     archetypes::EncodedImage,
     components::{DrawOrder, MediaType, Opacity},
     image::ImageKind,
@@ -194,7 +195,7 @@ impl EncodedImageVisualizer {
                 &image,
                 colormap,
                 multiplicative_tint,
-                "EncodedImage",
+                EncodedImage::name(),
                 &mut self.data,
             ) {
                 self.data.pickable_rects.push(PickableTexturedRect {
