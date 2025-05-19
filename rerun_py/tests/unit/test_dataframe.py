@@ -254,8 +254,12 @@ class TestDataframe:
                 print(f"table.schema: {table.schema}")
                 assert table.column("my_index")[0].equals(self.expected_index0[0]), f"col_selector: {col_selector}"
                 assert table.column("my_index")[1].equals(self.expected_index1[0]), f"col_selector: {col_selector}"
-                assert table.column("/points:Points3D.positions")[0].values.equals(self.expected_pos0), f"col_selector: {col_selector}"
-                assert table.column("/points:Points3D.positions")[1].values.equals(self.expected_pos1), f"col_selector: {col_selector}"
+                assert table.column("/points:Points3D.positions")[0].values.equals(self.expected_pos0), (
+                    f"col_selector: {col_selector}"
+                )
+                assert table.column("/points:Points3D.positions")[1].values.equals(self.expected_pos1), (
+                    f"col_selector: {col_selector}"
+                )
 
     def test_index_values(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
