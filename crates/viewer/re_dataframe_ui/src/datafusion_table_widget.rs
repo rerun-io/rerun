@@ -501,13 +501,13 @@ fn header_tooltip_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
             header_property_ui(ui, "Type", "index");
             header_property_ui(ui, "Timeline", desc.timeline_name());
             header_property_ui(ui, "Sorted", sorted_text(desc.is_sorted()));
-            datatype_ui(ui, column.display_name(), desc.datatype());
+            datatype_ui(ui, &column.display_name(), desc.datatype());
         }
         ColumnDescriptorRef::Component(desc) => {
             header_property_ui(ui, "Type", "component");
             header_property_ui(ui, "Name", desc.component_name.full_name());
             header_property_ui(ui, "Entity path", desc.entity_path.to_string());
-            datatype_ui(ui, column.display_name(), &desc.store_datatype);
+            datatype_ui(ui, &column.display_name(), &desc.store_datatype);
             header_property_ui(
                 ui,
                 "Archetype",
@@ -534,7 +534,7 @@ fn header_property_ui(ui: &mut egui::Ui, label: &str, value: impl AsRef<str>) {
     egui::Sides::new().show(ui, |ui| ui.strong(label), |ui| ui.monospace(value.as_ref()));
 }
 
-fn datatype_ui(ui: &mut egui::Ui, column_name: String, datatype: &arrow::datatypes::DataType) {
+fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes::DataType) {
     egui::Sides::new().show(
         ui,
         |ui| ui.strong("Datatype"),
