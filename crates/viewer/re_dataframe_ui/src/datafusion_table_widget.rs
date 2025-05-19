@@ -72,7 +72,7 @@ pub struct DataFusionTableWidget<'a> {
 
     /// Closure used to determine the display name of the column.
     ///
-    /// Defaults to using [`ColumnDescriptorRef::name`].
+    /// Defaults to using [`ColumnDescriptorRef::column_name`].
     column_renamer: ColumnRenamerFn<'a>,
 
     /// The blueprint used the first time the table is queried.
