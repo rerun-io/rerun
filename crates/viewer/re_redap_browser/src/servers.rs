@@ -46,7 +46,7 @@ impl Server {
         self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
 
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx.refresh(runtime, egui_ctx);
+        self.tables_session_ctx = TablesSessionContext::new(runtime, egui_ctx, self.origin.clone());
     }
 
     fn on_frame_start(&mut self) {
