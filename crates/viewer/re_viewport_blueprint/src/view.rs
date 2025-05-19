@@ -150,10 +150,17 @@ impl ViewBlueprint {
         // This is a required component. Note that when loading views we crawl the subtree and so
         // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
         // is the marker that the have been cleared and not an error.
-        let class_identifier = results.component_mono::<blueprint_components::ViewClass>()?;
-        let display_name = results.component_mono::<Name>();
-        let space_origin = results.component_mono::<ViewOrigin>();
-        let visible = results.component_mono::<Visible>();
+        let class_identifier = results.component_mono::<blueprint_components::ViewClass>(
+            &blueprint_archetypes::ViewBlueprint::descriptor_class_identifier(),
+        )?;
+        let display_name = results.component_mono::<Name>(
+            &blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
+        );
+        let space_origin = results.component_mono::<ViewOrigin>(
+            &blueprint_archetypes::ViewBlueprint::descriptor_space_origin(),
+        );
+        let visible = results
+            .component_mono::<Visible>(&blueprint_archetypes::ViewBlueprint::descriptor_visible());
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
         let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();

@@ -487,10 +487,8 @@ impl LatestAtResults {
     pub fn component_mono_raw_with_log_level(
         &self,
         log_level: re_log::Level,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
         self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -504,8 +502,11 @@ impl LatestAtResults {
     ///
     /// Returns an error if the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono_raw(&self, component_name: &ComponentName) -> Option<ArrowArrayRef> {
-        self.component_mono_raw_with_log_level(re_log::Level::Error, component_name)
+    pub fn component_mono_raw(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<ArrowArrayRef> {
+        self.component_mono_raw_with_log_level(re_log::Level::Error, component_descr)
     }
 
     /// Returns the raw data for the specified component, assuming a mono-batch.
@@ -514,10 +515,8 @@ impl LatestAtResults {
     #[inline]
     pub fn component_mono_raw_quiet(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
     ) -> Option<ArrowArrayRef> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
         self.components
             .get(component_descr)
             .and_then(|unit| unit.component_mono_raw(component_descr)?.ok())
@@ -529,6 +528,26 @@ impl LatestAtResults {
     /// is not of unit length.
     #[inline]
     pub fn component_mono_with_log_level<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+        log_level: re_log::Level,
+    ) -> Option<C> {
+        self.components.get(component_descr).and_then(|unit| {
+            self.ok_or_log_err(
+                log_level,
+                component_descr,
+                unit.component_mono(component_descr)?,
+            )
+        })
+    }
+
+    // TODO(#6889): Is this our tagged component endgame?
+    /// Returns the deserialized data for the specified component, assuming a mono-batch.
+    ///
+    /// Logs at the specified `log_level` if the data cannot be deserialized, or if the underlying batch
+    /// is not of unit length.
+    #[inline]
+    pub fn component_mono_with_log_level_by_name<C: Component>(
         &self,
         log_level: re_log::Level,
     ) -> Option<C> {
@@ -547,8 +566,8 @@ impl LatestAtResults {
     ///
     /// Logs an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono<C: Component>(&self) -> Option<C> {
-        self.component_mono_with_log_level(re_log::Level::Error)
+    pub fn component_mono<C: Component>(&self, component_descr: &ComponentDescriptor) -> Option<C> {
+        self.component_mono_with_log_level(component_descr, re_log::Level::Error)
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
