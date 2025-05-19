@@ -54,7 +54,7 @@ impl VisualizerOverrides {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisualizerOverrides".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.VisualizerOverridesIndicator".into(),
             archetype_field_name: None,
         }

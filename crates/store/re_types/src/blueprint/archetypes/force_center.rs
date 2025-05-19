@@ -62,7 +62,7 @@ impl ForceCenter {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ForceCenterIndicator".into(),
             archetype_field_name: None,
         }

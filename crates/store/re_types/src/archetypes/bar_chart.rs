@@ -85,7 +85,7 @@ impl BarChart {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            archetype_name: None,
             component_name: "rerun.components.BarChartIndicator".into(),
             archetype_field_name: None,
         }

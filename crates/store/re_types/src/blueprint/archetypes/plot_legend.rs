@@ -64,7 +64,7 @@ impl PlotLegend {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
             archetype_field_name: None,
         }

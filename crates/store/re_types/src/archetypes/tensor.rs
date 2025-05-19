@@ -99,7 +99,7 @@ impl Tensor {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Tensor".into()),
+            archetype_name: None,
             component_name: "rerun.components.TensorIndicator".into(),
             archetype_field_name: None,
         }
