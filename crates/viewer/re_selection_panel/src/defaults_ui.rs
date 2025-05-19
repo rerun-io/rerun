@@ -368,7 +368,7 @@ fn add_new_default(
         Ok(chunk) => {
             ctx.viewer_ctx
                 .command_sender()
-                .send_system(SystemCommand::UpdateBlueprint(
+                .send_system(SystemCommand::AppendToStore(
                     ctx.blueprint_db().store_id().clone(),
                     vec![chunk],
                 ));
