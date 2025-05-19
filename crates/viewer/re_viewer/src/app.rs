@@ -568,7 +568,8 @@ impl App {
 
             SystemCommand::AppendToStore(store_id, chunks) => {
                 re_log::trace!(
-                    "Update entities: {}",
+                    "Update {} entities: {}",
+                    store_id.kind,
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
 
