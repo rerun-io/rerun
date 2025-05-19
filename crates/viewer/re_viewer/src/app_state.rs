@@ -748,9 +748,7 @@ fn table_ui(
     re_dataframe_ui::DataFusionTableWidget::new(store.session_context(), TableStore::TABLE_NAME)
         .title(table_id.as_str())
         .column_renamer(|desc| match desc {
-            ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => {
-                desc.display_name().to_owned()
-            }
+            ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => desc.display_name(),
 
             // In most case, user tables don't have any entities, so we filter out the root entity
             // noise in column names.
