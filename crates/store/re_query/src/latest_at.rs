@@ -467,9 +467,11 @@ impl LatestAtResults {
     ///
     /// Returns an error if the data cannot be deserialized, or if the instance index is out of bounds.
     #[inline]
-    pub fn component_instance_quiet<C: Component>(&self, instance_index: usize) -> Option<C> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
+    pub fn component_instance_quiet<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+        instance_index: usize,
+    ) -> Option<C> {
         self.components.get(component_descr).and_then(|unit| {
             unit.component_instance(component_descr, instance_index)?
                 .ok()
