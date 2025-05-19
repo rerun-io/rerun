@@ -479,7 +479,9 @@ pub mod frontend_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Write chunks to a partition.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
         ///
         /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         pub async fn write_chunks(
@@ -906,7 +908,9 @@ pub mod frontend_service_server {
             >,
             tonic::Status,
         >;
-        /// Write chunks to a partition.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
         ///
         /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         async fn write_chunks(

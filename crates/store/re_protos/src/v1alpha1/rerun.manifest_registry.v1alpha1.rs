@@ -1100,7 +1100,9 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Write chunks to a partition.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
         ///
         /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         pub async fn write_chunks(
@@ -1435,7 +1437,9 @@ pub mod manifest_registry_service_server {
             tonic::Response<super::RegisterWithDatasetBlockingResponse>,
             tonic::Status,
         >;
-        /// Write chunks to a partition.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
         ///
         /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         async fn write_chunks(
