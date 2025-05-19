@@ -1133,6 +1133,8 @@ impl App {
         stores: &[StoreId],
         folder: &std::path::Path,
     ) {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
         use re_log::ResultExt as _;
         use tap::Pipe as _;
 
@@ -1143,11 +1145,11 @@ impl App {
             .filter_map(|store_id| storage_context.bundle.get(store_id))
             .collect_vec();
 
-        re_log::info!(
-            "Saving {} recordings to {}…",
-            stores.len(),
-            folder.display()
-        );
+        let num_stores = stores.len();
+        let any_error = Arc::new(AtomicBool::new(false));
+        let num_remaining = Arc::new(AtomicUsize::new(stores.len()));
+
+        re_log::info!("Saving {num_stores} recordings to {}…", folder.display());
 
         for store in stores {
             let messages = store.to_messages(None).collect_vec();
@@ -1164,18 +1166,36 @@ impl App {
             .pipe(|stem| format!("{stem}.rrd"));
 
             let file_path = folder.join(file_name.clone());
+            let any_error = any_error.clone();
+            let num_remaining = num_remaining.clone();
+            let folder = folder.display().to_string();
+
             self.background_tasks
                 .spawn_threaded_promise(file_name, move || {
-                    crate::saving::encode_to_file(
+                    let res = crate::saving::encode_to_file(
                         re_build_info::CrateVersion::LOCAL,
                         &file_path,
                         messages.into_iter(),
-                    )
+                    );
+
+                    if res.is_err() {
+                        any_error.store(true, Ordering::Relaxed);
+                    }
+
+                    let num_remaining = num_remaining.fetch_sub(1, Ordering::Relaxed) - 1;
+
+                    if num_remaining == 0 {
+                        if any_error.load(Ordering::Relaxed) {
+                            re_log::error!("Some recordings failed to save.");
+                        } else {
+                            re_log::info!("{num_stores} recordings successfully saved to {folder}");
+                        }
+                    }
+
+                    res
                 })
                 .ok_or_log_error_once();
         }
-
-        // TODO: log when they have all finished
     }
 
     fn run_time_control_command(
