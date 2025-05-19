@@ -103,16 +103,22 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
         ],
     );
 
-    let pinhole_projection =
-        query_results.component_mono_quiet::<components::PinholeProjection>()?;
+    let pinhole_projection = query_results.component_mono_quiet::<components::PinholeProjection>(
+        &archetypes::Pinhole::descriptor_image_from_camera(),
+    )?;
 
     let resolution = query_results
-        .component_mono_quiet::<components::Resolution>()
+        .component_mono_quiet::<components::Resolution>(
+            &archetypes::Pinhole::descriptor_resolution(),
+        )
         .unwrap_or_else(|| {
             resolution_of_image_at(ctx, query, entity_path).unwrap_or([100.0, 100.0].into())
         });
-    let camera_xyz = query_results
-        .component_mono_quiet::<components::ViewCoordinates>()
+    let camera_xyz: components::ViewCoordinates = query_results
+        .component_mono_quiet(&archetypes::Pinhole::descriptor_camera_xyz())
+        .or_else(|| {
+            query_results.component_mono_quiet(&archetypes::ViewCoordinates::descriptor_xyz())
+        })
         .unwrap_or(archetypes::Pinhole::DEFAULT_CAMERA_XYZ);
 
     Some((
