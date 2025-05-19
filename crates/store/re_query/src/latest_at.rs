@@ -365,9 +365,10 @@ impl LatestAtResults {
 
     /// Returns the deserialized data for the specified component.
     #[inline]
-    pub fn component_batch_quiet<C: Component>(&self) -> Option<Vec<C>> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
+    pub fn component_batch_quiet<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<Vec<C>> {
         self.components
             .get(component_descr)
             .and_then(|unit| unit.component_batch(component_descr)?.ok())
