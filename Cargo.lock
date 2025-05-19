@@ -6816,6 +6816,7 @@ dependencies = [
  "re_build_info",
  "re_chunk",
  "re_crash_handler",
+ "re_error",
  "re_log",
  "re_log_encoding",
  "re_log_types",
