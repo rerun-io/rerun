@@ -51,8 +51,15 @@ impl ChunkStore {
 
         let mut chunk = Arc::clone(chunk);
 
-        let patched = chunk.patched_weak_indicator_descriptor_023_compat();
-        chunk = Arc::new(patched);
+        // TODO(#6889): This is bad for performance, but indicators should go away all together soon anyways?
+        if chunk
+            .components()
+            .keys()
+            .any(|descr| descr.component_name.is_indicator_component())
+        {
+            let patched = chunk.patched_weak_indicator_descriptor_023_compat();
+            chunk = Arc::new(patched);
+        }
 
         if self.id.kind == re_log_types::StoreKind::Blueprint {
             let patched = chunk.patched_for_blueprint_021_compat();

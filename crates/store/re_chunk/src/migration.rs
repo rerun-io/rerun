@@ -11,7 +11,7 @@ use crate::Chunk;
 impl Chunk {
     /// We look for indicator component descriptors that have an archetype name and strip it.
     ///
-    /// It turns out that too narrow indicator descriptors cause porblems while querying.
+    /// It turns out that too narrow indicator descriptors cause problems while querying.
     /// More information: <https://github.com/rerun-io/rerun/pull/9938#issuecomment-2888808593>
     #[inline]
     pub fn patched_weak_indicator_descriptor_023_compat(&self) -> Self {
