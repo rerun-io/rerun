@@ -181,7 +181,7 @@ impl Boxes2D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Boxes2D".into()),
+            archetype_name: None,
             component_name: "rerun.components.Boxes2DIndicator".into(),
             archetype_field_name: None,
         }

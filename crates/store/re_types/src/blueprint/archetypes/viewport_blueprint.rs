@@ -117,7 +117,7 @@ impl ViewportBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
             archetype_field_name: None,
         }
