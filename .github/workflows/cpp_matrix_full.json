@@ -5,25 +5,36 @@
             "runs_on": "ubuntu-latest-16-cores",
             "cache_key": "build-linux",
             "extra_env_vars": "RERUN_USE_ASAN=1 RERUN_SET_CXX_VERSION=17 LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp",
-            "additional_commands": "pixi run -e cpp cpp-docs"
+            "additional_commands": "pixi run -e cpp cpp-docs",
+            "pr_ci": true
         },
         {
-            "name": "Linux x64, C++20",
+            "name": "Linux x64, C++20 (skipped on PRs)",
             "runs_on": "ubuntu-latest-16-cores",
             "cache_key": "build-linux",
-            "extra_env_vars": "RERUN_USE_ASAN=1 RERUN_SET_CXX_VERSION=20 LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp"
+            "extra_env_vars": "RERUN_USE_ASAN=1 RERUN_SET_CXX_VERSION=20 LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp",
+            "pr_ci": false
         },
         {
-            "name": "Windows x64",
+            "name": "Windows x64, C++17",
             "runs_on": "windows-latest-8-cores",
             "cache_key": "build-windows",
-            "extra_env_vars": ""
+            "extra_env_vars": "RERUN_SET_CXX_VERSION=17",
+            "pr_ci": true
+        },
+        {
+            "name": "Windows x64, C++20 (skipped on PRs)",
+            "runs_on": "windows-latest-8-cores",
+            "cache_key": "build-windows",
+            "extra_env_vars": "RERUN_SET_CXX_VERSION=20",
+            "pr_ci": false
         },
         {
             "name": "Mac aarch64",
             "runs_on": "macos-latest-large",
             "cache_key": "build-macos-arm64",
-            "extra_env_vars": "RERUN_USE_ASAN=1 LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp"
+            "extra_env_vars": "RERUN_USE_ASAN=1 LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp",
+            "pr_ci": true
         }
     ]
 }

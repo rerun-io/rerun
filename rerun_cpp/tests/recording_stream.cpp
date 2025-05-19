@@ -148,10 +148,13 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
 
                 GIVEN("component batches") {
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
-                                      {{1.0, 2.0}, {4.0, 5.0}}
-                    ).value_or_throw();
+                                      {{1.0, 2.0}, {4.0, 5.0}},
+                                      rerun::Loggable<rerun::Position2D>::Descriptor
+                    )
+                                      .value_or_throw();
                     auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                                      {rerun::Color(0xFF0000FF)}
+                                      {rerun::Color(0xFF0000FF)},
+                                      rerun::Loggable<rerun::Color>::Descriptor
                     )
                                       .value_or_throw();
                     THEN("single component batch can be logged") {
@@ -170,10 +173,12 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 }
                 GIVEN("component batches wrapped in `rerun::Result`") {
                     auto batch0 = rerun::ComponentBatch::from_loggable<rerun::Position2D>(
-                        {{1.0, 2.0}, {4.0, 5.0}}
+                        {{1.0, 2.0}, {4.0, 5.0}},
+                        rerun::Loggable<rerun::Position2D>::Descriptor
                     );
                     auto batch1 = rerun::ComponentBatch::from_loggable<rerun::Color>(
-                        {rerun::Color(0xFF0000FF)}
+                        {rerun::Color(0xFF0000FF)},
+                        rerun::Loggable<rerun::Color>::Descriptor
                     );
                     THEN("single component batch can be logged") {
                         stream.log("log_archetype-splat", batch0);
@@ -406,7 +411,10 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
             expected_error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
-            auto batch_result = rerun::ComponentBatch::from_loggable(component);
+            auto batch_result = rerun::ComponentBatch::from_loggable(
+                component,
+                rerun::Loggable<BadComponent>::Descriptor
+            );
 
             THEN("calling log with that batch logs the serialization error") {
                 check_logged_error([&] { stream.log(path, batch_result); }, expected_error.code);
