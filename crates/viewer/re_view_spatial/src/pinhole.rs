@@ -99,7 +99,12 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
         [
             &archetypes::Pinhole::descriptor_image_from_camera(),
             &archetypes::Pinhole::descriptor_resolution(),
+            // Note that `components::ViewCoordinates` is somewhat special, in that for convenience it can
+            // be specified in multiple places (i.e. `archetypes`). This used to be fine, but got quite a
+            // bit more cumbersome with fully-qualified component descriptors. Because of this, we now have
+            // to query using descriptors from a "secondary" archetype.
             &archetypes::Pinhole::descriptor_camera_xyz(),
+            &archetypes::ViewCoordinates::descriptor_xyz(),
         ],
     );
 
@@ -116,6 +121,7 @@ pub fn query_pinhole_and_view_coordinates_from_store_without_blueprint(
         });
     let camera_xyz: components::ViewCoordinates = query_results
         .component_mono_quiet(&archetypes::Pinhole::descriptor_camera_xyz())
+        // This is the "secondary" descriptor (mentioned above) that we are interested in.
         .or_else(|| {
             query_results.component_mono_quiet(&archetypes::ViewCoordinates::descriptor_xyz())
         })
