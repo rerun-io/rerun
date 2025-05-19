@@ -13,7 +13,9 @@ service ManifestRegistryService {
   // Register new partitions with the Dataset (blocking)
   rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
 
-  // Write chunks to a partition.
+  // Write chunks to one or more partitions.
+  //
+  // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
   //
   // The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
