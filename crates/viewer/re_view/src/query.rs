@@ -233,7 +233,7 @@ pub trait DataResultQuery {
         component_descriptors: impl IntoIterator<Item = &'b ComponentDescriptor>,
     ) -> HybridResults<'a>;
 
-    /// Queries for for all components of an archetype, taking into account:
+    /// Queries for all components of an archetype, taking into account:
     /// * visible history if enabled
     /// * blueprint overrides & defaults
     fn query_archetype_with_history<'a, A: Archetype>(
