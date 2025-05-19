@@ -318,6 +318,10 @@ impl StoreHub {
         self.store_bundle.entry(store_id)
     }
 
+    pub fn entity_db(&self, store_id: &StoreId) -> Option<&EntityDb> {
+        self.store_bundle.get(store_id)
+    }
+
     // ---------------------
     // Add and remove stores
 

@@ -128,6 +128,14 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+
+    /// Upload dataset.
+    UploadDataset {
+        store_id: StoreId,
+        target_server: re_uri::Origin,
+        dataset_name: String,
+        create_new: bool,
+    },
 }
 
 impl std::fmt::Debug for SystemCommand {

@@ -7329,6 +7329,7 @@ dependencies = [
  "ahash",
  "datafusion",
  "egui",
+ "futures",
  "itertools 0.14.0",
  "re_data_ui",
  "re_dataframe_ui",
