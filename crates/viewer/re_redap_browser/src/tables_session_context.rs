@@ -72,24 +72,6 @@ impl TablesSessionContext {
         }
     }
 
-    /// Rebuild the entire session context and drop related [`DataFusionTableWidget`] caches.
-    pub fn refresh(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        if let Some(Ok(tables)) = self.registered_tables.try_as_ref() {
-            for table in tables {
-                let table_name = table.name.as_str();
-
-                DataFusionTableWidget::clear_state(egui_ctx, &self.ctx, table_name);
-                self.ctx.deregister_table(table_name).ok();
-            }
-        }
-
-        self.registered_tables = RequestedObject::new_with_repaint(
-            runtime,
-            egui_ctx.clone(),
-            register_all_table_entries(self.ctx.clone(), self.origin.clone()),
-        );
-    }
-
     pub fn on_frame_start(&mut self) {
         self.registered_tables.on_frame_start();
     }
