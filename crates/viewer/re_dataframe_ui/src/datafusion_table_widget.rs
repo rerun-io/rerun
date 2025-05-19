@@ -70,7 +70,7 @@ pub struct DataFusionTableWidget<'a> {
 
     /// Closure used to determine the display name of the column.
     ///
-    /// Defaults to using [`ColumnDescriptorRef::name`].
+    /// Defaults to using [`ColumnDescriptorRef::column_name`].
     column_name_fn: ColumnNameFn<'a>,
 
     /// Closure used to determine the default visibility of the column
@@ -274,7 +274,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 let name = if let Some(column_name_fn) = &column_name_fn {
                     column_name_fn(&c)
                 } else {
-                    c.name(BatchType::Dataframe)
+                    c.column_name(BatchType::Dataframe)
                 };
 
                 let visible = if let Some(column_visibility_fn) = &default_column_visibility_fn {
@@ -385,7 +385,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             let name = if let Some(renamer) = self.column_name_fn {
                 renamer(desc)
             } else {
-                desc.name(BatchType::Dataframe)
+                desc.column_name(BatchType::Dataframe)
             };
 
             let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {

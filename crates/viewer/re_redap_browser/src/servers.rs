@@ -131,10 +131,10 @@ impl Server {
         }))
         .column_name(|desc| {
             //TODO(ab): with this strategy, we do not display relevant entity path if any.
-            let name = desc.short_name();
+            let name = desc.display_name();
 
             name.strip_prefix("rerun_")
-                .unwrap_or(name)
+                .unwrap_or(name.as_ref())
                 .replace('_', " ")
         })
         .default_column_visibility(|desc| {
@@ -144,7 +144,7 @@ impl Server {
                 true
             } else {
                 matches!(
-                    desc.short_name(),
+                    desc.display_name().as_str(),
                     RECORDING_LINK_FIELD_NAME
                         | DATASET_MANIFEST_ID_FIELD_NAME
                         | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME

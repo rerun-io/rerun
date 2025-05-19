@@ -248,10 +248,18 @@ class TestDataframe:
                 assert table.num_columns == 2
                 assert table.num_rows == 2
 
-                assert table.column("my_index")[0].equals(self.expected_index0[0])
-                assert table.column("my_index")[1].equals(self.expected_index1[0])
-                assert table.column("/points:Position3D")[0].values.equals(self.expected_pos0)
-                assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
+                print("\n\n")
+                print(f"index_selector: {index_selector}")
+                print(f"col_selector: {col_selector}")
+                print(f"table.schema: {table.schema}")
+                assert table.column("my_index")[0].equals(self.expected_index0[0]), f"col_selector: {col_selector}"
+                assert table.column("my_index")[1].equals(self.expected_index1[0]), f"col_selector: {col_selector}"
+                assert table.column("/points:Points3D.positions")[0].values.equals(self.expected_pos0), (
+                    f"col_selector: {col_selector}"
+                )
+                assert table.column("/points:Points3D.positions")[1].values.equals(self.expected_pos1), (
+                    f"col_selector: {col_selector}"
+                )
 
     def test_index_values(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
@@ -342,9 +350,9 @@ class TestDataframe:
         ])
 
         assert table.column("my_index").equals(expected_index)
-        assert not table.column("/points:Position3D")[0].is_valid
-        assert not table.column("/points:Position3D")[1].is_valid
-        assert not table.column("/points:Position3D")[2].is_valid
+        assert not table.column("/points:Points3D.positions")[0].is_valid
+        assert not table.column("/points:Points3D.positions")[1].is_valid
+        assert not table.column("/points:Points3D.positions")[2].is_valid
 
         table = view.fill_latest_at().select().read_all().combine_chunks()
 
@@ -352,9 +360,9 @@ class TestDataframe:
         assert table.num_rows == 3
 
         assert table.column("my_index").equals(expected_index)
-        assert not table.column("/points:Position3D")[0].is_valid
-        assert table.column("/points:Position3D")[1].values.equals(self.expected_pos0)
-        assert table.column("/points:Position3D")[2].values.equals(self.expected_pos1)
+        assert not table.column("/points:Points3D.positions")[0].is_valid
+        assert table.column("/points:Points3D.positions")[1].values.equals(self.expected_pos0)
+        assert table.column("/points:Points3D.positions")[2].values.equals(self.expected_pos1)
 
     def test_filter_is_not_null(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
@@ -371,7 +379,7 @@ class TestDataframe:
 
         assert table.column("my_index")[0].equals(self.expected_index1[0])
 
-        assert table.column("/points:Position3D")[0].values.equals(self.expected_pos1)
+        assert table.column("/points:Points3D.positions")[0].values.equals(self.expected_pos1)
 
     def test_view_syntax(self) -> None:
         good_content_expressions: list[ViewContentsLike] = [

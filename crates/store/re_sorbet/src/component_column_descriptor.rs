@@ -112,7 +112,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             is_semantically_empty: _,
         } = self;
 
-        let s = format!("{entity_path}@{}", descriptor.short_name());
+        let s = format!("{entity_path}@{}", descriptor.display_name());
 
         if *is_static {
             f.write_fmt(format_args!("|{s}|"))
@@ -252,17 +252,26 @@ impl ComponentColumnDescriptor {
         self.store_datatype.clone()
     }
 
+    /// What we show in the UI
+    pub fn display_name(&self) -> String {
+        self.component_descriptor().display_name()
+    }
+
     pub fn column_name(&self, batch_type: BatchType) -> String {
         self.sanity_check();
 
         match batch_type {
             BatchType::Chunk => {
                 // All columns are of the same entity
-                self.component_name.short_name().to_owned()
+                self.component_descriptor().column_name()
             }
             BatchType::Dataframe => {
                 // Each column can be of a different entity
-                format!("{}:{}", self.entity_path, self.component_name.short_name())
+                format!(
+                    "{}:{}",
+                    self.entity_path,
+                    self.component_descriptor().column_name()
+                )
 
                 // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
                 // I'm not doing that right now, to avoid breaking changes (and we need to talk about
