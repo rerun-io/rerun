@@ -12,8 +12,8 @@ use re_chunk_store::{
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntityPathHash, StoreId, TimeInt, TimelineName};
 use re_types::{
-    Archetype as _, ArchetypeName, Component as _, ComponentName,
-    archetypes::{self},
+    Archetype as _, ArchetypeName, Component as _, ComponentDescriptor, ComponentName,
+    archetypes::{self, InstancePoses3D},
     components::{self},
 };
 use vec1::smallvec_v1::SmallVec1;
@@ -896,6 +896,26 @@ fn query_and_resolve_tree_transform_at_entity(
     Some(transform)
 }
 
+/// Lists all archetypes except [`archetypes::InstancePoses3D`] that have their own instance poses.
+// TODO(andreas, jleibs): Model this out as a generic extension mechanism.
+fn archetypes_with_instance_pose_transforms_and_translation_descriptor()
+-> [(ArchetypeName, ComponentDescriptor); 3] {
+    [
+        (
+            archetypes::Boxes3D::name(),
+            archetypes::Boxes3D::descriptor_centers(),
+        ),
+        (
+            archetypes::Ellipsoids3D::name(),
+            archetypes::Ellipsoids3D::descriptor_centers(),
+        ),
+        (
+            archetypes::Capsules3D::name(),
+            archetypes::Capsules3D::descriptor_translations(),
+        ),
+    ]
+}
+
 /// Queries all components that are part of pose transforms, returning the transform from child to parent.
 ///
 /// If any of the components yields an invalid transform, returns a `glam::Affine3A::ZERO` for that instance.
@@ -906,23 +926,83 @@ fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> PoseTransformArchetypeMap {
+    let instance_poses_archetype = query_and_resolve_instance_poses_for_archetype_name(
+        entity_path,
+        entity_db,
+        query,
+        archetypes::InstancePoses3D::name(),
+        &archetypes::InstancePoses3D::descriptor_translations(),
+    );
+
+    // Some archetypes support their own instance poses.
+    // TODO(andreas): can we quickly determine whether this is necessary for any given archetype?
+    let mut per_archetype = IntMap::default();
+    for (archetype_name, descriptor_translations) in
+        archetypes_with_instance_pose_transforms_and_translation_descriptor()
+    {
+        if let Ok(mut poses) =
+            SmallVec1::try_from_vec(query_and_resolve_instance_poses_for_archetype_name(
+                entity_path,
+                entity_db,
+                query,
+                archetype_name,
+                &descriptor_translations,
+            ))
+        {
+            // "zip" up with the overall poses.
+            let length = poses.len().max(instance_poses_archetype.len());
+            poses
+                .resize(length, *poses.last()) // Components repeat.
+                .expect("Overall number of poses can't be zero.");
+            for (pose, overall_pose) in poses.iter_mut().zip(instance_poses_archetype.iter()) {
+                *pose *= *overall_pose;
+            }
+
+            per_archetype.insert(archetype_name, poses);
+        }
+    }
+
+    PoseTransformArchetypeMap {
+        per_archetype,
+        instance_poses_archetype,
+    }
+}
+
+/// Queries pose transforms for a specific archetype.
+///
+/// Note that the archetype field name for translation specifically may vary.
+/// (this is technical debt, we should fix this)
+fn query_and_resolve_instance_poses_for_archetype_name(
+    entity_path: &EntityPath,
+    entity_db: &EntityDb,
+    query: &LatestAtQuery,
+    archetype_name: ArchetypeName,
+    descriptor_translations: &ComponentDescriptor,
+) -> Vec<Affine3A> {
+    debug_assert_eq!(
+        descriptor_translations.component_name,
+        components::PoseTranslation3D::name()
+    );
+    debug_assert_eq!(descriptor_translations.archetype_name, Some(archetype_name));
+    let descriptor_rotation_axis_angles =
+        InstancePoses3D::descriptor_rotation_axis_angles().with_archetype_name(archetype_name);
+    let descriptor_quaternions =
+        InstancePoses3D::descriptor_quaternions().with_archetype_name(archetype_name);
+    let descriptor_scales =
+        InstancePoses3D::descriptor_scales().with_archetype_name(archetype_name);
+    let descriptor_mat3x3 =
+        InstancePoses3D::descriptor_mat3x3().with_archetype_name(archetype_name);
+
     let result = entity_db.latest_at(
         query,
         entity_path,
-        // TODO(#9889): Boxes, ellipsoids and capsules depend on differently tagged instance pose right now.
-        archetypes::InstancePoses3D::all_components()
-            .iter()
-            .chain(&[
-                archetypes::Boxes3D::descriptor_centers(), // PoseTranslation3D
-                archetypes::Boxes3D::descriptor_quaternions(), // PoseRotationQuat
-                archetypes::Boxes3D::descriptor_rotation_axis_angles(), // PoseRotationAxisAngle
-                archetypes::Ellipsoids3D::descriptor_centers(), // PoseTranslation3D
-                archetypes::Ellipsoids3D::descriptor_quaternions(), // PoseRotationQuat
-                archetypes::Ellipsoids3D::descriptor_rotation_axis_angles(), // PoseRotationAxisAngle
-                archetypes::Capsules3D::descriptor_translations(),           // PoseTranslation3D
-                archetypes::Capsules3D::descriptor_quaternions(),            // PoseRotationQuat
-                archetypes::Capsules3D::descriptor_rotation_axis_angles(), // PoseRotationAxisAngle
-            ]),
+        [
+            &descriptor_translations,
+            &descriptor_rotation_axis_angles,
+            &descriptor_quaternions,
+            &descriptor_scales,
+            &descriptor_mat3x3,
+        ],
     );
 
     let max_num_instances = result
@@ -933,7 +1013,7 @@ fn query_and_resolve_instance_poses_at_entity(
         .unwrap_or(0) as usize;
 
     if max_num_instances == 0 {
-        return PoseTransformArchetypeMap::default();
+        return Vec::new();
     }
 
     #[inline]
@@ -953,6 +1033,7 @@ fn query_and_resolve_instance_poses_at_entity(
         )
     }
 
+    // TODO: Use the descriptors above to mere with https://github.com/rerun-io/rerun/pull/10005
     let batch_translation = result
         .component_batch_by_name::<components::PoseTranslation3D>()
         .unwrap_or_default();
@@ -975,7 +1056,7 @@ fn query_and_resolve_instance_poses_at_entity(
         && batch_scale.is_empty()
         && batch_mat3x3.is_empty()
     {
-        return PoseTransformArchetypeMap::default();
+        return Vec::new();
     }
     let mut iter_translation = clamped_or_nothing(batch_translation, max_num_instances);
     let mut iter_rotation_quat = clamped_or_nothing(batch_rotation_quat, max_num_instances);
@@ -984,7 +1065,7 @@ fn query_and_resolve_instance_poses_at_entity(
     let mut iter_scale = clamped_or_nothing(batch_scale, max_num_instances);
     let mut iter_mat3x3 = clamped_or_nothing(batch_mat3x3, max_num_instances);
 
-    let poses = (0..max_num_instances)
+    (0..max_num_instances)
         .map(|_| {
             // We apply these in a specific order - see `debug_assert_transform_field_order`
             let mut transform = Affine3A::IDENTITY;
@@ -1013,12 +1094,7 @@ fn query_and_resolve_instance_poses_at_entity(
             }
             transform
         })
-        .collect();
-
-    PoseTransformArchetypeMap {
-        per_archetype: Default::default(), // TODO: implement.
-        instance_poses_archetype: poses,
-    }
+        .collect()
 }
 
 fn query_and_resolve_pinhole_projection_at_entity(
