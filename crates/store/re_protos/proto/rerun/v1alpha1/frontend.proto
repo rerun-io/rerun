@@ -38,8 +38,6 @@ service FrontendService {
   // Register new partitions with the Dataset
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse) {}
 
-  // TODO: Add upload endpoint
-
   // Unimplemented.
   rpc WriteChunks(stream rerun.manifest_registry.v1alpha1.WriteChunksRequest) returns (rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
 
