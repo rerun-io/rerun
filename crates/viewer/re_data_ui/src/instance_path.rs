@@ -32,22 +32,17 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let component = if ctx.recording().is_known_entity(entity_path) {
-            // We are looking at an entity in the recording
-            ctx.recording_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else if ctx.blueprint_db().is_known_entity(entity_path) {
-            // We are looking at an entity in the blueprint
-            ctx.blueprint_db()
-                .storage_engine()
-                .store()
-                .all_components_on_timeline(&query.timeline(), entity_path)
-        } else {
+        if !db.is_known_entity(entity_path) {
             ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
-        };
-        let Some(components) = component else {
+        }
+
+        let component_descriptors = db
+            .storage_engine()
+            .store()
+            .all_components_on_timeline(&query.timeline(), entity_path);
+
+        let Some(component_descriptors) = component_descriptors else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
             ui_layout.label(
                 ui,
@@ -59,7 +54,7 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let components = crate::sorted_component_list_for_ui(&components);
+        let components = crate::sorted_component_list_for_ui(&component_descriptors);
         let indicator_count = components
             .iter()
             .filter(|c| c.component_name.is_indicator_component())
