@@ -67,6 +67,7 @@ impl TryFrom<crate::frontend::v1alpha1::GetDatasetSchemaRequest> for re_log_type
 }
 
 // --- GetChunksRequest --
+
 #[derive(Debug, Clone)]
 pub struct GetChunksRequest {
     pub dataset_id: EntryId,
