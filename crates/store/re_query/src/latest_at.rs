@@ -417,11 +417,9 @@ impl LatestAtResults {
     #[inline]
     pub fn component_instance_raw_quiet(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
         self.components.get(component_descr).and_then(|unit| {
             unit.component_instance_raw(component_descr, instance_index)?
                 .ok()
