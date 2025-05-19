@@ -154,6 +154,10 @@ pub fn visualizers_processing_draw_order()
             segmentation_images::SegmentationImageVisualizer::identifier(),
             archetypes::SegmentationImage::descriptor_draw_order(),
         ),
+        (
+            videos::VideoFrameReferenceVisualizer::identifier(),
+            archetypes::VideoFrameReference::descriptor_draw_order(),
+        ),
     ]
     .into_iter()
 }

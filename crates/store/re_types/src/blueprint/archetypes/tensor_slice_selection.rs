@@ -100,7 +100,7 @@ impl TensorSliceSelection {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorSliceSelection".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.TensorSliceSelectionIndicator".into(),
             archetype_field_name: None,
         }

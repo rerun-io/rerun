@@ -1,8 +1,9 @@
-use egui::{NumExt as _, Ui};
+use egui::{Color32, NumExt as _, Theme, Ui};
 use ehttp::{Request, fetch};
 use itertools::Itertools as _;
 use poll_promise::Promise;
 
+use re_ui::UiExt as _;
 use re_viewer_context::{CommandSender, DisplayMode, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
@@ -343,8 +344,7 @@ impl ExampleSection {
                                 ui.painter().rect_filled(
                                     example.rect,
                                     THUMBNAIL_RADIUS,
-                                    //TODO(ab): as per figma, use design tokens instead
-                                    egui::Color32::WHITE.gamma_multiply(0.04),
+                                    ui.design_tokens().example_card_background_color(),
                                 );
 
                                 if response.clicked() {
@@ -413,7 +413,10 @@ impl ExampleSection {
                                         example.rect,
                                         THUMBNAIL_RADIUS,
                                         //TODO(ab): use design tokens
-                                        egui::Color32::from_additive_luminance(25),
+                                        match ui.theme() {
+                                            Theme::Dark => Color32::from_additive_luminance(25),
+                                            Theme::Light => Color32::from_black_alpha(20),
+                                        },
                                     );
                                 }
                             }
@@ -542,11 +545,11 @@ impl ExampleDescLayout {
                         )
                         .sense(egui::Sense::hover())
                         .corner_radius(6)
-                        .fill(egui::Color32::from_rgb(26, 29, 30))
-                        .stroke(egui::Stroke::new(
-                            1.0,
-                            egui::Color32::WHITE.gamma_multiply(0.086),
-                        ))
+                        .fill(match ui.theme() {
+                            Theme::Dark => egui::Color32::from_rgb(26, 29, 30),
+                            Theme::Light => Color32::from_rgb(219, 222, 228),
+                        })
+                        .stroke(egui::Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.086)))
                         .wrap_mode(egui::TextWrapMode::Extend),
                     );
                 }
@@ -566,7 +569,8 @@ impl ExampleDescLayout {
                 if ui
                     .add_enabled(
                         source_url.is_some(),
-                        egui::Button::image_and_text(&re_ui::icons::GITHUB, "Source code"),
+                        re_ui::icons::GITHUB
+                            .as_button_with_label(ui.design_tokens(), "Source code"),
                     )
                     .on_hover_cursor(egui::CursorIcon::PointingHand)
                     .on_disabled_hover_text("Source code is not available for this example")

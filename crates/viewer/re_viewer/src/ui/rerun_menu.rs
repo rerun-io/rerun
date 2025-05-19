@@ -1,11 +1,13 @@
 //! The main Rerun drop-down menu found in the top panel.
 
-use crate::App;
 use egui::NumExt as _;
 #[cfg(debug_assertions)]
 use egui::containers::menu;
-use re_ui::UICommand;
+
+use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
+
+use crate::App;
 
 const SPACING: f32 = 12.0;
 
@@ -22,7 +24,8 @@ impl App {
 
         let image = re_ui::icons::RERUN_MENU
             .as_image()
-            .max_height(desired_icon_height);
+            .max_height(desired_icon_height)
+            .tint(ui.design_tokens().strong_fg_color());
 
         ui.menu_image_button(image, |ui| {
             self.rerun_menu_ui(ui, render_state, _store_context);

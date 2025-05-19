@@ -109,6 +109,7 @@ pub struct LineStrips2D {
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `20.0`.
     pub draw_order: Option<SerializedComponentBatch>,
 
     /// Optional [`components::ClassId`][crate::components::ClassId]s for the lines.
@@ -206,7 +207,7 @@ impl LineStrips2D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips2D".into()),
+            archetype_name: None,
             component_name: "rerun.components.LineStrips2DIndicator".into(),
             archetype_field_name: None,
         }
@@ -568,6 +569,7 @@ impl LineStrips2D {
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `20.0`.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);

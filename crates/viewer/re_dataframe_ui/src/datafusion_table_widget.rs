@@ -403,7 +403,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             ui.small_icon(
                                 dir_icon,
                                 Some(
-                                    re_ui::design_tokens()
+                                    ui.design_tokens()
                                         .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
                                 ),
                             );
