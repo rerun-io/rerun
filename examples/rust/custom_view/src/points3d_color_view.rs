@@ -1,4 +1,4 @@
-use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
+use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
 use rerun::external::{
     egui,
     re_data_ui::{DataUi, item_ui},
@@ -91,7 +91,7 @@ impl ViewClass for ColorCoordinatesView {
         &self,
         system_registry: &mut ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<InstanceColorSystem>()
+        system_registry.register_visualizer::<Points3DColorVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
@@ -115,7 +115,7 @@ impl ViewClass for ColorCoordinatesView {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
             .maybe_visualizable_entities_per_visualizer
-            .get(&InstanceColorSystem::identifier())
+            .get(&Points3DColorVisualizer::identifier())
             .is_some_and(|entities| entities.iter().any(include_entity))
         {
             ViewSpawnHeuristics::root()
@@ -137,10 +137,10 @@ impl ViewClass for ColorCoordinatesView {
         _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
     ) -> SmallVisualizerSet {
         if visualizable_entities_per_visualizer
-            .get(&InstanceColorSystem::identifier())
+            .get(&Points3DColorVisualizer::identifier())
             .is_some_and(|entities| entities.contains(entity_path))
         {
-            SmallVisualizerSet::from_slice(&[InstanceColorSystem::identifier()])
+            SmallVisualizerSet::from_slice(&[Points3DColorVisualizer::identifier()])
         } else {
             SmallVisualizerSet::new()
         }
@@ -185,7 +185,9 @@ impl ViewClass for ColorCoordinatesView {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
-        let colors = system_output.view_systems.get::<InstanceColorSystem>()?;
+        let colors = system_output
+            .view_systems
+            .get::<Points3DColorVisualizer>()?;
         let state = state.downcast_mut::<ColorCoordinatesViewState>()?;
 
         egui::Frame::default().show(ui, |ui| {
@@ -219,7 +221,7 @@ impl ViewClass for ColorCoordinatesView {
 fn color_space_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    colors: &InstanceColorSystem,
+    colors: &Points3DColorVisualizer,
     query: &ViewQuery<'_>,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
@@ -257,6 +259,7 @@ fn color_space_ui(
     ui.painter().add(egui::Shape::mesh(mesh));
 
     // Circles for the colors in the scene.
+    let mut hovering_any_point = false;
     for (ent_path, colors) in &colors.colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
         for ColorWithInstance { instance, color } in colors {
@@ -305,6 +308,8 @@ fn color_space_ui(
                     &ctx.current_query(),
                     ctx.recording(),
                 );
+
+                hovering_any_point = true;
             });
             ctx.handle_select_hover_drag_interactions(
                 &interact,
@@ -312,6 +317,11 @@ fn color_space_ui(
                 false,
             );
         }
+    }
+
+    // If no point was selected, then select the view.
+    if !hovering_any_point {
+        ctx.handle_select_hover_drag_interactions(&response, Item::View(query.view_id), false);
     }
 
     response
