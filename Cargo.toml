@@ -348,13 +348,13 @@ webbrowser = "1.0"
 winit = { version = "0.30.5", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "24.0", default-features = false, features = [
+wgpu = { version = "25.0", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "webgl",
   "metal",
   "webgpu",
-  #"vulkan", # Does not yet exist, wgpu enables this automatically on Linux & Windows.
-  #"gl",     # Does not yet exist, wgpu enables this automatically on Linux & Windows.
+  "vulkan", # Does not yet exist, wgpu enables this automatically on Linux & Windows.
+  "gles",     # Does not yet exist, wgpu enables this automatically on Linux & Windows.
   #"dx12",   # DX12 backend on wgpu isn't as stable. Also, we want to reduce the number of backends on native. Ideally we only have Vulkan & Metal, but we also keep GL as a manual fallback.
   #"angle",  # As above, we want to limit the numbers of backends we support. GL support via angle isn't great and we didn't need it so far.
   # Shader options:

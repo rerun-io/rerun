@@ -305,7 +305,7 @@ impl RenderContext {
         if cfg!(target_arch = "wasm32")
             && self.device_caps.backend_type == WgpuBackendType::WgpuCore
         {
-            self.device.poll(wgpu::Maintain::Wait);
+            self.device.poll(wgpu::PollType::Wait);
             return;
         }
 
@@ -320,7 +320,7 @@ impl RenderContext {
             .drain(0..num_submissions_to_wait_for)
             .last()
         {
-            self.device.poll(wgpu::Maintain::WaitForSubmissionIndex(
+            self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
                 newest_submission_to_wait_for,
             ));
         }
