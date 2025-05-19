@@ -166,7 +166,8 @@ async fn message_proxy_client(
             }
         }
     };
-    let mut client = MessageProxyServiceClient::new(channel);
+    let mut client = MessageProxyServiceClient::new(channel)
+        .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
 
     let stream = async_stream::stream! {
         loop {
