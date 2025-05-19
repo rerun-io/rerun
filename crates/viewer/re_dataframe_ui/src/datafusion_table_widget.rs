@@ -505,7 +505,7 @@ fn header_tooltip_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
         }
         ColumnDescriptorRef::Component(desc) => {
             header_property_ui(ui, "Type", "component");
-            header_property_ui(ui, "Name", desc.component_name.full_name());
+            header_property_ui(ui, "Component", desc.component_name.full_name());
             header_property_ui(ui, "Entity path", desc.entity_path.to_string());
             datatype_ui(ui, &column.display_name(), &desc.store_datatype);
             header_property_ui(
