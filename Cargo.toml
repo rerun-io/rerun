@@ -221,7 +221,6 @@ gltf = "1.1"
 half = { version = "2.3.1", features = ["bytemuck"] }
 hexasphere = "14.1.0"
 home = "=0.5.9"
-http = "1.2.0"
 image = { version = "0.25", default-features = false }
 indent = "0.1"
 indexmap = "2.1" # Version chosen to align with other dependencies
@@ -323,7 +322,6 @@ tonic-web = "0.12"
 tonic-web-wasm-client = "0.6"
 tower = "0.5"
 tower-http = "0.5"
-tower-service = "0.3"
 tracing = { version = "0.1", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
