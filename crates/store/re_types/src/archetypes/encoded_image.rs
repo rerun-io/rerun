@@ -120,7 +120,7 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
+            archetype_name: None,
             component_name: "rerun.components.EncodedImageIndicator".into(),
             archetype_field_name: None,
         }

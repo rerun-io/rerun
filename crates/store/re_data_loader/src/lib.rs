@@ -328,7 +328,7 @@ pub enum DataLoaderError {
     #[error("No data-loader support for {0:?}")]
     Incompatible(std::path::PathBuf),
 
-    #[error(transparent)]
+    #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
 }
 

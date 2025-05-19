@@ -321,7 +321,8 @@ fn website_link_ui(ui: &mut egui::Ui) {
 
     let image = re_ui::icons::RERUN_IO_TEXT
         .as_image()
-        .max_height(desired_height);
+        .max_height(desired_height)
+        .tint(ui.design_tokens().strong_fg_color());
 
     let url = "https://rerun.io/";
     let response = ui

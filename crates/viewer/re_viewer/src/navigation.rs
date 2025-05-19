@@ -29,7 +29,7 @@ impl Navigation {
 
     pub fn replace(&mut self, display_mode: DisplayMode) -> Option<DisplayMode> {
         let previous = self.history.pop();
-        re_log::debug!("Replaced `{:?}` with `{:?}`", previous, display_mode);
+        re_log::trace!("Navigated from {previous:?} to {display_mode:?}");
         self.history.push(display_mode);
         previous
     }

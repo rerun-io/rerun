@@ -79,7 +79,7 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ForceLinkIndicator".into(),
             archetype_field_name: None,
         }

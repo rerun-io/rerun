@@ -4,9 +4,9 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
 use re_types::{
-    Archetype as _, Component as _, ComponentNameSet,
+    Archetype as _, ComponentDescriptorSet,
     archetypes::{self, InstancePoses3D, Transform3D},
-    components::{ImagePlaneDistance, PinholeProjection},
+    components::ImagePlaneDistance,
 };
 use re_view::DataResultQuery as _;
 use re_viewer_context::{DataResultTree, IdentifiedViewSystem, ViewContext, ViewContextSystem};
@@ -149,17 +149,11 @@ impl Default for TransformTreeContext {
 }
 
 impl ViewContextSystem for TransformTreeContext {
-    fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
+    fn compatible_component_sets(&self) -> Vec<ComponentDescriptorSet> {
         vec![
-            Transform3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
-            InstancePoses3D::all_components()
-                .iter()
-                .map(|descr| descr.component_name)
-                .collect(),
-            std::iter::once(PinholeProjection::name()).collect(),
+            Transform3D::all_components().iter().cloned().collect(),
+            InstancePoses3D::all_components().iter().cloned().collect(),
+            std::iter::once(archetypes::Pinhole::descriptor_image_from_camera()).collect(),
         ]
     }
 
@@ -374,7 +368,9 @@ fn lookup_image_plane_distance(
                     query,
                     &archetypes::Pinhole::descriptor_image_plane_distance(),
                 )
-                .get_mono_with_fallback::<ImagePlaneDistance>()
+                .get_mono_with_fallback::<ImagePlaneDistance>(
+                    &archetypes::Pinhole::descriptor_image_plane_distance(),
+                )
         })
         .unwrap_or_default()
         .into()
@@ -497,7 +493,7 @@ fn transform_info_for_downward_propagation(
 
 #[cfg(debug_assertions)]
 fn debug_assert_transform_field_order(reflection: &re_types::reflection::Reflection) {
-    use re_types::{Archetype as _, components};
+    use re_types::{Archetype as _, Component as _, components};
 
     let expected_order = vec![
         components::Translation3D::name(),

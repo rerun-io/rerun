@@ -9,6 +9,29 @@ use re_types_core::arrow_helpers::as_array_ref;
 use crate::Chunk;
 
 impl Chunk {
+    /// We look for indicator component descriptors that have an archetype name and strip it.
+    ///
+    /// It turns out that too narrow indicator descriptors cause problems while querying.
+    /// More information: <https://github.com/rerun-io/rerun/pull/9938#issuecomment-2888808593>
+    #[inline]
+    pub fn patched_weak_indicator_descriptor_023_compat(&self) -> Self {
+        let mut chunk = self.clone();
+
+        chunk.components = chunk
+            .components
+            .0
+            .drain()
+            .map(|(mut descriptor, list_array)| {
+                if descriptor.component_name.is_indicator_component() {
+                    descriptor.archetype_name = None;
+                }
+                (descriptor, list_array)
+            })
+            .collect();
+
+        chunk
+    }
+
     /// A temporary migration kernel for blueprint data.
     ///
     /// Deals with all the space-view terminology breaking changes (`SpaceView`->`View`, `space_view`->`view`, etc).

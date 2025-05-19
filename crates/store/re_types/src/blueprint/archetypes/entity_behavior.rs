@@ -70,7 +70,7 @@ impl EntityBehavior {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.EntityBehavior".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.EntityBehaviorIndicator".into(),
             archetype_field_name: None,
         }

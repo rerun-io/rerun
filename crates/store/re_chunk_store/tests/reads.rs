@@ -12,7 +12,7 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
 };
 use re_types::{
-    ComponentDescriptor, ComponentNameSet,
+    ComponentDescriptor, ComponentDescriptorSet,
     testing::{LargeStruct, build_some_large_structs},
 };
 use re_types_core::Component as _;
@@ -57,12 +57,10 @@ fn all_components() -> anyhow::Result<()> {
         |store: &ChunkStore, entity_path: &EntityPath, expected: Option<&[ComponentDescriptor]>| {
             let timeline = TimelineName::new("frame_nr");
 
-            let component_names =
-                store.all_components_on_timeline_sorted_by_name(&timeline, entity_path);
+            let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
             let expected_component_names = expected.map(|expected| {
-                let expected: ComponentNameSet =
-                    expected.iter().map(|desc| desc.component_name).collect();
+                let expected: ComponentDescriptorSet = expected.iter().cloned().collect();
                 expected
             });
 
