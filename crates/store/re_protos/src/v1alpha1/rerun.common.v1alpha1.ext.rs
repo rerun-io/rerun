@@ -770,7 +770,7 @@ impl TryFrom<crate::common::v1alpha1::ScanParametersOrderClause> for ScanParamet
             nulls_last: value.nulls_last,
             column_name: value.column_name.ok_or(missing_field!(
                 crate::common::v1alpha1::ScanParametersOrderClause,
-                "olumn_name"
+                "column_name"
             ))?,
         })
     }
