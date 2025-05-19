@@ -554,9 +554,10 @@ impl LatestAtResults {
     ///
     /// Returns none if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono_quiet<C: Component>(&self) -> Option<C> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
+    pub fn component_mono_quiet<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<C> {
         self.components
             .get(component_descr)
             .and_then(|unit| unit.component_mono(component_descr)?.ok())

@@ -243,7 +243,7 @@ impl EntityDb {
                 .cache()
                 .latest_at(query, entity_path, [component_descr]);
         results
-            .component_mono_quiet()
+            .component_mono_quiet(component_descr)
             .map(|value| (results.index(), value))
     }
 
