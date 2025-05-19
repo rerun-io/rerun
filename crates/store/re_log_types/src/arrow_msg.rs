@@ -7,8 +7,6 @@ use std::sync::Arc;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 
-use crate::TimePoint;
-
 /// An arbitrary callback to be run when an [`ArrowMsg`], and more specifically the
 /// [`ArrowRecordBatch`] within it, goes out of scope.
 ///
