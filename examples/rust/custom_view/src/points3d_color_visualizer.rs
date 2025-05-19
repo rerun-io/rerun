@@ -34,7 +34,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
             // This is what it looks like to query all the fields of an archetype.
             VisualizerQueryInfo::from_archetype::<rerun::Points3D>()
         } else {
-            // Instead, we create a custom query that is solely interested in Points3D's colors.
+            // Instead, our custom query here is solely interested in Points3D's colors.
             VisualizerQueryInfo {
                 indicators: Default::default(),
                 required: std::iter::once(rerun::Points3D::descriptor_colors()).collect(),

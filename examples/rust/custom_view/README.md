@@ -1,17 +1,15 @@
 <!--[metadata]
 title = "Custom view UI"
-thumbnail = "https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/480w.jpeg"
-thumbnail_dimensions = [480, 343]
+thumbnail = "https://static.rerun.io/custom_view/61089d7178b3bd7f9e3de36ee9c00e5fdf1c6f76/480w.png"
+thumbnail_dimensions = [480, 264]
 -->
 
-
-TODO: update screenshots
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/api_demo/e05a073d64003645b6af6de91b068c2f646c1b8a/480w.jpeg">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/api_demo/e05a073d64003645b6af6de91b068c2f646c1b8a/768w.jpeg">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/api_demo/e05a073d64003645b6af6de91b068c2f646c1b8a/1024w.jpeg">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/api_demo/e05a073d64003645b6af6de91b068c2f646c1b8a/1200w.jpeg">
-  <img src="https://static.rerun.io/api_demo/e05a073d64003645b6af6de91b068c2f646c1b8a/full.jpeg" alt="Custom View UI example screenshot">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom_view/61089d7178b3bd7f9e3de36ee9c00e5fdf1c6f76/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom_view/61089d7178b3bd7f9e3de36ee9c00e5fdf1c6f76/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_view/61089d7178b3bd7f9e3de36ee9c00e5fdf1c6f76/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_view/61089d7178b3bd7f9e3de36ee9c00e5fdf1c6f76/1200w.png">
+  <img src="https://static.rerun.io/custom_view/61089d7178b3bd7f9e3de36ee9c00e5fdf1c6f76/full.png" alt="Custom View UI example screenshot">
 </picture>
 
 Example showing how to add custom View classes to extend the Rerun Viewer.

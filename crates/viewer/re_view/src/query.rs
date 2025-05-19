@@ -223,7 +223,7 @@ pub trait DataResultQuery {
         component_descr: &ComponentDescriptor,
     ) -> HybridLatestAtResults<'a>;
 
-    /// Queries for the given components, staking into account:
+    /// Queries for the given components, taking into account:
     /// * visible history if enabled
     /// * blueprint overrides & defaults
     fn query_components_with_history<'a, 'b>(
