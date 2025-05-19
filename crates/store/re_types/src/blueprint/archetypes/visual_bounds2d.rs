@@ -53,7 +53,7 @@ impl VisualBounds2D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.VisualBounds2DIndicator".into(),
             archetype_field_name: None,
         }

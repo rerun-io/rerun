@@ -96,7 +96,7 @@ impl Clear {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Clear".into()),
+            archetype_name: None,
             component_name: "rerun.components.ClearIndicator".into(),
             archetype_field_name: None,
         }

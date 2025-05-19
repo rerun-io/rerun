@@ -55,7 +55,7 @@ impl VisibleTimeRanges {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.VisibleTimeRangesIndicator".into(),
             archetype_field_name: None,
         }
