@@ -2,7 +2,7 @@ use egui::NumExt as _;
 
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
-use re_log_types::{ComponentPath, Instance, TimeInt};
+use re_log_types::{ComponentPath, EntityPath, Instance, TimeInt, TimePoint};
 use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt as _};
 use re_viewer_context::{UiLayout, ViewerContext};
 
@@ -126,6 +126,24 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
         };
 
         if num_instances <= 1 {
+            // Allow editing recording properties:
+            if entity_path.starts_with(&EntityPath::properties()) {
+                if let Some(array) = self.unit.component_batch_raw(component_descriptor) {
+                    if ctx.component_ui_registry().try_show_edit_ui(
+                        ctx,
+                        ui,
+                        ctx.recording_id(),
+                        TimePoint::STATIC,
+                        array.as_ref(),
+                        entity_path,
+                        component_descriptor.clone(),
+                        !ui_layout.is_single_line(),
+                    ) {
+                        return;
+                    }
+                }
+            }
+
             ctx.component_ui_registry().ui(
                 ctx,
                 ui,
