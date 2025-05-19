@@ -41,10 +41,6 @@ impl<'a> Columns<'a> {
 }
 
 impl Columns<'_> {
-    fn descriptors(&self) -> impl Iterator<Item = &ColumnDescriptorRef<'_>> {
-        self.inner.values().map(|(_, desc)| desc)
-    }
-
     fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
         id.and_then(|id| self.inner.get(&id).map(|(index, _)| *index))
     }
@@ -57,7 +53,9 @@ impl Columns<'_> {
     }
 }
 
-type ColumnRenamerFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
+type ColumnNameFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
+
+type ColumnVisibilityFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> bool + 'a>>;
 
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
@@ -73,7 +71,10 @@ pub struct DataFusionTableWidget<'a> {
     /// Closure used to determine the display name of the column.
     ///
     /// Defaults to using [`ColumnDescriptorRef::column_name`].
-    column_renamer: ColumnRenamerFn<'a>,
+    column_name_fn: ColumnNameFn<'a>,
+
+    /// Closure used to determine the default visibility of the column
+    default_column_visibility_fn: ColumnVisibilityFn<'a>,
 
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
@@ -99,7 +100,8 @@ impl<'a> DataFusionTableWidget<'a> {
 
             title: None,
             title_button: None,
-            column_renamer: None,
+            column_name_fn: None,
+            default_column_visibility_fn: None,
             initial_blueprint: Default::default(),
         }
     }
@@ -116,11 +118,22 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn column_renamer(
+    pub fn column_name(
         mut self,
-        renamer: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'a,
+        column_name_fn: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'a,
     ) -> Self {
-        self.column_renamer = Some(Box::new(renamer));
+        self.column_name_fn = Some(Box::new(column_name_fn));
+
+        self
+    }
+
+    // TODO(ab): this should best be expressed as part of the `TableBlueprint`, but we need better
+    // column selector first.
+    pub fn default_column_visibility(
+        mut self,
+        column_visibility_fn: impl Fn(&ColumnDescriptorRef<'_>) -> bool + 'a,
+    ) -> Self {
+        self.default_column_visibility_fn = Some(Box::new(column_visibility_fn));
 
         self
     }
@@ -153,7 +166,8 @@ impl<'a> DataFusionTableWidget<'a> {
             table_ref,
             title,
             title_button,
-            column_renamer,
+            column_name_fn,
+            default_column_visibility_fn,
             initial_blueprint,
         } = self;
 
@@ -256,14 +270,20 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
-            columns.descriptors().map(|c| {
-                let name = if let Some(renamer) = &column_renamer {
-                    renamer(c)
+            sorbet_schema.columns.iter_ref().map(|c| {
+                let name = if let Some(column_name_fn) = &column_name_fn {
+                    column_name_fn(&c)
                 } else {
                     c.column_name(BatchType::Dataframe)
                 };
 
-                ColumnConfig::new(Id::new(c), name)
+                let visible = if let Some(column_visibility_fn) = &default_column_visibility_fn {
+                    column_visibility_fn(&c)
+                } else {
+                    true
+                };
+
+                ColumnConfig::new_with_visible(Id::new(c), name, visible)
             }),
         );
 
@@ -280,7 +300,7 @@ impl<'a> DataFusionTableWidget<'a> {
             fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
-            column_renamer: &column_renamer,
+            column_name_fn: &column_name_fn,
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
@@ -348,7 +368,7 @@ struct DataFusionTableDelegate<'a> {
     fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
-    column_renamer: &'a ColumnRenamerFn<'a>,
+    column_name_fn: &'a ColumnNameFn<'a>,
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
@@ -362,7 +382,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
         if let Some((index, desc)) = self.columns.index_and_descriptor_from_id(id) {
             let column_name = self.fields[index].name();
-            let name = if let Some(renamer) = self.column_renamer {
+            let name = if let Some(renamer) = self.column_name_fn {
                 renamer(desc)
             } else {
                 desc.column_name(BatchType::Dataframe)

@@ -3,8 +3,10 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
 
-use re_log_types::EntryId;
-use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_log_types::{EntityPathPart, EntryId};
+use re_protos::manifest_registry::v1alpha1::{
+    DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
+};
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
@@ -115,6 +117,8 @@ impl Server {
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
+        const RECORDING_LINK_FIELD_NAME: &str = "recording link";
+
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
             dataset.name(),
@@ -125,7 +129,7 @@ impl Server {
                 .send(Command::RefreshCollection(self.origin.clone()))
                 .ok();
         }))
-        .column_renamer(|desc| {
+        .column_name(|desc| {
             //TODO(ab): with this strategy, we do not display relevant entity path if any.
             let name = desc.display_name();
 
@@ -133,8 +137,22 @@ impl Server {
                 .unwrap_or(name.as_ref())
                 .replace('_', " ")
         })
+        .default_column_visibility(|desc| {
+            if desc.entity_path().is_some_and(|entity_path| {
+                entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
+            }) {
+                true
+            } else {
+                matches!(
+                    desc.short_name(),
+                    RECORDING_LINK_FIELD_NAME
+                        | DATASET_MANIFEST_ID_FIELD_NAME
+                        | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME
+                )
+            }
+        })
         .generate_partition_links(
-            "recording link",
+            RECORDING_LINK_FIELD_NAME,
             DATASET_MANIFEST_ID_FIELD_NAME,
             self.origin.clone(),
             dataset.id(),

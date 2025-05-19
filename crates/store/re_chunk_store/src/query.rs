@@ -10,8 +10,7 @@ use re_chunk::{Chunk, LatestAtQuery, RangeQuery, TimelineName};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types_core::{
-    ComponentDescriptor, ComponentDescriptorSet, ComponentName, ComponentNameSet,
-    UnorderedComponentDescriptorSet,
+    ComponentDescriptor, ComponentDescriptorSet, ComponentName, UnorderedComponentDescriptorSet,
 };
 
 use crate::{ChunkStore, store::ChunkIdSetPerTime};
@@ -152,56 +151,6 @@ impl ChunkStore {
     /// Static components are always included in the results.
     ///
     /// Returns `None` if the entity doesn't exist at all on this `timeline`.
-    // TODO(#6889): Remove in favor of `all_components_on_timeline_sorted`.
-    pub fn all_components_on_timeline_sorted_by_name(
-        &self,
-        timeline: &TimelineName,
-        entity_path: &EntityPath,
-    ) -> Option<ComponentNameSet> {
-        re_tracing::profile_function!();
-
-        let static_components: Option<ComponentNameSet> = self
-            .static_chunk_ids_per_entity
-            .get(entity_path)
-            .map(|static_chunks_per_component| {
-                static_chunks_per_component
-                    .keys()
-                    .map(|descr| descr.component_name)
-                    .collect::<ComponentNameSet>()
-            })
-            .filter(|names| !names.is_empty());
-
-        let temporal_components: Option<ComponentNameSet> = self
-            .temporal_chunk_ids_per_entity_per_component
-            .get(entity_path)
-            .map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline
-                    .get(timeline)
-                    .map(|temporal_chunk_ids_per_component| {
-                        temporal_chunk_ids_per_component
-                            .keys()
-                            .map(|descr| descr.component_name)
-                            .collect::<ComponentNameSet>()
-                    })
-                    .unwrap_or_default()
-            })
-            .filter(|names| !names.is_empty());
-
-        match (static_components, temporal_components) {
-            (None, None) => None,
-            (None, Some(comps)) | (Some(comps), None) => Some(comps),
-            (Some(static_comps), Some(temporal_comps)) => {
-                Some(static_comps.into_iter().chain(temporal_comps).collect())
-            }
-        }
-    }
-
-    /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
-    /// the specified [`Timeline`].
-    ///
-    /// Static components are always included in the results.
-    ///
-    /// Returns `None` if the entity doesn't exist at all on this `timeline`.
     pub fn all_components_on_timeline_sorted(
         &self,
         timeline: &TimelineName,
@@ -292,29 +241,24 @@ impl ChunkStore {
     pub fn all_components_for_entity_sorted(
         &self,
         entity_path: &EntityPath,
-    ) -> Option<ComponentNameSet> {
+    ) -> Option<ComponentDescriptorSet> {
         re_tracing::profile_function!();
 
-        let static_components: Option<ComponentNameSet> = self
+        let static_components: Option<ComponentDescriptorSet> = self
             .static_chunk_ids_per_entity
             .get(entity_path)
             .map(|static_chunks_per_component| {
-                static_chunks_per_component
-                    .keys()
-                    .map(|descr| descr.component_name)
-                    .collect()
+                static_chunks_per_component.keys().cloned().collect()
             });
 
-        let temporal_components: Option<ComponentNameSet> = self
+        let temporal_components: Option<ComponentDescriptorSet> = self
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
                 temporal_chunk_ids_per_timeline
                     .iter()
                     .flat_map(|(_, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component
-                            .keys()
-                            .map(|descr| descr.component_name)
+                        temporal_chunk_ids_per_component.keys().cloned()
                     })
                     .collect()
             });
