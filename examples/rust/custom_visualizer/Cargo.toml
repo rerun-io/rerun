@@ -1,7 +1,7 @@
 [package]
-name = "custom_view"
-version = "0.24.0-alpha.1+dev"
-edition = "2024"
+name = "custom_visualizer"
+version = "0.24.0-alpha.3+dev"
+edition = "2021"
 rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 publish = false
@@ -15,8 +15,11 @@ analytics = ["rerun/analytics"]
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",
-  "server",
+  "run",
 ] }
+
+# Can't rely on export from `rerun` crate since proc macros can't be re-exported.
+bytemuck = "1"
 
 # mimalloc is a much faster allocator:
 mimalloc = "0.1.43"
