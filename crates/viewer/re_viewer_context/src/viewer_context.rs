@@ -236,7 +236,9 @@ impl ViewerContext<'_> {
                             InstancePath::entity_all(instance.entity_path.clone()),
                         )
                         .into();
-                        interacted_items.first_item().unwrap() // Just set it
+                        interacted_items
+                            .first_item()
+                            .expect("That item was just added")
                     } else {
                         item
                     };
