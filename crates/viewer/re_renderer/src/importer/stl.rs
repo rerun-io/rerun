@@ -26,6 +26,7 @@ pub fn load_stl_from_buffer(
     let num_vertices = faces.len() * 3;
 
     // TODO(gijsd): parse name from ASCII?
+    // https://github.com/hmeyer/stl_io/pull/26
     let name = "";
 
     let material = mesh::Material {
@@ -35,7 +36,6 @@ pub fn load_stl_from_buffer(
         albedo_factor: crate::Rgba::WHITE,
     };
 
-    // TODO(gijsd): Does this not support sparse meshes/vertex positions?
     let mesh = mesh::CpuMesh {
         label: name.into(),
         triangle_indices: (0..num_vertices as u32)
