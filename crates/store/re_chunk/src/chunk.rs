@@ -1240,16 +1240,6 @@ impl Chunk {
     pub fn components(&self) -> &ChunkComponents {
         &self.components
     }
-
-    /// Computes the maximum value for each and every timeline present across this entire chunk,
-    /// and returns the corresponding [`TimePoint`].
-    #[inline]
-    pub fn timepoint_max(&self) -> TimePoint {
-        self.timelines
-            .values()
-            .map(|info| (info.timeline, info.time_range.max()))
-            .collect()
-    }
 }
 
 impl std::fmt::Display for Chunk {

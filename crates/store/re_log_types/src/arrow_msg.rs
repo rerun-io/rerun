@@ -72,12 +72,6 @@ pub struct ArrowMsg {
     /// Unique identifier for the chunk in this message.
     pub chunk_id: re_tuid::Tuid,
 
-    /// The maximum values for all timelines across the entire batch of data.
-    ///
-    /// Used to timestamp the batch as a whole for e.g. latency measurements without having to
-    /// deserialize the arrow payload.
-    pub timepoint_max: TimePoint,
-
     /// Schema and data for all control & data columns.
     pub batch: ArrowRecordBatch,
 
