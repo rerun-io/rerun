@@ -20,13 +20,13 @@ use re_viewer_context::{
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
-use crate::startup_options::StartupOptions;
 use crate::{
     AppState,
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
+    startup_options::StartupOptions,
 };
 
 // ----------------------------------------------------------------------------
@@ -1130,34 +1130,49 @@ impl App {
     fn save_all_recordings(
         &mut self,
         storage_context: &StorageContext<'_>,
-        selected_stores: &[StoreId],
+        stores: &[StoreId],
         folder: &std::path::Path,
     ) {
         use re_log::ResultExt as _;
+        use tap::Pipe as _;
 
         re_tracing::profile_function!();
 
+        let stores = stores
+            .iter()
+            .filter_map(|store_id| storage_context.bundle.get(store_id))
+            .collect_vec();
+
         re_log::info!(
             "Saving {} recordings to {}…",
-            selected_stores.len(),
+            stores.len(),
             folder.display()
         );
 
-        for store_id in selected_stores {
-            if let Some(store) = storage_context.bundle.get(store_id) {
-                let messages = store.to_messages(None).collect_vec();
-                let recording_name = re_viewer_context::santitize_file_name(&store_id.to_string());
-                let file_path = folder.join(format!("{recording_name}.rrd"));
-                self.background_tasks
-                    .spawn_threaded_promise(recording_name.clone(), move || {
-                        crate::saving::encode_to_file(
-                            re_build_info::CrateVersion::LOCAL,
-                            &file_path,
-                            messages.into_iter(),
-                        )
-                    })
-                    .ok_or_log_error_once();
+        for store in stores {
+            let messages = store.to_messages(None).collect_vec();
+
+            let file_name = if let Some(rec_name) = store
+                .recording_property::<re_types::components::Name>(
+                    &re_types::archetypes::RecordingProperties::descriptor_name(),
+                ) {
+                rec_name.to_string()
+            } else {
+                store.store_id().to_string()
             }
+            .pipe(|name| santitize_file_name(&name))
+            .pipe(|stem| format!("{stem}.rrd"));
+
+            let file_path = folder.join(file_name.clone());
+            self.background_tasks
+                .spawn_threaded_promise(file_name, move || {
+                    crate::saving::encode_to_file(
+                        re_build_info::CrateVersion::LOCAL,
+                        &file_path,
+                        messages.into_iter(),
+                    )
+                })
+                .ok_or_log_error_once();
         }
 
         // TODO: log when they have all finished

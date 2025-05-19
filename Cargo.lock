@@ -8086,6 +8086,7 @@ dependencies = [
  "serde_json",
  "strum",
  "strum_macros",
+ "tap",
  "thiserror 1.0.65",
  "wasm-bindgen",
  "wasm-bindgen-futures",
