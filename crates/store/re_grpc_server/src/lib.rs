@@ -946,9 +946,11 @@ mod tests {
             let completion = completion.clone();
             async move {
                 tonic::transport::Server::builder()
-                    .add_service(MessageProxyServiceServer::new(super::MessageProxy::new(
-                        memory_limit,
-                    )))
+                    .add_service(
+                        MessageProxyServiceServer::new(super::MessageProxy::new(memory_limit))
+                            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+                            .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+                    )
                     .serve_with_incoming_shutdown(
                         TcpIncoming::from_listener(tcp_listener, true, None).unwrap(),
                         completion.wait(),
@@ -969,6 +971,7 @@ mod tests {
                 .await
                 .unwrap(),
         )
+        .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE)
     }
 
     async fn read_log_stream(
