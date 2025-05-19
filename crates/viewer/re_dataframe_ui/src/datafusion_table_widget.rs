@@ -53,9 +53,9 @@ impl Columns<'_> {
     }
 }
 
-pub type ColumnNameFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
+type ColumnNameFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
 
-pub type ColumnVisibilityFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> bool + 'a>>;
+type ColumnVisibilityFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> bool + 'a>>;
 
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
@@ -73,8 +73,8 @@ pub struct DataFusionTableWidget<'a> {
     /// Defaults to using [`ColumnDescriptorRef::name`].
     column_name_fn: ColumnNameFn<'a>,
 
-    /// Closure used to determine the visibility of the column
-    column_visibility_fn: ColumnVisibilityFn<'a>,
+    /// Closure used to determine the default visibility of the column
+    default_column_visibility_fn: ColumnVisibilityFn<'a>,
 
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
@@ -101,7 +101,7 @@ impl<'a> DataFusionTableWidget<'a> {
             title: None,
             title_button: None,
             column_name_fn: None,
-            column_visibility_fn: None,
+            default_column_visibility_fn: None,
             initial_blueprint: Default::default(),
         }
     }
@@ -129,11 +129,11 @@ impl<'a> DataFusionTableWidget<'a> {
 
     // TODO(ab): this should best be expressed as part of the `TableBlueprint`, but we need better
     // column selector first.
-    pub fn column_visibility(
+    pub fn default_column_visibility(
         mut self,
         column_visibility_fn: impl Fn(&ColumnDescriptorRef<'_>) -> bool + 'a,
     ) -> Self {
-        self.column_visibility_fn = Some(Box::new(column_visibility_fn));
+        self.default_column_visibility_fn = Some(Box::new(column_visibility_fn));
 
         self
     }
@@ -167,7 +167,7 @@ impl<'a> DataFusionTableWidget<'a> {
             title,
             title_button,
             column_name_fn,
-            column_visibility_fn,
+            default_column_visibility_fn,
             initial_blueprint,
         } = self;
 
@@ -277,7 +277,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     c.name(BatchType::Dataframe)
                 };
 
-                let visible = if let Some(column_visibility_fn) = &column_visibility_fn {
+                let visible = if let Some(column_visibility_fn) = &default_column_visibility_fn {
                     column_visibility_fn(&c)
                 } else {
                     true

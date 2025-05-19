@@ -18,7 +18,7 @@ pub use entity_path_filter::{
     EntityPathFilter, EntityPathFilterError, EntityPathRule, EntityPathSubs,
     ResolvedEntityPathFilter, ResolvedEntityPathRule, RuleEffect,
 };
-pub use entity_path_part::{EntityPathPart, PROPERTIES_PART};
+pub use entity_path_part::EntityPathPart;
 pub use parse_path::{PathParseError, tokenize_by};
 
 // ----------------------------------------------------------------------------

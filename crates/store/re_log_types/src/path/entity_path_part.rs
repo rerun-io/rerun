@@ -3,7 +3,7 @@ use re_string_interner::InternedString;
 use crate::PathParseError;
 
 pub const RESERVED_NAMESPACE_PREFIX: &str = "__";
-pub const PROPERTIES_PART: &str = "__properties";
+const PROPERTIES_PART: &str = "__properties";
 const RECORDING_PART: &str = "recording";
 
 /// The different parts that make up an [`EntityPath`][crate::EntityPath].

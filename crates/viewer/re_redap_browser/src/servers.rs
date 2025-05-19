@@ -3,7 +3,7 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
 
-use re_log_types::EntryId;
+use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::{
     DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
 };
@@ -137,9 +137,9 @@ impl Server {
                 .unwrap_or(name)
                 .replace('_', " ")
         })
-        .column_visibility(|desc| {
+        .default_column_visibility(|desc| {
             if desc.entity_path().is_some_and(|entity_path| {
-                entity_path.starts_with(&re_log_types::PROPERTIES_PART.into())
+                entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
                 true
             } else {

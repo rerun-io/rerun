@@ -34,10 +34,10 @@ impl ColumnDescriptorRef<'_> {
         }
     }
 
-    pub fn entity_path(&self) -> Option<EntityPath> {
+    pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
             Self::RowId(_) | Self::Time(_) => None,
-            Self::Component(descr) => Some(descr.entity_path.clone()),
+            Self::Component(descr) => Some(&descr.entity_path),
         }
     }
 }
