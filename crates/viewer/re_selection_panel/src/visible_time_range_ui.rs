@@ -96,7 +96,7 @@ fn visible_time_range_ui(
             &timeline_name,
             has_individual_range,
             resolved_query_range,
-            time_range_override_path,
+            time_range_override_path.clone(),
             visible_time_ranges,
         );
     }
@@ -107,7 +107,7 @@ fn save_visible_time_ranges(
     timeline_name: &TimelineName,
     has_individual_range: bool,
     query_range: QueryRange,
-    property_path: &EntityPath,
+    property_path: EntityPath,
     mut visible_time_range_list: Vec<VisibleTimeRange>,
 ) {
     if has_individual_range {

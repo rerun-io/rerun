@@ -53,7 +53,8 @@ pub use self::{
     file_dialog::santitize_file_name,
     global_context::{
         AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, ComponentUiTypes,
-        DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender, command_channel,
+        DisplayMode, EditTarget, GlobalContext, Item, SystemCommand, SystemCommandSender,
+        command_channel,
     },
     image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
     maybe_mut_ref::MaybeMutRef,

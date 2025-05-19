@@ -132,10 +132,12 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                     if ctx.component_ui_registry().try_show_edit_ui(
                         ctx,
                         ui,
-                        ctx.recording_id(),
-                        TimePoint::STATIC,
+                        re_viewer_context::EditTarget {
+                            store_id: ctx.recording_id(),
+                            timepoint: TimePoint::STATIC,
+                            entity_path: entity_path.clone(),
+                        },
                         array.as_ref(),
-                        entity_path,
                         component_descriptor.clone(),
                         !ui_layout.is_single_line(),
                     ) {

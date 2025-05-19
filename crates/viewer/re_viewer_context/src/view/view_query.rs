@@ -119,7 +119,7 @@ impl DataResult {
 
             if parent_visibility == new_value {
                 ctx.clear_blueprint_component(
-                    &self.property_overrides.override_path,
+                    self.property_overrides.override_path.clone(),
                     EntityBehavior::descriptor_visible(),
                 );
                 return;
@@ -127,7 +127,7 @@ impl DataResult {
         }
 
         ctx.save_blueprint_archetype(
-            &self.property_overrides.override_path,
+            self.property_overrides.override_path.clone(),
             &blueprint_archetypes::EntityBehavior::update_fields().with_visible(new_value),
         );
     }
@@ -154,7 +154,7 @@ impl DataResult {
 
             if parent_interactivity == new_value {
                 ctx.clear_blueprint_component(
-                    &self.property_overrides.override_path,
+                    self.property_overrides.override_path.clone(),
                     EntityBehavior::descriptor_interactive(),
                 );
                 return;
@@ -162,7 +162,7 @@ impl DataResult {
         }
 
         ctx.save_blueprint_archetype(
-            &self.property_overrides.override_path,
+            self.property_overrides.override_path.clone(),
             &blueprint_archetypes::EntityBehavior::update_fields().with_interactive(new_value),
         );
     }

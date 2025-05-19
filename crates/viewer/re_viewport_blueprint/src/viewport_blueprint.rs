@@ -349,7 +349,7 @@ impl ViewportBlueprint {
                     .collect();
 
                 ctx.save_blueprint_component(
-                    &VIEWPORT_PATH.into(),
+                    VIEWPORT_PATH.into(),
                     &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
                     &new_viewer_recommendation_hashes,
                 );
@@ -765,7 +765,7 @@ impl ViewportBlueprint {
         if old_value != value {
             let auto_layout = AutoLayout::from(value);
             ctx.save_blueprint_component(
-                &VIEWPORT_PATH.into(),
+                VIEWPORT_PATH.into(),
                 &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
                 &auto_layout,
             );
@@ -786,7 +786,7 @@ impl ViewportBlueprint {
         if old_value != value {
             let auto_views = AutoViews::from(value);
             ctx.save_blueprint_component(
-                &VIEWPORT_PATH.into(),
+                VIEWPORT_PATH.into(),
                 &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
                 &auto_views,
             );
@@ -798,7 +798,7 @@ impl ViewportBlueprint {
         if self.maximized != view_id {
             let view_maximized = view_id.map(|id| ViewMaximized(id.into()));
             ctx.save_blueprint_component(
-                &VIEWPORT_PATH.into(),
+                VIEWPORT_PATH.into(),
                 &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
                 &view_maximized,
             );
@@ -901,14 +901,14 @@ impl ViewportBlueprint {
         {
             re_log::trace!("Saving with a root container");
             ctx.save_blueprint_component(
-                &VIEWPORT_PATH.into(),
+                VIEWPORT_PATH.into(),
                 &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
                 &root_container,
             );
         } else {
             re_log::trace!("Saving empty viewport");
             ctx.clear_blueprint_component(
-                &VIEWPORT_PATH.into(),
+                VIEWPORT_PATH.into(),
                 blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
             );
         }

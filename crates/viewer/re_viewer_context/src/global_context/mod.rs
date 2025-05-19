@@ -14,7 +14,7 @@ pub use self::{
     command_sender::{
         CommandReceiver, CommandSender, SystemCommand, SystemCommandSender, command_channel,
     },
-    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes},
+    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget},
     item::Item,
 };
 

@@ -96,7 +96,7 @@ pub fn visualizer_ui_impl(
                     .map(|v| v.as_str()),
             );
 
-            ctx.save_blueprint_archetype(override_path, &archetype);
+            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
         }
         response
     };
@@ -231,10 +231,12 @@ fn visualizer_components(
                 || !ctx.viewer_ctx.component_ui_registry().try_show_edit_ui(
                     ctx.viewer_ctx,
                     ui,
-                    ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
-                    ctx.viewer_ctx.store_context.blueprint_timepoint_for_writes(),
+                    re_viewer_context::EditTarget {
+                        store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
+                        timepoint: ctx.viewer_ctx.store_context.blueprint_timepoint_for_writes(),
+                        entity_path: override_path.clone(),
+                    },
                     raw_current_value.as_ref(),
-                    override_path,
                     component_descr.clone(),
                     multiline,
                 )
@@ -300,7 +302,7 @@ fn visualizer_components(
                         &query_ctx,
                         ui,
                         "Override",
-                        override_path,
+                        override_path.clone(),
                         &component_descr,
                         *row_id,
                         raw_override.as_ref(),
@@ -341,7 +343,7 @@ fn visualizer_components(
                         &query_ctx,
                         ui,
                         "Default",
-                        &ViewBlueprint::defaults_path(ctx.view_id),
+                        ViewBlueprint::defaults_path(ctx.view_id),
                         &component_descr,
                         *row_id,
                         raw_default.as_ref(),
@@ -428,11 +430,12 @@ fn editable_blueprint_component_list_item(
     query_ctx: &QueryContext<'_>,
     ui: &mut egui::Ui,
     name: &'static str,
-    blueprint_path: &EntityPath,
+    blueprint_path: EntityPath,
     component_descr: &re_types::ComponentDescriptor,
     row_id: Option<RowId>,
     raw_override: &dyn arrow::array::Array,
 ) -> egui::Response {
+    let blueprint_path_clone = blueprint_path.clone();
     ui.list_item_flat_noninteractive(
         list_item::PropertyContent::new(name)
             .value_fn(|ui, _style| {
@@ -441,7 +444,7 @@ fn editable_blueprint_component_list_item(
                     query_ctx,
                     ui,
                     query_ctx.viewer_ctx.blueprint_db(),
-                    blueprint_path,
+                    blueprint_path_clone,
                     component_descr,
                     row_id,
                     raw_override,
@@ -474,7 +477,7 @@ fn menu_more(
         .clicked()
     {
         // TODO(#6889): Use component_descr directly.
-        ctx.clear_blueprint_component(override_path, component_descr);
+        ctx.clear_blueprint_component(override_path.clone(), component_descr);
         ui.close();
         return;
     }
@@ -488,14 +491,14 @@ fn menu_more(
         .clicked()
     {
         if let Some(raw_default) = raw_default {
-            ctx.save_blueprint_array(override_path, component_descr, raw_default);
+            ctx.save_blueprint_array(override_path.clone(), component_descr, raw_default);
         }
         ui.close();
         return;
     }
 
     if ui.button("Set to fallback value").clicked() {
-        ctx.save_blueprint_array(override_path, component_descr, raw_fallback);
+        ctx.save_blueprint_array(override_path.clone(), component_descr, raw_fallback);
         ui.close();
         return;
     }
@@ -513,14 +516,14 @@ fn menu_more(
         .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
         .clicked()
     {
-        ctx.reset_blueprint_component(override_path, component_descr);
+        ctx.reset_blueprint_component(override_path.clone(), component_descr);
         ui.close();
         return;
     }
 
     if ui.button("Make default for current view").clicked() {
         ctx.save_blueprint_array(
-            &ViewBlueprint::defaults_path(ctx.view_id),
+            ViewBlueprint::defaults_path(ctx.view_id),
             component_descr,
             raw_current_value,
         );
@@ -549,7 +552,7 @@ fn menu_add_new_visualizer(
                     .map(|v| v.as_str()),
             );
 
-            ctx.save_blueprint_archetype(override_path, &archetype);
+            ctx.save_blueprint_archetype(override_path.clone(), &archetype);
 
             ui.close();
         }

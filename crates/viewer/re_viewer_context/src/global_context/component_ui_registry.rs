@@ -10,6 +10,13 @@ use re_ui::{UiExt as _, UiLayout};
 
 use crate::{ComponentFallbackProvider, MaybeMutRef, QueryContext, ViewerContext};
 
+/// Describes where an edit should be written to if any
+pub struct EditTarget {
+    pub store_id: StoreId,
+    pub timepoint: TimePoint,
+    pub entity_path: EntityPath,
+}
+
 bitflags::bitflags! {
     /// Specifies which UI callbacks are available for a component.
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -391,7 +398,7 @@ impl ComponentUiRegistry {
         ctx: &QueryContext<'_>,
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
-        blueprint_write_path: &EntityPath,
+        blueprint_write_path: EntityPath,
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
@@ -422,7 +429,7 @@ impl ComponentUiRegistry {
         ctx: &QueryContext<'_>,
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
-        blueprint_write_path: &EntityPath,
+        blueprint_write_path: EntityPath,
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_query_result: Option<&dyn arrow::array::Array>,
@@ -448,7 +455,7 @@ impl ComponentUiRegistry {
         ctx: &QueryContext<'_>,
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
-        blueprint_write_path: &EntityPath,
+        blueprint_write_path: EntityPath,
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_array: Option<&dyn arrow::array::Array>,
@@ -459,7 +466,7 @@ impl ComponentUiRegistry {
 
         let component_name_for_fallback = component_descr.component_name;
 
-        let mut run_with = |array| {
+        let run_with = |array| {
             self.edit_ui_raw(
                 ctx,
                 ui,
@@ -488,7 +495,7 @@ impl ComponentUiRegistry {
         ctx: &QueryContext<'_>,
         ui: &mut egui::Ui,
         origin_db: &EntityDb,
-        blueprint_write_path: &EntityPath,
+        blueprint_write_path: EntityPath,
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_raw: &dyn arrow::array::Array,
@@ -497,12 +504,15 @@ impl ComponentUiRegistry {
         if !self.try_show_edit_ui(
             ctx.viewer_ctx,
             ui,
-            ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
-            ctx.viewer_ctx
-                .store_context
-                .blueprint_timepoint_for_writes(),
+            EditTarget {
+                store_id: ctx.viewer_ctx.store_context.blueprint.store_id().clone(),
+                timepoint: ctx
+                    .viewer_ctx
+                    .store_context
+                    .blueprint_timepoint_for_writes(),
+                entity_path: blueprint_write_path,
+            },
             component_raw,
-            blueprint_write_path,
             component_descr.clone(),
             allow_multiline,
         ) {
@@ -525,19 +535,21 @@ impl ComponentUiRegistry {
     ///
     /// Returns `true` if the passed component is a single value and has a registered
     /// editor for multiline or singleline editing respectively.
-    #[allow(clippy::too_many_arguments)]
     pub fn try_show_edit_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        store_id: StoreId,
-        timepoint: TimePoint,
+        target: EditTarget,
         raw_current_value: &dyn arrow::array::Array,
-        entity_path: &EntityPath,
         component_descr: ComponentDescriptor,
         allow_multiline: bool,
     ) -> bool {
         re_tracing::profile_function!(component_descr.display_name());
+        let EditTarget {
+            store_id,
+            timepoint,
+            entity_path,
+        } = target;
 
         // We use the component name to identify which UI to show.
         // (but for saving back edit results, we need the full descriptor)

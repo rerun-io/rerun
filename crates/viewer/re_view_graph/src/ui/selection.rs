@@ -70,7 +70,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
                 &query_ctx,
                 ui,
                 ctx.blueprint_db(),
-                query_ctx.target_entity_path,
+                query_ctx.target_entity_path.clone(),
                 &component_descr,
                 row_id,
                 component_array.as_deref(),

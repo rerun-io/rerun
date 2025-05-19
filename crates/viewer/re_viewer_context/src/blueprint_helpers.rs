@@ -33,14 +33,10 @@ impl StoreContext<'_> {
 }
 
 impl ViewerContext<'_> {
-    pub fn save_blueprint_archetype(
-        &self,
-        entity_path: &EntityPath,
-        components: &dyn AsComponents,
-    ) {
+    pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
-        let chunk = match Chunk::builder(entity_path.clone())
+        let chunk = match Chunk::builder(entity_path)
             .with_archetype(RowId::new(), timepoint.clone(), components)
             .build()
         {
@@ -60,7 +56,7 @@ impl ViewerContext<'_> {
 
     pub fn save_blueprint_component(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: &ComponentDescriptor,
         component_batch: &dyn ComponentBatch,
     ) {
@@ -77,12 +73,12 @@ impl ViewerContext<'_> {
 
     pub fn save_serialized_blueprint_component(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_batch: SerializedComponentBatch,
     ) {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
-        let chunk = match Chunk::builder(entity_path.clone())
+        let chunk = match Chunk::builder(entity_path)
             .with_serialized_batch(RowId::new(), timepoint.clone(), component_batch)
             .build()
         {
@@ -102,7 +98,7 @@ impl ViewerContext<'_> {
 
     pub fn save_blueprint_array(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: ComponentDescriptor,
         array: ArrayRef,
     ) {
@@ -120,11 +116,11 @@ impl ViewerContext<'_> {
         &self,
         store_id: StoreId,
         timepoint: TimePoint,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: ComponentDescriptor,
         array: ArrayRef,
     ) {
-        let chunk = match Chunk::builder(entity_path.clone())
+        let chunk = match Chunk::builder(entity_path)
             .with_row(RowId::new(), timepoint, [(component_descr, array)])
             .build()
         {
@@ -158,11 +154,11 @@ impl ViewerContext<'_> {
     /// Resets a blueprint component to the value it had in the default blueprint.
     pub fn reset_blueprint_component(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: ComponentDescriptor,
     ) {
         if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(entity_path, &component_descr)
+            self.raw_latest_at_in_default_blueprint(&entity_path, &component_descr)
         {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
@@ -173,13 +169,13 @@ impl ViewerContext<'_> {
     /// Clears a component in the blueprint store by logging an empty array if it exists.
     pub fn clear_blueprint_component(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: ComponentDescriptor,
     ) {
         let blueprint = &self.store_context.blueprint;
 
         let Some(datatype) = blueprint
-            .latest_at(self.blueprint_query, entity_path, [&component_descr])
+            .latest_at(self.blueprint_query, &entity_path, [&component_descr])
             .get(&component_descr)
             .and_then(|unit| {
                 unit.component_batch_raw(&component_descr)
@@ -191,7 +187,7 @@ impl ViewerContext<'_> {
         };
 
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
-        let chunk = Chunk::builder(entity_path.clone())
+        let chunk = Chunk::builder(entity_path)
             .with_row(
                 RowId::new(),
                 timepoint,
