@@ -1131,7 +1131,6 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             }
         })
         .chain(std::iter::once({
-            let archetype_name = &obj.fqname;
             let indicator_component_name = format!(
                 "{}Indicator",
                 obj.fqname.replace("archetypes", "components")
