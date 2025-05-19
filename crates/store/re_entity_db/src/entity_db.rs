@@ -117,6 +117,24 @@ impl EntityDb {
         self.storage_engine.read()
     }
 
+    /// Returns a reference to the backing [`StorageEngine`].
+    ///
+    /// This can be used to obtain a clone of the [`StorageEngine`].
+    ///
+    /// # Safety
+    ///
+    /// Trying to lock the [`StorageEngine`] (whether read or write) while the computation of a viewer's
+    /// frame is already in progress will lead to data inconsistencies, livelocks and deadlocks.
+    /// The viewer runs a synchronous work-stealing scheduler (`rayon`) as well as an asynchronous
+    /// one (`tokio`): when and where locks are taken is entirely non-deterministic (even unwanted reentrancy
+    /// is a possibility).
+    ///
+    /// Don't use this unless you know what you're doing. Use [`Self::storage_engine`] instead.
+    #[expect(unsafe_code)]
+    pub unsafe fn storage_engine_raw(&self) -> &StorageEngine {
+        &self.storage_engine
+    }
+
     /// Returns a read-only guard to the backing [`StorageEngine`].
     ///
     /// That guard can be cloned at will and has a static lifetime.
@@ -210,11 +228,11 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [component_descr]);
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono()
             .map(|value| (results.index(), value))
@@ -237,11 +255,11 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         debug_assert_eq!(component_descr.component_name, C::name());
 
-        let results =
-            self.storage_engine
-                .read()
-                .cache()
-                .latest_at(query, entity_path, [component_descr]);
+        let results = self
+            .storage_engine
+            .read()
+            .cache()
+            .latest_at(query, entity_path, [component_descr]);
         results
             .component_mono_quiet()
             .map(|value| (results.index(), value))

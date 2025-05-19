@@ -39,7 +39,7 @@ service FrontendService {
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse) {}
 
   // Unimplemented.
-  rpc WriteChunks(stream WriteChunksRequest) returns (stream rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
+  rpc WriteChunks(stream rerun.manifest_registry.v1alpha1.WriteChunksRequest) returns (rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
 
   /* Query schemas */
 
@@ -120,10 +120,6 @@ message RegisterWithDatasetRequest {
   rerun.common.v1alpha1.EntryId dataset_id = 1;
   repeated rerun.manifest_registry.v1alpha1.DataSource data_sources = 2;
   rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
-}
-
-message WriteChunksRequest {
-  rerun.common.v1alpha1.EntryId dataset_id = 1;
 }
 
 /* Query schemas */

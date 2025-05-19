@@ -61,6 +61,7 @@ impl ChunkSchema {
                     )
                     .collect(),
                 },
+                partition_id: None, // TODO(#9977): This should be required in the future.
                 chunk_id: Some(chunk_id),
                 entity_path: Some(entity_path.clone()),
                 heap_size_bytes: None,
