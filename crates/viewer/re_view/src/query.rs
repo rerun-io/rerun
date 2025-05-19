@@ -223,11 +223,26 @@ pub trait DataResultQuery {
         component_descr: &ComponentDescriptor,
     ) -> HybridLatestAtResults<'a>;
 
-    fn query_archetype_with_history<'a, A: re_types_core::Archetype>(
+    /// Queries for the given components, taking into account:
+    /// * visible history if enabled
+    /// * blueprint overrides & defaults
+    fn query_components_with_history<'a, 'b>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
+        component_descriptors: impl IntoIterator<Item = &'b ComponentDescriptor>,
     ) -> HybridResults<'a>;
+
+    /// Queries for all components of an archetype, taking into account:
+    /// * visible history if enabled
+    /// * blueprint overrides & defaults
+    fn query_archetype_with_history<'a, A: Archetype>(
+        &'a self,
+        ctx: &'a ViewContext<'a>,
+        view_query: &ViewQuery<'_>,
+    ) -> HybridResults<'a> {
+        self.query_components_with_history(ctx, view_query, A::all_components().iter())
+    }
 
     fn best_fallback_for<'a>(
         &self,
@@ -271,17 +286,18 @@ impl DataResultQuery for DataResult {
         )
     }
 
-    fn query_archetype_with_history<'a, A: Archetype>(
+    fn query_components_with_history<'a, 'b>(
         &'a self,
         ctx: &'a ViewContext<'a>,
         view_query: &ViewQuery<'_>,
+        component_descriptors: impl IntoIterator<Item = &'b ComponentDescriptor>,
     ) -> HybridResults<'a> {
         query_archetype_with_history(
             ctx,
             &view_query.timeline,
             view_query.latest_at,
             self.query_range(),
-            A::all_components().iter(),
+            component_descriptors,
             self,
         )
     }

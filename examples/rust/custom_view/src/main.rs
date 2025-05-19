@@ -2,9 +2,8 @@
 
 use rerun::external::{re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer, tokio};
 
-mod color_archetype;
-mod color_coordinates_view;
-mod color_coordinates_visualizer_system;
+mod points3d_color_view;
+mod points3d_color_visualizer;
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -61,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Register the custom view
             app.view_class_registry()
-                .add_class::<color_coordinates_view::ColorCoordinatesView>()
+                .add_class::<points3d_color_view::ColorCoordinatesView>()
                 .unwrap();
 
             Box::new(app)
