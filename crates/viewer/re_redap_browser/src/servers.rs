@@ -144,7 +144,7 @@ impl Server {
                 true
             } else {
                 matches!(
-                    desc.short_name(),
+                    desc.display_name().as_str(),
                     RECORDING_LINK_FIELD_NAME
                         | DATASET_MANIFEST_ID_FIELD_NAME
                         | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME
