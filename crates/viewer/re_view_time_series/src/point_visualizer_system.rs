@@ -194,10 +194,7 @@ impl SeriesPointSystem {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             let entity_path = &data_result.entity_path;
-            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
-                // We must fetch data with extended bounds, otherwise the query clamping would
-                // cut-off the data early at the edge of the view.
-                .include_extended_bounds(true);
+            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
 
             let results = range_with_blueprint_resolved_data(
                 ctx,
