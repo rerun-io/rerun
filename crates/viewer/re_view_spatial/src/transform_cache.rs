@@ -171,10 +171,10 @@ pub struct PoseTransformArchetypeMap {
     /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
     /// Otherwise, refer to [`Self::instance_poses_archetype`].
     // TODO(andreas): use some kind of small map? Vec of tuples might already be more appropriate?
-    per_archetype: IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
+    pub per_archetype: IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
 
     /// Resolved transforms for the instance poses archetype if any.
-    instance_poses_archetype: Vec<Affine3A>,
+    pub instance_poses_archetype: Vec<Affine3A>,
 }
 
 impl PoseTransformArchetypeMap {
@@ -327,6 +327,7 @@ impl TransformsForEntity {
             .unwrap_or(Affine3A::IDENTITY)
     }
 
+    #[cfg(test)]
     #[inline]
     pub fn latest_at_instance_poses(
         &self,
@@ -341,6 +342,20 @@ impl TransformsForEntity {
             .and_then(|pose_transforms| pose_transforms.range(..query.at().inc()).next_back())
             .map(|(_time, pose_transforms)| pose_transforms.get(archetype))
             .unwrap_or(&[])
+    }
+
+    #[inline]
+    pub fn latest_at_instance_poses_all(
+        &self,
+        query: &LatestAtQuery,
+    ) -> Option<&PoseTransformArchetypeMap> {
+        #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
+        debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
+
+        self.pose_transforms
+            .as_ref()
+            .and_then(|pose_transforms| pose_transforms.range(..query.at().inc()).next_back())
+            .map(|(_time, pose_transforms)| pose_transforms)
     }
 
     #[inline]
