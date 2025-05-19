@@ -51,6 +51,9 @@ impl ChunkStore {
 
         let mut chunk = Arc::clone(chunk);
 
+        let patched = chunk.patched_weak_indicator_descriptor_023_compat();
+        chunk = Arc::new(patched);
+
         if self.id.kind == re_log_types::StoreKind::Blueprint {
             let patched = chunk.patched_for_blueprint_021_compat();
             chunk = Arc::new(patched);
