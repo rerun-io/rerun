@@ -565,29 +565,37 @@ impl App {
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
-            SystemCommand::UpdateBlueprint(blueprint_id, chunks) => {
+
+            SystemCommand::AppendToStore(store_id, chunks) => {
                 re_log::trace!(
-                    "Update blueprint entities: {}",
+                    "Update {} entities: {}",
+                    store_id.kind,
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
 
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                let db = store_hub.entity_db_mut(&store_id);
 
-                self.state
-                    .blueprint_undo_state
-                    .entry(blueprint_id)
-                    .or_default()
-                    .clear_redo_buffer(blueprint_db);
+                if store_id.kind == StoreKind::Blueprint {
+                    self.state
+                        .blueprint_undo_state
+                        .entry(store_id)
+                        .or_default()
+                        .clear_redo_buffer(db);
+                } else {
+                    // It would be nice to be able to undo edits to a recording, but
+                    // we haven't implemented that yet.
+                }
 
                 for chunk in chunks {
-                    match blueprint_db.add_chunk(&Arc::new(chunk)) {
+                    match db.add_chunk(&Arc::new(chunk)) {
                         Ok(_store_events) => {}
                         Err(err) => {
-                            re_log::warn_once!("Failed to store blueprint delta: {err}");
+                            re_log::warn_once!("Failed to append chunk: {err}");
                         }
                     }
                 }
             }
+
             SystemCommand::UndoBlueprint { blueprint_id } => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 self.state

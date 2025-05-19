@@ -103,7 +103,7 @@ pub fn view_property_component_ui(
             ctx,
             ui,
             ctx.viewer_ctx.blueprint_db(),
-            ctx.target_entity_path,
+            ctx.target_entity_path.clone(),
             &component_descr,
             row_id,
             component_array.as_deref(),
@@ -116,7 +116,7 @@ pub fn view_property_component_ui(
             ctx,
             ui,
             ctx.viewer_ctx.blueprint_db(),
-            ctx.target_entity_path,
+            ctx.target_entity_path.clone(),
             &component_descr,
             row_id,
             component_array.as_deref(),
@@ -214,7 +214,10 @@ If no default blueprint was set or it didn't set any value for this field, this 
             "The property is already set to the same value it has in the default blueprint",
         );
     if response.clicked() {
-        ctx.reset_blueprint_component(&property.blueprint_store_path, component_descr.clone());
+        ctx.reset_blueprint_component(
+            property.blueprint_store_path.clone(),
+            component_descr.clone(),
+        );
         ui.close();
     }
 
@@ -229,7 +232,10 @@ This has the same effect as not setting the value in the blueprint at all."
         )
         .on_disabled_hover_text("The property is already unset.");
     if response.clicked() {
-        ctx.clear_blueprint_component(&property.blueprint_store_path, component_descr.clone());
+        ctx.clear_blueprint_component(
+            property.blueprint_store_path.clone(),
+            component_descr.clone(),
+        );
         ui.close();
     }
 

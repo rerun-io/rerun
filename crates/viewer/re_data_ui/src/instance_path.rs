@@ -32,6 +32,7 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
+        // NOTE: the passed in `db` is usually the recording; NOT the blueprint.
         let component = if ctx.recording().is_known_entity(entity_path) {
             // We are looking at an entity in the recording
             ctx.recording_engine()
