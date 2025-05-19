@@ -1131,7 +1131,6 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             }
         })
         .chain(std::iter::once({
-            let archetype_name = &obj.fqname;
             let indicator_component_name = format!(
                 "{}Indicator",
                 obj.fqname.replace("archetypes", "components")
@@ -1144,7 +1143,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 #[inline]
                 pub fn descriptor_indicator() -> ComponentDescriptor {
                     ComponentDescriptor {
-                        archetype_name: Some(#archetype_name.into()),
+                        archetype_name: None,
                         component_name: #indicator_component_name.into(),
                         archetype_field_name: None,
                     }

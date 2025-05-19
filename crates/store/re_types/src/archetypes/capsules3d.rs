@@ -229,7 +229,7 @@ impl Capsules3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Capsules3D".into()),
+            archetype_name: None,
             component_name: "rerun.components.Capsules3DIndicator".into(),
             archetype_field_name: None,
         }

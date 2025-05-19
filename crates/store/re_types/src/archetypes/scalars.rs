@@ -109,7 +109,7 @@ impl Scalars {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Scalars".into()),
+            archetype_name: None,
             component_name: "rerun.components.ScalarsIndicator".into(),
             archetype_field_name: None,
         }

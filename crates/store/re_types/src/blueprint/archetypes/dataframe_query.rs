@@ -109,7 +109,7 @@ impl DataframeQuery {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
             archetype_field_name: None,
         }

@@ -205,7 +205,7 @@ impl DepthImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.DepthImage".into()),
+            archetype_name: None,
             component_name: "rerun.components.DepthImageIndicator".into(),
             archetype_field_name: None,
         }
