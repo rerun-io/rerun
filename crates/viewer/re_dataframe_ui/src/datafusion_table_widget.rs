@@ -443,7 +443,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             })
             .inner
             .on_hover_ui(|ui| {
-                header_tooltip_ui(ui, desc);
+                column_descriptor_ui(ui, desc);
             });
         }
     }
@@ -491,37 +491,58 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     }
 }
 
-fn header_tooltip_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
-    match column {
+fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
+    match *column {
         ColumnDescriptorRef::RowId(desc) => {
+            let re_sorbet::RowIdColumnDescriptor { is_sorted } = desc;
+
             header_property_ui(ui, "Type", "row id");
-            header_property_ui(ui, "Sorted", sorted_text(desc.is_sorted));
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
         }
         ColumnDescriptorRef::Time(desc) => {
+            let re_sorbet::IndexColumnDescriptor {
+                timeline,
+                datatype,
+                is_sorted,
+            } = desc;
+
             header_property_ui(ui, "Type", "index");
-            header_property_ui(ui, "Timeline", desc.timeline_name());
-            header_property_ui(ui, "Sorted", sorted_text(desc.is_sorted()));
-            datatype_ui(ui, &column.display_name(), desc.datatype());
+            header_property_ui(ui, "Timeline", timeline.name());
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
+            datatype_ui(ui, &column.display_name(), datatype);
         }
         ColumnDescriptorRef::Component(desc) => {
+            let re_sorbet::ComponentColumnDescriptor {
+                store_datatype,
+                component_name,
+                entity_path,
+                archetype_name,
+                archetype_field_name,
+                is_static,
+                is_indicator,
+                is_tombstone,
+                is_semantically_empty,
+            } = desc;
+
             header_property_ui(ui, "Type", "component");
-            header_property_ui(ui, "Component", desc.component_name.full_name());
-            header_property_ui(ui, "Entity path", desc.entity_path.to_string());
-            datatype_ui(ui, &column.display_name(), &desc.store_datatype);
+            header_property_ui(ui, "Component", component_name.full_name());
+            header_property_ui(ui, "Entity path", entity_path.to_string());
+            datatype_ui(ui, &column.display_name(), store_datatype);
             header_property_ui(
                 ui,
                 "Archetype",
-                desc.archetype_name.map(|a| a.full_name()).unwrap_or("-"),
+                archetype_name.map(|a| a.full_name()).unwrap_or("-"),
             );
+            //TODO(#9978): update this if we rename this descriptor field.
             header_property_ui(
                 ui,
                 "Archetype field",
-                desc.archetype_field_name.map(|a| a.as_str()).unwrap_or("-"),
+                archetype_field_name.map(|a| a.as_str()).unwrap_or("-"),
             );
-            header_property_ui(ui, "Static", format!("{}", desc.is_static));
-            header_property_ui(ui, "Indicator", format!("{}", desc.is_indicator));
-            header_property_ui(ui, "Tombstone", format!("{}", desc.is_tombstone));
-            header_property_ui(ui, "Empty", format!("{}", desc.is_semantically_empty));
+            header_property_ui(ui, "Static", is_static.to_string());
+            header_property_ui(ui, "Indicator", is_indicator.to_string());
+            header_property_ui(ui, "Tombstone", is_tombstone.to_string());
+            header_property_ui(ui, "Empty", is_semantically_empty.to_string());
         }
     }
 }
