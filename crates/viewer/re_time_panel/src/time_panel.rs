@@ -137,7 +137,7 @@ pub struct TimePanel {
 
     /// Used when the selection is modified using key navigation.
     ///
-    /// IMPORTANT: Always make sure that the item will be drawn this or next frame with setting this
+    /// IMPORTANT: Always make sure that the item will be drawn this or next frame when setting this
     /// to `Some`, so that this flag is immediately consumed.
     scroll_to_me_item: Option<Item>,
 
