@@ -1100,7 +1100,9 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Unimplemented.
+        /// Write chunks to a partition.
+        ///
+        /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         pub async fn write_chunks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
@@ -1433,7 +1435,9 @@ pub mod manifest_registry_service_server {
             tonic::Response<super::RegisterWithDatasetBlockingResponse>,
             tonic::Status,
         >;
-        /// Unimplemented.
+        /// Write chunks to a partition.
+        ///
+        /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         async fn write_chunks(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,

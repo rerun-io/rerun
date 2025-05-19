@@ -13,7 +13,9 @@ service ManifestRegistryService {
   // Register new partitions with the Dataset (blocking)
   rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
 
-  // Unimplemented.
+  // Write chunks to a partition.
+  //
+  // The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
   rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   // --- Query schemas ---

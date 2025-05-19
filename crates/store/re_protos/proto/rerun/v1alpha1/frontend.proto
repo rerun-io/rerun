@@ -38,7 +38,9 @@ service FrontendService {
   // Register new partitions with the Dataset
   rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (rerun.manifest_registry.v1alpha1.RegisterWithDatasetResponse) {}
 
-  // Unimplemented.
+  // Write chunks to a partition.
+  //
+  // The destination dataset must be provided in the `x-rerun-dataset-id` header.
   rpc WriteChunks(stream rerun.manifest_registry.v1alpha1.WriteChunksRequest) returns (rerun.manifest_registry.v1alpha1.WriteChunksResponse) {}
 
   /* Query schemas */

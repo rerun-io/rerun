@@ -479,7 +479,9 @@ pub mod frontend_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Unimplemented.
+        /// Write chunks to a partition.
+        ///
+        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         pub async fn write_chunks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<
@@ -904,7 +906,9 @@ pub mod frontend_service_server {
             >,
             tonic::Status,
         >;
-        /// Unimplemented.
+        /// Write chunks to a partition.
+        ///
+        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         async fn write_chunks(
             &self,
             request: tonic::Request<
