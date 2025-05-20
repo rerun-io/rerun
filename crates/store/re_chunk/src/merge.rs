@@ -444,45 +444,45 @@ mod tests {
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors2 as _)),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors2 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), Some(points5 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), Some(points5 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .build()?;
@@ -514,45 +514,45 @@ mod tests {
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), Some(points5 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), Some(points5 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors2 as _)),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors2 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), None),
                     ],
                 )
                 .build()?;
@@ -677,45 +677,45 @@ mod tests {
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels1 as _)),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels3 as _)),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels3 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), Some(labels4 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels4 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors5 as _)),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors5 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .build()?;
@@ -747,45 +747,45 @@ mod tests {
                     row_id4,
                     timepoint4,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors4 as _)),
-                        (MyLabel::descriptor(), Some(labels4 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors4 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels4 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id5,
                     timepoint5,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(colors5 as _)),
-                        (MyLabel::descriptor(), Some(labels5 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(colors5 as _)),
+                        (MyPoints::descriptor_labels(), Some(labels5 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), Some(points1 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels1 as _)),
+                        (MyPoints::descriptor_points(), Some(points1 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     timepoint3,
                     [
-                        (MyPoint::descriptor(), Some(points3 as _)),
-                        (MyColor::descriptor(), None),
-                        (MyLabel::descriptor(), Some(labels3 as _)),
+                        (MyPoints::descriptor_points(), Some(points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
+                        (MyPoints::descriptor_labels(), Some(labels3 as _)),
                     ],
                 )
                 .build()?;
@@ -919,7 +919,7 @@ mod tests {
                     row_id1,
                     timepoint1,
                     [
-                        (MyPoint::descriptor(), points32bit), //
+                        (MyPoints::descriptor_points(), points32bit), //
                     ],
                 )
                 .build()?;
@@ -929,7 +929,7 @@ mod tests {
                     row_id2,
                     timepoint2,
                     [
-                        (MyPoint::descriptor(), points64bit), //
+                        (MyPoints::descriptor_points(), points64bit), //
                     ],
                 )
                 .build()?;
