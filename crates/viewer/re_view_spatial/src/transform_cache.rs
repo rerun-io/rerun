@@ -900,19 +900,19 @@ fn query_and_resolve_instance_poses_at_entity(
     }
 
     let batch_translation = result
-        .component_batch::<components::PoseTranslation3D>()
+        .component_batch_by_name::<components::PoseTranslation3D>()
         .unwrap_or_default();
     let batch_rotation_quat = result
-        .component_batch::<components::PoseRotationQuat>()
+        .component_batch_by_name::<components::PoseRotationQuat>()
         .unwrap_or_default();
     let batch_rotation_axis_angle = result
-        .component_batch::<components::PoseRotationAxisAngle>()
+        .component_batch_by_name::<components::PoseRotationAxisAngle>()
         .unwrap_or_default();
     let batch_scale = result
-        .component_batch::<components::PoseScale3D>()
+        .component_batch_by_name::<components::PoseScale3D>()
         .unwrap_or_default();
     let batch_mat3x3 = result
-        .component_batch::<components::PoseTransformMat3x3>()
+        .component_batch_by_name::<components::PoseTransformMat3x3>()
         .unwrap_or_default();
 
     if batch_translation.is_empty()

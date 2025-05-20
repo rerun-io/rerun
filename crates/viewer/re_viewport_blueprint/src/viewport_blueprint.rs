@@ -106,7 +106,9 @@ impl ViewportBlueprint {
         let auto_views = results.component_mono::<AutoViews>(
             &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
         );
-        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>();
+        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
+        );
 
         let root_container: Option<ContainerId> = root_container.map(|id| id.0.into());
         re_log::trace_once!("Loaded root_container: {root_container:?}");

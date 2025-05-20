@@ -343,9 +343,8 @@ impl LatestAtResults {
     pub fn component_batch_with_log_level<C: Component>(
         &self,
         log_level: re_log::Level,
+        component_descr: &ComponentDescriptor,
     ) -> Option<Vec<C>> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
         self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -355,12 +354,26 @@ impl LatestAtResults {
         })
     }
 
+    // TODO(#6889): Is this our tagged component endgame?
     /// Returns the deserialized data for the specified component.
     ///
     /// Logs an error if the data cannot be deserialized.
     #[inline]
-    pub fn component_batch<C: Component>(&self) -> Option<Vec<C>> {
-        self.component_batch_with_log_level(re_log::Level::Error)
+    pub fn component_batch_by_name<C: Component>(&self) -> Option<Vec<C>> {
+        let component_descr = self.find_component_descriptor(C::name())?;
+
+        self.component_batch_with_log_level(re_log::Level::Error, component_descr)
+    }
+
+    /// Returns the deserialized data for the specified component.
+    ///
+    /// Logs an error if the data cannot be deserialized.
+    #[inline]
+    pub fn component_batch<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<Vec<C>> {
+        self.component_batch_with_log_level(re_log::Level::Error, component_descr)
     }
 
     /// Returns the deserialized data for the specified component.

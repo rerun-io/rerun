@@ -65,7 +65,9 @@ fn visible_time_range_ui(
             time_range_override_path,
             [&blueprint_archetypes::VisibleTimeRanges::descriptor_ranges()],
         )
-        .component_batch::<VisibleTimeRange>()
+        .component_batch::<VisibleTimeRange>(
+            &blueprint_archetypes::VisibleTimeRanges::descriptor_ranges(),
+        )
         .unwrap_or_default();
 
     let timeline_name = *ctx.rec_cfg.time_ctrl.read().timeline().name();

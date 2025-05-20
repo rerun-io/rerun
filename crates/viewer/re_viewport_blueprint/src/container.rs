@@ -86,9 +86,15 @@ impl ContainerBlueprint {
         let display_name = results.component_mono::<Name>(
             &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
         );
-        let contents = results.component_batch::<IncludedContent>();
-        let col_shares = results.component_batch::<ColumnShare>();
-        let row_shares = results.component_batch::<RowShare>();
+        let contents = results.component_batch::<IncludedContent>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_contents(),
+        );
+        let col_shares = results.component_batch::<ColumnShare>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_col_shares(),
+        );
+        let row_shares = results.component_batch::<RowShare>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_row_shares(),
+        );
         let active_tab = results.component_mono::<ActiveTab>(
             &blueprint_archetypes::ContainerBlueprint::descriptor_active_tab(),
         );
