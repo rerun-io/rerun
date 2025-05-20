@@ -386,7 +386,11 @@ pub fn testing_instance_descriptor() -> wgpu::InstanceDescriptor {
     let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
 
     let flags = (
-        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER | wgpu::InstanceFlags::VALIDATION
+        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER
+        // Validation would be great, but it looks like we don't always get validation layers, causing this error:
+        // `InstanceFlags::VALIDATION requested, but unable to find layer: VK_LAYER_KHRONOS_validation`
+        //| wgpu::InstanceFlags::VALIDATION
+
         // TODO(andreas): GPU based validation layer sounds like a great idea,
         // but as of writing this makes tests crash on my Windows machine!
         // It looks like the crash is in the Vulkan/Nvidia driver, but further investigation is needed.
