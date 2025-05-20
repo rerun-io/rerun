@@ -30,6 +30,13 @@ pub trait HarnessExt {
         broken_percent_threshold: f64,
     );
 
+    fn try_snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    ) -> bool;
+
     fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: i32);
 }
 
@@ -55,6 +62,38 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                         broken_percent <= broken_percent_threshold,
                         "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
                     );
+                }
+
+                _ => panic!("{name} failed: {err}"),
+            },
+        }
+    }
+
+    fn try_snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    ) -> bool {
+        match self.try_snapshot(name) {
+            Ok(_) => true,
+
+            Err(err) => match err {
+                egui_kittest::SnapshotError::Diff {
+                    name,
+                    diff: num_broken_pixels,
+                    diff_path,
+                } => {
+                    let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
+                    re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
+                    if broken_percent >= broken_percent_threshold {
+                        re_log::error!(
+                            "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                        );
+                        return false;
+                    }
+
+                    true
                 }
 
                 _ => panic!("{name} failed: {err}"),
