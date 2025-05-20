@@ -188,12 +188,9 @@ impl TypedComponentFallbackProvider<Opacity> for SegmentationImageVisualizer {
         //      It's too complex to do a full view query just for this here.
         //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
         // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
-        if view_state.num_non_segmentation_images_last_frame == 0 {
-            1.0
-        } else {
-            0.5
-        }
-        .into()
+        view_state
+            .fallback_opacity_for_image_kind(ImageKind::Segmentation)
+            .into()
     }
 }
 
