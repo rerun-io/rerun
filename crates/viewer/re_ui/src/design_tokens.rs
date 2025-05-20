@@ -85,6 +85,11 @@ pub struct DesignTokens {
 
     /// Color for table interaction noninteractive background stroke
     pub table_interaction_noninteractive_bg_stroke: Color32,
+
+    pub drag_pill_droppable_fill: Color32,
+    pub drag_pill_droppable_stroke: Color32,
+    pub drag_pill_nondroppable_fill: Color32,
+    pub drag_pill_nondroppable_stroke: Color32,
 }
 
 impl DesignTokens {
@@ -155,6 +160,11 @@ impl DesignTokens {
             table_interaction_noninteractive_bg_stroke: get_color(
                 "table_interaction_noninteractive_bg_stroke",
             ),
+
+            drag_pill_droppable_fill: get_color("drag_pill_droppable_fill"),
+            drag_pill_droppable_stroke: get_color("drag_pill_droppable_stroke"),
+            drag_pill_nondroppable_fill: get_color("drag_pill_nondroppable_fill"),
+            drag_pill_nondroppable_stroke: get_color("drag_pill_nondroppable_stroke"),
 
             color_table: colors,
         }
@@ -650,12 +660,15 @@ fn try_get_alias_color(
         .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{color_name}'"))?;
     let color = color_alias
         .get("color")
-        .ok_or_else(|| anyhow::anyhow!("No 'color' found"))?
+        .ok_or_else(|| anyhow::anyhow!("No color found"))?
         .as_str()
-        .ok_or_else(|| anyhow::anyhow!("'color' should be a string"))?;
+        .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
 
-    let mut color = if color.starts_with('#') {
-        Color32::from_hex(color).map_err(|err| anyhow::anyhow!("Invalid hex color: {err:?}"))?
+    if color.starts_with('#') {
+        Ok(
+            Color32::from_hex(color)
+                .map_err(|err| anyhow::anyhow!("Invalid hex color: {err:?}"))?,
+        )
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')
@@ -668,20 +681,18 @@ fn try_get_alias_color(
             .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
         let hue: Hue = hue.parse()?;
         let scale: Scale = scale.parse()?;
-        color_table.get(ColorToken::new(hue, scale))
+        let mut color = color_table.get(ColorToken::new(hue, scale));
+        if let Some(alpha) = color_alias.get("alpha") {
+            let alpha = alpha
+                .as_i64()
+                .ok_or_else(|| anyhow::anyhow!("alpha should be 0-255"))?;
+            let alpha: u8 = u8::try_from(alpha).context("alpha should be 0-255")?;
+            color = color.gamma_multiply_u8(alpha);
+        }
+        Ok(color)
     } else {
         anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
-    };
-
-    if let Some(alpha) = color_alias.get("alpha") {
-        let alpha = alpha
-            .as_i64()
-            .ok_or_else(|| anyhow::anyhow!("alpha should be 0-255"))?;
-        let alpha: u8 = u8::try_from(alpha).context("alpha should be 0-255")?;
-        color = color.gamma_multiply_u8(alpha);
     }
-
-    Ok(color)
 }
 
 fn get_aliased_color(

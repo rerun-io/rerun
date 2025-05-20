@@ -78,6 +78,18 @@
     },
     "table_interaction_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
+    },
+    "drag_pill_droppable_fill": {
+      "color": "{Blue.725}"
+    },
+    "drag_pill_droppable_stroke": {
+      "color": "{Blue.775}"
+    },
+    "drag_pill_nondroppable_fill": {
+      "color": "{Gray.725}"
+    },
+    "drag_pill_nondroppable_stroke": {
+      "color": "{Gray.775}"
     }
   },
   "Global": {

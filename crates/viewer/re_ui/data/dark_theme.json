@@ -47,8 +47,7 @@
       "color": "{Gray.250}"
     },
     "example_card_background_color": {
-      "color": "#FFFFFF",
-      "alpha": 10
+      "color": "#FFFFFF0A"
     },
     "breadcrumb_text_color": {
       "color": "#6A8CD0"
@@ -79,6 +78,18 @@
     },
     "table_interaction_noninteractive_bg_stroke": {
       "color": "{Gray.200}"
+    },
+    "drag_pill_droppable_fill": {
+      "color": "{Blue.325}"
+    },
+    "drag_pill_droppable_stroke": {
+      "color": "{Blue.375}"
+    },
+    "drag_pill_nondroppable_fill": {
+      "color": "{Gray.325}"
+    },
+    "drag_pill_nondroppable_stroke": {
+      "color": "{Gray.375}"
     }
   },
   "Global": {
