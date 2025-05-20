@@ -26,7 +26,6 @@ ignored = ["home"]
 testing = ["dep:pollster", "dep:egui_kittest"]
 
 [dependencies]
-re_arrow_util.workspace = true
 re_capabilities.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true

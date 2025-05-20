@@ -8106,7 +8106,6 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "pollster 0.4.0",
- "re_arrow_util",
  "re_capabilities",
  "re_chunk",
  "re_chunk_store",

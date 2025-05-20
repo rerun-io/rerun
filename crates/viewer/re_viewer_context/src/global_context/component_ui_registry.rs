@@ -258,7 +258,7 @@ impl ComponentUiRegistry {
             &ComponentDescriptor,
             Option<RowId>,
             &dyn arrow::array::Array,
-        ) -> Result<(), ()>
+        ) -> Result<(), Box<dyn std::error::Error>>
         + Send
         + Sync
         + 'static,
@@ -275,12 +275,12 @@ impl ComponentUiRegistry {
 
                 let res = callback(ctx, ui, component_descriptor, row_id, value);
 
-                if res.is_err() {
-                    fallback_ui(ui, UiLayout::List, value);
+                if let Err(err) = res {
                     re_log::error_once!(
-                        "UI for variant {variant_name} failed to display arrow data with type {}",
-                        re_arrow_util::format_data_type(value.data_type())
+                        "UI for variant {variant_name} failed to display the provided data {err}"
                     );
+
+                    fallback_ui(ui, UiLayout::List, value);
                 }
 
                 None
