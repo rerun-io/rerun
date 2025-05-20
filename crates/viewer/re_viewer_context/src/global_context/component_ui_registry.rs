@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
+
 use re_chunk::{RowId, TimePoint, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
@@ -55,6 +57,22 @@ enum EditOrView {
     View,
 }
 
+/// The identifier under which component UIs are registered.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+enum ComponentUiIdentifier {
+    /// Component UI for a specific component.
+    Component(ComponentName),
+
+    /// Component UI explicitly opted into by providing a variant name.
+    Variant(&'static str),
+}
+
+impl From<ComponentName> for ComponentUiIdentifier {
+    fn from(name: ComponentName) -> Self {
+        Self::Component(name)
+    }
+}
+
 /// Callback for viewing, and maybe editing, a component via UI.
 ///
 /// Draws a UI showing the current value and allows the user to edit it.
@@ -92,10 +110,12 @@ pub struct ComponentUiRegistry {
     legacy_display_component_uis: BTreeMap<ComponentName, LegacyDisplayComponentUiCallback>,
 
     /// Implements viewing and probably editing
-    component_singleline_edit_or_view: BTreeMap<ComponentName, UntypedComponentEditOrViewCallback>,
+    component_singleline_edit_or_view:
+        HashMap<ComponentUiIdentifier, UntypedComponentEditOrViewCallback>,
 
     /// Implements viewing and probably editing
-    component_multiline_edit_or_view: BTreeMap<ComponentName, UntypedComponentEditOrViewCallback>,
+    component_multiline_edit_or_view:
+        HashMap<ComponentUiIdentifier, UntypedComponentEditOrViewCallback>,
 }
 
 impl Default for ComponentUiRegistry {
@@ -219,7 +239,7 @@ impl ComponentUiRegistry {
         } else {
             &mut self.component_singleline_edit_or_view
         }
-        .insert(C::name(), untyped_callback);
+        .insert(C::name().into(), untyped_callback);
     }
 
     /// Queries which UI types are registered for a component.
@@ -231,10 +251,16 @@ impl ComponentUiRegistry {
         if self.legacy_display_component_uis.contains_key(&name) {
             types |= ComponentUiTypes::DisplayUi;
         }
-        if self.component_singleline_edit_or_view.contains_key(&name) {
+        if self
+            .component_singleline_edit_or_view
+            .contains_key(&name.into())
+        {
             types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::SingleLineEditor;
         }
-        if self.component_multiline_edit_or_view.contains_key(&name) {
+        if self
+            .component_multiline_edit_or_view
+            .contains_key(&name.into())
+        {
             types |= ComponentUiTypes::DisplayUi | ComponentUiTypes::MultiLineEditor;
         }
 
@@ -341,14 +367,14 @@ impl ComponentUiRegistry {
         // Fallback to the more specialized UI callbacks.
         let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
             self.component_multiline_edit_or_view
-                .get(&component_descr.component_name)
+                .get(&component_descr.component_name.into())
                 .or_else(|| {
                     self.component_singleline_edit_or_view
-                        .get(&component_descr.component_name)
+                        .get(&component_descr.component_name.into())
                 })
         } else {
             self.component_singleline_edit_or_view
-                .get(&component_descr.component_name)
+                .get(&component_descr.component_name.into())
         };
         if let Some(edit_or_view_ui) = edit_or_view_ui {
             // Use it in view mode (no mutation).
@@ -533,10 +559,14 @@ impl ComponentUiRegistry {
 
         let edit_or_view = if allow_multiline {
             self.component_multiline_edit_or_view
-                .get(&ui_identifier)
-                .or_else(|| self.component_singleline_edit_or_view.get(&ui_identifier))
+                .get(&ui_identifier.into())
+                .or_else(|| {
+                    self.component_singleline_edit_or_view
+                        .get(&ui_identifier.into())
+                })
         } else {
-            self.component_singleline_edit_or_view.get(&ui_identifier)
+            self.component_singleline_edit_or_view
+                .get(&ui_identifier.into())
         };
 
         if let Some(edit_or_view) = edit_or_view {
