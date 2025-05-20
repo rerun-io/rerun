@@ -219,18 +219,15 @@ impl ComponentUiRegistry {
         + 'static,
     ) {
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
-            move |ui, ui_layout, _component_descriptor, _row_id, value, edit_or_view| {
+            move |ctx, ui, _component_descriptor, _row_id, value, edit_or_view| {
                 try_deserialize(value).and_then(|mut deserialized_value| match edit_or_view {
                     EditOrView::View => {
-                        callback(ui, ui_layout, &mut MaybeMutRef::Ref(&deserialized_value));
+                        callback(ctx, ui, &mut MaybeMutRef::Ref(&deserialized_value));
                         None
                     }
                     EditOrView::Edit => {
-                        let response = callback(
-                            ui,
-                            ui_layout,
-                            &mut MaybeMutRef::MutRef(&mut deserialized_value),
-                        );
+                        let response =
+                            callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_value));
 
                         if response.changed() {
                             use re_types::LoggableBatch as _;
@@ -251,21 +248,47 @@ impl ComponentUiRegistry {
         .insert(C::name().into(), untyped_callback);
     }
 
-    /// Registers how to view Arrow data using a specific
-    /// [`ComponentUiIdentifier::Variant`].
+    /// Registers singleline UI to view Arrow data using a specific [`ComponentUiIdentifier::Variant`].
     pub fn add_variant_ui(
         &mut self,
         variant_name: &'static str,
-        callback: UntypedComponentEditOrViewCallback,
-        multiline: bool,
+        callback: impl Fn(
+            &ViewerContext<'_>,
+            &mut egui::Ui,
+            &ComponentDescriptor,
+            Option<RowId>,
+            &dyn arrow::array::Array,
+        ) -> Result<(), ()>
+        + Send
+        + Sync
+        + 'static,
     ) {
-        if multiline {
-            self.component_multiline_edit_or_view
-                .insert(ComponentUiIdentifier::Variant(variant_name), callback);
-        } else {
-            self.component_singleline_edit_or_view
-                .insert(ComponentUiIdentifier::Variant(variant_name), callback);
-        }
+        let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
+            move |ctx, ui, component_descriptor, row_id, value, edit_or_view| {
+                match edit_or_view {
+                    EditOrView::View => {}
+                    EditOrView::Edit => {
+                        re_log::error_once!("Editing variant UIs is not supported.");
+                        return None;
+                    }
+                }
+
+                let res = callback(ctx, ui, component_descriptor, row_id, value);
+
+                if res.is_err() {
+                    fallback_ui(ui, UiLayout::List, value);
+                    re_log::error_once!(
+                        "UI for variant {variant_name} failed to display arrow data with type {}",
+                        re_arrow_util::format_data_type(value.data_type())
+                    );
+                }
+
+                None
+            },
+        );
+
+        self.component_singleline_edit_or_view
+            .insert(variant_name.into(), untyped_callback);
     }
 
     /// Queries which UI types are registered for a component.
