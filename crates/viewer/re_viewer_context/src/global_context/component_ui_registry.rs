@@ -49,7 +49,7 @@ type LegacyDisplayComponentUiCallback = Box<
         + Sync,
 >;
 
-enum EditOrView {
+pub enum EditOrView {
     /// Allow the user to view and mutate the value
     Edit,
 
@@ -73,12 +73,18 @@ impl From<ComponentName> for ComponentUiIdentifier {
     }
 }
 
+impl From<&'static str> for ComponentUiIdentifier {
+    fn from(name: &'static str) -> Self {
+        Self::Variant(name)
+    }
+}
+
 /// Callback for viewing, and maybe editing, a component via UI.
 ///
 /// Draws a UI showing the current value and allows the user to edit it.
 /// If any edit was made, should return `Some` with the updated value.
 /// If no edit was made, should return `None`.
-type UntypedComponentEditOrViewCallback = Box<
+pub type UntypedComponentEditOrViewCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
@@ -242,6 +248,23 @@ impl ComponentUiRegistry {
         .insert(C::name().into(), untyped_callback);
     }
 
+    /// Registers how to view Arrow data using a specific
+    /// [`ComponentUiIdentifier::Variant`].
+    pub fn add_variant_ui(
+        &mut self,
+        variant_name: &'static str,
+        callback: UntypedComponentEditOrViewCallback,
+        multiline: bool,
+    ) {
+        if multiline {
+            self.component_multiline_edit_or_view
+                .insert(ComponentUiIdentifier::Variant(variant_name), callback);
+        } else {
+            self.component_singleline_edit_or_view
+                .insert(ComponentUiIdentifier::Variant(variant_name), callback);
+        }
+    }
+
     /// Queries which UI types are registered for a component.
     ///
     /// Note that there's always a fallback display UI.
@@ -272,7 +295,7 @@ impl ComponentUiRegistry {
     /// Has a fallback to show an info text if the instance is not specific,
     /// but in these cases `LatestAtComponentResults::data_ui` should be used instead!
     #[allow(clippy::too_many_arguments)]
-    pub fn ui(
+    pub fn component_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -311,7 +334,7 @@ impl ComponentUiRegistry {
         let index = index.clamp(0, array.len().saturating_sub(1));
         let component_raw = array.slice(index, 1);
 
-        self.ui_raw(
+        self.component_ui_raw(
             ctx,
             ui,
             ui_layout,
@@ -326,7 +349,7 @@ impl ComponentUiRegistry {
 
     /// Show a UI for a single raw component.
     #[allow(clippy::too_many_arguments)]
-    pub fn ui_raw(
+    pub fn component_ui_raw(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -375,6 +398,41 @@ impl ComponentUiRegistry {
         } else {
             self.component_singleline_edit_or_view
                 .get(&component_descr.component_name.into())
+        };
+        if let Some(edit_or_view_ui) = edit_or_view_ui {
+            // Use it in view mode (no mutation).
+            (*edit_or_view_ui)(ctx, ui, component_raw, EditOrView::View);
+            return;
+        }
+
+        fallback_ui(ui, ui_layout, component_raw);
+    }
+
+    /// Show a UI corresponding to the provided variant name.
+    #[allow(clippy::too_many_arguments)]
+    pub fn variant_ui_raw(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        ui_layout: UiLayout,
+        variant_name: &'static str,
+        component_descr: &ComponentDescriptor,
+        row_id: Option<RowId>,
+        component_raw: &dyn arrow::array::Array,
+    ) {
+        re_tracing::profile_function!(variant_name);
+
+        // Fallback to the more specialized UI callbacks.
+        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
+            self.component_multiline_edit_or_view
+                .get(&variant_name.into())
+                .or_else(|| {
+                    self.component_singleline_edit_or_view
+                        .get(&variant_name.into())
+                })
+        } else {
+            self.component_singleline_edit_or_view
+                .get(&variant_name.into())
         };
         if let Some(edit_or_view_ui) = edit_or_view_ui {
             // Use it in view mode (no mutation).
@@ -515,7 +573,7 @@ impl ComponentUiRegistry {
             allow_multiline,
         ) {
             // Even if we can't edit the component, it's still helpful to show what the value is.
-            self.ui_raw(
+            self.component_ui_raw(
                 ctx.viewer_ctx,
                 ui,
                 UiLayout::List,
