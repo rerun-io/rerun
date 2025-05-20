@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::enum_glob_use)] // Nice to have for the color variants
 
-use egui::{Color32, Theme};
+use egui::{Color32, Theme, hex_color};
 
 use crate::{
     DesignTokens,
@@ -61,13 +61,19 @@ impl DesignTokens {
     }
 
     /// The color we use to mean "loop this selection"
-    pub fn loop_selection_color() -> Color32 {
-        Color32::from_rgb(1, 37, 105) // from figma 2023-02-09
+    pub fn loop_selection_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => hex_color!("#012569B2"),
+            Theme::Light => hex_color!("#6386C9B2"),
+        }
     }
 
     /// The color we use to mean "loop all the data"
-    pub fn loop_everything_color() -> Color32 {
-        Color32::from_rgb(2, 80, 45) // from figma 2023-02-09
+    pub fn loop_everything_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => Color32::from_rgb(2, 80, 45), // from figma 2023-02-09
+            Theme::Light => hex_color!("#06A35C"),
+        }
     }
 
     /// Used by the "add view or container" modal.
@@ -83,6 +89,27 @@ impl DesignTokens {
         match self.theme {
             Theme::Dark => Color32::WHITE.gamma_multiply(0.04),
             Theme::Light => self.color(ColorToken::gray(S850)),
+        }
+    }
+
+    pub fn breadcrumb_text_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => egui::hex_color!("#6A8CD0"),
+            Theme::Light => self.color(ColorToken::blue(S300)),
+        }
+    }
+
+    pub fn breadcrumb_separator_color(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => self.color(ColorToken::blue(S500)),
+            Theme::Light => self.color(ColorToken::blue(S400)),
+        }
+    }
+
+    pub fn blueprint_time_panel_bg_fill(&self) -> Color32 {
+        match self.theme {
+            Theme::Dark => egui::hex_color!("#141326"),
+            Theme::Light => self.color(ColorToken::blue(S900)),
         }
     }
 
