@@ -105,7 +105,7 @@ fn simple_query_with_differently_tagged_components() {
         [&points2_serialized.descriptor],
     );
     let cached_points = cached
-        .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+        .component_batch::<MyPoint>(&points2_serialized.descriptor)
         .unwrap();
     similar_asserts::assert_eq!(points2, cached_points);
 }
