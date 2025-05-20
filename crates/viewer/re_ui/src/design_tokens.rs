@@ -93,6 +93,26 @@ pub struct DesignTokens {
     pub drag_pill_droppable_stroke: Color32,
     pub drag_pill_nondroppable_fill: Color32,
     pub drag_pill_nondroppable_stroke: Color32,
+    pub floating_color: Color32,
+    pub faint_bg_color: Color32,
+    pub extreme_bg_color: Color32,
+    pub selection_stroke_color: Color32,
+    pub widget_inactive_bg_fill: Color32,
+    pub widget_hovered_color: Color32,
+    pub widget_hovered_weak_bg_fill: Color32,
+    pub widget_hovered_bg_fill: Color32,
+    pub widget_active_weak_bg_fill: Color32,
+    pub widget_active_bg_fill: Color32,
+    pub widget_open_weak_bg_fill: Color32,
+    pub widget_noninteractive_weak_bg_fill: Color32,
+    pub widget_noninteractive_bg_fill: Color32,
+    pub selection_bg_fill: Color32,
+    pub widget_noninteractive_bg_stroke: Color32,
+    pub text_subdued: Color32,
+    pub text_default: Color32,
+    pub text_strong: Color32,
+    pub error_fg_color: Color32,
+    pub warn_fg_color: Color32,
 }
 
 impl DesignTokens {
@@ -121,6 +141,27 @@ impl DesignTokens {
         let bottom_bar_stroke_color = get_color("bottom_bar_stroke_color");
         let shadow_gradient_dark_start = get_color("shadow_gradient_dark_start");
         let native_frame_stroke_color = get_color("native_frame_stroke_color");
+
+        let floating_color = get_color("floating_color");
+        let faint_bg_color = get_color("faint_bg_color");
+        let extreme_bg_color = get_color("extreme_bg_color");
+        let widget_inactive_bg_fill = get_color("widget_inactive_bg_fill");
+        let widget_hovered_color = get_color("widget_hovered_color");
+        let widget_hovered_weak_bg_fill = get_color("widget_hovered_weak_bg_fill");
+        let widget_hovered_bg_fill = get_color("widget_hovered_bg_fill");
+        let widget_active_weak_bg_fill = get_color("widget_active_weak_bg_fill");
+        let widget_active_bg_fill = get_color("widget_active_bg_fill");
+        let widget_open_weak_bg_fill = get_color("widget_open_weak_bg_fill");
+        let widget_noninteractive_weak_bg_fill = get_color("widget_noninteractive_weak_bg_fill");
+        let widget_noninteractive_bg_fill = get_color("widget_noninteractive_bg_fill");
+        let selection_bg_fill = get_color("selection_bg_fill");
+        let selection_stroke_color = get_color("selection_stroke_color");
+        let widget_noninteractive_bg_stroke = get_color("widget_noninteractive_bg_stroke");
+        let text_subdued = get_color("text_subdued");
+        let text_default = get_color("text_default");
+        let text_strong = get_color("text_strong");
+        let error_fg_color = get_color("error_fg_color");
+        let warn_fg_color = get_color("warn_fg_color");
 
         Self {
             theme,
@@ -170,6 +211,27 @@ impl DesignTokens {
             drag_pill_droppable_stroke: get_color("drag_pill_droppable_stroke"),
             drag_pill_nondroppable_fill: get_color("drag_pill_nondroppable_fill"),
             drag_pill_nondroppable_stroke: get_color("drag_pill_nondroppable_stroke"),
+
+            floating_color,
+            faint_bg_color,
+            extreme_bg_color,
+            widget_inactive_bg_fill,
+            widget_hovered_color,
+            widget_hovered_weak_bg_fill,
+            widget_hovered_bg_fill,
+            widget_active_weak_bg_fill,
+            widget_active_bg_fill,
+            widget_open_weak_bg_fill,
+            widget_noninteractive_weak_bg_fill,
+            widget_noninteractive_bg_fill,
+            selection_bg_fill,
+            selection_stroke_color,
+            widget_noninteractive_bg_stroke,
+            text_subdued,
+            text_default,
+            text_strong,
+            error_fg_color,
+            warn_fg_color,
 
             color_table: colors,
         }
@@ -318,16 +380,15 @@ impl DesignTokens {
 
     fn set_dark_style(&self, egui_style: &mut egui::Style) {
         let panel_bg_color = self.panel_bg_color;
-        // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = self.color(ColorToken::gray(S250));
+        let floating_color = self.floating_color;
 
         // For table zebra stripes.
-        egui_style.visuals.faint_bg_color = self.color(ColorToken::gray(S150));
+        egui_style.visuals.faint_bg_color = self.faint_bg_color;
 
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
         // We need this very dark, since the theme overall is very, very dark.
-        egui_style.visuals.extreme_bg_color = Color32::BLACK;
+        egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
 
         egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
         egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
@@ -335,11 +396,11 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::gray(S300));
+        egui_style.visuals.widgets.inactive.bg_fill = self.widget_inactive_bg_fill;
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            let hovered_color = self.color(ColorToken::gray(S325));
+            let hovered_color = self.widget_hovered_color;
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
             egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
@@ -348,18 +409,16 @@ impl DesignTokens {
             egui_style.visuals.widgets.open.bg_fill = hovered_color;
         }
 
-        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S350));
-
-        //TODO(ab): use ColorToken!
-        egui_style.visuals.selection.stroke.color = Color32::from_rgb(173, 184, 255); // Brighter version of the above
+        egui_style.visuals.selection.bg_fill = self.selection_bg_fill;
+        egui_style.visuals.selection.stroke.color = self.selection_stroke_color;
 
         // separator lines, panel lines, etc
         egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            self.color(ColorToken::gray(S250));
+            self.widget_noninteractive_bg_stroke;
 
-        let subdued = self.color(ColorToken::gray(S550));
-        let default = self.color(ColorToken::gray(S775));
-        let strong = self.color(ColorToken::gray(S1000));
+        let subdued = self.text_subdued;
+        let default = self.text_default;
+        let strong = self.text_strong;
 
         egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
@@ -386,55 +445,51 @@ impl DesignTokens {
         // don't color hyperlinks #2733
         egui_style.visuals.hyperlink_color = default;
 
-        //TODO(#8333): use ColorToken!
-        egui_style.visuals.error_fg_color = Color32::from_rgb(0xAB, 0x01, 0x16);
-        egui_style.visuals.warn_fg_color = Color32::from_rgb(0xFF, 0x7A, 0x0C);
+        egui_style.visuals.error_fg_color = self.error_fg_color;
+        egui_style.visuals.warn_fg_color = self.warn_fg_color;
     }
 
     fn set_light_style(&self, egui_style: &mut egui::Style) {
         let panel_bg_color = self.panel_bg_color;
-        // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = self.color(ColorToken::gray(S1000));
+        let floating_color = self.floating_color;
 
         // For table zebra stripes.
-        egui_style.visuals.faint_bg_color = self.color(ColorToken::gray(S900));
+        egui_style.visuals.faint_bg_color = self.faint_bg_color;
 
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
         // We need this very dark, since the theme overall is very, very dark.
-        egui_style.visuals.extreme_bg_color = self.color(ColorToken::gray(S900));
+        egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
 
-        egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.color(ColorToken::gray(S550));
-        egui_style.visuals.widgets.noninteractive.bg_fill = self.color(ColorToken::gray(S800));
+        egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
+        egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::gray(S800));
+        egui_style.visuals.widgets.inactive.bg_fill = self.widget_inactive_bg_fill;
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            // defaulted to egui light theme for now
-            //let hovered_color = egui::Color32::RED;
-            egui_style.visuals.widgets.hovered.weak_bg_fill = self.color(ColorToken::gray(S800));
-            egui_style.visuals.widgets.hovered.bg_fill = self.color(ColorToken::gray(S700));
-            egui_style.visuals.widgets.active.weak_bg_fill = self.color(ColorToken::gray(S750)); //ms after weak_bg_fill is pressed
-            egui_style.visuals.widgets.active.bg_fill = self.color(ColorToken::gray(S650)); //ms after btn on timeline is pressed
-            egui_style.visuals.widgets.open.weak_bg_fill = self.color(ColorToken::gray(S650));
-            //when dropdown is opened
-            //egui_style.visuals.widgets.open.bg_fill = egui::Color32::GREEN; //have no idea when its triggered
+            let hovered_color = self.widget_hovered_color;
+            egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
+            egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
+            egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
+            egui_style.visuals.widgets.active.bg_fill = hovered_color;
+            egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
+            egui_style.visuals.widgets.open.bg_fill = hovered_color;
         }
 
-        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S550));
-        egui_style.visuals.selection.stroke.color = self.color(ColorToken::blue(S800)); // Brighter version of the above
+        egui_style.visuals.selection.bg_fill = self.selection_bg_fill;
+        egui_style.visuals.selection.stroke.color = self.selection_stroke_color;
 
         // separator lines, panel lines, etc
         egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            self.color(ColorToken::gray(S800));
+            self.widget_noninteractive_bg_stroke;
 
-        let subdued = self.color(ColorToken::gray(S500));
-        let default = self.color(ColorToken::gray(S250));
-        let strong = self.color(ColorToken::gray(S0));
+        let subdued = self.text_subdued;
+        let default = self.text_default;
+        let strong = self.text_strong;
 
         egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
@@ -461,9 +516,8 @@ impl DesignTokens {
         // don't color hyperlinks #2733
         egui_style.visuals.hyperlink_color = default;
 
-        //TODO(#8333): use ColorToken!
-        egui_style.visuals.error_fg_color = Color32::from_rgb(0xAB, 0x01, 0x16);
-        egui_style.visuals.warn_fg_color = Color32::from_rgb(0xFF, 0x7A, 0x0C);
+        egui_style.visuals.error_fg_color = self.error_fg_color;
+        egui_style.visuals.warn_fg_color = self.warn_fg_color;
     }
 
     #[inline]

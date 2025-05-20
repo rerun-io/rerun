@@ -102,6 +102,66 @@
     },
     "drag_pill_nondroppable_stroke": {
       "color": "{Gray.375}"
+    },
+    "floating_color": {
+      "color": "{Gray.250}"
+    },
+    "faint_bg_color": {
+      "color": "{Gray.150}"
+    },
+    "extreme_bg_color": {
+      "color": "#000000"
+    },
+    "widget_inactive_bg_fill": {
+      "color": "{Gray.300}"
+    },
+    "widget_hovered_color": {
+      "color": "{Gray.325}"
+    },
+    "widget_hovered_weak_bg_fill": {
+      "color": "{Gray.325}"
+    },
+    "widget_hovered_bg_fill": {
+      "color": "{Gray.325}"
+    },
+    "widget_active_weak_bg_fill": {
+      "color": "{Gray.325}"
+    },
+    "widget_active_bg_fill": {
+      "color": "{Gray.325}"
+    },
+    "widget_open_weak_bg_fill": {
+      "color": "{Gray.325}"
+    },
+    "widget_noninteractive_weak_bg_fill": {
+      "color": "{Gray.150}"
+    },
+    "widget_noninteractive_bg_fill": {
+      "color": "{Gray.150}"
+    },
+    "selection_bg_fill": {
+      "color": "{Blue.350}"
+    },
+    "selection_stroke_color": {
+      "color": "#ADB8FF"
+    },
+    "widget_noninteractive_bg_stroke": {
+      "color": "{Gray.250}"
+    },
+    "text_subdued": {
+      "color": "{Gray.550}"
+    },
+    "text_default": {
+      "color": "{Gray.775}"
+    },
+    "text_strong": {
+      "color": "{Gray.1000}"
+    },
+    "error_fg_color": {
+      "color": "#AB0116"
+    },
+    "warn_fg_color": {
+      "color": "#FF7A0C"
     }
   },
   "Global": {
