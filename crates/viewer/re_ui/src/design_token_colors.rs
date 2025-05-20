@@ -63,8 +63,8 @@ impl DesignTokens {
     /// The color we use to mean "loop this selection"
     pub fn loop_selection_color(&self) -> Color32 {
         match self.theme {
-            Theme::Dark => Color32::from_rgb(1, 37, 105), // from figma 2023-02-09
-            Theme::Light => hex_color!("#6386C9"),
+            Theme::Dark => hex_color!("#012569B2"),
+            Theme::Light => hex_color!("#6386C9B2"),
         }
     }
 
