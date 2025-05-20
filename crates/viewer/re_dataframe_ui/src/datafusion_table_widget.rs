@@ -560,6 +560,11 @@ fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes
         ui,
         |ui| ui.strong("Datatype"),
         |ui| {
+            // We don't want the copy button to stand out next to the other properties. The copy
+            // icon already indicates that it's a button.
+            ui.visuals_mut().widgets.inactive.fg_stroke =
+                ui.visuals_mut().widgets.noninteractive.fg_stroke;
+
             if ui
                 .add(
                     egui::Button::image_and_text(
