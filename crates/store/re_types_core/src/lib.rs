@@ -44,8 +44,8 @@ pub use self::{
     component_descriptor::ComponentDescriptor,
     id::{ChunkId, RowId},
     loggable::{
-        Component, ComponentName, ComponentNameSet, DatatypeName, Loggable,
-        UnorderedComponentNameSet,
+        Component, ComponentDescriptorSet, ComponentName, DatatypeName, Loggable,
+        UnorderedComponentDescriptorSet,
     },
     loggable_batch::{
         ComponentBatch, LoggableBatch, SerializedComponentBatch, SerializedComponentColumn,
@@ -92,8 +92,6 @@ pub mod external {
 }
 
 /// Useful macro for statically asserting that a `struct` contains some specific fields.
-///
-/// For asserting that an archetype has a specific component use `re_log_types::debug_assert_archetype_has_components`
 ///
 ///  ```
 /// # #[macro_use] extern crate re_types_core;

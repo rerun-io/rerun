@@ -1,12 +1,13 @@
 use re_log_types::StoreId;
 
 use crate::{
-    CatalogUri, DatasetDataUri, EntryUri, Error, Fragment, Origin, ProxyUri, DEFAULT_PROXY_PORT,
-    DEFAULT_REDAP_PORT,
+    CatalogUri, DEFAULT_PROXY_PORT, DEFAULT_REDAP_PORT, DatasetDataUri, EntryUri, Error, Fragment,
+    Origin, ProxyUri,
 };
 
 /// Parsed from `rerun://addr:port/recording/12345` or `rerun://addr:port/catalog`
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum RedapUri {
     /// `/catalog` - also the default if there is no /endpoint
     Catalog(CatalogUri),
@@ -214,8 +215,7 @@ mod tests {
 
     #[test]
     fn test_dataset_data_url_with_fragment() {
-        let url =
-            "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
+        let url = "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/data?partition_id=pid#focus=/some/entity[#42]";
         let address: RedapUri = url.parse().unwrap();
 
         let RedapUri::DatasetData(DatasetDataUri {
@@ -244,7 +244,7 @@ mod tests {
                 focus: Some(DataPath {
                     entity_path: "/some/entity".into(),
                     instance: Some(42.into()),
-                    component_name: None,
+                    component_descriptor: None,
                 }),
                 ..Default::default()
             }

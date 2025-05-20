@@ -3,11 +3,11 @@
 
 mod add_server_modal;
 mod context;
-mod dataset_ui;
 mod entries;
 mod servers;
+mod tables_session_context;
 
-pub use entries::{dataset_and_its_recordings_ui, sort_datasets, EntryKind, SortDatasetsResults};
+pub use entries::{EntryKind, SortDatasetsResults, dataset_and_its_recordings_ui, sort_datasets};
 use re_uri::Scheme;
 pub use servers::RedapServers;
 use std::sync::LazyLock;

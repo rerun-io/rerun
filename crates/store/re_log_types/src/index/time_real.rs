@@ -1,4 +1,4 @@
-use fixed::{traits::LossyInto as _, FixedI128};
+use fixed::{FixedI128, traits::LossyInto as _};
 
 use crate::TimeInt;
 

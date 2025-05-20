@@ -7,11 +7,11 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{
-    example_components::{MyColor, MyIndex, MyPoint},
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
+    example_components::{MyColor, MyIndex, MyPoint},
 };
 use re_types_core::{
-    archetypes::Clear, components::ClearIsRecursive, AsComponents as _, ComponentBatch as _,
+    AsComponents as _, ComponentBatch as _, archetypes::Clear, components::ClearIsRecursive,
 };
 
 // ---
@@ -26,10 +26,30 @@ fn query_latest_component<C: re_types_core::Component>(
     let results = db
         .storage_engine()
         .cache()
-        .latest_at(query, entity_path, [C::descriptor()]);
+        // This test uses explicitly untagged components for the most part.
+        .latest_at(query, entity_path, [&C::descriptor()]);
 
     let (data_time, row_id) = results.index();
     let data = results.component_mono::<C>()?;
+
+    Some((data_time, row_id, data))
+}
+
+fn query_latest_component_clear(
+    db: &EntityDb,
+    entity_path: &EntityPath,
+    query: &LatestAtQuery,
+) -> Option<(TimeInt, RowId, ClearIsRecursive)> {
+    re_tracing::profile_function!();
+
+    let results = db.storage_engine().cache().latest_at(
+        query,
+        entity_path,
+        [&Clear::descriptor_is_recursive()],
+    );
+
+    let (data_time, row_id) = results.index();
+    let data = results.component_mono::<ClearIsRecursive>()?;
 
     Some((data_time, row_id, data))
 }
@@ -137,8 +157,7 @@ fn clears() -> anyhow::Result<()> {
             assert!(query_latest_component::<MyColor>(&db, &entity_path_parent, &query).is_none());
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
-                query_latest_component::<ClearIsRecursive>(&db, &entity_path_parent, &query)
-                    .unwrap();
+                query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(
                 clear.is_recursive.map(|batch| batch.array),
                 got_clear.serialized().map(|batch| batch.array)
@@ -174,8 +193,7 @@ fn clears() -> anyhow::Result<()> {
             assert!(query_latest_component::<MyColor>(&db, &entity_path_parent, &query).is_none());
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
-                query_latest_component::<ClearIsRecursive>(&db, &entity_path_parent, &query)
-                    .unwrap();
+                query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(
                 clear.is_recursive.map(|batch| batch.array),
                 got_clear.serialized().map(|batch| batch.array)
@@ -362,8 +380,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
         similar_asserts::assert_eq!(point, got_point);
 
         // the `Clear` component itself doesn't get cleared!
-        let (_, _, got_clear) =
-            query_latest_component::<ClearIsRecursive>(&db, &entity_path, &query).unwrap();
+        let (_, _, got_clear) = query_latest_component_clear(&db, &entity_path, &query).unwrap();
         similar_asserts::assert_eq!(
             clear.is_recursive.map(|batch| batch.array),
             got_clear.serialized().map(|batch| batch.array)
@@ -387,8 +404,7 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
         assert!(query_latest_component::<MyPoint>(&db, &entity_path, &query).is_none());
 
         // the `Clear` component itself doesn't get cleared!
-        let (_, _, got_clear) =
-            query_latest_component::<ClearIsRecursive>(&db, &entity_path, &query).unwrap();
+        let (_, _, got_clear) = query_latest_component_clear(&db, &entity_path, &query).unwrap();
         similar_asserts::assert_eq!(
             clear.is_recursive.map(|batch| batch.array),
             got_clear.serialized().map(|batch| batch.array)

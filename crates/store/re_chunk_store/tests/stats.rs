@@ -3,9 +3,8 @@ use std::sync::Arc;
 use re_chunk::{Chunk, RowId, TimePoint};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, TimeInt};
 use re_log_types::{
-    build_frame_nr,
+    EntityPath, build_frame_nr,
     example_components::{MyColor, MyPoint},
-    EntityPath,
 };
 use re_types_core::Component as _;
 

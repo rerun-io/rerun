@@ -43,7 +43,7 @@ impl ::prost::Name for RegisterWithDatasetRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterWithDatasetResponse {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
 }
 impl ::prost::Name for RegisterWithDatasetResponse {
     const NAME: &'static str = "RegisterWithDatasetResponse";
@@ -98,7 +98,7 @@ impl ::prost::Name for RegisterWithDatasetBlockingResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteChunksRequest {
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
 }
 impl ::prost::Name for WriteChunksRequest {
     const NAME: &'static str = "WriteChunksRequest";
@@ -637,9 +637,9 @@ pub struct QueryLatestAt {
     ///
     /// This will perform a basic fuzzy match on the available columns' descriptors.
     /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLine`, etc.
+    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+    /// `SeriesLines`, etc.
     ///
     /// TODO(cmc): I shall bring that back into a more structured form later.
     /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
@@ -673,9 +673,9 @@ pub struct QueryRange {
     ///
     /// This will perform a basic fuzzy match on the available columns' descriptors.
     /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLine`, etc.
+    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+    /// `SeriesLines`, etc.
     ///
     /// TODO(cmc): I shall bring that back into a more structured form later.
     /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
@@ -748,11 +748,15 @@ pub struct CreatePartitionManifestsRequest {
     /// created if left unspecified (empty list)
     #[prost(message, repeated, tag = "2")]
     pub partition_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::PartitionId>,
+    /// types of partitions and their storage location (same order
+    /// as partition ids above)
+    #[prost(message, repeated, tag = "3")]
+    pub data_sources: ::prost::alloc::vec::Vec<DataSource>,
     /// Define what happens if create is called multiple times for the same
     /// Dataset / partitions
     #[prost(
         enumeration = "super::super::common::v1alpha1::IfDuplicateBehavior",
-        tag = "3"
+        tag = "4"
     )]
     pub on_duplicate: i32,
 }
@@ -1013,11 +1017,11 @@ pub mod manifest_registry_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -1096,14 +1100,16 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Unimplemented.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        ///
+        /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         pub async fn write_chunks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::WriteChunksResponse>>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -1116,7 +1122,7 @@ pub mod manifest_registry_service_client {
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
                 "WriteChunks",
             ));
-            self.inner.streaming(req, path, codec).await
+            self.inner.client_streaming(req, path, codec).await
         }
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
@@ -1431,16 +1437,15 @@ pub mod manifest_registry_service_server {
             tonic::Response<super::RegisterWithDatasetBlockingResponse>,
             tonic::Status,
         >;
-        /// Server streaming response type for the WriteChunks method.
-        type WriteChunksStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::WriteChunksResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// Unimplemented.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        ///
+        /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         async fn write_chunks(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
-        ) -> std::result::Result<tonic::Response<Self::WriteChunksStream>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
         /// * To inspect the data of the partition table, use `ScanPartitionTable`.
@@ -1658,18 +1663,13 @@ pub mod manifest_registry_service_server {
             match req.uri().path() {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDataset" => {
                     #[allow(non_camel_case_types)]
-                    struct RegisterWithDatasetSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::RegisterWithDatasetRequest>
-                    for RegisterWithDatasetSvc<T> {
+                    struct RegisterWithDatasetSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::RegisterWithDatasetRequest>
+                        for RegisterWithDatasetSvc<T>
+                    {
                         type Response = super::RegisterWithDatasetResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::RegisterWithDatasetRequest>,
@@ -1677,10 +1677,9 @@ pub mod manifest_registry_service_server {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as ManifestRegistryService>::register_with_dataset(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -1707,34 +1706,26 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetBlocking" => {
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/RegisterWithDatasetBlocking" =>
+                {
                     #[allow(non_camel_case_types)]
-                    struct RegisterWithDatasetBlockingSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::UnaryService<
-                        super::RegisterWithDatasetBlockingRequest,
-                    > for RegisterWithDatasetBlockingSvc<T> {
+                    struct RegisterWithDatasetBlockingSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::RegisterWithDatasetBlockingRequest>
+                        for RegisterWithDatasetBlockingSvc<T>
+                    {
                         type Response = super::RegisterWithDatasetBlockingResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::RegisterWithDatasetBlockingRequest,
-                            >,
+                            request: tonic::Request<super::RegisterWithDatasetBlockingRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as ManifestRegistryService>::register_with_dataset_blocking(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -1764,29 +1755,19 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/WriteChunks" => {
                     #[allow(non_camel_case_types)]
                     struct WriteChunksSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::StreamingService<super::WriteChunksRequest>
-                    for WriteChunksSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ClientStreamingService<super::WriteChunksRequest>
+                        for WriteChunksSvc<T>
+                    {
                         type Response = super::WriteChunksResponse;
-                        type ResponseStream = T::WriteChunksStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                tonic::Streaming<super::WriteChunksRequest>,
-                            >,
+                            request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::write_chunks(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                <T as ManifestRegistryService>::write_chunks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -1808,38 +1789,31 @@ pub mod manifest_registry_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.streaming(method, req).await;
+                        let res = grpc.client_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetPartitionTableSchema" => {
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetPartitionTableSchema" =>
+                {
                     #[allow(non_camel_case_types)]
-                    struct GetPartitionTableSchemaSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::GetPartitionTableSchemaRequest>
-                    for GetPartitionTableSchemaSvc<T> {
+                    struct GetPartitionTableSchemaSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::GetPartitionTableSchemaRequest>
+                        for GetPartitionTableSchemaSvc<T>
+                    {
                         type Response = super::GetPartitionTableSchemaResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::GetPartitionTableSchemaRequest,
-                            >,
+                            request: tonic::Request<super::GetPartitionTableSchemaRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as ManifestRegistryService>::get_partition_table_schema(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -1869,17 +1843,14 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ScanPartitionTable" => {
                     #[allow(non_camel_case_types)]
                     struct ScanPartitionTableSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<
-                        super::ScanPartitionTableRequest,
-                    > for ScanPartitionTableSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ServerStreamingService<super::ScanPartitionTableRequest>
+                        for ScanPartitionTableSvc<T>
+                    {
                         type Response = super::ScanPartitionTableResponse;
                         type ResponseStream = T::ScanPartitionTableStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::ScanPartitionTableRequest>,
@@ -1887,10 +1858,9 @@ pub mod manifest_registry_service_server {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as ManifestRegistryService>::scan_partition_table(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -1920,25 +1890,19 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetDatasetSchema" => {
                     #[allow(non_camel_case_types)]
                     struct GetDatasetSchemaSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::GetDatasetSchemaRequest>
-                    for GetDatasetSchemaSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::GetDatasetSchemaRequest>
+                        for GetDatasetSchemaSvc<T>
+                    {
                         type Response = super::GetDatasetSchemaResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::GetDatasetSchemaRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::get_dataset_schema(
-                                        &inner,
-                                        request,
-                                    )
+                                <T as ManifestRegistryService>::get_dataset_schema(&inner, request)
                                     .await
                             };
                             Box::pin(fut)
@@ -1969,26 +1933,19 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/CreateIndex" => {
                     #[allow(non_camel_case_types)]
                     struct CreateIndexSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::CreateIndexRequest>
-                    for CreateIndexSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::CreateIndexRequest>
+                        for CreateIndexSvc<T>
+                    {
                         type Response = super::CreateIndexResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::CreateIndexRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::create_index(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                <T as ManifestRegistryService>::create_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2018,23 +1975,18 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/ReIndex" => {
                     #[allow(non_camel_case_types)]
                     struct ReIndexSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::ReIndexRequest>
-                    for ReIndexSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::ReIndexRequest> for ReIndexSvc<T>
+                    {
                         type Response = super::ReIndexResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::ReIndexRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::re_index(&inner, request)
-                                    .await
+                                <T as ManifestRegistryService>::re_index(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2064,26 +2016,21 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/SearchDataset" => {
                     #[allow(non_camel_case_types)]
                     struct SearchDatasetSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<super::SearchDatasetRequest>
-                    for SearchDatasetSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ServerStreamingService<super::SearchDatasetRequest>
+                        for SearchDatasetSvc<T>
+                    {
                         type Response = super::SearchDatasetResponse;
                         type ResponseStream = T::SearchDatasetStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::SearchDatasetRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::search_dataset(
-                                        &inner,
-                                        request,
-                                    )
+                                <T as ManifestRegistryService>::search_dataset(&inner, request)
                                     .await
                             };
                             Box::pin(fut)
@@ -2114,27 +2061,21 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/QueryDataset" => {
                     #[allow(non_camel_case_types)]
                     struct QueryDatasetSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<super::QueryDatasetRequest>
-                    for QueryDatasetSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ServerStreamingService<super::QueryDatasetRequest>
+                        for QueryDatasetSvc<T>
+                    {
                         type Response = super::QueryDatasetResponse;
                         type ResponseStream = T::QueryDatasetStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::QueryDatasetRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::query_dataset(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                <T as ManifestRegistryService>::query_dataset(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2164,24 +2105,21 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/GetChunks" => {
                     #[allow(non_camel_case_types)]
                     struct GetChunksSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<super::GetChunksRequest>
-                    for GetChunksSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ServerStreamingService<super::GetChunksRequest>
+                        for GetChunksSvc<T>
+                    {
                         type Response = super::GetChunksResponse;
                         type ResponseStream = T::GetChunksStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::GetChunksRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as ManifestRegistryService>::get_chunks(&inner, request)
-                                    .await
+                                <T as ManifestRegistryService>::get_chunks(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -2211,17 +2149,14 @@ pub mod manifest_registry_service_server {
                 "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchChunkManifest" => {
                     #[allow(non_camel_case_types)]
                     struct FetchChunkManifestSvc<T: ManifestRegistryService>(pub Arc<T>);
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<
-                        super::FetchChunkManifestRequest,
-                    > for FetchChunkManifestSvc<T> {
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ServerStreamingService<super::FetchChunkManifestRequest>
+                        for FetchChunkManifestSvc<T>
+                    {
                         type Response = super::FetchChunkManifestResponse;
                         type ResponseStream = T::FetchChunkManifestStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::FetchChunkManifestRequest>,
@@ -2229,10 +2164,9 @@ pub mod manifest_registry_service_server {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as ManifestRegistryService>::fetch_chunk_manifest(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -2259,33 +2193,26 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/CreatePartitionManifests" => {
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/CreatePartitionManifests" =>
+                {
                     #[allow(non_camel_case_types)]
-                    struct CreatePartitionManifestsSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::UnaryService<super::CreatePartitionManifestsRequest>
-                    for CreatePartitionManifestsSvc<T> {
+                    struct CreatePartitionManifestsSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::UnaryService<super::CreatePartitionManifestsRequest>
+                        for CreatePartitionManifestsSvc<T>
+                    {
                         type Response = super::CreatePartitionManifestsResponse;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<
-                                super::CreatePartitionManifestsRequest,
-                            >,
+                            request: tonic::Request<super::CreatePartitionManifestsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as ManifestRegistryService>::create_partition_manifests(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -2312,22 +2239,18 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchPartitionManifest" => {
+                "/rerun.manifest_registry.v1alpha1.ManifestRegistryService/FetchPartitionManifest" =>
+                {
                     #[allow(non_camel_case_types)]
-                    struct FetchPartitionManifestSvc<T: ManifestRegistryService>(
-                        pub Arc<T>,
-                    );
-                    impl<
-                        T: ManifestRegistryService,
-                    > tonic::server::ServerStreamingService<
-                        super::FetchPartitionManifestRequest,
-                    > for FetchPartitionManifestSvc<T> {
+                    struct FetchPartitionManifestSvc<T: ManifestRegistryService>(pub Arc<T>);
+                    impl<T: ManifestRegistryService>
+                        tonic::server::ServerStreamingService<super::FetchPartitionManifestRequest>
+                        for FetchPartitionManifestSvc<T>
+                    {
                         type Response = super::FetchPartitionManifestResponse;
                         type ResponseStream = T::FetchPartitionManifestStream;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::ResponseStream>,
-                            tonic::Status,
-                        >;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<super::FetchPartitionManifestRequest>,
@@ -2335,10 +2258,9 @@ pub mod manifest_registry_service_server {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
                                 <T as ManifestRegistryService>::fetch_partition_manifest(
-                                        &inner,
-                                        request,
-                                    )
-                                    .await
+                                    &inner, request,
+                                )
+                                .await
                             };
                             Box::pin(fut)
                         }
@@ -2365,23 +2287,19 @@ pub mod manifest_registry_service_server {
                     };
                     Box::pin(fut)
                 }
-                _ => {
-                    Box::pin(async move {
-                        let mut response = http::Response::new(empty_body());
-                        let headers = response.headers_mut();
-                        headers
-                            .insert(
-                                tonic::Status::GRPC_STATUS,
-                                (tonic::Code::Unimplemented as i32).into(),
-                            );
-                        headers
-                            .insert(
-                                http::header::CONTENT_TYPE,
-                                tonic::metadata::GRPC_CONTENT_TYPE,
-                            );
-                        Ok(response)
-                    })
-                }
+                _ => Box::pin(async move {
+                    let mut response = http::Response::new(empty_body());
+                    let headers = response.headers_mut();
+                    headers.insert(
+                        tonic::Status::GRPC_STATUS,
+                        (tonic::Code::Unimplemented as i32).into(),
+                    );
+                    headers.insert(
+                        http::header::CONTENT_TYPE,
+                        tonic::metadata::GRPC_CONTENT_TYPE,
+                    );
+                    Ok(response)
+                }),
             }
         }
     }

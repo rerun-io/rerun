@@ -14,7 +14,7 @@
 //!   * is either 8 or 16
 //!   * that's how the decoder stores for us but the per component we have either 8 or 10 or 12 bits -> see `picture.bits_per_component()`
 //! * `picture.pixel_layout()`
-//!   * `4:0:0` greyscale
+//!   * `4:0:0` grayscale
 //!   * `4:2:0` half horizontal and half vertical resolution for chroma
 //!   * `4:2:2` half horizontal resolution for chroma
 //!   * `4:4:4` full resolution for chroma
@@ -87,7 +87,7 @@ mod ffmpeg_h264;
 
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_h264::{
-    ffmpeg_download_url, Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError,
+    Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
 };
 
 #[cfg(target_arch = "wasm32")]

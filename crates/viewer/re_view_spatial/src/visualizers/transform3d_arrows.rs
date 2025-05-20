@@ -2,11 +2,11 @@ use egui::Color32;
 use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, Instance};
 use re_types::{
+    Archetype as _, ComponentName,
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, Component as _, ComponentName,
 };
-use re_view::{latest_at_with_blueprint_resolved_data, DataResultQuery as _};
+use re_view::{DataResultQuery as _, latest_at_with_blueprint_resolved_data};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
     ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _, ViewSystemExecutionError,
@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use crate::{contexts::TransformTreeContext, ui::SpatialViewState, view_kind::SpatialViewKind};
 
-use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
+use super::{CamerasVisualizer, SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 pub struct Transform3DArrowsVisualizer(SpatialViewVisualizerData);
 
@@ -124,11 +124,13 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 None,
                 &latest_at_query,
                 data_result,
-                std::iter::once(AxisLength::name()),
+                [&Transform3D::descriptor_axis_length()],
                 false,
             );
 
-            let axis_length: f32 = results.get_mono_with_fallback::<AxisLength>().into();
+            let axis_length: f32 = results
+                .get_mono_with_fallback::<AxisLength>(&Transform3D::descriptor_axis_length())
+                .into();
 
             if axis_length == 0.0 {
                 // Don't draw axis and don't add to the bounding box!
@@ -236,7 +238,9 @@ impl TypedComponentFallbackProvider<AxisLength> for Transform3DArrowsVisualizer 
                         let results = data_result
                             .latest_at_with_blueprint_resolved_data::<Pinhole>(view_ctx, ctx.query);
 
-                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>())
+                        Some(results.get_mono_with_fallback::<ImagePlaneDistance>(
+                            &Pinhole::descriptor_image_plane_distance(),
+                        ))
                     } else {
                         None
                     }
@@ -283,9 +287,11 @@ impl IdentifiedViewSystem for AxisLengthDetector {
 impl VisualizerSystem for AxisLengthDetector {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<Transform3D>();
-
-        query_info.required.insert(AxisLength::name());
         query_info.indicators = Default::default();
+
+        query_info
+            .required
+            .insert(Transform3D::descriptor_axis_length());
 
         query_info
     }

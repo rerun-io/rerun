@@ -1,9 +1,7 @@
-use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::SegmentationImage,
-    components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
+    components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
-    Component as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, MaybeVisualizableEntities, QueryContext,
@@ -13,10 +11,10 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
 use super::SpatialViewVisualizerData;
@@ -74,39 +72,39 @@ impl VisualizerSystem for SegmentationImageVisualizer {
 
                 let entity_path = ctx.target_entity_path;
 
-                let Some(all_buffer_chunks) = results.get_required_chunks(&ImageBuffer::name())
+                let Some(all_buffer_chunks) =
+                    results.get_required_chunks(SegmentationImage::descriptor_buffer())
                 else {
                     return Ok(());
                 };
-                let Some(all_formats_chunks) = results.get_required_chunks(&ImageFormat::name())
+                let Some(all_formats_chunks) =
+                    results.get_required_chunks(SegmentationImage::descriptor_format())
                 else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_buffers_indexed =
-                    iter_slices::<&[u8]>(&all_buffer_chunks, timeline, ImageBuffer::name());
-                let all_formats_indexed = iter_component::<ImageFormat>(
-                    &all_formats_chunks,
-                    timeline,
-                    ImageFormat::name(),
-                );
-                let all_opacities = results.iter_as(timeline, Opacity::name());
+                let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
+                let all_formats_indexed =
+                    iter_component::<ImageFormat>(&all_formats_chunks, timeline);
+                let all_opacities =
+                    results.iter_as(timeline, SegmentationImage::descriptor_opacity());
 
                 let data = re_query::range_zip_1x2(
                     all_buffers_indexed,
                     all_formats_indexed,
                     all_opacities.slice::<f32>(),
                 )
-                .filter_map(|(index, buffers, formats, opacity)| {
+                .filter_map(|((_time, row_id), buffers, formats, opacity)| {
                     let buffer = buffers.first()?;
                     Some(SegmentationImageComponentData {
-                        image: ImageInfo {
-                            buffer_cache_key: Hash64::hash(index.1),
-                            buffer: buffer.clone().into(),
-                            format: first_copied(formats.as_deref())?.0,
-                            kind: ImageKind::Segmentation,
-                        },
+                        image: ImageInfo::from_stored_blob(
+                            row_id,
+                            &SegmentationImage::descriptor_buffer(),
+                            buffer.clone().into(),
+                            first_copied(formats.as_deref())?.0,
+                            ImageKind::Segmentation,
+                        ),
                         opacity: first_copied(opacity).map(Into::into),
                     })
                 });

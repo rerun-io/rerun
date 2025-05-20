@@ -2,18 +2,17 @@ use itertools::Itertools as _;
 
 use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{EntityPath, TimeInt};
-use re_types::archetypes;
-use re_types::components::{AggregationPolicy, ClearIsRecursive, SeriesVisible};
 use re_types::{
-    components::{Color, Name, Scalar, StrokeWidth},
-    Archetype as _, Component as _,
+    Archetype as _,
+    archetypes::{self},
+    components::{AggregationPolicy, Color, Name, SeriesVisible, StrokeWidth},
 };
-use re_view::range_with_blueprint_resolved_data;
+use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewQuery, ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext, ViewQuery,
+    ViewStateExt as _, ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path,
 };
 
 use crate::series_query::{
@@ -26,11 +25,11 @@ use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`archetypes::SeriesLines`] archetypes.
 #[derive(Default, Debug)]
-pub struct SeriesLineSystem {
+pub struct SeriesLinesSystem {
     pub all_series: Vec<PlotSeries>,
 }
 
-impl IdentifiedViewSystem for SeriesLineSystem {
+impl IdentifiedViewSystem for SeriesLinesSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "SeriesLines".into()
     }
@@ -38,17 +37,14 @@ impl IdentifiedViewSystem for SeriesLineSystem {
 
 const DEFAULT_STROKE_WIDTH: f32 = 0.75;
 
-impl VisualizerSystem for SeriesLineSystem {
+impl VisualizerSystem for SeriesLinesSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-        query_info.queried.extend(
-            archetypes::SeriesLines::all_components()
-                .iter()
-                .map(|descr| descr.component_name),
-        );
+        query_info
+            .queried
+            .extend(archetypes::SeriesLines::all_components().iter().cloned());
 
-        query_info.indicators =
-            [archetypes::SeriesLines::descriptor_indicator().component_name].into();
+        query_info.indicators = [archetypes::SeriesLines::descriptor_indicator()].into();
 
         query_info
     }
@@ -74,19 +70,19 @@ impl VisualizerSystem for SeriesLineSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<Color> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<Color> for SeriesLinesSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
         auto_color_for_entity_path(ctx.target_entity_path)
     }
 }
 
-impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<StrokeWidth> for SeriesLinesSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> StrokeWidth {
         StrokeWidth(DEFAULT_STROKE_WIDTH.into())
     }
 }
 
-impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<Name> for SeriesLinesSystem {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> Name {
         let state = ctx.view_state.downcast_ref::<TimeSeriesViewState>();
 
@@ -107,15 +103,15 @@ impl TypedComponentFallbackProvider<Name> for SeriesLineSystem {
     }
 }
 
-impl TypedComponentFallbackProvider<SeriesVisible> for SeriesLineSystem {
+impl TypedComponentFallbackProvider<SeriesVisible> for SeriesLinesSystem {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> SeriesVisible {
         true.into()
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SeriesLineSystem => [Color, StrokeWidth, Name, SeriesVisible]);
+re_viewer_context::impl_component_fallback_provider!(SeriesLinesSystem => [Color, StrokeWidth, Name, SeriesVisible]);
 
-impl SeriesLineSystem {
+impl SeriesLinesSystem {
     fn load_scalars(&mut self, ctx: &ViewContext<'_>, query: &ViewQuery<'_>) {
         re_tracing::profile_function!();
 
@@ -201,18 +197,15 @@ impl SeriesLineSystem {
                 None,
                 &query,
                 data_result,
-                [
-                    Scalar::name(),
-                    Color::name(),
-                    StrokeWidth::name(),
-                    Name::name(),
-                    AggregationPolicy::name(),
-                    SeriesVisible::name(),
-                ],
+                archetypes::Scalars::all_components()
+                    .iter()
+                    .chain(archetypes::SeriesLines::all_components().iter()),
             );
 
             // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) = results.get_required_chunks(&Scalar::name()) else {
+            let Some(all_scalar_chunks) =
+                results.get_required_chunks(archetypes::Scalars::descriptor_scalars())
+            else {
                 return;
             };
 
@@ -241,22 +234,28 @@ impl SeriesLineSystem {
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
+                &archetypes::SeriesLines::descriptor_colors(),
             );
             collect_radius_ui(
                 &query,
                 &results,
                 &all_scalar_chunks,
                 &mut points_per_series,
-                StrokeWidth::name(),
+                &archetypes::SeriesLines::descriptor_widths(),
                 0.5,
             );
 
             // Now convert the `PlotPoints` into `Vec<PlotSeries>`
+            let aggregation_policy_descr = archetypes::SeriesLines::descriptor_aggregation_policy();
             let aggregator = results
-                .get_optional_chunks(&AggregationPolicy::name())
+                .get_optional_chunks(aggregation_policy_descr.clone())
                 .iter()
                 .find(|chunk| !chunk.is_empty())
-                .and_then(|chunk| chunk.component_mono::<AggregationPolicy>(0)?.ok())
+                .and_then(|chunk| {
+                    chunk
+                        .component_mono::<AggregationPolicy>(&aggregation_policy_descr, 0)?
+                        .ok()
+                })
                 // TODO(andreas): Relying on the default==placeholder here instead of going through a fallback provider.
                 //                This is fine, because we know there's no `TypedFallbackProvider`, but wrong if one were to be added.
                 .unwrap_or_default();
@@ -266,10 +265,12 @@ impl SeriesLineSystem {
             let all_chunks_sorted_and_not_overlapped =
                 all_scalar_chunks.iter().tuple_windows().all(|(lhs, rhs)| {
                     let lhs_time_max = lhs
+                        .chunk
                         .timelines()
                         .get(query.timeline())
                         .map_or(TimeInt::MAX, |time_column| time_column.time_range().max());
                     let rhs_time_min = rhs
+                        .chunk
                         .timelines()
                         .get(query.timeline())
                         .map_or(TimeInt::MIN, |time_column| time_column.time_range().min());
@@ -308,8 +309,19 @@ impl SeriesLineSystem {
                 }
             }
 
-            let series_visibility = collect_series_visibility(&query, &results, num_series);
-            let series_names = collect_series_name(self, &query_ctx, &results, num_series);
+            let series_visibility = collect_series_visibility(
+                &query,
+                &results,
+                num_series,
+                archetypes::SeriesLines::descriptor_visible_series(),
+            );
+            let series_names = collect_series_name(
+                self,
+                &query_ctx,
+                &results,
+                num_series,
+                &archetypes::SeriesLines::descriptor_names(),
+            );
 
             debug_assert_eq!(points_per_series.len(), series_names.len());
             for (instance, (points, label, visible)) in itertools::izip!(
@@ -354,35 +366,24 @@ fn collect_recursive_clears(
     let mut cleared_indices = Vec::new();
 
     let mut clear_entity_path = entity_path.clone();
+    let clear_descriptor = archetypes::Clear::descriptor_is_recursive();
+
     loop {
-        let results = ctx.recording_engine().cache().range(
-            query,
-            &clear_entity_path,
-            [ClearIsRecursive::name()],
-        );
+        let results =
+            ctx.recording_engine()
+                .cache()
+                .range(query, &clear_entity_path, [&clear_descriptor]);
 
-        let empty = Vec::new();
-        let chunks = results
-            .components
-            .get(&ClearIsRecursive::name())
-            .unwrap_or(&empty);
-
-        for chunk in chunks {
-            cleared_indices.extend(
-                itertools::izip!(
-                    chunk.iter_component_indices(query.timeline(), &ClearIsRecursive::name()),
-                    chunk
-                        .iter_component::<ClearIsRecursive>()
-                        .map(|is_recursive| {
-                            is_recursive.as_slice().first().is_some_and(|v| *v.0)
-                        })
-                )
-                .filter_map(|(index, is_recursive)| {
-                    let is_recursive = is_recursive || clear_entity_path == *entity_path;
-                    is_recursive.then_some(index)
+        cleared_indices.extend(
+            results
+                .iter_as(*query.timeline(), clear_descriptor.clone())
+                .slice::<bool>()
+                .filter_map(|(index, is_recursive_buffer)| {
+                    let is_recursive =
+                        !is_recursive_buffer.is_empty() && is_recursive_buffer.value(0);
+                    (is_recursive || clear_entity_path == *entity_path).then_some(index)
                 }),
-            );
-        }
+        );
 
         let Some(parent_entity_path) = clear_entity_path.parent() else {
             break;

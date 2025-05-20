@@ -2,16 +2,15 @@ use itertools::Itertools as _;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
+    ArrowString,
     archetypes::Points2D,
-    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels},
 };
 use re_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{
@@ -21,9 +20,8 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities,
-    utilities::{process_labels_2d, LabeledBatch},
-    SpatialViewVisualizerData,
+    SpatialViewVisualizerData, filter_visualizable_2d_entities,
+    utilities::{LabeledBatch, process_labels_2d},
 };
 
 // ---
@@ -210,14 +208,15 @@ impl VisualizerSystem for Points2DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_position_chunks) = results.get_required_chunks(&Position2D::name())
+                let Some(all_position_chunks) =
+                    results.get_required_chunks(Points2D::descriptor_positions())
                 else {
                     return Ok(());
                 };
 
                 let num_positions = all_position_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>(Position2D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
                     .map(|points| points.len())
                     .sum();
 
@@ -228,14 +227,14 @@ impl VisualizerSystem for Points2DVisualizer {
                 point_builder.reserve(num_positions)?;
 
                 let timeline = ctx.query.timeline();
-                let all_positions_indexed =
-                    iter_slices::<[f32; 2]>(&all_position_chunks, timeline, Position2D::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_positions_indexed = iter_slices::<[f32; 2]>(&all_position_chunks, timeline);
+                let all_colors = results.iter_as(timeline, Points2D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, Points2D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, Points2D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, Points2D::descriptor_class_ids());
+                let all_keypoint_ids =
+                    results.iter_as(timeline, Points2D::descriptor_keypoint_ids());
+                let all_show_labels = results.iter_as(timeline, Points2D::descriptor_show_labels());
 
                 let data = re_query::range_zip_1x6(
                     all_positions_indexed,
@@ -317,7 +316,11 @@ impl TypedComponentFallbackProvider<DrawOrder> for Points2DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Points2DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<Position2D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &Points2D::descriptor_positions(),
+            &Points2D::descriptor_labels(),
+        )
     }
 }
 

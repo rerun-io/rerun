@@ -1,12 +1,13 @@
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
     Arc,
+    atomic::{AtomicU64, Ordering},
 };
 
 use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
+    FileServer, RecommendedFileResolver,
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
     device_caps::{DeviceCaps, WgpuBackendType},
     error_handling::{ErrorTracker, WgpuErrorScope},
@@ -14,7 +15,6 @@ use crate::{
     renderer::Renderer,
     resource_managers::TextureManager2D,
     wgpu_resources::WgpuResourcePools,
-    FileServer, RecommendedFileResolver,
 };
 
 /// Frame idx used before starting the first frame.
@@ -595,19 +595,19 @@ fn log_adapter_info(info: &wgpu::AdapterInfo) {
 
     if cfg!(test) {
         // If we're testing then software rasterizers are just fine, preferred even!
-        re_log::debug!("wgpu adapter {human_readable_summary}");
+        re_log::debug_once!("wgpu adapter {human_readable_summary}");
     } else if is_software_rasterizer_with_known_crashes {
-        re_log::warn!(
+        re_log::warn_once!(
             "Bad software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues"
         );
-        re_log::info!("wgpu adapter {human_readable_summary}");
+        re_log::info_once!("wgpu adapter {human_readable_summary}");
     } else if info.device_type == wgpu::DeviceType::Cpu {
-        re_log::warn!(
+        re_log::warn_once!(
             "Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues"
         );
-        re_log::info!("wgpu adapter {human_readable_summary}");
+        re_log::info_once!("wgpu adapter {human_readable_summary}");
     } else {
-        re_log::debug!("wgpu adapter {human_readable_summary}");
+        re_log::debug_once!("wgpu adapter {human_readable_summary}");
     }
 }
 

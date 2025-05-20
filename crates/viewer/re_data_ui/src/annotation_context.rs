@@ -1,24 +1,27 @@
-use egui::{color_picker, Vec2};
+use egui::{Vec2, color_picker};
 use itertools::Itertools as _;
-use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
-use re_types::components::AnnotationContext;
-use re_types::datatypes::{
-    AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
+use re_types::{
+    Component as _, ComponentDescriptor, RowId,
+    components::{self, AnnotationContext},
+    datatypes::{
+        AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
+    },
 };
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::{auto_color_egui, UiLayout, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext, auto_color_egui};
 
 use super::DataUi;
 
-impl crate::EntityDataUi for re_types::components::ClassId {
+impl crate::EntityDataUi for components::ClassId {
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _cache_key: Option<Hash64>,
+        _component_descriptor: &ComponentDescriptor,
+        _row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -57,14 +60,15 @@ impl crate::EntityDataUi for re_types::components::ClassId {
     }
 }
 
-impl crate::EntityDataUi for re_types::components::KeypointId {
+impl crate::EntityDataUi for components::KeypointId {
     fn entity_data_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _cache_key: Option<Hash64>,
+        _component_descriptor: &ComponentDescriptor,
+        _row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -94,9 +98,23 @@ fn annotation_info(
 ) -> Option<AnnotationInfo> {
     // TODO(#3168): this needs to use the index of the keypoint to look up the correct
     // class_id. For now we use `latest_at_component_quiet` to avoid the warning spam.
+
+    // TODO(#6889): If there's several class ids we have no idea which one to use.
+    // This code uses the first one that shows up.
+    // We should search instead for a class id that is likely a sibling of the keypoint id.
+    let storage_engine = ctx.recording().storage_engine();
+    let possible_class_id_descriptors = storage_engine
+        .store()
+        .entity_component_descriptors_with_name(entity_path, components::ClassId::name());
+    let picked_class_id_descriptors = possible_class_id_descriptors.iter().next()?;
+
     let (_, class_id) = ctx
         .recording()
-        .latest_at_component_quiet::<re_types::components::ClassId>(entity_path, query)?;
+        .latest_at_component_quiet::<components::ClassId>(
+            entity_path,
+            query,
+            picked_class_id_descriptors,
+        )?;
 
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations.resolved_class_description(Some(class_id));

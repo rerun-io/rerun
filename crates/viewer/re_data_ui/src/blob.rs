@@ -1,18 +1,20 @@
 use std::sync::Arc;
 
-use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
-use re_types::components::{Blob, MediaType, VideoTimestamp};
-use re_ui::{
-    list_item::{self, PropertyContent},
-    UiExt as _,
+use re_types::{
+    ComponentDescriptor, RowId,
+    components::{Blob, MediaType, VideoTimestamp},
 };
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_ui::{
+    UiExt as _,
+    list_item::{self, PropertyContent},
+};
+use re_viewer_context::{StoredBlobCacheKey, UiLayout, ViewerContext};
 
 use crate::{
+    EntityDataUi,
     image::image_preview_ui,
     video::{show_decoded_frame_info, video_result_ui},
-    EntityDataUi,
 };
 
 impl EntityDataUi for Blob {
@@ -22,7 +24,8 @@ impl EntityDataUi for Blob {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        cache_key: Option<Hash64>,
+        component_descriptor: &ComponentDescriptor,
+        row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -44,7 +47,8 @@ impl EntityDataUi for Blob {
                     ui_layout,
                     query,
                     entity_path,
-                    cache_key,
+                    component_descriptor,
+                    row_id,
                     self,
                     media_type.as_ref(),
                     None,
@@ -88,7 +92,8 @@ impl EntityDataUi for Blob {
                     ui_layout,
                     query,
                     entity_path,
-                    cache_key,
+                    component_descriptor,
+                    row_id,
                     self,
                     media_type.as_ref(),
                     None,
@@ -105,7 +110,8 @@ pub fn blob_preview_and_save_ui(
     ui_layout: UiLayout,
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
-    blob_cache_key: Option<Hash64>,
+    blob_component_descriptor: &ComponentDescriptor,
+    blob_row_id: Option<RowId>,
     blob: &re_types::datatypes::Blob,
     media_type: Option<&MediaType>,
     video_timestamp: Option<VideoTimestamp>,
@@ -114,9 +120,13 @@ pub fn blob_preview_and_save_ui(
     let mut image = None;
     let mut video_result_for_frame_preview = None;
 
-    if let Some(blob_cache_key) = blob_cache_key {
+    if let Some(blob_row_id) = blob_row_id {
         if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
-            exif_ui(ui, blob_cache_key, blob);
+            exif_ui(
+                ui,
+                StoredBlobCacheKey::new(blob_row_id, blob_component_descriptor),
+                blob,
+            );
         }
 
         // Try to treat it as an image:
@@ -124,7 +134,7 @@ pub fn blob_preview_and_save_ui(
             .store_context
             .caches
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(blob_cache_key, blob, media_type)
+                c.entry(blob_row_id, blob_component_descriptor, blob, media_type)
             })
             .ok();
 
@@ -146,7 +156,8 @@ pub fn blob_preview_and_save_ui(
                         let debug_name = entity_path.to_string();
                         c.entry(
                             debug_name,
-                            blob_cache_key,
+                            blob_row_id,
+                            blob_component_descriptor,
                             blob,
                             media_type,
                             ctx.app_options().video_decoder_settings(),
@@ -216,13 +227,13 @@ pub fn blob_preview_and_save_ui(
 }
 
 /// Show EXIF data about the given blob (image), if possible.
-fn exif_ui(ui: &mut egui::Ui, key: Hash64, blob: &re_types::datatypes::Blob) {
+fn exif_ui(ui: &mut egui::Ui, key: StoredBlobCacheKey, blob: &re_types::datatypes::Blob) {
     let exif_result = ui.ctx().memory_mut(|mem| {
         // Cache EXIF parsing to avoid re-parsing every frame.
         // The parsing is really fast, so this is not really needed.
         let cache = mem
             .caches
-            .cache::<egui::cache::FramePublisher<Hash64, Arc<rexif::ExifResult>>>();
+            .cache::<egui::cache::FramePublisher<StoredBlobCacheKey, Arc<rexif::ExifResult>>>();
         cache.get(&key).cloned().unwrap_or_else(|| {
             re_tracing::profile_scope!("exif-parse");
             let (result, _warnings) = rexif::parse_buffer_quiet(blob);

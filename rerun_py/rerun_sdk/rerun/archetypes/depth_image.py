@@ -146,6 +146,7 @@ class DepthImage(DepthImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `-20.0`.
 
         """
 
@@ -237,6 +238,7 @@ class DepthImage(DepthImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `-20.0`.
 
         """
 
@@ -381,6 +383,7 @@ class DepthImage(DepthImageExt, Archetype):
     # An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    # Defaults to `-20.0`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -9,16 +9,17 @@ use arrow::{
     },
     buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBuffer},
 };
-use itertools::{izip, Either, Itertools as _};
+use itertools::{Either, Itertools as _, izip};
 use nohash_hasher::IntMap;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
-    ComponentDescriptor, ComponentName, DeserializationError, Loggable as _, SerializationError,
+    ArchetypeName, ComponentDescriptor, ComponentName, DeserializationError, Loggable as _,
+    SerializationError,
 };
 
 use crate::{ChunkId, RowId};
@@ -32,7 +33,7 @@ pub enum ChunkError {
     #[error("Detected malformed Chunk: {reason}")]
     Malformed { reason: String },
 
-    #[error(transparent)]
+    #[error("Arrow: {0}")]
     Arrow(#[from] arrow::error::ArrowError),
 
     #[error("{kind} index out of bounds: {index} (len={len})")]
@@ -102,10 +103,15 @@ impl ChunkComponents {
     }
 
     /// Whether any of the components in this chunk has the given name.
-    pub fn contains_component_name(&self, component_name: ComponentName) -> bool {
+    pub fn contains_component(&self, component_descr: &ComponentDescriptor) -> bool {
+        self.0.contains_key(component_descr)
+    }
+
+    /// Whether any of the components in this chunk is tagged with the given archetype name.
+    pub fn has_component_with_archetype_name(&self, archetype_name: ArchetypeName) -> bool {
         self.0
             .keys()
-            .any(|desc| desc.component_name == component_name)
+            .any(|desc| desc.archetype_name == Some(archetype_name))
     }
 }
 
@@ -213,21 +219,6 @@ impl PartialEq for Chunk {
             && *row_ids == other.row_ids
             && *timelines == other.timelines
             && *components == other.components
-    }
-}
-
-impl Chunk {
-    /// Returns any list-array that matches the given [`ComponentName`].
-    ///
-    /// This is undefined behavior if there are more than one component with that name.
-    //
-    // TODO(cmc): Kinda disgusting but it makes our lives easier during the interim, as long as we're
-    // in this weird halfway in-between state where we still have a bunch of things indexed by name only.
-    #[inline]
-    pub fn get_first_component(&self, component_name: ComponentName) -> Option<&ArrowListArray> {
-        self.components.iter().find_map(move |(descr, array)| {
-            (descr.component_name == component_name).then_some(array)
-        })
     }
 }
 
@@ -484,10 +475,12 @@ impl Chunk {
             self.num_events_cumulative_per_unique_time_unsorted(time_column)
         };
 
-        debug_assert!(counts
-            .iter()
-            .tuple_windows::<(_, _)>()
-            .all(|((time1, _), (time2, _))| time1 < time2));
+        debug_assert!(
+            counts
+                .iter()
+                .tuple_windows::<(_, _)>()
+                .all(|((time1, _), (time2, _))| time1 < time2)
+        );
 
         counts
     }
@@ -582,9 +575,12 @@ impl Chunk {
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     #[inline]
-    pub fn num_events_for_component(&self, component_name: ComponentName) -> Option<u64> {
+    pub fn num_events_for_component(
+        &self,
+        component_descriptor: &ComponentDescriptor,
+    ) -> Option<u64> {
         // Reminder: component columns are sparse, we must check validity bitmap.
-        self.get_first_component(component_name).map(|list_array| {
+        self.components.get(component_descriptor).map(|list_array| {
             list_array.nulls().map_or_else(
                 || list_array.len() as u64,
                 |validity| validity.len() as u64 - validity.null_count() as u64,
@@ -1171,9 +1167,9 @@ impl Chunk {
     #[inline]
     pub fn component_row_ids(
         &self,
-        component_name: &ComponentName,
-    ) -> impl Iterator<Item = RowId> + '_ {
-        let Some(list_array) = self.get_first_component(*component_name) else {
+        component_descriptor: &ComponentDescriptor,
+    ) -> impl Iterator<Item = RowId> + '_ + use<'_> {
+        let Some(list_array) = self.components.get(component_descriptor) else {
             return Either::Left(std::iter::empty());
         };
 
@@ -1243,16 +1239,6 @@ impl Chunk {
     #[inline]
     pub fn components(&self) -> &ChunkComponents {
         &self.components
-    }
-
-    /// Computes the maximum value for each and every timeline present across this entire chunk,
-    /// and returns the corresponding [`TimePoint`].
-    #[inline]
-    pub fn timepoint_max(&self) -> TimePoint {
-        self.timelines
-            .values()
-            .map(|info| (info.timeline, info.time_range.max()))
-            .collect()
     }
 }
 
@@ -1525,13 +1511,13 @@ impl Chunk {
 
             if list_array.len() != row_ids.len() {
                 return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
+                    reason: format!(
+                        "All component batches in a chunk must have the same number of rows, matching the number of row IDs. \
                              Found {} row IDs but {} rows for component batch {component_desc}",
-                            row_ids.len(),
-                            list_array.len(),
-                        ),
-                    });
+                        row_ids.len(),
+                        list_array.len(),
+                    ),
+                });
             }
 
             let validity_is_empty = list_array
@@ -1539,11 +1525,11 @@ impl Chunk {
                 .is_some_and(|validity| validity.is_empty());
             if !self.is_empty() && validity_is_empty {
                 return Err(ChunkError::Malformed {
-                        reason: format!(
-                            "All component batches in a chunk must contain at least one non-null entry.\
+                    reason: format!(
+                        "All component batches in a chunk must contain at least one non-null entry.\
                              Found a completely empty column for {component_desc}",
-                        ),
-                    });
+                    ),
+                });
             }
         }
 

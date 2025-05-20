@@ -1,16 +1,18 @@
+use std::fmt::Debug;
+
 use ahash::HashMap;
 use egui_tiles::TileId;
 
 use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
+use re_types::Loggable as _;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::blueprint::components::{
     ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
 };
 use re_types::components::Name;
-use re_types::Loggable as _;
-use re_types::{components::Visible, Archetype as _};
+use re_types::{Archetype as _, components::Visible};
 use re_viewer_context::{ContainerId, Contents, ContentsName, ViewId, ViewerContext};
 
 /// The native version of a [`re_types::blueprint::archetypes::ContainerBlueprint`].
@@ -77,15 +79,15 @@ impl ContainerBlueprint {
         // This is a required component. Note that when loading containers we crawl the subtree and so
         // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
         // is the marker that the have been cleared and not an error.
-        let container_kind = results.component_instance::<ContainerKind>(0)?;
+        let container_kind = results.component_mono::<ContainerKind>()?;
 
-        let display_name = results.component_instance::<Name>(0);
+        let display_name = results.component_mono::<Name>();
         let contents = results.component_batch::<IncludedContent>();
         let col_shares = results.component_batch::<ColumnShare>();
         let row_shares = results.component_batch::<RowShare>();
-        let active_tab = results.component_instance::<ActiveTab>(0);
-        let visible = results.component_instance::<Visible>(0);
-        let grid_columns = results.component_instance::<GridColumns>(0);
+        let active_tab = results.component_mono::<ActiveTab>();
+        let visible = results.component_mono::<Visible>();
+        let grid_columns = results.component_mono::<GridColumns>();
 
         // ----
 
@@ -199,7 +201,7 @@ impl ContainerBlueprint {
             ));
         }
 
-        ctx.save_blueprint_archetype(&id.as_entity_path(), &arch);
+        ctx.save_blueprint_archetype(id.as_entity_path(), &arch);
     }
 
     /// Creates a new [`ContainerBlueprint`] from the given [`egui_tiles::Container`].
@@ -318,10 +320,17 @@ impl ContainerBlueprint {
             match name {
                 Some(name) => {
                     let component = Name(name.into());
-                    ctx.save_blueprint_component(&self.entity_path(), &component);
+                    ctx.save_blueprint_component(
+                        self.entity_path(),
+                        &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+                        &component,
+                    );
                 }
                 None => {
-                    ctx.save_empty_blueprint_component::<Name>(&self.entity_path());
+                    ctx.clear_blueprint_component(
+                        self.entity_path(),
+                        blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+                    );
                 }
             }
         }
@@ -331,7 +340,11 @@ impl ContainerBlueprint {
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
             let component = Visible::from(visible);
-            ctx.save_blueprint_component(&self.entity_path(), &component);
+            ctx.save_blueprint_component(
+                self.entity_path(),
+                &blueprint_archetypes::ContainerBlueprint::descriptor_visible(),
+                &component,
+            );
         }
     }
 
@@ -340,9 +353,16 @@ impl ContainerBlueprint {
         if grid_columns != self.grid_columns {
             if let Some(grid_columns) = grid_columns {
                 let component = GridColumns(grid_columns.into());
-                ctx.save_blueprint_component(&self.entity_path(), &component);
+                ctx.save_blueprint_component(
+                    self.entity_path(),
+                    &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+                    &component,
+                );
             } else {
-                ctx.save_empty_blueprint_component::<GridColumns>(&self.entity_path());
+                ctx.clear_blueprint_component(
+                    self.entity_path(),
+                    blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+                );
             }
         }
     }
@@ -352,7 +372,7 @@ impl ContainerBlueprint {
         // We can't delete the entity, because we need to support undo.
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
         ctx.save_blueprint_archetype(
-            &self.entity_path(),
+            self.entity_path(),
             &re_types::archetypes::Clear::recursive(),
         );
     }

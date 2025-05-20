@@ -1,11 +1,10 @@
-use re_log_types::hash::Hash64;
 use re_types::{
+    Component as _,
     archetypes::EncodedImage,
     components::{Blob, DrawOrder, MediaType, Opacity},
     image::ImageKind,
-    Component as _,
 };
-use re_view::{diff_component_filter, HybridResults};
+use re_view::{HybridResults, diff_component_filter};
 use re_viewer_context::{
     DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageDecodeCache,
     MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider, ViewContext,
@@ -14,14 +13,14 @@ use re_viewer_context::{
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 
 pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -137,14 +136,15 @@ impl EncodedImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+        let Some(all_blob_chunks) = results.get_required_chunks(EncodedImage::descriptor_blob())
+        else {
             return;
         };
 
         let timeline = ctx.query.timeline();
-        let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline, Blob::name());
-        let all_media_types = results.iter_as(timeline, MediaType::name());
-        let all_opacities = results.iter_as(timeline, Opacity::name());
+        let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
+        let all_media_types = results.iter_as(timeline, EncodedImage::descriptor_media_type());
+        let all_opacities = results.iter_as(timeline, EncodedImage::descriptor_opacity());
 
         for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,
@@ -163,7 +163,12 @@ impl EncodedImageVisualizer {
                 .store_context
                 .caches
                 .entry(|c: &mut ImageDecodeCache| {
-                    c.entry(Hash64::hash(tensor_data_row_id), blob, media_type.as_ref())
+                    c.entry(
+                        tensor_data_row_id,
+                        &EncodedImage::descriptor_blob(),
+                        blob,
+                        media_type.as_ref(),
+                    )
                 });
 
             let image = match image {

@@ -7,8 +7,8 @@ use egui::NumExt as _;
 use itertools::Itertools as _;
 
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
-use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
+use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types_core::ComponentName;
@@ -19,11 +19,13 @@ use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
 
 /// Ui actions triggered by the dataframe UI to be handled by the calling code.
 pub(crate) enum HideColumnAction {
-    HideTimeColumn {
+    RowId,
+
+    Time {
         timeline_name: TimelineName,
     },
 
-    HideComponentColumn {
+    Component {
         entity_path: EntityPath,
         component_name: ComponentName,
     },
@@ -82,7 +84,7 @@ pub(crate) fn dataframe_ui(
 
     let num_sticky_cols = selected_columns
         .iter()
-        .take_while(|cd| matches!(cd, ColumnDescriptor::Time(_)))
+        .take_while(|cd| matches!(cd, ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_)))
         .count();
 
     egui::Frame::new().inner_margin(5.0).show(ui, |ui| {
@@ -168,11 +170,12 @@ impl RowsDisplayData {
         // find the time column
         let query_time_column_index = selected_columns
             .iter()
-            .find_position(|desc| match desc {
-                ColumnDescriptor::Time(time_column_desc) => {
+            .find_position(|desc| {
+                if let ColumnDescriptor::Time(time_column_desc) = desc {
                     time_column_desc.timeline_name() == *query_timeline
+                } else {
+                    false
                 }
-                ColumnDescriptor::Component(_) => false,
             })
             .map(|(pos, _)| pos);
 
@@ -284,23 +287,26 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
 
                     // if this column can actually be hidden, then that's the corresponding action
                     let hide_action = match column {
+                        ColumnDescriptor::RowId(_) => Some(HideColumnAction::RowId),
+
                         ColumnDescriptor::Time(desc) => (desc.timeline_name() != filtered_index)
-                            .then(|| HideColumnAction::HideTimeColumn {
+                            .then(|| HideColumnAction::Time {
                                 timeline_name: desc.timeline_name(),
                             }),
 
-                        ColumnDescriptor::Component(desc) => {
-                            Some(HideColumnAction::HideComponentColumn {
-                                entity_path: desc.entity_path.clone(),
-                                component_name: desc.component_name,
-                            })
-                        }
+                        ColumnDescriptor::Component(desc) => Some(HideColumnAction::Component {
+                            entity_path: desc.entity_path.clone(),
+                            component_name: desc.component_name,
+                        }),
                     };
 
                     let header_ui = |ui: &mut egui::Ui| {
-                        let text = egui::RichText::new(column.short_name()).strong();
+                        let text = egui::RichText::new(column.display_name()).strong();
 
                         let is_selected = match column {
+                            ColumnDescriptor::RowId(_) => {
+                                false // Can't select "RowId" as a concept
+                            }
                             ColumnDescriptor::Time(descr) => {
                                 &descr.timeline() == self.ctx.rec_cfg.time_ctrl.read().timeline()
                             }
@@ -315,6 +321,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
                         let response = ui.selectable_label(is_selected, text);
 
                         match column {
+                            ColumnDescriptor::RowId(_) => {}
                             ColumnDescriptor::Time(descr) => {
                                 if response.clicked() {
                                     self.ctx.command_sender().send_system(
@@ -576,7 +583,7 @@ fn line_ui(
         SubcellKind::Instance => {
             let cell_clicked = cell_with_hover_button_ui(
                 ui,
-                &re_ui::icons::COLLAPSE,
+                &re_ui::icons::ARROW_UP,
                 CellStyle::InstanceData,
                 data_content,
             );

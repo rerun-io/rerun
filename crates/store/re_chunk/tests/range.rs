@@ -3,8 +3,8 @@ use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::{
-    example_components::{MyColor, MyLabel, MyPoint},
     ResolvedTimeRange,
+    example_components::{MyColor, MyLabel, MyPoint},
 };
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 
@@ -447,7 +447,7 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let results = chunk.range(query, component_desc.component_name);
+    let results = chunk.range(query, &component_desc);
 
     eprintln!("Query: {component_desc} @ {query:?}");
     eprintln!("Data:\n{chunk}");

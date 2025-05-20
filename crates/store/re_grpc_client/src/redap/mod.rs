@@ -1,5 +1,8 @@
 use tokio_stream::{Stream, StreamExt as _};
 
+#[cfg(not(target_arch = "wasm32"))]
+use re_auth::{Jwt, client::AuthDecorator};
+
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -10,7 +13,7 @@ use re_protos::{
 };
 use re_uri::{DatasetDataUri, Origin};
 
-use crate::{spawn_future, StreamError, MAX_DECODING_MESSAGE_SIZE};
+use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, spawn_future};
 
 pub enum Command {
     SetLoopSelection {
@@ -127,7 +130,9 @@ pub async fn client(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub type RedapClient = FrontendServiceClient<tonic::transport::Channel>;
+pub type RedapClient = FrontendServiceClient<
+    tonic::service::interceptor::InterceptedService<tonic::transport::Channel, AuthDecorator>,
+>;
 // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
 // pub type RedapClient = FrontendServiceClient<
 //     tower_http::trace::Trace<
@@ -143,7 +148,30 @@ pub type RedapClient = FrontendServiceClient<tonic::transport::Channel>;
 pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
+    // Use the token from the env var if available, logging any error
+    //
+    // TODO(rerun-io/dataplatform#721): we should support configuring the token from
+    // the UI and/or API too
+    let maybe_token = std::env::var("REDAP_TOKEN")
+        .map_err(|err| match err {
+            std::env::VarError::NotPresent => {}
+            std::env::VarError::NotUnicode(..) => {
+                re_log::warn_once!("REDAP_TOKEN env var is malformed: {err}");
+            }
+        })
+        .and_then(|t| {
+            Jwt::try_from(t).map_err(|err| {
+                re_log::warn_once!(
+                    "REDAP_TOKEN env var is present, but the token is invalid: {err}"
+                );
+            })
+        })
+        .ok();
+
+    let auth = AuthDecorator::new(maybe_token);
+
     let middlewares = tower::ServiceBuilder::new()
+        .layer(tonic::service::interceptor::interceptor(auth))
         // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
         // .layer(redap_telemetry::new_grpc_tracing_layer())
         // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())

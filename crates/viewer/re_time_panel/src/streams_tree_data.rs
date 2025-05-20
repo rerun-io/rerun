@@ -1,13 +1,13 @@
 use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
+use re_types::ComponentDescriptor;
 use smallvec::SmallVec;
 
 use re_chunk_store::ChunkStore;
 use re_data_ui::sorted_component_list_for_ui;
 use re_entity_db::{EntityTree, InstancePath};
-use re_log_types::EntityPath;
-use re_types_core::ComponentName;
+use re_log_types::{ComponentPath, EntityPath};
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
 
@@ -61,17 +61,17 @@ impl StreamsTreeData {
     /// Visit the entire tree.
     ///
     /// Note that we ALSO visit components, despite them not being part of the data structures. This
-    /// is because _currently_, we rarely need to visit, but when we do, we need to components, and
+    /// is because _currently_, we rarely need to visit, but when we do, we need components, and
     /// having them in the structure would be too expensive for the cases where it's unnecessary
     /// (e.g., when the tree is collapsed).
     ///
-    /// The provided closure is called once for each entity with `None` as component name argument.
+    /// The provided closure is called once for each entity with `None` as component argument.
     /// Then, consistent with the display order, its children entities are visited, and then its
     /// components are visited.
     pub fn visit<B>(
         &self,
         entity_db: &re_entity_db::EntityDb,
-        mut visitor: impl FnMut(&EntityData, Option<ComponentName>) -> VisitorControlFlow<B>,
+        mut visitor: impl FnMut(EntityOrComponentData<'_>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
         let engine = entity_db.storage_engine();
         let store = engine.store();
@@ -214,16 +214,20 @@ impl EntityData {
     pub fn visit<B>(
         &self,
         store: &ChunkStore,
-        visitor: &mut impl FnMut(&Self, Option<ComponentName>) -> VisitorControlFlow<B>,
+        visitor: &mut impl FnMut(EntityOrComponentData<'_>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
-        if visitor(self, None).visit_children()? {
+        if visitor(EntityOrComponentData::Entity(self)).visit_children()? {
             for child in &self.children {
                 child.visit(store, visitor)?;
             }
 
-            for component_name in components_for_entity(store, &self.entity_path) {
+            for component_descriptor in components_for_entity(store, &self.entity_path) {
                 // these cannot have children
-                let _ = visitor(self, Some(component_name)).visit_children()?;
+                let _ = visitor(EntityOrComponentData::Component {
+                    entity_data: self,
+                    component_descriptor,
+                })
+                .visit_children()?;
             }
         }
 
@@ -234,10 +238,10 @@ impl EntityData {
         Item::InstancePath(InstancePath::entity_all(self.entity_path.clone()))
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> Option<bool> {
+    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
         collapse_scope
             .item(self.item())
-            .map(|collapse_id| collapse_id.is_open(ctx).unwrap_or(self.default_open))
+            .is_some_and(|collapse_id| collapse_id.is_open(ctx).unwrap_or(self.default_open))
     }
 }
 
@@ -245,10 +249,43 @@ impl EntityData {
 pub fn components_for_entity(
     store: &ChunkStore,
     entity_path: &EntityPath,
-) -> impl Iterator<Item = ComponentName> {
+) -> impl Iterator<Item = ComponentDescriptor> + use<> {
     if let Some(components) = store.all_components_for_entity(entity_path) {
         itertools::Either::Left(sorted_component_list_for_ui(components.iter()).into_iter())
     } else {
         itertools::Either::Right(std::iter::empty())
+    }
+}
+
+// ---
+
+#[derive(Debug)]
+pub enum EntityOrComponentData<'a> {
+    Entity(&'a EntityData),
+    Component {
+        entity_data: &'a EntityData,
+        component_descriptor: ComponentDescriptor,
+    },
+}
+
+impl EntityOrComponentData<'_> {
+    pub fn item(&self) -> Item {
+        match self {
+            Self::Entity(entity_data) => entity_data.item(),
+            Self::Component {
+                entity_data,
+                component_descriptor,
+            } => Item::ComponentPath(ComponentPath::new(
+                entity_data.entity_path.clone(),
+                component_descriptor.clone(),
+            )),
+        }
+    }
+
+    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+        match self {
+            Self::Entity(entity_data) => entity_data.is_open(ctx, collapse_scope),
+            Self::Component { .. } => true,
+        }
     }
 }

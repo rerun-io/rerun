@@ -1,6 +1,5 @@
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath, EntryId, TableId};
-use re_types::ComponentDescriptor;
 
 use crate::{ContainerId, Contents, ViewId};
 
@@ -109,11 +108,11 @@ impl std::str::FromStr for Item {
         let DataPath {
             entity_path,
             instance,
-            component_name,
+            component_descriptor,
         } = DataPath::from_str(s)?;
 
-        match (instance, component_name) {
-            (Some(instance), Some(_component_name)) => {
+        match (instance, component_descriptor) {
+            (Some(instance), Some(_component_descriptor)) => {
                 // TODO(emilk): support selecting a specific component of a specific instance.
                 Err(re_log_types::PathParseError::UnexpectedInstance(instance))
             }
@@ -121,9 +120,9 @@ impl std::str::FromStr for Item {
                 entity_path,
                 instance,
             ))),
-            (None, Some(component_name)) => Ok(Self::ComponentPath(ComponentPath {
+            (None, Some(component_descriptor)) => Ok(Self::ComponentPath(ComponentPath {
                 entity_path,
-                component_name,
+                component_descriptor,
             })),
             (None, None) => Ok(Self::InstancePath(InstancePath::entity_all(entity_path))),
         }
@@ -216,7 +215,7 @@ pub fn resolve_mono_instance_path(
         let engine = entity_db.storage_engine();
 
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
-        let Some(component_names) = engine
+        let Some(component_descrs) = engine
             .store()
             .all_components_on_timeline(&query.timeline(), &instance.entity_path)
         else {
@@ -224,15 +223,11 @@ pub fn resolve_mono_instance_path(
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
         };
 
-        for component_name in component_names {
+        for component_descr in &component_descrs {
             if let Some(array) = engine
                 .cache()
-                .latest_at(
-                    query,
-                    &instance.entity_path,
-                    [ComponentDescriptor::new(component_name)],
-                )
-                .component_batch_raw(&component_name)
+                .latest_at(query, &instance.entity_path, [component_descr])
+                .component_batch_raw(component_descr)
             {
                 if array.len() > 1 {
                     return instance.clone();

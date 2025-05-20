@@ -8,7 +8,7 @@ use anyhow::Context as _;
 use web_time::Instant;
 
 use re_renderer::{
-    device_caps::DeviceCaps, view_builder::ViewBuilder, RenderConfig, RenderContext,
+    RenderConfig, RenderContext, device_caps::DeviceCaps, view_builder::ViewBuilder,
 };
 
 use winit::{

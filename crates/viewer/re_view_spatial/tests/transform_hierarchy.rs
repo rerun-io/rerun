@@ -3,8 +3,8 @@ use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_view_spatial::SpatialView3D;
 use re_viewer_context::test_context::TestContext;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 #[test]
 pub fn test_transform_hierarchy() {

@@ -11,10 +11,10 @@ use std::io::Read as _;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
-use crate::codec;
-use crate::codec::file::decoder;
 use crate::FileHeader;
 use crate::OLD_RRD_HEADERS;
+use crate::codec;
+use crate::codec::file::decoder;
 use crate::{EncodingOptions, Serializer};
 
 // ----------------------------------------------------------------------------
@@ -37,7 +37,10 @@ fn warn_on_version_mismatch(encoded_version: [u8; 4]) -> Result<(), DecodeError>
         // Loading old files should be fine, and if it is not, the chunk migration in re_sorbet should already log a warning.
         Ok(())
     } else {
-        re_log::warn_once!("Found data stream with Rerun version {encoded_version} which is newer than the local Rerun version ({}). This file may contain data that is not compatible with this version of Rerun. Consider updating Rerun.", CrateVersion::LOCAL);
+        re_log::warn_once!(
+            "Found data stream with Rerun version {encoded_version} which is newer than the local Rerun version ({}). This file may contain data that is not compatible with this version of Rerun. Consider updating Rerun.",
+            CrateVersion::LOCAL
+        );
         Ok(())
     }
 }

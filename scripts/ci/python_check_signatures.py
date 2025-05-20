@@ -62,10 +62,13 @@ class APIDef:
         if not isinstance(other, APIDef):
             return NotImplemented
 
-        if self.name in ("__init__", "__iter__"):
-            # Ignore the signature of __init__ and __new__ methods
+        if self.name in ("__init__", "__iter__", "__len__"):
+            # pyo3 has a special way to handle these methods that makes it impossible to match everything.
             # TODO(#7779): Remove this special case once we have a better way to handle these methods
             return self.name == other.name and self.signature == other.signature
+        elif self.name in ("__getitem__"):
+            # TODO(#7779): It's somehow even worse for these.
+            return self.name == other.name
         else:
             return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 

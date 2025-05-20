@@ -21,9 +21,6 @@ You should see:
 * an image view with a 1D image
 * a bar chart
 
-Known bugs:
-* TODO(#6695): When hovering over a the tensor view, a thin, black, rounded cutout appears.
-
 Bonus actions:
 * use the ui to create a tensor/bar-chart with each of the entities no matter how it was logged
     * TODO(#5847): Right now tensors & bar charts can not be reinterpreted as 2D images.

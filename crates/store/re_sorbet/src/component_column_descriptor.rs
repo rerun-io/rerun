@@ -98,11 +98,13 @@ impl Ord for ComponentColumnDescriptor {
 
 impl std::fmt::Display for ComponentColumnDescriptor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let descriptor = self.component_descriptor();
+
         let Self {
             entity_path,
-            archetype_name,
-            archetype_field_name,
-            component_name,
+            archetype_name: _,
+            archetype_field_name: _,
+            component_name: _,
             store_datatype: _,
             is_static,
             is_indicator: _,
@@ -110,13 +112,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             is_semantically_empty: _,
         } = self;
 
-        let descriptor = ComponentDescriptor {
-            archetype_name: *archetype_name,
-            archetype_field_name: *archetype_field_name,
-            component_name: *component_name,
-        };
-
-        let s = format!("{entity_path}@{}", descriptor.short_name());
+        let s = format!("{entity_path}@{}", descriptor.display_name());
 
         if *is_static {
             f.write_fmt(format_args!("|{s}|"))
@@ -164,6 +160,14 @@ impl ComponentColumnDescriptor {
     pub fn component_path(&self) -> ComponentPath {
         ComponentPath {
             entity_path: self.entity_path.clone(),
+            component_descriptor: self.component_descriptor(),
+        }
+    }
+
+    pub fn component_descriptor(&self) -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: self.archetype_name,
+            archetype_field_name: self.archetype_field_name,
             component_name: self.component_name,
         }
     }
@@ -248,17 +252,26 @@ impl ComponentColumnDescriptor {
         self.store_datatype.clone()
     }
 
+    /// What we show in the UI
+    pub fn display_name(&self) -> String {
+        self.component_descriptor().display_name()
+    }
+
     pub fn column_name(&self, batch_type: BatchType) -> String {
         self.sanity_check();
 
         match batch_type {
             BatchType::Chunk => {
                 // All columns are of the same entity
-                self.component_name.short_name().to_owned()
+                self.component_descriptor().column_name()
             }
             BatchType::Dataframe => {
                 // Each column can be of a different entity
-                format!("{}:{}", self.entity_path, self.component_name.short_name())
+                format!(
+                    "{}:{}",
+                    self.entity_path,
+                    self.component_descriptor().column_name()
+                )
 
                 // NOTE: Uncomment this to expose fully-qualified names in the Dataframe APIs!
                 // I'm not doing that right now, to avoid breaking changes (and we need to talk about

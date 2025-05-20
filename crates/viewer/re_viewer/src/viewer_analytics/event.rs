@@ -1,8 +1,8 @@
 use crate::AppEnvironment;
 
 use re_analytics::{
-    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
     Config, Property,
+    event::{Id, Identify, OpenRecording, StoreInfo, ViewerRuntimeInformation, ViewerStarted},
 };
 
 pub fn identify(

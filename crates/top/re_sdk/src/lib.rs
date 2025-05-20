@@ -26,11 +26,11 @@ mod spawn;
 // -------------
 // Public items:
 
-pub use spawn::{spawn, SpawnError, SpawnOptions};
+pub use spawn::{SpawnError, SpawnOptions, spawn};
 
 pub use self::recording_stream::{
-    forced_sink_path, RecordingStream, RecordingStreamBuilder, RecordingStreamError,
-    RecordingStreamResult,
+    RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
+    forced_sink_path,
 };
 
 /// The default port of a Rerun gRPC /proxy server.
@@ -52,11 +52,11 @@ pub fn default_server_addr() -> std::net::SocketAddr {
 #[allow(clippy::unnecessary_wraps)]
 pub fn default_flush_timeout() -> Option<std::time::Duration> {
     // NOTE: This is part of the SDK and meant to be used where we accept `Option<std::time::Duration>` values.
-    Some(std::time::Duration::from_secs(2))
+    Some(std::time::Duration::from_secs(3))
 }
 
 pub use re_log_types::{
-    entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
+    ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
 };
 pub use re_memory::MemoryLimit;
 pub use re_types::archetypes::RecordingProperties;

@@ -8,13 +8,12 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreConfig, LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
 };
 use re_log_types::{
-    build_frame_nr,
+    EntityPath, TimeType, Timeline, build_frame_nr,
     example_components::{MyColor, MyIndex, MyPoint},
-    EntityPath, TimeType, Timeline,
 };
 use re_types::{
-    testing::{build_some_large_structs, LargeStruct},
-    ComponentDescriptor, ComponentNameSet,
+    ComponentDescriptor, ComponentDescriptorSet,
+    testing::{LargeStruct, build_some_large_structs},
 };
 use re_types_core::Component as _;
 
@@ -23,23 +22,23 @@ use re_types_core::Component as _;
 fn query_latest_array(
     store: &ChunkStore,
     entity_path: &EntityPath,
-    component_desc: &ComponentDescriptor,
+    component_descr: &ComponentDescriptor,
     query: &LatestAtQuery,
 ) -> Option<(TimeInt, RowId, ArrayRef)> {
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, component_desc.component_name)
+        .latest_at_relevant_chunks(query, entity_path, component_descr)
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at(query, component_desc.component_name)
+                .latest_at(query, component_descr)
                 .into_unit()
                 .and_then(|chunk| chunk.index(&query.timeline()).map(|index| (index, chunk)))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
-    unit.component_batch_raw(&component_desc.component_name)
+    unit.component_batch_raw(component_descr)
         .map(|array| (data_time, row_id, array))
 }
 
@@ -61,8 +60,7 @@ fn all_components() -> anyhow::Result<()> {
             let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
             let expected_component_names = expected.map(|expected| {
-                let expected: ComponentNameSet =
-                    expected.iter().map(|desc| desc.component_name).collect();
+                let expected: ComponentDescriptorSet = expected.iter().cloned().collect();
                 expected
             });
 
@@ -161,24 +159,32 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
     store.insert_chunk(&Arc::new(chunk))?;
 
     // entity1 is on both timelines
-    assert!(!store
-        .all_components_on_timeline(timeline1.name(), &entity_path1)
-        .unwrap()
-        .is_empty());
-    assert!(!store
-        .all_components_on_timeline(timeline2.name(), &entity_path1)
-        .unwrap()
-        .is_empty());
+    assert!(
+        !store
+            .all_components_on_timeline(timeline1.name(), &entity_path1)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        !store
+            .all_components_on_timeline(timeline2.name(), &entity_path1)
+            .unwrap()
+            .is_empty()
+    );
 
     // entity2 is only on timeline1
-    assert!(!store
-        .all_components_on_timeline(timeline1.name(), &entity_path2)
-        .unwrap()
-        .is_empty());
+    assert!(
+        !store
+            .all_components_on_timeline(timeline1.name(), &entity_path2)
+            .unwrap()
+            .is_empty()
+    );
 
-    assert!(store
-        .all_components_on_timeline(timeline2.name(), &entity_path2)
-        .is_none());
+    assert!(
+        store
+            .all_components_on_timeline(timeline2.name(), &entity_path2)
+            .is_none()
+    );
 
     Ok(())
 }
@@ -776,18 +782,17 @@ fn range() -> anyhow::Result<()> {
     #[allow(clippy::type_complexity)]
     let assert_range_components =
         |time_range: ResolvedTimeRange,
-         component_desc: ComponentDescriptor,
+         component_descr: ComponentDescriptor,
          row_ids_at_times: &[(TimeInt, RowId)]| {
             let timeline_frame_nr = TimelineName::new("frame_nr");
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let results =
-                store.range_relevant_chunks(&query, &entity_path, component_desc.component_name);
+            let results = store.range_relevant_chunks(&query, &entity_path, &component_descr);
 
-            eprintln!("================= {component_desc} @ {query:?} ===============");
+            eprintln!("================= {component_descr} @ {query:?} ===============");
             let mut results_processed = 0usize;
             for chunk in results {
-                let chunk = chunk.range(&query, component_desc.component_name);
+                let chunk = chunk.range(&query, &component_descr);
                 eprintln!("{chunk}");
                 for (data_time, row_id) in chunk.iter_indices(&timeline_frame_nr) {
                     let (expected_data_time, expected_row_id) = row_ids_at_times[results_processed];

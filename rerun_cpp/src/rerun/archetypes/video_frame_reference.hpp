@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
+#include "../components/draw_order.hpp"
 #include "../components/entity_path.hpp"
 #include "../components/video_timestamp.hpp"
 #include "../indicator_component.hpp"
@@ -130,6 +131,12 @@ namespace rerun::archetypes {
         /// keep the video reference active.
         std::optional<ComponentBatch> video_reference;
 
+        /// An optional floating point value that specifies the 2D drawing order.
+        ///
+        /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `-15.0`.
+        std::optional<ComponentBatch> draw_order;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.components.VideoFrameReferenceIndicator";
@@ -148,6 +155,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_video_reference = ComponentDescriptor(
             ArchetypeName, "video_reference",
             Loggable<rerun::components::EntityPath>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `draw_order` field.
+        static constexpr auto Descriptor_draw_order = ComponentDescriptor(
+            ArchetypeName, "draw_order",
+            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
         );
 
       public:
@@ -223,6 +235,28 @@ namespace rerun::archetypes {
             video_reference =
                 ComponentBatch::from_loggable(_video_reference, Descriptor_video_reference)
                     .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// An optional floating point value that specifies the 2D drawing order.
+        ///
+        /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `-15.0`.
+        VideoFrameReference with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `draw_order` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_draw_order` should
+        /// be used when logging a single row's worth of data.
+        VideoFrameReference with_many_draw_order(
+            const Collection<rerun::components::DrawOrder>& _draw_order
+        ) && {
+            draw_order =
+                ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
             return std::move(*this);
         }
 

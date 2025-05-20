@@ -5,10 +5,10 @@ use re_renderer::{
 };
 use re_types::components::VideoTimestamp;
 use re_ui::{
-    list_item::{self, PropertyContent},
     DesignTokens, UiExt as _,
+    list_item::{self, PropertyContent},
 };
-use re_video::{decode::FrameInfo, VideoData};
+use re_video::{VideoData, decode::FrameInfo};
 use re_viewer_context::UiLayout;
 
 pub fn video_result_ui(

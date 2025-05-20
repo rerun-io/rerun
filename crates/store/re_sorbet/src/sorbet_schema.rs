@@ -22,6 +22,9 @@ pub struct SorbetSchema {
     /// Which entity is this chunk for?
     pub entity_path: Option<EntityPath>,
 
+    /// The partition id that this chunk belongs to.
+    pub partition_id: Option<String>,
+
     /// The heap size of this batch in bytes, if known.
     pub heap_size_bytes: Option<u64>,
 }
@@ -50,12 +53,20 @@ impl SorbetSchema {
         ("rerun.entity_path".to_owned(), entity_path.to_string())
     }
 
+    pub fn partition_id_metadata(partition_id: impl AsRef<str>) -> (String, String) {
+        (
+            "rerun.partition_id".to_owned(),
+            partition_id.as_ref().to_owned(),
+        )
+    }
+
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
         let Self {
             columns: _,
             chunk_id,
             entity_path,
             heap_size_bytes,
+            partition_id,
         } = self;
 
         [
@@ -65,6 +76,7 @@ impl SorbetSchema {
             )),
             chunk_id.as_ref().map(Self::chunk_id_metadata),
             entity_path.as_ref().map(Self::entity_path_metadata),
+            partition_id.as_ref().map(Self::partition_id_metadata),
             heap_size_bytes.as_ref().map(|heap_size_bytes| {
                 (
                     "rerun.heap_size_bytes".to_owned(),
@@ -108,7 +120,7 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
 
         let chunk_id = if let Some(chunk_id_str) = metadata.get("rerun.id") {
             Some(chunk_id_str.parse().map_err(|err| {
-                SorbetError::custom(format!(
+                SorbetError::ChunkIdDeserializationError(format!(
                     "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
                 ))
             })?)
@@ -129,6 +141,8 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
             None
         };
 
+        let partition_id = metadata.get("rerun.partition_id").map(|s| s.to_owned());
+
         // Verify version
         if let Some(batch_version) = metadata.get(Self::METADATA_KEY_VERSION) {
             if batch_version != Self::METADATA_VERSION {
@@ -143,6 +157,7 @@ impl TryFrom<&ArrowSchema> for SorbetSchema {
             columns,
             chunk_id,
             entity_path,
+            partition_id,
             heap_size_bytes,
         })
     }

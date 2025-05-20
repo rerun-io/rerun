@@ -100,6 +100,7 @@ pub trait Component: Loggable {
     // * Users might still want to register Components with specific tags.
     // * In the future, `ComponentDescriptor`s will very likely cover more than Archetype-related tags
     //   (e.g. generics, metric units, etc).
+    // TODO(#6889): This method should be removed, or made dynamic.
     fn descriptor() -> ComponentDescriptor;
 
     /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.
@@ -111,9 +112,7 @@ pub trait Component: Loggable {
     /// `Self::name()` must exactly match the value returned by `Self::descriptor().component_name`,
     /// or undefined behavior ensues.
     //
-    // TODO(cmc): The only reason we keep this around is for convenience, and the only reason we need this
-    // convenience is because we're still in this weird half-way in-between state where some things
-    // are still indexed by name. Remove this entirely once we've ported everything to descriptors.
+    // TODO(#6889): This method should be removed.
     #[inline]
     fn name() -> ComponentName {
         Self::descriptor().component_name
@@ -122,9 +121,9 @@ pub trait Component: Loggable {
 
 // ---
 
-pub type UnorderedComponentNameSet = IntSet<ComponentName>;
+pub type UnorderedComponentDescriptorSet = IntSet<ComponentDescriptor>;
 
-pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
+pub type ComponentDescriptorSet = std::collections::BTreeSet<ComponentDescriptor>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.

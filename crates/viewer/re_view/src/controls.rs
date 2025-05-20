@@ -1,4 +1,4 @@
-use egui::{os::OperatingSystem, Modifiers};
+use egui::{Modifiers, os::OperatingSystem};
 
 /// Modifier to press for scroll to zoom.
 pub const ZOOM_SCROLL_MODIFIER: egui::Modifiers = egui::Modifiers::COMMAND;

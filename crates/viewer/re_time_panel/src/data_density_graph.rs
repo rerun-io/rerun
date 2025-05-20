@@ -5,16 +5,17 @@
 
 use std::sync::Arc;
 
-use egui::emath::Rangef;
-use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape};
+use egui::{Color32, NumExt as _, Rangef, Rect, Shape, Tooltip, epaint::Vertex, lerp, pos2, remap};
 
-use re_chunk_store::Chunk;
-use re_chunk_store::RangeQuery;
+use re_chunk_store::{Chunk, RangeQuery};
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, TimelineName};
+use re_ui::UiExt as _;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
-use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
-use crate::time_panel::TimePanelItem;
+use crate::{
+    recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber,
+    time_panel::TimePanelItem,
+};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -421,14 +422,16 @@ pub fn data_density_graph_ui(
             if ui.ctx().dragged_id().is_none() {
                 // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
                 //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-                egui::show_tooltip_at_pointer(
-                    ui.ctx(),
-                    ui.layer_id(),
+                Tooltip::new(
                     egui::Id::new("data_tooltip"),
-                    |ui| {
-                        show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-                    },
-                );
+                    ui.ctx().clone(),
+                    egui::PopupAnchor::Pointer,
+                    ui.layer_id(),
+                )
+                .gap(12.0)
+                .show(|ui| {
+                    show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
+                });
             }
         }
     }
@@ -460,16 +463,16 @@ pub fn build_density_graph<'a>(
         let store = engine.store();
         let query = RangeQuery::new(*timeline, visible_time_range);
 
-        if let Some(component_name) = item.component_name {
+        if let Some(component_descr) = item.component_descr.as_ref() {
             let mut total_num_events = 0;
             (
                 store
-                    .range_relevant_chunks(&query, &item.entity_path, component_name)
+                    .range_relevant_chunks(&query, &item.entity_path, component_descr)
                     .into_iter()
                     .filter_map(|chunk| {
                         let time_range = chunk.timelines().get(timeline)?.time_range();
                         chunk
-                            .num_events_for_component(component_name)
+                            .num_events_for_component(component_descr)
                             .map(|num_events| {
                                 total_num_events += num_events;
                                 (chunk, time_range, num_events)
@@ -628,11 +631,11 @@ fn show_row_ids_tooltip(
 
     let TimePanelItem {
         entity_path,
-        component_name,
+        component_descr,
     } = item;
 
-    if let Some(component_name) = component_name {
-        ComponentPath::new(entity_path.clone(), *component_name)
+    if let Some(component_descr) = component_descr.as_ref() {
+        ComponentPath::new(entity_path.clone(), component_descr.clone())
             .data_ui(ctx, ui, ui_layout, &query, db);
     } else {
         re_entity_db::InstancePath::entity_all(entity_path.clone())
@@ -732,11 +735,22 @@ impl<'a> DensityGraphBuilder<'a> {
 
 fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains_item(item);
-    if is_selected {
-        make_brighter(ui.visuals().widgets.active.fg_stroke.color)
-    } else {
-        //TODO(ab): tokenize that!
-        Color32::from_gray(225)
+
+    match ui.theme() {
+        egui::Theme::Dark => {
+            if is_selected {
+                make_brighter(ui.visuals().widgets.active.fg_stroke.color)
+            } else {
+                Color32::from_gray(225) //TODO(ab): tokenize
+            }
+        }
+        egui::Theme::Light => {
+            if is_selected {
+                make_darker(ui.visuals().widgets.active.fg_stroke.color)
+            } else {
+                Color32::from_gray(64) //TODO(ab): tokenize
+            }
+        }
     }
 }
 
@@ -746,5 +760,14 @@ fn make_brighter(color: Color32) -> Color32 {
         r.saturating_add(64),
         g.saturating_add(64),
         b.saturating_add(64),
+    )
+}
+
+fn make_darker(color: Color32) -> Color32 {
+    let [r, g, b, _] = color.to_array();
+    egui::Color32::from_rgb(
+        r.saturating_sub(64),
+        g.saturating_sub(64),
+        b.saturating_sub(64),
     )
 }

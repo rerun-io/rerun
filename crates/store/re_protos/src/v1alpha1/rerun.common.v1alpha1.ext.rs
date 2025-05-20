@@ -1,10 +1,10 @@
+use std::hash::Hasher;
 use std::sync::Arc;
 
+use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
+use crate::{TypeConversionError, invalid_field, missing_field};
 use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-use re_log_types::{external::re_types_core::ComponentDescriptor, TableId};
-
-use crate::{invalid_field, missing_field, TypeConversionError};
-
+use re_log_types::{TableId, external::re_types_core::ComponentDescriptor};
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
@@ -87,7 +87,7 @@ impl TryFrom<crate::common::v1alpha1::Tuid> for crate::common::v1alpha1::EntryId
 
 // --- PartitionId ---
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct PartitionId {
     pub id: String,
 }
@@ -711,7 +711,7 @@ pub struct ScanParameters {
 }
 
 impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
-    type Error = tonic::Status;
+    type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ScanParameters) -> Result<Self, Self::Error> {
         let order_by = if let Some(order_by) = value.order_by {
@@ -723,12 +723,7 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
             columns: value.columns,
             on_missing_columns: crate::common::v1alpha1::IfMissingBehavior::try_from(
                 value.on_missing_columns,
-            )
-            .map_err(|err| {
-                tonic::Status::invalid_argument(format!(
-                    "unknown enum variant for IfMissingBehavior: {err}"
-                ))
-            })?
+            )?
             .into(),
             filter: value.filter,
             limit_offset: value.limit_offset,
@@ -765,7 +760,7 @@ pub struct ScanParametersOrderClause {
 }
 
 impl TryFrom<crate::common::v1alpha1::ScanParametersOrderClause> for ScanParametersOrderClause {
-    type Error = tonic::Status;
+    type Error = TypeConversionError;
 
     fn try_from(
         value: crate::common::v1alpha1::ScanParametersOrderClause,
@@ -773,9 +768,10 @@ impl TryFrom<crate::common::v1alpha1::ScanParametersOrderClause> for ScanParamet
         Ok(Self {
             descending: value.descending,
             nulls_last: value.nulls_last,
-            column_name: value
-                .column_name
-                .ok_or(tonic::Status::invalid_argument("column_name is required"))?,
+            column_name: value.column_name.ok_or(missing_field!(
+                crate::common::v1alpha1::ScanParametersOrderClause,
+                "column_name"
+            ))?,
         })
     }
 }
@@ -890,7 +886,17 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     }
 }
 
-// --
+// ---
+
+impl Eq for TaskId {}
+
+impl std::hash::Hash for TaskId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.as_str().hash(state)
+    }
+}
+
+// ---
 
 #[cfg(test)]
 mod tests {

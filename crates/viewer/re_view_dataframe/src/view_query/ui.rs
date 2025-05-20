@@ -1,15 +1,20 @@
-use std::collections::{BTreeSet, HashSet};
-
-use re_chunk_store::{ColumnDescriptor, ColumnSelector};
+use crate::view_query::Query;
+use egui::PopupCloseBehavior;
+use egui::containers::menu::{MenuButton, MenuConfig};
+use re_chunk_store::ColumnDescriptor;
 use re_log_types::{
     EntityPath, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName, TimestampFormat,
 };
+use re_sorbet::ColumnSelector;
 use re_types::blueprint::components;
-use re_types_core::{ComponentName, ComponentNameSet};
-use re_ui::{list_item, TimeDragValue, UiExt as _};
+use re_types_core::ComponentName;
+use re_ui::{TimeDragValue, UiExt as _, list_item};
 use re_viewer_context::{ViewId, ViewSystemExecutionError, ViewerContext};
+use std::collections::{BTreeSet, HashSet};
 
-use crate::view_query::Query;
+// TODO(#6889): This should be a `ComponentDescriptorSet`, but we first need to figure out
+//              how to handle descriptors for dataframe view queries in general.
+type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
 
 // UI implementation
 impl Query {
@@ -236,7 +241,8 @@ impl Query {
             all_components
                 .iter()
                 .filter_map(|c| {
-                    c.indicator_component_archetype_short_name()
+                    c.component_name
+                        .indicator_component_archetype_short_name()
                         .and_then(|archetype_short_name| {
                             ctx.reflection()
                                 .archetype_reflection_from_short_name(&archetype_short_name)
@@ -247,13 +253,24 @@ impl Query {
                         .required_fields()
                         .map(|field| field.component_name)
                 })
-                .filter(|c| all_components.contains(c))
+                .filter(|c| {
+                    all_components
+                        .iter()
+                        // TODO(#6889): Should we filter by the component descriptor instead?
+                        .any(|descr| &descr.component_name == c)
+                })
                 .collect::<ComponentNameSet>()
         };
 
         // If the currently saved component, we auto-switch it to a reasonable one.
         let mut filter_component = filter_component
-            .and_then(|component| all_components.contains(&component).then_some(component))
+            .and_then(|component| {
+                all_components
+                    .iter()
+                    // TODO(#6889): Should we filter by the component descriptor instead?
+                    .any(|descr| descr.component_name == component)
+                    .then_some(component)
+            })
             .or_else(|| suggested_components().first().copied())
             .unwrap_or_else(|| ComponentName::from("-"));
 
@@ -282,9 +299,13 @@ impl Query {
                     egui::ComboBox::new("pov_component", "")
                         .selected_text(filter_component.short_name())
                         .show_ui(ui, |ui| {
-                            for component in all_components {
-                                let label = component.short_name();
-                                ui.selectable_value(&mut filter_component, component, label);
+                            for descr in all_components {
+                                let label = descr.display_name();
+                                ui.selectable_value(
+                                    &mut filter_component,
+                                    descr.component_name,
+                                    label,
+                                );
                             }
                         });
                 }),
@@ -360,6 +381,24 @@ impl Query {
 
             ui.add_space(12.0);
 
+            // TODO(#9921): add support for showing Row ID column
+            if false {
+                let mut show_row_id = view_columns
+                    .iter()
+                    .any(|d| matches!(d, ColumnDescriptor::RowId(_)));
+                if ui
+                    .re_checkbox(&mut show_row_id, "RowID")
+                    .on_disabled_hover_text("The query timeline must always be visible")
+                    .changed()
+                {
+                    if show_row_id {
+                        new_selected_columns.insert(ColumnSelector::RowId);
+                    } else {
+                        new_selected_columns.remove(&ColumnSelector::RowId);
+                    }
+                }
+            }
+
             //
             // Time columns
             //
@@ -387,7 +426,7 @@ impl Query {
 
                 ui.add_enabled_ui(is_enabled, |ui| {
                     if ui
-                        .re_checkbox(&mut is_visible, column.short_name())
+                        .re_checkbox(&mut is_visible, column.display_name())
                         .on_disabled_hover_text("The query timeline must always be visible")
                         .changed()
                     {
@@ -420,7 +459,7 @@ impl Query {
                 let mut is_visible = selected_columns.contains(&column_selector);
 
                 if ui
-                    .re_checkbox(&mut is_visible, column.short_name())
+                    .re_checkbox(&mut is_visible, column.display_name())
                     .changed()
                 {
                     if is_visible {
@@ -434,11 +473,16 @@ impl Query {
 
         ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Columns").value_fn(
             |ui, _| {
-                egui::menu::menu_button(ui, &visible_count_label, |ui| {
-                    egui::ScrollArea::vertical()
-                        .auto_shrink([false, false])
-                        .show(ui, modal_ui)
-                });
+                MenuButton::new(&visible_count_label)
+                    .config(
+                        MenuConfig::default()
+                            .close_behavior(PopupCloseBehavior::CloseOnClickOutside),
+                    )
+                    .ui(ui, |ui| {
+                        egui::ScrollArea::vertical()
+                            .auto_shrink([false, false])
+                            .show(ui, modal_ui)
+                    });
             },
         ));
 

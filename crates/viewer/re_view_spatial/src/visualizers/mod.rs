@@ -23,10 +23,11 @@ mod videos;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
-pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
+use re_types::{ComponentDescriptor, archetypes};
+pub use transform3d_arrows::{AxisLengthDetector, Transform3DArrowsVisualizer, add_axis_arrows};
 pub use utilities::{
-    entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
-    UiLabel, UiLabelStyle, UiLabelTarget,
+    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_iterator,
+    process_labels_3d, textured_rect_from_image,
 };
 
 /// Shows a loading animation in a spatial view.
@@ -50,9 +51,9 @@ use ahash::HashMap;
 use re_entity_db::EntityPath;
 use re_types::datatypes::{KeypointId, KeypointPair};
 use re_viewer_context::{
-    auto_color_egui, IdentifiedViewSystem as _, MaybeVisualizableEntities, ViewClassRegistryError,
+    IdentifiedViewSystem as _, MaybeVisualizableEntities, ViewClassRegistryError,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, VisualizableEntities,
-    VisualizableFilterContext, VisualizerCollection,
+    VisualizableFilterContext, VisualizerCollection, auto_color_egui,
 };
 
 use re_view::clamped_or_nothing;
@@ -116,18 +117,47 @@ pub fn register_3d_spatial_visualizers(
     Ok(())
 }
 
-/// List of all visualizers that read [`re_types::components::DrawOrder`].
+/// List of all visualizers that read [`re_types::components::DrawOrder`] and the exact draw order component descriptor they use.
 // TODO(jan, andreas): consider adding DrawOrder to video
-pub fn visualizers_processing_draw_order() -> impl Iterator<Item = ViewSystemIdentifier> {
+pub fn visualizers_processing_draw_order()
+-> impl Iterator<Item = (ViewSystemIdentifier, ComponentDescriptor)> {
     [
-        arrows2d::Arrows2DVisualizer::identifier(),
-        boxes2d::Boxes2DVisualizer::identifier(),
-        depth_images::DepthImageVisualizer::identifier(),
-        encoded_image::EncodedImageVisualizer::identifier(),
-        images::ImageVisualizer::identifier(),
-        lines2d::Lines2DVisualizer::identifier(),
-        points2d::Points2DVisualizer::identifier(),
-        segmentation_images::SegmentationImageVisualizer::identifier(),
+        (
+            arrows2d::Arrows2DVisualizer::identifier(),
+            archetypes::Arrows2D::descriptor_draw_order(),
+        ),
+        (
+            boxes2d::Boxes2DVisualizer::identifier(),
+            archetypes::Boxes2D::descriptor_draw_order(),
+        ),
+        (
+            depth_images::DepthImageVisualizer::identifier(),
+            archetypes::DepthImage::descriptor_draw_order(),
+        ),
+        (
+            encoded_image::EncodedImageVisualizer::identifier(),
+            archetypes::EncodedImage::descriptor_draw_order(),
+        ),
+        (
+            images::ImageVisualizer::identifier(),
+            archetypes::Image::descriptor_draw_order(),
+        ),
+        (
+            lines2d::Lines2DVisualizer::identifier(),
+            archetypes::LineStrips2D::descriptor_draw_order(),
+        ),
+        (
+            points2d::Points2DVisualizer::identifier(),
+            archetypes::Points2D::descriptor_draw_order(),
+        ),
+        (
+            segmentation_images::SegmentationImageVisualizer::identifier(),
+            archetypes::SegmentationImage::descriptor_draw_order(),
+        ),
+        (
+            videos::VideoFrameReferenceVisualizer::identifier(),
+            archetypes::VideoFrameReference::descriptor_draw_order(),
+        ),
     ]
     .into_iter()
 }

@@ -2,9 +2,9 @@ use glam::vec3;
 use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
+    Archetype as _,
     archetypes::Pinhole,
     components::{self},
-    Archetype as _,
 };
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
@@ -14,7 +14,7 @@ use re_viewer_context::{
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 use crate::{
     contexts::TransformTreeContext, resolution_of_image_at, space_camera_3d::SpaceCamera3D,
     ui::SpatialViewState,
@@ -245,26 +245,28 @@ impl VisualizerSystem for CamerasVisualizer {
                 None,
                 &time_query,
                 data_result,
-                Pinhole::all_components()
-                    .iter()
-                    .map(|desc| desc.component_name),
+                Pinhole::all_components().iter(),
                 query_shadowed_components,
             );
 
-            let Some(pinhole_projection) =
-                query_results.get_required_mono::<components::PinholeProjection>()
+            let Some(pinhole_projection) = query_results
+                .get_required_mono::<components::PinholeProjection>(
+                    &Pinhole::descriptor_image_from_camera(),
+                )
             else {
                 continue;
             };
 
             let resolution = query_results
-                .get_mono::<components::Resolution>()
+                .get_mono::<components::Resolution>(&Pinhole::descriptor_resolution())
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
             let camera_xyz = query_results
-                .get_mono::<components::ViewCoordinates>()
+                .get_mono::<components::ViewCoordinates>(&Pinhole::descriptor_camera_xyz())
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
             let image_plane_distance = query_results
-                .get_mono::<components::ImagePlaneDistance>()
+                .get_mono::<components::ImagePlaneDistance>(
+                    &Pinhole::descriptor_image_plane_distance(),
+                )
                 .unwrap_or_else(|| self.fallback_for(&query_ctx));
 
             let component_data = CameraComponentDataWithFallbacks {

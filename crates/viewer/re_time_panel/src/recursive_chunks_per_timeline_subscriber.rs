@@ -181,7 +181,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions, RowId};
     use re_log_types::{
-        example_components::MyPoint, ResolvedTimeRange, StoreId, TimeInt, Timeline, TimelineName,
+        ResolvedTimeRange, StoreId, TimeInt, Timeline, TimelineName, example_components::MyPoint,
     };
 
     use super::{EntityTimelineChunks, PathRecursiveChunksPerTimelineStoreSubscriber};
@@ -329,9 +329,13 @@ mod tests {
         );
 
         // No information arbitrary down the tree.
-        assert!(subs
-            .path_recursive_chunks_for_entity_and_timeline(&"/parent/child/grandchild".into(), &t1)
-            .is_none());
+        assert!(
+            subs.path_recursive_chunks_for_entity_and_timeline(
+                &"/parent/child/grandchild".into(),
+                &t1
+            )
+            .is_none()
+        );
 
         Some(())
     }

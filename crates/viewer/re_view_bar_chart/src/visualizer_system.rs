@@ -8,11 +8,11 @@ use re_types::{
     components::{self},
     datatypes,
 };
-use re_view::{diff_component_filter, DataResultQuery as _};
+use re_view::{DataResultQuery as _, diff_component_filter};
 use re_viewer_context::{
-    auto_color_for_entity_path, DataBasedVisualizabilityFilter, IdentifiedViewSystem, QueryContext,
+    DataBasedVisualizabilityFilter, IdentifiedViewSystem, QueryContext,
     TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem,
+    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -59,12 +59,14 @@ impl VisualizerSystem for BarChartVisualizerSystem {
             let results = data_result
                 .latest_at_with_blueprint_resolved_data::<BarChart>(ctx, &timeline_query);
 
-            let Some(tensor) = results.get_required_mono::<components::TensorData>() else {
+            let Some(tensor) =
+                results.get_required_mono::<components::TensorData>(&BarChart::descriptor_values())
+            else {
                 continue;
             };
 
             if tensor.is_vector() {
-                let color = results.get_mono_with_fallback();
+                let color = results.get_mono_with_fallback(&BarChart::descriptor_color());
                 self.charts
                     .insert(data_result.entity_path.clone(), (tensor.0.clone(), color));
             }

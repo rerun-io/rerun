@@ -2,7 +2,7 @@ use similar_asserts::assert_eq;
 
 use re_build_info::CrateVersion;
 use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-use re_log_encoding::{decoder::decode_bytes, encoder::encode_as_bytes, EncodingOptions};
+use re_log_encoding::{EncodingOptions, decoder::decode_bytes, encoder::encode_as_bytes};
 use re_log_types::{LogMsg, StoreId};
 use re_types::archetypes::Points3D;
 

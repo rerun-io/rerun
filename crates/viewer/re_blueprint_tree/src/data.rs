@@ -14,8 +14,8 @@ use itertools::Itertools as _;
 use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
-use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_log_types::EntityPath;
+use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
@@ -628,8 +628,8 @@ impl BlueprintTreeItem<'_> {
         }
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> Option<bool> {
-        collapse_scope.item(self.item()).map(|collapse_id| {
+    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+        collapse_scope.item(self.item()).is_some_and(|collapse_id| {
             collapse_id
                 .is_open(ctx)
                 .unwrap_or_else(|| self.default_open())
