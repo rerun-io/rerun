@@ -1,7 +1,8 @@
 use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 use crate::{
-    DesignTokens, Scale, UiExt as _,
+    DesignTokens, UiExt as _,
+    color_table::Scale,
     icon_text::{IconText, IconTextItem},
     icons,
 };

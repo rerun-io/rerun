@@ -24,7 +24,6 @@ use egui::Color32;
 use egui::NumExt as _;
 
 pub use self::{
-    color_table::{ColorTable, ColorToken, Hue, Scale},
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
     context_ext::ContextExt,

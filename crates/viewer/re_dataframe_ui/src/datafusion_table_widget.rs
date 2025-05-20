@@ -404,10 +404,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                 ui.add_space(-5.0);
                                 ui.small_icon(
                                     dir_icon,
-                                    Some(
-                                        ui.design_tokens()
-                                            .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
-                                    ),
+                                    Some(ui.design_tokens().table_sort_icon_color),
                                 );
                             }
 

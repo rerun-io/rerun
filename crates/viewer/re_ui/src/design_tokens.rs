@@ -1,12 +1,11 @@
 #![allow(clippy::unwrap_used)]
-#![allow(clippy::enum_glob_use)] // Nice to have for the color variants
 
 use anyhow::Context as _;
 use egui::{Color32, Theme};
 
 use crate::{
-    CUSTOM_WINDOW_DECORATIONS, Hue, Scale,
-    color_table::{ColorTable, ColorToken, Scale::*},
+    CUSTOM_WINDOW_DECORATIONS,
+    color_table::{ColorTable, ColorToken, Hue, Scale, Scale::*},
     format_with_decimals_in_range,
 };
 
@@ -86,6 +85,8 @@ pub struct DesignTokens {
     /// Color for table interaction noninteractive background stroke
     pub table_interaction_noninteractive_bg_stroke: Color32,
 
+    pub table_sort_icon_color: Color32,
+
     pub drag_pill_droppable_fill: Color32,
     pub drag_pill_droppable_stroke: Color32,
     pub drag_pill_nondroppable_fill: Color32,
@@ -160,6 +161,7 @@ impl DesignTokens {
             table_interaction_noninteractive_bg_stroke: get_color(
                 "table_interaction_noninteractive_bg_stroke",
             ),
+            table_sort_icon_color: get_color("table_sort_icon_color"),
 
             drag_pill_droppable_fill: get_color("drag_pill_droppable_fill"),
             drag_pill_droppable_stroke: get_color("drag_pill_droppable_stroke"),
@@ -210,7 +212,8 @@ impl DesignTokens {
     /// Get the [`Color32`] corresponding to the provided [`ColorToken`].
     // TODO: make private
     #[inline]
-    pub fn color(&self, token: ColorToken) -> Color32 {
+    #[deprecated]
+    fn color(&self, token: ColorToken) -> Color32 {
         self.color_table.get(token)
     }
 
@@ -626,10 +629,6 @@ impl DesignTokens {
     pub fn drop_target_container_stroke(&self) -> egui::Stroke {
         egui::Stroke::new(2.0, self.color(ColorToken::blue(S350)))
     }
-
-    pub fn text(&self, text: impl Into<String>, token: ColorToken) -> egui::RichText {
-        egui::RichText::new(text).color(self.color(token))
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -637,7 +636,7 @@ impl DesignTokens {
 /// Build the [`ColorTable`] based on the content of `design_token.json`
 fn load_color_table(json: &serde_json::Value) -> ColorTable {
     fn get_color_from_json(json: &serde_json::Value, global_path: &str) -> Color32 {
-        parse_color(global_path_value(json, global_path).as_str().unwrap())
+        Color32::from_hex(global_path_value(json, global_path).as_str().unwrap()).unwrap()
     }
 
     ColorTable::new(|color_token| {
@@ -757,32 +756,6 @@ struct Typography {
 
 fn parse_px(pixels: &str) -> f32 {
     pixels.strip_suffix("px").unwrap().parse().unwrap()
-}
-
-fn parse_color(color: &str) -> Color32 {
-    #![allow(clippy::identity_op)]
-
-    let color = color.strip_prefix('#').unwrap();
-    if color.len() == 6 {
-        // RGB
-        let color = u32::from_str_radix(color, 16).unwrap();
-        Color32::from_rgb(
-            ((color >> 16) & 0xff) as u8,
-            ((color >> 8) & 0xff) as u8,
-            ((color >> 0) & 0xff) as u8,
-        )
-    } else if color.len() == 8 {
-        // RGBA
-        let color = u32::from_str_radix(color, 16).unwrap();
-        Color32::from_rgba_unmultiplied(
-            ((color >> 24) & 0xff) as u8,
-            ((color >> 16) & 0xff) as u8,
-            ((color >> 8) & 0xff) as u8,
-            ((color >> 0) & 0xff) as u8,
-        )
-    } else {
-        panic!()
-    }
 }
 
 // ----------------------------------------------------------------------------

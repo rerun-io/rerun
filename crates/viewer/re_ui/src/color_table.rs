@@ -226,23 +226,8 @@ impl ColorTable {
     }
 
     #[inline]
-    pub fn green(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::green(shade))
-    }
-
-    #[inline]
-    pub fn red(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::red(shade))
-    }
-
-    #[inline]
     pub fn blue(&self, shade: Scale) -> egui::Color32 {
         self.get(ColorToken::blue(shade))
-    }
-
-    #[inline]
-    pub fn purple(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::purple(shade))
     }
 }
 
@@ -267,22 +252,7 @@ impl ColorToken {
     }
 
     #[inline]
-    pub fn green(shade: Scale) -> Self {
-        Self::new(Hue::Green, shade)
-    }
-
-    #[inline]
-    pub fn red(shade: Scale) -> Self {
-        Self::new(Hue::Red, shade)
-    }
-
-    #[inline]
     pub fn blue(shade: Scale) -> Self {
         Self::new(Hue::Blue, shade)
-    }
-
-    #[inline]
-    pub fn purple(shade: Scale) -> Self {
-        Self::new(Hue::Purple, shade)
     }
 }
