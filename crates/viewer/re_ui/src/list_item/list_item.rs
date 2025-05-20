@@ -160,7 +160,7 @@ impl ListVisuals {
                 } else if self.hovered {
                     design_tokens.color_table.gray(Scale::S600)
                 } else {
-                    design_tokens.label_button_icon_color()
+                    design_tokens.label_button_icon_color
                 }
             }
             egui::Theme::Light => {
@@ -171,7 +171,7 @@ impl ListVisuals {
                 } else if self.hovered {
                     design_tokens.color_table.gray(Scale::S400)
                 } else {
-                    design_tokens.label_button_icon_color()
+                    design_tokens.label_button_icon_color
                 }
             }
         }

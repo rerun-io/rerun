@@ -30,6 +30,12 @@
     },
     "trace_log_text_color": {
       "color": "{Gray.700}"
+    },
+    "label_button_icon_color": {
+      "color": "{Gray.500}"
+    },
+    "section_collapsing_header_color": {
+      "color": "{Gray.200}"
     }
   },
   "Global": {

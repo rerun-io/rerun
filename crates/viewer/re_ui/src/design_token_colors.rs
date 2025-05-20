@@ -16,23 +16,6 @@ impl DesignTokens {
         self.color_table.get(token)
     }
 
-    /// Color of an icon next to a label
-    pub fn label_button_icon_color(&self) -> Color32 {
-        match self.theme {
-            Theme::Dark => self.color_table.gray(S500),
-            Theme::Light => self.color_table.gray(S550),
-        }
-    }
-
-    /// The color for the background of [`crate::SectionCollapsingHeader`].
-    pub fn section_collapsing_header_color(&self) -> Color32 {
-        // same as visuals.widgets.inactive.bg_fill
-        match self.theme {
-            Theme::Dark => self.color(ColorToken::gray(S200)),
-            Theme::Light => self.color(ColorToken::gray(S900)),
-        }
-    }
-
     /// The color we use to mean "loop this selection"
     pub fn loop_selection_color(&self) -> Color32 {
         match self.theme {

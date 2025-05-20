@@ -37,6 +37,12 @@ pub struct DesignTokens {
     pub info_log_text_color: Color32,
     pub debug_log_text_color: Color32,
     pub trace_log_text_color: Color32,
+
+    /// Color of an icon next to a label
+    pub label_button_icon_color: Color32,
+
+    /// The color for the background of [`crate::SectionCollapsingHeader`].
+    pub section_collapsing_header_color: Color32,
 }
 
 impl DesignTokens {
@@ -57,15 +63,14 @@ impl DesignTokens {
 
         let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
-        let top_bar_color = get_aliased_color(&colors, &theme_json, "top_bar_color");
-        let tab_bar_color = get_aliased_color(&colors, &theme_json, "tab_bar_color");
-        let bottom_bar_color = get_aliased_color(&colors, &theme_json, "bottom_bar_color");
-        let bottom_bar_stroke_color =
-            get_aliased_color(&colors, &theme_json, "bottom_bar_stroke_color");
-        let shadow_gradient_dark_start =
-            get_aliased_color(&colors, &theme_json, "shadow_gradient_dark_start");
-        let native_frame_stroke_color =
-            get_aliased_color(&colors, &theme_json, "native_frame_stroke_color");
+        let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
+
+        let top_bar_color = get_color("top_bar_color");
+        let tab_bar_color = get_color("tab_bar_color");
+        let bottom_bar_color = get_color("bottom_bar_color");
+        let bottom_bar_stroke_color = get_color("bottom_bar_stroke_color");
+        let shadow_gradient_dark_start = get_color("shadow_gradient_dark_start");
+        let native_frame_stroke_color = get_color("native_frame_stroke_color");
 
         Self {
             theme,
@@ -82,11 +87,14 @@ impl DesignTokens {
             shadow_gradient_dark_start,
             tab_bar_color,
             native_frame_stroke: egui::Stroke::new(1.0, native_frame_stroke_color),
-            strong_fg_color: get_aliased_color(&colors, &theme_json, "strong_fg_color"),
+            strong_fg_color: get_color("strong_fg_color"),
 
-            info_log_text_color: get_aliased_color(&colors, &theme_json, "info_log_text_color"),
-            debug_log_text_color: get_aliased_color(&colors, &theme_json, "debug_log_text_color"),
-            trace_log_text_color: get_aliased_color(&colors, &theme_json, "trace_log_text_color"),
+            info_log_text_color: get_color("info_log_text_color"),
+            debug_log_text_color: get_color("debug_log_text_color"),
+            trace_log_text_color: get_color("trace_log_text_color"),
+
+            label_button_icon_color: get_color("label_button_icon_color"),
+            section_collapsing_header_color: get_color("section_collapsing_header_color"),
 
             color_table: colors,
         }
