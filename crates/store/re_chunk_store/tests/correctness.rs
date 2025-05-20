@@ -10,6 +10,7 @@ use re_log_types::{
     Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
     build_log_time,
 };
+use re_types::ComponentDescriptor;
 use re_types_core::Component as _;
 
 // ---
@@ -18,21 +19,22 @@ fn query_latest_component<C: re_types_core::Component>(
     store: &ChunkStore,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
+    component_descr: &ComponentDescriptor,
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(query, entity_path, &C::descriptor())
+        .latest_at_relevant_chunks(query, entity_path, component_descr)
         .into_iter()
         .filter_map(|chunk| {
             chunk
-                .latest_at(query, &C::descriptor())
+                .latest_at(query, component_descr)
                 .into_unit()
                 .and_then(|unit| unit.index(&query.timeline()).map(|index| (index, unit)))
         })
         .max_by_key(|(index, _unit)| *index)?;
 
-    unit.component_mono(&C::descriptor())?
+    unit.component_mono(component_descr)?
         .ok()
         .map(|values| (data_time, row_id, values))
 }
@@ -79,8 +81,13 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &store,
+                &entity_path,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
             similar_asserts::assert_eq!(point2, got_point);
         }
     }
@@ -147,8 +154,13 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &store,
+                &entity_path,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
             similar_asserts::assert_eq!(point1, got_point);
         }
     }
@@ -188,8 +200,13 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(TimelineName::new("doesnt_matter"), TimeInt::MAX);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &store,
+                &entity_path,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
             similar_asserts::assert_eq!(point1, got_point);
         }
     }
@@ -227,8 +244,13 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &store,
+                &entity_path,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
             similar_asserts::assert_eq!(point1, got_point);
         }
     }
