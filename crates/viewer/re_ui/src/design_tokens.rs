@@ -33,6 +33,7 @@ pub struct DesignTokens {
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
     pub native_frame_stroke: egui::Stroke,
+    pub strong_fg_color: Color32,
 }
 
 impl DesignTokens {
@@ -62,10 +63,12 @@ impl DesignTokens {
             get_aliased_color(&colors, &theme_json, "{Alias.shadow_gradient_dark_start}");
         let native_frame_stroke_color =
             get_aliased_color(&colors, &theme_json, "{Alias.native_frame_stroke_color}");
+        let strong_fg_color = get_aliased_color(&colors, &theme_json, "{Alias.strong_fg_color}");
 
         Self {
             theme,
             typography,
+            color_table: colors,
             top_bar_color,
             bottom_bar_color,
             bottom_bar_stroke: egui::Stroke::new(1.0, bottom_bar_stroke_color),
@@ -78,7 +81,7 @@ impl DesignTokens {
             shadow_gradient_dark_start,
             tab_bar_color,
             native_frame_stroke: egui::Stroke::new(1.0, native_frame_stroke_color),
-            color_table: colors,
+            strong_fg_color,
         }
     }
 
@@ -571,7 +574,7 @@ fn try_get_alias_color(
         .strip_suffix('}')
         .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
     let (hue, scale) = color
-        .split_once(".")
+        .split_once('.')
         .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
     let hue: Hue = hue.parse()?;
     let scale: Scale = scale.parse()?;

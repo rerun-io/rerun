@@ -18,6 +18,9 @@
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 10
+    },
+    "strong_fg_color": {
+      "color": "{Gray.0}"
     }
   },
   "Global": {

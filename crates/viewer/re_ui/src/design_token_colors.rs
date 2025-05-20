@@ -15,13 +15,6 @@ impl DesignTokens {
         self.color_table.get(token)
     }
 
-    pub fn strong_fg_color(&self) -> Color32 {
-        match self.theme {
-            Theme::Dark => Color32::WHITE,
-            Theme::Light => Color32::BLACK,
-        }
-    }
-
     pub fn info_log_text_color(&self) -> Color32 {
         match self.theme {
             Theme::Dark => Color32::LIGHT_GREEN,
