@@ -89,7 +89,7 @@ Dataflow:
 
 Reference:
 * [SDK operating modes: `connect_grpc`](../reference/sdk/operating-modes.md#connect_grpc)
-* [🐍 Python `connect_grpc`](https://ref.rerun.io/docs/python/latest/common/initialization_functions/#rerun.connect_grpc)
+* [🐍 Python `connect_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect_grpc)
 * [🦀 Rust `connect_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect_grpc)
 * [🌊 C++ `connect_grpc`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#aef3377ffaa2441b906d2bac94dd8fc64)
 
