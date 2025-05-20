@@ -26,6 +26,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Capsules in other orientations may be produced by applying a rotation to the entity or
 /// instances.
 ///
+/// If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
+/// Orienting and placing capsules forms a separate transform that is applied prior to [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] and [`archetypes::Transform3D`][crate::archetypes::Transform3D].
+///
 /// ## Example
 ///
 /// ### Batch of capsules
@@ -86,19 +89,16 @@ pub struct Capsules3D {
     /// Optional translations of the capsules.
     ///
     /// If not specified, one end of each capsule will be at (0, 0, 0).
-    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub translations: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the capsules.
@@ -591,7 +591,6 @@ impl Capsules3D {
     /// Optional translations of the capsules.
     ///
     /// If not specified, one end of each capsule will be at (0, 0, 0).
-    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_translations(
         mut self,
@@ -604,7 +603,6 @@ impl Capsules3D {
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_rotation_axis_angles(
         mut self,
@@ -622,7 +620,6 @@ impl Capsules3D {
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_quaternions(
         mut self,

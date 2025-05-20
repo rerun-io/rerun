@@ -8,9 +8,8 @@ namespace rerun.archetypes;
 /// (e.g. a bounding sphere).
 /// For points whose radii are for the sake of visualization, use [archetypes.Points3D] instead.
 ///
-/// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
-/// Some of its component are repeated here for convenience.
-/// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+/// If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
+/// Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
 ///
 /// \example archetypes/ellipsoids3d_simple title="Covariance ellipsoid" image="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png"
 table Ellipsoids3D (
@@ -33,19 +32,16 @@ table Ellipsoids3D (
   /// Optional center positions of the ellipsoids.
   ///
   /// If not specified, the centers will be at (0, 0, 0).
-  /// Note that this uses a [components.PoseTranslation3D] which is also used by [archetypes.InstancePoses3D].
   centers: [rerun.components.PoseTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Rotations via axis + angle.
   ///
   /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-  /// Note that this uses a [components.PoseRotationAxisAngle] which is also used by [archetypes.InstancePoses3D].
   rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
 
   /// Rotations via quaternion.
   ///
   /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-  /// Note that this uses a [components.PoseRotationQuat] which is also used by [archetypes.InstancePoses3D].
   quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
 
   /// Optional colors for the ellipsoids.
