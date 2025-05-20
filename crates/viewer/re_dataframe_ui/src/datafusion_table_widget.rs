@@ -15,47 +15,80 @@ use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
 use crate::DisplayRecordBatch;
 use crate::datafusion_adapter::DataFusionAdapter;
-use crate::table_blueprint::{PartitionLinksSpec, SortBy, SortDirection, TableBlueprint};
+use crate::table_blueprint::{
+    ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+};
 use crate::table_utils::{
     CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
 };
 
+//TODO docstring
+struct Column<'a> {
+    id: egui::Id,
+    desc: ColumnDescriptorRef<'a>,
+    blueprint: ColumnBlueprint,
+}
+
+impl Column<'_> {
+    fn display_name(&self) -> String {
+        self.blueprint
+            .name
+            .clone()
+            .unwrap_or_else(|| self.desc.column_name(BatchType::Dataframe))
+    }
+}
+
 /// Keep track of the columns in a sorbet batch, indexed by id.
-//TODO(ab): merge this into `TableConfig` when table config is no longer used elsewhere.
 struct Columns<'a> {
-    /// Column index and descriptor from id
-    inner: IntMap<egui::Id, (usize, ColumnDescriptorRef<'a>)>,
+    columns: Vec<Column<'a>>,
+
+    column_from_index: IntMap<egui::Id, usize>,
 }
 
 impl<'a> Columns<'a> {
-    fn from(sorbet_schema: &'a SorbetSchema) -> Self {
-        let inner = sorbet_schema
+    fn from(sorbet_schema: &'a SorbetSchema, column_blueprint_fn: &ColumnBlueprintFn<'_>) -> Self {
+        let (columns, column_from_index) = sorbet_schema
             .columns
             .iter()
             .enumerate()
-            .map(|(index, desc)| (egui::Id::new(desc), (index, desc.into())))
-            .collect::<IntMap<_, _>>();
+            .map(|(index, desc)| {
+                let id = egui::Id::new(desc);
+                let desc = desc.into();
+                let blueprint = column_blueprint_fn(&desc);
 
-        Self { inner }
+                let column = Column {
+                    id,
+                    desc,
+                    blueprint,
+                };
+
+                (column, (id, index))
+            })
+            .unzip();
+
+        Self {
+            columns,
+            column_from_index,
+        }
     }
 }
 
 impl Columns<'_> {
-    fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
-        id.and_then(|id| self.inner.get(&id).map(|(index, _)| *index))
+    fn iter(&self) -> impl Iterator<Item = &Column<'_>> {
+        self.columns.iter()
     }
 
-    fn index_and_descriptor_from_id(
-        &self,
-        id: Option<egui::Id>,
-    ) -> Option<(usize, &ColumnDescriptorRef<'_>)> {
-        id.and_then(|id| self.inner.get(&id).map(|(index, desc)| (*index, desc)))
+    fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
+        id.and_then(|id| self.column_from_index.get(&id).copied())
+    }
+
+    fn index_and_column_from_id(&self, id: Option<egui::Id>) -> Option<(usize, &Column<'_>)> {
+        id.and_then(|id| self.column_from_index.get(&id).copied())
+            .and_then(|index| self.columns.get(index).map(|column| (index, column)))
     }
 }
 
-type ColumnNameFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
-
-type ColumnVisibilityFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> bool + 'a>>;
+type ColumnBlueprintFn<'a> = Box<dyn Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a>;
 
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
@@ -68,13 +101,8 @@ pub struct DataFusionTableWidget<'a> {
     /// If provided and if `title` is set, add a button next to the title.
     title_button: Option<Box<dyn ItemButton + 'a>>,
 
-    /// Closure used to determine the display name of the column.
-    ///
-    /// Defaults to using [`ColumnDescriptorRef::column_name`].
-    column_name_fn: ColumnNameFn<'a>,
-
-    /// Closure used to determine the default visibility of the column
-    default_column_visibility_fn: ColumnVisibilityFn<'a>,
+    /// User-provided closure to provide column blueprint.
+    column_blueprint_fn: ColumnBlueprintFn<'a>,
 
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
@@ -100,8 +128,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             title: None,
             title_button: None,
-            column_name_fn: None,
-            default_column_visibility_fn: None,
+            column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
         }
     }
@@ -118,22 +145,11 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn column_name(
+    pub fn column_blueprint(
         mut self,
-        column_name_fn: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'a,
+        column_blueprint_fn: impl Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a,
     ) -> Self {
-        self.column_name_fn = Some(Box::new(column_name_fn));
-
-        self
-    }
-
-    // TODO(ab): this should best be expressed as part of the `TableBlueprint`, but we need better
-    // column selector first.
-    pub fn default_column_visibility(
-        mut self,
-        column_visibility_fn: impl Fn(&ColumnDescriptorRef<'_>) -> bool + 'a,
-    ) -> Self {
-        self.default_column_visibility_fn = Some(Box::new(column_visibility_fn));
+        self.column_blueprint_fn = Box::new(column_blueprint_fn);
 
         self
     }
@@ -166,8 +182,7 @@ impl<'a> DataFusionTableWidget<'a> {
             table_ref,
             title,
             title_button,
-            column_name_fn,
-            default_column_visibility_fn,
+            column_blueprint_fn,
             initial_blueprint,
         } = self;
 
@@ -245,7 +260,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|record_batch| record_batch.num_rows() as u64)
             .sum();
 
-        let columns = Columns::from(sorbet_schema);
+        let columns = Columns::from(sorbet_schema, &column_blueprint_fn);
 
         let display_record_batches = sorbet_batches
             .iter()
@@ -253,7 +268,8 @@ impl<'a> DataFusionTableWidget<'a> {
                 DisplayRecordBatch::try_new(
                     sorbet_batch
                         .all_columns_ref()
-                        .map(|(desc, array)| (desc, array.clone())),
+                        .zip(columns.iter())
+                        .map(|((desc, array), column)| (desc, &column.blueprint, array.clone())),
                 )
             })
             .collect::<Result<Vec<_>, _>>();
@@ -270,20 +286,12 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
-            sorbet_schema.columns.iter_ref().map(|c| {
-                let name = if let Some(column_name_fn) = &column_name_fn {
-                    column_name_fn(&c)
-                } else {
-                    c.column_name(BatchType::Dataframe)
-                };
-
-                let visible = if let Some(column_visibility_fn) = &default_column_visibility_fn {
-                    column_visibility_fn(&c)
-                } else {
-                    true
-                };
-
-                ColumnConfig::new_with_visible(Id::new(c), name, visible)
+            columns.iter().map(|column| {
+                ColumnConfig::new_with_visible(
+                    column.id,
+                    column.display_name(),
+                    column.blueprint.default_visibility,
+                )
             }),
         );
 
@@ -300,7 +308,6 @@ impl<'a> DataFusionTableWidget<'a> {
             fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
-            column_name_fn: &column_name_fn,
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
@@ -368,7 +375,6 @@ struct DataFusionTableDelegate<'a> {
     fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
-    column_name_fn: &'a ColumnNameFn<'a>,
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
@@ -380,16 +386,12 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
-        if let Some((index, desc)) = self.columns.index_and_descriptor_from_id(id) {
-            let column_name = self.fields[index].name();
-            let name = if let Some(renamer) = self.column_name_fn {
-                renamer(desc)
-            } else {
-                desc.column_name(BatchType::Dataframe)
-            };
+        if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
+            let column_dataframe_name = self.fields[index].name();
+            let column_display_name = column.display_name();
 
             let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
-                (sort_by.column.as_str() == column_name).then_some(&sort_by.direction)
+                (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
             });
 
             header_ui(ui, |ui| {
@@ -397,7 +399,11 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                     .show(
                         ui,
                         |ui| {
-                            let response = ui.label(egui::RichText::new(name).strong().monospace());
+                            let response = ui.label(
+                                egui::RichText::new(column_display_name)
+                                    .strong()
+                                    .monospace(),
+                            );
 
                             if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
                             {
@@ -430,7 +436,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                         .clicked()
                                     {
                                         self.new_blueprint.sort_by = Some(SortBy {
-                                            column: column_name.to_owned(),
+                                            column: column_dataframe_name.to_owned(),
                                             direction: sort_direction,
                                         });
                                         ui.close();
@@ -443,7 +449,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             })
             .inner
             .on_hover_ui(|ui| {
-                column_descriptor_ui(ui, desc);
+                column_descriptor_ui(ui, &column.desc);
             });
         }
     }
