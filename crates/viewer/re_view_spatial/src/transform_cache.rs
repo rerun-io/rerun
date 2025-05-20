@@ -1010,7 +1010,7 @@ fn query_and_resolve_instance_from_pose_for_achetype_name(
         query,
         entity_path,
         [
-            &descriptor_translations,
+            descriptor_translations,
             &descriptor_rotation_axis_angles,
             &descriptor_quaternions,
             &descriptor_scales,

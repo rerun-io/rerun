@@ -389,13 +389,13 @@ fn compute_reference_from_instances(
     instance_from_poses: &[glam::Affine3A],
 ) -> SmallVec1<[glam::Affine3A; 1]> {
     let Ok(mut reference_from_poses) =
-        SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(&instance_from_poses)
+        SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(instance_from_poses)
     else {
         return SmallVec1::new(reference_from_entity);
     };
 
     // Until now `reference_from_poses` is actually `reference_from_entity`.
-    for reference_from_pose in reference_from_poses.iter_mut() {
+    for reference_from_pose in &mut reference_from_poses {
         let entity_from_pose = *reference_from_pose;
         *reference_from_pose = reference_from_entity * entity_from_pose;
     }
@@ -424,7 +424,7 @@ fn compute_reference_from_archetype(
                 .map(|(archetype, poses)| {
                     (
                         *archetype,
-                        compute_reference_from_instances(reference_from_entity, &poses),
+                        compute_reference_from_instances(reference_from_entity, poses),
                     )
                 })
                 .collect()
