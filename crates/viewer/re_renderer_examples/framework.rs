@@ -285,6 +285,7 @@ impl<E: Example + 'static> Application<E> {
                         .map(|d| d.command_buffer)
                         .chain(std::iter::once(composite_cmd_encoder.finish())),
                 );
+                self.window.pre_present_notify();
                 frame.present();
 
                 // Note that this measures time spent on CPU, not GPU
