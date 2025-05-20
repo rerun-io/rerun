@@ -57,6 +57,10 @@
       "color": "{Blue.500}"
     },
 
+    "panel_bg_color": {
+      "color": "{Gray.100}"
+    },
+
     "blueprint_time_panel_bg_fill": {
       "color": "#141326"
     },

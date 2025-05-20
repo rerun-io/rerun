@@ -61,6 +61,8 @@ pub struct DesignTokens {
     /// Color for breadcrumb separators
     pub breadcrumb_separator_color: Color32,
 
+    pub panel_bg_color: Color32,
+
     /// Color for blueprint time panel background
     pub blueprint_time_panel_bg_fill: Color32,
 
@@ -151,6 +153,7 @@ impl DesignTokens {
             example_card_background_color: get_color("example_card_background_color"),
             breadcrumb_text_color: get_color("breadcrumb_text_color"),
             breadcrumb_separator_color: get_color("breadcrumb_separator_color"),
+            panel_bg_color: get_color("panel_bg_color"),
             blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
             notification_panel_background_color: get_color("notification_panel_background_color"),
             notification_background_color: get_color("notification_background_color"),
@@ -314,7 +317,7 @@ impl DesignTokens {
     }
 
     fn set_dark_style(&self, egui_style: &mut egui::Style) {
-        let panel_bg_color = self.color(ColorToken::gray(S100));
+        let panel_bg_color = self.panel_bg_color;
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
         let floating_color = self.color(ColorToken::gray(S250));
 
@@ -389,7 +392,7 @@ impl DesignTokens {
     }
 
     fn set_light_style(&self, egui_style: &mut egui::Style) {
-        let panel_bg_color = self.color(ColorToken::gray(S1000));
+        let panel_bg_color = self.panel_bg_color;
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
         let floating_color = self.color(ColorToken::gray(S1000));
 
