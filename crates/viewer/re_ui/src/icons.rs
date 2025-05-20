@@ -173,3 +173,4 @@ pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.png");
 pub const CONTROL: Icon = icon_from_path!("../data/icons/control.png");
 pub const COMMAND: Icon = icon_from_path!("../data/icons/command.png");
 pub const OPTION: Icon = icon_from_path!("../data/icons/option.png");
+pub const COPY: Icon = icon_from_path!("../data/icons/copy.png");

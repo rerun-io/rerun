@@ -561,7 +561,13 @@ fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes
         |ui| ui.strong("Datatype"),
         |ui| {
             if ui
-                .button(egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace())
+                .add(
+                    egui::Button::image_and_text(
+                        re_ui::icons::COPY.as_image(),
+                        egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace(),
+                    )
+                    .image_tint_follows_text_color(true),
+                )
                 .clicked()
             {
                 ui.ctx().copy_text(format!("{datatype:#?}"));
