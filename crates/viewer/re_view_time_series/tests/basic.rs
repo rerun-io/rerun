@@ -59,7 +59,7 @@ fn test_clear_series_points_and_line_impl(two_series_per_entity: bool) {
             _ => {
                 let data = if two_series_per_entity {
                     re_types::archetypes::Scalars::default().with_scalars([
-                        (i as f64 / 7.0).sin(),
+                        (i as f64 / 5.0).sin(),
                         (i as f64 / 5.0 + 1.0).cos(), // Shifted a bit to make the cap more visible
                     ])
                 } else {
@@ -345,7 +345,6 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
-#[track_caller]
 fn run_view_ui_and_save_snapshot(
     test_context: &mut TestContext,
     view_id: ViewId,

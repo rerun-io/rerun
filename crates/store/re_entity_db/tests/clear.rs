@@ -27,8 +27,7 @@ fn query_latest_component<C: re_types_core::Component>(
     let results = db
         .storage_engine()
         .cache()
-        // This test uses explicitly untagged components for the most part.
-        .latest_at(query, entity_path, [&C::descriptor()]);
+        .latest_at(query, entity_path, [component_descr]);
 
     let (data_time, row_id) = results.index();
     let data = results.component_mono::<C>(component_descr)?;
