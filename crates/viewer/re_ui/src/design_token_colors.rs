@@ -10,30 +10,10 @@ use crate::{
 
 impl DesignTokens {
     /// Get the [`Color32`] corresponding to the provided [`ColorToken`].
+    // TODO: make private
     #[inline]
     pub fn color(&self, token: ColorToken) -> Color32 {
         self.color_table.get(token)
-    }
-
-    pub fn info_log_text_color(&self) -> Color32 {
-        match self.theme {
-            Theme::Dark => Color32::LIGHT_GREEN,
-            Theme::Light => Color32::DARK_GREEN,
-        }
-    }
-
-    pub fn debug_log_text_color(&self) -> Color32 {
-        match self.theme {
-            Theme::Dark => Color32::LIGHT_BLUE,
-            Theme::Light => Color32::DARK_BLUE,
-        }
-    }
-
-    pub fn trace_log_text_color(&self) -> Color32 {
-        match self.theme {
-            Theme::Dark => Color32::LIGHT_GRAY,
-            Theme::Light => Color32::DARK_GRAY,
-        }
     }
 
     /// Color of an icon next to a label

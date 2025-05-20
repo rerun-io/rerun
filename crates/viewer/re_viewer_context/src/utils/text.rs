@@ -7,9 +7,9 @@ pub fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
 
     let error_color = ui.visuals().error_fg_color;
     let warn_color = ui.visuals().warn_fg_color;
-    let info_color = design_tokens.info_log_text_color();
-    let debug_color = design_tokens.debug_log_text_color();
-    let trace_color = design_tokens.trace_log_text_color();
+    let info_color = design_tokens.info_log_text_color;
+    let debug_color = design_tokens.debug_log_text_color;
+    let trace_color = design_tokens.trace_log_text_color;
     let text_color = ui.visuals().text_color();
 
     match lvl {

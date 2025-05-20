@@ -21,6 +21,15 @@
     },
     "strong_fg_color": {
       "color": "{Gray.1000}"
+    },
+    "info_log_text_color": {
+      "color": "{Green.700}"
+    },
+    "debug_log_text_color": {
+      "color": "{Blue.700}"
+    },
+    "trace_log_text_color": {
+      "color": "{Gray.700}"
     }
   },
   "Global": {

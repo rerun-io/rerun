@@ -591,7 +591,7 @@ fn entity_path_filter_ui(
             let color = if is_exclusion {
                 style.visuals.error_fg_color
             } else {
-                design_tokens.info_log_text_color()
+                design_tokens.info_log_text_color
             };
 
             let text_format = egui::TextFormat {

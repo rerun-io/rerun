@@ -23,7 +23,7 @@ pub struct DesignTokens {
     /// Color table for all colors used in the UI.
     ///
     /// Loaded at startup from `color_table.json`.
-    pub(crate) color_table: ColorTable, // Not public, because all colors should go via design_token_colors.rs
+    pub(crate) color_table: ColorTable, // TODO: remove
 
     // All these colors can be found in dark_theme.json and light_theme.json:
     pub top_bar_color: Color32,
@@ -34,6 +34,9 @@ pub struct DesignTokens {
     pub tab_bar_color: Color32,
     pub native_frame_stroke: egui::Stroke,
     pub strong_fg_color: Color32,
+    pub info_log_text_color: Color32,
+    pub debug_log_text_color: Color32,
+    pub trace_log_text_color: Color32,
 }
 
 impl DesignTokens {
@@ -54,21 +57,19 @@ impl DesignTokens {
 
         let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
-        let top_bar_color = get_aliased_color(&colors, &theme_json, "{Alias.top_bar_color}");
-        let tab_bar_color = get_aliased_color(&colors, &theme_json, "{Alias.tab_bar_color}");
-        let bottom_bar_color = get_aliased_color(&colors, &theme_json, "{Alias.bottom_bar_color}");
+        let top_bar_color = get_aliased_color(&colors, &theme_json, "top_bar_color");
+        let tab_bar_color = get_aliased_color(&colors, &theme_json, "tab_bar_color");
+        let bottom_bar_color = get_aliased_color(&colors, &theme_json, "bottom_bar_color");
         let bottom_bar_stroke_color =
-            get_aliased_color(&colors, &theme_json, "{Alias.bottom_bar_stroke_color}");
+            get_aliased_color(&colors, &theme_json, "bottom_bar_stroke_color");
         let shadow_gradient_dark_start =
-            get_aliased_color(&colors, &theme_json, "{Alias.shadow_gradient_dark_start}");
+            get_aliased_color(&colors, &theme_json, "shadow_gradient_dark_start");
         let native_frame_stroke_color =
-            get_aliased_color(&colors, &theme_json, "{Alias.native_frame_stroke_color}");
-        let strong_fg_color = get_aliased_color(&colors, &theme_json, "{Alias.strong_fg_color}");
+            get_aliased_color(&colors, &theme_json, "native_frame_stroke_color");
 
         Self {
             theme,
             typography,
-            color_table: colors,
             top_bar_color,
             bottom_bar_color,
             bottom_bar_stroke: egui::Stroke::new(1.0, bottom_bar_stroke_color),
@@ -81,7 +82,13 @@ impl DesignTokens {
             shadow_gradient_dark_start,
             tab_bar_color,
             native_frame_stroke: egui::Stroke::new(1.0, native_frame_stroke_color),
-            strong_fg_color,
+            strong_fg_color: get_aliased_color(&colors, &theme_json, "strong_fg_color"),
+
+            info_log_text_color: get_aliased_color(&colors, &theme_json, "info_log_text_color"),
+            debug_log_text_color: get_aliased_color(&colors, &theme_json, "debug_log_text_color"),
+            trace_log_text_color: get_aliased_color(&colors, &theme_json, "trace_log_text_color"),
+
+            color_table: colors,
         }
     }
 
@@ -559,9 +566,13 @@ fn load_color_table(json: &serde_json::Value) -> ColorTable {
 fn try_get_alias_color(
     color_table: &ColorTable,
     json: &serde_json::Value,
-    alias_path: &str,
+    color_name: &str,
 ) -> anyhow::Result<Color32> {
-    let color_alias = follow_path_or_panic(json, alias_path);
+    let color_alias = json
+        .get("Alias")
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
+        .get(color_name)
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{color_name}'"))?;
     let color = color_alias
         .get("color")
         .ok_or_else(|| anyhow::anyhow!("No color found"))?
