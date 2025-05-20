@@ -1,7 +1,6 @@
 use re_types::{
-    Component as _,
     archetypes::EncodedImage,
-    components::{Blob, DrawOrder, MediaType, Opacity},
+    components::{DrawOrder, MediaType, Opacity},
     image::ImageKind,
 };
 use re_view::{HybridResults, diff_component_filter};
