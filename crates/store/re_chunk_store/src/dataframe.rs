@@ -346,6 +346,7 @@ impl ChunkStore {
                     store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
                         ArrowField::new("item", datatype.clone(), true).into(),
                     ),
+                    arrow_metadata: Default::default(),
 
                     entity_path: entity_path.clone(),
                     archetype_name: component_descr.archetype_name,
@@ -446,6 +447,7 @@ impl ChunkStore {
             store_datatype: ArrowListArray::DATA_TYPE_CONSTRUCTOR(
                 ArrowField::new("item", datatype, true).into(),
             ),
+            arrow_metadata: Default::default(),
             is_static,
             is_indicator,
             is_tombstone,

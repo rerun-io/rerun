@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use arrow::datatypes::Field as ArrowField;
@@ -26,9 +28,9 @@ pub trait MetadataExt {
     type Error;
 
     fn missing_key_error(&self, key: &str) -> Self::Error;
-    fn get_opt(&self, key: &str) -> Option<&str>;
+    fn get_opt(&self, key: &str) -> Option<Cow<'_, str>>;
 
-    fn get_or_err(&self, key: &str) -> Result<&str, Self::Error> {
+    fn get_or_err(&self, key: &str) -> Result<Cow<'_, str>, Self::Error> {
         self.get_opt(key).ok_or_else(|| self.missing_key_error(key))
     }
 
@@ -49,8 +51,8 @@ impl MetadataExt for HashMap<String, String> {
         }
     }
 
-    fn get_opt(&self, key: &str) -> Option<&str> {
-        self.get(key).map(|value| value.as_str())
+    fn get_opt(&self, key: &str) -> Option<Cow<'_, str>> {
+        self.get(key).map(|value| value.as_str().into())
     }
 }
 
@@ -64,7 +66,35 @@ impl MetadataExt for ArrowField {
         }
     }
 
-    fn get_opt(&self, key: &str) -> Option<&str> {
-        self.metadata().get(key).map(|v| v.as_str())
+    fn get_opt(&self, key: &str) -> Option<Cow<'_, str>> {
+        self.metadata().get(key).map(|v| v.as_str().into())
+    }
+}
+
+/// Newtype over metadata which drains entries as they are read, so that the remaining, unread
+/// entries may be kept around (using [`Self::residual`]).
+pub struct DrainMetadata(RefCell<HashMap<String, String>>);
+
+impl DrainMetadata {
+    pub fn new(metadata: HashMap<String, String>) -> Self {
+        Self(RefCell::new(metadata))
+    }
+
+    pub fn residual(self) -> HashMap<String, String> {
+        self.0.into_inner()
+    }
+}
+
+impl MetadataExt for DrainMetadata {
+    type Error = MissingMetadataKey;
+
+    fn missing_key_error(&self, key: &str) -> Self::Error {
+        MissingMetadataKey {
+            key: key.to_owned(),
+        }
+    }
+
+    fn get_opt(&self, key: &str) -> Option<Cow<'_, str>> {
+        self.0.borrow_mut().remove(key).map(Cow::Owned)
     }
 }

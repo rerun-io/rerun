@@ -167,6 +167,7 @@ fn test_schema_over_ipc() {
             archetype_field_name: Some("field".to_owned().into()),
             component_name: re_types_core::ComponentName::new("component"),
             store_datatype: arrow::datatypes::DataType::Int64,
+            arrow_metadata: std::iter::once(("hello".to_owned(), "world".to_owned())).collect(),
             is_static: true,
             is_tombstone: false,
             is_semantically_empty: false,

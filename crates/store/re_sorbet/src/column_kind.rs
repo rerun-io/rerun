@@ -42,13 +42,13 @@ impl TryFrom<&ArrowField> for ColumnKind {
         let Some(kind) = field.get_opt("rerun.kind") else {
             return Ok(Self::default());
         };
-        match kind {
+        match kind.as_ref() {
             "control" | "row_id" => Ok(Self::RowId),
             "index" | "time" => Ok(Self::Index),
             "component" | "data" => Ok(Self::Component),
 
             _ => Err(UnknownColumnKind {
-                kind: kind.to_owned(),
+                kind: kind.to_string(),
                 column_name: field.name().to_owned(),
             }),
         }

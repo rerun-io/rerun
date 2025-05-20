@@ -108,6 +108,7 @@ impl Chunk {
                         is_indicator: false,
                         is_tombstone: false,
                         is_semantically_empty: false,
+                        arrow_metadata: Default::default(),
                     };
                     (schema, into_arrow_ref(list_array))
                 })

@@ -466,6 +466,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                                             selected_component_name.clone(),
                                         ),
                                         store_datatype: ArrowDataType::Null,
+                                        arrow_metadata: Default::default(),
                                         is_static: false,
                                         is_indicator: false,
                                         is_tombstone: false,
@@ -1088,11 +1089,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         .into_iter()
                         .next()?;
 
-                    let results = cache.latest_at(
-                        &query,
-                        &descr.entity_path.clone(),
-                        [&component_descriptor],
-                    );
+                    let results = cache
+                        .latest_at(&query, &descr.entity_path.clone(), [&component_descriptor]);
 
                     *streaming_state = results
                         .components
@@ -2539,24 +2537,18 @@ mod tests {
         let row_id2_3 = RowId::new();
         let row_id2_4 = RowId::new();
         let chunk2 = Chunk::builder(entity_path.clone())
-            .with_sparse_component_batches(
-                row_id2_2,
-                [build_frame_nr(frame2)],
-                [(MyPoints::descriptor_points(), Some(&points2 as _))],
-            )
-            .with_sparse_component_batches(
-                row_id2_3,
-                [build_frame_nr(frame3)],
-                [
-                    (MyPoints::descriptor_points(), Some(&points3 as _)),
-                    (MyPoints::descriptor_colors(), Some(&colors3 as _)),
-                ],
-            )
-            .with_sparse_component_batches(
-                row_id2_4,
-                [build_frame_nr(frame4)],
-                [(MyPoints::descriptor_points(), Some(&points4 as _))],
-            )
+            .with_sparse_component_batches(row_id2_2, [build_frame_nr(frame2)], [(
+                MyPoints::descriptor_points(),
+                Some(&points2 as _),
+            )])
+            .with_sparse_component_batches(row_id2_3, [build_frame_nr(frame3)], [
+                (MyPoints::descriptor_points(), Some(&points3 as _)),
+                (MyPoints::descriptor_colors(), Some(&colors3 as _)),
+            ])
+            .with_sparse_component_batches(row_id2_4, [build_frame_nr(frame4)], [(
+                MyPoints::descriptor_points(),
+                Some(&points4 as _),
+            )])
             .build()?;
 
         let chunk2 = Arc::new(chunk2);
@@ -2566,21 +2558,18 @@ mod tests {
         let row_id3_4 = RowId::new();
         let row_id3_6 = RowId::new();
         let chunk3 = Chunk::builder(entity_path.clone())
-            .with_sparse_component_batches(
-                row_id3_2,
-                [build_frame_nr(frame2)],
-                [(MyPoints::descriptor_points(), Some(&points2 as _))],
-            )
-            .with_sparse_component_batches(
-                row_id3_4,
-                [build_frame_nr(frame4)],
-                [(MyPoints::descriptor_points(), Some(&points4 as _))],
-            )
-            .with_sparse_component_batches(
-                row_id3_6,
-                [build_frame_nr(frame6)],
-                [(MyPoints::descriptor_points(), Some(&points6 as _))],
-            )
+            .with_sparse_component_batches(row_id3_2, [build_frame_nr(frame2)], [(
+                MyPoints::descriptor_points(),
+                Some(&points2 as _),
+            )])
+            .with_sparse_component_batches(row_id3_4, [build_frame_nr(frame4)], [(
+                MyPoints::descriptor_points(),
+                Some(&points4 as _),
+            )])
+            .with_sparse_component_batches(row_id3_6, [build_frame_nr(frame6)], [(
+                MyPoints::descriptor_points(),
+                Some(&points6 as _),
+            )])
             .build()?;
 
         let chunk3 = Arc::new(chunk3);
@@ -2590,21 +2579,18 @@ mod tests {
         let row_id4_5 = RowId::new();
         let row_id4_7 = RowId::new();
         let chunk4 = Chunk::builder(entity_path.clone())
-            .with_sparse_component_batches(
-                row_id4_4,
-                [build_frame_nr(frame4)],
-                [(MyPoints::descriptor_colors(), Some(&colors4 as _))],
-            )
-            .with_sparse_component_batches(
-                row_id4_5,
-                [build_frame_nr(frame5)],
-                [(MyPoints::descriptor_colors(), Some(&colors5 as _))],
-            )
-            .with_sparse_component_batches(
-                row_id4_7,
-                [build_frame_nr(frame7)],
-                [(MyPoints::descriptor_colors(), Some(&colors7 as _))],
-            )
+            .with_sparse_component_batches(row_id4_4, [build_frame_nr(frame4)], [(
+                MyPoints::descriptor_colors(),
+                Some(&colors4 as _),
+            )])
+            .with_sparse_component_batches(row_id4_5, [build_frame_nr(frame5)], [(
+                MyPoints::descriptor_colors(),
+                Some(&colors5 as _),
+            )])
+            .with_sparse_component_batches(row_id4_7, [build_frame_nr(frame7)], [(
+                MyPoints::descriptor_colors(),
+                Some(&colors7 as _),
+            )])
             .build()?;
 
         let chunk4 = Arc::new(chunk4);
@@ -2612,11 +2598,10 @@ mod tests {
 
         let row_id5_1 = RowId::new();
         let chunk5 = Chunk::builder(entity_path.clone())
-            .with_sparse_component_batches(
-                row_id5_1,
-                TimePoint::default(),
-                [(MyPoints::descriptor_labels(), Some(&labels2 as _))],
-            )
+            .with_sparse_component_batches(row_id5_1, TimePoint::default(), [(
+                MyPoints::descriptor_labels(),
+                Some(&labels2 as _),
+            )])
             .build()?;
 
         let chunk5 = Arc::new(chunk5);
@@ -2624,11 +2609,10 @@ mod tests {
 
         let row_id6_1 = RowId::new();
         let chunk6 = Chunk::builder(entity_path.clone())
-            .with_sparse_component_batches(
-                row_id6_1,
-                TimePoint::default(),
-                [(MyPoints::descriptor_labels(), Some(&labels3 as _))],
-            )
+            .with_sparse_component_batches(row_id6_1, TimePoint::default(), [(
+                MyPoints::descriptor_labels(),
+                Some(&labels3 as _),
+            )])
             .build()?;
 
         let chunk6 = Arc::new(chunk6);
@@ -2652,14 +2636,10 @@ mod tests {
 
         let row_id1_1 = RowId::new();
         let chunk1 = Chunk::builder(entity_path.clone())
-            .with_sparse_component_batches(
-                row_id1_1,
-                TimePoint::default(),
-                [(
-                    archetypes::Clear::descriptor_is_recursive(),
-                    Some(&clear_flat as _),
-                )],
-            )
+            .with_sparse_component_batches(row_id1_1, TimePoint::default(), [(
+                archetypes::Clear::descriptor_is_recursive(),
+                Some(&clear_flat as _),
+            )])
             .build()?;
 
         let chunk1 = Arc::new(chunk1);
