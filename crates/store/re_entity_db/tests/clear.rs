@@ -8,7 +8,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
-    example_components::{MyColor, MyIndex, MyPoint},
+    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types_core::{
     AsComponents as _, ComponentBatch as _, archetypes::Clear, components::ClearIsRecursive,
@@ -76,7 +76,14 @@ fn clears() -> anyhow::Result<()> {
         let point = MyPoint::new(1.0, 2.0);
         let color = MyColor::from(0xFF0000FF);
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_component_batches(row_id, timepoint, [&[point] as _, &[color] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [
+                    (MyPoints::descriptor_points(), &[point] as _),
+                    (MyPoints::descriptor_colors(), &[color] as _),
+                ],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;

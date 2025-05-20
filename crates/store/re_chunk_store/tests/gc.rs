@@ -10,7 +10,7 @@ use re_chunk_store::{
 };
 use re_log_types::{
     EntityPath, ResolvedTimeRange, Timestamp, build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex, MyPoint},
+    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types::{ComponentDescriptor, testing::build_some_large_structs};
 use re_types_core::Component as _;
@@ -66,7 +66,7 @@ fn simple() -> anyhow::Result<()> {
                     .with_component_batch(
                         RowId::new(),
                         [build_frame_nr(frame_nr)],
-                        &build_some_large_structs(num_instances),
+                        [build_some_large_structs(num_instances)], // TODO(#6889): That should be fixed when we carry `component_batch` over.
                     )
                     .build()?;
                 store.insert_chunk(&Arc::new(chunk))?;
@@ -123,7 +123,10 @@ fn simple_static() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id1,
                 [build_frame_nr(frame1)],
-                [&indices1 as _, &colors1 as _],
+                [
+                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyPoints::descriptor_colors(), &colors1 as _),
+                ],
             )
             .build()?,
     );
@@ -135,19 +138,30 @@ fn simple_static() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id2,
                 [build_frame_nr(frame2)],
-                [&indices1 as _, &points2 as _],
+                [
+                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyPoints::descriptor_points(), &points2 as _),
+                ],
             )
             .build()?,
     );
 
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Chunk::builder(entity_path.clone())
-        .with_component_batches(RowId::new(), [build_frame_nr(frame3)], [&points3 as _])
+        .with_component_batches(
+            RowId::new(),
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
         .build()?;
 
     let colors4 = MyColor::from_iter(0..5);
     let chunk4 = Chunk::builder(entity_path.clone())
-        .with_component_batches(RowId::new(), [build_frame_nr(frame4)], [&colors4 as _])
+        .with_component_batches(
+            RowId::new(),
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
         .build()?;
 
     store.insert_chunk(&chunk1)?;
@@ -224,7 +238,10 @@ fn protected() -> anyhow::Result<()> {
         .with_component_batches(
             row_id1,
             [build_frame_nr(frame1)],
-            [&indices1 as _, &colors1 as _],
+            [
+                (MyIndex::descriptor(), &indices1 as _),
+                (MyPoints::descriptor_colors(), &colors1 as _),
+            ],
         )
         .build()?;
 
@@ -234,20 +251,31 @@ fn protected() -> anyhow::Result<()> {
         .with_component_batches(
             row_id2,
             [build_frame_nr(frame2)],
-            [&indices1 as _, &points2 as _],
+            [
+                (MyIndex::descriptor(), &indices1 as _),
+                (MyPoints::descriptor_points(), &points2 as _),
+            ],
         )
         .build()?;
 
     let row_id3 = RowId::new();
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id3, [build_frame_nr(frame3)], [&points3 as _])
+        .with_component_batches(
+            row_id3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
         .build()?;
 
     let row_id4 = RowId::new();
     let colors4 = MyColor::from_iter(0..5);
     let chunk4 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id4, [build_frame_nr(frame4)], [&colors4 as _])
+        .with_component_batches(
+            row_id4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
         .build()?;
 
     store.insert_chunk(&Arc::new(chunk1))?;
@@ -340,7 +368,10 @@ fn protected_time_ranges() -> anyhow::Result<()> {
         .with_component_batches(
             row_id1,
             [build_frame_nr(frame1)],
-            [&indices1 as _, &colors1 as _],
+            [
+                (MyIndex::descriptor(), &indices1 as _),
+                (MyPoints::descriptor_colors(), &colors1 as _),
+            ],
         )
         .build()?;
 
@@ -350,20 +381,31 @@ fn protected_time_ranges() -> anyhow::Result<()> {
         .with_component_batches(
             row_id2,
             [build_frame_nr(frame2)],
-            [&indices1 as _, &points2 as _],
+            [
+                (MyIndex::descriptor(), &indices1 as _),
+                (MyPoints::descriptor_points(), &points2 as _),
+            ],
         )
         .build()?;
 
     let row_id3 = RowId::new();
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id3, [build_frame_nr(frame3)], [&points3 as _])
+        .with_component_batches(
+            row_id3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
         .build()?;
 
     let row_id4 = RowId::new();
     let colors4 = MyColor::from_iter(0..5);
     let chunk4 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id4, [build_frame_nr(frame4)], [&colors4 as _])
+        .with_component_batches(
+            row_id4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
         .build()?;
 
     let chunk1 = Arc::new(chunk1);
@@ -418,7 +460,11 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     let indices1 = MyIndex::from_iter(0..3);
     let chunk1 = Arc::new(
         Chunk::builder(entity_path1.clone())
-            .with_component_batches(row_id1, [build_frame_nr(10)], [&indices1 as _])
+            .with_component_batches(
+                row_id1,
+                [build_frame_nr(10)],
+                [(MyIndex::descriptor(), &indices1 as _)],
+            )
             .build()?,
     );
 
@@ -429,7 +475,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id2,
                 [build_log_time(Timestamp::now())],
-                [&indices2 as _],
+                [(MyIndex::descriptor(), &indices2 as _)],
             )
             .build()?,
     );
@@ -438,7 +484,11 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
     let indices3 = MyIndex::from_iter(0..3);
     let chunk3 = Arc::new(
         Chunk::builder(entity_path1.clone())
-            .with_component_batches(row_id3, TimePoint::default(), [&indices3 as _])
+            .with_component_batches(
+                row_id3,
+                TimePoint::default(),
+                [(MyIndex::descriptor(), &indices3 as _)],
+            )
             .build()?,
     );
 
@@ -449,7 +499,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4,
                 [build_frame_nr(42), build_log_time(Timestamp::now())],
-                [&indices4 as _],
+                [(MyIndex::descriptor(), &indices4 as _)],
             )
             .build()?,
     );
