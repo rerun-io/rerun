@@ -1,0 +1,37 @@
+{
+  "Alias": {
+    "Typography": {
+      "Default": {
+        "value": "{Global.Typography.200}",
+        "description": "Default font in Rerun's UI",
+        "type": "typography"
+      }
+    }
+  },
+  "Global": {
+    "Typography": {
+      "100": {
+        "value": {
+          "fontSize": "10px",
+          "fontWeight": "Medium",
+          "fontFamily": "Inter",
+          "lineHeight": "12px",
+          "letterSpacing": "-0.12px"
+        },
+        "description": "",
+        "type": "typography"
+      },
+      "200": {
+        "value": {
+          "fontSize": "12px",
+          "fontWeight": "Medium",
+          "fontFamily": "Inter",
+          "lineHeight": "16px",
+          "letterSpacing": "-0.15px"
+        },
+        "description": "",
+        "type": "typography"
+      }
+    }
+  }
+}

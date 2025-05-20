@@ -21,7 +21,7 @@ pub struct DesignTokens {
 
     /// Color table for all colors used in the UI.
     ///
-    /// Loaded at startup from `design_tokens.json`.
+    /// Loaded at startup from `color_table.json`.
     pub(crate) color_table: ColorTable, // Not public, because all colors should go via design_token_colors.rs
 
     // TODO(ab): get rid of these, they should be function calls in design_token_colors.rs like the rest.
@@ -37,21 +37,20 @@ pub struct DesignTokens {
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.json`.
     pub fn load(theme: Theme) -> Self {
-        let json: serde_json::Value = match theme {
-            egui::Theme::Dark => {
-                serde_json::from_str(include_str!("../data/design_tokens_dark.json"))
-                    .expect("Failed to parse data/design_tokens_dark.json")
-            }
+        let color_table_json: serde_json::Value =
+            serde_json::from_str(include_str!("../data/color_table.json"))
+                .expect("Failed to parse data/color_table.json");
+        let color_table = load_color_table(&color_table_json);
 
-            egui::Theme::Light => {
-                serde_json::from_str(include_str!("../data/design_tokens_light.json"))
-                    .expect("Failed to parse data/design_tokens_light.json")
-            }
+        let theme_json: serde_json::Value = match theme {
+            egui::Theme::Dark => serde_json::from_str(include_str!("../data/dark_theme.json"))
+                .expect("Failed to parse data/dark_theme.json"),
+
+            egui::Theme::Light => serde_json::from_str(include_str!("../data/light_theme.json"))
+                .expect("Failed to parse data/light_theme.json"),
         };
 
-        let typography: Typography = get_alias(&json, "{Alias.Typography.Default.value}");
-
-        let color_table = load_color_table(&json);
+        let typography: Typography = get_alias(&theme_json, "{Alias.Typography.Default.value}");
 
         match theme {
             egui::Theme::Dark => {
