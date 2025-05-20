@@ -38,8 +38,8 @@ pub fn test_transform_clamping() {
                     RowId::new(),
                     TimePoint::default(),
                     &re_types::archetypes::Boxes3D::from_centers_and_half_sizes(
-                        [(0.0, 5.0, 0.0)],
-                        [(1.0, 1.0, 1.0)],
+                        [(0.0, 5.0, 0.0)], // translation <- `InstancePoseTranslation3D`
+                        [(1.0, 1.0, 1.0)], // scale <- `HalfSize3D`
                     )
                     .with_colors([0x0000FFFF]),
                 )
@@ -48,7 +48,7 @@ pub fn test_transform_clamping() {
                     TimePoint::default(),
                     // Note that the scale is applied _after_ the translation.
                     // This means that the scales "scales the translation".
-                    // Prior to 0.23, the translation and the scale were on "the same transform",
+                    // Prior to 0.24, the translation and the scale were on "the same transform",
                     // therefore we'd apply scale first.
                     &re_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),

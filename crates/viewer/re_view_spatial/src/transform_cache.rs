@@ -166,6 +166,9 @@ impl CachedTransformsForTimeline {
 ///
 /// If there's a concrete archetype in here, the mapped values are the full resolved pose transform.
 /// Otherwise, refer to [`Self::instance_poses_archetype`].
+///
+/// `TransformCache` doesn't do tree propgation, however (!!!) there's a mini-tree in here that we already fully apply:
+/// `InstancePose3D` are applied on top of concrete archetype poses.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct PoseTransformArchetypeMap {
     /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
@@ -929,7 +932,7 @@ fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> PoseTransformArchetypeMap {
-    let instance_from_overall_poses = query_and_resolve_instance_from_pose_for_achetype_name(
+    let instance_from_overall_poses = query_and_resolve_instance_from_pose_for_archetype_name(
         entity_path,
         entity_db,
         query,
@@ -939,12 +942,13 @@ fn query_and_resolve_instance_poses_at_entity(
 
     // Some archetypes support their own instance poses.
     // TODO(andreas): can we quickly determine whether this is necessary for any given archetype?
+    // TODO(andreas): Should we make all of this a single large query?
     let mut instance_from_archetype_poses_per_archetype = IntMap::default();
     for (archetype_name, descriptor_translations) in
         archetypes_with_instance_pose_transforms_and_translation_descriptor()
     {
         if let Ok(mut instance_from_archetype_poses) =
-            SmallVec1::try_from_vec(query_and_resolve_instance_from_pose_for_achetype_name(
+            SmallVec1::try_from_vec(query_and_resolve_instance_from_pose_for_archetype_name(
                 entity_path,
                 entity_db,
                 query,
@@ -985,7 +989,7 @@ fn query_and_resolve_instance_poses_at_entity(
 ///
 /// Note that the archetype field name for translation specifically may vary.
 /// (this is technical debt, we should fix this)
-fn query_and_resolve_instance_from_pose_for_achetype_name(
+fn query_and_resolve_instance_from_pose_for_archetype_name(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
