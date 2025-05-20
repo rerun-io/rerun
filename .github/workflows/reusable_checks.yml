@@ -130,7 +130,7 @@ jobs:
         run: pixi run check-large-files
 
   check-publish-flags:
-    name: Check for too large files
+    name: Check for wrong publish flags
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
