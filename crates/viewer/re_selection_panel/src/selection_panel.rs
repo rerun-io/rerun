@@ -8,6 +8,7 @@ use re_data_ui::{
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_types::ComponentDescriptor;
 use re_ui::{
     ContextExt as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
@@ -185,6 +186,59 @@ impl SelectionPanel {
                     }),
                 );
 
+                let ComponentDescriptor {
+                    archetype_name,
+                    archetype_field_name,
+                    component_name,
+                } = component_descriptor;
+
+                if let Some(archetype_name) = archetype_name {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Archetype").value_fn(
+                        |ui, _| {
+                            ui.label(archetype_name.short_name()).on_hover_ui(|ui| {
+                                ui.spacing_mut().item_spacing.y = 12.0;
+
+                                ui.strong(archetype_name.full_name());
+
+                                if let Some(doc_url) = archetype_name.doc_url() {
+                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                }
+                            });
+                        },
+                    ));
+                }
+
+                if let Some(archetype_field_name) = archetype_field_name {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Archetype field")
+                            .value_text(archetype_field_name.to_string()),
+                    );
+                }
+
+                ui.list_item_flat_noninteractive(PropertyContent::new("Component").value_fn(
+                    |ui, _| {
+                        ui.label(component_name.short_name()).on_hover_ui(|ui| {
+                            ui.spacing_mut().item_spacing.y = 12.0;
+
+                            ui.strong(component_name.full_name());
+
+                            // Only show the first line of the docs:
+                            if let Some(markdown) = ctx
+                                .reflection()
+                                .components
+                                .get(component_name)
+                                .map(|info| info.docstring_md)
+                            {
+                                ui.markdown_ui(markdown);
+                            }
+
+                            if let Some(doc_url) = component_name.doc_url() {
+                                ui.re_hyperlink("Full documentation", doc_url, true);
+                            }
+                        });
+                    },
+                ));
+
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
 
@@ -294,36 +348,13 @@ impl SelectionPanel {
             });
         }
 
-        if let Item::StoreId(_) = item {
-            ui.section_collapsing_header("Properties").show(ui, |ui| {
-                let filtered = db
-                    .entity_paths()
-                    .into_iter()
-                    .filter(|entity_path| {
-                        // Only check for properties, but skip the recording properties,
-                        // because we display them already elsewhere in the UI.
-                        entity_path.is_descendant_of(&EntityPath::properties())
-                    })
-                    .collect::<Vec<_>>();
-
-                if filtered.is_empty() {
-                    ui.label("No properties found for this recording.");
-                } else {
-                    for entity_path in filtered {
-                        // We strip the property part
-                        let name = entity_path
-                            .to_string()
-                            .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                            .map(re_case::to_human_case)
-                            .unwrap_or("<unknown>".to_owned());
-                        ui.label(name);
-                        entity_path.data_ui(ctx, ui, ui_layout, &query, db);
-                    }
-                }
-            });
-        }
-
         match item {
+            Item::StoreId(_) => {
+                ui.section_collapsing_header("Properties").show(ui, |ui| {
+                    show_recording_properties(ctx, db, &query, ui, ui_layout);
+                });
+            }
+
             Item::View(view_id) => {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
@@ -455,6 +486,39 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             view_components_defaults_section_ui(&view_ctx, ui, view);
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
+        }
+    }
+}
+
+fn show_recording_properties(
+    ctx: &ViewerContext<'_>,
+    db: &re_entity_db::EntityDb,
+    query: &re_chunk::LatestAtQuery,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+) {
+    let filtered = db
+        .entity_paths()
+        .into_iter()
+        .filter(|entity_path| {
+            // Only check for properties, but skip the recording properties,
+            // because we display them already elsewhere in the UI.
+            entity_path.is_descendant_of(&EntityPath::properties())
+        })
+        .collect::<Vec<_>>();
+
+    if filtered.is_empty() {
+        ui.label("No properties found for this recording.");
+    } else {
+        for entity_path in filtered {
+            // We strip the property part
+            let name = entity_path
+                .to_string()
+                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                .map(re_case::to_human_case)
+                .unwrap_or("<unknown>".to_owned());
+            ui.label(name);
+            entity_path.data_ui(ctx, ui, ui_layout, query, db);
         }
     }
 }

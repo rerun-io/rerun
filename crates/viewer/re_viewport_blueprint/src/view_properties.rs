@@ -204,7 +204,11 @@ impl ViewProperty {
                 );
             }
         }
-        ctx.save_blueprint_component(&self.blueprint_store_path, component_descr, component_batch);
+        ctx.save_blueprint_component(
+            self.blueprint_store_path.clone(),
+            component_descr,
+            component_batch,
+        );
     }
 
     /// Clears a blueprint component.
@@ -213,7 +217,7 @@ impl ViewProperty {
         ctx: &ViewerContext<'_>,
         component_descr: ComponentDescriptor,
     ) {
-        ctx.clear_blueprint_component(&self.blueprint_store_path, component_descr);
+        ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.
@@ -222,21 +226,21 @@ impl ViewProperty {
         ctx: &ViewerContext<'_>,
         component_descr: ComponentDescriptor,
     ) {
-        ctx.reset_blueprint_component(&self.blueprint_store_path, component_descr);
+        ctx.reset_blueprint_component(self.blueprint_store_path.clone(), component_descr);
     }
 
     /// Resets all components to the values they had in the default blueprint.
     pub fn reset_all_components(&self, ctx: &ViewerContext<'_>) {
         // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
         for component_descr in self.component_descrs.iter().cloned() {
-            ctx.reset_blueprint_component(&self.blueprint_store_path, component_descr);
+            ctx.reset_blueprint_component(self.blueprint_store_path.clone(), component_descr);
         }
     }
 
     /// Resets all components to empty values, i.e. the fallback.
     pub fn reset_all_components_to_empty(&self, ctx: &ViewerContext<'_>) {
         for component_descr in self.query_results.components.keys().cloned() {
-            ctx.clear_blueprint_component(&self.blueprint_store_path, component_descr);
+            ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
         }
     }
 

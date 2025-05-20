@@ -21,7 +21,9 @@ impl DataUi for ComponentName {
 
                 if ui_layout.is_selection_panel() {
                     ui.label(format!("Full name: {}", self.full_name()));
-                };
+                } else {
+                    ui.label(self.full_name());
+                }
 
                 // Only show the first line of the docs:
                 if let Some(markdown) = ctx

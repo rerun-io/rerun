@@ -32,6 +32,7 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
+        // NOTE: the passed in `db` is usually the recording; NOT the blueprint.
         let component = if ctx.recording().is_known_entity(entity_path) {
             // We are looking at an entity in the recording
             ctx.recording_engine()
@@ -198,46 +199,43 @@ fn component_list_ui(
                 let response = if component_descr.component_name.is_indicator_component() {
                     list_item.show_flat(
                         ui,
-                        re_ui::list_item::LabelContent::new(
-                            component_descr.component_name.short_name(),
-                        )
-                        .with_icon(icon),
+                        re_ui::list_item::LabelContent::new(component_descr.display_name())
+                            .with_icon(icon),
                     )
                 } else {
-                    let content = re_ui::list_item::PropertyContent::new(
-                        component_descr.component_name.short_name(),
-                    )
-                    .with_icon(icon)
-                    .value_fn(|ui, _| {
-                        if instance.is_all() {
-                            crate::ComponentPathLatestAtResults {
-                                component_path: ComponentPath::new(
-                                    entity_path.clone(),
-                                    component_descr.clone(),
-                                ),
-                                unit,
-                            }
-                            .data_ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                            );
-                        } else {
-                            ctx.component_ui_registry().ui(
-                                ctx,
-                                ui,
-                                UiLayout::List,
-                                query,
-                                db,
-                                entity_path,
-                                component_descr,
-                                unit,
-                                instance,
-                            );
-                        }
-                    });
+                    let content =
+                        re_ui::list_item::PropertyContent::new(component_descr.display_name())
+                            .with_icon(icon)
+                            .value_fn(|ui, _| {
+                                if instance.is_all() {
+                                    crate::ComponentPathLatestAtResults {
+                                        component_path: ComponentPath::new(
+                                            entity_path.clone(),
+                                            component_descr.clone(),
+                                        ),
+                                        unit,
+                                    }
+                                    .data_ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                    );
+                                } else {
+                                    ctx.component_ui_registry().ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                        entity_path,
+                                        component_descr,
+                                        unit,
+                                        instance,
+                                    );
+                                }
+                            });
 
                     list_item.show_flat(ui, content)
                 };
@@ -246,6 +244,12 @@ fn component_list_ui(
                     component_descr
                         .component_name
                         .data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    if let Some(data) = unit.component_batch_raw(component_descr) {
+                        ui.list_item_flat_noninteractive(
+                            re_ui::list_item::PropertyContent::new("Data type")
+                                .value_text(re_arrow_util::format_data_type(data.data_type())),
+                        );
+                    }
                 });
 
                 if interactive {

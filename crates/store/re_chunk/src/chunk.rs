@@ -15,7 +15,7 @@ use nohash_hasher::IntMap;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_byte_size::SizeBytes as _;
 use re_log_types::{
-    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
+    EntityPath, NonMinI64, ResolvedTimeRange, TimeInt, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{
     ArchetypeName, ComponentDescriptor, ComponentName, DeserializationError, Loggable as _,
@@ -1239,16 +1239,6 @@ impl Chunk {
     #[inline]
     pub fn components(&self) -> &ChunkComponents {
         &self.components
-    }
-
-    /// Computes the maximum value for each and every timeline present across this entire chunk,
-    /// and returns the corresponding [`TimePoint`].
-    #[inline]
-    pub fn timepoint_max(&self) -> TimePoint {
-        self.timelines
-            .values()
-            .map(|info| (info.timeline, info.time_range.max()))
-            .collect()
     }
 }
 

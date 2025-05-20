@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use egui::emath::Rangef;
@@ -134,6 +135,12 @@ pub struct TimePanel {
     #[serde(skip)]
     range_selection_anchor_item: Option<Item>,
 
+    /// Used when the selection is modified using key navigation.
+    ///
+    /// IMPORTANT: Always make sure that the item will be drawn this or next frame when setting this
+    /// to `Some`, so that this flag is immediately consumed.
+    scroll_to_me_item: Option<Item>,
+
     /// If the timestamp is being edited, the current value.
     ///
     /// It is applied only after removing focus.
@@ -155,6 +162,7 @@ impl Default for TimePanel {
             filter_state: Default::default(),
             filter_state_app_id: None,
             range_selection_anchor_item: None,
+            scroll_to_me_item: None,
             time_edit_string: None,
         }
     }
@@ -903,7 +911,8 @@ impl TimePanel {
                             .show_flat(
                                 ui,
                                 list_item::LabelContent::new(format!(
-                                    "{kind} component, logged {num_messages}"
+                                    "{kind} {} component, logged {num_messages}",
+                                    component_descr.component_name.short_name()
                                 ))
                                 .truncate(false)
                                 .with_icon(if is_static {
@@ -1003,7 +1012,112 @@ impl TimePanel {
         );
         ctx.handle_select_hover_drag_interactions(response, item.clone(), is_draggable);
 
-        self.handle_range_selection(ctx, streams_tree_data, entity_db, item, response);
+        self.handle_range_selection(ctx, streams_tree_data, entity_db, item.clone(), response);
+
+        self.handle_key_navigation(ctx, streams_tree_data, entity_db, &item);
+
+        if Some(item) == self.scroll_to_me_item {
+            response.scroll_to_me(None);
+            self.scroll_to_me_item = None;
+        }
+    }
+
+    fn handle_key_navigation(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        streams_tree_data: &StreamsTreeData,
+        entity_db: &re_entity_db::EntityDb,
+        item: &Item,
+    ) {
+        if ctx.selection_state().selected_items().single_item() != Some(item) {
+            return;
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), true);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), false);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+        {
+            let mut found_current = false;
+
+            let result = streams_tree_data.visit(entity_db, |entity_or_component| {
+                let tree_item = entity_or_component.item();
+                let is_item_collapsed =
+                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
+
+                if &tree_item == item {
+                    found_current = true;
+
+                    return if is_item_collapsed {
+                        VisitorControlFlow::SkipBranch
+                    } else {
+                        VisitorControlFlow::Continue
+                    };
+                }
+
+                if found_current {
+                    VisitorControlFlow::Break(Some(tree_item))
+                } else if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+        {
+            let mut last_item = None;
+
+            let result = streams_tree_data.visit(entity_db, |entity_or_component| {
+                let tree_item = entity_or_component.item();
+                let is_item_collapsed =
+                    !entity_or_component.is_open(ctx.egui_ctx(), self.collapse_scope());
+
+                if &tree_item == item {
+                    return VisitorControlFlow::Break(last_item.clone());
+                }
+
+                last_item = Some(tree_item);
+
+                if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
+            }
+        }
     }
 
     /// Handle setting/extending the selection based on shift-clicking.
@@ -1076,15 +1190,8 @@ impl TimePanel {
         let mut found_last_clicked_items = false;
         let mut found_shift_clicked_items = false;
 
-        streams_tree_data.visit(entity_db, |entity_data, component_descr| {
-            let item = if let Some(component_descr) = component_descr {
-                Item::ComponentPath(ComponentPath::new(
-                    entity_data.entity_path.clone(),
-                    component_descr,
-                ))
-            } else {
-                entity_data.item()
-            };
+        streams_tree_data.visit(entity_db, |entity_or_component| {
+            let item = entity_or_component.item();
 
             if &item == anchor_item {
                 found_last_clicked_items = true;
@@ -1102,9 +1209,7 @@ impl TimePanel {
                 return VisitorControlFlow::Break(());
             }
 
-            let is_expanded = entity_data
-                .is_open(ctx.egui_ctx(), collapse_scope)
-                .unwrap_or(false);
+            let is_expanded = entity_or_component.is_open(ctx.egui_ctx(), collapse_scope);
 
             if is_expanded {
                 VisitorControlFlow::Continue

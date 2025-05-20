@@ -14,9 +14,8 @@ pub enum ColumnDescriptorRef<'a> {
 }
 
 impl ColumnDescriptorRef<'_> {
-    /// Human-readable name for the column.
     #[inline]
-    pub fn name(&self, batch_type: BatchType) -> String {
+    pub fn column_name(&self, batch_type: BatchType) -> String {
         match self {
             Self::RowId(descr) => descr.name().to_owned(),
             Self::Time(descr) => descr.column_name().to_owned(),
@@ -24,14 +23,18 @@ impl ColumnDescriptorRef<'_> {
         }
     }
 
+    pub fn to_owned(&self) -> ColumnDescriptor {
+        match self {
+            Self::RowId(descr) => ColumnDescriptor::RowId((*descr).clone()),
+            Self::Time(descr) => ColumnDescriptor::Time((*descr).clone()),
+            Self::Component(descr) => ColumnDescriptor::Component((*descr).clone()),
+        }
+    }
+
     /// Short human-readable name for the column.
     #[inline]
-    pub fn short_name(&self) -> &str {
-        match self {
-            Self::RowId(descr) => descr.name(),
-            Self::Time(descr) => descr.timeline_name().as_str(),
-            Self::Component(descr) => descr.component_name.short_name(),
-        }
+    pub fn display_name(&self) -> String {
+        self.to_owned().display_name()
     }
 
     pub fn entity_path(&self) -> Option<&EntityPath> {

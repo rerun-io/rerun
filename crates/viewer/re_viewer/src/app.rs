@@ -20,14 +20,15 @@ use re_viewer_context::{
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
 };
 
-use crate::startup_options::StartupOptions;
 use crate::{
     AppState,
     app_blueprint::{AppBlueprint, PanelStateOverrides},
     app_state::WelcomeScreenState,
     background_tasks::BackgroundTasks,
     event::ViewerEventDispatcher,
+    startup_options::StartupOptions,
 };
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -416,10 +417,11 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(egui_ctx, app_blueprint, store_context, cmd);
+            self.run_ui_command(egui_ctx, app_blueprint, storage_context, store_context, cmd);
         }
     }
 
@@ -563,29 +565,37 @@ impl App {
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
-            SystemCommand::UpdateBlueprint(blueprint_id, chunks) => {
+
+            SystemCommand::AppendToStore(store_id, chunks) => {
                 re_log::trace!(
-                    "Update blueprint entities: {}",
+                    "Update {} entities: {}",
+                    store_id.kind,
                     chunks.iter().map(|c| c.entity_path()).join(", ")
                 );
 
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                let db = store_hub.entity_db_mut(&store_id);
 
-                self.state
-                    .blueprint_undo_state
-                    .entry(blueprint_id)
-                    .or_default()
-                    .clear_redo_buffer(blueprint_db);
+                if store_id.kind == StoreKind::Blueprint {
+                    self.state
+                        .blueprint_undo_state
+                        .entry(store_id)
+                        .or_default()
+                        .clear_redo_buffer(db);
+                } else {
+                    // It would be nice to be able to undo edits to a recording, but
+                    // we haven't implemented that yet.
+                }
 
                 for chunk in chunks {
-                    match blueprint_db.add_chunk(&Arc::new(chunk)) {
+                    match db.add_chunk(&Arc::new(chunk)) {
                         Ok(_store_events) => {}
                         Err(err) => {
-                            re_log::warn_once!("Failed to store blueprint delta: {err}");
+                            re_log::warn_once!("Failed to append chunk: {err}");
                         }
                     }
                 }
             }
+
             SystemCommand::UndoBlueprint { blueprint_id } => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 self.state
@@ -738,6 +748,7 @@ impl App {
         &mut self,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
+        _storage_context: &StorageContext<'_>,
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
@@ -768,8 +779,47 @@ impl App {
 
         match cmd {
             UICommand::SaveRecording => {
-                if let Err(err) = save_recording(self, store_context, None) {
-                    re_log::error!("Failed to save recording: {err}");
+                #[cfg(target_arch = "wasm32")] // Web
+                {
+                    if let Err(err) = save_recording(self, store_context, None) {
+                        re_log::error!("Failed to save recording: {err}");
+                    }
+                }
+
+                #[cfg(not(target_arch = "wasm32"))] // Native
+                {
+                    let mut selected_stores = vec![];
+                    for item in self.state.selection_state.selected_items().iter_items() {
+                        match item {
+                            Item::AppId(selected_app_id) => {
+                                for recording in _storage_context.bundle.recordings() {
+                                    if recording.app_id() == Some(selected_app_id) {
+                                        selected_stores.push(recording.store_id().clone());
+                                    }
+                                }
+                            }
+                            Item::StoreId(store_id) => {
+                                selected_stores.push(store_id.clone());
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if selected_stores.is_empty() {
+                        if let Err(err) = save_recording(self, store_context, None) {
+                            re_log::error!("Failed to save recording: {err}");
+                        }
+                    } else {
+                        // Save all selected recordings to a folder:
+                        if let Some(folder) = rfd::FileDialog::new()
+                            .set_title("Save recordings to folder")
+                            .pick_folder()
+                        {
+                            self.save_all_recordings(_storage_context, &selected_stores, &folder);
+                        } else {
+                            re_log::warn!("No folder selected");
+                        }
+                    }
                 }
             }
             UICommand::SaveRecordingSelection => {
@@ -1081,6 +1131,78 @@ impl App {
             UICommand::AddRedapServer => {
                 self.state.redap_servers.open_add_server_modal();
             }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_all_recordings(
+        &mut self,
+        storage_context: &StorageContext<'_>,
+        stores: &[StoreId],
+        folder: &std::path::Path,
+    ) {
+        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+        use re_log::ResultExt as _;
+        use tap::Pipe as _;
+
+        re_tracing::profile_function!();
+
+        let stores = stores
+            .iter()
+            .filter_map(|store_id| storage_context.bundle.get(store_id))
+            .collect_vec();
+
+        let num_stores = stores.len();
+        let any_error = Arc::new(AtomicBool::new(false));
+        let num_remaining = Arc::new(AtomicUsize::new(stores.len()));
+
+        re_log::info!("Saving {num_stores} recordings to {}…", folder.display());
+
+        for store in stores {
+            let messages = store.to_messages(None).collect_vec();
+
+            let file_name = if let Some(rec_name) = store
+                .recording_property::<re_types::components::Name>(
+                    &re_types::archetypes::RecordingProperties::descriptor_name(),
+                ) {
+                rec_name.to_string()
+            } else {
+                store.store_id().to_string()
+            }
+            .pipe(|name| santitize_file_name(&name))
+            .pipe(|stem| format!("{stem}.rrd"));
+
+            let file_path = folder.join(file_name.clone());
+            let any_error = any_error.clone();
+            let num_remaining = num_remaining.clone();
+            let folder = folder.display().to_string();
+
+            self.background_tasks
+                .spawn_threaded_promise(file_name, move || {
+                    let res = crate::saving::encode_to_file(
+                        re_build_info::CrateVersion::LOCAL,
+                        &file_path,
+                        messages.into_iter(),
+                    );
+
+                    if res.is_err() {
+                        any_error.store(true, Ordering::Relaxed);
+                    }
+
+                    let num_remaining = num_remaining.fetch_sub(1, Ordering::Relaxed) - 1;
+
+                    if num_remaining == 0 {
+                        if any_error.load(Ordering::Relaxed) {
+                            re_log::error!("Some recordings failed to save.");
+                        } else {
+                            re_log::info!("{num_stores} recordings successfully saved to {folder}");
+                        }
+                    }
+
+                    res
+                })
+                .ok_or_log_error_once();
         }
     }
 
@@ -2254,7 +2376,12 @@ impl eframe::App for App {
             Self::handle_dropping_files(egui_ctx, &storage_context, &self.command_sender);
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
-            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
+            self.run_pending_ui_commands(
+                egui_ctx,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
+            );
         }
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 

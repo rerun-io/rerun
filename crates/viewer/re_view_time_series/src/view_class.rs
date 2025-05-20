@@ -731,7 +731,10 @@ fn update_series_visibility_overrides_from_plot(
                 .serialized()
                 .map(|serialized| serialized.with_descriptor_override(descriptor))
         }) {
-            ctx.save_serialized_blueprint_component(override_path, serialized_component_batch);
+            ctx.save_serialized_blueprint_component(
+                override_path.clone(),
+                serialized_component_batch,
+            );
         }
     }
 }
