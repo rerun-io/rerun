@@ -588,7 +588,7 @@ impl ListItem {
             let bg_rect_to_paint = bg_rect.round_to_pixels(ui.pixels_per_point());
 
             if drag_target {
-                let stroke = ui.design_tokens().drop_target_container_stroke();
+                let stroke = ui.design_tokens().drop_target_container_stroke;
                 ui.painter().set(
                     background_frame,
                     Shape::rect_stroke(

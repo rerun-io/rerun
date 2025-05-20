@@ -144,7 +144,7 @@ impl ViewportUi {
                     };
 
                     let stroke = if should_display_drop_destination_frame {
-                        ui.design_tokens().drop_target_container_stroke()
+                        ui.design_tokens().drop_target_container_stroke
                     } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
@@ -583,16 +583,6 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         visuals.panel_fill.gamma_multiply(0.5)
-    }
-
-    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
-    fn drag_preview_stroke(&self, _visuals: &egui::Visuals) -> egui::Stroke {
-        egui::Stroke::new(1.0, egui::Color32::WHITE.gamma_multiply(0.5))
-    }
-
-    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
-    fn drag_preview_color(&self, _visuals: &egui::Visuals) -> egui::Color32 {
-        egui::Color32::WHITE.gamma_multiply(0.1)
     }
 
     /// The height of the bar holding tab titles.

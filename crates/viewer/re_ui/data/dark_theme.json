@@ -1,7 +1,8 @@
 {
   "Alias": {
-    "native_frame_stroke_color": {
-      "color": "{Gray.250}"
+    "native_frame_stroke": {
+      "color": "{Gray.250}",
+      "width": 1
     },
     "top_bar_color": {
       "color": "{Gray.100}"
@@ -12,8 +13,9 @@
     "bottom_bar_color": {
       "color": "{Gray.150}"
     },
-    "bottom_bar_stroke_color": {
-      "color": "{Gray.250}"
+    "bottom_bar_stroke": {
+      "color": "{Gray.250}",
+      "width": 1
     },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
@@ -103,6 +105,15 @@
     "drag_pill_nondroppable_stroke": {
       "color": "{Gray.375}"
     },
+    "drop_target_container_stroke": {
+      "color": "{Blue.350}",
+      "width": 2
+    },
+    "drag_preview_fill": {
+      "color": "{Gray.1000}",
+      "alpha": 26
+    },
+
     "floating_color": {
       "color": "{Gray.250}"
     },

@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
 use anyhow::Context as _;
-use egui::{Color32, Theme};
+use egui::{Color32, Stroke, Theme};
 
 use crate::{
     CUSTOM_WINDOW_DECORATIONS,
-    color_table::{ColorTable, ColorToken, Hue, Scale, Scale::*},
+    color_table::{ColorTable, ColorToken, Hue, Scale},
     format_with_decimals_in_range,
 };
 
@@ -27,11 +27,10 @@ pub struct DesignTokens {
     // All these colors can be found in dark_theme.json and light_theme.json:
     pub top_bar_color: Color32,
     pub bottom_bar_color: Color32,
-    pub bottom_bar_stroke: egui::Stroke,
-    pub bottom_bar_corner_radius: egui::CornerRadius,
+    pub bottom_bar_stroke: Stroke,
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
-    pub native_frame_stroke: egui::Stroke,
+    pub native_frame_stroke: Stroke,
     pub strong_fg_color: Color32,
     pub info_log_text_color: Color32,
     pub debug_log_text_color: Color32,
@@ -93,6 +92,15 @@ pub struct DesignTokens {
     pub drag_pill_droppable_stroke: Color32,
     pub drag_pill_nondroppable_fill: Color32,
     pub drag_pill_nondroppable_stroke: Color32,
+
+    /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
+    /// payload.
+    ///
+    /// Sometimes this is the UI element that is being dragged over (e.g., a view receiving a new
+    /// entity). Sometimes this is a UI element not under the pointer, but whose content is
+    /// being hovered (e.g., a container in the blueprint tree)
+    pub drop_target_container_stroke: Stroke,
+
     pub floating_color: Color32,
     pub faint_bg_color: Color32,
     pub extreme_bg_color: Color32,
@@ -135,13 +143,12 @@ impl DesignTokens {
         let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
+        let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
         let top_bar_color = get_color("top_bar_color");
         let tab_bar_color = get_color("tab_bar_color");
         let bottom_bar_color = get_color("bottom_bar_color");
-        let bottom_bar_stroke_color = get_color("bottom_bar_stroke_color");
         let shadow_gradient_dark_start = get_color("shadow_gradient_dark_start");
-        let native_frame_stroke_color = get_color("native_frame_stroke_color");
 
         let floating_color = get_color("floating_color");
         let faint_bg_color = get_color("faint_bg_color");
@@ -169,16 +176,10 @@ impl DesignTokens {
             typography,
             top_bar_color,
             bottom_bar_color,
-            bottom_bar_stroke: egui::Stroke::new(1.0, bottom_bar_stroke_color),
-            bottom_bar_corner_radius: egui::CornerRadius {
-                nw: 0,
-                ne: 0,
-                sw: 0,
-                se: 0,
-            }, // copied from figma, should be top only
+            bottom_bar_stroke: get_stroke("bottom_bar_stroke"),
             shadow_gradient_dark_start,
             tab_bar_color,
-            native_frame_stroke: egui::Stroke::new(1.0, native_frame_stroke_color),
+            native_frame_stroke: get_stroke("native_frame_stroke"),
             strong_fg_color: get_color("strong_fg_color"),
 
             info_log_text_color: get_color("info_log_text_color"),
@@ -212,6 +213,7 @@ impl DesignTokens {
             drag_pill_droppable_stroke: get_color("drag_pill_droppable_stroke"),
             drag_pill_nondroppable_fill: get_color("drag_pill_nondroppable_fill"),
             drag_pill_nondroppable_stroke: get_color("drag_pill_nondroppable_stroke"),
+            drop_target_container_stroke: get_stroke("drop_target_container_stroke"),
 
             floating_color,
             faint_bg_color,
@@ -267,14 +269,6 @@ impl DesignTokens {
             .unwrap()
             .insert(0, "Inter-Medium".into());
         ctx.set_fonts(font_definitions);
-    }
-
-    /// Get the [`Color32`] corresponding to the provided [`ColorToken`].
-    // TODO: make private
-    #[inline]
-    #[deprecated]
-    fn color(&self, token: ColorToken) -> Color32 {
-        self.color_table.get(token)
     }
 
     fn set_text_styles(&self, egui_style: &mut egui::Style) {
@@ -431,7 +425,7 @@ impl DesignTokens {
         egui_style.visuals.window_shadow = shadow;
 
         egui_style.visuals.window_fill = self.floating_color; // tooltips and menus
-        egui_style.visuals.window_stroke = egui::Stroke::NONE;
+        egui_style.visuals.window_stroke = Stroke::NONE;
         egui_style.visuals.panel_fill = self.panel_bg_color;
 
         // don't color hyperlinks #2733
@@ -566,7 +560,7 @@ impl DesignTokens {
                 bottom: -margin_offset,
             },
             stroke: self.bottom_bar_stroke,
-            corner_radius: self.bottom_bar_corner_radius,
+            corner_radius: 0.0.into(),
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
@@ -596,17 +590,6 @@ impl DesignTokens {
     pub fn collapsing_triangle_area() -> egui::Vec2 {
         Self::small_icon_size()
     }
-
-    /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
-    /// payload.
-    ///
-    /// Sometimes this is the UI element that is being dragged over (e.g., a view receiving a new
-    /// entity). Sometimes this is a UI element not under the pointer, but whose content is
-    /// being hovered (e.g., a container in the blueprint tree)
-    #[inline]
-    pub fn drop_target_container_stroke(&self) -> egui::Stroke {
-        egui::Stroke::new(2.0, self.color(ColorToken::blue(S350)))
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -635,6 +618,13 @@ fn try_get_alias_color(
         .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
         .get(color_name)
         .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{color_name}'"))?;
+    color_from_json(color_table, color_alias)
+}
+
+fn color_from_json(
+    color_table: &ColorTable,
+    color_alias: &serde_json::Value,
+) -> Result<Color32, anyhow::Error> {
     let color = color_alias
         .get("color")
         .ok_or_else(|| anyhow::anyhow!("No color found"))?
@@ -680,6 +670,38 @@ fn get_aliased_color(
     try_get_alias_color(color_table, json, alias_path).unwrap_or_else(|err| {
         panic!("Failed to get aliased color at {alias_path:?}: {err}");
     })
+}
+
+fn get_aliased_stroke(
+    color_table: &ColorTable,
+    json: &serde_json::Value,
+    alias_path: &str,
+) -> Stroke {
+    try_get_aliased_stroke(color_table, json, alias_path).unwrap_or_else(|err| {
+        panic!("Failed to get aliased stroke at {alias_path:?}: {err}");
+    })
+}
+
+fn try_get_aliased_stroke(
+    color_table: &ColorTable,
+    json: &serde_json::Value,
+    alias_path: &str,
+) -> anyhow::Result<Stroke> {
+    let color_alias = json
+        .get("Alias")
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
+        .get(alias_path)
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}'"))?;
+
+    let color = color_from_json(color_table, color_alias)?;
+    let width = color_alias
+        .get("width")
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}.width'"))?
+        .as_f64()
+        .ok_or_else(|| anyhow::anyhow!("'Alias.{alias_path}.width' not a number"))?;
+    let width = width as f32;
+    let stroke = Stroke::new(width, color);
+    Ok(stroke)
 }
 
 fn global_path_value<'json>(
