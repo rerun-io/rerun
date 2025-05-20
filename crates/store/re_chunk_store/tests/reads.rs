@@ -9,7 +9,7 @@ use re_chunk_store::{
 };
 use re_log_types::{
     EntityPath, TimeType, Timeline, build_frame_nr,
-    example_components::{MyColor, MyIndex, MyPoint},
+    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types::{
     ComponentDescriptor, ComponentDescriptorSet,
@@ -90,7 +90,7 @@ fn all_components() -> anyhow::Result<()> {
         .with_component_batch(
             RowId::new(),
             TimePoint::default(),
-            &MyColor::from_iter(0..2),
+            (MyPoints::descriptor_colors(), &MyColor::from_iter(0..2)),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -99,7 +99,7 @@ fn all_components() -> anyhow::Result<()> {
         .with_component_batch(
             RowId::new(),
             [build_frame_nr(frame1)],
-            &build_some_large_structs(2),
+            (LargeStruct::descriptor(), &build_some_large_structs(2)),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -111,8 +111,11 @@ fn all_components() -> anyhow::Result<()> {
             RowId::new(),
             [build_frame_nr(frame2)],
             [
-                &build_some_large_structs(2) as _,
-                &MyPoint::from_iter(0..2) as _,
+                (LargeStruct::descriptor(), &build_some_large_structs(2) as _),
+                (
+                    MyPoints::descriptor_points(),
+                    &MyPoint::from_iter(0..2) as _,
+                ),
             ],
         )
         .build()?;
@@ -144,7 +147,7 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
         .with_component_batch(
             RowId::new(),
             [(timeline1, time), (timeline2, time)],
-            &build_some_large_structs(2),
+            (LargeStruct::descriptor(), &build_some_large_structs(2)),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -153,7 +156,7 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
         .with_component_batches(
             RowId::new(),
             [(timeline1, time)],
-            [&build_some_large_structs(2) as _],
+            [(LargeStruct::descriptor(), &build_some_large_structs(2) as _)],
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -215,7 +218,10 @@ fn latest_at() -> anyhow::Result<()> {
         .with_component_batches(
             row_id1,
             [build_frame_nr(frame1)],
-            [&indices1 as _, &colors1 as _],
+            [
+                (MyIndex::descriptor(), &indices1 as _),
+                (MyPoints::descriptor_colors(), &colors1 as _),
+            ],
         )
         .build()?;
 
@@ -225,27 +231,42 @@ fn latest_at() -> anyhow::Result<()> {
         .with_component_batches(
             row_id2,
             [build_frame_nr(frame2)],
-            [&indices1 as _, &points2 as _],
+            [
+                (MyIndex::descriptor(), &indices1 as _),
+                (MyPoints::descriptor_points(), &points2 as _),
+            ],
         )
         .build()?;
 
     let row_id3 = RowId::new();
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id3, [build_frame_nr(frame3)], [&points3 as _])
+        .with_component_batches(
+            row_id3,
+            [build_frame_nr(frame3)],
+            [(MyPoints::descriptor_points(), &points3 as _)],
+        )
         .build()?;
 
     let row_id4 = RowId::new();
     let colors4 = MyColor::from_iter(0..5);
     let chunk4 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id4, [build_frame_nr(frame4)], [&colors4 as _])
+        .with_component_batches(
+            row_id4,
+            [build_frame_nr(frame4)],
+            [(MyPoints::descriptor_colors(), &colors4 as _)],
+        )
         .build()?;
 
     // injecting some static colors
     let row_id5 = RowId::new();
     let colors5 = MyColor::from_iter(0..3);
     let chunk5 = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id5, TimePoint::default(), [&colors5 as _])
+        .with_component_batches(
+            row_id5,
+            TimePoint::default(),
+            [(MyPoints::descriptor_colors(), &colors5 as _)],
+        )
         .build()?;
 
     let chunk1 = Arc::new(chunk1);
@@ -668,7 +689,10 @@ fn range() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id1,
                 [build_frame_nr(frame1)],
-                [&indices1 as _, &colors1 as _],
+                [
+                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyPoints::descriptor_colors(), &colors1 as _),
+                ],
             )
             .build()?,
     );
@@ -680,7 +704,10 @@ fn range() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id2,
                 [build_frame_nr(frame2)],
-                [&indices1 as _, &points2 as _],
+                [
+                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyPoints::descriptor_points(), &points2 as _),
+                ],
             )
             .build()?,
     );
@@ -689,7 +716,11 @@ fn range() -> anyhow::Result<()> {
     let points3 = MyPoint::from_iter(0..10);
     let chunk3 = Arc::new(
         Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id3, [build_frame_nr(frame3)], [&points3 as _])
+            .with_component_batches(
+                row_id3,
+                [build_frame_nr(frame3)],
+                [(MyPoints::descriptor_points(), &points3 as _)],
+            )
             .build()?,
     );
 
@@ -701,7 +732,10 @@ fn range() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4_1,
                 [build_frame_nr(frame4)],
-                [&indices4_1 as _, &colors4_1 as _],
+                [
+                    (MyIndex::descriptor(), &indices4_1 as _),
+                    (MyPoints::descriptor_colors(), &colors4_1 as _),
+                ],
             )
             .build()?,
     );
@@ -714,7 +748,10 @@ fn range() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4_2,
                 [build_frame_nr(frame4)],
-                [&indices4_2 as _, &colors4_2 as _],
+                [
+                    (MyIndex::descriptor(), &indices4_2 as _),
+                    (MyPoints::descriptor_colors(), &colors4_2 as _),
+                ],
             )
             .build()?,
     );
@@ -726,7 +763,10 @@ fn range() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4_25,
                 [build_frame_nr(frame4)],
-                [&indices4_2 as _, &points4_25 as _],
+                [
+                    (MyIndex::descriptor(), &indices4_2 as _),
+                    (MyPoints::descriptor_points(), &points4_25 as _),
+                ],
             )
             .build()?,
     );
@@ -739,7 +779,10 @@ fn range() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4_3,
                 [build_frame_nr(frame4)],
-                [&indices4_3 as _, &colors4_3 as _],
+                [
+                    (MyIndex::descriptor(), &indices4_3 as _),
+                    (MyPoints::descriptor_colors(), &colors4_3 as _),
+                ],
             )
             .build()?,
     );
@@ -751,7 +794,10 @@ fn range() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4_4,
                 [build_frame_nr(frame4)],
-                [&indices4_3 as _, &points4_4 as _],
+                [
+                    (MyIndex::descriptor(), &indices4_3 as _),
+                    (MyPoints::descriptor_points(), &points4_4 as _),
+                ],
             )
             .build()?,
     );
@@ -761,7 +807,11 @@ fn range() -> anyhow::Result<()> {
     let colors5 = MyColor::from_iter(0..8);
     let chunk5 = Arc::new(
         Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id5, TimePoint::default(), [&colors5 as _])
+            .with_component_batches(
+                row_id5,
+                TimePoint::default(),
+                [(MyPoints::descriptor_colors(), &colors5 as _)],
+            )
             .build()?,
     );
 

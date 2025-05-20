@@ -314,7 +314,7 @@ mod tests {
         StoreId, TimePoint, Timeline,
         example_components::{MyColor, MyIndex, MyPoint, MyPoints},
     };
-    use re_types::Component;
+    use re_types::Component as _;
 
     use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};
 

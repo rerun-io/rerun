@@ -12,7 +12,10 @@ use re_log_types::{
     EntityPath, ResolvedTimeRange, Timestamp, build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
-use re_types::{ComponentDescriptor, testing::build_some_large_structs};
+use re_types::{
+    ComponentDescriptor,
+    testing::{LargeStruct, build_some_large_structs},
+};
 use re_types_core::Component as _;
 
 // ---
@@ -66,7 +69,10 @@ fn simple() -> anyhow::Result<()> {
                     .with_component_batch(
                         RowId::new(),
                         [build_frame_nr(frame_nr)],
-                        [build_some_large_structs(num_instances)], // TODO(#6889): That should be fixed when we carry `component_batch` over.
+                        (
+                            LargeStruct::descriptor(),
+                            &build_some_large_structs(num_instances),
+                        ),
                     )
                     .build()?;
                 store.insert_chunk(&Arc::new(chunk))?;

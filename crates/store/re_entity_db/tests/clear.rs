@@ -11,7 +11,8 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types_core::{
-    AsComponents as _, ComponentBatch as _, archetypes::Clear, components::ClearIsRecursive,
+    AsComponents as _, Component, ComponentBatch as _, archetypes::Clear,
+    components::ClearIsRecursive,
 };
 
 // ---
@@ -107,7 +108,11 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let point = MyPoint::new(42.0, 43.0);
         let chunk = Chunk::builder(entity_path_child1.clone())
-            .with_component_batches(row_id, timepoint, [&[point] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [(MyPoints::descriptor_points(), &[point] as _)],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -128,7 +133,11 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let color = MyColor::from(0x00AA00DD);
         let chunk = Chunk::builder(entity_path_child2.clone())
-            .with_component_batches(row_id, timepoint, [&[color] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [(MyPoints::descriptor_colors(), &[color] as _)],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -222,7 +231,11 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let instance = MyIndex(0);
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_component_batches(row_id, timepoint, [&[instance] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [(<re_log_types::example_components::MyIndex as re_types_core::Component>::descriptor(), &[instance] as _)],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -250,7 +263,14 @@ fn clears() -> anyhow::Result<()> {
         let point = MyPoint::new(42.0, 43.0);
         let color = MyColor::from(0xBBBBBBBB);
         let chunk = Chunk::builder(entity_path_child1.clone())
-            .with_component_batches(row_id, timepoint, [&[point] as _, &[color] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [
+                    (MyPoints::descriptor_points(), &[point] as _),
+                    (MyPoints::descriptor_colors(), &[color] as _),
+                ],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -283,7 +303,14 @@ fn clears() -> anyhow::Result<()> {
         let color = MyColor::from(0x00AA00DD);
         let point = MyPoint::new(66.0, 666.0);
         let chunk = Chunk::builder(entity_path_child2.clone())
-            .with_component_batches(row_id, timepoint, [&[color] as _, &[point] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [
+                    (MyPoints::descriptor_colors(), &[color] as _),
+                    (MyPoints::descriptor_points(), &[point] as _),
+                ],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -314,7 +341,11 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let color = MyColor::from(0x00AA00DD);
         let chunk = Chunk::builder(entity_path_grandchild.clone())
-            .with_component_batches(row_id, timepoint, [&[color] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [(MyPoints::descriptor_colors(), &[color] as _)],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -356,7 +387,11 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
 
     let point = MyPoint::new(1.0, 2.0);
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id2, timepoint.clone(), [&[point] as _])
+        .with_component_batches(
+            row_id2,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), &[point] as _)],
+        )
         .build()?;
 
     db.add_chunk(&Arc::new(chunk))?;

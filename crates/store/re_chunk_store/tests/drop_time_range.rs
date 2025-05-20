@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
+use re_log_types::example_components::MyPoints;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_log_types::{ResolvedTimeRange, example_components::MyColor};
 use re_types_core::Component as _;
@@ -37,28 +38,76 @@ fn drop_time_range() -> anyhow::Result<()> {
 
         store.insert_chunk(&Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), time_point_at(0), &data)
-                .with_component_batch(RowId::new(), time_point_at(1), &data)
-                .with_component_batch(RowId::new(), time_point_at(2), &data)
-                .with_component_batch(RowId::new(), time_point_at(3), &data)
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(0),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(1),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(2),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(3),
+                    (MyPoints::descriptor_colors(), &data),
+                )
                 .build()?,
         ))?;
 
         store.insert_chunk(&Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), time_point_at(2), &data)
-                .with_component_batch(RowId::new(), time_point_at(3), &data)
-                .with_component_batch(RowId::new(), time_point_at(4), &data)
-                .with_component_batch(RowId::new(), time_point_at(5), &data)
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(2),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(3),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(4),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(5),
+                    (MyPoints::descriptor_colors(), &data),
+                )
                 .build()?,
         ))?;
 
         store.insert_chunk(&Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batch(RowId::new(), time_point_at(4), &data)
-                .with_component_batch(RowId::new(), time_point_at(5), &data)
-                .with_component_batch(RowId::new(), time_point_at(6), &data)
-                .with_component_batch(RowId::new(), time_point_at(7), &data)
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(4),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(5),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(6),
+                    (MyPoints::descriptor_colors(), &data),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    time_point_at(7),
+                    (MyPoints::descriptor_colors(), &data),
+                )
                 .build()?,
         ))?;
 

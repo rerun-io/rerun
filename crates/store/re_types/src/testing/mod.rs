@@ -1,7 +1,5 @@
 #![allow(missing_docs)] // It's only for testing
 
-use re_types_core::{Component as _, ComponentDescriptor};
-
 pub mod archetypes;
 pub mod components;
 pub mod datatypes;
@@ -10,8 +8,8 @@ pub mod datatypes;
 pub type LargeStruct = components::AffixFuzzer1;
 
 /// Builds len instances of [`LargeStruct`]
-pub fn build_some_large_structs(len: usize) -> (ComponentDescriptor, Vec<LargeStruct>) {
-    let components = (0..len)
+pub fn build_some_large_structs(len: usize) -> Vec<LargeStruct> {
+    (0..len)
         .map(|i| {
             components::AffixFuzzer1(datatypes::AffixFuzzer1 {
                 single_float_optional: Some(i as f32),
@@ -34,7 +32,5 @@ pub fn build_some_large_structs(len: usize) -> (ComponentDescriptor, Vec<LargeSt
                 },
             })
         })
-        .collect();
-
-    (LargeStruct::descriptor(), components)
+        .collect()
 }

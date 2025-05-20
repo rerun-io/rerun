@@ -262,7 +262,7 @@ fn write_errors() -> anyhow::Result<()> {
             .with_component_batch(
                 row_id1,
                 [build_frame_nr(2), build_log_time(Timestamp::now())],
-                &MyPoint::from_iter(0..1),
+                (MyPoints::descriptor_points(), &MyPoint::from_iter(0..1)),
             )
             .build()?;
 
@@ -296,7 +296,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         .with_component_batch(
             RowId::new(),
             [build_log_time(now), build_frame_nr(frame40)],
-            &MyIndex::from_iter(0..num_instances),
+            (MyIndex::descriptor(), &MyIndex::from_iter(0..num_instances)),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
