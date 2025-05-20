@@ -197,6 +197,13 @@ impl DesignTokens {
         ctx.set_fonts(font_definitions);
     }
 
+    /// Get the [`Color32`] corresponding to the provided [`ColorToken`].
+    // TODO: make private
+    #[inline]
+    pub fn color(&self, token: ColorToken) -> Color32 {
+        self.color_table.get(token)
+    }
+
     fn set_text_styles(&self, egui_style: &mut egui::Style) {
         let font_size = parse_px(&self.typography.fontSize);
 
@@ -643,15 +650,12 @@ fn try_get_alias_color(
         .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{color_name}'"))?;
     let color = color_alias
         .get("color")
-        .ok_or_else(|| anyhow::anyhow!("No color found"))?
+        .ok_or_else(|| anyhow::anyhow!("No 'color' found"))?
         .as_str()
-        .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
+        .ok_or_else(|| anyhow::anyhow!("'color' should be a string"))?;
 
-    if color.starts_with('#') {
-        Ok(
-            Color32::from_hex(color)
-                .map_err(|err| anyhow::anyhow!("Invalid hex color: {err:?}"))?,
-        )
+    let mut color = if color.starts_with('#') {
+        Color32::from_hex(color).map_err(|err| anyhow::anyhow!("Invalid hex color: {err:?}"))?
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')
@@ -664,18 +668,20 @@ fn try_get_alias_color(
             .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
         let hue: Hue = hue.parse()?;
         let scale: Scale = scale.parse()?;
-        let mut color = color_table.get(ColorToken::new(hue, scale));
-        if let Some(alpha) = color_alias.get("alpha") {
-            let alpha = alpha
-                .as_i64()
-                .ok_or_else(|| anyhow::anyhow!("alpha should be 0-255"))?;
-            let alpha: u8 = u8::try_from(alpha).context("alpha should be 0-255")?;
-            color = color.gamma_multiply_u8(alpha);
-        }
-        Ok(color)
+        color_table.get(ColorToken::new(hue, scale))
     } else {
         anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
+    };
+
+    if let Some(alpha) = color_alias.get("alpha") {
+        let alpha = alpha
+            .as_i64()
+            .ok_or_else(|| anyhow::anyhow!("alpha should be 0-255"))?;
+        let alpha: u8 = u8::try_from(alpha).context("alpha should be 0-255")?;
+        color = color.gamma_multiply_u8(alpha);
     }
+
+    Ok(color)
 }
 
 fn get_aliased_color(
