@@ -145,40 +145,15 @@ impl DesignTokens {
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
         let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
-        let top_bar_color = get_color("top_bar_color");
-        let tab_bar_color = get_color("tab_bar_color");
-        let bottom_bar_color = get_color("bottom_bar_color");
-        let shadow_gradient_dark_start = get_color("shadow_gradient_dark_start");
-
-        let floating_color = get_color("floating_color");
-        let faint_bg_color = get_color("faint_bg_color");
-        let extreme_bg_color = get_color("extreme_bg_color");
-        let widget_inactive_bg_fill = get_color("widget_inactive_bg_fill");
-        let widget_hovered_color = get_color("widget_hovered_color");
-        let widget_hovered_weak_bg_fill = get_color("widget_hovered_weak_bg_fill");
-        let widget_hovered_bg_fill = get_color("widget_hovered_bg_fill");
-        let widget_active_weak_bg_fill = get_color("widget_active_weak_bg_fill");
-        let widget_active_bg_fill = get_color("widget_active_bg_fill");
-        let widget_open_weak_bg_fill = get_color("widget_open_weak_bg_fill");
-        let widget_noninteractive_weak_bg_fill = get_color("widget_noninteractive_weak_bg_fill");
-        let widget_noninteractive_bg_fill = get_color("widget_noninteractive_bg_fill");
-        let selection_bg_fill = get_color("selection_bg_fill");
-        let selection_stroke_color = get_color("selection_stroke_color");
-        let widget_noninteractive_bg_stroke = get_color("widget_noninteractive_bg_stroke");
-        let text_subdued = get_color("text_subdued");
-        let text_default = get_color("text_default");
-        let text_strong = get_color("text_strong");
-        let error_fg_color = get_color("error_fg_color");
-        let warn_fg_color = get_color("warn_fg_color");
-
         Self {
             theme,
             typography,
-            top_bar_color,
-            bottom_bar_color,
+
+            top_bar_color: get_color("top_bar_color"),
+            bottom_bar_color: get_color("bottom_bar_color"),
             bottom_bar_stroke: get_stroke("bottom_bar_stroke"),
-            shadow_gradient_dark_start,
-            tab_bar_color,
+            shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
+            tab_bar_color: get_color("tab_bar_color"),
             native_frame_stroke: get_stroke("native_frame_stroke"),
             strong_fg_color: get_color("strong_fg_color"),
 
@@ -215,26 +190,26 @@ impl DesignTokens {
             drag_pill_nondroppable_stroke: get_color("drag_pill_nondroppable_stroke"),
             drop_target_container_stroke: get_stroke("drop_target_container_stroke"),
 
-            floating_color,
-            faint_bg_color,
-            extreme_bg_color,
-            widget_inactive_bg_fill,
-            widget_hovered_color,
-            widget_hovered_weak_bg_fill,
-            widget_hovered_bg_fill,
-            widget_active_weak_bg_fill,
-            widget_active_bg_fill,
-            widget_open_weak_bg_fill,
-            widget_noninteractive_weak_bg_fill,
-            widget_noninteractive_bg_fill,
-            selection_bg_fill,
-            selection_stroke_color,
-            widget_noninteractive_bg_stroke,
-            text_subdued,
-            text_default,
-            text_strong,
-            error_fg_color,
-            warn_fg_color,
+            floating_color: get_color("floating_color"),
+            faint_bg_color: get_color("faint_bg_color"),
+            extreme_bg_color: get_color("extreme_bg_color"),
+            widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
+            widget_hovered_color: get_color("widget_hovered_color"),
+            widget_hovered_weak_bg_fill: get_color("widget_hovered_weak_bg_fill"),
+            widget_hovered_bg_fill: get_color("widget_hovered_bg_fill"),
+            widget_active_weak_bg_fill: get_color("widget_active_weak_bg_fill"),
+            widget_active_bg_fill: get_color("widget_active_bg_fill"),
+            widget_open_weak_bg_fill: get_color("widget_open_weak_bg_fill"),
+            widget_noninteractive_weak_bg_fill: get_color("widget_noninteractive_weak_bg_fill"),
+            widget_noninteractive_bg_fill: get_color("widget_noninteractive_bg_fill"),
+            selection_bg_fill: get_color("selection_bg_fill"),
+            selection_stroke_color: get_color("selection_stroke_color"),
+            widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
+            text_subdued: get_color("text_subdued"),
+            text_default: get_color("text_default"),
+            text_strong: get_color("text_strong"),
+            error_fg_color: get_color("error_fg_color"),
+            warn_fg_color: get_color("warn_fg_color"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 
