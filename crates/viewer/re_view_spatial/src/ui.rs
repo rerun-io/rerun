@@ -6,7 +6,7 @@ use re_types::{
     blueprint::components::VisualBounds2D, components::ViewCoordinates, image::ImageKind,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{HoverHighlight, SelectionHighlight, ViewHighlights, ViewState};
+use re_viewer_context::{HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewState};
 
 use crate::{
     Pinhole,
@@ -37,13 +37,21 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
+/// Number of images per image kind.
+#[derive(Clone, Copy, Default)]
+pub struct ImageCounts {
+    pub segmentation: usize,
+    pub color: usize,
+    pub depth: usize,
+}
+
 /// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by [`View3DState`], not the other way round.
 #[derive(Clone, Default)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
 
-    /// Number of images & depth images processed last frame.
-    pub num_non_segmentation_images_last_frame: usize,
+    /// Number of images per image kind processed last frame.
+    pub image_counts_last_frame: ImageCounts,
 
     /// Last frame's picking result.
     pub previous_picking_result: Option<PickingResult>,
@@ -80,19 +88,24 @@ impl SpatialViewState {
             .update(ui, &system_output.view_systems, space_kind);
 
         let view_systems = &system_output.view_systems;
-        self.num_non_segmentation_images_last_frame = view_systems
-            .iter_visualizer_data::<SpatialViewVisualizerData>()
-            .flat_map(|data| {
-                data.pickable_rects.iter().map(|pickable_rect| {
-                    if let PickableRectSourceData::Image { image, .. } = &pickable_rect.source_data
-                    {
-                        (image.kind != ImageKind::Segmentation) as usize
-                    } else {
-                        0
-                    }
-                })
-            })
-            .sum();
+
+        for data in view_systems.iter_visualizer_data::<SpatialViewVisualizerData>() {
+            for pickable_rect in &data.pickable_rects {
+                let PickableRectSourceData::Image {
+                    image: ImageInfo { kind, .. },
+                    ..
+                } = &pickable_rect.source_data
+                else {
+                    continue;
+                };
+
+                match kind {
+                    ImageKind::Segmentation => self.image_counts_last_frame.segmentation += 1,
+                    ImageKind::Color => self.image_counts_last_frame.color += 1,
+                    ImageKind::Depth => self.image_counts_last_frame.depth += 1,
+                }
+            }
+        }
     }
 
     pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpatialViewKind) {
@@ -146,6 +159,39 @@ impl SpatialViewState {
                 ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
                 eye.set_mode(mode);
             });
+        }
+    }
+
+    pub fn fallback_opacity_for_image_kind(&self, kind: ImageKind) -> f32 {
+        // If we have multiple images in the same view, they should not be fully opaque
+        // if there is at least one image of the same kind with equal or lower draw order.
+        //
+        // Here we also assume that if the opacity is unchanged, neither is the draw order.
+        //
+        // By default, the draw order is (front to back):
+        // * segmentation image
+        // * color image
+        // * depth image
+        let counts = self.image_counts_last_frame;
+        match kind {
+            ImageKind::Segmentation => {
+                if counts.color + counts.depth > 0 {
+                    // Segmentation images should always be opaque if there was more than one image in the view,
+                    // excluding other segmentation images.
+                    0.5
+                } else {
+                    1.0
+                }
+            }
+            ImageKind::Color => {
+                if counts.depth > 0 {
+                    0.5
+                } else {
+                    1.0
+                }
+            }
+            // NOTE: Depth images do not support opacity
+            ImageKind::Depth => 1.0,
         }
     }
 }

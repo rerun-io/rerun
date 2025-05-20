@@ -43,7 +43,7 @@ re_string_interner.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_types_core.workspace = true
-re_ui.workspace = true
+re_ui = { workspace = true, features = ["arrow"] }
 re_uri.workspace = true
 re_video = { workspace = true, features = ["serde"] }
 

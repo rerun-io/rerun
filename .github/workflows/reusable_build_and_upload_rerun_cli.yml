@@ -88,7 +88,7 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="buildjet-8vcpu-ubuntu-2204-arm"
+              runner="buildjet-16vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
               container="'rerunio/ci_docker:0.15.0'"
               bin_name="rerun"
