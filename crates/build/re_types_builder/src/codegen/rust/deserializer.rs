@@ -2,12 +2,12 @@ use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::{
+    Object, Objects, TypeRegistry,
     codegen::rust::{
-        arrow::{is_backed_by_scalar_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
+        arrow::{ArrowDataTypeTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path},
         util::{is_tuple_struct_from_obj, quote_comment},
     },
     data_type::{AtomicDataType, DataType, UnionMode},
-    Object, Objects, TypeRegistry,
 };
 
 // ---

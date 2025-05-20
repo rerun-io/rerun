@@ -11,7 +11,7 @@ use re_viewer_context::{
 use crate::contexts::SpatialSceneEntityContext;
 use crate::proc_mesh::{self, ProcMeshKey};
 use crate::visualizers::{
-    process_labels_3d, process_radius_slice, utilities::LabeledBatch, SpatialViewVisualizerData,
+    SpatialViewVisualizerData, process_labels_3d, process_radius_slice, utilities::LabeledBatch,
 };
 
 #[cfg(doc)]

@@ -139,8 +139,11 @@ re_video.workspace = true
 
 anyhow.workspace = true
 arrow.workspace = true
+camino.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
+indexmap.workspace = true
+indicatif.workspace = true
 itertools.workspace = true
 similar-asserts.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }

@@ -1,8 +1,8 @@
 use std::{
     collections::BTreeSet,
     sync::{
-        atomic::{AtomicU64, Ordering},
         OnceLock,
+        atomic::{AtomicU64, Ordering},
     },
 };
 
@@ -20,10 +20,10 @@ use arrow::{
 use itertools::{Either, Itertools as _};
 use nohash_hasher::{IntMap, IntSet};
 
-use re_arrow_util::{into_arrow_ref, ArrowArrayDowncastRef as _};
+use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
 use re_chunk::{
-    external::arrow::array::ArrayRef, Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt,
-    TimelineName, UnitChunkShared,
+    Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt, TimelineName, UnitChunkShared,
+    external::arrow::array::ArrayRef,
 };
 use re_chunk_store::{
     ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
@@ -32,9 +32,10 @@ use re_chunk_store::{
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
-    ColumnSelector, ComponentColumnSelector, SorbetColumnDescriptors, TimeColumnSelector,
+    ChunkColumnDescriptors, ColumnSelector, ComponentColumnSelector, RowIdColumnDescriptor,
+    TimeColumnSelector,
 };
-use re_types_core::{archetypes, ComponentDescriptor};
+use re_types_core::{ComponentDescriptor, Loggable as _, archetypes, arrow_helpers::as_array_ref};
 
 // ---
 
@@ -78,7 +79,7 @@ struct QueryHandleState {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
-    view_contents: SorbetColumnDescriptors,
+    view_contents: ChunkColumnDescriptors,
 
     /// Describes the columns specifically selected to be returned from this view.
     ///
@@ -336,20 +337,24 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             selected_contents
                 .iter()
                 .map(|(_view_idx, descr)| match descr {
-                    ColumnDescriptor::Time(_) => None,
+                    ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => None,
                     ColumnDescriptor::Component(descr) => {
                         descr.sanity_check();
 
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        let results = cache.latest_at(
-                            &query,
-                            &descr.entity_path,
-                            // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
-                            //[ComponentDescriptor::from(descr.clone())],
-                            [descr.component_name],
-                        );
+                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                        let component_descriptor = store
+                            .entity_component_descriptors_with_name(
+                                &descr.entity_path,
+                                descr.component_name,
+                            )
+                            .into_iter()
+                            .next()?;
+
+                        let results =
+                            cache.latest_at(&query, &descr.entity_path, [&component_descriptor]);
 
                         results.components.into_values().next()
                     }
@@ -382,6 +387,23 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         selection
             .iter()
             .map(|column| match column {
+                ColumnSelector::RowId => {
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .find_map(|(idx, view_column)| {
+                            if let ColumnDescriptor::RowId(descr) = view_column {
+                                Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or((
+                            usize::MAX,
+                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                        ))
+                }
+
                 ColumnSelector::Time(selected_column) => {
                     let TimeColumnSelector {
                         timeline: selected_timeline,
@@ -390,9 +412,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     view_contents
                         .iter()
                         .enumerate()
-                        .filter_map(|(idx, view_column)| match view_column {
-                            ColumnDescriptor::Time(view_descr) => Some((idx, view_descr)),
-                            ColumnDescriptor::Component(_) => None,
+                        .filter_map(|(idx, view_column)| if let ColumnDescriptor::Time(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
                         })
                         .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
                         .map_or_else(
@@ -422,9 +445,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     view_contents
                         .iter()
                         .enumerate()
-                        .filter_map(|(idx, view_column)| match view_column {
-                            ColumnDescriptor::Component(view_descr) => Some((idx, view_descr)),
-                            ColumnDescriptor::Time(_) => None,
+                        .filter_map(|(idx, view_column)| if let ColumnDescriptor::Component(view_descr) = view_column {
+                            Some((idx, view_descr))
+                        } else {
+                            None
                         })
                         .find(|(_idx, view_descr)| {
                             view_descr.entity_path == *selected_entity_path
@@ -471,7 +495,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .iter()
             .enumerate()
             .map(|(idx, selected_column)| match selected_column {
-                ColumnDescriptor::Time(_) => Vec::new(),
+                ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => Vec::new(),
 
                 ColumnDescriptor::Component(column) => {
                     let chunks = self
@@ -508,7 +532,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns all the ancestors of an [`EntityPath`].
         ///
         /// Doesn't return `entity_path` itself.
-        fn entity_path_ancestors(entity_path: &EntityPath) -> impl Iterator<Item = EntityPath> {
+        fn entity_path_ancestors(
+            entity_path: &EntityPath,
+        ) -> impl Iterator<Item = EntityPath> + use<> {
             std::iter::from_fn({
                 let mut entity_path = entity_path.parent();
                 move || {
@@ -553,10 +579,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // All unique entity paths present in the view contents.
         let entity_paths: IntSet<EntityPath> = view_contents
             .iter()
-            .filter_map(|col| match col {
-                ColumnDescriptor::Component(descr) => Some(descr.entity_path.clone()),
-                ColumnDescriptor::Time(_) => None,
-            })
+            .filter_map(|col| col.entity_path().cloned())
             .collect();
 
         entity_paths
@@ -662,7 +685,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// See [`QueryExpression::view_contents`].
     #[inline]
-    pub fn view_contents(&self) -> &SorbetColumnDescriptors {
+    pub fn view_contents(&self) -> &ChunkColumnDescriptors {
         &self.init().view_contents
     }
 
@@ -824,7 +847,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn next_row_async(&self) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>>
+    pub fn next_row_async(
+        &self,
+    ) -> impl std::future::Future<Output = Option<Vec<ArrayRef>>> + use<E>
     where
         E: 'static + Send + Clone,
     {
@@ -1054,12 +1079,19 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
+                    // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
+                    let component_descriptor = store
+                        .entity_component_descriptors_with_name(
+                            &descr.entity_path,
+                            descr.component_name,
+                        )
+                        .into_iter()
+                        .next()?;
+
                     let results = cache.latest_at(
                         &query,
                         &descr.entity_path.clone(),
-                        // TODO(#6889): We don't allow passing in full descriptors to dataframe queries yet. Everything works via component name.
-                        //[ComponentDescriptor::from(descr.clone())],
-                        [descr.component_name],
+                        [&component_descriptor],
                     );
 
                     *streaming_state = results
@@ -1170,16 +1202,15 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         }
 
                         StreamingJoinState::Retrofilled(unit) => {
-                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| match col {
-                                ColumnDescriptor::Component(descr) => {
-                                    descr.component_name.sanity_check();
-                                    Some(re_types_core::ComponentDescriptor {
-                                        component_name: descr.component_name,
-                                        archetype_name: descr.archetype_name,
-                                        archetype_field_name: descr.archetype_field_name,
-                                    })
-                                },
-                                ColumnDescriptor::Time(_) => None,
+                            let component_desc = state.view_contents.get_index_or_component(view_idx).and_then(|col| if let ColumnDescriptor::Component(descr) = col {
+                                descr.component_name.sanity_check();
+                                Some(re_types_core::ComponentDescriptor {
+                                    component_name: descr.component_name,
+                                    archetype_name: descr.archetype_name,
+                                    archetype_field_name: descr.archetype_field_name,
+                                })
+                            } else {
+                                None
                             })?;
                             unit.components().get(&component_desc).cloned()
                         }
@@ -1204,6 +1235,19 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .selected_contents
             .iter()
             .map(|(view_idx, column)| match column {
+                ColumnDescriptor::RowId(_) => state
+                    .view_chunks
+                    .first()
+                    .and_then(|vec| vec.first()) // TODO(#9922): verify that using the row:ids from the first chunk always makes sense
+                    .map(|(row_idx, chunk)| {
+                        as_array_ref(
+                            chunk
+                                .row_ids_array()
+                                .slice(row_idx.load(Ordering::Acquire) as _, 1),
+                        )
+                    })
+                    .unwrap_or_else(|| arrow::array::new_null_array(&RowId::arrow_datatype(), 1)),
+
                 ColumnDescriptor::Time(descr) => max_value_per_index
                     .get(descr.timeline().name())
                     .map_or_else(
@@ -1312,12 +1356,11 @@ mod tests {
     };
     use re_format_arrow::format_record_batch;
     use re_log_types::{
-        build_frame_nr, build_log_time,
+        EntityPath, Timeline, build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
-        EntityPath, Timeline,
     };
     use re_query::StorageEngine;
-    use re_types_core::{components, Component as _};
+    use re_types_core::{Component as _, components};
 
     use crate::{QueryCache, QueryEngine};
 

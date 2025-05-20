@@ -1,8 +1,8 @@
 //! Logs an `AnnotationContext` archetype for roundtrip checks.
 
 use rerun::{
-    datatypes::{ClassDescription, KeypointPair},
     AnnotationContext, RecordingStream, Rgba32,
+    datatypes::{ClassDescription, KeypointPair},
 };
 
 #[derive(Debug, clap::Parser)]

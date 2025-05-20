@@ -386,7 +386,11 @@ pub fn testing_instance_descriptor() -> wgpu::InstanceDescriptor {
     let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
 
     let flags = (
-        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER | wgpu::InstanceFlags::VALIDATION
+        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER
+        // Validation would be great, but it looks like we don't always get validation layers, causing this error:
+        // `InstanceFlags::VALIDATION requested, but unable to find layer: VK_LAYER_KHRONOS_validation`
+        //| wgpu::InstanceFlags::VALIDATION
+
         // TODO(andreas): GPU based validation layer sounds like a great idea,
         // but as of writing this makes tests crash on my Windows machine!
         // It looks like the crash is in the Vulkan/Nvidia driver, but further investigation is needed.
@@ -456,6 +460,8 @@ pub fn supported_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
+    } else if is_safari_browser() {
+        wgpu::Backends::GL // TODO(#8559): Fix WebGPU on Safari
     } else {
         wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
     }
@@ -528,4 +534,21 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
         }
     }
     Ok(())
+}
+
+/// Are we running inside the Safari browser?
+pub fn is_safari_browser() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    fn is_safari_browser_inner() -> Option<bool> {
+        use web_sys::wasm_bindgen::JsValue;
+        let window = web_sys::window()?;
+        Some(window.has_own_property(&JsValue::from("safari")))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn is_safari_browser_inner() -> Option<bool> {
+        None
+    }
+
+    is_safari_browser_inner().unwrap_or(false)
 }

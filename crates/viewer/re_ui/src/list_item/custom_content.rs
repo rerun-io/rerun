@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
 
-use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 use crate::DesignTokens;
+use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]
@@ -136,7 +136,7 @@ impl ListItemContent for CustomContent<'_> {
             egui::vec2(content_width, context.rect.height()),
         );
 
-        ui.allocate_new_ui(
+        ui.scope_builder(
             egui::UiBuilder::new()
                 .max_rect(content_rect)
                 .layout(egui::Layout::left_to_right(egui::Align::Center)),

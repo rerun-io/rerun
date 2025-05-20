@@ -3,25 +3,26 @@ use std::sync::Arc;
 use arrow::array::{RecordBatch, StringArray};
 use arrow::datatypes::{Field, Schema as ArrowSchema};
 use arrow::pyarrow::PyArrowType;
-use pyo3::{exceptions::PyRuntimeError, pyclass, pymethods, Py, PyAny, PyRef, PyResult, Python};
-use re_grpc_client::redap::get_chunks_response_to_chunk_and_partition_id;
+use pyo3::{Py, PyAny, PyRef, PyResult, Python, exceptions::PyRuntimeError, pyclass, pymethods};
 use tokio_stream::StreamExt as _;
 
 use re_chunk_store::{ChunkStore, ChunkStoreHandle};
 use re_datafusion::{PartitionTableProvider, SearchResultsTableProvider};
+use re_grpc_client::redap::get_chunks_response_to_chunk_and_partition_id;
 use re_log_encoding::codec::wire::encoder::Encode as _;
 use re_log_types::{StoreId, StoreInfo, StoreKind, StoreSource};
-use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::common::v1alpha1::IfDuplicateBehavior;
+use re_protos::common::v1alpha1::ext::DatasetHandle;
 use re_protos::frontend::v1alpha1::{CreateIndexRequest, GetChunksRequest, SearchDatasetRequest};
 use re_protos::manifest_registry::v1alpha1::ext::IndexProperties;
 use re_protos::manifest_registry::v1alpha1::{
-    index_query_properties, IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery,
+    IndexConfig, IndexQueryProperties, InvertedIndexQuery, VectorIndexQuery, index_query_properties,
 };
 use re_sorbet::{SorbetColumnDescriptors, TimeColumnSelector};
 
+use crate::catalog::task::PyTasks;
 use crate::catalog::{
-    dataframe_query::PyDataframeQueryView, to_py_err, PyEntry, VectorDistanceMetricLike, VectorLike,
+    PyEntry, VectorDistanceMetricLike, VectorLike, dataframe_query::PyDataframeQueryView, to_py_err,
 };
 use crate::dataframe::{
     AnyComponentColumn, PyDataFusionTable, PyIndexColumnSelector, PyRecording, PySchema,
@@ -94,24 +95,49 @@ impl PyDataset {
         .to_string()
     }
 
-    /// Register a RRD URI to the dataset.
-    fn register(self_: PyRef<'_, Self>, recording_uri: String) -> PyResult<()> {
-        // TODO(#9731): In order to make the `register` method appear synchronous,
-        // we need to hard-code a max timeout for waiting for the corresponding tasks.
-        // 60 seconds is totally arbitrary but should work for interactive uses
-        // for now.
-        //
-        // A more permanent solution is to expose an asynchronous register method, and/or
-        // the timeout directly to the caller.
-        // See also issue #9731
-        const MAX_REGISTER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+    /// Register a RRD URI to the dataset and wait for completion.
+    ///
+    /// This method registers a single recording to the dataset and blocks until the registration is
+    /// complete, or after a timeout (in which case, a `TimeoutError` is raised).
+    ///
+    /// Parameters
+    /// ----------
+    /// recording_uri: str
+    ///     The URI of the RRD to register
+    ///
+    /// timeout_secs: int
+    ///     The timeout after which this method returns.
+    #[pyo3(signature = (recording_uri, timeout_secs = 60))]
+    fn register(self_: PyRef<'_, Self>, recording_uri: String, timeout_secs: u64) -> PyResult<()> {
+        let register_timeout = std::time::Duration::from_secs(timeout_secs);
         let super_ = self_.as_super();
         let mut connection = super_.client.borrow(self_.py()).connection().clone();
         let dataset_id = super_.details.id;
 
         let task_ids =
             connection.register_with_dataset(self_.py(), dataset_id, vec![recording_uri])?;
-        connection.wait_for_tasks(self_.py(), &task_ids, MAX_REGISTER_TIMEOUT)
+
+        connection.wait_for_tasks(self_.py(), &task_ids, register_timeout)
+    }
+
+    /// Register a batch of RRD URIs to the dataset and return a handle to the tasks.
+    ///
+    /// This method initiates the registration of multiple recordings to the dataset, and returns
+    /// the corresponding task ids in a [`Tasks`] object.
+    ///
+    /// Parameters
+    /// ----------
+    /// recording_uris: list[str]
+    ///     The URIs of the RRDs to register
+    #[allow(rustdoc::broken_intra_doc_links)]
+    fn register_batch(self_: PyRef<'_, Self>, recording_uris: Vec<String>) -> PyResult<PyTasks> {
+        let super_ = self_.as_super();
+        let mut connection = super_.client.borrow(self_.py()).connection().clone();
+        let dataset_id = super_.details.id;
+
+        let task_ids = connection.register_with_dataset(self_.py(), dataset_id, recording_uris)?;
+
+        Ok(PyTasks::new(super_.client.clone_ref(self_.py()), task_ids))
     }
 
     /// Download a partition from the dataset.
@@ -438,13 +464,11 @@ impl PyDataset {
 
     fn fetch_schema(self_: &PyRef<'_, Self>) -> PyResult<PySchema> {
         Self::fetch_arrow_schema(self_).and_then(|arrow_schema| {
-            let descs = SorbetColumnDescriptors::try_from_arrow_fields_forgiving(
-                None,
-                arrow_schema.fields(),
-            )
-            .map_err(to_py_err)?;
+            let schema =
+                SorbetColumnDescriptors::try_from_arrow_fields(None, arrow_schema.fields())
+                    .map_err(to_py_err)?;
 
-            Ok(PySchema { schema: descs })
+            Ok(PySchema { schema })
         })
     }
 }

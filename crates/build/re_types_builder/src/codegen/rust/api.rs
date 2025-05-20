@@ -7,8 +7,13 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::{
+    ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
+    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
+    ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    Type, TypeRegistry,
     codegen::{
-        autogen_warning,
+        Target, autogen_warning,
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -18,15 +23,9 @@ use crate::{
             serializer::quote_arrow_serializer,
             util::{is_tuple_struct_from_obj, quote_doc_line},
         },
-        Target,
     },
     format_path,
     objects::ObjectClass,
-    CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    TypeRegistry, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
-    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
-    ATTR_RUST_REPR,
 };
 
 use super::{
@@ -160,6 +159,7 @@ fn generate_object_file(
         code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
     }
 
+    code.push_str("#![allow(unused_braces)]\n");
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
@@ -1101,15 +1101,26 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
 
             let archetype_name = &obj.fqname;
             let archetype_field_name = field.snake_case_name();
+            let (typ, _) = quote_field_type_from_typ(&field.typ, true);
 
-            let doc = format!(
-                "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
-            );
+            // Make the `#doc` string nice (avoids `/** */`).
+            let lines = [
+                format!(
+                    "Returns the [`ComponentDescriptor`] for [`Self::{archetype_field_name}`]."
+                ),
+                String::new(),
+                format!("The corresponding component is [`{typ}`]."),
+            ];
+
+            let doc_attrs = lines.iter().map(|line| {
+                quote! { #[doc = #line] }
+            });
+
             let fn_name = format_ident!("descriptor_{archetype_field_name}");
 
             quote! {
-                #[doc = #doc]
-                #[inline]
+            #(#doc_attrs)*
+            #[inline]
                 pub fn #fn_name() -> ComponentDescriptor {
                     ComponentDescriptor {
                         archetype_name: Some(#archetype_name.into()),
@@ -1120,7 +1131,6 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             }
         })
         .chain(std::iter::once({
-            let archetype_name = &obj.fqname;
             let indicator_component_name = format!(
                 "{}Indicator",
                 obj.fqname.replace("archetypes", "components")
@@ -1133,7 +1143,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
                 #[inline]
                 pub fn descriptor_indicator() -> ComponentDescriptor {
                     ComponentDescriptor {
-                        archetype_name: Some(#archetype_name.into()),
+                        archetype_name: None,
                         component_name: #indicator_component_name.into(),
                         archetype_field_name: None,
                     }

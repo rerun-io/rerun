@@ -3,9 +3,9 @@ use std::ops::ControlFlow;
 use egui::{Key, NumExt as _, Ui};
 
 use re_log_types::EntityPath;
-use re_ui::{list_item, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item};
 use re_viewer_context::ViewerContext;
-use re_viewport_blueprint::{default_created_views, ViewBlueprint};
+use re_viewport_blueprint::{ViewBlueprint, default_created_views};
 
 /// State of the space origin widget.
 #[derive(Default, Clone)]

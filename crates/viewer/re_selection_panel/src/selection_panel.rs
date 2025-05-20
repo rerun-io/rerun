@@ -1,23 +1,23 @@
-use egui::NumExt as _;
+use egui::{NumExt as _, TextBuffer};
 use egui_tiles::ContainerKind;
 
-use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::{
-    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
     DataUi,
+    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
 };
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_types::ComponentDescriptor;
 use re_ui::{
-    icons,
+    ContextExt as _, UiExt as _, icons,
     list_item::{self, PropertyContent},
-    ContextExt as _, UiExt as _,
 };
 use re_viewer_context::{
-    contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, UiLayout, ViewContext, ViewId, ViewStates, ViewerContext,
+    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, UiLayout,
+    ViewContext, ViewId, ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
 use crate::{
     defaults_ui::view_components_defaults_section_ui,
@@ -186,6 +186,59 @@ impl SelectionPanel {
                     }),
                 );
 
+                let ComponentDescriptor {
+                    archetype_name,
+                    archetype_field_name,
+                    component_name,
+                } = component_descriptor;
+
+                if let Some(archetype_name) = archetype_name {
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Archetype").value_fn(
+                        |ui, _| {
+                            ui.label(archetype_name.short_name()).on_hover_ui(|ui| {
+                                ui.spacing_mut().item_spacing.y = 12.0;
+
+                                ui.strong(archetype_name.full_name());
+
+                                if let Some(doc_url) = archetype_name.doc_url() {
+                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                }
+                            });
+                        },
+                    ));
+                }
+
+                if let Some(archetype_field_name) = archetype_field_name {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Archetype field")
+                            .value_text(archetype_field_name.to_string()),
+                    );
+                }
+
+                ui.list_item_flat_noninteractive(PropertyContent::new("Component").value_fn(
+                    |ui, _| {
+                        ui.label(component_name.short_name()).on_hover_ui(|ui| {
+                            ui.spacing_mut().item_spacing.y = 12.0;
+
+                            ui.strong(component_name.full_name());
+
+                            // Only show the first line of the docs:
+                            if let Some(markdown) = ctx
+                                .reflection()
+                                .components
+                                .get(component_name)
+                                .map(|info| info.docstring_md)
+                            {
+                                ui.markdown_ui(markdown);
+                            }
+
+                            if let Some(doc_url) = component_name.doc_url() {
+                                ui.re_hyperlink("Full documentation", doc_url, true);
+                            }
+                        });
+                    },
+                ));
+
                 list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
 
@@ -295,36 +348,13 @@ impl SelectionPanel {
             });
         }
 
-        if let Item::StoreId(_) = item {
-            ui.section_collapsing_header("Properties").show(ui, |ui| {
-                let filtered = db
-                    .entity_paths()
-                    .into_iter()
-                    .filter(|entity_path| {
-                        // Only check for properties, but skip the recording properties,
-                        // because we display them already elsewhere in the UI.
-                        entity_path.is_descendant_of(&EntityPath::properties())
-                    })
-                    .collect::<Vec<_>>();
-
-                if filtered.is_empty() {
-                    ui.label("No properties found for this recording.");
-                } else {
-                    for entity_path in filtered {
-                        // We strip the property part
-                        let name = entity_path
-                            .to_string()
-                            .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
-                            .map(re_case::to_human_case)
-                            .unwrap_or("<unknown>".to_owned());
-                        ui.label(name);
-                        entity_path.data_ui(ctx, ui, ui_layout, &query, db);
-                    }
-                }
-            });
-        }
-
         match item {
+            Item::StoreId(_) => {
+                ui.section_collapsing_header("Properties").show(ui, |ui| {
+                    show_recording_properties(ctx, db, &query, ui, ui_layout);
+                });
+            }
+
             Item::View(view_id) => {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
@@ -460,6 +490,39 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 }
 
+fn show_recording_properties(
+    ctx: &ViewerContext<'_>,
+    db: &re_entity_db::EntityDb,
+    query: &re_chunk::LatestAtQuery,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+) {
+    let filtered = db
+        .entity_paths()
+        .into_iter()
+        .filter(|entity_path| {
+            // Only check for properties, but skip the recording properties,
+            // because we display them already elsewhere in the UI.
+            entity_path.is_descendant_of(&EntityPath::properties())
+        })
+        .collect::<Vec<_>>();
+
+    if filtered.is_empty() {
+        ui.label("No properties found for this recording.");
+    } else {
+        for entity_path in filtered {
+            // We strip the property part
+            let name = entity_path
+                .to_string()
+                .strip_prefix(format!("{}/", EntityPath::properties()).as_str())
+                .map(re_case::to_human_case)
+                .unwrap_or("<unknown>".to_owned());
+            ui.label(name);
+            entity_path.data_ui(ctx, ui, ui_layout, query, db);
+        }
+    }
+}
+
 fn entity_selection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -511,6 +574,7 @@ fn entity_path_filter_ui(
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn syntax_highlight_entity_path_filter(
+        design_tokens: &re_ui::DesignTokens,
         style: &egui::Style,
         mut string: &str,
     ) -> egui::text::LayoutJob {
@@ -525,9 +589,9 @@ fn entity_path_filter_ui(
             let is_exclusion = line.trim_start().starts_with('-');
 
             let color = if is_exclusion {
-                egui::Color32::LIGHT_RED
+                style.visuals.error_fg_color
             } else {
-                egui::Color32::LIGHT_GREEN
+                design_tokens.info_log_text_color()
             };
 
             let text_format = egui::TextFormat {
@@ -542,8 +606,13 @@ fn entity_path_filter_ui(
         job
     }
 
-    fn text_layouter(ui: &egui::Ui, string: &str, wrap_width: f32) -> std::sync::Arc<egui::Galley> {
-        let mut layout_job = syntax_highlight_entity_path_filter(ui.style(), string);
+    fn text_layouter(
+        ui: &egui::Ui,
+        text: &dyn TextBuffer,
+        wrap_width: f32,
+    ) -> std::sync::Arc<egui::Galley> {
+        let mut layout_job =
+            syntax_highlight_entity_path_filter(ui.design_tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
         ui.fonts(|f| f.layout_job(layout_job))
     }

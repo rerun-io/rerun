@@ -55,9 +55,52 @@ jobs:
   # ---------------------------------------------------------------------------
 
   rs-lints:
-    name: Rust lints (fmt, check, clippy, tests, doc)
+    name: Rust lints (fmt, check, clippy, doc)
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+          lfs: true
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-linux"
+          save_cache: true
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - uses: prefix-dev/setup-pixi@v0.8.8
+        with:
+          pixi-version: v0.41.4
+
+      - name: Rust checks (PR subset)
+        if: ${{ inputs.CHANNEL == 'pr' }}
+        run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
+
+      - name: Rust most checks & tests
+        if: ${{ inputs.CHANNEL == 'main' }}
+        run: pixi run rs-check --skip individual_crates docs_slow
+
+      - name: Rust all checks & tests
+        if: ${{ inputs.CHANNEL == 'nightly' }}
+        run: pixi run rs-check
+
+      - name: .rrd backwards compatibility
+        # We don't yet guarantee backwards compatibility, but we at least check it
+        # so that we _know_ if/when we break it.
+        # See tests/assets/rrd/README.md for more
+        run: pixi run check-backwards-compatibility
+
+  rs-tests:
+    name: Rust lints (tests)
+    # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
+    runs-on: ubuntu-22.04-large
+    env:
+      RUSTFLAGS: --cfg=web_sys_unstable_apis
+      RUSTDOCFLAGS: ""
     steps:
       - uses: actions/checkout@v4
         with:
@@ -91,21 +134,7 @@ jobs:
 
       - name: Rust checks (PR subset)
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs tests
-
-      - name: Rust most checks & tests
-        if: ${{ inputs.CHANNEL == 'main' }}
-        run: pixi run rs-check --skip individual_crates docs_slow
-
-      - name: Rust all checks & tests
-        if: ${{ inputs.CHANNEL == 'nightly' }}
-        run: pixi run rs-check
-
-      - name: .rrd backwards compatibility
-        # We don't yet guarantee backwards compatibility, but we at least check it
-        # so that we _know_ if/when we break it.
-        # See tests/assets/rrd/README.md for more
-        run: pixi run check-backwards-compatibility
+        run: pixi run rs-check --only tests
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -142,7 +171,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       # Building with `--all-features` requires extra build tools like `nasm`.
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
 

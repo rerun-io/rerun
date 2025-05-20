@@ -1,6 +1,10 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
-use re_types::{self, archetypes, components, datatypes, Component as _};
+use re_types::{
+    self,
+    archetypes::{self, GraphEdges},
+    components, datatypes,
+};
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
@@ -64,8 +68,11 @@ impl VisualizerSystem for EdgesVisualizer {
                     &timeline_query,
                 );
 
-            let all_edges = results.iter_as(query.timeline, components::GraphEdge::name());
-            let graph_type = results.get_mono_with_fallback::<components::GraphType>();
+            let all_edges = results.iter_as(query.timeline, GraphEdges::descriptor_edges());
+            // TODO(#6889): This still uses an untagged query.
+            let graph_type = results.get_mono_with_fallback::<components::GraphType>(
+                &GraphEdges::descriptor_graph_type(),
+            );
 
             let sources = all_edges
                 .slice_from_struct_field::<String>(SOURCE)

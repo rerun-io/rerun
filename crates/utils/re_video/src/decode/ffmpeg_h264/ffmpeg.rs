@@ -4,8 +4,8 @@ use std::{
     collections::BTreeMap,
     process::ChildStdin,
     sync::{
-        atomic::{AtomicBool, AtomicI32, Ordering},
         Arc,
+        atomic::{AtomicBool, AtomicI32, Ordering},
     },
 };
 
@@ -18,15 +18,15 @@ use ffmpeg_sidecar::{
 use parking_lot::Mutex;
 
 use crate::{
-    decode::{
-        ffmpeg_h264::{
-            nalu::{NalHeader, NalUnitType, NAL_START_CODE},
-            sps::H264Sps,
-            FFmpegVersion, FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR,
-        },
-        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
-    },
     PixelFormat, Time,
+    decode::{
+        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
+        ffmpeg_h264::{
+            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
+            nalu::{NAL_START_CODE, NalHeader, NalUnitType},
+            sps::H264Sps,
+        },
+    },
 };
 
 use super::version::FFmpegVersionParseError;

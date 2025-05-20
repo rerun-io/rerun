@@ -3,16 +3,16 @@ use std::{sync::Arc, time::Duration};
 use web_time::Instant;
 
 use re_video::{
-    decode::{DecodeSettings, FrameInfo},
     Time,
+    decode::{DecodeSettings, FrameInfo},
 };
 
-use super::{chunk_decoder::VideoChunkDecoder, VideoFrameTexture};
+use super::{VideoFrameTexture, chunk_decoder::VideoChunkDecoder};
 use crate::{
+    RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
     video::VideoPlayerError,
     wgpu_resources::{GpuTexturePool, TextureDesc},
-    RenderContext,
 };
 
 /// Ignore hickups lasting shorter than this.

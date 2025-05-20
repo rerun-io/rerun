@@ -1,11 +1,11 @@
 //! Core list item functionality.
 
-use egui::emath::GuiRounding as _;
-use egui::style::Widgets;
-use egui::{Color32, NumExt as _, Response, Shape, Ui};
+use egui::{Color32, NumExt as _, Response, Shape, Ui, emath::GuiRounding as _};
 
-use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
-use crate::{design_tokens, DesignTokens, Scale, UiExt as _};
+use crate::{
+    DesignTokens, Scale, UiExt as _, design_tokens_of,
+    list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
+};
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -76,6 +76,7 @@ impl Default for ListItem {
 /// Implemented after <https://www.figma.com/design/04eHlTWW361rIs3YesfTJo/Data-platform?node-id=813-9806&t=Kofxiju5Tn4DszG2-1>
 #[derive(Debug, Clone, Copy)]
 pub struct ListVisuals {
+    theme: egui::Theme,
     hovered: bool,
     selected: bool,
     active: bool,
@@ -83,70 +84,119 @@ pub struct ListVisuals {
 }
 
 impl ListVisuals {
-    pub fn bg_color(self) -> Option<Color32> {
-        if self.selected {
-            Some(design_tokens().color_table.blue(Scale::S350))
-        } else if self.hovered {
-            Some(design_tokens().color_table.gray(Scale::S250))
-        } else if self.active {
-            Some(design_tokens().color_table.gray(Scale::S200))
-        } else {
-            None
+    pub fn bg_color(self, visuals: &egui::Visuals) -> Option<Color32> {
+        let design_tokens = design_tokens_of(self.theme);
+
+        match self.theme {
+            egui::Theme::Dark => {
+                if self.selected {
+                    Some(visuals.selection.bg_fill)
+                } else if self.hovered {
+                    Some(design_tokens.color_table.gray(Scale::S250))
+                } else if self.active {
+                    Some(design_tokens.color_table.gray(Scale::S200))
+                } else {
+                    None
+                }
+            }
+
+            egui::Theme::Light => {
+                if self.selected {
+                    Some(visuals.selection.bg_fill)
+                } else if self.hovered {
+                    Some(design_tokens.color_table.gray(Scale::S900))
+                } else if self.active {
+                    Some(design_tokens.color_table.gray(Scale::S800))
+                } else {
+                    None
+                }
+            }
         }
     }
 
     pub fn text_color(self) -> Color32 {
-        if self.selected {
-            design_tokens().color_table.blue(Scale::S800)
-        } else if self.active {
-            design_tokens().color_table.gray(Scale::S1000)
-        } else if !self.interactive {
-            design_tokens().color_table.gray(Scale::S550)
-        } else if self.hovered {
-            design_tokens().color_table.gray(Scale::S800)
-        } else {
-            design_tokens().color_table.gray(Scale::S700)
+        let design_tokens = design_tokens_of(self.theme);
+
+        match self.theme {
+            egui::Theme::Dark => {
+                if self.selected {
+                    design_tokens.color_table.blue(Scale::S800)
+                } else if self.active {
+                    design_tokens.color_table.gray(Scale::S1000)
+                } else if !self.interactive {
+                    design_tokens.color_table.gray(Scale::S550)
+                } else if self.hovered {
+                    design_tokens.color_table.gray(Scale::S800)
+                } else {
+                    design_tokens.color_table.gray(Scale::S700)
+                }
+            }
+
+            egui::Theme::Light => {
+                if self.selected {
+                    design_tokens.color_table.blue(Scale::S100)
+                } else if self.active {
+                    design_tokens.color_table.gray(Scale::S0)
+                } else if !self.interactive {
+                    design_tokens.color_table.gray(Scale::S550)
+                } else if self.hovered {
+                    design_tokens.color_table.gray(Scale::S250)
+                } else {
+                    design_tokens.color_table.gray(Scale::S350)
+                }
+            }
         }
     }
 
     pub fn icon_tint(self) -> Color32 {
-        if self.selected {
-            design_tokens().color_table.blue(Scale::S600)
-        } else if self.active {
-            design_tokens().color_table.gray(Scale::S800)
-        } else if self.hovered {
-            design_tokens().color_table.gray(Scale::S600)
-        } else {
-            design_tokens().color_table.gray(Scale::S500)
+        let design_tokens = design_tokens_of(self.theme);
+
+        match self.theme {
+            egui::Theme::Dark => {
+                if self.selected {
+                    design_tokens.color_table.blue(Scale::S600)
+                } else if self.active {
+                    design_tokens.color_table.gray(Scale::S800)
+                } else if self.hovered {
+                    design_tokens.color_table.gray(Scale::S600)
+                } else {
+                    design_tokens.label_button_icon_color()
+                }
+            }
+            egui::Theme::Light => {
+                if self.selected {
+                    design_tokens.color_table.blue(Scale::S250)
+                } else if self.active {
+                    design_tokens.color_table.gray(Scale::S300)
+                } else if self.hovered {
+                    design_tokens.color_table.gray(Scale::S400)
+                } else {
+                    design_tokens.label_button_icon_color()
+                }
+            }
         }
     }
 
     pub fn interactive_icon_tint(self, icon_hovered: bool) -> Color32 {
+        let design_tokens = design_tokens_of(self.theme);
         if self.selected && icon_hovered {
-            design_tokens().color_table.blue(Scale::S800)
+            design_tokens.color_table.blue(Scale::S800)
         } else if icon_hovered {
-            design_tokens().color_table.gray(Scale::S800)
+            design_tokens.color_table.gray(Scale::S800)
         } else {
             self.icon_tint()
         }
     }
 
     fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
+        let design_tokens = design_tokens_of(self.theme);
         if !self.hovered && !self.selected && !self.active && !icon_hovered {
-            design_tokens().color_table.gray(Scale::S700)
+            match self.theme {
+                egui::Theme::Dark => design_tokens.color_table.gray(Scale::S700),
+                egui::Theme::Light => design_tokens.color_table.gray(Scale::S250),
+            }
         } else {
             self.interactive_icon_tint(icon_hovered)
-        }
-    }
-
-    fn apply_visuals(self, visuals: &mut Widgets) {
-        if self.selected {
-            visuals.hovered.bg_fill = design_tokens().color_table.blue(Scale::S400);
-            visuals.hovered.weak_bg_fill = design_tokens().color_table.blue(Scale::S400);
-            visuals.hovered.fg_stroke.color = design_tokens().color_table.blue(Scale::S800);
-            visuals.active.bg_fill = design_tokens().color_table.blue(Scale::S450);
-            visuals.active.weak_bg_fill = design_tokens().color_table.blue(Scale::S450);
-            visuals.active.fg_stroke.color = design_tokens().color_table.blue(Scale::S850);
         }
     }
 }
@@ -475,6 +525,7 @@ impl ListItem {
         }
 
         let visuals = ListVisuals {
+            theme: ui.theme(),
             hovered: (style_response.hovered() || style_response.contains_pointer())
                 && interactive
                 && !drag_target
@@ -525,7 +576,6 @@ impl ListItem {
         };
 
         let prev_widgets = ui.style_mut().visuals.widgets.clone();
-        visuals.apply_visuals(&mut ui.style_mut().visuals.widgets);
         content.ui(ui, &content_ctx);
         ui.style_mut().visuals.widgets = prev_widgets;
 
@@ -536,7 +586,7 @@ impl ListItem {
             let bg_rect_to_paint = bg_rect.round_to_pixels(ui.pixels_per_point());
 
             if drag_target {
-                let stroke = crate::design_tokens().drop_target_container_stroke();
+                let stroke = ui.design_tokens().drop_target_container_stroke();
                 ui.painter().set(
                     background_frame,
                     Shape::rect_stroke(
@@ -548,7 +598,7 @@ impl ListItem {
                 );
             }
 
-            if let Some(bg_fill) = force_background.or_else(|| visuals.bg_color()) {
+            if let Some(bg_fill) = force_background.or_else(|| visuals.bg_color(ui.visuals())) {
                 ui.painter().set(
                     background_frame,
                     Shape::rect_filled(bg_rect_to_paint, 0.0, bg_fill),

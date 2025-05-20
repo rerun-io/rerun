@@ -19,10 +19,8 @@ mod query_context;
 mod query_range;
 mod selection_state;
 mod storage_context;
-mod store_bundle;
 mod store_context;
 pub mod store_hub;
-mod table_context;
 mod tables;
 mod tensor;
 mod time_control;
@@ -50,14 +48,15 @@ pub use self::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
         TypedComponentFallbackProvider,
     },
-    contents::{blueprint_id_to_tile_id, Contents, ContentsName},
+    contents::{Contents, ContentsName, blueprint_id_to_tile_id},
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
     file_dialog::santitize_file_name,
     global_context::{
-        command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-        ComponentUiTypes, DisplayMode, GlobalContext, Item, SystemCommand, SystemCommandSender,
+        AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, ComponentUiTypes,
+        DisplayMode, EditTarget, GlobalContext, Item, SystemCommand, SystemCommandSender,
+        command_channel,
     },
-    image_info::{ColormapWithRange, ImageInfo},
+    image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
     maybe_mut_ref::MaybeMutRef,
     query_context::{
         DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
@@ -68,10 +67,8 @@ pub use self::{
         ItemContext, SelectionChange, SelectionHighlight,
     },
     storage_context::StorageContext,
-    store_bundle::{StoreBundle, StoreLoadError},
     store_context::StoreContext,
     store_hub::{StoreHub, StoreHubEntry},
-    table_context::TableContext,
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},

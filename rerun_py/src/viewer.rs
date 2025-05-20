@@ -1,7 +1,7 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 use arrow::array::RecordBatch;
-use pyo3::{prelude::*, Bound, PyResult};
+use pyo3::{Bound, PyResult, prelude::*};
 
 use re_grpc_client::message_proxy::write_table::viewer_client;
 use re_log_encoding::codec::wire::encoder::Encode as _;

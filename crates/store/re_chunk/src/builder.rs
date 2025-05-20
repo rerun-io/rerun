@@ -5,7 +5,7 @@ use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
 use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
 
 // ---
 

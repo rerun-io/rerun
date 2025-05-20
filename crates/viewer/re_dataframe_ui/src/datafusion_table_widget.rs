@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arrow::datatypes::Fields;
 use datafusion::catalog::TableReference;
 use datafusion::prelude::SessionContext;
 use egui::{Frame, Id, Margin, RichText};
@@ -7,17 +8,17 @@ use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntryId, TimelineName};
-use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
-use re_ui::list_item::ItemButton;
+use re_sorbet::{BatchType, ColumnDescriptorRef, SorbetSchema};
 use re_ui::UiExt as _;
+use re_ui::list_item::ItemButton;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
+use crate::DisplayRecordBatch;
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{PartitionLinksSpec, SortBy, SortDirection, TableBlueprint};
 use crate::table_utils::{
-    apply_table_style_fixes, cell_ui, header_ui, ColumnConfig, TableConfig, CELL_MARGIN,
+    CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
 };
-use crate::DisplayRecordBatch;
 
 /// Keep track of the columns in a sorbet batch, indexed by id.
 //TODO(ab): merge this into `TableConfig` when table config is no longer used elsewhere.
@@ -30,9 +31,9 @@ impl<'a> Columns<'a> {
     fn from(sorbet_schema: &'a SorbetSchema) -> Self {
         let inner = sorbet_schema
             .columns
-            .descriptors()
+            .iter()
             .enumerate()
-            .map(|(index, desc)| (egui::Id::new(&desc), (index, desc)))
+            .map(|(index, desc)| (egui::Id::new(desc), (index, desc.into())))
             .collect::<IntMap<_, _>>();
 
         Self { inner }
@@ -40,20 +41,21 @@ impl<'a> Columns<'a> {
 }
 
 impl Columns<'_> {
-    fn descriptors(&self) -> impl Iterator<Item = &ColumnDescriptorRef<'_>> {
-        self.inner.values().map(|(_, desc)| desc)
-    }
-
     fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
         id.and_then(|id| self.inner.get(&id).map(|(index, _)| *index))
     }
 
-    fn descriptor_from_id(&self, id: Option<egui::Id>) -> Option<&ColumnDescriptorRef<'_>> {
-        id.and_then(|id| self.inner.get(&id).map(|(_, desc)| desc))
+    fn index_and_descriptor_from_id(
+        &self,
+        id: Option<egui::Id>,
+    ) -> Option<(usize, &ColumnDescriptorRef<'_>)> {
+        id.and_then(|id| self.inner.get(&id).map(|(index, desc)| (*index, desc)))
     }
 }
 
-type ColumnRenamerFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
+type ColumnNameFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
+
+type ColumnVisibilityFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> bool + 'a>>;
 
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
@@ -68,8 +70,11 @@ pub struct DataFusionTableWidget<'a> {
 
     /// Closure used to determine the display name of the column.
     ///
-    /// Defaults to using [`ColumnDescriptorRef::name`].
-    column_renamer: ColumnRenamerFn<'a>,
+    /// Defaults to using [`ColumnDescriptorRef::column_name`].
+    column_name_fn: ColumnNameFn<'a>,
+
+    /// Closure used to determine the default visibility of the column
+    default_column_visibility_fn: ColumnVisibilityFn<'a>,
 
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
@@ -95,7 +100,8 @@ impl<'a> DataFusionTableWidget<'a> {
 
             title: None,
             title_button: None,
-            column_renamer: None,
+            column_name_fn: None,
+            default_column_visibility_fn: None,
             initial_blueprint: Default::default(),
         }
     }
@@ -112,11 +118,22 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn column_renamer(
+    pub fn column_name(
         mut self,
-        renamer: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'a,
+        column_name_fn: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'a,
     ) -> Self {
-        self.column_renamer = Some(Box::new(renamer));
+        self.column_name_fn = Some(Box::new(column_name_fn));
+
+        self
+    }
+
+    // TODO(ab): this should best be expressed as part of the `TableBlueprint`, but we need better
+    // column selector first.
+    pub fn default_column_visibility(
+        mut self,
+        column_visibility_fn: impl Fn(&ColumnDescriptorRef<'_>) -> bool + 'a,
+    ) -> Self {
+        self.default_column_visibility_fn = Some(Box::new(column_visibility_fn));
 
         self
     }
@@ -149,7 +166,8 @@ impl<'a> DataFusionTableWidget<'a> {
             table_ref,
             title,
             title_button,
-            column_renamer,
+            column_name_fn,
+            default_column_visibility_fn,
             initial_blueprint,
         } = self;
 
@@ -213,13 +231,13 @@ impl<'a> DataFusionTableWidget<'a> {
             }
         };
 
-        let sorbet_schema = {
+        let (fields, sorbet_schema) = {
             let Some(sorbet_batch) = sorbet_batches.first() else {
                 ui.label(egui::RichText::new("This dataset is empty").italics());
                 return;
             };
 
-            sorbet_batch.sorbet_schema()
+            (sorbet_batch.fields(), sorbet_batch.sorbet_schema())
         };
 
         let num_rows = sorbet_batches
@@ -234,7 +252,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|sorbet_batch| {
                 DisplayRecordBatch::try_new(
                     sorbet_batch
-                        .all_columns()
+                        .all_columns_ref()
                         .map(|(desc, array)| (desc, array.clone())),
                 )
             })
@@ -252,14 +270,20 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
-            columns.descriptors().map(|c| {
-                let name = if let Some(renamer) = &column_renamer {
-                    renamer(c)
+            sorbet_schema.columns.iter_ref().map(|c| {
+                let name = if let Some(column_name_fn) = &column_name_fn {
+                    column_name_fn(&c)
                 } else {
-                    c.name().to_owned()
+                    c.column_name(BatchType::Dataframe)
                 };
 
-                ColumnConfig::new(Id::new(c), name)
+                let visible = if let Some(column_visibility_fn) = &default_column_visibility_fn {
+                    column_visibility_fn(&c)
+                } else {
+                    true
+                };
+
+                ColumnConfig::new_with_visible(Id::new(c), name, visible)
             }),
         );
 
@@ -273,9 +297,10 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut table_delegate = DataFusionTableDelegate {
             ctx: viewer_ctx,
+            fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
-            column_renamer: &column_renamer,
+            column_name_fn: &column_name_fn,
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
@@ -340,9 +365,10 @@ fn title_ui<'a>(
 
 struct DataFusionTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
+    fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
-    column_renamer: &'a ColumnRenamerFn<'a>,
+    column_name_fn: &'a ColumnNameFn<'a>,
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
@@ -354,12 +380,12 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
-        if let Some(desc) = self.columns.descriptor_from_id(id) {
-            let column_name = desc.name();
-            let name = if let Some(renamer) = self.column_renamer {
+        if let Some((index, desc)) = self.columns.index_and_descriptor_from_id(id) {
+            let column_name = self.fields[index].name();
+            let name = if let Some(renamer) = self.column_name_fn {
                 renamer(desc)
             } else {
-                desc.name().to_owned()
+                desc.column_name(BatchType::Dataframe)
             };
 
             let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
@@ -367,27 +393,31 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             });
 
             header_ui(ui, |ui| {
-                egui::Sides::new().show(
-                    ui,
-                    |ui| {
-                        ui.label(egui::RichText::new(name).strong().monospace());
+                egui::Sides::new()
+                    .show(
+                        ui,
+                        |ui| {
+                            let response = ui.label(egui::RichText::new(name).strong().monospace());
 
-                        if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
-                            ui.add_space(-5.0);
-                            ui.small_icon(
-                                dir_icon,
-                                Some(
-                                    re_ui::design_tokens()
-                                        .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
-                                ),
-                            );
-                        }
-                    },
-                    |ui| {
-                        egui::menu::menu_custom_button(
-                            ui,
-                            ui.small_icon_button_widget(&re_ui::icons::MORE),
-                            |ui| {
+                            if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
+                            {
+                                ui.add_space(-5.0);
+                                ui.small_icon(
+                                    dir_icon,
+                                    Some(
+                                        ui.design_tokens()
+                                            .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
+                                    ),
+                                );
+                            }
+
+                            response
+                        },
+                        |ui| {
+                            egui::containers::menu::MenuButton::from_button(
+                                ui.small_icon_button_widget(&re_ui::icons::MORE),
+                            )
+                            .ui(ui, |ui| {
                                 for sort_direction in SortDirection::iter() {
                                     let already_sorted =
                                         Some(&sort_direction) == current_sort_direction;
@@ -403,13 +433,17 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                                             column: column_name.to_owned(),
                                             direction: sort_direction,
                                         });
-                                        ui.close_menu();
+                                        ui.close();
                                     }
                                 }
-                            },
-                        );
-                    },
-                );
+                            });
+                        },
+                    )
+                    .0
+            })
+            .inner
+            .on_hover_ui(|ui| {
+                column_descriptor_ui(ui, desc);
             });
         }
     }
@@ -455,4 +489,95 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn default_row_height(&self) -> f32 {
         re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
     }
+}
+
+fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
+    match *column {
+        ColumnDescriptorRef::RowId(desc) => {
+            let re_sorbet::RowIdColumnDescriptor { is_sorted } = desc;
+
+            header_property_ui(ui, "Type", "row id");
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
+        }
+        ColumnDescriptorRef::Time(desc) => {
+            let re_sorbet::IndexColumnDescriptor {
+                timeline,
+                datatype,
+                is_sorted,
+            } = desc;
+
+            header_property_ui(ui, "Type", "index");
+            header_property_ui(ui, "Timeline", timeline.name());
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
+            datatype_ui(ui, &column.display_name(), datatype);
+        }
+        ColumnDescriptorRef::Component(desc) => {
+            let re_sorbet::ComponentColumnDescriptor {
+                store_datatype,
+                component_name,
+                entity_path,
+                archetype_name,
+                archetype_field_name,
+                is_static,
+                is_indicator,
+                is_tombstone,
+                is_semantically_empty,
+            } = desc;
+
+            header_property_ui(ui, "Type", "component");
+            header_property_ui(ui, "Component", component_name.full_name());
+            header_property_ui(ui, "Entity path", entity_path.to_string());
+            datatype_ui(ui, &column.display_name(), store_datatype);
+            header_property_ui(
+                ui,
+                "Archetype",
+                archetype_name.map(|a| a.full_name()).unwrap_or("-"),
+            );
+            //TODO(#9978): update this if we rename this descriptor field.
+            header_property_ui(
+                ui,
+                "Archetype field",
+                archetype_field_name.map(|a| a.as_str()).unwrap_or("-"),
+            );
+            header_property_ui(ui, "Static", is_static.to_string());
+            header_property_ui(ui, "Indicator", is_indicator.to_string());
+            header_property_ui(ui, "Tombstone", is_tombstone.to_string());
+            header_property_ui(ui, "Empty", is_semantically_empty.to_string());
+        }
+    }
+}
+
+fn sorted_text(sorted: bool) -> &'static str {
+    if sorted { "true" } else { "unknown" }
+}
+
+fn header_property_ui(ui: &mut egui::Ui, label: &str, value: impl AsRef<str>) {
+    egui::Sides::new().show(ui, |ui| ui.strong(label), |ui| ui.monospace(value.as_ref()));
+}
+
+fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes::DataType) {
+    egui::Sides::new().show(
+        ui,
+        |ui| ui.strong("Datatype"),
+        |ui| {
+            // We don't want the copy button to stand out next to the other properties. The copy
+            // icon already indicates that it's a button.
+            ui.visuals_mut().widgets.inactive.fg_stroke =
+                ui.visuals_mut().widgets.noninteractive.fg_stroke;
+
+            if ui
+                .add(
+                    egui::Button::image_and_text(
+                        re_ui::icons::COPY.as_image(),
+                        egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace(),
+                    )
+                    .image_tint_follows_text_color(true),
+                )
+                .clicked()
+            {
+                ui.ctx().copy_text(format!("{datatype:#?}"));
+                re_log::info!("Copied full datatype of column `{column_name}` to clipboard");
+            }
+        },
+    );
 }

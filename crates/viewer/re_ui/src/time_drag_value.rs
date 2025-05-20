@@ -246,11 +246,7 @@ fn round_down(value: i64, factor: i64) -> i64 {
 fn round_up(value: i64, factor: i64) -> i64 {
     let val = round_down(value, factor);
 
-    if val == value {
-        val
-    } else {
-        val + factor
-    }
+    if val == value { val } else { val + factor }
 }
 
 #[cfg(test)]

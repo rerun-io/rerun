@@ -11,16 +11,17 @@ use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
 use re_log_types::{EntityPath, TimelineName};
 use re_types::{
+    ComponentDescriptor,
     blueprint::components::{ComponentColumnSelector, QueryExpression},
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
 };
-use re_types_core::{reflection::Reflection, Component, ComponentName, LoggableBatch};
-use re_ui::{list_item, UiExt as _};
+use re_types_core::{Component, ComponentName, LoggableBatch, reflection::Reflection};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
-    external::re_chunk_store::{external::re_chunk, LatestAtQuery},
-    test_context::TestContext,
     UiLayout, ViewerContext,
+    external::re_chunk_store::{LatestAtQuery, external::re_chunk},
+    test_context::TestContext,
 };
 
 /// Test case master list.
@@ -242,7 +243,9 @@ fn test_single_component_ui_as_list_item(
                     &LatestAtQuery::latest(TimelineName::log_time()),
                     ctx.recording(),
                     &EntityPath::root(),
-                    test_case.component_name,
+                    // As of writing, `ComponentDescriptor` the descriptor part is only used for
+                    // caching and actual lookup of uis is only done via `ComponentName`.
+                    &ComponentDescriptor::new(test_case.component_name),
                     None,
                     &*test_case.component_data,
                 );

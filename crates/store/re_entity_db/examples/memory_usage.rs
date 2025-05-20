@@ -52,14 +52,14 @@ fn live_bytes() -> usize {
 // ----------------------------------------------------------------------------
 
 use re_chunk::{Chunk, RowId};
-use re_log_types::{entity_path, example_components::MyPoint, StoreId, StoreKind};
+use re_log_types::{StoreId, StoreKind, entity_path, example_components::MyPoint};
 
 fn main() {
     log_messages();
 }
 
 fn log_messages() {
-    use re_log_types::{build_frame_nr, LogMsg, TimeInt, TimePoint, Timeline};
+    use re_log_types::{LogMsg, TimeInt, TimePoint, Timeline, build_frame_nr};
 
     // Note: we use Box in this function so that we also count the "static"
     // part of all the data, i.e. its `std::mem::size_of`.

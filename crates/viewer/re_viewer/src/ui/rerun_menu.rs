@@ -1,8 +1,10 @@
 //! The main Rerun drop-down menu found in the top panel.
 
 use egui::NumExt as _;
+#[cfg(debug_assertions)]
+use egui::containers::menu;
 
-use re_ui::UICommand;
+use re_ui::{UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
 use crate::App;
@@ -22,7 +24,8 @@ impl App {
 
         let image = re_ui::icons::RERUN_MENU
             .as_image()
-            .max_height(desired_icon_height);
+            .max_height(desired_icon_height)
+            .tint(ui.design_tokens().strong_fg_color());
 
         ui.menu_image_button(image, |ui| {
             self.rerun_menu_ui(ui, render_state, _store_context);
@@ -98,17 +101,22 @@ impl App {
         backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
-        ui.menu_button("Debug", |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
+        menu::SubMenuButton::new("Debug")
+            .config(
+                menu::MenuConfig::new()
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+            )
+            .ui(ui, |ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
 
-            ui.label("egui debug options:");
-            ui.weak(format!(
-                "pixels_per_point: {:?}",
-                ui.ctx().pixels_per_point()
-            ));
-            egui_debug_options_ui(ui);
-        });
+                ui.label("egui debug options:");
+                ui.weak(format!(
+                    "pixels_per_point: {:?}",
+                    ui.ctx().pixels_per_point()
+                ));
+                egui_debug_options_ui(ui);
+            });
 
         ui.add_space(SPACING);
 
@@ -201,7 +209,7 @@ impl App {
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
                 {
-                    ui.close_menu();
+                    ui.close();
                     self.command_sender.send_ui(UICommand::SaveRecording);
                 }
 
@@ -218,7 +226,7 @@ impl App {
                     )
                     .clicked()
                 {
-                    ui.close_menu();
+                    ui.close();
                     self.command_sender
                         .send_ui(UICommand::SaveRecordingSelection);
                 }
@@ -387,7 +395,7 @@ fn debug_menu_options_ui(
                 .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
             ui.ctx()
                 .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
-            ui.close_menu();
+            ui.close();
         }
     }
 

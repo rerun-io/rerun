@@ -3,18 +3,18 @@
 
 use std::sync::Arc;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber as _, LatestAtQuery};
-use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
+use re_log_types::{EntityPath, TimeInt, TimeType, Timeline, entity_path};
 use re_query::clamped_zip_1x1;
 use re_query::{LatestAtResults, QueryCache};
 use re_types::{
+    Archetype as _,
     archetypes::Points2D,
     components::{Color, Position2D, Text},
-    Archetype as _,
 };
 
 // ---
@@ -275,8 +275,12 @@ fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Save
             Points2D::all_components().iter(), // no generics!
         );
 
-        let points = results.component_batch_quiet::<Position2D>().unwrap();
-        let colors = results.component_batch_quiet::<Color>().unwrap_or_default();
+        let points = results
+            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .unwrap();
+        let colors = results
+            .component_batch_quiet::<Color>(&Points2D::descriptor_colors())
+            .unwrap_or_default();
         let color_default_fn = || Color::from(0xFF00FFFF);
 
         for (point, color) in clamped_zip_1x1(points, colors, color_default_fn) {
@@ -307,8 +311,12 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
             Points2D::all_components().iter(), // no generics!
         );
 
-        let points = results.component_batch_quiet::<Position2D>().unwrap();
-        let labels = results.component_batch_quiet::<Text>().unwrap_or_default();
+        let points = results
+            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .unwrap();
+        let labels = results
+            .component_batch_quiet::<Text>(&Points2D::descriptor_labels())
+            .unwrap_or_default();
         let label_default_fn = || Text(String::new().into());
 
         for (_point, label) in clamped_zip_1x1(points, labels, label_default_fn) {

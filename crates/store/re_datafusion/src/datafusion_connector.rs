@@ -3,9 +3,9 @@ use std::sync::Arc;
 use datafusion::{catalog::TableProvider, error::DataFusionError};
 
 use re_grpc_client::redap::RedapClient;
-use re_log_types::{external::re_tuid::Tuid, EntryId};
+use re_log_types::{EntryId, external::re_tuid::Tuid};
 use re_protos::catalog::v1alpha1::{
-    ext::EntryDetails, DatasetEntry, EntryFilter, ReadDatasetEntryRequest,
+    DatasetEntry, EntryFilter, ReadDatasetEntryRequest, ext::EntryDetails,
 };
 
 use crate::partition_table::PartitionTableProvider;

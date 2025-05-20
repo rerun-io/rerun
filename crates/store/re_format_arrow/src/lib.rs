@@ -7,10 +7,10 @@ use arrow::{
     datatypes::{DataType, Field, Fields},
     util::display::{ArrayFormatter, FormatOptions},
 };
-use comfy_table::{presets, Cell, Row, Table};
+use comfy_table::{Cell, Row, Table, presets};
 use itertools::{Either, Itertools as _};
 
-use re_arrow_util::{format_data_type, ArrowArrayDowncastRef as _};
+use re_arrow_util::{ArrowArrayDowncastRef as _, format_data_type};
 use re_tuid::Tuid;
 use re_types_core::Loggable as _;
 

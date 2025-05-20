@@ -1,5 +1,7 @@
-use egui::{os::OperatingSystem, Key, KeyboardShortcut, Modifiers};
-use smallvec::{smallvec, SmallVec};
+use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
+use smallvec::{SmallVec, smallvec};
+
+use crate::ContextExt as _;
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
@@ -16,6 +18,8 @@ pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
     Import,
+
+    /// Save the current recording, or all selected recordings
     SaveRecording,
     SaveRecordingSelection,
     SaveBlueprint,
@@ -302,7 +306,7 @@ impl UICommand {
 
             Self::AddRedapServer => (
                 "Add Redap server",
-                "Connect to a Redap server (experimental)"
+                "Connect to a Redap server (experimental)",
             ),
         }
     }
@@ -319,6 +323,10 @@ impl UICommand {
 
         fn cmd(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
+        }
+
+        fn alt(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::ALT, key)
         }
 
         fn cmd_shift(key: Key) -> KeyboardShortcut {
@@ -397,10 +405,10 @@ impl UICommand {
             Self::ToggleCommandPalette => smallvec![cmd(Key::P)],
 
             Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
-            Self::PlaybackFollow => smallvec![cmd(Key::ArrowRight)],
-            Self::PlaybackStepBack => smallvec![key(Key::ArrowLeft)],
-            Self::PlaybackStepForward => smallvec![key(Key::ArrowRight)],
-            Self::PlaybackRestart => smallvec![cmd(Key::ArrowLeft)],
+            Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],
+            Self::PlaybackStepBack => smallvec![cmd(Key::ArrowLeft)],
+            Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
+            Self::PlaybackRestart => smallvec![alt(Key::ArrowLeft)],
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => smallvec![],
@@ -519,7 +527,7 @@ impl UICommand {
 
         if response.clicked() {
             command_sender.send_ui(self);
-            ui.close_menu();
+            ui.close();
         }
 
         response
@@ -529,6 +537,7 @@ impl UICommand {
         let mut button = if let Some(icon) = self.icon() {
             egui::Button::image_and_text(
                 icon.as_image()
+                    .tint(egui_ctx.design_tokens().label_button_icon_color())
                     .fit_to_exact_size(crate::DesignTokens::small_icon_size()),
                 self.text(),
             )

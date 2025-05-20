@@ -1,5 +1,49 @@
 # Rerun changelog
 
+## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - 2025-05-06 - RRD migration and bugfixes
+
+### ✨ Overview & highlights
+
+- New CLI tool to migrate `.rrd` files
+- Various bugfixes
+
+#### `.rrd` migration tool
+
+With `0.23`, we made several breaking changes that resulted in older `.rrd` files not being able to load at all anymore.
+To help smoothen the migration to `0.23`, we're introducing a `migrate` command to the Rerun CLI:
+
+```
+rerun rrd migrate colmap.rrd arkit.rrd rgbd.rrd
+```
+
+The command will copy the contents into a `.backup` file, and then migrate the file.
+
+Due to the incompatibility between `.rrd` files from `0.23` and those from earlier versions, this command likely
+won't be able to migrate every recording perfectly. We expect the migration to work on files between `0.20` and `0.22`,
+simpler recordings may work as far back as `0.18`.
+
+We plan to use this command future `.rrd` migrations as a way to fulfill our N+1 compatibility guarantee:
+* Viewers after `0.23` will always be able to load recordings from the previous version.
+* Recordings from `0.23` and beyond may be migrated to the next version.
+
+We currently have no plans for compatibility or migrations across multiple versions.
+
+#### 🪵 Log API
+- Improve and mitigate warnings around data loss when flushing [#9846](https://github.com/rerun-io/rerun/pull/9846)
+
+#### 🐍 Python API
+- Add `ViewerClient` to `rerun.experimental` [#9828](https://github.com/rerun-io/rerun/pull/9828)
+- Improve `set_time` error handling for large Python integers [#9839](https://github.com/rerun-io/rerun/pull/9839)
+- Properly resolve component selectors in dataset index creation and search APIs [#9854](https://github.com/rerun-io/rerun/pull/9854)
+- Fix incorrectly advertised minimum supported `pyarrow` version (18.0.0 is required) [#9878](https://github.com/rerun-io/rerun/pull/9878)
+- Fix incorrectly advertised numpy 1.x support (numpy2 is required now) [#9880](https://github.com/rerun-io/rerun/pull/9880)
+
+#### 🪳 Bug fixes
+- Fix world grid not scaling correctly when camera is below the grid [#9867](https://github.com/rerun-io/rerun/pull/9867)
+- Tensor view improvements [#9831](https://github.com/rerun-io/rerun/pull/9831)
+- Fix size check for NV12 & YUY2 formats in C++ and Rust [#9890](https://github.com/rerun-io/rerun/pull/9890)
+
+
 ## [0.23.1](https://github.com/rerun-io/rerun/compare/0.23.0...0.23.1) - 2025-04-25 - Fix notebooks
 
 #### 🪳 Bug fixes
@@ -1215,7 +1259,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Add an explicit "mode" view property to the dataframe view [#6927](https://github.com/rerun-io/rerun/pull/6927)
 - Introduce a "Selectable Toggle" widget and use it for the 3D view's camera kind [#7064](https://github.com/rerun-io/rerun/pull/7064)
 - Improve entity stats when hovered [#7074](https://github.com/rerun-io/rerun/pull/7074)
-- Update the UI colors to use our (blueish) ramp instead of pure greys [#7075](https://github.com/rerun-io/rerun/pull/7075)
+- Update the UI colors to use our (blueish) ramp instead of pure grays [#7075](https://github.com/rerun-io/rerun/pull/7075)
 - Query editor for the dataframe view [#7071](https://github.com/rerun-io/rerun/pull/7071)
 - Better ui for `Blob`s, especially those representing images [#7128](https://github.com/rerun-io/rerun/pull/7128)
 - Add button for copying and saving images [#7156](https://github.com/rerun-io/rerun/pull/7156)

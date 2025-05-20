@@ -2,8 +2,8 @@ use std::{
     collections::BTreeMap,
     ops::ControlFlow,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -21,13 +21,13 @@ use re_types::blueprint::{
     components::{AutoLayout, AutoViews, RootContainer, ViewMaximized},
 };
 use re_types::{
-    blueprint::components::ViewerRecommendationHash, Archetype as _, ViewClassIdentifier,
+    Archetype as _, ViewClassIdentifier, blueprint::components::ViewerRecommendationHash,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow,
+    ContainerId, Contents, Item, ViewId, ViewerContext, VisitorControlFlow, blueprint_id_to_tile_id,
 };
 
-use crate::{container::ContainerBlueprint, ViewBlueprint, ViewportCommand, VIEWPORT_PATH};
+use crate::{VIEWPORT_PATH, ViewBlueprint, ViewportCommand, container::ContainerBlueprint};
 
 // ----------------------------------------------------------------------------
 
@@ -94,11 +94,21 @@ impl ViewportBlueprint {
             blueprint_archetypes::ViewportBlueprint::all_components().iter(),
         );
 
-        let root_container = results.component_mono::<RootContainer>();
-        let maximized = results.component_mono::<ViewMaximized>();
-        let auto_layout = results.component_mono::<AutoLayout>();
-        let auto_views = results.component_mono::<AutoViews>();
-        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>();
+        let root_container = results.component_mono::<RootContainer>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+        );
+        let maximized = results.component_mono::<ViewMaximized>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
+        );
+        let auto_layout = results.component_mono::<AutoLayout>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
+        );
+        let auto_views = results.component_mono::<AutoViews>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
+        );
+        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
+        );
 
         let root_container: Option<ContainerId> = root_container.map(|id| id.0.into());
         re_log::trace_once!("Loaded root_container: {root_container:?}");
@@ -349,7 +359,8 @@ impl ViewportBlueprint {
                     .collect();
 
                 ctx.save_blueprint_component(
-                    &VIEWPORT_PATH.into(),
+                    VIEWPORT_PATH.into(),
+                    &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
                     &new_viewer_recommendation_hashes,
                 );
             }
@@ -763,7 +774,11 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let auto_layout = AutoLayout::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_layout);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
+                &auto_layout,
+            );
         }
     }
 
@@ -780,7 +795,11 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let auto_views = AutoViews::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_views);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
+                &auto_views,
+            );
         }
     }
 
@@ -788,7 +807,11 @@ impl ViewportBlueprint {
     pub fn set_maximized(&self, view_id: Option<ViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != view_id {
             let view_maximized = view_id.map(|id| ViewMaximized(id.into()));
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &view_maximized);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
+                &view_maximized,
+            );
         }
     }
 
@@ -887,10 +910,17 @@ impl ViewportBlueprint {
             .map(|container_id| RootContainer((container_id).into()))
         {
             re_log::trace!("Saving with a root container");
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &root_container);
+            ctx.save_blueprint_component(
+                VIEWPORT_PATH.into(),
+                &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+                &root_container,
+            );
         } else {
             re_log::trace!("Saving empty viewport");
-            ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
+            ctx.clear_blueprint_component(
+                VIEWPORT_PATH.into(),
+                blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+            );
         }
     }
 

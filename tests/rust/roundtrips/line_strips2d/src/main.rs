@@ -1,8 +1,8 @@
 //! Logs a `LineStrips2D` archetype for roundtrip checks.
 
 use rerun::{
-    archetypes::{Boxes2D, LineStrips2D},
     RecordingStream,
+    archetypes::{Boxes2D, LineStrips2D},
 };
 
 #[derive(Debug, clap::Parser)]

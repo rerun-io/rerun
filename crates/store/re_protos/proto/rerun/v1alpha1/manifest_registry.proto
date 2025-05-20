@@ -13,8 +13,12 @@ service ManifestRegistryService {
   // Register new partitions with the Dataset (blocking)
   rpc RegisterWithDatasetBlocking(RegisterWithDatasetBlockingRequest) returns (RegisterWithDatasetBlockingResponse) {}
 
-  // Unimplemented.
-  rpc WriteChunks(stream WriteChunksRequest) returns (stream WriteChunksResponse) {}
+  // Write chunks to one or more partitions.
+  //
+  // The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+  //
+  // The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
+  rpc WriteChunks(stream WriteChunksRequest) returns (WriteChunksResponse) {}
 
   // --- Query schemas ---
 
@@ -148,7 +152,7 @@ message RegisterWithDatasetBlockingResponse {
 }
 
 message WriteChunksRequest {
-  rerun.common.v1alpha1.DatasetHandle entry = 1;
+  rerun.common.v1alpha1.RerunChunk chunk = 1;
 }
 
 message WriteChunksResponse {}
@@ -388,9 +392,9 @@ message QueryLatestAt {
   //
   // This will perform a basic fuzzy match on the available columns' descriptors.
   // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLine`, etc.
+  // For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+  // would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+  // `SeriesLines`, etc.
   repeated string fuzzy_descriptors = 3;
   // TODO(cmc): I shall bring that back into a more structured form later.
   // repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
@@ -412,9 +416,9 @@ message QueryRange {
   //
   // This will perform a basic fuzzy match on the available columns' descriptors.
   // The fuzzy logic is a simple case-sensitive `contains()` query.
-  // For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-  // would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-  // `SeriesLine`, etc.
+  // For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+  // would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+  // `SeriesLines`, etc.
   repeated string fuzzy_descriptors = 3;
   // TODO(cmc): I shall bring that back into a more structured form later.
   // repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
@@ -456,9 +460,13 @@ message CreatePartitionManifestsRequest {
   // created if left unspecified (empty list)
   repeated rerun.common.v1alpha1.PartitionId partition_ids = 2;
 
+  // types of partitions and their storage location (same order
+  // as partition ids above)
+  repeated DataSource data_sources = 3;
+
   // Define what happens if create is called multiple times for the same
   // Dataset / partitions
-  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 3;
+  rerun.common.v1alpha1.IfDuplicateBehavior on_duplicate = 4;
 }
 
 message CreatePartitionManifestsResponse {

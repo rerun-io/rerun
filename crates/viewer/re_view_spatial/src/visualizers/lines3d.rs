@@ -1,25 +1,24 @@
 use re_log_types::Instance;
-use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
+use re_renderer::{PickingLayerInstanceId, renderer::LineStripFlags};
 use re_types::{
+    ArrowString,
     archetypes::LineStrips3D,
-    components::{ClassId, Color, LineStrip3D, Radius, ShowLabels, Text},
-    ArrowString, Component as _,
+    components::{ClassId, Color, Radius, ShowLabels},
 };
 use re_view::{process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialViewKind,
-    visualizers::utilities::{process_labels_3d, LabeledBatch},
+    visualizers::utilities::{LabeledBatch, process_labels_3d},
 };
 
-use super::{filter_visualizable_3d_entities, process_radius_slice, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities, process_radius_slice};
 
 // ---
 
@@ -196,14 +195,15 @@ impl VisualizerSystem for Lines3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_strip_chunks) = results.get_required_chunks(&LineStrip3D::name())
+                let Some(all_strip_chunks) =
+                    results.get_required_chunks(LineStrips3D::descriptor_strips())
                 else {
                     return Ok(());
                 };
 
                 let num_strips = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>(LineStrip3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>())
                     .map(|strips| strips.len())
                     .sum();
                 if num_strips == 0 {
@@ -213,19 +213,19 @@ impl VisualizerSystem for Lines3DVisualizer {
 
                 let num_vertices = all_strip_chunks
                     .iter()
-                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>(LineStrip3D::name()))
+                    .flat_map(|chunk| chunk.iter_slices::<&[[f32; 3]]>())
                     .map(|strips| strips.iter().map(|strip| strip.len()).sum::<usize>())
                     .sum::<usize>();
                 line_builder.reserve_vertices(num_vertices)?;
 
                 let timeline = ctx.query.timeline();
-                let all_strips_indexed =
-                    iter_slices::<&[[f32; 3]]>(&all_strip_chunks, timeline, LineStrip3D::name());
-                let all_colors = results.iter_as(timeline, Color::name());
-                let all_radii = results.iter_as(timeline, Radius::name());
-                let all_labels = results.iter_as(timeline, Text::name());
-                let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_show_labels = results.iter_as(timeline, ShowLabels::name());
+                let all_strips_indexed = iter_slices::<&[[f32; 3]]>(&all_strip_chunks, timeline);
+                let all_colors = results.iter_as(timeline, LineStrips3D::descriptor_colors());
+                let all_radii = results.iter_as(timeline, LineStrips3D::descriptor_radii());
+                let all_labels = results.iter_as(timeline, LineStrips3D::descriptor_labels());
+                let all_class_ids = results.iter_as(timeline, LineStrips3D::descriptor_class_ids());
+                let all_show_labels =
+                    results.iter_as(timeline, LineStrips3D::descriptor_show_labels());
 
                 let data = re_query::range_zip_1x5(
                     all_strips_indexed,
@@ -281,7 +281,11 @@ impl TypedComponentFallbackProvider<Color> for Lines3DVisualizer {
 
 impl TypedComponentFallbackProvider<ShowLabels> for Lines3DVisualizer {
     fn fallback_for(&self, ctx: &QueryContext<'_>) -> ShowLabels {
-        super::utilities::show_labels_fallback::<LineStrip3D>(ctx)
+        super::utilities::show_labels_fallback(
+            ctx,
+            &LineStrips3D::descriptor_strips(),
+            &LineStrips3D::descriptor_labels(),
+        )
     }
 }
 

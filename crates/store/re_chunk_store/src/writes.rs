@@ -8,8 +8,8 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 
 use crate::{
-    store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
-    ChunkStoreError, ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreError,
+    ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState, store::ChunkIdSetPerTime,
 };
 
 // Used all over in docstrings.
@@ -51,16 +51,16 @@ impl ChunkStore {
 
         let mut chunk = Arc::clone(chunk);
 
-        // We're in a transition period during which the Rerun ecosystem is slowly moving over to tagged data.
-        //
-        // During that time, it is common to end up in situations where the blueprint intermixes both tagged
-        // and untagged components, which invariably leads to undefined behavior.
-        // To prevent that, we just always hot-patch it to untagged, for now.
-        //
-        // Examples:
-        // * An SDK logs a blueprint (tagged), which is then updated by the viewer (which uses untagged log calls).
-        // * Somebody loads an old .rbl from somewhere and starts logging new blueprint data to it.
-        // * Etc.
+        // TODO(#6889): This is bad for performance, but indicators should go away all together soon anyways?
+        if chunk
+            .components()
+            .keys()
+            .any(|descr| descr.component_name.is_indicator_component())
+        {
+            let patched = chunk.patched_weak_indicator_descriptor_023_compat();
+            chunk = Arc::new(patched);
+        }
+
         if self.id.kind == re_log_types::StoreKind::Blueprint {
             let patched = chunk.patched_for_blueprint_021_compat();
             chunk = Arc::new(patched);

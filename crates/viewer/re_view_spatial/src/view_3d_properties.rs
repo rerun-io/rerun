@@ -1,14 +1,14 @@
 use re_types::{
+    Archetype as _,
     blueprint::{
         archetypes::{Background, LineGrid3D},
         components::BackgroundKind,
     },
     components::{Color, Plane3D, StrokeWidth},
-    Archetype as _,
 };
 use re_viewer_context::{TypedComponentFallbackProvider, ViewStateExt as _};
 
-use crate::{ui::SpatialViewState, SpatialView3D};
+use crate::{SpatialView3D, ui::SpatialViewState};
 
 impl TypedComponentFallbackProvider<Color> for SpatialView3D {
     fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Color {
@@ -24,8 +24,11 @@ impl TypedComponentFallbackProvider<Color> for SpatialView3D {
 }
 
 impl TypedComponentFallbackProvider<BackgroundKind> for SpatialView3D {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> BackgroundKind {
-        BackgroundKind::GradientDark
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> BackgroundKind {
+        match ctx.viewer_ctx.egui_ctx().theme() {
+            egui::Theme::Dark => BackgroundKind::GradientDark,
+            egui::Theme::Light => BackgroundKind::GradientBright,
+        }
     }
 }
 

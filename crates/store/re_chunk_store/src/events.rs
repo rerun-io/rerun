@@ -205,8 +205,8 @@ mod tests {
 
     use re_chunk::{RowId, TimelineName};
     use re_log_types::{
-        example_components::{MyColor, MyIndex, MyPoint},
         EntityPath, TimeInt, TimePoint, Timeline,
+        example_components::{MyColor, MyIndex, MyPoint},
     };
     use re_types_core::{Component as _, ComponentName};
 

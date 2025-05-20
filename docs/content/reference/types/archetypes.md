@@ -33,11 +33,8 @@ This page lists all built-in archetypes.
 ## Plotting
 
 * [`BarChart`](archetypes/bar_chart.md): A bar chart.
-* ⚠️ _deprecated_ [`Scalar`](archetypes/scalar.md): A double-precision scalar, e.g. for use for time-series plots.
 * [`Scalars`](archetypes/scalars.md): One or more double-precision scalar values, e.g. for use for time-series plots.
-* ⚠️ _deprecated_ [`SeriesLine`](archetypes/series_line.md): Define the style properties for a line series in a chart.
 * [`SeriesLines`](archetypes/series_lines.md): Define the style properties for one or more line series in a chart.
-* ⚠️ _deprecated_ [`SeriesPoint`](archetypes/series_point.md): Define the style properties for a point series in a chart.
 * [`SeriesPoints`](archetypes/series_points.md): Define the style properties for one or more point series (scatter plot) in a chart.
 
 ## Spatial 2D

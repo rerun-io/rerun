@@ -19,7 +19,7 @@ exclude = ["examples/rust/revy", "examples/rust/chess_robby_fischer"]
 
 [workspace.package]
 authors = ["rerun.io <opensource@rerun.io>"]
-edition = "2021"
+edition = "2024"
 homepage = "https://rerun.io"
 include = [
   "../../Cargo.lock",     # So that users can pass `--locked` to `cargo install rerun-cli`
@@ -90,6 +90,7 @@ rerun-cli = { path = "crates/top/rerun-cli", version = "=0.24.0-alpha.1", defaul
 # crates/utils:
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.24.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.24.0-alpha.1", default-features = false }
+re_auth = { path = "crates/utils/re_auth", version = "=0.24.0-alpha.1", default-features = false }
 re_byte_size = { path = "crates/utils/re_byte_size", version = "=0.24.0-alpha.1", default-features = false }
 re_capabilities = { path = "crates/utils/re_capabilities", version = "=0.24.0-alpha.1", default-features = false }
 re_case = { path = "crates/utils/re_case", version = "=0.24.0-alpha.1", default-features = false }
@@ -280,14 +281,13 @@ rfd = { version = "0.15", default-features = false, features = [
   "async-std",
   "xdg-portal",
 ] }
-ron = "0.8.0"
+ron = { version = "0.10.1", features = ["integer128"] }
 roxmltree = "0.19.0"
 rust-format = "0.3"
 rustdoc-json = "0.9.4"
 rustdoc-types = "0.35.0"
 seq-macro = "0.3"
 serde = { version = "1", features = ["derive"] }
-serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
 serde-wasm-bindgen = "0.6.5"
 serde_yaml = { version = "0.9.21", default-features = false }
@@ -378,6 +378,83 @@ opt-level = 1 # Make debug builds run faster
 # Use the `debugging` profile (see below) if you need debug symbols.
 debug = false
 
+
+# Use the following command to grab the list of workspace crates:
+#   cargo metadata --no-deps --format-version 1 | jq '.packages[].name' | rg '"re_'
+#
+# There is, as far we know, no way to do this without enumerating all crates manually.
+
+[profile.dev.package]
+"re_analytics".debug = true
+"re_arrow_util".debug = true
+"re_auth".debug = true
+"re_blueprint_tree".debug = true
+"re_build_info".debug = true
+"re_build_tools".debug = true
+"re_byte_size".debug = true
+"re_capabilities".debug = true
+"re_case".debug = true
+"re_chunk".debug = true
+"re_chunk_store".debug = true
+"re_chunk_store_ui".debug = true
+"re_component_ui".debug = true
+"re_context_menu".debug = true
+"re_crash_handler".debug = true
+"re_data_loader".debug = true
+"re_data_source".debug = true
+"re_data_ui".debug = true
+"re_dataframe".debug = true
+"re_dataframe_ui".debug = true
+"re_datafusion".debug = true
+"re_dev_tools".debug = true
+"re_entity_db".debug = true
+"re_error".debug = true
+"re_format".debug = true
+"re_format_arrow".debug = true
+"re_grpc_client".debug = true
+"re_grpc_server".debug = true
+"re_int_histogram".debug = true
+"re_log".debug = true
+"re_log_encoding".debug = true
+"re_log_types".debug = true
+"re_memory".debug = true
+"re_protos".debug = true
+"re_protos_builder".debug = true
+"re_query".debug = true
+"re_redap_browser".debug = true
+"re_renderer".debug = true
+"re_renderer_examples".debug = true
+"re_sdk".debug = true
+"re_selection_panel".debug = true
+"re_smart_channel".debug = true
+"re_sorbet".debug = true
+"re_string_interner".debug = true
+"re_time_panel".debug = true
+"re_tracing".debug = true
+"re_tuid".debug = true
+"re_types".debug = true
+"re_types_builder".debug = true
+"re_types_core".debug = true
+"re_ui".debug = true
+"re_uri".debug = true
+"re_video".debug = true
+"re_view".debug = true
+"re_view_bar_chart".debug = true
+"re_view_dataframe".debug = true
+"re_view_graph".debug = true
+"re_view_map".debug = true
+"re_view_spatial".debug = true
+"re_view_tensor".debug = true
+"re_view_text_document".debug = true
+"re_view_text_log".debug = true
+"re_view_time_series".debug = true
+"re_viewer".debug = true
+"re_viewer_context".debug = true
+"re_viewport".debug = true
+"re_viewport_blueprint".debug = true
+"re_web_viewer_server".debug = true
+
+
 # panic = "abort" leads to better optimizations and smaller binaries (and is the default in Wasm anyways),
 # but it also means backtraces don't work with the `backtrace` library (https://github.com/rust-lang/backtrace-rs/issues/397).
 # egui has a feature where if you hold down all modifiers keys on your keyboard and hover any UI widget,
@@ -393,6 +470,13 @@ opt-level = 2
 [profile.release]
 # debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
+
+[profile.web-release]
+panic = 'abort'      # Removes panic handling code
+inherits = "release"
+lto = true
+opt-level = 'z'      # Optimize for size
+codegen-units = 1
 
 
 ## Bench
@@ -483,7 +567,6 @@ fn_params_excessive_bools = "warn"
 fn_to_numeric_cast_any = "warn"
 from_iter_instead_of_collect = "warn"
 get_unwrap = "warn"
-if_let_mutex = "warn"
 implicit_clone = "warn"
 imprecise_flops = "warn"
 index_refutable_slice = "warn"
@@ -502,6 +585,7 @@ large_include_file = "warn"
 large_stack_arrays = "warn"
 large_stack_frames = "warn"
 large_types_passed_by_value = "warn"
+let_underscore_must_use = "warn"
 let_unit_value = "warn"
 linkedlist = "warn"
 literal_string_with_formatting_args = "warn"
@@ -517,6 +601,7 @@ manual_ok_or = "warn"
 manual_string_new = "warn"
 map_err_ignore = "warn"
 map_flatten = "warn"
+match_bool = "warn"
 match_on_vec_items = "warn"
 match_same_arms = "warn"
 match_wild_err_arm = "warn"
@@ -596,12 +681,12 @@ zero_sized_map_values = "warn"
 # Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
 #self_named_module_files = "warn"
 
-assigning_clones = "allow"      # Too much for too little
 manual_range_contains = "allow" # this one is just worse imho
 map_unwrap_or = "allow"         # so is this one
 ref_patterns = "allow"          # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 
 # TODO(emilk): enable more of these lints:
+allow_attributes = "allow"
 iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
@@ -645,13 +730,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # Prefer patching with `branch` over `rev` and let `Cargo.lock` handle the commit hash.
 # That makes it easy to upade with `cargo update -p $CRATE`.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# eframe = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui_extras = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "master" }
-# emath = { git = "https://github.com/emilk/egui.git", branch = "master" }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -668,7 +753,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", branch = "emilk/update-egui" }
 # egui_tiles = { path = "../egui_tiles" }
 
-# egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/71
+egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark.git", branch = "egui-update" } # https://github.com/lampsitter/egui_commonmark/pull/76
 
 # egui_commonmark = { path = "../../forks/egui_commonmark/egui_commonmark" }
 

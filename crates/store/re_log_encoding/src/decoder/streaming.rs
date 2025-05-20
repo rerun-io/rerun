@@ -8,11 +8,11 @@ use tokio::io::{AsyncBufRead, AsyncReadExt as _};
 use tokio_stream::Stream;
 
 use crate::{
-    codec::file::{self},
     EncodingOptions,
+    codec::file::{self},
 };
 
-use super::{options_from_bytes, DecodeError, FileHeader};
+use super::{DecodeError, FileHeader, options_from_bytes};
 
 /// A decoded [`LogMsg`] with extra contextual information.
 ///
@@ -256,8 +256,8 @@ mod tests {
     use tokio_stream::StreamExt as _;
 
     use crate::{
-        decoder::{streaming::StreamingDecoder, tests::fake_log_messages},
         Compression, EncodingOptions, Serializer,
+        decoder::{streaming::StreamingDecoder, tests::fake_log_messages},
     };
 
     #[tokio::test]

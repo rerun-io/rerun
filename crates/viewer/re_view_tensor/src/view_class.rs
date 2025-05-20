@@ -1,33 +1,33 @@
-use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
+use egui::{Align2, NumExt as _, Vec2, epaint::TextShape};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::hash::Hash64;
 use re_log_types::EntityPath;
+use re_log_types::hash::Hash64;
 use re_types::{
+    View as _, ViewClassIdentifier,
     blueprint::{
-        archetypes::{TensorScalarMapping, TensorViewFit},
+        archetypes::{self, TensorScalarMapping, TensorViewFit},
         components::ViewFit,
     },
     components::{Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection},
     datatypes::TensorData,
-    View as _, ViewClassIdentifier,
 };
-use re_ui::{list_item, Help, UiExt as _};
+use re_ui::{Help, UiExt as _, list_item};
 use re_view::{suggest_view_for_each_entity, view_property_ui};
 use re_viewer_context::{
-    gpu_bridge, ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
+    ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item,
     MaybeVisualizableEntities, PerVisualizer, TensorStatsCache, TypedComponentFallbackProvider,
     ViewClass, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewerContext, VisualizableEntities,
+    ViewSystemExecutionError, ViewerContext, VisualizableEntities, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
+    TensorDimension,
     dimension_mapping::TensorSliceSelection,
     tensor_dimension_mapper::dimension_mapping_ui,
     visualizer_system::{TensorSystem, TensorVisualization},
-    TensorDimension,
 };
 
 #[derive(Default)]
@@ -367,10 +367,24 @@ impl TensorView {
             ctx.blueprint_query,
             view_id,
         );
-        let colormap: Colormap = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(ctx, self, state)?;
-        let mag_filter: MagnificationFilter =
-            scalar_mapping.component_or_fallback(ctx, self, state)?;
+        let colormap: Colormap = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_colormap(),
+        )?;
+        let gamma: GammaCorrection = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_gamma(),
+        )?;
+        let mag_filter: MagnificationFilter = scalar_mapping.component_or_fallback(
+            ctx,
+            self,
+            state,
+            &TensorScalarMapping::descriptor_mag_filter(),
+        )?;
 
         let colormap = ColormapWithRange {
             colormap,
@@ -391,7 +405,7 @@ impl TensorView {
             ctx.blueprint_query,
             view_id,
         )
-        .component_or_fallback(ctx, self, state)?;
+        .component_or_fallback(ctx, self, state, &TensorViewFit::descriptor_scaling())?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
@@ -702,7 +716,11 @@ fn selectors_ui(
     }
 
     if changed_indices {
-        slice_property.save_blueprint_component(ctx, &indices);
+        slice_property.save_blueprint_component(
+            ctx,
+            &archetypes::TensorSliceSelection::descriptor_indices(),
+            &indices,
+        );
     }
 }
 

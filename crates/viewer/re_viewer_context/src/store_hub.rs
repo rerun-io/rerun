@@ -8,14 +8,12 @@ use re_chunk_store::{
     ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionOptions,
     GarbageCollectionTarget,
 };
-use re_entity_db::EntityDb;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId};
 use re_query::CachesStats;
-use re_types::components::Timestamp;
+use re_types::{archetypes, components::Timestamp};
 
-use crate::{
-    BlueprintUndoState, Caches, StorageContext, StoreBundle, StoreContext, TableStore, TableStores,
-};
+use crate::{BlueprintUndoState, Caches, StorageContext, StoreContext, TableStore, TableStores};
 
 #[derive(Clone, Debug)]
 pub enum StoreHubEntry {
@@ -444,11 +442,11 @@ impl StoreHub {
         }
 
         // Find any matching recording and activate it
-        for rec in self
-            .store_bundle
-            .recordings()
-            .sorted_by_key(|entity_db| entity_db.recording_property::<Timestamp>())
-        {
+        for rec in self.store_bundle.recordings().sorted_by_key(|entity_db| {
+            entity_db.recording_property::<Timestamp>(
+                &archetypes::RecordingProperties::descriptor_start_time(),
+            )
+        }) {
             if rec.app_id() == Some(&app_id) {
                 self.active_application_id = Some(app_id.clone());
                 self.active_entry = Some(StoreHubEntry::Recording {

@@ -1,9 +1,12 @@
-use re_types::datatypes::TensorDimensionIndexSelection;
+use re_types::{
+    blueprint::archetypes::{self},
+    datatypes::TensorDimensionIndexSelection,
+};
 use re_ui::UiExt as _;
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::ViewProperty;
 
-use crate::{dimension_mapping::TensorSliceSelection, TensorDimension};
+use crate::{TensorDimension, dimension_mapping::TensorSliceSelection};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DragDropAddress {
@@ -59,7 +62,11 @@ impl DragDropAddress {
                     width.dimension = new_selection.dimension;
                     width
                 });
-                slice_property.save_blueprint_component(ctx, &width);
+                slice_property.save_blueprint_component(
+                    ctx,
+                    &archetypes::TensorSliceSelection::descriptor_width(),
+                    &width,
+                );
             }
             Self::Height => {
                 let height = new_selection.map(|new_selection| {
@@ -67,7 +74,11 @@ impl DragDropAddress {
                     height.dimension = new_selection.dimension;
                     height
                 });
-                slice_property.save_blueprint_component(ctx, &height);
+                slice_property.save_blueprint_component(
+                    ctx,
+                    &archetypes::TensorSliceSelection::descriptor_height(),
+                    &height,
+                );
             }
             Self::Selector(selector_idx) => {
                 let mut indices = slice_selection.indices.clone();
@@ -80,8 +91,16 @@ impl DragDropAddress {
                     slider.retain(|s| s.dimension != removed_dim); // purge slider if there was any.
                     indices.remove(*selector_idx);
                 }
-                slice_property.save_blueprint_component(ctx, &indices);
-                slice_property.save_blueprint_component(ctx, &slider);
+                slice_property.save_blueprint_component(
+                    ctx,
+                    &archetypes::TensorSliceSelection::descriptor_indices(),
+                    &indices,
+                );
+                slice_property.save_blueprint_component(
+                    ctx,
+                    &archetypes::TensorSliceSelection::descriptor_slider(),
+                    &slider,
+                );
             }
             Self::NewSelector => {
                 // NewSelector can only be a drop *target*, therefore dim_idx can't be None!
@@ -90,8 +109,16 @@ impl DragDropAddress {
                     let mut slider = slice_selection.slider.clone().unwrap_or_default();
                     indices.push(new_selection.into());
                     slider.push(new_selection.dimension.into()); // Enable slider by default.
-                    slice_property.save_blueprint_component(ctx, &indices);
-                    slice_property.save_blueprint_component(ctx, &slider);
+                    slice_property.save_blueprint_component(
+                        ctx,
+                        &archetypes::TensorSliceSelection::descriptor_indices(),
+                        &indices,
+                    );
+                    slice_property.save_blueprint_component(
+                        ctx,
+                        &archetypes::TensorSliceSelection::descriptor_slider(),
+                        &slider,
+                    );
                 }
             }
         };
@@ -168,7 +195,11 @@ pub fn dimension_mapping_ui(
                 ui.horizontal(|ui| {
                     if let Some(mut width) = slice_selection.width {
                         if ui.toggle_value(&mut width.invert, "Flip").changed() {
-                            slice_property.save_blueprint_component(ctx, &width);
+                            slice_property.save_blueprint_component(
+                                ctx,
+                                &archetypes::TensorSliceSelection::descriptor_width(),
+                                &width,
+                            );
                         }
                     }
                     ui.label("width");
@@ -188,7 +219,11 @@ pub fn dimension_mapping_ui(
                 ui.horizontal(|ui| {
                     if let Some(mut height) = slice_selection.height {
                         if ui.toggle_value(&mut height.invert, "Flip").changed() {
-                            slice_property.save_blueprint_component(ctx, &height);
+                            slice_property.save_blueprint_component(
+                                ctx,
+                                &archetypes::TensorSliceSelection::descriptor_height(),
+                                &height,
+                            );
                         }
                     }
                     ui.label("height");
@@ -237,7 +272,11 @@ pub fn dimension_mapping_ui(
                             } else {
                                 slider.retain(|slider| slider.dimension != selector.dimension);
                             }
-                            slice_property.save_blueprint_component(ctx, &slider);
+                            slice_property.save_blueprint_component(
+                                ctx,
+                                &archetypes::TensorSliceSelection::descriptor_slider(),
+                                &slider,
+                            );
                         }
 
                         ui.end_row();

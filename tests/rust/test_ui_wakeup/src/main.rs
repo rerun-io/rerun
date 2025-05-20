@@ -34,7 +34,12 @@ fn main() -> anyhow::Result<()> {
     // This is so that re_viewer logs incoming messages:
     let rust_log = "info,re_viewer=trace";
     eprintln!("Setting RUST_LOG={rust_log}");
-    std::env::set_var("RUST_LOG", rust_log);
+
+    // SAFETY: No multithreading here
+    #[expect(unsafe_code)]
+    unsafe {
+        std::env::set_var("RUST_LOG", rust_log);
+    };
 
     println!("Starting Viewer…");
     let (rec, _serve_guard) = args.rerun.init("rerun_example_ui_wakeup")?;

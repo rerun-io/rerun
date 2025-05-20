@@ -26,11 +26,11 @@ mod spawn;
 // -------------
 // Public items:
 
-pub use spawn::{spawn, SpawnError, SpawnOptions};
+pub use spawn::{SpawnError, SpawnOptions, spawn};
 
 pub use self::recording_stream::{
-    forced_sink_path, RecordingStream, RecordingStreamBuilder, RecordingStreamError,
-    RecordingStreamResult,
+    RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
+    forced_sink_path,
 };
 
 /// The default port of a Rerun gRPC /proxy server.
@@ -56,7 +56,7 @@ pub fn default_flush_timeout() -> Option<std::time::Duration> {
 }
 
 pub use re_log_types::{
-    entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
+    ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind, entity_path,
 };
 pub use re_memory::MemoryLimit;
 pub use re_types::archetypes::RecordingProperties;

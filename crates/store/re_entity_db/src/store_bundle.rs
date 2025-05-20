@@ -1,7 +1,8 @@
 use itertools::Itertools as _;
 
-use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind};
+
+use crate::EntityDb;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StoreLoadError {
@@ -9,7 +10,7 @@ pub enum StoreLoadError {
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
     #[error(transparent)]
-    ChunkStore(#[from] re_entity_db::Error),
+    ChunkStore(#[from] crate::Error),
 }
 
 /// Stores many [`EntityDb`]s of recordings and blueprints.

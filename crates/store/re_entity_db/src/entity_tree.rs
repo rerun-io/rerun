@@ -261,7 +261,7 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{example_components::MyPoint, EntityPath, StoreId, TimePoint, Timeline};
+    use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, example_components::MyPoint};
 
     use crate::EntityDb;
 

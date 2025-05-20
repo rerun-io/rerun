@@ -2,10 +2,10 @@ use itertools::Either;
 
 use re_chunk::{Chunk, RowId};
 use re_log_types::{EntityPath, TimePoint};
-use re_types::archetypes::{AssetVideo, VideoFrameReference};
-use re_types::components::VideoTimestamp;
 use re_types::Archetype;
 use re_types::ComponentBatch;
+use re_types::archetypes::{AssetVideo, VideoFrameReference};
+use re_types::components::VideoTimestamp;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -154,7 +154,7 @@ fn load_image(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [
@@ -180,7 +180,7 @@ fn load_video(
     mut timepoint: TimePoint,
     entity_path: &EntityPath,
     contents: Vec<u8>,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let video_timeline = re_log_types::Timeline::new_duration("video");
@@ -231,7 +231,7 @@ fn load_video(
                         video_frame_reference_indicators_list_array,
                     ),
                     (
-                        video_timestamp_batch.descriptor().into_owned(),
+                        VideoFrameReference::descriptor_timestamp(),
                         video_timestamp_list_array,
                     ),
                 ]
@@ -291,7 +291,7 @@ fn load_point_cloud(
     timepoint: TimePoint,
     entity_path: EntityPath,
     contents: &[u8],
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     re_tracing::profile_function!();
 
     let rows = [

@@ -10,17 +10,17 @@ use std::{
 };
 
 use arrow::{
-    array::{make_array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
+    array::{ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader, make_array},
     pyarrow::PyArrowType,
 };
 use datafusion::catalog::TableProvider;
 use datafusion_ffi::table_provider::FFI_TableProvider;
 use numpy::PyArrayMethods as _;
 use pyo3::{
+    IntoPyObjectExt as _,
     exceptions::{PyRuntimeError, PyTypeError, PyValueError},
     prelude::*,
     types::{PyCapsule, PyDict, PyTuple},
-    IntoPyObjectExt as _,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -94,7 +94,7 @@ impl PyIndexColumnDescriptor {
     }
 
     /// Part of generic ColumnDescriptor interface: always False for Index.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     #[getter]
     fn is_static(&self) -> bool {
         false
@@ -433,11 +433,9 @@ impl IndexValuesLike<'_> {
                         }
                         Ok(values)
                     }
-                    Err(err) => {
-                        Err(PyTypeError::new_err(
-                            format!("IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray. {err}"),
-                        ))
-                    }
+                    Err(err) => Err(PyTypeError::new_err(format!(
+                        "IndexValuesLike must be a pyarrow.Array, pyarrow.ChunkedArray, or numpy.ndarray. {err}"
+                    ))),
                 }
             }
         }
@@ -499,12 +497,14 @@ impl PySchema {
         let iter = SchemaIterator {
             iter: slf
                 .schema
-                .indices_and_components()
-                .into_iter()
-                .map(|col| match col {
-                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py_any(py),
+                .iter()
+                .filter_map(|col| match col.clone() {
+                    ColumnDescriptor::RowId(_) => None, // TODO(#9922)
+                    ColumnDescriptor::Time(col) => {
+                        Some(PyIndexColumnDescriptor(col).into_py_any(py))
+                    }
                     ColumnDescriptor::Component(col) => {
-                        PyComponentColumnDescriptor(col).into_py_any(py)
+                        Some(PyComponentColumnDescriptor(col).into_py_any(py))
                     }
                 })
                 .collect::<PyResult<Vec<_>>>()?
@@ -516,8 +516,7 @@ impl PySchema {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
-            .indices
-            .iter()
+            .index_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -525,8 +524,7 @@ impl PySchema {
     /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
         self.schema
-            .components
-            .iter()
+            .component_columns()
             .map(|c| c.clone().into())
             .collect()
     }
@@ -551,7 +549,7 @@ impl PySchema {
     ) -> Option<PyComponentColumnDescriptor> {
         let entity_path: EntityPath = entity_path.into();
 
-        self.schema.components.iter().find_map(|col| {
+        self.schema.component_columns().find_map(|col| {
             if col.matches(&entity_path, &component.0) {
                 Some(col.clone().into())
             } else {
@@ -711,7 +709,7 @@ impl PyRecordingView {
                 let query_handle = engine.query(query_expression);
 
                 PySchema {
-                    schema: query_handle.view_contents().clone(),
+                    schema: query_handle.view_contents().clone().into(),
                 }
             }
         }
@@ -845,8 +843,7 @@ impl PyRecordingView {
                 Ok(self
                     .schema(py)
                     .schema
-                    .components
-                    .iter()
+                    .component_columns()
                     .filter(|col| col.is_static())
                     .map(|col| ColumnDescriptor::Component(col.clone()).into())
                     .collect())
@@ -1258,9 +1255,9 @@ impl PyRecording {
                 } else if let Ok(components) = value.extract::<Vec<ComponentLike>>() {
                     components.into_iter().map(|c| c.0).collect()
                 } else {
-                    return Err(PyTypeError::new_err(
-                            format!("Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."),
-                        ));
+                    return Err(PyTypeError::new_err(format!(
+                        "Could not interpret `contents` as a ViewContentsLike. Value: {value} is not a ComponentLike or Sequence[ComponentLike]."
+                    )));
                 };
 
                 contents.append(
@@ -1293,7 +1290,7 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
         PySchema {
-            schema: self.store.read().schema(),
+            schema: self.store.read().schema().into(),
         }
     }
 

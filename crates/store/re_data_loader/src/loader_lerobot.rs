@@ -1,30 +1,36 @@
-use std::sync::mpsc::Sender;
-use std::sync::Arc;
-use std::thread;
-
-use anyhow::{anyhow, Context as _};
-use arrow::array::{
-    ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray, StructArray,
+use std::{
+    sync::{Arc, mpsc::Sender},
+    thread,
 };
-use arrow::compute::cast;
-use arrow::datatypes::{DataType, Field};
+
+use anyhow::{Context as _, anyhow};
+use arrow::{
+    array::{
+        ArrayRef, BinaryArray, FixedSizeListArray, Int64Array, RecordBatch, StringArray,
+        StructArray,
+    },
+    compute::cast,
+    datatypes::{DataType, Field},
+};
 use itertools::Either;
+
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{external::nohash_hasher::IntMap, TimelineName};
 use re_chunk::{
     ArrowArray, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimeInt, TimePoint, Timeline,
+    TimelineName, external::nohash_hasher::IntMap,
 };
-
 use re_log_types::{ApplicationId, StoreId};
-use re_types::archetypes::{
-    AssetVideo, DepthImage, EncodedImage, TextDocument, VideoFrameReference,
+use re_types::{
+    Archetype, Component, ComponentBatch,
+    archetypes::{
+        AssetVideo, DepthImage, EncodedImage, Scalars, TextDocument, VideoFrameReference,
+    },
+    components::{Name, VideoTimestamp},
 };
-use re_types::components::{Name, Scalar, VideoTimestamp};
-use re_types::{Archetype, Component, ComponentBatch};
 
 use crate::lerobot::{
-    is_lerobot_dataset, is_v1_lerobot_dataset, DType, EpisodeIndex, Feature, LeRobotDataset,
-    TaskIndex,
+    DType, EpisodeIndex, Feature, LeRobotDataset, TaskIndex, is_lerobot_dataset,
+    is_v1_lerobot_dataset,
 };
 use crate::load_file::prepare_store_info;
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -282,7 +288,7 @@ fn log_episode_task(
     dataset: &LeRobotDataset,
     timeline: &Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let task_indices = data
         .column_by_name("task_index")
         .and_then(|c| c.downcast_array_ref::<Int64Array>())
@@ -317,7 +323,7 @@ fn load_episode_images(
     observation: &str,
     timeline: &Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let image_bytes = data
         .column_by_name(observation)
         .and_then(|c| c.downcast_array_ref::<StructArray>())
@@ -346,7 +352,7 @@ fn load_episode_depth_images(
     observation: &str,
     timeline: &Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let image_bytes = data
         .column_by_name(observation)
         .and_then(|c| c.downcast_array_ref::<StructArray>())
@@ -379,7 +385,7 @@ fn load_episode_video(
     episode: EpisodeIndex,
     timeline: &Timeline,
     time_column: TimeColumn,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let contents = dataset
         .read_episode_video_contents(observation, episode)
         .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
@@ -421,7 +427,7 @@ fn load_episode_video(
                         video_frame_reference_indicators_list_array,
                     ),
                     (
-                        video_timestamp_batch.descriptor().into_owned(),
+                        VideoFrameReference::descriptor_timestamp(),
                         video_timestamp_list_array,
                     ),
                 ]
@@ -503,7 +509,23 @@ fn load_scalar(
                 make_scalar_batch_entity_chunks(entity_path, feature, timelines, fixed_size_array)?;
             Ok(ScalarChunkIterator::Batch(Box::new(batch_chunks)))
         }
-        DataType::Float32 => {
+        DataType::List(_field) => {
+            let list_array = data
+                .column_by_name(feature_key)
+                .and_then(|col| col.downcast_array_ref::<arrow::array::ListArray>())
+                .ok_or_else(|| {
+                    DataLoaderError::Other(anyhow!("Failed to downcast feature to ListArray"))
+                })?;
+
+            let sliced = extract_list_array_elements_as_f64(list_array).with_context(|| {
+                format!("Failed to cast scalar feature {entity_path} to Float64")
+            })?;
+
+            Ok(ScalarChunkIterator::Single(std::iter::once(
+                make_scalar_entity_chunk(entity_path, timelines, &sliced)?,
+            )))
+        }
+        DataType::Float32 | DataType::Float64 => {
             let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
                 DataLoaderError::Other(anyhow!(
                     "Failed to get LeRobot dataset column data for: {:?}",
@@ -535,12 +557,12 @@ fn make_scalar_batch_entity_chunks(
     feature: &Feature,
     timelines: &IntMap<TimelineName, TimeColumn>,
     data: &FixedSizeListArray,
-) -> Result<impl ExactSizeIterator<Item = Chunk>, DataLoaderError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, DataLoaderError> {
     let num_elements = data.value_length() as usize;
 
     let mut chunks = Vec::with_capacity(num_elements);
 
-    let sliced = extract_list_elements_as_f64(data)
+    let sliced = extract_fixed_size_list_array_elements_as_f64(data)
         .with_context(|| format!("Failed to cast scalar feature {entity_path} to Float64"))?;
 
     chunks.push(make_scalar_entity_chunk(
@@ -592,11 +614,7 @@ fn make_scalar_entity_chunk(
         ChunkId::new(),
         entity_path,
         timelines.clone(),
-        std::iter::once((
-            <Scalar as Component>::descriptor().clone(),
-            data_field_array,
-        ))
-        .collect(),
+        std::iter::once((Scalars::descriptor_scalars().clone(), data_field_array)).collect(),
     )?)
 }
 
@@ -610,7 +628,20 @@ fn extract_scalar_slices_as_f64(data: &ArrayRef) -> anyhow::Result<Vec<ArrayRef>
         .collect::<Vec<_>>())
 }
 
-fn extract_list_elements_as_f64(data: &FixedSizeListArray) -> anyhow::Result<Vec<ArrayRef>> {
+fn extract_fixed_size_list_array_elements_as_f64(
+    data: &FixedSizeListArray,
+) -> anyhow::Result<Vec<ArrayRef>> {
+    (0..data.len())
+        .map(|idx| {
+            cast(&data.value(idx), &DataType::Float64)
+                .with_context(|| format!("Failed to cast {:?} to Float64", data.data_type()))
+        })
+        .collect::<Result<Vec<_>, _>>()
+}
+
+fn extract_list_array_elements_as_f64(
+    data: &arrow::array::ListArray,
+) -> anyhow::Result<Vec<ArrayRef>> {
     (0..data.len())
         .map(|idx| {
             cast(&data.value(idx), &DataType::Float64)

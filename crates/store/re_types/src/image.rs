@@ -1,11 +1,12 @@
 //! Image-related utilities.
 
 use arrow::buffer::ScalarBuffer;
+use re_types_core::{Archetype as _, ArchetypeName};
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    datatypes::ChannelDatatype,
-    datatypes::{Blob, TensorBuffer, TensorData},
+    archetypes,
+    datatypes::{Blob, ChannelDatatype, TensorBuffer, TensorData},
 };
 
 #[cfg(feature = "image")]
@@ -16,22 +17,35 @@ use crate::datatypes::ImageFormat;
 /// The kind of image data, either color, segmentation, or depth image.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ImageKind {
-    /// A normal grayscale or color image ([`crate::archetypes::Image`]).
+    /// A normal grayscale or color image ([`archetypes::Image`]).
     Color,
 
-    /// A depth map ([`crate::archetypes::DepthImage`]).
+    /// A depth map ([`archetypes::DepthImage`]).
     Depth,
 
-    /// A segmentation image ([`crate::archetypes::SegmentationImage`]).
+    /// A segmentation image ([`archetypes::SegmentationImage`]).
     ///
     /// The data is a [`crate::components::ClassId`] which should be
     /// looked up using the appropriate [`crate::components::AnnotationContext`]
     Segmentation,
 }
 
+impl ImageKind {
+    /// Determine the kind of image from an image archetype name.
+    pub fn from_archetype_name(archetype_name: Option<ArchetypeName>) -> Self {
+        if archetype_name == Some(archetypes::SegmentationImage::name()) {
+            Self::Segmentation
+        } else if archetype_name == Some(archetypes::DepthImage::name()) {
+            Self::Depth
+        } else {
+            // TODO(#9046): Note that currently all encoded images are treated as color images.
+            Self::Color
+        }
+    }
+}
 // ----------------------------------------------------------------------------
 
-/// Errors when converting images from the [`image`] crate to an [`crate::archetypes::Image`].
+/// Errors when converting images from the [`image`] crate to an [`archetypes::Image`].
 #[cfg(feature = "image")]
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ImageConversionError {
@@ -62,7 +76,7 @@ pub enum ImageLoadError {
     #[error("Failed to load file: {0}")]
     ReadError(std::sync::Arc<std::io::Error>),
 
-    /// Failure to convert the loaded image to a [`crate::archetypes::Image`].
+    /// Failure to convert the loaded image to a [`archetypes::Image`].
     #[error(transparent)]
     ImageConversionError(#[from] ImageConversionError),
 

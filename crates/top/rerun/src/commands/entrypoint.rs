@@ -10,7 +10,7 @@ use re_log_types::{LogMsg, TableMsg};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use re_uri::RedapUri;
 
-use crate::{commands::RrdCommands, CallSource};
+use crate::{CallSource, commands::RrdCommands};
 
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;

@@ -7,6 +7,7 @@ use re_chunk_store::TimeType;
 use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{EntityPath, TimeInt};
 use re_types::{
+    ComponentBatch as _, View as _, ViewClassIdentifier,
     archetypes::{SeriesLines, SeriesPoints},
     blueprint::{
         archetypes::{PlotLegend, ScalarAxis},
@@ -14,9 +15,8 @@ use re_types::{
     },
     components::{AggregationPolicy, Range1D, SeriesVisible, Visible},
     datatypes::TimeRange,
-    ComponentBatch as _, View as _, ViewClassIdentifier,
 };
-use re_ui::{icon_text, icons, list_item, shortcut_with_icon, Help, MouseButtonText, UiExt as _};
+use re_ui::{Help, MouseButtonText, UiExt as _, icon_text, icons, list_item, shortcut_with_icon};
 use re_view::{
     controls::{
         self, ASPECT_SCROLL_MODIFIER, MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON,
@@ -25,17 +25,18 @@ use re_view::{
     view_property_ui,
 };
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, IndicatedEntities,
-    MaybeVisualizableEntities, PerVisualizer, QueryRange, RecommendedView, SmallVisualizerSet,
-    SystemExecutionOutput, TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError,
-    ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    IdentifiedViewSystem as _, IndicatedEntities, MaybeVisualizableEntities, PerVisualizer,
+    QueryRange, RecommendedView, SmallVisualizerSet, SystemExecutionOutput,
+    TypedComponentFallbackProvider, ViewClass, ViewClassRegistryError, ViewHighlights, ViewId,
+    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    external::re_entity_db::InstancePath,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    line_visualizer_system::SeriesLineSystem, point_visualizer_system::SeriesPointSystem,
-    PlotSeriesKind,
+    PlotSeriesKind, line_visualizer_system::SeriesLinesSystem,
+    point_visualizer_system::SeriesPointsSystem,
 };
 
 // ---
@@ -157,8 +158,8 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<SeriesLineSystem>()?;
-        system_registry.register_visualizer::<SeriesPointSystem>()?;
+        system_registry.register_visualizer::<SeriesLinesSystem>()?;
+        system_registry.register_visualizer::<SeriesPointsSystem>()?;
         Ok(())
     }
 
@@ -211,8 +212,8 @@ impl ViewClass for TimeSeriesView {
         let mut indicated_entities = IndicatedEntities::default();
 
         for indicated in [
-            SeriesLineSystem::identifier(),
-            SeriesPointSystem::identifier(),
+            SeriesLinesSystem::identifier(),
+            SeriesPointsSystem::identifier(),
         ]
         .iter()
         .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
@@ -220,11 +221,11 @@ impl ViewClass for TimeSeriesView {
             indicated_entities.0.extend(indicated.0.iter().cloned());
         }
 
-        // Because SeriesLine is our fallback visualizer, also include any entities for which
-        // SeriesLine is visualizable, even if not indicated.
+        // Because SeriesLines is our fallback visualizer, also include any entities for which
+        // SeriesLines is visualizable, even if not indicated.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
-            .get(&SeriesLineSystem::identifier())
+            .get(&SeriesLinesSystem::identifier())
         {
             indicated_entities
                 .0
@@ -313,9 +314,10 @@ impl ViewClass for TimeSeriesView {
             .collect();
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if visualizers.is_empty() && available_visualizers.contains(&SeriesLineSystem::identifier())
+        if visualizers.is_empty()
+            && available_visualizers.contains(&SeriesLinesSystem::identifier())
         {
-            visualizers.insert(0, SeriesLineSystem::identifier());
+            visualizers.insert(0, SeriesLinesSystem::identifier());
         }
 
         visualizers
@@ -338,17 +340,36 @@ impl ViewClass for TimeSeriesView {
 
         let plot_legend =
             ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
-        let legend_visible = plot_legend.component_or_fallback::<Visible>(ctx, self, state)?;
-        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(ctx, self, state)?;
+        let legend_visible = plot_legend.component_or_fallback::<Visible>(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_visible(),
+        )?;
+        let legend_corner = plot_legend.component_or_fallback::<Corner2D>(
+            ctx,
+            self,
+            state,
+            &PlotLegend::descriptor_corner(),
+        )?;
 
         let scalar_axis =
             ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
-        let y_range = scalar_axis.component_or_fallback::<Range1D>(ctx, self, state)?;
+        let y_range = scalar_axis.component_or_fallback::<Range1D>(
+            ctx,
+            self,
+            state,
+            &ScalarAxis::descriptor_range(),
+        )?;
         let y_range = make_range_sane(y_range);
 
-        let y_zoom_lock =
-            scalar_axis.component_or_fallback::<LockRangeDuringZoom>(ctx, self, state)?;
-        let y_zoom_lock = y_zoom_lock.0 .0;
+        let y_zoom_lock = scalar_axis.component_or_fallback::<LockRangeDuringZoom>(
+            ctx,
+            self,
+            state,
+            &ScalarAxis::descriptor_zoom_lock(),
+        )?;
+        let y_zoom_lock = y_zoom_lock.0.0;
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
@@ -361,8 +382,8 @@ impl ViewClass for TimeSeriesView {
 
         let timeline_name = timeline.name().to_string();
 
-        let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
-        let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
+        let line_series = system_output.view_systems.get::<SeriesLinesSystem>()?;
+        let point_series = system_output.view_systems.get::<SeriesPointsSystem>()?;
 
         let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())
@@ -538,12 +559,7 @@ impl ViewClass for TimeSeriesView {
         let hovered_data_result = hovered_plot_item
             .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
             .map(|instance_path| {
-                let mut instance_path = instance_path.clone();
-                if response.double_clicked() {
-                    // Select entire entity on double-click:
-                    instance_path.instance = re_log_types::Instance::ALL;
-                }
-                re_viewer_context::Item::DataResult(query.view_id, instance_path)
+                re_viewer_context::Item::DataResult(query.view_id, instance_path.clone())
             });
         if let Some(hovered) = hovered_data_result.clone().or_else(|| {
             if response.hovered() {
@@ -561,11 +577,15 @@ impl ViewClass for TimeSeriesView {
         // Write new y_range if it has changed.
         let new_y_range = Range1D::new(transform.bounds().min()[1], transform.bounds().max()[1]);
         if is_resetting {
-            scalar_axis.reset_blueprint_component::<Range1D>(ctx);
+            scalar_axis.reset_blueprint_component(ctx, ScalarAxis::descriptor_range());
             state.reset_bounds_next_frame = true;
             ui.ctx().request_repaint(); // Make sure we get another frame with the reset actually applied.
         } else if new_y_range != y_range {
-            scalar_axis.save_blueprint_component(ctx, &new_y_range);
+            scalar_axis.save_blueprint_component(
+                ctx,
+                &ScalarAxis::descriptor_range(),
+                &new_y_range,
+            );
             ui.ctx().request_repaint(); // Make sure we get another frame with this new range applied.
         }
 
@@ -711,7 +731,10 @@ fn update_series_visibility_overrides_from_plot(
                 .serialized()
                 .map(|serialized| serialized.with_descriptor_override(descriptor))
         }) {
-            ctx.save_serialized_blueprint_component(override_path, serialized_component_batch);
+            ctx.save_serialized_blueprint_component(
+                override_path.clone(),
+                serialized_component_batch,
+            );
         }
     }
 }

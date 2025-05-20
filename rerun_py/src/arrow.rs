@@ -4,23 +4,23 @@ use std::borrow::Cow;
 
 use arrow::{
     array::{
-        make_array, ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef,
-        ListArray as ArrowListArray,
+        ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+        make_array,
     },
     buffer::OffsetBuffer as ArrowOffsetBuffer,
     datatypes::Field as ArrowField,
     pyarrow::PyArrowType,
 };
 use pyo3::{
+    Bound, PyAny, PyResult,
     exceptions::PyRuntimeError,
     types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString},
-    Bound, PyAny, PyResult,
 };
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
-use re_sdk::{external::nohash_hasher::IntMap, ComponentDescriptor, EntityPath, Timeline};
+use re_sdk::{ComponentDescriptor, EntityPath, Timeline, external::nohash_hasher::IntMap};
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {

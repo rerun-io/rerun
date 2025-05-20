@@ -7,11 +7,11 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{
-    example_components::{MyColor, MyIndex, MyPoint},
     EntityPath, StoreId, TimeInt, TimePoint, Timeline,
+    example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types_core::{
-    archetypes::Clear, components::ClearIsRecursive, AsComponents as _, ComponentBatch as _,
+    ComponentBatch as _, ComponentDescriptor, archetypes::Clear, components::ClearIsRecursive,
 };
 
 // ---
@@ -20,16 +20,36 @@ fn query_latest_component<C: re_types_core::Component>(
     db: &EntityDb,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
+    component_descr: &ComponentDescriptor,
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
     let results = db
         .storage_engine()
         .cache()
-        .latest_at(query, entity_path, [C::name()]);
+        .latest_at(query, entity_path, [component_descr]);
 
     let (data_time, row_id) = results.index();
-    let data = results.component_mono::<C>()?;
+    let data = results.component_mono::<C>(component_descr)?;
+
+    Some((data_time, row_id, data))
+}
+
+fn query_latest_component_clear(
+    db: &EntityDb,
+    entity_path: &EntityPath,
+    query: &LatestAtQuery,
+) -> Option<(TimeInt, RowId, ClearIsRecursive)> {
+    re_tracing::profile_function!();
+
+    let results = db.storage_engine().cache().latest_at(
+        query,
+        entity_path,
+        [&Clear::descriptor_is_recursive()],
+    );
+
+    let (data_time, row_id) = results.index();
+    let data = results.component_mono::<ClearIsRecursive>(&Clear::descriptor_is_recursive())?;
 
     Some((data_time, row_id, data))
 }
@@ -56,17 +76,31 @@ fn clears() -> anyhow::Result<()> {
         let point = MyPoint::new(1.0, 2.0);
         let color = MyColor::from(0xFF0000FF);
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_component_batches(row_id, timepoint, [&[point] as _, &[color] as _])
+            .with_archetype(
+                row_id,
+                timepoint,
+                &MyPoints::new([point]).with_colors([color]),
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).unwrap();
-            let (_, _, got_color) =
-                query_latest_component::<MyColor>(&db, &entity_path_parent, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_parent,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
+            let (_, _, got_color) = query_latest_component::<MyColor>(
+                &db,
+                &entity_path_parent,
+                &query,
+                &MyPoints::descriptor_colors(),
+            )
+            .unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
             similar_asserts::assert_eq!(color, got_color);
@@ -80,15 +114,20 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let point = MyPoint::new(42.0, 43.0);
         let chunk = Chunk::builder(entity_path_child1.clone())
-            .with_component_batches(row_id, timepoint, [&[point] as _])
+            .with_archetype(row_id, timepoint, &MyPoints::new([point]))
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_child1,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
         }
@@ -101,15 +140,24 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let color = MyColor::from(0x00AA00DD);
         let chunk = Chunk::builder(entity_path_child2.clone())
-            .with_component_batches(row_id, timepoint, [&[color] as _])
+            .with_archetype(
+                row_id,
+                timepoint,
+                &MyPoints::update_fields().with_colors([color]),
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            let (_, _, got_color) =
-                query_latest_component::<MyColor>(&db, &entity_path_child2, &query).unwrap();
+            let (_, _, got_color) = query_latest_component::<MyColor>(
+                &db,
+                &entity_path_child2,
+                &query,
+                &MyPoints::descriptor_colors(),
+            )
+            .unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
         }
@@ -124,7 +172,7 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::flat();
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_serialized_batches(row_id, timepoint, clear.as_serialized_batches())
+            .with_archetype(row_id, timepoint, &clear)
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -133,22 +181,53 @@ fn clears() -> anyhow::Result<()> {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
             // parent
-            assert!(query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).is_none());
-            assert!(query_latest_component::<MyColor>(&db, &entity_path_parent, &query).is_none());
+            assert!(
+                query_latest_component::<MyPoint>(
+                    &db,
+                    &entity_path_parent,
+                    &query,
+                    &MyPoints::descriptor_points()
+                )
+                .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(
+                    &db,
+                    &entity_path_parent,
+                    &query,
+                    &MyPoints::descriptor_colors()
+                )
+                .is_none()
+            );
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
-                query_latest_component::<ClearIsRecursive>(&db, &entity_path_parent, &query)
-                    .unwrap();
+                query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(
                 clear.is_recursive.map(|batch| batch.array),
                 got_clear.serialized().map(|batch| batch.array)
             );
 
             // child1
-            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).is_some());
+            assert!(
+                query_latest_component::<MyPoint>(
+                    &db,
+                    &entity_path_child1,
+                    &query,
+                    &MyPoints::descriptor_points()
+                )
+                .is_some()
+            );
 
             // child2
-            assert!(query_latest_component::<MyColor>(&db, &entity_path_child2, &query).is_some());
+            assert!(
+                query_latest_component::<MyColor>(
+                    &db,
+                    &entity_path_child2,
+                    &query,
+                    &MyPoints::descriptor_colors()
+                )
+                .is_some()
+            );
         }
     }
 
@@ -161,7 +240,7 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
         let clear = Clear::recursive();
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_serialized_batches(row_id, timepoint, clear.as_serialized_batches())
+            .with_archetype(row_id, timepoint, &clear)
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
@@ -170,22 +249,53 @@ fn clears() -> anyhow::Result<()> {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
             // parent
-            assert!(query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).is_none());
-            assert!(query_latest_component::<MyColor>(&db, &entity_path_parent, &query).is_none());
+            assert!(
+                query_latest_component::<MyPoint>(
+                    &db,
+                    &entity_path_parent,
+                    &query,
+                    &MyPoints::descriptor_points()
+                )
+                .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(
+                    &db,
+                    &entity_path_parent,
+                    &query,
+                    &MyPoints::descriptor_colors()
+                )
+                .is_none()
+            );
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
-                query_latest_component::<ClearIsRecursive>(&db, &entity_path_parent, &query)
-                    .unwrap();
+                query_latest_component_clear(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(
                 clear.is_recursive.map(|batch| batch.array),
                 got_clear.serialized().map(|batch| batch.array)
             );
 
             // child1
-            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).is_none());
+            assert!(
+                query_latest_component::<MyPoint>(
+                    &db,
+                    &entity_path_child1,
+                    &query,
+                    &MyPoints::descriptor_points()
+                )
+                .is_none()
+            );
 
             // child2
-            assert!(query_latest_component::<MyColor>(&db, &entity_path_child2, &query).is_none());
+            assert!(
+                query_latest_component::<MyColor>(
+                    &db,
+                    &entity_path_child2,
+                    &query,
+                    &MyPoints::descriptor_colors()
+                )
+                .is_none()
+            );
         }
     }
 
@@ -204,14 +314,27 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 9);
-            let (_, _, got_instance) =
-                query_latest_component::<MyIndex>(&db, &entity_path_parent, &query).unwrap();
+            let (_, _, got_instance) = query_latest_component::<MyIndex>(
+                &db,
+                &entity_path_parent,
+                &query,
+                &instance.descriptor(),
+            )
+            .unwrap();
             similar_asserts::assert_eq!(instance, got_instance);
         }
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            assert!(query_latest_component::<MyIndex>(&db, &entity_path_parent, &query).is_none());
+            assert!(
+                query_latest_component::<MyIndex>(
+                    &db,
+                    &entity_path_parent,
+                    &query,
+                    &instance.descriptor()
+                )
+                .is_none()
+            );
         }
     }
 
@@ -225,17 +348,31 @@ fn clears() -> anyhow::Result<()> {
         let point = MyPoint::new(42.0, 43.0);
         let color = MyColor::from(0xBBBBBBBB);
         let chunk = Chunk::builder(entity_path_child1.clone())
-            .with_component_batches(row_id, timepoint, [&[point] as _, &[color] as _])
+            .with_archetype(
+                row_id,
+                timepoint,
+                &MyPoints::new([point]).with_colors([color]),
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 9);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).unwrap();
-            let (_, _, got_color) =
-                query_latest_component::<MyColor>(&db, &entity_path_child1, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_child1,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
+            let (_, _, got_color) = query_latest_component::<MyColor>(
+                &db,
+                &entity_path_child1,
+                &query,
+                &MyPoints::descriptor_colors(),
+            )
+            .unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
             similar_asserts::assert_eq!(color, got_color);
@@ -243,8 +380,24 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).is_none());
-            assert!(query_latest_component::<MyColor>(&db, &entity_path_child1, &query).is_none());
+            assert!(
+                query_latest_component::<MyPoint>(
+                    &db,
+                    &entity_path_child1,
+                    &query,
+                    &MyPoints::descriptor_points()
+                )
+                .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(
+                    &db,
+                    &entity_path_child1,
+                    &query,
+                    &MyPoints::descriptor_colors()
+                )
+                .is_none()
+            );
         }
     }
 
@@ -258,17 +411,31 @@ fn clears() -> anyhow::Result<()> {
         let color = MyColor::from(0x00AA00DD);
         let point = MyPoint::new(66.0, 666.0);
         let chunk = Chunk::builder(entity_path_child2.clone())
-            .with_component_batches(row_id, timepoint, [&[color] as _, &[point] as _])
+            .with_archetype(
+                row_id,
+                timepoint,
+                &MyPoints::new([point]).with_colors([color]),
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 9);
-            let (_, _, got_point) =
-                query_latest_component::<MyPoint>(&db, &entity_path_child2, &query).unwrap();
-            let (_, _, got_color) =
-                query_latest_component::<MyColor>(&db, &entity_path_child2, &query).unwrap();
+            let (_, _, got_point) = query_latest_component::<MyPoint>(
+                &db,
+                &entity_path_child2,
+                &query,
+                &MyPoints::descriptor_points(),
+            )
+            .unwrap();
+            let (_, _, got_color) = query_latest_component::<MyColor>(
+                &db,
+                &entity_path_child2,
+                &query,
+                &MyPoints::descriptor_colors(),
+            )
+            .unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
             similar_asserts::assert_eq!(point, got_point);
@@ -276,8 +443,24 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child2, &query).is_none());
-            assert!(query_latest_component::<MyColor>(&db, &entity_path_child2, &query).is_none());
+            assert!(
+                query_latest_component::<MyPoint>(
+                    &db,
+                    &entity_path_child2,
+                    &query,
+                    &MyPoints::descriptor_points()
+                )
+                .is_none()
+            );
+            assert!(
+                query_latest_component::<MyColor>(
+                    &db,
+                    &entity_path_child2,
+                    &query,
+                    &MyPoints::descriptor_colors()
+                )
+                .is_none()
+            );
         }
     }
 
@@ -289,15 +472,24 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let color = MyColor::from(0x00AA00DD);
         let chunk = Chunk::builder(entity_path_grandchild.clone())
-            .with_component_batches(row_id, timepoint, [&[color] as _])
+            .with_archetype(
+                row_id,
+                timepoint,
+                &MyPoints::update_fields().with_colors([color]),
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;
 
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 9);
-            let (_, _, got_color) =
-                query_latest_component::<MyColor>(&db, &entity_path_grandchild, &query).unwrap();
+            let (_, _, got_color) = query_latest_component::<MyColor>(
+                &db,
+                &entity_path_grandchild,
+                &query,
+                &MyPoints::descriptor_colors(),
+            )
+            .unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
         }
@@ -305,7 +497,13 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(*timeline_frame.name(), 11);
             assert!(
-                query_latest_component::<MyColor>(&db, &entity_path_grandchild, &query).is_none()
+                query_latest_component::<MyColor>(
+                    &db,
+                    &entity_path_grandchild,
+                    &query,
+                    &MyPoints::descriptor_colors()
+                )
+                .is_none()
             );
         }
     }
@@ -331,24 +529,29 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
 
     let point = MyPoint::new(1.0, 2.0);
     let chunk = Chunk::builder(entity_path.clone())
-        .with_component_batches(row_id2, timepoint.clone(), [&[point] as _])
+        .with_archetype(row_id2, timepoint.clone(), &MyPoints::new([point]))
         .build()?;
 
     db.add_chunk(&Arc::new(chunk))?;
 
     {
         let query = LatestAtQuery::new(*timeline_frame.name(), 11);
-        let (_, _, got_point) =
-            query_latest_component::<MyPoint>(&db, &entity_path, &query).unwrap();
+        let (_, _, got_point) = query_latest_component::<MyPoint>(
+            &db,
+            &entity_path,
+            &query,
+            &MyPoints::descriptor_points(),
+        )
+        .unwrap();
         similar_asserts::assert_eq!(point, got_point);
     }
 
     let clear = Clear::recursive();
     let chunk = Chunk::builder(entity_path.clone())
-        .with_serialized_batches(
+        .with_archetype(
             row_id1, // older row id!
             timepoint.clone(),
-            clear.as_serialized_batches(),
+            &clear,
         )
         .build()?;
 
@@ -357,13 +560,17 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
     {
         let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
-        let (_, _, got_point) =
-            query_latest_component::<MyPoint>(&db, &entity_path, &query).unwrap();
+        let (_, _, got_point) = query_latest_component::<MyPoint>(
+            &db,
+            &entity_path,
+            &query,
+            &MyPoints::descriptor_points(),
+        )
+        .unwrap();
         similar_asserts::assert_eq!(point, got_point);
 
         // the `Clear` component itself doesn't get cleared!
-        let (_, _, got_clear) =
-            query_latest_component::<ClearIsRecursive>(&db, &entity_path, &query).unwrap();
+        let (_, _, got_clear) = query_latest_component_clear(&db, &entity_path, &query).unwrap();
         similar_asserts::assert_eq!(
             clear.is_recursive.map(|batch| batch.array),
             got_clear.serialized().map(|batch| batch.array)
@@ -372,10 +579,10 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
 
     let clear = Clear::recursive();
     let chunk = Chunk::builder(entity_path.clone())
-        .with_serialized_batches(
+        .with_archetype(
             row_id3, // newer row id!
             timepoint.clone(),
-            clear.as_serialized_batches(),
+            &clear,
         )
         .build()?;
 
@@ -384,11 +591,18 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
     {
         let query = LatestAtQuery::new(*timeline_frame.name(), 11);
 
-        assert!(query_latest_component::<MyPoint>(&db, &entity_path, &query).is_none());
+        assert!(
+            query_latest_component::<MyPoint>(
+                &db,
+                &entity_path,
+                &query,
+                &MyPoints::descriptor_points()
+            )
+            .is_none()
+        );
 
         // the `Clear` component itself doesn't get cleared!
-        let (_, _, got_clear) =
-            query_latest_component::<ClearIsRecursive>(&db, &entity_path, &query).unwrap();
+        let (_, _, got_clear) = query_latest_component_clear(&db, &entity_path, &query).unwrap();
         similar_asserts::assert_eq!(
             clear.is_recursive.map(|batch| batch.array),
             got_clear.serialized().map(|batch| batch.array)

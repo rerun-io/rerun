@@ -23,21 +23,6 @@ impl ::prost::Name for RegisterWithDatasetRequest {
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct WriteChunksRequest {
-    #[prost(message, optional, tag = "1")]
-    pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
-}
-impl ::prost::Name for WriteChunksRequest {
-    const NAME: &'static str = "WriteChunksRequest";
-    const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
-    fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.WriteChunksRequest".into()
-    }
-    fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.WriteChunksRequest".into()
-    }
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct GetPartitionTableSchemaRequest {
     #[prost(message, optional, tag = "1")]
     pub dataset_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
@@ -318,11 +303,11 @@ pub mod frontend_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::BoxBody>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    >,
                 >,
-            >,
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + std::marker::Send + std::marker::Sync,
         {
@@ -494,16 +479,18 @@ pub mod frontend_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Unimplemented.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        ///
+        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         pub async fn write_chunks(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<
-                tonic::codec::Streaming<
-                    super::super::super::manifest_registry::v1alpha1::WriteChunksResponse,
-                >,
+            request: impl tonic::IntoStreamingRequest<
+                Message = super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
             >,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::manifest_registry::v1alpha1::WriteChunksResponse>,
             tonic::Status,
         > {
             self.inner.ready().await.map_err(|e| {
@@ -518,7 +505,7 @@ pub mod frontend_service_client {
                 "rerun.frontend.v1alpha1.FrontendService",
                 "WriteChunks",
             ));
-            self.inner.streaming(req, path, codec).await
+            self.inner.client_streaming(req, path, codec).await
         }
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
@@ -921,19 +908,22 @@ pub mod frontend_service_server {
             >,
             tonic::Status,
         >;
-        /// Server streaming response type for the WriteChunks method.
-        type WriteChunksStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<
-                    super::super::super::manifest_registry::v1alpha1::WriteChunksResponse,
-                    tonic::Status,
-                >,
-            > + std::marker::Send
-            + 'static;
-        /// Unimplemented.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        ///
+        /// The destination dataset must be provided in the `x-rerun-dataset-id` header.
         async fn write_chunks(
             &self,
-            request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
-        ) -> std::result::Result<tonic::Response<Self::WriteChunksStream>, tonic::Status>;
+            request: tonic::Request<
+                tonic::Streaming<
+                    super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
+                >,
+            >,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::manifest_registry::v1alpha1::WriteChunksResponse>,
+            tonic::Status,
+        >;
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
         /// * To inspect the data of the partition table, use `ScanPartitionTable`.
@@ -1442,17 +1432,20 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct WriteChunksSvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService>
-                        tonic::server::StreamingService<super::WriteChunksRequest>
-                        for WriteChunksSvc<T>
+                        tonic::server::ClientStreamingService<
+                            super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
+                        > for WriteChunksSvc<T>
                     {
                         type Response =
                             super::super::super::manifest_registry::v1alpha1::WriteChunksResponse;
-                        type ResponseStream = T::WriteChunksStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
+                            request: tonic::Request<
+                                tonic::Streaming<
+                                    super::super::super::manifest_registry::v1alpha1::WriteChunksRequest,
+                                >,
+                            >,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
@@ -1478,7 +1471,7 @@ pub mod frontend_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.streaming(method, req).await;
+                        let res = grpc.client_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

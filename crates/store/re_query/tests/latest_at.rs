@@ -5,12 +5,11 @@ use std::sync::Arc;
 
 use re_chunk::RowId;
 use re_chunk_store::{
-    external::re_chunk::Chunk, ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery,
+    ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery, external::re_chunk::Chunk,
 };
 use re_log_types::{
-    build_frame_nr,
+    EntityPath, TimeInt, TimePoint, build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
-    EntityPath, TimeInt, TimePoint,
 };
 use re_query::QueryCache;
 use re_types_core::{Archetype as _, ComponentBatch as _};
@@ -105,7 +104,9 @@ fn simple_query_with_differently_tagged_components() {
         &entity_path.into(),
         [&points2_serialized.descriptor],
     );
-    let cached_points = cached.component_batch::<MyPoint>().unwrap();
+    let cached_points = cached
+        .component_batch::<MyPoint>(&points2_serialized.descriptor)
+        .unwrap();
     similar_asserts::assert_eq!(points2, cached_points);
 }
 
@@ -659,8 +660,12 @@ fn query_and_compare(
     for _ in 0..3 {
         let cached = caches.latest_at(query, entity_path, MyPoints::all_components().iter());
 
-        let cached_points = cached.component_batch::<MyPoint>().unwrap();
-        let cached_colors = cached.component_batch::<MyColor>().unwrap_or_default();
+        let cached_points = cached
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+            .unwrap();
+        let cached_colors = cached
+            .component_batch::<MyColor>(&MyPoints::descriptor_colors())
+            .unwrap_or_default();
 
         eprintln!("{:?}", cached.components.keys());
         eprintln!("{store}");

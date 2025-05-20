@@ -1,26 +1,26 @@
-use std::collections::BTreeMap;
-
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
 use pyo3::exceptions::PyValueError;
 use pyo3::{
-    create_exception, exceptions::PyConnectionError, exceptions::PyRuntimeError, PyErr, PyResult,
-    Python,
+    PyErr, PyResult, Python, create_exception, exceptions::PyConnectionError,
+    exceptions::PyRuntimeError,
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{LatestAtQuery, RangeQuery};
 use re_chunk_store::ChunkStore;
 use re_dataframe::ViewContentsSelector;
-use re_grpc_client::redap::{get_chunks_response_to_chunk_and_partition_id, RedapClient};
+use re_grpc_client::redap::{RedapClient, get_chunks_response_to_chunk_and_partition_id};
 use re_log_types::{ApplicationId, EntryId, StoreId, StoreInfo, StoreKind, StoreSource};
 use re_protos::{
     catalog::v1alpha1::{
-        ext::{DatasetEntry, EntryDetails, TableEntry},
         CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, ReadDatasetEntryRequest,
         ReadTableEntryRequest,
+        ext::{DatasetEntry, EntryDetails, TableEntry},
     },
     common::v1alpha1::{IfDuplicateBehavior, TaskId},
     frontend::v1alpha1::{GetChunksRequest, GetDatasetSchemaRequest, RegisterWithDatasetRequest},
@@ -162,6 +162,11 @@ impl ConnectionHandle {
         })
     }
 
+    /// Initiate registration of the provided recording URIs with a dataset and return the
+    /// corresponding task IDs.
+    ///
+    /// NOTE: The server may pool multiple registrations into a single task. The result always has
+    /// the same length as the output, so task ids may be duplicated.
     pub fn register_with_dataset(
         &mut self,
         py: Python<'_>,
@@ -219,6 +224,28 @@ impl ConnectionHandle {
         })
     }
 
+    pub fn query_tasks(&mut self, py: Python<'_>, task_ids: &[TaskId]) -> PyResult<RecordBatch> {
+        wait_for_future(py, async {
+            let request = re_protos::redap_tasks::v1alpha1::QueryTasksRequest {
+                ids: task_ids.to_vec(),
+            };
+
+            let status_table = self
+                .client
+                .query_tasks(request)
+                .await
+                .map_err(to_py_err)?
+                .into_inner()
+                .dataframe_part()
+                .map_err(to_py_err)?
+                .decode()
+                .map_err(to_py_err)?;
+
+            Ok(status_table)
+        })
+    }
+
+    /// Wait for the provided tasks to finish.
     pub fn wait_for_tasks(
         &mut self,
         py: Python<'_>,
@@ -251,7 +278,7 @@ impl ConnectionHandle {
                     .decode()
                     .map_err(to_py_err)?
             } else {
-                return Err(PyValueError::new_err("no response from task"));
+                return Err(PyConnectionError::new_err("no response from task"));
             };
 
             // TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather

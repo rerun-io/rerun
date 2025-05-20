@@ -4,13 +4,12 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
-use re_types::components::Timestamp;
+use re_types::{archetypes::RecordingProperties, components::Timestamp};
 use re_ui::{
-    icons,
+    SyntaxHighlighting as _, icons,
     syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
-    SyntaxHighlighting as _,
 };
-use re_viewer_context::{contents_name_style, ContainerId, Contents, Item, ViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext, contents_name_style};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
@@ -90,7 +89,8 @@ impl ItemTitle {
         let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
             match (
                 entity_db.app_id(),
-                entity_db.recording_property::<Timestamp>(),
+                entity_db
+                    .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time()),
             ) {
                 (Some(application_id), Some(started)) => {
                     let time = re_log_types::Timestamp::from(started.0)
@@ -149,7 +149,7 @@ impl ItemTitle {
         } = component_path;
 
         Self::new(
-            component_descriptor.short_name(),
+            component_descriptor.display_name(),
             if is_static {
                 &icons::COMPONENT_STATIC
             } else {
@@ -159,7 +159,7 @@ impl ItemTitle {
         .with_tooltip(format!(
             "{} component {} of entity '{}'",
             if is_static { "Static" } else { "Temporal" },
-            component_descriptor.full_name(),
+            component_descriptor.display_name(),
             entity_path
         ))
     }

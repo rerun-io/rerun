@@ -8,5 +8,5 @@ mod table_blueprint;
 pub mod table_utils;
 
 pub use datafusion_table_widget::DataFusionTableWidget;
-pub use display_record_batch::{DisplayColumn, DisplayRecordBatch, DisplayRecordBatchError};
+pub use display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 pub use requested_object::RequestedObject;

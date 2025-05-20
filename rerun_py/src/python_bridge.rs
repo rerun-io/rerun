@@ -18,12 +18,12 @@ use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::sink::CallbackSink;
-use re_sdk::{external::re_log_encoding::encoder::encode_ref_as_bytes_local, TimeCell};
 use re_sdk::{
+    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
     sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
-    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
 };
+use re_sdk::{TimeCell, external::re_log_encoding::encoder::encode_ref_as_bytes_local};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -98,8 +98,8 @@ fn flush_garbage_queue() {
 // ---
 
 #[cfg(feature = "web_viewer")]
-fn global_web_viewer_server(
-) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServer>> {
+fn global_web_viewer_server()
+-> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServer>> {
     static WEB_HANDLE: OnceCell<parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServer>>> =
         OnceCell::new();
     WEB_HANDLE.get_or_init(Default::default).lock()
@@ -1598,9 +1598,11 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
     let seed = match authkey(py) {
         Ok(seed) => seed,
         Err(err) => {
-            re_log::error_once!("Failed to retrieve python authkey: {err}\nMultiprocessing will result in split recordings.");
+            re_log::error_once!(
+                "Failed to retrieve python authkey: {err}\nMultiprocessing will result in split recordings."
+            );
             // If authkey failed, just generate a random 8-byte authkey
-            let bytes = rand::Rng::gen::<[u8; 8]>(&mut rand::thread_rng());
+            let bytes = rand::Rng::r#gen::<[u8; 8]>(&mut rand::thread_rng());
             bytes.to_vec()
         }
     };
@@ -1618,7 +1620,7 @@ fn default_store_id(py: Python<'_>, variant: StoreKind, application_id: &str) ->
     // solely by recording IDs.
     application_id.hash(&mut hasher);
     let mut rng = rand::rngs::StdRng::seed_from_u64(hasher.finish());
-    let uuid = uuid::Builder::from_random_bytes(rng.gen()).into_uuid();
+    let uuid = uuid::Builder::from_random_bytes(rng.r#gen()).into_uuid();
     StoreId::from_uuid(variant, uuid)
 }
 
