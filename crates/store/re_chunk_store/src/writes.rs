@@ -659,7 +659,7 @@ impl ChunkStore {
 #[cfg(test)]
 mod tests {
     use re_chunk::{TimePoint, Timeline};
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use similar_asserts::assert_eq;
 
     use crate::ChunkStoreDiffKind;
@@ -892,8 +892,8 @@ mod tests {
                 timepoint_static.clone(),
                 [
                     (MyPoints::descriptor_points(), points1 as _),
-                    colors1 as _,
-                    labels1 as _,
+                    (MyPoints::descriptor_colors(), colors1 as _),
+                    (MyPoints::descriptor_labels(), labels1 as _),
                 ],
             )
             .build()?;
@@ -901,11 +901,18 @@ mod tests {
             .with_component_batches(
                 row_id2_1,
                 timepoint_static.clone(),
-                [(MyPoints::descriptor_points(), points2 as _), colors2 as _],
+                [
+                    (MyPoints::descriptor_points(), points2 as _),
+                    (MyPoints::descriptor_colors(), colors2 as _),
+                ],
             )
             .build()?;
         let chunk3 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id2_2, timepoint_static, [labels2 as _])
+            .with_component_batches(
+                row_id2_2,
+                timepoint_static,
+                [(MyPoints::descriptor_labels(), labels2 as _)],
+            )
             .build()?;
 
         let chunk1 = Arc::new(chunk1);

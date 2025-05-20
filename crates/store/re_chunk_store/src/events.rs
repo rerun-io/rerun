@@ -402,8 +402,11 @@ mod tests {
                     row_id3,
                     timepoint3.clone(),
                     [
-                        &MyIndex::from_iter(0..num_instances as _) as _,
-                        &colors as _,
+                        (
+                            MyIndex::descriptor(),
+                            &MyIndex::from_iter(0..num_instances as _) as _,
+                        ),
+                        (MyPoints::descriptor_colors(), &colors as _),
                     ],
                 )
                 .build()?
