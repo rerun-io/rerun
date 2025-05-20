@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use egui::NumExt as _;
 
-use re_ui::{DesignTokens, list_item};
+use re_ui::{DesignTokens, UiExt, list_item};
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
@@ -413,7 +413,7 @@ impl HierarchicalDragAndDrop {
             ui.painter().hline(
                 drop_target.indicator_span_x,
                 drop_target.indicator_position_y,
-                (2.0, egui::Color32::WHITE),
+                (2.0, ui.design_tokens().strong_fg_color),
             );
 
             // note: can't use `response.drag_released()` because we not the item which

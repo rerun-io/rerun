@@ -2495,7 +2495,7 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             Align2::CENTER_CENTER,
             text,
             TextStyle::Body.resolve(&egui_ctx.style()),
-            Color32::WHITE,
+            egui_ctx.style().visuals.strong_text_color(),
         );
     }
 }

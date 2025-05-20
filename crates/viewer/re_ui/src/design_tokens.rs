@@ -31,7 +31,10 @@ pub struct DesignTokens {
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
     pub native_frame_stroke: Stroke,
+
+    /// Usually black or white
     pub strong_fg_color: Color32,
+
     pub info_log_text_color: Color32,
     pub debug_log_text_color: Color32,
     pub trace_log_text_color: Color32,

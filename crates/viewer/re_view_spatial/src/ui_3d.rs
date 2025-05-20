@@ -649,7 +649,7 @@ impl SpatialView3D {
             line_builder
                 .batch("scene_bbox_current")
                 .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| lines.radius(box_line_radius).color(egui::Color32::WHITE));
+                .map(|lines| lines.radius(box_line_radius).color(egui::Color32::WHITE)); // TODO: use design tokens
         }
         if state.state_3d.show_smoothed_bbox {
             line_builder
@@ -861,7 +861,7 @@ fn show_orbit_eye_center(
             )
             .radius(Size::new_ui_points(0.75))
             // TODO(andreas): Fade this out.
-            .color(re_renderer::Color32::WHITE);
+            .color(re_renderer::Color32::WHITE); // TODO: use design tokens
 
         // TODO(andreas): Idea for nice depth perception:
         // Render the lines once with additive blending and depth test enabled

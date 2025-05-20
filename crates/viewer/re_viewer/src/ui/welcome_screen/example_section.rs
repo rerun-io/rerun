@@ -546,8 +546,8 @@ impl ExampleDescLayout {
                         .sense(egui::Sense::hover())
                         .corner_radius(6)
                         .fill(match ui.theme() {
-                            Theme::Dark => egui::Color32::from_rgb(26, 29, 30),
-                            Theme::Light => Color32::from_rgb(219, 222, 228),
+                            Theme::Dark => Color32::from_rgb(26, 29, 30), // TODO: design tokens
+                            Theme::Light => Color32::from_rgb(219, 222, 228), // TODO: design tokens
                         })
                         .stroke(egui::Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.086)))
                         .wrap_mode(egui::TextWrapMode::Extend),

@@ -1088,7 +1088,7 @@ impl BlueprintTree {
         ui.painter().hline(
             drop_target.indicator_span_x,
             drop_target.indicator_position_y,
-            (2.0, egui::Color32::WHITE),
+            (2.0, ui.design_tokens().strong_fg_color),
         );
 
         let Contents::Container(target_container_id) = drop_target.target_parent_id else {

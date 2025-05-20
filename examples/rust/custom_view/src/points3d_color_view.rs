@@ -276,7 +276,7 @@ fn color_space_ui(
                 highlight.hover,
                 highlight.selection != SelectionHighlight::None,
             ) {
-                (HoverHighlight::None, false) => (egui::Color32::BLACK, 2.0),
+                (HoverHighlight::None, false) => (ui.style().visuals.extreme_bg_color, 2.0),
                 (HoverHighlight::None, true) => (ui.style().visuals.selection.bg_fill, 8.0),
                 (HoverHighlight::Hovered, ..) => (ui.style().visuals.widgets.hovered.bg_fill, 8.0),
             };

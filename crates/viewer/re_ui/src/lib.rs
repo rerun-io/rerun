@@ -106,6 +106,14 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
     }
 }
 
+pub fn design_tokens_of_style(style: &egui::Style) -> &'static DesignTokens {
+    if style.visuals.dark_mode {
+        design_tokens_of(egui::Theme::Dark)
+    } else {
+        design_tokens_of(egui::Theme::Light)
+    }
+}
+
 /// Apply the Rerun design tokens to the given egui context and install image loaders.
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     re_tracing::profile_function!();

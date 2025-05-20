@@ -1,4 +1,4 @@
-use egui::{Color32, RichText};
+use egui::RichText;
 use re_types::components::TextLogLevel;
 use re_ui::UiExt as _;
 
@@ -14,7 +14,7 @@ pub fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
 
     match lvl {
         TextLogLevel::CRITICAL => RichText::new(lvl)
-            .color(Color32::WHITE)
+            .color(design_tokens.strong_fg_color)
             .background_color(error_color),
         TextLogLevel::ERROR => RichText::new(lvl).color(error_color),
         TextLogLevel::WARN => RichText::new(lvl).color(warn_color),

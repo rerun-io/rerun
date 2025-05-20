@@ -198,7 +198,7 @@ pub fn process_labels<'a, P: 'a>(
     )
     .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
 
-    let colors = clamped_or(colors, &egui::Color32::WHITE);
+    let colors = clamped_or(colors, &egui::Color32::WHITE); // TODO: design tokens
 
     Either::Right(
         itertools::izip!(label_positions, labels, colors)

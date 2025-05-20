@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use re_ui::list_item;
+use re_ui::{UiExt, list_item};
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
@@ -88,7 +88,7 @@ impl ExampleDragAndDrop {
                     ui.painter().hline(
                         ui.cursor().x_range(),
                         insert_y,
-                        (2.0, egui::Color32::WHITE),
+                        (2.0, ui.design_tokens().strong_fg_color),
                     );
 
                     // note: can't use `response.drag_released()` because we not the item which
