@@ -179,6 +179,7 @@ pub struct PoseTransformArchetypeMap {
 }
 
 impl PoseTransformArchetypeMap {
+    #[cfg(test)]
     #[inline]
     fn get(&self, archetype: ArchetypeName) -> &[Affine3A] {
         self.instance_from_archetype_poses_per_archetype
