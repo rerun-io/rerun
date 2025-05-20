@@ -36,6 +36,12 @@
     },
     "section_collapsing_header_color": {
       "color": "{Gray.900}"
+    },
+    "loop_selection_color": {
+      "color": "#6386C9B2"
+    },
+    "loop_everything_color": {
+      "color": "#06A35C"
     }
   },
   "Global": {

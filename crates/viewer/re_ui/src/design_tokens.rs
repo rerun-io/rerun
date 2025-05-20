@@ -43,6 +43,12 @@ pub struct DesignTokens {
 
     /// The color for the background of [`crate::SectionCollapsingHeader`].
     pub section_collapsing_header_color: Color32,
+
+    /// The color we use to mean "loop this selection"
+    pub loop_selection_color: Color32,
+
+    /// The color we use to mean "loop all the data"
+    pub loop_everything_color: Color32,
 }
 
 impl DesignTokens {
@@ -95,6 +101,9 @@ impl DesignTokens {
 
             label_button_icon_color: get_color("label_button_icon_color"),
             section_collapsing_header_color: get_color("section_collapsing_header_color"),
+
+            loop_selection_color: get_color("loop_selection_color"),
+            loop_everything_color: get_color("loop_everything_color"),
 
             color_table: colors,
         }
@@ -586,26 +595,36 @@ fn try_get_alias_color(
         .ok_or_else(|| anyhow::anyhow!("No color found"))?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
-    let color = color
-        .strip_prefix('{')
-        .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
-    let color = color
-        .strip_suffix('}')
-        .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
-    let (hue, scale) = color
-        .split_once('.')
-        .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
-    let hue: Hue = hue.parse()?;
-    let scale: Scale = scale.parse()?;
-    let mut color = color_table.get(ColorToken::new(hue, scale));
-    if let Some(alpha) = color_alias.get("alpha") {
-        let alpha = alpha
-            .as_i64()
-            .ok_or_else(|| anyhow::anyhow!("alpha should be 0-255"))?;
-        let alpha: u8 = u8::try_from(alpha).context("alpha should be 0-255")?;
-        color = color.gamma_multiply_u8(alpha);
+
+    if color.starts_with('#') {
+        Ok(
+            Color32::from_hex(color)
+                .map_err(|err| anyhow::anyhow!("Invalid hex color: {err:?}"))?,
+        )
+    } else if color.starts_with('{') {
+        let color = color
+            .strip_prefix('{')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let color = color
+            .strip_suffix('}')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let (hue, scale) = color
+            .split_once('.')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let hue: Hue = hue.parse()?;
+        let scale: Scale = scale.parse()?;
+        let mut color = color_table.get(ColorToken::new(hue, scale));
+        if let Some(alpha) = color_alias.get("alpha") {
+            let alpha = alpha
+                .as_i64()
+                .ok_or_else(|| anyhow::anyhow!("alpha should be 0-255"))?;
+            let alpha: u8 = u8::try_from(alpha).context("alpha should be 0-255")?;
+            color = color.gamma_multiply_u8(alpha);
+        }
+        Ok(color)
+    } else {
+        anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
     }
-    Ok(color)
 }
 
 fn get_aliased_color(
