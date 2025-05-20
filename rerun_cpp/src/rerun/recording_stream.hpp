@@ -156,7 +156,8 @@ namespace rerun {
         ///
         /// This function returns immediately.
         Error connect_grpc(
-            std::string_view url = "rerun+http://127.0.0.1:9876/proxy", float flush_timeout_sec = 2.0
+            std::string_view url = "rerun+http://127.0.0.1:9876/proxy",
+            float flush_timeout_sec = 2.0
         ) const;
 
         /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
