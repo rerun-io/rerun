@@ -88,6 +88,8 @@ pub type UntypedComponentEditOrViewCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
+            &ComponentDescriptor,
+            Option<RowId>,
             &dyn arrow::array::Array,
             EditOrView,
         ) -> Option<arrow::array::ArrayRef>
@@ -216,8 +218,8 @@ impl ComponentUiRegistry {
         + Sync
         + 'static,
     ) {
-        let untyped_callback: UntypedComponentEditOrViewCallback =
-            Box::new(move |ui, ui_layout, value, edit_or_view| {
+        let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
+            move |ui, ui_layout, _component_descriptor, _row_id, value, edit_or_view| {
                 try_deserialize(value).and_then(|mut deserialized_value| match edit_or_view {
                     EditOrView::View => {
                         callback(ui, ui_layout, &mut MaybeMutRef::Ref(&deserialized_value));
@@ -238,7 +240,8 @@ impl ComponentUiRegistry {
                         }
                     }
                 })
-            });
+            },
+        );
 
         if multiline {
             &mut self.component_multiline_edit_or_view
@@ -401,7 +404,14 @@ impl ComponentUiRegistry {
         };
         if let Some(edit_or_view_ui) = edit_or_view_ui {
             // Use it in view mode (no mutation).
-            (*edit_or_view_ui)(ctx, ui, component_raw, EditOrView::View);
+            (*edit_or_view_ui)(
+                ctx,
+                ui,
+                component_descr,
+                row_id,
+                component_raw,
+                EditOrView::View,
+            );
             return;
         }
 
@@ -436,7 +446,14 @@ impl ComponentUiRegistry {
         };
         if let Some(edit_or_view_ui) = edit_or_view_ui {
             // Use it in view mode (no mutation).
-            (*edit_or_view_ui)(ctx, ui, component_raw, EditOrView::View);
+            (*edit_or_view_ui)(
+                ctx,
+                ui,
+                component_descr,
+                row_id,
+                component_raw,
+                EditOrView::View,
+            );
             return;
         }
 
@@ -628,7 +645,14 @@ impl ComponentUiRegistry {
         };
 
         if let Some(edit_or_view) = edit_or_view {
-            if let Some(updated) = (*edit_or_view)(ctx, ui, raw_current_value, EditOrView::Edit) {
+            if let Some(updated) = (*edit_or_view)(
+                ctx,
+                ui,
+                &component_descr,
+                None,
+                raw_current_value,
+                EditOrView::Edit,
+            ) {
                 ctx.append_array_to_store(
                     store_id,
                     timepoint,
