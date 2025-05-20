@@ -214,8 +214,8 @@ fn simple_static() -> anyhow::Result<()> {
         TimeInt::MAX,
         &[
             (MyIndex::descriptor(), row_id2_static),
-            (MyColor::descriptor(), row_id1_static),
-            (MyPoint::descriptor(), row_id2_static),
+            (MyPoints::descriptor_colors(), row_id1_static),
+            (MyPoints::descriptor_points(), row_id2_static),
         ],
     );
 
@@ -317,8 +317,8 @@ fn protected() -> anyhow::Result<()> {
         frame1,
         &[
             (MyIndex::descriptor(), None),
-            (MyColor::descriptor(), None),
-            (MyPoint::descriptor(), None),
+            (MyPoints::descriptor_colors(), None),
+            (MyPoints::descriptor_points(), None),
         ],
     );
 
@@ -326,8 +326,8 @@ fn protected() -> anyhow::Result<()> {
         frame2,
         &[
             (MyIndex::descriptor(), Some(row_id2)),
-            (MyColor::descriptor(), None),
-            (MyPoint::descriptor(), Some(row_id2)),
+            (MyPoints::descriptor_colors(), None),
+            (MyPoints::descriptor_points(), Some(row_id2)),
         ],
     );
 
@@ -335,8 +335,8 @@ fn protected() -> anyhow::Result<()> {
         frame3,
         &[
             (MyIndex::descriptor(), Some(row_id2)),
-            (MyColor::descriptor(), None),
-            (MyPoint::descriptor(), Some(row_id3)),
+            (MyPoints::descriptor_colors(), None),
+            (MyPoints::descriptor_points(), Some(row_id3)),
         ],
     );
 
@@ -344,8 +344,8 @@ fn protected() -> anyhow::Result<()> {
         frame4,
         &[
             (MyIndex::descriptor(), Some(row_id2)),
-            (MyColor::descriptor(), Some(row_id4)),
-            (MyPoint::descriptor(), Some(row_id3)),
+            (MyPoints::descriptor_colors(), Some(row_id4)),
+            (MyPoints::descriptor_points(), Some(row_id3)),
         ],
     );
 
