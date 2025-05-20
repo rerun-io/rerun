@@ -49,6 +49,42 @@ pub struct DesignTokens {
 
     /// The color we use to mean "loop all the data"
     pub loop_everything_color: Color32,
+
+    /// Color for thumbnail backgrounds
+    pub thumbnail_background_color: Color32,
+
+    /// Color for example card backgrounds
+    pub example_card_background_color: Color32,
+
+    /// Color for breadcrumb text
+    pub breadcrumb_text_color: Color32,
+
+    /// Color for breadcrumb separators
+    pub breadcrumb_separator_color: Color32,
+
+    /// Color for blueprint time panel background
+    pub blueprint_time_panel_bg_fill: Color32,
+
+    /// Color for notification panel background
+    pub notification_panel_background_color: Color32,
+
+    /// Color for notification background
+    pub notification_background_color: Color32,
+
+    /// Color for table header background
+    pub table_header_bg_fill: Color32,
+
+    /// Color for table header stroke
+    pub table_header_stroke_color: Color32,
+
+    /// Color for table interaction hovered background stroke
+    pub table_interaction_hovered_bg_stroke: Color32,
+
+    /// Color for table interaction active background stroke
+    pub table_interaction_active_bg_stroke: Color32,
+
+    /// Color for table interaction noninteractive background stroke
+    pub table_interaction_noninteractive_bg_stroke: Color32,
 }
 
 impl DesignTokens {
@@ -104,6 +140,21 @@ impl DesignTokens {
 
             loop_selection_color: get_color("loop_selection_color"),
             loop_everything_color: get_color("loop_everything_color"),
+
+            thumbnail_background_color: get_color("thumbnail_background_color"),
+            example_card_background_color: get_color("example_card_background_color"),
+            breadcrumb_text_color: get_color("breadcrumb_text_color"),
+            breadcrumb_separator_color: get_color("breadcrumb_separator_color"),
+            blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
+            notification_panel_background_color: get_color("notification_panel_background_color"),
+            notification_background_color: get_color("notification_background_color"),
+            table_header_bg_fill: get_color("table_header_bg_fill"),
+            table_header_stroke_color: get_color("table_header_stroke_color"),
+            table_interaction_hovered_bg_stroke: get_color("table_interaction_hovered_bg_stroke"),
+            table_interaction_active_bg_stroke: get_color("table_interaction_active_bg_stroke"),
+            table_interaction_noninteractive_bg_stroke: get_color(
+                "table_interaction_noninteractive_bg_stroke",
+            ),
 
             color_table: colors,
         }

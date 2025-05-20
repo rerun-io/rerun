@@ -344,7 +344,7 @@ impl ExampleSection {
                                 ui.painter().rect_filled(
                                     example.rect,
                                     THUMBNAIL_RADIUS,
-                                    ui.design_tokens().example_card_background_color(),
+                                    ui.design_tokens().example_card_background_color,
                                 );
 
                                 if response.clicked() {

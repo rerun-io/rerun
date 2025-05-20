@@ -42,6 +42,42 @@
     },
     "loop_everything_color": {
       "color": "#06A35C"
+    },
+    "thumbnail_background_color": {
+      "color": "{Gray.800}"
+    },
+    "example_card_background_color": {
+      "color": "{Gray.850}"
+    },
+    "breadcrumb_text_color": {
+      "color": "{Blue.300}"
+    },
+    "breadcrumb_separator_color": {
+      "color": "{Blue.400}"
+    },
+    "blueprint_time_panel_bg_fill": {
+      "color": "{Blue.900}"
+    },
+    "notification_panel_background_color": {
+      "color": "{Gray.850}"
+    },
+    "notification_background_color": {
+      "color": "{Gray.800}"
+    },
+    "table_header_bg_fill": {
+      "color": "{Gray.850}"
+    },
+    "table_header_stroke_color": {
+      "color": "{Gray.700}"
+    },
+    "table_interaction_hovered_bg_stroke": {
+      "color": "{Gray.700}"
+    },
+    "table_interaction_active_bg_stroke": {
+      "color": "{Gray.650}"
+    },
+    "table_interaction_noninteractive_bg_stroke": {
+      "color": "{Gray.800}"
     }
   },
   "Global": {

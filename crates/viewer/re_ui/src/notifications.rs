@@ -239,7 +239,7 @@ impl NotificationPanel {
             .movable(false)
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
-                    .fill(ui.design_tokens().notification_panel_background_color())
+                    .fill(ui.design_tokens().notification_panel_background_color)
                     .corner_radius(8)
                     .inner_margin(8.0)
                     .show(ui, |ui| {
@@ -368,9 +368,9 @@ fn show_notification(
     mut on_dismiss: impl FnMut(),
 ) -> egui::Response {
     let background_color = if mode == DisplayMode::Toast || notification.is_unread {
-        ui.design_tokens().notification_background_color()
+        ui.design_tokens().notification_background_color
     } else {
-        ui.design_tokens().notification_panel_background_color()
+        ui.design_tokens().notification_panel_background_color
     };
 
     egui::Frame::window(ui.style())
