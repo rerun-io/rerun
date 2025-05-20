@@ -341,7 +341,7 @@ impl TimeColumn {
 mod tests {
     use super::*;
 
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64};
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64, MyPoints};
     use re_types_core::Component as _;
 
     use crate::{Chunk, RowId, Timeline};
@@ -396,14 +396,40 @@ mod tests {
         let labels5 = &[MyLabel("d".into())];
 
         let chunk1 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [colors2 as _, labels2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _])
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [
+                    (MyPoints::descriptor_colors(), colors2 as _),
+                    (MyPoints::descriptor_labels(), labels2 as _),
+                ],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
             .build()?;
 
         let chunk2 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id4, timepoint4, [colors4 as _])
-            .with_component_batches(row_id5, timepoint5, [points5 as _, labels5 as _])
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [(MyPoints::descriptor_colors(), colors4 as _)],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [
+                    (MyPoints::descriptor_points(), points5 as _),
+                    (MyPoints::descriptor_labels(), labels5 as _),
+                ],
+            )
             .build()?;
 
         eprintln!("chunk1:\n{chunk1}");
@@ -597,14 +623,46 @@ mod tests {
         let labels5 = &[MyLabel("e".into())];
 
         let chunk1 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id1, timepoint1, [points1 as _, labels1 as _])
-            .with_component_batches(row_id2, timepoint2, [labels2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _, labels3 as _])
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [
+                    (MyPoints::descriptor_points(), points1 as _),
+                    (MyPoints::descriptor_labels(), labels1 as _),
+                ],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_labels(), labels2 as _)],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [
+                    (MyPoints::descriptor_points(), points3 as _),
+                    (MyPoints::descriptor_labels(), labels3 as _),
+                ],
+            )
             .build()?;
 
         let chunk2 = Chunk::builder(entity_path.into())
-            .with_component_batches(row_id4, timepoint4, [colors4 as _, labels4 as _])
-            .with_component_batches(row_id5, timepoint5, [colors5 as _, labels5 as _])
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [
+                    (MyPoints::descriptor_colors(), colors4 as _),
+                    (MyPoints::descriptor_labels(), labels4 as _),
+                ],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [
+                    (MyPoints::descriptor_colors(), colors5 as _),
+                    (MyPoints::descriptor_labels(), labels5 as _),
+                ],
+            )
             .build()?;
 
         eprintln!("chunk1:\n{chunk1}");
@@ -777,11 +835,19 @@ mod tests {
             let points2 = &[MyPoint::new(2.0, 2.0)];
 
             let chunk1 = Chunk::builder(entity_path1.into())
-                .with_component_batches(row_id1, timepoint1, [points1 as _])
+                .with_component_batches(
+                    row_id1,
+                    timepoint1,
+                    [(MyPoints::descriptor_points(), points1 as _)],
+                )
                 .build()?;
 
             let chunk2 = Chunk::builder(entity_path2.into())
-                .with_component_batches(row_id2, timepoint2, [points2 as _])
+                .with_component_batches(
+                    row_id2,
+                    timepoint2,
+                    [(MyPoints::descriptor_points(), points2 as _)],
+                )
                 .build()?;
 
             assert!(matches!(
@@ -808,11 +874,19 @@ mod tests {
             let points2 = &[MyPoint::new(2.0, 2.0)];
 
             let chunk1 = Chunk::builder(entity_path.into())
-                .with_component_batches(row_id1, timepoint1, [points1 as _])
+                .with_component_batches(
+                    row_id1,
+                    timepoint1,
+                    [(MyPoints::descriptor_points(), points1 as _)],
+                )
                 .build()?;
 
             let chunk2 = Chunk::builder(entity_path.into())
-                .with_component_batches(row_id2, timepoint2, [points2 as _])
+                .with_component_batches(
+                    row_id2,
+                    timepoint2,
+                    [(MyPoints::descriptor_points(), points2 as _)],
+                )
                 .build()?;
 
             assert!(matches!(
