@@ -353,8 +353,8 @@ wgpu = { version = "25.0", default-features = false, features = [
   "webgl",
   "metal",
   "webgpu",
-  "vulkan", # Does not yet exist, wgpu enables this automatically on Linux & Windows.
-  "gles",     # Does not yet exist, wgpu enables this automatically on Linux & Windows.
+  "vulkan",
+  "gles",
   #"dx12",   # DX12 backend on wgpu isn't as stable. Also, we want to reduce the number of backends on native. Ideally we only have Vulkan & Metal, but we also keep GL as a manual fallback.
   #"angle",  # As above, we want to limit the numbers of backends we support. GL support via angle isn't great and we didn't need it so far.
   # Shader options:
