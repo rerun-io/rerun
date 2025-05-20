@@ -139,9 +139,15 @@ namespace rerun {
         /// \details Either of these needs to be called, otherwise the stream will buffer up indefinitely.
         /// @{
 
-        /// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+        /// Connect to a remote Rerun Viewer on the given URL.
         ///
         /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+        ///
+        /// url:
+        /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+        /// and the pathname must be `/proxy`.
+        ///
+        /// The default is `rerun+http://127.0.0.1:9876/proxy`.
         ///
         /// flush_timeout_sec:
         /// The minimum time the SDK will wait during a flush before potentially
@@ -150,7 +156,7 @@ namespace rerun {
         ///
         /// This function returns immediately.
         Error connect_grpc(
-            std::string_view url = "rerun+http://127.0.0.1:9876", float flush_timeout_sec = 2.0
+            std::string_view url = "rerun+http://127.0.0.1:9876/proxy", float flush_timeout_sec = 2.0
         ) const;
 
         /// Swaps the underlying sink for a gRPC server sink pre-configured to listen on `rerun+http://{bind_ip}:{port}/proxy`.
