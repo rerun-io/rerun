@@ -46,6 +46,10 @@ pub fn test_transform_clamping() {
                 .with_archetype(
                     RowId::new(),
                     TimePoint::default(),
+                    // Note that the scale is applied _after_ the translation.
+                    // This means that the scales "scales the translation".
+                    // Prior to 0.23, the translation and the scale were on "the same transform",
+                    // therefore we'd apply scale first.
                     &re_types::archetypes::InstancePoses3D::new()
                         .with_scales([(1.0, 1.0, 1.0), (2.0, 2.0, 2.0)]),
                 )

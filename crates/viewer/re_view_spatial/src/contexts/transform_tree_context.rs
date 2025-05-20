@@ -386,18 +386,20 @@ fn lookup_image_plane_distance(
 
 fn compute_reference_from_instances(
     reference_from_entity: glam::Affine3A,
-    instance_poses: &[glam::Affine3A],
+    instance_from_poses: &[glam::Affine3A],
 ) -> SmallVec1<[glam::Affine3A; 1]> {
-    let Ok(mut reference_from_instances) =
-        SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(&instance_poses)
+    let Ok(mut reference_from_poses) =
+        SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(&instance_from_poses)
     else {
         return SmallVec1::new(reference_from_entity);
     };
 
-    for reference_from_instance in reference_from_instances.iter_mut() {
-        *reference_from_instance = reference_from_entity * (*reference_from_instance);
+    // Until now `reference_from_poses` is actually `reference_from_entity`.
+    for reference_from_pose in reference_from_poses.iter_mut() {
+        let entity_from_pose = *reference_from_pose;
+        *reference_from_pose = reference_from_entity * entity_from_pose;
     }
-    reference_from_instances
+    reference_from_poses
 }
 
 fn compute_references_from_instances_overall(
@@ -406,7 +408,7 @@ fn compute_references_from_instances_overall(
 ) -> SmallVec1<[glam::Affine3A; 1]> {
     compute_reference_from_instances(
         reference_from_entity,
-        pose_transforms.map_or(&[], |poses| &poses.instance_poses_archetype),
+        pose_transforms.map_or(&[], |poses| &poses.instance_from_overall_poses),
     )
 }
 
@@ -417,7 +419,7 @@ fn compute_reference_from_archetype(
     entity_from_instance_poses
         .map(|poses| {
             poses
-                .per_archetype
+                .instance_from_archetype_poses_per_archetype
                 .iter()
                 .map(|(archetype, poses)| {
                     (

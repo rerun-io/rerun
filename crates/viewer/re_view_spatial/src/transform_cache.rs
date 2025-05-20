@@ -171,24 +171,26 @@ pub struct PoseTransformArchetypeMap {
     /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
     /// Otherwise, refer to [`Self::instance_poses_archetype`].
     // TODO(andreas): use some kind of small map? Vec of tuples might already be more appropriate?
-    pub per_archetype: IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
+    pub instance_from_archetype_poses_per_archetype:
+        IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
 
     /// Resolved transforms for the instance poses archetype if any.
-    pub instance_poses_archetype: Vec<Affine3A>,
+    pub instance_from_overall_poses: Vec<Affine3A>,
 }
 
 impl PoseTransformArchetypeMap {
     #[inline]
     fn get(&self, archetype: ArchetypeName) -> &[Affine3A] {
-        self.per_archetype
+        self.instance_from_archetype_poses_per_archetype
             .get(&archetype)
-            .map_or(&self.instance_poses_archetype, |v| v.as_slice())
+            .map_or(&self.instance_from_overall_poses, |v| v.as_slice())
     }
 
     /// Returns `true` if there are no transforms for any archetype.
     #[inline]
     fn is_empty(&self) -> bool {
-        self.per_archetype.is_empty() && self.instance_poses_archetype.is_empty()
+        self.instance_from_archetype_poses_per_archetype.is_empty()
+            && self.instance_from_overall_poses.is_empty()
     }
 }
 
@@ -926,7 +928,7 @@ fn query_and_resolve_instance_poses_at_entity(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> PoseTransformArchetypeMap {
-    let instance_poses_archetype = query_and_resolve_instance_poses_for_archetype_name(
+    let instance_from_overall_poses = query_and_resolve_instance_from_pose_for_achetype_name(
         entity_path,
         entity_db,
         query,
@@ -936,12 +938,12 @@ fn query_and_resolve_instance_poses_at_entity(
 
     // Some archetypes support their own instance poses.
     // TODO(andreas): can we quickly determine whether this is necessary for any given archetype?
-    let mut per_archetype = IntMap::default();
+    let mut instance_from_archetype_poses_per_archetype = IntMap::default();
     for (archetype_name, descriptor_translations) in
         archetypes_with_instance_pose_transforms_and_translation_descriptor()
     {
-        if let Ok(mut poses) =
-            SmallVec1::try_from_vec(query_and_resolve_instance_poses_for_archetype_name(
+        if let Ok(mut instance_from_archetype_poses) =
+            SmallVec1::try_from_vec(query_and_resolve_instance_from_pose_for_achetype_name(
                 entity_path,
                 entity_db,
                 query,
@@ -950,21 +952,31 @@ fn query_and_resolve_instance_poses_at_entity(
             ))
         {
             // "zip" up with the overall poses.
-            let length = poses.len().max(instance_poses_archetype.len());
-            poses
-                .resize(length, *poses.last()) // Components repeat.
+            let length = instance_from_archetype_poses
+                .len()
+                .max(instance_from_overall_poses.len());
+            instance_from_archetype_poses
+                .resize(length, *instance_from_archetype_poses.last()) // Components repeat.
                 .expect("Overall number of poses can't be zero.");
-            for (pose, overall_pose) in poses.iter_mut().zip(instance_poses_archetype.iter()) {
-                *pose *= *overall_pose;
+
+            for (instance_from_archetype_pose, instance_from_overall_pose) in
+                instance_from_archetype_poses
+                    .iter_mut()
+                    .zip(instance_from_overall_poses.iter())
+            {
+                let overall_pose_archetype_pose = *instance_from_archetype_pose;
+                *instance_from_archetype_pose =
+                    (*instance_from_overall_pose) * overall_pose_archetype_pose;
             }
 
-            per_archetype.insert(archetype_name, poses);
+            instance_from_archetype_poses_per_archetype
+                .insert(archetype_name, instance_from_archetype_poses);
         }
     }
 
     PoseTransformArchetypeMap {
-        per_archetype,
-        instance_poses_archetype,
+        instance_from_archetype_poses_per_archetype,
+        instance_from_overall_poses,
     }
 }
 
@@ -972,7 +984,7 @@ fn query_and_resolve_instance_poses_at_entity(
 ///
 /// Note that the archetype field name for translation specifically may vary.
 /// (this is technical debt, we should fix this)
-fn query_and_resolve_instance_poses_for_archetype_name(
+fn query_and_resolve_instance_from_pose_for_achetype_name(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
@@ -1033,7 +1045,6 @@ fn query_and_resolve_instance_poses_for_archetype_name(
         )
     }
 
-    // TODO: Use the descriptors above to mere with https://github.com/rerun-io/rerun/pull/10005
     let batch_translation = result
         .component_batch_by_name::<components::PoseTranslation3D>()
         .unwrap_or_default();
@@ -1174,7 +1185,7 @@ mod tests {
 
     use re_chunk_store::{Chunk, GarbageCollectionOptions, RowId};
     use re_log_types::{TimePoint, Timeline};
-    use re_types::{Loggable as _, SerializedComponentBatch, archetypes};
+    use re_types::{Loggable as _, SerializedComponentBatch, archetypes, datatypes};
 
     use super::*;
 
@@ -1874,7 +1885,144 @@ mod tests {
         });
     }
 
-    // TODO: add test for combination of pose transforms with individual transforms.
+    #[test]
+    fn test_mixing_instance_poses() {
+        let mut entity_db = new_entity_db_with_subscriber_registered();
+
+        // Log a few tree transforms at different times.
+        let timeline = Timeline::new_sequence("t");
+        let chunk = Chunk::builder(EntityPath::from("my_entity"))
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 1)],
+                &archetypes::InstancePoses3D::new().with_translations([
+                    [1.0, 2.0, 3.0],
+                    [4.0, 5.0, 6.0],
+                    [7.0, 8.0, 9.0],
+                ]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 2)],
+                // Add some "base offset", but only for the first two items.
+                &archetypes::Boxes3D::update_fields()
+                    .with_centers([[10.0, 0.0, 0.0], [0.0, 100.0, 0.0]]),
+            )
+            .with_archetype(
+                RowId::new(),
+                [(timeline, 3)],
+                // Rotate the box by 90 degrees around the Y axis.
+                &archetypes::Boxes3D::update_fields().with_rotation_axis_angles([
+                    datatypes::RotationAxisAngle::new(
+                        glam::Vec3::new(0.0, 1.0, 0.0),
+                        90.0_f32.to_radians(),
+                    ),
+                ]),
+            )
+            .build()
+            .unwrap();
+        entity_db.add_chunk(&Arc::new(chunk)).unwrap();
+
+        // Check that the transform cache has the expected transforms.
+        TransformCacheStoreSubscriber::access_mut(&entity_db.store_id(), |cache| {
+            let timeline = *timeline.name();
+            cache.apply_all_updates(&entity_db);
+            let transforms_per_timeline = cache.transforms_for_timeline(timeline);
+            let transforms = transforms_per_timeline
+                .entity_transforms(&EntityPath::from("my_entity"))
+                .unwrap();
+
+            // Pose for instances poses and non-boxes are unchanged over time.
+            for t in 1..=4 {
+                for archetype in [
+                    archetypes::InstancePoses3D::name(),
+                    "made_up_archetype".into(),
+                ] {
+                    assert_eq!(
+                        transforms
+                            .latest_at_instance_poses(&LatestAtQuery::new(timeline, t), archetype),
+                        &[
+                            glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                            glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                            glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                        ]
+                    );
+                }
+            }
+
+            // Poses for boxes change over time.
+            // T1
+            assert_eq!(
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 1),
+                    archetypes::Boxes3D::name()
+                ),
+                // All from `InstancePoses3D`
+                &[
+                    glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)),
+                ]
+            );
+
+            // T2
+            assert_eq!(
+                transforms.latest_at_instance_poses(
+                    &LatestAtQuery::new(timeline, 2),
+                    archetypes::Boxes3D::name()
+                ),
+                // All from `InstancePoses3D` combined with box centers.
+                &[
+                    glam::Affine3A::from_translation(glam::Vec3::new(11.0, 2.0, 3.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(4.0, 105.0, 6.0)),
+                    glam::Affine3A::from_translation(glam::Vec3::new(7.0, 108.0, 9.0)), // Affected by the last box center which is still splatted.
+                ]
+            );
+
+            // T3.
+            let query_result = transforms.latest_at_instance_poses(
+                &LatestAtQuery::new(timeline, 3),
+                archetypes::Boxes3D::name(),
+            );
+
+            // More readable sanity check on translations which aren't affected by the rotation.
+            assert_eq!(
+                query_result[0].translation,
+                glam::Vec3A::new(11.0, 2.0, 3.0)
+            );
+            // Since rotation isn't 100% accurate, we need to check for equality with a small tolerance.
+            let eps = 0.000001;
+            // Rotation on the first box affects all insteances since it's splatted.
+            let rotation = glam::Affine3A::from_axis_angle(
+                glam::Vec3::new(0.0, 1.0, 0.0),
+                90.0_f32.to_radians(),
+            );
+            let expected = glam::Affine3A::from_translation(glam::Vec3::new(1.0, 2.0, 3.0)) * // Pose
+                            glam::Affine3A::from_translation(glam::Vec3::new(10.0, 0.0, 0.0)) * rotation; // Box
+            assert!(
+                query_result[0].abs_diff_eq(expected, eps),
+                "Expected: {:?}\nGot: {:?}",
+                expected,
+                query_result[0]
+            );
+            let expected = glam::Affine3A::from_translation(glam::Vec3::new(4.0, 5.0, 6.0)) * // Pose
+                            (glam::Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+            assert!(
+                query_result[1].abs_diff_eq(expected, eps),
+                "Expected: {:?}\nGot: {:?}",
+                expected,
+                query_result[1]
+            );
+            let expected = glam::Affine3A::from_translation(glam::Vec3::new(7.0, 8.0, 9.0)) * // Pose
+                            (glam::Affine3A::from_translation(glam::Vec3::new(0.0, 100.0, 0.0)) * rotation); // Box
+            assert!(
+                query_result[2].abs_diff_eq(expected, eps),
+                "Expected: {:?}\nGot: {:?}",
+                expected,
+                query_result[2]
+            );
+        });
+    }
 
     #[test]
     fn test_pinhole_projections() {
