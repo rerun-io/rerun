@@ -206,7 +206,7 @@ mod tests {
     use re_chunk::{RowId, TimelineName};
     use re_log_types::{
         EntityPath, TimeInt, TimePoint, Timeline,
-        example_components::{MyColor, MyIndex, MyPoint},
+        example_components::{MyColor, MyIndex, MyPoint, MyPoints},
     };
     use re_types_core::{Component as _, ComponentName};
 
@@ -349,7 +349,14 @@ mod tests {
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
             Chunk::builder(entity_path2.clone())
-                .with_component_batches(row_id2, timepoint2.clone(), [&points as _, &colors as _])
+                .with_component_batches(
+                    row_id2,
+                    timepoint2.clone(),
+                    [
+                        (MyPoints::descriptor_points(), &points as _),
+                        (MyPoints::descriptor_colors(), &colors as _),
+                    ],
+                )
                 .build()?
         };
 

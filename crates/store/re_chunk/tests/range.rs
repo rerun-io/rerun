@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline, TimelineName};
 use re_log_types::{
     ResolvedTimeRange,
-    example_components::{MyColor, MyLabel, MyPoint},
+    example_components::{MyColor, MyLabel, MyPoint, MyPoints},
 };
 use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 
@@ -57,9 +57,24 @@ fn temporal_sorted() -> anyhow::Result<()> {
     ];
 
     let chunk = Chunk::builder(ENTITY_PATH.into())
-        .with_component_batches(row_id1, timepoint1, [points1 as _])
-        .with_component_batches(row_id2, timepoint2, [colors2 as _, labels2 as _])
-        .with_component_batches(row_id3, timepoint3, [points3 as _])
+        .with_component_batches(
+            row_id1,
+            timepoint1,
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id2,
+            timepoint2,
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
+        .with_component_batches(
+            row_id3,
+            timepoint3,
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
         .build()?;
 
     {
@@ -187,9 +202,24 @@ fn temporal_unsorted() -> anyhow::Result<()> {
     ];
 
     let chunk = Chunk::builder(ENTITY_PATH.into())
-        .with_component_batches(row_id2, timepoint2, [colors2 as _, labels2 as _])
-        .with_component_batches(row_id1, timepoint1, [points1 as _])
-        .with_component_batches(row_id3, timepoint3, [points3 as _])
+        .with_component_batches(
+            row_id2,
+            timepoint2,
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
+        .with_component_batches(
+            row_id1,
+            timepoint1,
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id3,
+            timepoint3,
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
         .build()?;
 
     {
@@ -306,9 +336,24 @@ fn static_sorted() -> anyhow::Result<()> {
     ];
 
     let chunk = Chunk::builder(ENTITY_PATH.into())
-        .with_component_batches(row_id1, timepoint.clone(), [points1 as _])
-        .with_component_batches(row_id2, timepoint.clone(), [colors2 as _, labels2 as _])
-        .with_component_batches(row_id3, timepoint.clone(), [points3 as _])
+        .with_component_batches(
+            row_id1,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id2,
+            timepoint.clone(),
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
+        .with_component_batches(
+            row_id3,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
         .build()?;
 
     let queries = [
@@ -384,9 +429,24 @@ fn static_unsorted() -> anyhow::Result<()> {
     ];
 
     let chunk = Chunk::builder(ENTITY_PATH.into())
-        .with_component_batches(row_id3, timepoint.clone(), [points3 as _])
-        .with_component_batches(row_id1, timepoint.clone(), [points1 as _])
-        .with_component_batches(row_id2, timepoint.clone(), [colors2 as _, labels2 as _])
+        .with_component_batches(
+            row_id3,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points3 as _)],
+        )
+        .with_component_batches(
+            row_id1,
+            timepoint.clone(),
+            [(MyPoints::descriptor_points(), points1 as _)],
+        )
+        .with_component_batches(
+            row_id2,
+            timepoint.clone(),
+            [
+                (MyPoints::descriptor_colors(), colors2 as _),
+                (MyPoints::descriptor_labels(), labels2 as _),
+            ],
+        )
         .build()?;
 
     let queries = [
