@@ -87,6 +87,7 @@ impl From<(u8, u8, u8, u8)> for Rgba32 {
 impl From<Rgba32> for ecolor::Color32 {
     fn from(color: Rgba32) -> Self {
         let [r, g, b, a] = color.to_array();
+        #[allow(clippy::disallowed_methods)] // This is not a hard-coded color.
         Self::from_rgba_unmultiplied(r, g, b, a)
     }
 }

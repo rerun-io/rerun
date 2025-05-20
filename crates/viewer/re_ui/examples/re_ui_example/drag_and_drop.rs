@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use re_ui::{UiExt, list_item};
+use re_ui::{UiExt as _, list_item};
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);

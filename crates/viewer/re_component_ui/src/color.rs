@@ -27,6 +27,7 @@ fn edit_rgba32_impl(ui: &mut egui::Ui, color: &mut MaybeMutRef<'_, Rgba32>) -> e
         response
     } else {
         let [r, g, b, a] = color.to_array();
+        #[allow(clippy::disallowed_methods)] // This is not a hard-coded color.
         let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
         egui::color_picker::show_color(ui, color, egui::Vec2::new(32.0, 16.0))
     };

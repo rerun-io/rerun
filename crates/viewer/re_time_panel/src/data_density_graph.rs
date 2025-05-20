@@ -528,7 +528,7 @@ pub fn build_density_graph<'a>(
         if DEBUG_PAINT {
             ui.ctx().debug_painter().debug_rect(
                 row_rect,
-                egui::Color32::LIGHT_BLUE,
+                egui::Color32::LIGHT_BLUE, // TODO: use design token
                 format!(
                     "{} chunks, {total_events} events, render individual: {can_render_individual_events}",
                     chunk_ranges.len()
