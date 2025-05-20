@@ -596,6 +596,45 @@ def check_git_branch_name() -> None:
         raise Exception(f'"{version}" is not a valid version string. See RELEASES.md for supported formats')
 
 
+def check_publish_flags() -> None:
+    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text(encoding="utf-8"))
+    crates = get_workspace_crates(root)
+
+
+    def traverse(out: set[str], crates: dict[str, Crate], crate: Crate) -> None:
+        if crate.manifest["package"]["name"] in out:
+            return
+
+        for dependency in crate_deps(crate.manifest):
+            if dependency.name not in crates:
+                continue
+
+            dependency_manifest = crates[dependency.name].manifest
+            should_publish_dependency = dependency_manifest["package"]["publish"]
+            if not should_publish_dependency:
+                out.add(dependency.name)
+
+                # recurse into the publish=false dependency
+                traverse(out, crates, crates[dependency.name])
+        
+    wrong_publish: set[str] = set()
+
+    # traverse the crates, and for each one that is `publish=true`,
+    # check that all of its workspace dependencies are `publish=true`.
+    for name, crate in crates.items():
+        should_publish = crate.manifest["package"]["publish"]
+        if should_publish:
+            traverse(wrong_publish, crates, crate)
+                
+    if len(wrong_publish) > 0:
+        for name in wrong_publish:
+            print(f'{name} needs to be changed to `publish=true`')
+        sys.exit(1)
+    else:
+        print("All crates have the correct `publish` flag set.")
+        return
+
+
 def print_version(
     target: Target | None,
     finalize: bool = False,
@@ -674,10 +713,14 @@ def main() -> None:
         help="If target is cratesio, return the first non-prerelease version",
     )
 
+    cmds_parser.add_parser("check-publish-flags", help="Check if any publish=true crates depend on publish=false crates.")
+
     args = parser.parse_args()
 
     if args.cmd == "check-git-branch-name":
         check_git_branch_name()
+    if args.cmd == "check-publish-flags":
+        check_publish_flags()
     if args.cmd == "get-version":
         print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
     if args.cmd == "version":
