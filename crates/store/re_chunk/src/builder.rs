@@ -132,15 +132,16 @@ impl ChunkBuilder {
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batch: &dyn ComponentBatch,
+        component_batch: (ComponentDescriptor, &dyn ComponentBatch),
     ) -> Self {
         self.with_row(
             row_id,
             timepoint,
             component_batch
+                .1
                 .to_arrow()
                 .ok()
-                .map(|array| (component_batch.descriptor().into_owned(), array)),
+                .map(|array| (component_batch.0, array)),
         )
     }
 

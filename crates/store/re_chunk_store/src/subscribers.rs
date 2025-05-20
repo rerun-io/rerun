@@ -388,7 +388,7 @@ mod tests {
                     (timeline_other, 666),     //
                     (timeline_yet_another, 1), //
                 ]),
-                &MyIndex::from_iter(0..10),
+                (MyIndex::descriptor(), &MyIndex::from_iter(0..10)),
             )
             .build()?;
 

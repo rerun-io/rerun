@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery};
-use re_log_types::example_components::{MyIndex, MyPoint};
+use re_log_types::example_components::{MyIndex, MyPoint, MyPoints};
 use re_log_types::{
     Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
     build_log_time,
@@ -60,12 +60,20 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         );
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(RowId::new(), timepoint.clone(), &[point1])
+            .with_component_batch(
+                RowId::new(),
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point1]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(RowId::new(), timepoint.clone(), &[point2])
+            .with_component_batch(
+                RowId::new(),
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point2]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
@@ -89,12 +97,20 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         let row_id = RowId::new();
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(row_id, timepoint.clone(), &[point1])
+            .with_component_batch(
+                row_id,
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point1]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(row_id, timepoint.clone(), &[point2])
+            .with_component_batch(
+                row_id,
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point2]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
     }
@@ -112,12 +128,20 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         let row_id2 = row_id1.next();
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(row_id2, timepoint.clone(), &[point1])
+            .with_component_batch(
+                row_id2,
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point1]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(row_id1, timepoint.clone(), &[point2])
+            .with_component_batch(
+                row_id1,
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point2]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
@@ -145,12 +169,20 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         let row_id2 = row_id1.next();
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(row_id2, TimePoint::default(), &[point1])
+            .with_component_batch(
+                row_id2,
+                TimePoint::default(),
+                (MyPoints::descriptor_points(), &[point1]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
         let chunk = Chunk::builder(entity_path.clone())
-            .with_component_batch(row_id1, TimePoint::default(), &[point2])
+            .with_component_batch(
+                row_id1,
+                TimePoint::default(),
+                (MyPoints::descriptor_points(), &[point2]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
@@ -176,12 +208,20 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         let row_id = RowId::new();
 
         let chunk = Chunk::builder_with_id(chunk_id, entity_path.clone())
-            .with_component_batch(row_id, timepoint.clone(), &[point1])
+            .with_component_batch(
+                row_id,
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point1]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
         let chunk = Chunk::builder_with_id(chunk_id, entity_path.clone())
-            .with_component_batch(row_id, timepoint.clone(), &[point2])
+            .with_component_batch(
+                row_id,
+                timepoint.clone(),
+                (MyPoints::descriptor_points(), &[point2]),
+            )
             .build()?;
         store.insert_chunk(&Arc::new(chunk))?;
 
@@ -217,7 +257,7 @@ fn write_errors() -> anyhow::Result<()> {
             .with_component_batch(
                 row_id2,
                 [build_frame_nr(1), build_log_time(Timestamp::now())],
-                &MyPoint::from_iter(0..1),
+                (MyPoints::descriptor_points(), &MyPoint::from_iter(0..1)),
             )
             .with_component_batch(
                 row_id1,
@@ -335,7 +375,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
             TimePoint::default()
                 .with(timeline_log_time, now)
                 .with(timeline_frame_nr, 42),
-            &[point],
+            (MyPoints::descriptor_points(), &[point]),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -366,7 +406,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
             TimePoint::default()
                 .with(timeline_log_time, now_plus_one)
                 .with(timeline_frame_nr, 54),
-            &[point],
+            (MyPoints::descriptor_points(), &[point]),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -397,7 +437,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
             TimePoint::default()
                 .with(timeline_log_time, now_minus_one)
                 .with(timeline_frame_nr, 32),
-            &[point],
+            (MyPoints::descriptor_points(), &[point]),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;

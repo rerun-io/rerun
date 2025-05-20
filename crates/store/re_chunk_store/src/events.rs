@@ -305,7 +305,11 @@ mod tests {
         ]);
         let entity_path1: EntityPath = "entity_a".into();
         let chunk1 = Chunk::builder(entity_path1.clone())
-            .with_component_batch(row_id1, timepoint1.clone(), &MyIndex::from_iter(0..10))
+            .with_component_batch(
+                row_id1,
+                timepoint1.clone(),
+                (MyIndex::descriptor(), &MyIndex::from_iter(0..10)),
+            )
             .build()?;
 
         view.on_events(&store.insert_chunk(&Arc::new(chunk1))?);
