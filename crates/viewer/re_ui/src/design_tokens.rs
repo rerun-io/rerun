@@ -50,7 +50,7 @@ impl DesignTokens {
                 .expect("Failed to parse data/light_theme.json"),
         };
 
-        let typography: Typography = get_alias(&theme_json, "{Alias.Typography.Default.value}");
+        let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
         match theme {
             egui::Theme::Dark => {
@@ -567,13 +567,7 @@ fn load_color_table(json: &serde_json::Value) -> ColorTable {
 
 fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_path: &str) -> T {
     let global_path = follow_path_or_panic(json, alias_path).as_str().unwrap();
-    let global_value = global_path_value(json, global_path);
-    serde_json::from_value(global_value.clone()).unwrap_or_else(|err| {
-        panic!(
-            "Failed to convert {global_path:?} to {}: {err}. Json: {json:?}",
-            std::any::type_name::<T>()
-        )
-    })
+    parse_path(json, global_path)
 }
 
 fn global_path_value<'json>(
@@ -583,6 +577,16 @@ fn global_path_value<'json>(
     follow_path_or_panic(value, global_path)
         .get("value")
         .unwrap()
+}
+
+fn parse_path<T: serde::de::DeserializeOwned>(json: &serde_json::Value, global_path: &str) -> T {
+    let global_value = global_path_value(json, global_path);
+    serde_json::from_value(global_value.clone()).unwrap_or_else(|err| {
+        panic!(
+            "Failed to convert {global_path:?} to {}: {err}. Json: {json:?}",
+            std::any::type_name::<T>()
+        )
+    })
 }
 
 fn follow_path_or_panic<'json>(
