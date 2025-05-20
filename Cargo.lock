@@ -7694,6 +7694,7 @@ name = "re_ui"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "anyhow",
  "arrow",
  "eframe",
  "egui",

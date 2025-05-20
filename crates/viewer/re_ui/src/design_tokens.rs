@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::enum_glob_use)] // Nice to have for the color variants
 
+use anyhow::Context as _;
 use egui::{Color32, Theme};
 
 use crate::{
-    CUSTOM_WINDOW_DECORATIONS,
+    CUSTOM_WINDOW_DECORATIONS, Hue, Scale,
     color_table::{ColorTable, ColorToken, Scale::*},
     format_with_decimals_in_range,
 };
@@ -24,7 +25,7 @@ pub struct DesignTokens {
     /// Loaded at startup from `color_table.json`.
     pub(crate) color_table: ColorTable, // Not public, because all colors should go via design_token_colors.rs
 
-    // TODO(ab): get rid of these, they should be function calls in design_token_colors.rs like the rest.
+    // All these colors can be found in dark_theme.json and light_theme.json:
     pub top_bar_color: Color32,
     pub bottom_bar_color: Color32,
     pub bottom_bar_stroke: egui::Stroke,
@@ -40,7 +41,7 @@ impl DesignTokens {
         let color_table_json: serde_json::Value =
             serde_json::from_str(include_str!("../data/color_table.json"))
                 .expect("Failed to parse data/color_table.json");
-        let color_table = load_color_table(&color_table_json);
+        let colors = load_color_table(&color_table_json);
 
         let theme_json: serde_json::Value = match theme {
             egui::Theme::Dark => serde_json::from_str(include_str!("../data/dark_theme.json"))
@@ -52,45 +53,32 @@ impl DesignTokens {
 
         let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
-        match theme {
-            egui::Theme::Dark => {
-                Self {
-                    theme,
-                    typography,
-                    top_bar_color: color_table.gray(S100),
-                    bottom_bar_color: color_table.gray(S150),
-                    bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    bottom_bar_corner_radius: egui::CornerRadius {
-                        nw: 0,
-                        ne: 0,
-                        sw: 0,
-                        se: 0,
-                    }, // copied from figma, should be top only
-                    shadow_gradient_dark_start: Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
-                    tab_bar_color: color_table.gray(S200),
-                    native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    color_table,
-                }
-            }
-            egui::Theme::Light => {
-                Self {
-                    theme,
-                    typography,
-                    top_bar_color: color_table.gray(S800),
-                    bottom_bar_color: color_table.gray(S950),
-                    bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S800)),
-                    bottom_bar_corner_radius: egui::CornerRadius {
-                        nw: 0,
-                        ne: 0,
-                        sw: 0,
-                        se: 0,
-                    }, // copied from figma, should be top only
-                    shadow_gradient_dark_start: Color32::from_black_alpha(10), //TODO(ab): use ColorToken!
-                    tab_bar_color: color_table.gray(S900),
-                    native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    color_table,
-                }
-            }
+        let top_bar_color = get_aliased_color(&colors, &theme_json, "{Alias.top_bar_color}");
+        let tab_bar_color = get_aliased_color(&colors, &theme_json, "{Alias.tab_bar_color}");
+        let bottom_bar_color = get_aliased_color(&colors, &theme_json, "{Alias.bottom_bar_color}");
+        let bottom_bar_stroke_color =
+            get_aliased_color(&colors, &theme_json, "{Alias.bottom_bar_stroke_color}");
+        let shadow_gradient_dark_start =
+            get_aliased_color(&colors, &theme_json, "{Alias.shadow_gradient_dark_start}");
+        let native_frame_stroke_color =
+            get_aliased_color(&colors, &theme_json, "{Alias.native_frame_stroke_color}");
+
+        Self {
+            theme,
+            typography,
+            top_bar_color,
+            bottom_bar_color,
+            bottom_bar_stroke: egui::Stroke::new(1.0, bottom_bar_stroke_color),
+            bottom_bar_corner_radius: egui::CornerRadius {
+                nw: 0,
+                ne: 0,
+                sw: 0,
+                se: 0,
+            }, // copied from figma, should be top only
+            shadow_gradient_dark_start,
+            tab_bar_color,
+            native_frame_stroke: egui::Stroke::new(1.0, native_frame_stroke_color),
+            color_table: colors,
         }
     }
 
@@ -565,9 +553,47 @@ fn load_color_table(json: &serde_json::Value) -> ColorTable {
     })
 }
 
-fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_path: &str) -> T {
-    let global_path = follow_path_or_panic(json, alias_path).as_str().unwrap();
-    parse_path(json, global_path)
+fn try_get_alias_color(
+    color_table: &ColorTable,
+    json: &serde_json::Value,
+    alias_path: &str,
+) -> anyhow::Result<Color32> {
+    let color_alias = follow_path_or_panic(json, alias_path);
+    let color = color_alias
+        .get("color")
+        .ok_or_else(|| anyhow::anyhow!("No color found"))?
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
+    let color = color
+        .strip_prefix('{')
+        .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+    let color = color
+        .strip_suffix('}')
+        .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+    let (hue, scale) = color
+        .split_once(".")
+        .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+    let hue: Hue = hue.parse()?;
+    let scale: Scale = scale.parse()?;
+    let mut color = color_table.get(ColorToken::new(hue, scale));
+    if let Some(alpha) = color_alias.get("alpha") {
+        let alpha = alpha
+            .as_i64()
+            .ok_or_else(|| anyhow::anyhow!("alpha should be 0-255"))?;
+        let alpha: u8 = u8::try_from(alpha).context("alpha should be 0-255")?;
+        color = color.gamma_multiply_u8(alpha);
+    }
+    Ok(color)
+}
+
+fn get_aliased_color(
+    color_table: &ColorTable,
+    json: &serde_json::Value,
+    alias_path: &str,
+) -> Color32 {
+    try_get_alias_color(color_table, json, alias_path).unwrap_or_else(|err| {
+        panic!("Failed to get aliased color at {alias_path:?}: {err}");
+    })
 }
 
 fn global_path_value<'json>(

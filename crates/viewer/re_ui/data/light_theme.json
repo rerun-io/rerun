@@ -1,5 +1,24 @@
 {
   "Alias": {
+    "native_frame_stroke_color": {
+      "color": "{Gray.750}"
+    },
+    "top_bar_color": {
+      "color": "{Gray.800}"
+    },
+    "tab_bar_color": {
+      "color": "{Gray.900}"
+    },
+    "bottom_bar_color": {
+      "color": "{Gray.950}"
+    },
+    "bottom_bar_stroke_color": {
+      "color": "{Gray.800}"
+    },
+    "shadow_gradient_dark_start": {
+      "color": "{Gray.0}",
+      "alpha": 10
+    }
   },
   "Global": {
     "Typography": {

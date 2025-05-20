@@ -42,6 +42,7 @@ re_log_types.workspace = true  # syntax-highlighting for EntityPath
 re_tracing.workspace = true
 
 ahash.workspace = true
+anyhow.workspace = true
 arrow = { workspace = true, optional = true }
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }

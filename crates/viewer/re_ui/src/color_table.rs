@@ -1,4 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 
 use strum::{EnumCount, EnumIter, IntoEnumIterator as _};
 
@@ -22,6 +25,21 @@ impl Display for Hue {
             Self::Blue => f.write_str("Blue"),
             Self::Purple => f.write_str("Purple"),
         }
+    }
+}
+
+impl FromStr for Hue {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Gray" => Self::Gray,
+            "Green" => Self::Green,
+            "Red" => Self::Red,
+            "Blue" => Self::Blue,
+            "Purple" => Self::Purple,
+            _ => return Err(anyhow::anyhow!("Invalid hue: {s:?}")),
+        })
     }
 }
 
@@ -123,6 +141,57 @@ impl Display for Scale {
         };
 
         txt.fmt(f)
+    }
+}
+
+impl FromStr for Scale {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "0" => Self::S0,
+            "25" => Self::S25,
+            "50" => Self::S50,
+            "75" => Self::S75,
+            "100" => Self::S100,
+            "125" => Self::S125,
+            "150" => Self::S150,
+            "175" => Self::S175,
+            "200" => Self::S200,
+            "225" => Self::S225,
+            "250" => Self::S250,
+            "275" => Self::S275,
+            "300" => Self::S300,
+            "325" => Self::S325,
+            "350" => Self::S350,
+            "375" => Self::S375,
+            "400" => Self::S400,
+            "425" => Self::S425,
+            "450" => Self::S450,
+            "475" => Self::S475,
+            "500" => Self::S500,
+            "525" => Self::S525,
+            "550" => Self::S550,
+            "575" => Self::S575,
+            "600" => Self::S600,
+            "625" => Self::S625,
+            "650" => Self::S650,
+            "675" => Self::S675,
+            "700" => Self::S700,
+            "725" => Self::S725,
+            "750" => Self::S750,
+            "775" => Self::S775,
+            "800" => Self::S800,
+            "825" => Self::S825,
+            "850" => Self::S850,
+            "875" => Self::S875,
+            "900" => Self::S900,
+            "925" => Self::S925,
+            "950" => Self::S950,
+            "975" => Self::S975,
+            "1000" => Self::S1000,
+            _ => return Err(anyhow::anyhow!("Invalid scale: {s:?}")),
+        })
     }
 }
 
