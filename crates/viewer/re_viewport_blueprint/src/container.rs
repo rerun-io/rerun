@@ -79,15 +79,31 @@ impl ContainerBlueprint {
         // This is a required component. Note that when loading containers we crawl the subtree and so
         // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
         // is the marker that the have been cleared and not an error.
-        let container_kind = results.component_mono::<ContainerKind>()?;
+        let container_kind = results.component_mono::<ContainerKind>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_container_kind(),
+        )?;
 
-        let display_name = results.component_mono::<Name>();
-        let contents = results.component_batch::<IncludedContent>();
-        let col_shares = results.component_batch::<ColumnShare>();
-        let row_shares = results.component_batch::<RowShare>();
-        let active_tab = results.component_mono::<ActiveTab>();
-        let visible = results.component_mono::<Visible>();
-        let grid_columns = results.component_mono::<GridColumns>();
+        let display_name = results.component_mono::<Name>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+        );
+        let contents = results.component_batch::<IncludedContent>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_contents(),
+        );
+        let col_shares = results.component_batch::<ColumnShare>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_col_shares(),
+        );
+        let row_shares = results.component_batch::<RowShare>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_row_shares(),
+        );
+        let active_tab = results.component_mono::<ActiveTab>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_active_tab(),
+        );
+        let visible = results.component_mono::<Visible>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_visible(),
+        );
+        let grid_columns = results.component_mono::<GridColumns>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+        );
 
         // ----
 
