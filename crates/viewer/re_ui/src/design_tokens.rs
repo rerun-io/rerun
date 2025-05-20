@@ -245,8 +245,8 @@ impl DesignTokens {
         re_tracing::profile_function!();
 
         self.set_text_styles(style);
-        Self::set_common_style(style);
-        self.set_theme_style(style);
+        Self::set_spacing(style);
+        self.set_colors(style);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
     }
@@ -323,7 +323,7 @@ impl DesignTokens {
             .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
     }
 
-    fn set_common_style(egui_style: &mut egui::Style) {
+    fn set_spacing(egui_style: &mut egui::Style) {
         egui_style.visuals.button_frame = true;
 
         {
@@ -373,7 +373,7 @@ impl DesignTokens {
         egui_style.visuals.image_loading_spinners = false;
     }
 
-    fn set_theme_style(&self, egui_style: &mut egui::Style) {
+    fn set_colors(&self, egui_style: &mut egui::Style) {
         // For table zebra stripes.
         egui_style.visuals.faint_bg_color = self.faint_bg_color;
 
