@@ -162,6 +162,9 @@
     },
     "widget_hovered_color": {
       "color": "{Gray.700}"
+    },
+    "popup_shadow_color": {
+      "color": "#00000020"
     }
   },
   "Global": {

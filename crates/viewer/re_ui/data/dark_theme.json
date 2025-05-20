@@ -162,6 +162,9 @@
     },
     "warn_fg_color": {
       "color": "#FF7A0C"
+    },
+    "popup_shadow_color": {
+      "color": "#00000080"
     }
   },
   "Global": {

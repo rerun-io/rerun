@@ -113,6 +113,7 @@ pub struct DesignTokens {
     pub text_strong: Color32,
     pub error_fg_color: Color32,
     pub warn_fg_color: Color32,
+    pub popup_shadow_color: Color32,
 }
 
 impl DesignTokens {
@@ -233,6 +234,8 @@ impl DesignTokens {
             error_fg_color,
             warn_fg_color,
 
+            popup_shadow_color: get_color("popup_shadow_color"),
+
             color_table: colors,
         }
     }
@@ -243,15 +246,7 @@ impl DesignTokens {
 
         self.set_text_styles(style);
         Self::set_common_style(style);
-
-        match self.theme {
-            egui::Theme::Dark => {
-                self.set_dark_style(style);
-            }
-            egui::Theme::Light => {
-                self.set_light_style(style);
-            }
-        }
+        self.set_theme_style(style);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
     }
@@ -378,10 +373,7 @@ impl DesignTokens {
         egui_style.visuals.image_loading_spinners = false;
     }
 
-    fn set_dark_style(&self, egui_style: &mut egui::Style) {
-        let panel_bg_color = self.panel_bg_color;
-        let floating_color = self.floating_color;
-
+    fn set_theme_style(&self, egui_style: &mut egui::Style) {
         // For table zebra stripes.
         egui_style.visuals.faint_bg_color = self.faint_bg_color;
 
@@ -390,8 +382,8 @@ impl DesignTokens {
         // We need this very dark, since the theme overall is very, very dark.
         egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
 
-        egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
-        egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
+        egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.panel_bg_color;
+        egui_style.visuals.widgets.noninteractive.bg_fill = self.panel_bg_color;
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
@@ -433,85 +425,14 @@ impl DesignTokens {
             offset: [0, 15],
             blur: 50,
             spread: 0,
-            color: Color32::from_black_alpha(128),
+            color: self.popup_shadow_color,
         };
         egui_style.visuals.popup_shadow = shadow;
         egui_style.visuals.window_shadow = shadow;
 
-        egui_style.visuals.window_fill = floating_color; // tooltips and menus
+        egui_style.visuals.window_fill = self.floating_color; // tooltips and menus
         egui_style.visuals.window_stroke = egui::Stroke::NONE;
-        egui_style.visuals.panel_fill = panel_bg_color;
-
-        // don't color hyperlinks #2733
-        egui_style.visuals.hyperlink_color = default;
-
-        egui_style.visuals.error_fg_color = self.error_fg_color;
-        egui_style.visuals.warn_fg_color = self.warn_fg_color;
-    }
-
-    fn set_light_style(&self, egui_style: &mut egui::Style) {
-        let panel_bg_color = self.panel_bg_color;
-        let floating_color = self.floating_color;
-
-        // For table zebra stripes.
-        egui_style.visuals.faint_bg_color = self.faint_bg_color;
-
-        // Used as the background of text edits, scroll bars and others things
-        // that needs to look different from other interactive stuff.
-        // We need this very dark, since the theme overall is very, very dark.
-        egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
-
-        egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
-        egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
-
-        egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
-
-        // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.widget_inactive_bg_fill;
-
-        {
-            // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            let hovered_color = self.widget_hovered_color;
-            egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
-            egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
-            egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
-            egui_style.visuals.widgets.active.bg_fill = hovered_color;
-            egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
-            egui_style.visuals.widgets.open.bg_fill = hovered_color;
-        }
-
-        egui_style.visuals.selection.bg_fill = self.selection_bg_fill;
-        egui_style.visuals.selection.stroke.color = self.selection_stroke_color;
-
-        // separator lines, panel lines, etc
-        egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            self.widget_noninteractive_bg_stroke;
-
-        let subdued = self.text_subdued;
-        let default = self.text_default;
-        let strong = self.text_strong;
-
-        egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
-        egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
-        egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
-
-        let wide_stroke_width = 2.0; // Make it a bit more visible, especially important for spatial primitives.
-        egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
-        egui_style.visuals.selection.stroke.width = wide_stroke_width;
-
-        // From figma
-        let shadow = egui::epaint::Shadow {
-            offset: [0, 15],
-            blur: 50,
-            spread: 0,
-            color: Color32::from_black_alpha(32),
-        };
-        egui_style.visuals.popup_shadow = shadow;
-        egui_style.visuals.window_shadow = shadow;
-
-        egui_style.visuals.window_fill = floating_color; // tooltips and menus
-        egui_style.visuals.window_stroke = egui::Stroke::NONE;
-        egui_style.visuals.panel_fill = panel_bg_color;
+        egui_style.visuals.panel_fill = self.panel_bg_color;
 
         // don't color hyperlinks #2733
         egui_style.visuals.hyperlink_color = default;
