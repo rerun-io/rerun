@@ -176,17 +176,7 @@ impl Default for TestContext {
 
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
 
-        let component_ui_registry = ComponentUiRegistry::new(Box::new(
-            |_ctx,
-             _ui,
-             _ui_layout,
-             _query,
-             _db,
-             _entity_path,
-             _row_id,
-             _component_descriptor,
-             _component| {},
-        ));
+        let component_ui_registry = ComponentUiRegistry::new();
 
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
