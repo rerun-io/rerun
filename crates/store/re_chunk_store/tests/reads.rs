@@ -76,14 +76,14 @@ fn all_components() -> anyhow::Result<()> {
     );
 
     let components_a = &[
-        MyColor::descriptor(),     // added by test, static
-        LargeStruct::descriptor(), // added by test
+        MyPoints::descriptor_colors(), // added by test, static
+        LargeStruct::descriptor(),     // added by test
     ];
 
     let components_b = &[
-        MyColor::descriptor(),     // added by test, static
-        MyPoint::descriptor(),     // added by test
-        LargeStruct::descriptor(), // added by test
+        MyPoints::descriptor_colors(), // added by test, static
+        MyPoints::descriptor_points(), // added by test
+        LargeStruct::descriptor(),     // added by test
     ];
 
     let chunk = Chunk::builder(entity_path.clone())
@@ -301,40 +301,40 @@ fn latest_at() -> anyhow::Result<()> {
     assert_latest_components(
         frame0,
         &[
-            (MyColor::descriptor(), Some(row_id5)), // static
+            (MyPoints::descriptor_colors(), Some(row_id5)), // static
             (MyIndex::descriptor(), None),
-            (MyPoint::descriptor(), None),
+            (MyPoints::descriptor_points(), None),
         ],
     );
     assert_latest_components(
         frame1,
         &[
-            (MyColor::descriptor(), Some(row_id5)), // static
+            (MyPoints::descriptor_colors(), Some(row_id5)), // static
             (MyIndex::descriptor(), Some(row_id1)),
-            (MyPoint::descriptor(), None),
+            (MyPoints::descriptor_points(), None),
         ],
     );
     assert_latest_components(
         frame2,
         &[
-            (MyColor::descriptor(), Some(row_id5)),
-            (MyPoint::descriptor(), Some(row_id2)),
+            (MyPoints::descriptor_colors(), Some(row_id5)),
+            (MyPoints::descriptor_points(), Some(row_id2)),
             (MyIndex::descriptor(), Some(row_id2)),
         ],
     );
     assert_latest_components(
         frame3,
         &[
-            (MyColor::descriptor(), Some(row_id5)),
-            (MyPoint::descriptor(), Some(row_id3)),
+            (MyPoints::descriptor_colors(), Some(row_id5)),
+            (MyPoints::descriptor_points(), Some(row_id3)),
             (MyIndex::descriptor(), Some(row_id2)),
         ],
     );
     assert_latest_components(
         frame4,
         &[
-            (MyColor::descriptor(), Some(row_id5)),
-            (MyPoint::descriptor(), Some(row_id3)),
+            (MyPoints::descriptor_colors(), Some(row_id5)),
+            (MyPoints::descriptor_points(), Some(row_id3)),
             (MyIndex::descriptor(), Some(row_id2)),
         ],
     );
@@ -401,7 +401,10 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             [build_frame_nr(frame1)],
             [
                 (MyIndex::descriptor(), None),
-                (MyPoint::descriptor(), Some(&MyPoint::from_iter(0..1) as _)),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(0..1) as _),
+                ),
             ],
         )
         .with_sparse_component_batches(
@@ -409,7 +412,10 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             [build_frame_nr(frame2)],
             [
                 (MyIndex::descriptor(), None),
-                (MyPoint::descriptor(), Some(&MyPoint::from_iter(1..2) as _)),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(1..2) as _),
+                ),
             ],
         )
         .with_sparse_component_batches(
@@ -417,7 +423,10 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             [build_frame_nr(frame3)],
             [
                 (MyIndex::descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
-                (MyPoint::descriptor(), Some(&MyPoint::from_iter(2..3) as _)),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(2..3) as _),
+                ),
             ],
         )
         .build()?;
@@ -436,7 +445,10 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             [build_frame_nr(frame2)],
             [
                 (MyIndex::descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
-                (MyPoint::descriptor(), Some(&MyPoint::from_iter(1..2) as _)),
+                (
+                    MyPoints::descriptor_points(),
+                    Some(&MyPoint::from_iter(1..2) as _),
+                ),
             ],
         )
         .build()?;
@@ -532,22 +544,22 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         .with_sparse_component_batches(
             row_id1_1,
             [build_frame_nr(frame1)],
-            [(MyPoint::descriptor(), Some(&points1 as _))],
+            [(MyPoints::descriptor_points(), Some(&points1 as _))],
         )
         .with_sparse_component_batches(
             row_id1_3,
             [build_frame_nr(frame3)],
-            [(MyPoint::descriptor(), Some(&points3 as _))],
+            [(MyPoints::descriptor_points(), Some(&points3 as _))],
         )
         .with_sparse_component_batches(
             row_id1_5,
             [build_frame_nr(frame5)],
-            [(MyPoint::descriptor(), Some(&points5 as _))],
+            [(MyPoints::descriptor_points(), Some(&points5 as _))],
         )
         .with_sparse_component_batches(
             row_id1_7,
             [build_frame_nr(frame7)],
-            [(MyPoint::descriptor(), Some(&points7 as _))],
+            [(MyPoints::descriptor_points(), Some(&points7 as _))],
         )
         .build()?;
 
@@ -561,17 +573,17 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         .with_sparse_component_batches(
             row_id2_2,
             [build_frame_nr(frame2)],
-            [(MyPoint::descriptor(), Some(&points2 as _))],
+            [(MyPoints::descriptor_points(), Some(&points2 as _))],
         )
         .with_sparse_component_batches(
             row_id2_3,
             [build_frame_nr(frame3)],
-            [(MyPoint::descriptor(), Some(&points3 as _))],
+            [(MyPoints::descriptor_points(), Some(&points3 as _))],
         )
         .with_sparse_component_batches(
             row_id2_4,
             [build_frame_nr(frame4)],
-            [(MyPoint::descriptor(), Some(&points4 as _))],
+            [(MyPoints::descriptor_points(), Some(&points4 as _))],
         )
         .build()?;
 
@@ -585,17 +597,17 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         .with_sparse_component_batches(
             row_id3_2,
             [build_frame_nr(frame2)],
-            [(MyPoint::descriptor(), Some(&points2 as _))],
+            [(MyPoints::descriptor_points(), Some(&points2 as _))],
         )
         .with_sparse_component_batches(
             row_id3_4,
             [build_frame_nr(frame4)],
-            [(MyPoint::descriptor(), Some(&points4 as _))],
+            [(MyPoints::descriptor_points(), Some(&points4 as _))],
         )
         .with_sparse_component_batches(
             row_id3_6,
             [build_frame_nr(frame6)],
-            [(MyPoint::descriptor(), Some(&points6 as _))],
+            [(MyPoints::descriptor_points(), Some(&points6 as _))],
         )
         .build()?;
 
@@ -615,9 +627,10 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         (TimeInt::MAX, row_id1_7), //
     ] {
         let query = LatestAtQuery::new(TimelineName::new("frame_nr"), at);
-        eprintln!("{} @ {query:?}", MyPoint::descriptor());
-        let row_id = query_latest_array(&store, &entity_path, &MyPoint::descriptor(), &query)
-            .map(|(_data_time, row_id, _array)| row_id);
+        eprintln!("{} @ {query:?}", MyPoints::descriptor_points());
+        let row_id =
+            query_latest_array(&store, &entity_path, &MyPoints::descriptor_points(), &query)
+                .map(|(_data_time, row_id, _array)| row_id);
         assert_eq!(expected_row_id, row_id.unwrap());
     }
 
@@ -861,52 +874,52 @@ fn range() -> anyhow::Result<()> {
 
     assert_range_components(
         ResolvedTimeRange::new(frame1, frame1),
-        MyColor::descriptor(),
+        MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame1, frame1),
-        MyPoint::descriptor(),
+        MyPoints::descriptor_points(),
         &[],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame2, frame2),
-        MyColor::descriptor(),
+        MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame2, frame2),
-        MyPoint::descriptor(),
+        MyPoints::descriptor_points(),
         &[(frame2, row_id2)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame3, frame3),
-        MyColor::descriptor(),
+        MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame3, frame3),
-        MyPoint::descriptor(),
+        MyPoints::descriptor_points(),
         &[(frame3, row_id3)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame4, frame4),
-        MyColor::descriptor(),
+        MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame4, frame4),
-        MyPoint::descriptor(),
+        MyPoints::descriptor_points(),
         &[(frame4, row_id4_25), (frame4, row_id4_4)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame5, frame5),
-        MyColor::descriptor(),
+        MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
     assert_range_components(
         ResolvedTimeRange::new(frame5, frame5),
-        MyPoint::descriptor(),
+        MyPoints::descriptor_points(),
         &[],
     );
 
@@ -914,7 +927,7 @@ fn range() -> anyhow::Result<()> {
 
     assert_range_components(
         ResolvedTimeRange::new(frame1, frame5),
-        MyPoint::descriptor(),
+        MyPoints::descriptor_points(),
         &[
             (frame2, row_id2),
             (frame3, row_id3),
@@ -924,7 +937,7 @@ fn range() -> anyhow::Result<()> {
     );
     assert_range_components(
         ResolvedTimeRange::new(frame1, frame5),
-        MyColor::descriptor(),
+        MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
 
@@ -932,7 +945,7 @@ fn range() -> anyhow::Result<()> {
 
     assert_range_components(
         ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        MyPoint::descriptor(),
+        MyPoints::descriptor_points(),
         &[
             (frame2, row_id2),
             (frame3, row_id3),
@@ -942,7 +955,7 @@ fn range() -> anyhow::Result<()> {
     );
     assert_range_components(
         ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        MyColor::descriptor(),
+        MyPoints::descriptor_colors(),
         &[(TimeInt::STATIC, row_id5)],
     );
 
@@ -1064,32 +1077,32 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
         .with_sparse_component_batches(
             row_id1_1,
             [build_frame_nr(frame1)],
-            [(MyPoint::descriptor(), Some(&points1 as _))],
+            [(MyPoints::descriptor_points(), Some(&points1 as _))],
         )
         .with_sparse_component_batches(
             row_id1_3,
             [build_frame_nr(frame3)],
-            [(MyPoint::descriptor(), Some(&points3 as _))],
+            [(MyPoints::descriptor_points(), Some(&points3 as _))],
         )
         .with_sparse_component_batches(
             row_id1_5,
             [build_frame_nr(frame5)],
-            [(MyPoint::descriptor(), Some(&points5 as _))],
+            [(MyPoints::descriptor_points(), Some(&points5 as _))],
         )
         .with_sparse_component_batches(
             row_id1_7_1,
             [build_frame_nr(frame7)],
-            [(MyPoint::descriptor(), Some(&points7_1 as _))],
+            [(MyPoints::descriptor_points(), Some(&points7_1 as _))],
         )
         .with_sparse_component_batches(
             row_id1_7_2,
             [build_frame_nr(frame7)],
-            [(MyPoint::descriptor(), Some(&points7_2 as _))],
+            [(MyPoints::descriptor_points(), Some(&points7_2 as _))],
         )
         .with_sparse_component_batches(
             row_id1_7_3,
             [build_frame_nr(frame7)],
-            [(MyPoint::descriptor(), Some(&points7_3 as _))],
+            [(MyPoints::descriptor_points(), Some(&points7_3 as _))],
         )
         .build()?;
 
@@ -1107,17 +1120,17 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
         .with_sparse_component_batches(
             row_id2_2,
             [build_frame_nr(frame2)],
-            [(MyPoint::descriptor(), Some(&points2 as _))],
+            [(MyPoints::descriptor_points(), Some(&points2 as _))],
         )
         .with_sparse_component_batches(
             row_id2_3,
             [build_frame_nr(frame3)],
-            [(MyPoint::descriptor(), Some(&points3 as _))],
+            [(MyPoints::descriptor_points(), Some(&points3 as _))],
         )
         .with_sparse_component_batches(
             row_id2_4,
             [build_frame_nr(frame4)],
-            [(MyPoint::descriptor(), Some(&points4 as _))],
+            [(MyPoints::descriptor_points(), Some(&points4 as _))],
         )
         .build()?;
 
