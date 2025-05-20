@@ -31,7 +31,7 @@ Instead of spawning a new viewer, you can also try to connect to an already open
 
 ### Buffering
 
-As long as you haven't called `rerun::RecordingStream::save`/`rerun::RecordingStream::connect`/`rerun::RecordingStream::spawn`
+As long as you haven't called `rerun::RecordingStream::save`/`rerun::RecordingStream::connect_grpc`/`rerun::RecordingStream::spawn`
 any data will be kept in memory until you call one of these.
 
 \snippet{trimleft} readme_snippets.cpp Buffering

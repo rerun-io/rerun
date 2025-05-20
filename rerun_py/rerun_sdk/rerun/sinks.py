@@ -57,7 +57,7 @@ def connect_grpc(
 
     """
     if not is_recording_enabled(recording):
-        logging.warning("Rerun is disabled - connect() call ignored")
+        logging.warning("Rerun is disabled - connect_grpc() call ignored")
         return
 
     from rerun.recording_stream import get_application_id
