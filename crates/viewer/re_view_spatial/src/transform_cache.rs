@@ -165,14 +165,12 @@ impl CachedTransformsForTimeline {
 /// Maps from archetype to resolved pose transform.
 ///
 /// If there's a concrete archetype in here, the mapped values are the full resolved pose transform.
-/// Otherwise, refer to [`Self::instance_poses_archetype`].
 ///
 /// `TransformCache` doesn't do tree propgation, however (!!!) there's a mini-tree in here that we already fully apply:
 /// `InstancePose3D` are applied on top of concrete archetype poses.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct PoseTransformArchetypeMap {
     /// Iff there's a concrete archetype in here, the mapped values are the full resolved pose transform.
-    /// Otherwise, refer to [`Self::instance_poses_archetype`].
     // TODO(andreas): use some kind of small map? Vec of tuples might already be more appropriate?
     pub instance_from_archetype_poses_per_archetype:
         IntMap<ArchetypeName, SmallVec1<[Affine3A; 1]>>,
