@@ -9,7 +9,7 @@ use type_map::concurrent::{self, TypeMap};
 use crate::{
     FileServer, RecommendedFileResolver,
     allocator::{CpuWriteGpuReadBelt, GpuReadbackBelt},
-    device_caps::{DeviceCaps, WgpuBackendType},
+    device_caps::DeviceCaps,
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
@@ -286,31 +286,8 @@ impl RenderContext {
     fn poll_device(&mut self) {
         re_tracing::profile_function!();
 
-        // Browsers don't let us wait for GPU work via `poll`:
-        //
-        // * WebGPU: `poll` is a no-op as the spec doesn't specify it at all. Calling it doesn't hurt though.
-        //
-        // * WebGL: Internal timeout can't go above a browser specific value.
-        //          Since wgpu ran into issues in the past with some browsers returning errors,
-        //          it uses a timeout of zero and ignores errors there.
-        //
-        //          This causes unused buffers to be freed immediately, which is wrong but also doesn't hurt
-        //          since WebGL doesn't care about freeing buffers/textures that are still in use.
-        //          Meaning, that from our POV we're actually freeing cpu memory that we wanted to free anyways.
-        //          *More importantly this means that we get buffers from the staging belts back earlier!*
-        //          Therefore, we just always "block" instead on WebGL to free as early as possible,
-        //          knowing that we're not _actually_ blocking.
-        //
-        //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
-        if cfg!(target_arch = "wasm32")
-            && self.device_caps.backend_type == WgpuBackendType::WgpuCore
-        {
-            // TODO: remove?
-            let _ = self.device.poll(wgpu::PollType::Wait);
-            return;
-        }
-
         // Ensure not too many queue submissions are in flight.
+
         let num_submissions_to_wait_for = self
             .inflight_queue_submissions
             .len()
@@ -321,14 +298,19 @@ impl RenderContext {
             .drain(0..num_submissions_to_wait_for)
             .last()
         {
-            if let Err(err) = self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
-                newest_submission_to_wait_for,
-            )) {
-                re_log::warn_once!(
-                    "Failed to limit number of in-flight GPU frames to {}: {:?}",
-                    Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
-                    err
-                );
+            // Disable error reporting on Web:
+            // * On WebGPU poll is a no-op and we don't get here.
+            // * On WebGL we'll just immediately timeout since we can't actually wait for frames.
+            if !cfg!(target_arch = "wasm32") {
+                if let Err(err) = self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
+                    newest_submission_to_wait_for,
+                )) {
+                    re_log::warn_once!(
+                        "Failed to limit number of in-flight GPU frames to {}: {:?}",
+                        Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
+                        err
+                    );
+                }
             }
         }
     }
