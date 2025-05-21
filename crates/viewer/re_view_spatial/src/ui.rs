@@ -45,7 +45,7 @@ pub struct ImageCounts {
     pub depth: usize,
 }
 
-/// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by [`View3DState`], not the other way round.
+/// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by `View3DState`, not the other way round.
 #[derive(Clone, Default)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
