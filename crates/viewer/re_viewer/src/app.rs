@@ -230,7 +230,7 @@ impl App {
 
         let (adapter_backend, device_tier) = creation_context.wgpu_render_state.as_ref().map_or(
             (
-                wgpu::Backend::Empty,
+                wgpu::Backend::Noop,
                 re_renderer::device_caps::DeviceCapabilityTier::Limited,
             ),
             |render_state| {

@@ -1,6 +1,6 @@
 use std::hash::Hash as _;
 
-use wgpu::core as wgpu_core;
+use wgpu::wgc as wgpu_core;
 
 /// Tries downcasting a given value into the specified possibilities (or all of them
 /// if none are specified), then run the given expression on the downcasted value.
