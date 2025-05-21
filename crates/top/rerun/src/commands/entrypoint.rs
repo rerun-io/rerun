@@ -176,7 +176,12 @@ When persisted, the state will be stored at the following locations:
 
     /// Do not attempt to start a new server, instead try to connect to an existing one.
     ///
-    /// Optionally accepts an HTTP(S) URL to a gRPC server.
+    /// Optionally accepts a URL to a gRPC server.
+    ///
+    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and the pathname must be `/proxy`.
+    ///
+    /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
     #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
     connect: Option<Option<String>>,

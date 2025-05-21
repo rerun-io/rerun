@@ -33,14 +33,19 @@ def connect_grpc(
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+    Connect to a remote Rerun Viewer on the given URL.
 
     This function returns immediately.
 
     Parameters
     ----------
     url:
-        The HTTP(S) URL to connect to
+        The URL to connect to.
+
+        The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+        and the pathname must be `/proxy`.
+
+        The default is `rerun+http://127.0.0.1:9876/proxy`.
     flush_timeout_sec:
         The minimum time the SDK will wait during a flush before potentially
         dropping data if progress is not being made. Passing `None` indicates no timeout,

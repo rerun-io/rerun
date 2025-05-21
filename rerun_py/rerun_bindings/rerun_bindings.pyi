@@ -737,7 +737,7 @@ def connect_grpc(
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Connect the recording stream to a remote Rerun Viewer on the given HTTP(S) URL."""
+    """Connect the recording stream to a remote Rerun Viewer on the given URL."""
 
 def connect_grpc_blueprint(
     url: Optional[str],
