@@ -212,7 +212,7 @@ fn run_view_ui_and_save_snapshot(
                     let view_state = view_states.get_mut_or_create(view_id, view_class);
 
                     // Show axis at the origin to help with orientation.
-                    // TODO(andreas): this should be a blueprint property, not a state.
+                    // TODO(#10028): this should be a blueprint property, not a state.
                     view_state
                         .as_any_mut()
                         .downcast_mut::<SpatialViewState>()
