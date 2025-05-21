@@ -80,13 +80,13 @@ jobs:
         if: ${{ inputs.CHANNEL == 'pr' }}
         run: pixi run rs-check --only base_checks sdk_variations cargo_deny wasm docs
 
-      - name: Rust most checks & tests
+      - name: Rust most checks (`main` branch subset)
         if: ${{ inputs.CHANNEL == 'main' }}
-        run: pixi run rs-check --skip individual_crates docs_slow
+        run: pixi run rs-check --skip individual_crates docs_slow tests tests_without_all_features # Tests run in a separate job
 
-      - name: Rust all checks & tests
+      - name: Rust all checks (nightly)
         if: ${{ inputs.CHANNEL == 'nightly' }}
-        run: pixi run rs-check
+        run: pixi run rs-check --skip tests tests_without_all_features # Tests run in a separate job
 
       - name: .rrd backwards compatibility
         # We don't yet guarantee backwards compatibility, but we at least check it
@@ -95,7 +95,7 @@ jobs:
         run: pixi run check-backwards-compatibility
 
   rs-tests:
-    name: Rust lints (tests)
+    name: Rust tests
     # TODO(andreas): setup-vulkan doesn't work on 24.4 right now due to missing .so
     runs-on: ubuntu-22.04-large
     env:
@@ -115,7 +115,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
 
@@ -132,9 +132,12 @@ jobs:
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py
 
-      - name: Rust checks (PR subset)
-        if: ${{ inputs.CHANNEL == 'pr' }}
+      - name: Rust tests
         run: pixi run rs-check --only tests
+
+      - name: Rust tests without --all-features
+        if: ${{ inputs.CHANNEL != 'pr' }}
+        run: pixi run rs-check --only tests_without_all_features
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
