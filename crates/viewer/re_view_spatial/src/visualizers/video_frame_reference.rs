@@ -428,7 +428,7 @@ impl TypedComponentFallbackProvider<components::EntityPath> for VideoFrameRefere
 
 impl TypedComponentFallbackProvider<components::DrawOrder> for VideoFrameReferenceVisualizer {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::DrawOrder {
-        components::DrawOrder::DEFAULT_VIDEO_FRAME_REFERENCE
+        components::DrawOrder::DEFAULT_VIDEO
     }
 }
 

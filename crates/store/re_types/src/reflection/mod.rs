@@ -2229,6 +2229,26 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.VideoStream"),
+            ArchetypeReflection {
+                display_name: "Video stream",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial2DView", "Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection { name : "chunk_data".into(), display_name :
+                    "Chunk data", component_name : "rerun.components.Blob".into(),
+                    docstring_md :
+                    "TODO: custom component type? `EncodedVideoChunkData`?", is_required
+                    : true, }, ArchetypeFieldReflection { name : "draw_order".into(),
+                    display_name : "Draw order", component_name :
+                    "rerun.components.DrawOrder".into(), docstring_md :
+                    "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.\nDefaults to `-15.0`.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.ViewCoordinates"),
             ArchetypeReflection {
                 display_name: "View coordinates",

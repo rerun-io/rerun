@@ -37,4 +37,5 @@ text_document.py linguist-generated=true
 text_log.py linguist-generated=true
 transform3d.py linguist-generated=true
 video_frame_reference.py linguist-generated=true
+video_stream.py linguist-generated=true
 view_coordinates.py linguist-generated=true

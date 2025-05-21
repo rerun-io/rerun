@@ -86,7 +86,7 @@ fn test_clamped_vec() {
 pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewContext<'_>,
     query: &ViewQuery<'_>,
-    view_ctx: &ViewContextCollection,
+    context_systems: &ViewContextCollection,
     mut fun: F,
 ) -> Result<(), ViewSystemExecutionError>
 where
@@ -97,9 +97,9 @@ where
         &HybridResults<'_>,
     ) -> Result<(), ViewSystemExecutionError>,
 {
-    let transforms = view_ctx.get::<TransformTreeContext>()?;
-    let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
-    let annotations = view_ctx.get::<AnnotationSceneContext>()?;
+    let transforms = context_systems.get::<TransformTreeContext>()?;
+    let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
+    let annotations = context_systems.get::<AnnotationSceneContext>()?;
 
     let latest_at = query.latest_at_query();
 
@@ -124,7 +124,7 @@ where
             highlight: query
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash()),
-            view_class_identifier: view_ctx.view_class_identifier(),
+            view_class_identifier: context_systems.view_class_identifier(),
         };
 
         let results = data_result.query_archetype_with_history::<A>(ctx, query);
@@ -140,6 +140,33 @@ where
 
     Ok(())
 }
+
+// TODO: need it?
+// fn new_scene_entity_context<'a, A: Archetype>(
+//     query: &'a ViewQuery<'a>,
+//     entity_path: &EntityPath,
+//     depth_offsets: &EntityDepthOffsets,
+//     annotations: &AnnotationSceneContext,
+//     transforms: &'a TransformTreeContext,
+//     system_identifier: re_viewer_context::ViewSystemIdentifier,
+//     view_class_identifier: re_viewer_context::ViewClassIdentifier,
+// ) -> Option<SpatialSceneEntityContext<'a>> {
+//     let entity_path_hash = entity_path.hash();
+//     let transform_info = transforms.transform_info_for_entity(entity_path_hash)?;
+//     let depth_offset_key = (system_identifier, entity_path_hash);
+
+//     Some(SpatialSceneEntityContext {
+//         transform_info,
+//         depth_offset: depth_offsets
+//             .per_entity_and_visualizer
+//             .get(&depth_offset_key)
+//             .copied()
+//             .unwrap_or_default(),
+//         annotations: annotations.0.find(&entity_path),
+//         highlight: query.highlights.entity_outline_mask(entity_path_hash),
+//         view_class_identifier,
+//     })
+// }
 
 // ---
 

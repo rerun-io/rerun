@@ -19,7 +19,8 @@ mod points3d;
 mod segmentation_images;
 mod transform3d_arrows;
 mod utilities;
-mod videos;
+mod video_frame_reference;
+mod video_stream;
 
 pub use cameras::CamerasVisualizer;
 pub use depth_images::DepthImageVisualizer;
@@ -85,7 +86,9 @@ pub fn register_2d_spatial_visualizers(
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
+    system_registry
+        .register_visualizer::<video_frame_reference::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video_stream::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -111,7 +114,9 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<ellipsoids::Ellipsoids3DVisualizer>()?;
     system_registry.register_visualizer::<transform3d_arrows::AxisLengthDetector>()?;
     system_registry.register_visualizer::<transform3d_arrows::Transform3DArrowsVisualizer>()?;
-    system_registry.register_visualizer::<videos::VideoFrameReferenceVisualizer>()?;
+    system_registry
+        .register_visualizer::<video_frame_reference::VideoFrameReferenceVisualizer>()?;
+    system_registry.register_visualizer::<video_stream::VideoStreamVisualizer>()?;
     Ok(())
 }
 
@@ -153,8 +158,12 @@ pub fn visualizers_processing_draw_order()
             archetypes::SegmentationImage::descriptor_draw_order(),
         ),
         (
-            videos::VideoFrameReferenceVisualizer::identifier(),
+            video_frame_reference::VideoFrameReferenceVisualizer::identifier(),
             archetypes::VideoFrameReference::descriptor_draw_order(),
+        ),
+        (
+            video_stream::VideoStreamVisualizer::identifier(),
+            archetypes::VideoStream::descriptor_draw_order(),
         ),
     ]
     .into_iter()

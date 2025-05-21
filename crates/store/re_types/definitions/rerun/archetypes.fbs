@@ -35,4 +35,5 @@ include "./archetypes/text_document.fbs";
 include "./archetypes/text_log.fbs";
 include "./archetypes/transform3d.fbs";
 include "./archetypes/video_frame_reference.fbs";
+include "./archetypes/video_stream.fbs";
 include "./archetypes/view_coordinates.fbs";

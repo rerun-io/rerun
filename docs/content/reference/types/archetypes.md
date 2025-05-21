@@ -68,6 +68,7 @@ This page lists all built-in archetypes.
 
 * [`AssetVideo`](archetypes/asset_video.md): A video binary.
 * [`VideoFrameReference`](archetypes/video_frame_reference.md): References a single video frame.
+* [`VideoStream`](archetypes/video_stream.md): TODO: docs, finalize name
 
 ## Other
 
