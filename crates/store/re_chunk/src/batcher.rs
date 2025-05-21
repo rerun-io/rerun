@@ -1030,7 +1030,7 @@ mod tests {
     use crossbeam::channel::TryRecvError;
 
     use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
-    use re_types_core::{Component as _, Loggable as _};
+    use re_types_core::Loggable as _;
 
     use super::*;
 
@@ -1231,7 +1231,7 @@ mod tests {
             MyPoints::descriptor_points(),
             MyPoints::descriptor_colors(),
             MyPoints::descriptor_labels(),
-            MyPoint64::descriptor(),
+            MyPoint64::untagged_descriptor(),
             MyIndex::untagged_descriptor(),
         ];
 

@@ -276,6 +276,11 @@ impl MyPoint64 {
             .map(|i| Self::new(i as f64, i as f64))
             .collect()
     }
+
+    #[inline]
+    pub fn untagged_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new(Self::name())
+    }
 }
 
 impl MyPoint64 {
