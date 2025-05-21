@@ -296,6 +296,7 @@ similar-asserts = "1.4.2"
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 static_assertions = "1.1"
+stl_io = "0.8.5"
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 sublime_fuzzy = "0.7"
@@ -310,7 +311,6 @@ time = { version = "0.3.36", default-features = false, features = [
   "wasm-bindgen",
 ] }
 tiny_http = { version = "0.12", default-features = false }
-tinystl = { version = "0.0.3", default-features = false }
 tobj = "4.0"
 tokio = { version = "1.44.2", default-features = false }
 tokio-stream = "0.1.16"
