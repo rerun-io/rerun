@@ -29,6 +29,7 @@ pub use outlines::{
 pub use query::{
     DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
+use re_types::ComponentDescriptor;
 pub use results_ext::{
     HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,
     RangeResultsExt,
@@ -47,22 +48,20 @@ pub mod external {
 #[inline]
 pub fn diff_component_filter<T: re_types_core::Component>(
     event: &re_chunk_store::ChunkStoreEvent,
+    component_descr: &ComponentDescriptor,
     filter: impl Fn(&T) -> bool,
 ) -> bool {
     let filter = &filter;
-    event
-        .diff
-        .chunk
-        .components()
-        .get_by_component_name(T::descriptor().component_name)
-        .any(|list_array| {
-            list_array
-                .iter()
-                .filter_map(|array| {
-                    array.and_then(|array| T::from_arrow(&arrow::array::ArrayRef::from(array)).ok())
-                })
-                .any(|instances| instances.iter().any(filter))
+    let Some(list_array) = event.diff.chunk.components().get(component_descr) else {
+        return false;
+    };
+
+    list_array
+        .iter()
+        .filter_map(|array| {
+            array.and_then(|array| T::from_arrow(&arrow::array::ArrayRef::from(array)).ok())
         })
+        .any(|instances| instances.iter().any(filter))
 }
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.

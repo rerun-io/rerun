@@ -46,11 +46,17 @@ impl DataBasedVisualizabilityFilter for ImageMediaTypeFilter {
     ///
     /// Otherwise the image encoder might be suggested for other blobs like video.
     fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |media_type: &re_types::components::MediaType| {
-            media_type.is_image()
-        }) || diff_component_filter(event, |image: &re_types::components::Blob| {
-            MediaType::guess_from_data(&image.0).is_some_and(|media| media.is_image())
-        })
+        diff_component_filter(
+            event,
+            &EncodedImage::descriptor_media_type(),
+            |media_type: &re_types::components::MediaType| media_type.is_image(),
+        ) || diff_component_filter(
+            event,
+            &EncodedImage::descriptor_blob(),
+            |image: &re_types::components::Blob| {
+                MediaType::guess_from_data(&image.0).is_some_and(|media| media.is_image())
+            },
+        )
     }
 }
 

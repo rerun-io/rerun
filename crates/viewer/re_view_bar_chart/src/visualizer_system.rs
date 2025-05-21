@@ -32,9 +32,11 @@ struct BarChartVisualizabilityFilter;
 impl DataBasedVisualizabilityFilter for BarChartVisualizabilityFilter {
     #[inline]
     fn update_visualizability(&mut self, event: &ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            tensor.is_vector()
-        })
+        diff_component_filter(
+            event,
+            &BarChart::descriptor_values(),
+            |tensor: &re_types::components::TensorData| tensor.is_vector(),
+        )
     }
 }
 
