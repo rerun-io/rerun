@@ -142,7 +142,10 @@
       "color": "{Gray.150}"
     },
     "extreme_bg_color": {
-      "color": "#000000"
+      "color": "{Gray.0}"
+    },
+    "extreme_fg_color": {
+      "color": "{Gray.1000}"
     },
     "widget_inactive_bg_fill": {
       "color": "{Gray.300}"

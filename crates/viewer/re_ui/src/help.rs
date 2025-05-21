@@ -114,7 +114,7 @@ impl Help {
                 .widgets
                 .noninteractive
                 .bg_stroke
-                .color = ui.design_tokens().color_table.gray(Scale::S400);
+                .color = ui.design_tokens().color_table.gray(Scale::S400); // TODO: design tokens
             ui.separator();
         });
     }

@@ -17,7 +17,8 @@ use re_types::{
     view_coordinates::SignedAxis3,
 };
 use re_ui::{
-    ContextExt as _, Help, MouseButtonText, icon_text, icons, modifiers_text, shortcut_with_icon,
+    ContextExt as _, Help, MouseButtonText, UiExt as _, icon_text, icons, modifiers_text,
+    shortcut_with_icon,
 };
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
@@ -650,7 +651,11 @@ impl SpatialView3D {
             line_builder
                 .batch("scene_bbox_current")
                 .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| lines.radius(box_line_radius).color(egui::Color32::WHITE)); // TODO: use design tokens
+                .map(|lines| {
+                    lines
+                        .radius(box_line_radius)
+                        .color(ui.design_tokens().frustum_color)
+                });
         }
         if state.state_3d.show_smoothed_bbox {
             line_builder
@@ -862,7 +867,7 @@ fn show_orbit_eye_center(
             )
             .radius(Size::new_ui_points(0.75))
             // TODO(andreas): Fade this out.
-            .color(re_renderer::Color32::WHITE); // TODO: use design tokens
+            .color(egui_ctx.design_tokens().frustum_color);
 
         // TODO(andreas): Idea for nice depth perception:
         // Render the lines once with additive blending and depth test enabled

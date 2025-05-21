@@ -228,7 +228,7 @@ impl PointCloudBatchBuilder<'_, '_> {
                 .ok_or_log_error();
             self.0
                 .color_buffer
-                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len())) // TODO: use design tokens
+                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len())) // TODO(emilk): don't use a hard-coded default color here
                 .ok_or_log_error();
         }
         {

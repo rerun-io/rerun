@@ -118,6 +118,7 @@ pub struct DesignTokens {
     pub floating_color: Color32,
     pub faint_bg_color: Color32,
     pub extreme_bg_color: Color32,
+    pub extreme_fg_color: Color32,
     pub selection_stroke_color: Color32,
     pub widget_inactive_bg_fill: Color32,
     pub widget_hovered_color: Color32,
@@ -224,6 +225,7 @@ impl DesignTokens {
             floating_color: get_color("floating_color"),
             faint_bg_color: get_color("faint_bg_color"),
             extreme_bg_color: get_color("extreme_bg_color"),
+            extreme_fg_color: get_color("extreme_fg_color"),
             widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
             widget_hovered_color: get_color("widget_hovered_color"),
             widget_hovered_weak_bg_fill: get_color("widget_hovered_weak_bg_fill"),
@@ -675,10 +677,7 @@ fn try_get_alias_color(
     color_from_json(color_table, color_alias)
 }
 
-fn color_from_json(
-    color_table: &ColorTable,
-    color_alias: &ron::Value,
-) -> Result<Color32, anyhow::Error> {
+fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow::Result<Color32> {
     let color = color_alias
         .get("color")
         .ok_or_else(|| anyhow::anyhow!("No color found"))?
@@ -686,10 +685,8 @@ fn color_from_json(
         .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
 
     if color.starts_with('#') {
-        Ok(
-            Color32::from_hex(color)
-                .map_err(|err| anyhow::anyhow!("Invalid hex color: {err:?}"))?,
-        )
+        Ok(Color32::from_hex(color)
+            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?)
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')
