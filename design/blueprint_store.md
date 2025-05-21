@@ -33,7 +33,7 @@ part of Viewer startup. This limits blueprint control to: `rr.spawn()` (launch a
 hosted web-app), and `rr.show()` (embed a Viewer in a notebook). Additionally a blueprint file will be able to be
 provided to the Viewer via the CLI at launch, or opened via the file-menu.
 
-Blueprints will not otherwise be able to be sent via `rr.connect()`, which is reserved for only transmitting log-data to
+Blueprints will not otherwise be able to be sent via `rr.connect_grpc()`, which is reserved for only transmitting log-data to
 an existing live Viewer instance, where a relevant blueprint is assumed to be loaded.
 
 ### Blueprint APIs

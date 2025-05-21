@@ -34,7 +34,7 @@ use crate::sink::{LogSink, MemorySinkStorage};
 /// Private environment variable meant for tests.
 ///
 /// When set, all recording streams will write to disk at the path indicated by the env-var rather
-/// than doing what they were asked to do - `connect()`, `buffered()`, even `save()` will re-use the same sink.
+/// than doing what they were asked to do - `connect_grpc()`, `buffered()`, even `save()` will re-use the same sink.
 const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 
 /// Returns path for force sink if private environment variable `_RERUN_TEST_FORCE_SAVE` is set

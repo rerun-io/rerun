@@ -87,7 +87,7 @@ If you wanted the recording file itself to only contain a single static value, y
 
 The data store that backs the Rerun viewer natively understands these temporal/garbage-collected vs. static/overwritten semantics.
 
-If you were to log the snippet above directly to the Rerun viewer (using e.g. `rr.connect()`), you'd notice that the viewer's memory usage stays constant: the data is automatically being overwritten as new updates come in.
+If you were to log the snippet above directly to the Rerun viewer (using e.g. `rr.connect_grpc()`), you'd notice that the viewer's memory usage stays constant: the data is automatically being overwritten as new updates come in.
 For data where you don't need to keep track of historical values, this effectively to logs its new values indefinitely.
 
 In the following example, you can see our [face tracking example]() indefinitely tracking my face while maintaining constant memory usage by logging all data as static:
