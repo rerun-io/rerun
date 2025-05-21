@@ -14,9 +14,8 @@ use re_log_types::{
 };
 use re_types::{
     ComponentDescriptor,
-    testing::{LargeStruct, build_some_large_structs},
+    testing::{build_some_large_structs, large_struct_descriptor},
 };
-use re_types_core::Component as _;
 
 // ---
 
@@ -70,7 +69,7 @@ fn simple() -> anyhow::Result<()> {
                         RowId::new(),
                         [build_frame_nr(frame_nr)],
                         (
-                            LargeStruct::descriptor(),
+                            large_struct_descriptor(),
                             &build_some_large_structs(num_instances),
                         ),
                     )

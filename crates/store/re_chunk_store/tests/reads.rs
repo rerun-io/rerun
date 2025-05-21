@@ -13,9 +13,8 @@ use re_log_types::{
 };
 use re_types::{
     ComponentDescriptor, ComponentDescriptorSet,
-    testing::{LargeStruct, build_some_large_structs},
+    testing::{build_some_large_structs, large_struct_descriptor},
 };
-use re_types_core::Component as _;
 
 // ---
 
@@ -77,13 +76,13 @@ fn all_components() -> anyhow::Result<()> {
 
     let components_a = &[
         MyPoints::descriptor_colors(), // added by test, static
-        LargeStruct::descriptor(),     // added by test
+        large_struct_descriptor(),     // added by test
     ];
 
     let components_b = &[
         MyPoints::descriptor_colors(), // added by test, static
         MyPoints::descriptor_points(), // added by test
-        LargeStruct::descriptor(),     // added by test
+        large_struct_descriptor(),     // added by test
     ];
 
     let chunk = Chunk::builder(entity_path.clone())
@@ -99,7 +98,7 @@ fn all_components() -> anyhow::Result<()> {
         .with_component_batch(
             RowId::new(),
             [build_frame_nr(frame1)],
-            (LargeStruct::descriptor(), &build_some_large_structs(2)),
+            (large_struct_descriptor(), &build_some_large_structs(2)),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -111,7 +110,7 @@ fn all_components() -> anyhow::Result<()> {
             RowId::new(),
             [build_frame_nr(frame2)],
             [
-                (LargeStruct::descriptor(), &build_some_large_structs(2) as _),
+                (large_struct_descriptor(), &build_some_large_structs(2) as _),
                 (
                     MyPoints::descriptor_points(),
                     &MyPoint::from_iter(0..2) as _,
@@ -147,7 +146,7 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
         .with_component_batch(
             RowId::new(),
             [(timeline1, time), (timeline2, time)],
-            (LargeStruct::descriptor(), &build_some_large_structs(2)),
+            (large_struct_descriptor(), &build_some_large_structs(2)),
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -156,7 +155,7 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
         .with_component_batches(
             RowId::new(),
             [(timeline1, time)],
-            [(LargeStruct::descriptor(), &build_some_large_structs(2) as _)],
+            [(large_struct_descriptor(), &build_some_large_structs(2) as _)],
         )
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
@@ -422,7 +421,10 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             row_id1_3,
             [build_frame_nr(frame3)],
             [
-                (MyIndex::untagged_descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
+                (
+                    MyIndex::untagged_descriptor(),
+                    Some(&MyIndex::from_iter(2..3) as _),
+                ),
                 (
                     MyPoints::descriptor_points(),
                     Some(&MyPoint::from_iter(2..3) as _),
@@ -444,7 +446,10 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             row_id2_1,
             [build_frame_nr(frame2)],
             [
-                (MyIndex::untagged_descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
+                (
+                    MyIndex::untagged_descriptor(),
+                    Some(&MyIndex::from_iter(2..3) as _),
+                ),
                 (
                     MyPoints::descriptor_points(),
                     Some(&MyPoint::from_iter(1..2) as _),
