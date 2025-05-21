@@ -21,45 +21,50 @@ pub fn load_stl_from_buffer(
     re_tracing::profile_function!();
 
     let mut cursor = std::io::Cursor::new(buffer);
-    let IndexedMesh { vertices, faces } =
-        stl_io::read_stl(&mut cursor).map_err(StlImportError::StlIoError)?;
-    let num_vertices = faces.len() * 3;
-
-    // TODO(gijsd): parse name from ASCII?
+    let reader = stl_io::create_stl_reader(&mut cursor).map_err(StlImportError::StlIoError)?;
+    // TODO(hmeyer/stl_io#26): parse name from ASCII?
     // https://github.com/hmeyer/stl_io/pull/26
-    let name = "";
+    let name = reader.name().cloned().unwrap_or_default();
+
+    let (normals, vertices): (Vec<_>, Vec<_>) = reader
+        .into_iter()
+        .map(|triangle| triangle.unwrap())
+        .map(|triangle| {
+            (
+                triangle.normal,
+                [
+                    triangle.vertices[0].0,
+                    triangle.vertices[1].0,
+                    triangle.vertices[2].0,
+                ],
+            )
+        })
+        .unzip();
+
+    let num_vertices = vertices.len() * 3;
 
     let material = mesh::Material {
-        label: name.into(),
+        label: name.clone().into(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
         albedo_factor: crate::Rgba::WHITE,
     };
 
     let mesh = mesh::CpuMesh {
-        label: name.into(),
+        label: name.clone().into(),
         triangle_indices: (0..num_vertices as u32)
             .tuples::<(_, _, _)>()
             .map(glam::UVec3::from)
             .collect::<Vec<_>>(),
 
-        vertex_positions: faces
-            .iter()
-            .flat_map(|f| {
-                [
-                    glam::Vec3::from_array(vertices[f.vertices[0]].0),
-                    glam::Vec3::from_array(vertices[f.vertices[1]].0),
-                    glam::Vec3::from_array(vertices[f.vertices[2]].0),
-                ]
-            })
-            .collect(),
+        vertex_positions: bytemuck::cast_vec(vertices),
 
         // Normals on STL are per triangle, not per vertex.
         // Yes, this makes STL always look faceted.
-        vertex_normals: faces
+        vertex_normals: normals
             .iter()
-            .flat_map(|f| {
-                let n = glam::Vec3::from_array(f.normal.0);
+            .flat_map(|n| {
+                let n = glam::Vec3::from_array(n.0);
                 [n, n, n]
             })
             .collect(),

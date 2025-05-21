@@ -296,7 +296,7 @@ similar-asserts = "1.4.2"
 slotmap = { version = "1.0.6", features = ["serde"] }
 smallvec = { version = "1.0", features = ["const_generics", "union"] }
 static_assertions = "1.1"
-stl_io = "0.8.5"
+stl_io = { git = "https://github.com/oxkitsune/stl_io", branch = "gijs/mesh-name" }
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 sublime_fuzzy = "0.7"
