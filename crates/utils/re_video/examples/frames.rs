@@ -32,8 +32,8 @@ fn main() {
     println!(
         "{} {}x{}",
         video.gops.len(),
-        video.config.coded_width,
-        video.config.coded_height
+        video.config.as_ref().map_or(0, |c| c.coded_width),
+        video.config.as_ref().map_or(0, |c| c.coded_height)
     );
 
     let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");

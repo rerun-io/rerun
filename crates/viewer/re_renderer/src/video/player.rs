@@ -12,7 +12,6 @@ use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
     video::VideoPlayerError,
-    wgpu_resources::{GpuTexturePool, TextureDesc},
 };
 
 /// Ignore hickups lasting shorter than this.
@@ -39,7 +38,9 @@ impl TimedDecodingError {
 }
 
 /// A texture of a specific video frame.
+#[derive(Clone)]
 pub struct VideoTexture {
+    /// The video texture is created lazily on the first received frame.
     pub texture: GpuTexture2D,
     pub frame_info: Option<FrameInfo>,
     pub source_pixel_format: SourceImageDataFormat,
@@ -52,7 +53,8 @@ pub struct VideoPlayer {
     data: Arc<re_video::VideoData>,
     chunk_decoder: VideoChunkDecoder,
 
-    video_texture: VideoTexture,
+    /// The video texture is created lazily on the first received frame.
+    video_texture: Option<VideoTexture>,
 
     last_requested_sample_idx: usize,
     last_requested_gop_idx: usize,
@@ -67,7 +69,6 @@ pub struct VideoPlayer {
 impl VideoPlayer {
     pub fn new(
         debug_name: &str,
-        render_ctx: &RenderContext,
         data: Arc<re_video::VideoData>,
         decode_settings: &DecodeSettings,
     ) -> Result<Self, VideoPlayerError> {
@@ -76,14 +77,16 @@ impl VideoPlayer {
             data.human_readable_codec_string()
         );
 
-        if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
-            #[allow(clippy::comparison_chain)]
-            if bit_depth < 8 {
-                re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
-            } else if 8 < bit_depth {
-                re_log::warn_once!(
-                    "{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more."
-                );
+        if let Some(config) = data.config.as_ref() {
+            if let Some(bit_depth) = config.stsd.contents.bit_depth() {
+                #[allow(clippy::comparison_chain)]
+                if bit_depth < 8 {
+                    re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");
+                } else if 8 < bit_depth {
+                    re_log::warn_once!(
+                        "{debug_name}: HDR videos not supported. See https://github.com/rerun-io/rerun/issues/7594 for more."
+                    );
+                }
             }
         }
 
@@ -91,24 +94,13 @@ impl VideoPlayer {
             re_video::decode::new_decoder(&debug_name, &data, decode_settings, on_output)
         })?;
 
-        let texture = alloc_video_frame_texture(
-            &render_ctx.device,
-            &render_ctx.gpu_resources.textures,
-            data.config.coded_width as u32,
-            data.config.coded_height as u32,
-        );
-
         Ok(Self {
             data,
             chunk_decoder,
 
-            video_texture: VideoTexture {
-                texture,
-                frame_info: None,
-                source_pixel_format: SourceImageDataFormat::WgpuCompatible(
-                    wgpu::TextureFormat::Rgba8Unorm,
-                ),
-            },
+            // TODO: doing this lazy is fine overall, but it causes us not propagating the dimensions on reset when we actually know them.
+            // need to dive deeper and improve architecture for this probably
+            video_texture: None,
 
             last_requested_sample_idx: usize::MAX,
             last_requested_gop_idx: usize::MAX,
@@ -137,11 +129,13 @@ impl VideoPlayer {
 
         let error_on_last_frame_at = self.last_error.is_some();
         self.enqueue_samples(presentation_timestamp, video_data)?;
-        self.update_video_texture(render_ctx, presentation_timestamp)?;
 
-        let frame_info = self.video_texture.frame_info.clone();
+        let previous_video_texture = self.video_texture.take();
+        let video_texture =
+            self.update_video_texture(render_ctx, previous_video_texture, presentation_timestamp)?;
+        let video_texture = self.video_texture.insert(video_texture);
 
-        if let Some(frame_info) = frame_info {
+        if let Some(frame_info) = video_texture.frame_info.clone() {
             let time_range = frame_info.presentation_time_range();
             let is_active_frame = time_range.contains(&presentation_timestamp);
 
@@ -152,8 +146,8 @@ impl VideoPlayer {
                 // This is important to avoid flickering, in particular when switching from
                 // benign errors like DecodingError::NegativeTimestamp.
                 // If we don't do this, we see the last valid texture which can look really weird.
-                clear_texture(render_ctx, &self.video_texture.texture);
-                self.video_texture.frame_info = None;
+                clear_texture(render_ctx, &video_texture.texture);
+                video_texture.frame_info = None;
                 true
             } else if presentation_timestamp < time_range.start {
                 // We're seeking backwards and somehow forgot to reset.
@@ -169,19 +163,19 @@ impl VideoPlayer {
                 }
             };
             Ok(VideoFrameTexture {
-                texture: self.video_texture.texture.clone(),
+                texture: video_texture.texture.clone(),
                 is_pending,
                 show_spinner,
                 frame_info: Some(frame_info),
-                source_pixel_format: self.video_texture.source_pixel_format,
+                source_pixel_format: video_texture.source_pixel_format,
             })
         } else {
             Ok(VideoFrameTexture {
-                texture: self.video_texture.texture.clone(),
+                texture: video_texture.texture.clone(),
                 is_pending: true,
                 show_spinner: true,
                 frame_info: None,
-                source_pixel_format: self.video_texture.source_pixel_format,
+                source_pixel_format: video_texture.source_pixel_format,
             })
         }
     }
@@ -314,43 +308,49 @@ impl VideoPlayer {
     fn update_video_texture(
         &mut self,
         render_ctx: &RenderContext,
+        previous_video_texture: Option<VideoTexture>,
         presentation_timestamp: Time,
-    ) -> Result<(), VideoPlayerError> {
+    ) -> Result<VideoTexture, VideoPlayerError> {
         let result = self.chunk_decoder.update_video_texture(
             render_ctx,
-            &mut self.video_texture,
+            previous_video_texture,
             presentation_timestamp,
         );
 
-        if let Err(err) = result {
-            if matches!(err, VideoPlayerError::EmptyBuffer) {
-                // No buffered frames
-
-                // Might this be due to an error?
-                //
-                // We only care about decoding errors when we don't find the requested frame,
-                // since we want to keep playing the video fine even if parts of it are broken.
-                // That said, practically we reset the decoder and thus all frames upon error,
-                // so it doesn't make a lot of difference.
-                if let Some(timed_error) = &self.last_error {
-                    if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
-                        // Report the error only if we have been in an error state for a certain amount of time.
-                        // Don't immediately report the error, since we might immediately recover from it.
-                        // Otherwise, this would cause aggressive flickering!
-                        return Err(timed_error.latest_error.clone());
-                    }
-                }
-
-                // Don't return a zeroed texture, because we may just be behind on decoding
-                // and showing an old frame is better than showing a blank frame,
-                // because it causes "black flashes" to appear
-                Ok(())
-            } else {
-                Err(err)
+        match result {
+            Ok(video_texture) => {
+                self.last_error = None;
+                Ok(video_texture.clone())
             }
-        } else {
-            self.last_error = None;
-            Ok(())
+            Err(err) => {
+                if matches!(err, VideoPlayerError::EmptyBuffer) {
+                    // No buffered frames
+
+                    // Might this be due to an error?
+                    //
+                    // We only care about decoding errors when we don't find the requested frame,
+                    // since we want to keep playing the video fine even if parts of it are broken.
+                    // That said, practically we reset the decoder and thus all frames upon error,
+                    // so it doesn't make a lot of difference.
+                    if let Some(timed_error) = &self.last_error {
+                        if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
+                            // Report the error only if we have been in an error state for a certain amount of time.
+                            // Don't immediately report the error, since we might immediately recover from it.
+                            // Otherwise, this would cause aggressive flickering!
+                            return Err(timed_error.latest_error.clone());
+                        }
+                    }
+
+                    // Don't return a zeroed texture, because we may just be behind on decoding
+                    // and showing an old frame is better than showing a blank frame,
+                    // because it causes "black flashes" to appear
+                    self.video_texture
+                        .clone()
+                        .ok_or(VideoPlayerError::EmptyBuffer)
+                } else {
+                    Err(err)
+                }
+            }
         }
     }
 
@@ -392,41 +392,6 @@ impl VideoPlayer {
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
     }
-}
-
-#[allow(unused)] // For some feature flags
-fn alloc_video_frame_texture(
-    device: &wgpu::Device,
-    pool: &GpuTexturePool,
-    width: u32,
-    height: u32,
-) -> GpuTexture2D {
-    let Some(texture) = GpuTexture2D::new(pool.alloc(
-        device,
-        &TextureDesc {
-            label: "video".into(),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
-            // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
-            usage: wgpu::TextureUsages::COPY_DST
-                | wgpu::TextureUsages::COPY_SRC
-                | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::RENDER_ATTACHMENT,
-        },
-    )) else {
-        // We set the dimension to `2D` above, so this should never happen.
-        unreachable!();
-    };
-
-    texture
 }
 
 /// Clears the texture that is shown on pending to black.

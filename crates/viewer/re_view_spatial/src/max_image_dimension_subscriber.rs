@@ -194,7 +194,7 @@ fn size_from_blob(blob: &[u8], media_type: &MediaType) -> Option<[u32; 2]> {
         re_tracing::profile_scope!("video");
         re_video::VideoData::load_from_bytes(blob, media_type)
             .ok()
-            .map(|video| video.dimensions())
+            .and_then(|video| video.dimensions())
     } else {
         None
     }

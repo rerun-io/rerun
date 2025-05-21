@@ -38,10 +38,25 @@ impl std::fmt::Display for ChromaSubsamplingModes {
     }
 }
 
-/// Decoded video data.
+/// The basic codec family used to encode the video.
+#[derive(Clone, Debug)]
+pub enum VideoCodec {
+    Av1,
+    H264,
+    H265,
+    Vp8,
+    Vp9,
+    Other(String),
+}
+
+/// Encoded, demuxed video data.
 #[derive(Clone)]
 pub struct VideoData {
-    pub config: Config,
+    /// The codec used to encode the video.
+    pub codec: VideoCodec,
+
+    // TODO: what is this even, exactly?
+    pub config: Option<Mp4Config>, // TODO: mp4 specific sounds wrong. also details here may be available and some not.
 
     /// How many time units are there per second.
     pub timescale: Timescale,
@@ -146,43 +161,56 @@ impl VideoData {
         self.duration.duration(self.timescale)
     }
 
-    /// Natural width and height of the video
+    /// Natural width and height of the video if known.
     #[inline]
-    pub fn dimensions(&self) -> [u32; 2] {
-        [self.width(), self.height()]
+    pub fn dimensions(&self) -> Option<[u32; 2]> {
+        Some([self.width()?, self.height()?])
     }
 
-    /// Natural width of the video.
+    /// Natural width of the video if known.
     #[inline]
-    pub fn width(&self) -> u32 {
-        self.config.coded_width as u32
+    pub fn width(&self) -> Option<u32> {
+        self.config.as_ref().map(|c| c.coded_width as u32)
     }
 
-    /// Natural height of the video.
+    /// Natural height of the video if known.
     #[inline]
-    pub fn height(&self) -> u32 {
-        self.config.coded_height as u32
+    pub fn height(&self) -> Option<u32> {
+        self.config.as_ref().map(|c| c.coded_height as u32)
     }
 
     /// The codec used to encode the video.
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
-        let human_readable = match &self.config.stsd.contents {
-            re_mp4::StsdBoxContent::Av01(_) => "AV1",
-            re_mp4::StsdBoxContent::Avc1(_) => "H.264",
-            re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
-            re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
-            re_mp4::StsdBoxContent::Vp08(_) => "VP8",
-            re_mp4::StsdBoxContent::Vp09(_) => "VP9",
-            re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
-            re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
-            re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
-        };
+        // TODO: not happy with this distinction
+        if let Some(config) = self.config.as_ref() {
+            let human_readable = match &config.stsd.contents {
+                re_mp4::StsdBoxContent::Av01(_) => "AV1",
+                re_mp4::StsdBoxContent::Avc1(_) => "H.264",
+                re_mp4::StsdBoxContent::Hvc1(_) => "H.265 HVC1",
+                re_mp4::StsdBoxContent::Hev1(_) => "H.265 HEV1",
+                re_mp4::StsdBoxContent::Vp08(_) => "VP8",
+                re_mp4::StsdBoxContent::Vp09(_) => "VP9",
+                re_mp4::StsdBoxContent::Mp4a(_) => "AAC",
+                re_mp4::StsdBoxContent::Tx3g(_) => "TTXT",
+                re_mp4::StsdBoxContent::Unknown(_) => "Unknown",
+            };
 
-        if let Some(codec) = self.config.stsd.contents.codec_string() {
-            format!("{human_readable} ({codec})")
+            if let Some(codec) = config.stsd.contents.codec_string() {
+                format!("{human_readable} ({codec})")
+            } else {
+                human_readable.to_owned()
+            }
         } else {
-            human_readable.to_owned()
+            match &self.codec {
+                VideoCodec::Av1 => "AV1",
+                VideoCodec::H264 => "H.264",
+                VideoCodec::H265 => "H.265",
+                VideoCodec::Vp8 => "VP8",
+                VideoCodec::Vp9 => "VP9",
+                VideoCodec::Other(codec) => codec,
+            }
+            .to_owned()
         }
     }
 
@@ -196,7 +224,7 @@ impl VideoData {
     ///
     /// Returns None if not detected or unknown.
     pub fn subsampling_mode(&self) -> Option<ChromaSubsamplingModes> {
-        match &self.config.stsd.contents {
+        match &self.config.as_ref()?.stsd.contents {
             re_mp4::StsdBoxContent::Av01(av01_box) => {
                 // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
                 match (
@@ -254,13 +282,13 @@ impl VideoData {
     ///
     /// Usually 8, but 10 for HDR (for example).
     pub fn bit_depth(&self) -> Option<u8> {
-        self.config.stsd.contents.bit_depth()
+        self.config.as_ref()?.stsd.contents.bit_depth()
     }
 
     /// Returns None if the mp4 doesn't specify whether the video is monochrome or
     /// we haven't yet implemented the logic to determine this.
     pub fn is_monochrome(&self) -> Option<bool> {
-        match &self.config.stsd.contents {
+        match &self.config.as_ref()?.stsd.contents {
             re_mp4::StsdBoxContent::Av01(av01_box) => Some(av01_box.av1c.monochrome),
             re_mp4::StsdBoxContent::Avc1(_)
             | re_mp4::StsdBoxContent::Hvc1(_)
@@ -504,7 +532,7 @@ impl Sample {
 
 /// Configuration of a video.
 #[derive(Debug, Clone)]
-pub struct Config {
+pub struct Mp4Config {
     /// Contains info about the codec, bit depth, etc.
     pub stsd: re_mp4::StsdBox,
 
@@ -518,7 +546,7 @@ pub struct Config {
     pub coded_width: u16,
 }
 
-impl Config {
+impl Mp4Config {
     pub fn is_av1(&self) -> bool {
         matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
     }

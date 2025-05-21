@@ -111,16 +111,22 @@ impl Video {
         &self.data
     }
 
-    /// Natural width of the video.
+    /// Natural width of the video if known.
     #[inline]
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> Option<u32> {
         self.data.width()
     }
 
-    /// Natural height of the video.
+    /// Natural height of the video if known.
     #[inline]
-    pub fn height(&self) -> u32 {
+    pub fn height(&self) -> Option<u32> {
         self.data.height()
+    }
+
+    /// Natural dimensions of the video if known.
+    #[inline]
+    pub fn dimensions(&self) -> Option<[u32; 2]> {
+        self.data.dimensions()
     }
 
     /// Returns a texture with the latest frame at the given time since video start.
@@ -154,7 +160,6 @@ impl Video {
             Entry::Vacant(vacant_entry) => {
                 let new_player = player::VideoPlayer::new(
                     &self.debug_name,
-                    render_context,
                     self.data.clone(),
                     &self.decode_settings,
                 )?;

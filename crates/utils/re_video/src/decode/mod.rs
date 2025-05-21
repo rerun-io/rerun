@@ -89,6 +89,7 @@ mod ffmpeg_h264;
 pub use ffmpeg_h264::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
 };
+use re_mp4::StsdBoxContent;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
@@ -192,9 +193,9 @@ pub fn new_decoder(
     )?));
 
     #[cfg(not(target_arch = "wasm32"))]
-    match &video.config.stsd.contents {
+    match video.codec {
         #[cfg(feature = "av1")]
-        re_mp4::StsdBoxContent::Av01(_av01_box) => {
+        crate::VideoCodec::Av1 => {
             #[cfg(linux_arm64)]
             {
                 return Err(Error::NoDav1dOnLinuxArm64);
@@ -216,11 +217,16 @@ pub fn new_decoder(
         }
 
         #[cfg(with_ffmpeg)]
-        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
+        crate::VideoCodec::H264 => {
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
-                avc1_box.clone(),
+                video.config.clone().map(|c| match c.stsd.contents {
+                    StsdBoxContent::Avc1(avc1) => avc1,
+                    _ => {
+                        unreachable!("TODO: this is unreachable? should be!!!")
+                    }
+                }),
                 on_output,
                 decode_settings.ffmpeg_path.clone(),
             )?))

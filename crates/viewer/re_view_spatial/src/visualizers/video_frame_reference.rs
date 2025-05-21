@@ -188,8 +188,6 @@ impl VideoFrameReferenceVisualizer {
 
             Some((video, video_data)) => match video.as_ref() {
                 Ok(video) => {
-                    video_resolution = glam::vec2(video.width() as _, video.height() as _);
-
                     match video.frame_at(
                         ctx.viewer_ctx.render_ctx(),
                         player_stream_id,
@@ -200,7 +198,7 @@ impl VideoFrameReferenceVisualizer {
                             texture,
                             is_pending,
                             show_spinner,
-                            frame_info: _, // TODO(emilk): maybe add to `PickableTexturedRect` and `PickingHitType::TexturedRect` so we can show on hover?
+                            frame_info: _,
                             source_pixel_format: _,
                         }) => {
                             // Make sure to use the video instead of texture size here,
@@ -208,9 +206,9 @@ impl VideoFrameReferenceVisualizer {
                             let top_left_corner_position =
                                 world_from_entity.transform_point3(glam::Vec3::ZERO);
                             let extent_u = world_from_entity
-                                .transform_vector3(glam::Vec3::X * video_resolution.x);
+                                .transform_vector3(glam::Vec3::X * texture.width() as f32);
                             let extent_v = world_from_entity
-                                .transform_vector3(glam::Vec3::Y * video_resolution.y);
+                                .transform_vector3(glam::Vec3::Y * texture.height() as f32);
 
                             if is_pending {
                                 // Keep polling for a fresh texture
@@ -247,6 +245,9 @@ impl VideoFrameReferenceVisualizer {
                         }
 
                         Err(err) => {
+                            if let Some([w, h]) = video.dimensions() {
+                                video_resolution = glam::vec2(w as _, h as _);
+                            }
                             self.show_video_error(
                                 ctx,
                                 spatial_ctx,

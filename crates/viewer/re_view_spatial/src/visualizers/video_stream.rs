@@ -11,9 +11,10 @@ use re_types::{
     archetypes::VideoStream,
     components::{self},
 };
+use re_video::VideoData;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
+    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -124,6 +125,32 @@ impl VisualizerSystem for VideoStreamVisualizer {
             };
 
             // Setup video decoder...
+
+            // TODO: this needs improvements.
+            // TODO: should we try reading out the first few packages to guess some stuff?
+            // let video_data = re_video::VideoData {
+            //     config: re_video::Mp4Config {
+            //         dimensions: Some([1280, 720]),
+            //         ..Default::default()
+            //     },
+            // };
+
+            // let video = ctx
+            //     .viewer_ctx
+            //     .store_context
+            //     .caches
+            //     .entry(|c: &mut VideoCache| {
+            //         let debug_name = entity_path.to_string();
+            //         c.entry(
+            //             debug_name,
+            //             blob_row_id,
+            //             &VideoStream::descriptor_chunk_data(),
+            //             &blob,
+            //             media_type.as_ref(),
+            //             ctx.app_options().video_decoder_settings(),
+            //         )
+            //     });
+
             // TODO:
             self.show_video_error(
                 &query_context,

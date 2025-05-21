@@ -1,6 +1,6 @@
 #![allow(clippy::map_err_ignore)]
 
-use super::{Config, GroupOfPictures, Sample, VideoData, VideoLoadError};
+use super::{GroupOfPictures, Mp4Config, Sample, VideoData, VideoLoadError};
 
 use crate::{Time, Timescale, demux::SamplesStatistics};
 
@@ -29,7 +29,7 @@ impl VideoData {
         let coded_height = track.height;
         let coded_width = track.width;
 
-        let config = Config {
+        let config = Mp4Config {
             stsd,
             description,
             coded_height,
@@ -131,8 +131,26 @@ impl VideoData {
 
         let samples_statistics = SamplesStatistics::new(&samples);
 
+        let codec = match &config.stsd.contents {
+            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::Av1,
+            re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
+            re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
+                crate::VideoCodec::H265
+            }
+            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::Vp8,
+            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::Vp9,
+            _ => crate::VideoCodec::Other(
+                config
+                    .stsd
+                    .contents
+                    .codec_string()
+                    .unwrap_or("unknown".to_owned()),
+            ),
+        };
+
         Ok(Self {
-            config,
+            codec,
+            config: Some(config),
             timescale,
             duration,
             samples_statistics,

@@ -8,12 +8,12 @@ use parking_lot::Mutex;
 
 use crate::{
     RenderContext,
-    resource_managers::SourceImageDataFormat,
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
     video::{
         VideoPlayerError,
         player::{TimedDecodingError, VideoTexture},
     },
-    wgpu_resources::GpuTexture,
+    wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
 };
 
 #[derive(Default)]
@@ -115,9 +115,9 @@ impl VideoChunkDecoder {
     pub fn update_video_texture(
         &self,
         render_ctx: &RenderContext,
-        video_texture: &mut VideoTexture,
+        previous_video_texture: Option<VideoTexture>,
         presentation_timestamp: Time,
-    ) -> Result<(), VideoPlayerError> {
+    ) -> Result<VideoTexture, VideoPlayerError> {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
@@ -138,6 +138,25 @@ impl VideoChunkDecoder {
         let frame = &frames[frame_idx];
 
         let frame_time_range = frame.info.presentation_time_range();
+
+        let mut video_texture = if let Some(video_texture) = previous_video_texture {
+            video_texture
+        } else {
+            VideoTexture {
+                texture: alloc_video_frame_texture(
+                    &render_ctx.device,
+                    &render_ctx.gpu_resources.textures,
+                    frame.content.width,
+                    frame.content.height,
+                ),
+                frame_info: None,
+                // Placeholder, going to be replaced.
+                // TODO: that's ugly!
+                source_pixel_format: SourceImageDataFormat::WgpuCompatible(
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
+            }
+        };
 
         let is_up_to_date = video_texture
             .frame_info
@@ -165,7 +184,7 @@ impl VideoChunkDecoder {
             video_texture.frame_info = Some(frame.info.clone());
         }
 
-        Ok(())
+        Ok(video_texture)
     }
 
     /// Reset the video decoder and discard all frames.
@@ -183,6 +202,40 @@ impl VideoChunkDecoder {
     pub fn take_error(&self) -> Option<TimedDecodingError> {
         self.decoder_output.lock().error.take()
     }
+}
+
+fn alloc_video_frame_texture(
+    device: &wgpu::Device,
+    pool: &GpuTexturePool,
+    width: u32,
+    height: u32,
+) -> GpuTexture2D {
+    let Some(texture) = GpuTexture2D::new(pool.alloc(
+        device,
+        &TextureDesc {
+            label: "video".into(),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            // Needs [`wgpu::TextureUsages::RENDER_ATTACHMENT`], otherwise copy of external textures will fail.
+            // Adding [`wgpu::TextureUsages::COPY_SRC`] so we can read back pixels on demand.
+            usage: wgpu::TextureUsages::COPY_DST
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::TEXTURE_BINDING
+                | wgpu::TextureUsages::RENDER_ATTACHMENT,
+        },
+    )) else {
+        // We set the dimension to `2D` above, so this should never happen.
+        unreachable!();
+    };
+
+    texture
 }
 
 #[cfg(target_arch = "wasm32")]
