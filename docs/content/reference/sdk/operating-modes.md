@@ -12,7 +12,7 @@ Before reading this document, you might want to familiarize yourself with the [R
 
 ## Operating modes
 
-The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve_grpc`, and `save`.
+The Rerun SDK provides 4 modes of operation: `spawn`, `connect_grpc`, `serve_grpc`, and `save`.
 
 All four of them are optional: when none of these modes are active, the client will simply buffer the logged data in memory, waiting for one of these modes to be enabled so that it can flush it.
 
@@ -30,20 +30,20 @@ Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_
 [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via gRPC. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 
-### `connect`
+### `connect_grpc`
 
 Connects to a remote Rerun Viewer and streams all the data via gRPC.
 
 You will need to start a stand-alone Viewer first by typing `rerun` in your terminal.
 
 #### C++
-`RecordingStream::connect`
+`RecordingStream::connect_grpc`
 
 #### Python
-[`rr.connect`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect)
+[`rr.connect_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect_grpc)
 
 #### Rust
-[`RecordingStream::connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.connect)
+[`RecordingStream::connect_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.connect_grpc)
 
 
 ### `serve_grpc`
