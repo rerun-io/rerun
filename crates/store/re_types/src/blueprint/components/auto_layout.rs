@@ -28,8 +28,8 @@ pub struct AutoLayout(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for AutoLayout {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.AutoLayout")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.AutoLayout".into()
     }
 }
 

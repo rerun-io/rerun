@@ -36,8 +36,8 @@ pub struct LineStrip3D(pub Vec<crate::datatypes::Vec3D>);
 
 impl ::re_types_core::Component for LineStrip3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.LineStrip3D")
+    fn name() -> ComponentName {
+        "rerun.components.LineStrip3D".into()
     }
 }
 

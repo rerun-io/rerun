@@ -28,8 +28,8 @@ pub struct TensorDimensionIndexSlider(pub crate::blueprint::datatypes::TensorDim
 
 impl ::re_types_core::Component for TensorDimensionIndexSlider {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.TensorDimensionIndexSlider")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.TensorDimensionIndexSlider".into()
     }
 }
 

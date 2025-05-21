@@ -28,8 +28,8 @@ pub struct ApplyLatestAt(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for ApplyLatestAt {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ApplyLatestAt")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ApplyLatestAt".into()
     }
 }
 

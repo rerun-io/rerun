@@ -30,8 +30,8 @@ pub struct RootContainer(
 
 impl ::re_types_core::Component for RootContainer {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.RootContainer")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.RootContainer".into()
     }
 }
 

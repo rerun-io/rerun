@@ -26,8 +26,8 @@ pub struct EntityPath(pub crate::datatypes::EntityPath);
 
 impl ::re_types_core::Component for EntityPath {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.EntityPath")
+    fn name() -> ComponentName {
+        "rerun.components.EntityPath".into()
     }
 }
 

@@ -28,8 +28,8 @@ pub struct FilterIsNotNull(pub crate::blueprint::datatypes::FilterIsNotNull);
 
 impl ::re_types_core::Component for FilterIsNotNull {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.FilterIsNotNull")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.FilterIsNotNull".into()
     }
 }
 

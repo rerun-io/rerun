@@ -33,8 +33,8 @@ pub struct Radius(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for Radius {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Radius")
+    fn name() -> ComponentName {
+        "rerun.components.Radius".into()
     }
 }
 

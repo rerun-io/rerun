@@ -24,8 +24,8 @@ pub struct AffixFuzzer8(pub Option<f32>);
 
 impl ::re_types_core::Component for AffixFuzzer8 {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer8")
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer8".into()
     }
 }
 

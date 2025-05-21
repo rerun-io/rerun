@@ -28,8 +28,8 @@ pub struct SeriesVisible(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for SeriesVisible {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.SeriesVisible")
+    fn name() -> ComponentName {
+        "rerun.components.SeriesVisible".into()
     }
 }
 

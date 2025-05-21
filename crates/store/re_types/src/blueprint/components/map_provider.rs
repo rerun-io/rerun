@@ -40,8 +40,8 @@ pub enum MapProvider {
 
 impl ::re_types_core::Component for MapProvider {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.MapProvider")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.MapProvider".into()
     }
 }
 

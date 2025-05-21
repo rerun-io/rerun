@@ -144,11 +144,6 @@ macro_rules! delegate_arrow_tuid {
             fn name() -> $crate::ComponentName {
                 $fqname.into()
             }
-
-            #[inline]
-            fn descriptor() -> $crate::ComponentDescriptor {
-                $crate::ComponentDescriptor::new($fqname)
-            }
         }
     };
 }

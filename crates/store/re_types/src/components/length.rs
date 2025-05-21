@@ -29,8 +29,8 @@ pub struct Length(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for Length {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Length")
+    fn name() -> ComponentName {
+        "rerun.components.Length".into()
     }
 }
 

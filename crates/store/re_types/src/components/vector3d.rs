@@ -26,8 +26,8 @@ pub struct Vector3D(pub crate::datatypes::Vec3D);
 
 impl ::re_types_core::Component for Vector3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Vector3D")
+    fn name() -> ComponentName {
+        "rerun.components.Vector3D".into()
     }
 }
 

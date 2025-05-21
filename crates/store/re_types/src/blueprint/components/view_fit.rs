@@ -37,8 +37,8 @@ pub enum ViewFit {
 
 impl ::re_types_core::Component for ViewFit {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ViewFit")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ViewFit".into()
     }
 }
 

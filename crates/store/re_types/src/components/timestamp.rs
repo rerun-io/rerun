@@ -28,8 +28,8 @@ pub struct Timestamp(pub crate::datatypes::TimeInt);
 
 impl ::re_types_core::Component for Timestamp {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Timestamp")
+    fn name() -> ComponentName {
+        "rerun.components.Timestamp".into()
     }
 }
 

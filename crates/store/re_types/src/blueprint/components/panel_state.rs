@@ -37,8 +37,8 @@ pub enum PanelState {
 
 impl ::re_types_core::Component for PanelState {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.PanelState")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.PanelState".into()
     }
 }
 

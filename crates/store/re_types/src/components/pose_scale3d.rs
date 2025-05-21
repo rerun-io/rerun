@@ -30,8 +30,8 @@ pub struct PoseScale3D(pub crate::datatypes::Vec3D);
 
 impl ::re_types_core::Component for PoseScale3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.PoseScale3D")
+    fn name() -> ComponentName {
+        "rerun.components.PoseScale3D".into()
     }
 }
 
