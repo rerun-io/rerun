@@ -1,6 +1,5 @@
 use re_chunk::{Chunk, LatestAtQuery, RowId, Timeline, TimelineName};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types_core::Component as _;
 
 // ---
 
@@ -12,13 +11,13 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::new(TimelineName::new("frame"), 4);
 
     // Find all relevant data for a query:
-    let chunk = chunk.latest_at(&query, &MyPoint::descriptor());
-    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoint::descriptor());
+    let chunk = chunk.latest_at(&query, &MyPoints::descriptor_points());
+    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoints::descriptor_points());
 
     // And then slice it as appropriate:
     let chunk = chunk
         .timeline_sliced(TimelineName::log_time())
-        .component_sliced(&MyPoint::descriptor());
+        .component_sliced(&MyPoints::descriptor_points());
     eprintln!("Sliced down to specific timeline and component:\n{chunk}");
 
     Ok(())

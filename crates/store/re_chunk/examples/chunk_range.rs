@@ -3,7 +3,6 @@ use re_log_types::{
     ResolvedTimeRange,
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
 };
-use re_types_core::Component as _;
 
 // ---
 
@@ -15,13 +14,13 @@ fn main() -> anyhow::Result<()> {
     let query = RangeQuery::new(TimelineName::new("frame"), ResolvedTimeRange::EVERYTHING);
 
     // Find all relevant data for a query:
-    let chunk = chunk.range(&query, &MyPoint::descriptor());
-    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoint::descriptor());
+    let chunk = chunk.range(&query, &MyPoints::descriptor_points());
+    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoints::descriptor_points());
 
     // And then slice it as appropriate:
     let chunk = chunk
         .timeline_sliced(TimelineName::log_time())
-        .component_sliced(&MyPoint::descriptor());
+        .component_sliced(&MyPoints::descriptor_points());
     eprintln!("Sliced down to specific timeline and component:\n{chunk}");
 
     Ok(())
