@@ -8,12 +8,11 @@ use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntryId, TimelineName};
-use re_sorbet::{BatchType, ColumnDescriptorRef, SorbetSchema};
+use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::UiExt as _;
 use re_ui::list_item::ItemButton;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-use crate::DisplayRecordBatch;
 use crate::datafusion_adapter::DataFusionAdapter;
 use crate::table_blueprint::{
     ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
@@ -21,27 +20,31 @@ use crate::table_blueprint::{
 use crate::table_utils::{
     CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
 };
+use crate::{DisplayRecordBatch, default_display_name_for_column};
 
-//TODO docstring
 struct Column<'a> {
+    /// The ID of the column (based on it's corresponding [`ColumnDescriptor`]).
     id: egui::Id,
+
+    /// Reference to the descriptor of this column.
     desc: ColumnDescriptorRef<'a>,
+
+    /// The blueprint of this column.
     blueprint: ColumnBlueprint,
 }
 
 impl Column<'_> {
     fn display_name(&self) -> String {
         self.blueprint
-            .name
+            .display_name
             .clone()
-            .unwrap_or_else(|| self.desc.column_name(BatchType::Dataframe))
+            .unwrap_or_else(|| default_display_name_for_column(&self.desc))
     }
 }
 
-/// Keep track of the columns in a sorbet batch, indexed by id.
+/// Keep track of a [`re_sorbet::SorbetBatch`]'s columns, along with their order and their blueprint.
 struct Columns<'a> {
     columns: Vec<Column<'a>>,
-
     column_from_index: IntMap<egui::Id, usize>,
 }
 

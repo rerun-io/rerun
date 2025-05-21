@@ -154,7 +154,7 @@ impl Server {
                 .default_visibility(default_visible);
 
             if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
-                blueprint = blueprint.alternate_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
             }
 
             blueprint

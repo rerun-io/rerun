@@ -309,7 +309,7 @@ impl DisplayColumn {
                 component_descr: desc.component_descriptor(),
                 component_data: ComponentData::try_new(desc, column_data)?,
                 row_ids: None,
-                variant_name: column_blueprint.alternate_ui,
+                variant_name: column_blueprint.variant_ui,
             })),
         }
     }

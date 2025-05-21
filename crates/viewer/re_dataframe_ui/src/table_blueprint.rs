@@ -68,45 +68,46 @@ pub struct TableBlueprint {
     pub partition_links: Option<PartitionLinksSpec>,
 }
 
-//TODO docstring
+/// The blueprint for a specific column.
+// TODO(ab): these should eventually be stored in `TableBlueprint`, but is currently not strictly
+// necessary since we don't need to store the column blueprint for now.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ColumnBlueprint {
-    pub name: Option<String>,
+    /// The name to use for this column in the UI.
+    ///
+    /// If `None`, the column will be named using [`default_display_name_for_column`].
+    pub display_name: Option<String>,
     pub default_visibility: bool,
-    pub alternate_ui: Option<VariantName>,
+    pub variant_ui: Option<VariantName>,
 }
 
 impl Default for ColumnBlueprint {
     fn default() -> Self {
         Self {
-            name: None,
+            display_name: None,
             default_visibility: true,
-            alternate_ui: None,
+            variant_ui: None,
         }
     }
 }
 
 impl ColumnBlueprint {
+    /// Same as [`Self::default()`], but returns a reference to a static instance.
     pub fn default_ref() -> &'static Self {
         use std::sync::OnceLock;
         static DEFAULT: OnceLock<ColumnBlueprint> = OnceLock::new();
         DEFAULT.get_or_init(Self::default)
     }
 
+    /// Set the name to use for this column in the UI.
     pub fn name(self, name: impl Into<String>) -> Self {
         Self {
-            name: Some(name.into()),
+            display_name: Some(name.into()),
             ..self
         }
     }
 
-    pub fn name_from_descriptor(self, desc: &ColumnDescriptorRef<'_>) -> Self {
-        Self {
-            name: Some(default_display_name_for_column(desc)),
-            ..self
-        }
-    }
-
+    /// Set the default visibility of this column.
     pub fn default_visibility(self, initial_visibility: bool) -> Self {
         Self {
             default_visibility: initial_visibility,
@@ -114,9 +115,10 @@ impl ColumnBlueprint {
         }
     }
 
-    pub fn alternate_ui(self, alternate_ui: impl Into<VariantName>) -> Self {
+    /// Set the alternate UI to use for this column
+    pub fn variant_ui(self, variant_ui: impl Into<VariantName>) -> Self {
         Self {
-            alternate_ui: Some(alternate_ui.into()),
+            variant_ui: Some(variant_ui.into()),
             ..self
         }
     }
