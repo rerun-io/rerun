@@ -12,18 +12,18 @@ impl ::prost::Name for VersionRequest {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct VersionReponse {
+pub struct VersionResponse {
     #[prost(message, optional, tag = "1")]
     pub build_info: ::core::option::Option<super::super::common::v1alpha1::BuildInfo>,
 }
-impl ::prost::Name for VersionReponse {
-    const NAME: &'static str = "VersionReponse";
+impl ::prost::Name for VersionResponse {
+    const NAME: &'static str = "VersionResponse";
     const PACKAGE: &'static str = "rerun.frontend.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.frontend.v1alpha1.VersionReponse".into()
+        "rerun.frontend.v1alpha1.VersionResponse".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.frontend.v1alpha1.VersionReponse".into()
+        "/rerun.frontend.v1alpha1.VersionResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -374,7 +374,7 @@ pub mod frontend_service_client {
         pub async fn version(
             &mut self,
             request: impl tonic::IntoRequest<super::VersionRequest>,
-        ) -> std::result::Result<tonic::Response<super::VersionReponse>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::VersionResponse>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -907,7 +907,7 @@ pub mod frontend_service_server {
         async fn version(
             &self,
             request: tonic::Request<super::VersionRequest>,
-        ) -> std::result::Result<tonic::Response<super::VersionReponse>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<super::VersionResponse>, tonic::Status>;
         async fn find_entries(
             &self,
             request: tonic::Request<super::super::super::catalog::v1alpha1::FindEntriesRequest>,
@@ -1211,7 +1211,7 @@ pub mod frontend_service_server {
                     #[allow(non_camel_case_types)]
                     struct VersionSvc<T: FrontendService>(pub Arc<T>);
                     impl<T: FrontendService> tonic::server::UnaryService<super::VersionRequest> for VersionSvc<T> {
-                        type Response = super::VersionReponse;
+                        type Response = super::VersionResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,

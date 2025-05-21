@@ -17,7 +17,7 @@ import "rerun/v1alpha1/tasks.proto";
 
 // Redap's public API.
 service FrontendService {
-  rpc Version(VersionRequest) returns (VersionReponse) {}
+  rpc Version(VersionRequest) returns (VersionResponse) {}
 
   // --- Catalog ---
   // Mostly a 1:1 proxy at the moment.
@@ -120,7 +120,7 @@ service FrontendService {
 
 message VersionRequest {}
 
-message VersionReponse {
+message VersionResponse {
   rerun.common.v1alpha1.BuildInfo build_info = 1;
 }
 
