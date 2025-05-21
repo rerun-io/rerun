@@ -285,7 +285,7 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
     let device_caps = re_renderer::device_caps::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
-        pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
+        pollster::block_on(adapter.request_device(&device_caps.device_descriptor()))
             .expect("Failed to request device.");
 
     SharedWgpuResources {
