@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
@@ -39,6 +39,13 @@ impl Deref for ChunkSchema {
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.sorbet
+    }
+}
+
+impl DerefMut for ChunkSchema {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.sorbet
     }
 }
 

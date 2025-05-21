@@ -393,48 +393,57 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
             });
 
             header_ui(ui, |ui| {
-                egui::Sides::new().show(
-                    ui,
-                    |ui| {
-                        ui.label(egui::RichText::new(name).strong().monospace());
+                egui::Sides::new()
+                    .show(
+                        ui,
+                        |ui| {
+                            let response = ui.label(egui::RichText::new(name).strong().monospace());
 
-                        if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
-                            ui.add_space(-5.0);
-                            ui.small_icon(
-                                dir_icon,
-                                Some(
-                                    ui.design_tokens()
-                                        .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
-                                ),
-                            );
-                        }
-                    },
-                    |ui| {
-                        egui::containers::menu::MenuButton::from_button(
-                            ui.small_icon_button_widget(&re_ui::icons::MORE),
-                        )
-                        .ui(ui, |ui| {
-                            for sort_direction in SortDirection::iter() {
-                                let already_sorted =
-                                    Some(&sort_direction) == current_sort_direction;
-
-                                if ui
-                                    .add_enabled_ui(!already_sorted, |ui| {
-                                        sort_direction.menu_button(ui)
-                                    })
-                                    .inner
-                                    .clicked()
-                                {
-                                    self.new_blueprint.sort_by = Some(SortBy {
-                                        column: column_name.to_owned(),
-                                        direction: sort_direction,
-                                    });
-                                    ui.close();
-                                }
+                            if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
+                            {
+                                ui.add_space(-5.0);
+                                ui.small_icon(
+                                    dir_icon,
+                                    Some(
+                                        ui.design_tokens()
+                                            .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
+                                    ),
+                                );
                             }
-                        });
-                    },
-                );
+
+                            response
+                        },
+                        |ui| {
+                            egui::containers::menu::MenuButton::from_button(
+                                ui.small_icon_button_widget(&re_ui::icons::MORE),
+                            )
+                            .ui(ui, |ui| {
+                                for sort_direction in SortDirection::iter() {
+                                    let already_sorted =
+                                        Some(&sort_direction) == current_sort_direction;
+
+                                    if ui
+                                        .add_enabled_ui(!already_sorted, |ui| {
+                                            sort_direction.menu_button(ui)
+                                        })
+                                        .inner
+                                        .clicked()
+                                    {
+                                        self.new_blueprint.sort_by = Some(SortBy {
+                                            column: column_name.to_owned(),
+                                            direction: sort_direction,
+                                        });
+                                        ui.close();
+                                    }
+                                }
+                            });
+                        },
+                    )
+                    .0
+            })
+            .inner
+            .on_hover_ui(|ui| {
+                column_descriptor_ui(ui, desc);
             });
         }
     }
@@ -480,4 +489,95 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn default_row_height(&self) -> f32 {
         re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
     }
+}
+
+fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
+    match *column {
+        ColumnDescriptorRef::RowId(desc) => {
+            let re_sorbet::RowIdColumnDescriptor { is_sorted } = desc;
+
+            header_property_ui(ui, "Type", "row id");
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
+        }
+        ColumnDescriptorRef::Time(desc) => {
+            let re_sorbet::IndexColumnDescriptor {
+                timeline,
+                datatype,
+                is_sorted,
+            } = desc;
+
+            header_property_ui(ui, "Type", "index");
+            header_property_ui(ui, "Timeline", timeline.name());
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
+            datatype_ui(ui, &column.display_name(), datatype);
+        }
+        ColumnDescriptorRef::Component(desc) => {
+            let re_sorbet::ComponentColumnDescriptor {
+                store_datatype,
+                component_name,
+                entity_path,
+                archetype_name,
+                archetype_field_name,
+                is_static,
+                is_indicator,
+                is_tombstone,
+                is_semantically_empty,
+            } = desc;
+
+            header_property_ui(ui, "Type", "component");
+            header_property_ui(ui, "Component", component_name.full_name());
+            header_property_ui(ui, "Entity path", entity_path.to_string());
+            datatype_ui(ui, &column.display_name(), store_datatype);
+            header_property_ui(
+                ui,
+                "Archetype",
+                archetype_name.map(|a| a.full_name()).unwrap_or("-"),
+            );
+            //TODO(#9978): update this if we rename this descriptor field.
+            header_property_ui(
+                ui,
+                "Archetype field",
+                archetype_field_name.map(|a| a.as_str()).unwrap_or("-"),
+            );
+            header_property_ui(ui, "Static", is_static.to_string());
+            header_property_ui(ui, "Indicator", is_indicator.to_string());
+            header_property_ui(ui, "Tombstone", is_tombstone.to_string());
+            header_property_ui(ui, "Empty", is_semantically_empty.to_string());
+        }
+    }
+}
+
+fn sorted_text(sorted: bool) -> &'static str {
+    if sorted { "true" } else { "unknown" }
+}
+
+fn header_property_ui(ui: &mut egui::Ui, label: &str, value: impl AsRef<str>) {
+    egui::Sides::new().show(ui, |ui| ui.strong(label), |ui| ui.monospace(value.as_ref()));
+}
+
+fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes::DataType) {
+    egui::Sides::new().show(
+        ui,
+        |ui| ui.strong("Datatype"),
+        |ui| {
+            // We don't want the copy button to stand out next to the other properties. The copy
+            // icon already indicates that it's a button.
+            ui.visuals_mut().widgets.inactive.fg_stroke =
+                ui.visuals_mut().widgets.noninteractive.fg_stroke;
+
+            if ui
+                .add(
+                    egui::Button::image_and_text(
+                        re_ui::icons::COPY.as_image(),
+                        egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace(),
+                    )
+                    .image_tint_follows_text_color(true),
+                )
+                .clicked()
+            {
+                ui.ctx().copy_text(format!("{datatype:#?}"));
+                re_log::info!("Copied full datatype of column `{column_name}` to clipboard");
+            }
+        },
+    );
 }

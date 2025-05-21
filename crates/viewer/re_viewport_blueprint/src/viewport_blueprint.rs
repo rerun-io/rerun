@@ -94,11 +94,21 @@ impl ViewportBlueprint {
             blueprint_archetypes::ViewportBlueprint::all_components().iter(),
         );
 
-        let root_container = results.component_mono::<RootContainer>();
-        let maximized = results.component_mono::<ViewMaximized>();
-        let auto_layout = results.component_mono::<AutoLayout>();
-        let auto_views = results.component_mono::<AutoViews>();
-        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>();
+        let root_container = results.component_mono::<RootContainer>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_root_container(),
+        );
+        let maximized = results.component_mono::<ViewMaximized>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_maximized(),
+        );
+        let auto_layout = results.component_mono::<AutoLayout>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_layout(),
+        );
+        let auto_views = results.component_mono::<AutoViews>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_auto_views(),
+        );
+        let past_viewer_recommendations = results.component_batch::<ViewerRecommendationHash>(
+            &blueprint_archetypes::ViewportBlueprint::descriptor_past_viewer_recommendations(),
+        );
 
         let root_container: Option<ContainerId> = root_container.map(|id| id.0.into());
         re_log::trace_once!("Loaded root_container: {root_container:?}");

@@ -16,14 +16,15 @@ use crate::{
 #[derive(Debug)]
 pub struct DesignTokens {
     pub theme: egui::Theme,
-    pub json: serde_json::Value,
+
+    typography: Typography,
 
     /// Color table for all colors used in the UI.
     ///
     /// Loaded at startup from `design_tokens.json`.
     pub(crate) color_table: ColorTable, // Not public, because all colors should go via design_token_colors.rs
 
-    // TODO(ab): get rid of these, they should be function calls like the rest.
+    // TODO(ab): get rid of these, they should be function calls in design_token_colors.rs like the rest.
     pub top_bar_color: Color32,
     pub bottom_bar_color: Color32,
     pub bottom_bar_stroke: egui::Stroke,
@@ -36,16 +37,27 @@ pub struct DesignTokens {
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.json`.
     pub fn load(theme: Theme) -> Self {
+        let json: serde_json::Value = match theme {
+            egui::Theme::Dark => {
+                serde_json::from_str(include_str!("../data/design_tokens_dark.json"))
+                    .expect("Failed to parse data/design_tokens_dark.json")
+            }
+
+            egui::Theme::Light => {
+                serde_json::from_str(include_str!("../data/design_tokens_light.json"))
+                    .expect("Failed to parse data/design_tokens_light.json")
+            }
+        };
+
+        let typography: Typography = get_alias(&json, "{Alias.Typography.Default.value}");
+
+        let color_table = load_color_table(&json);
+
         match theme {
             egui::Theme::Dark => {
-                let json: serde_json::Value =
-                    serde_json::from_str(include_str!("../data/design_tokens_dark.json"))
-                        .expect("Failed to parse data/design_tokens_dark.json");
-
-                let color_table = load_color_table(&json);
-
                 Self {
                     theme,
+                    typography,
                     top_bar_color: color_table.gray(S100),
                     bottom_bar_color: color_table.gray(S150),
                     bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
@@ -58,19 +70,13 @@ impl DesignTokens {
                     shadow_gradient_dark_start: Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
                     tab_bar_color: color_table.gray(S200),
                     native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    json,
                     color_table,
                 }
             }
             egui::Theme::Light => {
-                let json: serde_json::Value =
-                    serde_json::from_str(include_str!("../data/design_tokens_light.json"))
-                        .expect("Failed to parse data/design_tokens_light.json");
-
-                let color_table = load_color_table(&json);
-
                 Self {
                     theme,
+                    typography,
                     top_bar_color: color_table.gray(S800),
                     bottom_bar_color: color_table.gray(S950),
                     bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S800)),
@@ -83,7 +89,6 @@ impl DesignTokens {
                     shadow_gradient_dark_start: Color32::from_black_alpha(10), //TODO(ab): use ColorToken!
                     tab_bar_color: color_table.gray(S900),
                     native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    json,
                     color_table,
                 }
             }
@@ -110,11 +115,8 @@ impl DesignTokens {
     }
 
     pub(crate) fn set_fonts(&self, ctx: &egui::Context) {
-        let typography_default: Typography =
-            get_alias(&self.json, "{Alias.Typography.Default.value}");
-
-        assert_eq!(typography_default.fontFamily, "Inter");
-        assert_eq!(typography_default.fontWeight, "Medium");
+        assert_eq!(self.typography.fontFamily, "Inter");
+        assert_eq!(self.typography.fontWeight, "Medium");
         let mut font_definitions = egui::FontDefinitions::default();
         font_definitions.font_data.insert(
             "Inter-Medium".into(),
@@ -131,10 +133,7 @@ impl DesignTokens {
     }
 
     fn set_text_styles(&self, egui_style: &mut egui::Style) {
-        let typography_default: Typography =
-            get_alias(&self.json, "{Alias.Typography.Default.value}");
-
-        let font_size = parse_px(&typography_default.fontSize);
+        let font_size = parse_px(&self.typography.fontSize);
 
         for text_style in [
             egui::TextStyle::Body,
@@ -609,7 +608,7 @@ fn follow_path<'json>(
 // ----------------------------------------------------------------------------
 
 #[allow(non_snake_case)]
-#[derive(serde::Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Typography {
     fontSize: String,
     fontWeight: String,
