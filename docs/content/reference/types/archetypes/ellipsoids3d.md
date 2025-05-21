@@ -9,9 +9,8 @@ This archetype is for ellipsoids or spheres whose size is a key part of the data
 (e.g. a bounding sphere).
 For points whose radii are for the sake of visualization, use [`archetypes.Points3D`](https://rerun.io/docs/reference/types/archetypes/points3d) instead.
 
-Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
-Some of its component are repeated here for convenience.
-If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
+Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
 
 ## Fields
 ### Required

@@ -9,6 +9,9 @@ namespace rerun.archetypes;
 /// Capsules in other orientations may be produced by applying a rotation to the entity or
 /// instances.
 ///
+/// If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
+/// Orienting and placing capsules forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
+///
 /// \example archetypes/capsules3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
 //
 // TODO(#1361): This archetype should eventually generalize to cylinders without caps, truncated
@@ -36,19 +39,16 @@ table Capsules3D (
   /// Optional translations of the capsules.
   ///
   /// If not specified, one end of each capsule will be at (0, 0, 0).
-  /// Note that this uses a [components.PoseTranslation3D] which is also used by [archetypes.InstancePoses3D].
   translations: [rerun.components.PoseTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Rotations via axis + angle.
   ///
   /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-  /// Note that this uses a [components.PoseRotationAxisAngle] which is also used by [archetypes.InstancePoses3D].
   rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
 
   /// Rotations via quaternion.
   ///
   /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-  /// Note that this uses a [components.PoseRotationQuat] which is also used by [archetypes.InstancePoses3D].
   quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
 
   /// Optional colors for the capsules.

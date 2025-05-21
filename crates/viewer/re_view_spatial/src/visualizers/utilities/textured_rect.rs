@@ -2,6 +2,7 @@ use glam::Vec3;
 
 use re_log_types::EntityPath;
 use re_renderer::renderer;
+use re_types::ArchetypeName;
 use re_viewer_context::{
     ColormapWithRange, ImageInfo, ImageStatsCache, ViewClass as _, ViewerContext, gpu_bridge,
 };
@@ -18,7 +19,7 @@ pub fn textured_rect_from_image(
     image: &ImageInfo,
     colormap: Option<&ColormapWithRange>,
     multiplicative_tint: egui::Rgba,
-    visualizer_name: &'static str,
+    archetype_name: ArchetypeName,
     visualizer_data: &mut SpatialViewVisualizerData,
 ) -> Option<renderer::TexturedRect> {
     let debug_name = ent_path.to_string();
@@ -55,7 +56,7 @@ pub fn textured_rect_from_image(
 
             let world_from_entity = ent_context
                 .transform_info
-                .single_entity_transform_required(ent_path, visualizer_name);
+                .single_entity_transform_required(ent_path, archetype_name);
 
             let textured_rect = renderer::TexturedRect {
                 top_left_corner_position: world_from_entity.transform_point3(Vec3::ZERO),

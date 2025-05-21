@@ -1368,16 +1368,16 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "centers"
                     .into(), display_name : "Centers", component_name :
                     "rerun.components.PoseTranslation3D".into(), docstring_md :
-                    "Optional center positions of the boxes.\n\nIf not specified, the centers will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Optional center positions of the boxes.\n\nIf not specified, the centers will be at (0, 0, 0).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "rotation_axis_angles".into(), display_name : "Rotation axis angles",
                     component_name : "rerun.components.PoseRotationAxisAngle".into(),
                     docstring_md :
-                    "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "quaternions".into(), display_name : "Quaternions", component_name :
                     "rerun.components.PoseRotationQuat".into(), docstring_md :
-                    "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name : "colors"
                     .into(), display_name : "Colors", component_name :
                     "rerun.components.Color".into(), docstring_md :
@@ -1425,16 +1425,16 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { name : "translations".into(), display_name
                     : "Translations", component_name :
                     "rerun.components.PoseTranslation3D".into(), docstring_md :
-                    "Optional translations of the capsules.\n\nIf not specified, one end of each capsule will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Optional translations of the capsules.\n\nIf not specified, one end of each capsule will be at (0, 0, 0).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "rotation_axis_angles".into(), display_name : "Rotation axis angles",
                     component_name : "rerun.components.PoseRotationAxisAngle".into(),
                     docstring_md :
-                    "Rotations via axis + angle.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Rotations via axis + angle.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "quaternions".into(), display_name : "Quaternions", component_name :
                     "rerun.components.PoseRotationQuat".into(), docstring_md :
-                    "Rotations via quaternion.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Rotations via quaternion.\n\nIf no rotation is specified, the capsules align with the +Z axis of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name : "colors"
                     .into(), display_name : "Colors", component_name :
                     "rerun.components.Color".into(), docstring_md :
@@ -1523,16 +1523,16 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { name : "centers"
                     .into(), display_name : "Centers", component_name :
                     "rerun.components.PoseTranslation3D".into(), docstring_md :
-                    "Optional center positions of the ellipsoids.\n\nIf not specified, the centers will be at (0, 0, 0).\nNote that this uses a [`components.PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Optional center positions of the ellipsoids.\n\nIf not specified, the centers will be at (0, 0, 0).",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "rotation_axis_angles".into(), display_name : "Rotation axis angles",
                     component_name : "rerun.components.PoseRotationAxisAngle".into(),
                     docstring_md :
-                    "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Rotations via axis + angle.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name :
                     "quaternions".into(), display_name : "Quaternions", component_name :
                     "rerun.components.PoseRotationQuat".into(), docstring_md :
-                    "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.\nNote that this uses a [`components.PoseRotationQuat`](https://rerun.io/docs/reference/types/components/pose_rotation_quat) which is also used by [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).",
+                    "Rotations via quaternion.\n\nIf no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.",
                     is_required : false, }, ArchetypeFieldReflection { name : "colors"
                     .into(), display_name : "Colors", component_name :
                     "rerun.components.Color".into(), docstring_md :
