@@ -202,3 +202,60 @@ message ComponentDescriptor {
 message TaskId {
   string id = 1;
 }
+
+// Mirrors `re_build_info::BuildInfo`.
+message BuildInfo {
+  // `CARGO_PKG_NAME`.
+  optional string crate_name = 1;
+
+  // Space-separated names of all features enabled for this crate.
+  optional string features = 2;
+
+  // Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
+  optional SemanticVersion version = 3;
+
+  // The raw version string of the Rust compiler used, or an empty string.
+  optional string rustc_version = 4;
+
+  // The raw version string of the LLVM toolchain used, or an empty string.
+  optional string llvm_version = 5;
+
+  // Git commit hash, or empty string.
+  optional string git_hash = 6;
+
+  // Current git branch, or empty string.
+  optional string git_branch = 7;
+
+  // Target architecture and OS
+  //
+  // Example: `xaarch64-apple-darwin`
+  optional string target_triple = 8;
+
+  // ISO 8601 / RFC 3339 build time.
+  //
+  // Example: `"2023-02-23T19:33:26Z"`
+  //
+  // Empty if unknown.
+  optional string build_time = 9;
+}
+
+// Mirrors `re_build_info::CrateVersion`.
+message SemanticVersion {
+  optional fixed32 major = 1;
+
+  optional fixed32 minor = 2;
+
+  optional fixed32 patch = 3;
+
+  oneof meta {
+    fixed32 rc = 4;
+    fixed32 alpha = 5;
+    DevAlpha dev_alpha = 6;
+  }
+}
+
+// Mirrors `re_build_info::DevAlpha`.
+message DevAlpha {
+  optional fixed32 alpha = 1;
+  optional string commit = 2;
+}

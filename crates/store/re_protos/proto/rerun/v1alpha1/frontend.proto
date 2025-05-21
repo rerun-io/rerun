@@ -17,6 +17,8 @@ import "rerun/v1alpha1/tasks.proto";
 
 // Redap's public API.
 service FrontendService {
+  rpc Version(VersionRequest) returns (VersionReponse) {}
+
   // --- Catalog ---
   // Mostly a 1:1 proxy at the moment.
 
@@ -114,6 +116,12 @@ service FrontendService {
 
   // Query the status of submitted tasks as soon as they are no longer pending
   rpc QueryTasksOnCompletion(rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionRequest) returns (stream rerun.redap_tasks.v1alpha1.QueryTasksOnCompletionResponse) {}
+}
+
+message VersionRequest {}
+
+message VersionReponse {
+  rerun.common.v1alpha1.BuildInfo build_info = 1;
 }
 
 // --- Manifest Registry ---
