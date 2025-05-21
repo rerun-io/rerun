@@ -58,12 +58,14 @@ disallowed-methods = [
 
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
 
+  { path = "egui::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Color32::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Color32::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Color32::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Color32::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Color32::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Rgba::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Rgba::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Rgba::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },

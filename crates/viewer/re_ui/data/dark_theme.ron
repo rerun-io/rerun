@@ -207,6 +207,9 @@
     "axis_color_z": {
       "color": "{Blue.600}"
     },
+    "frustum_color": {
+      "color": "{Gray.600}"
+    },
   },
   "Global": {
     "Typography": {

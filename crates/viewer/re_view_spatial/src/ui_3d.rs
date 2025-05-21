@@ -659,7 +659,7 @@ impl SpatialView3D {
                 .map(|lines| {
                     lines
                         .radius(box_line_radius)
-                        .color(egui::Color32::from_gray(170))
+                        .color(ctx.design_tokens().frustum_color)
                 });
         }
 

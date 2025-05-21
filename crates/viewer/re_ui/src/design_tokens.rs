@@ -137,9 +137,11 @@ pub struct DesignTokens {
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
 
+    // Spatial view colors:
     pub axis_color_x: Color32,
     pub axis_color_y: Color32,
     pub axis_color_z: Color32,
+    pub frustum_color: Color32,
 }
 
 impl DesignTokens {
@@ -241,6 +243,7 @@ impl DesignTokens {
             axis_color_x: get_color("axis_color_x"),
             axis_color_y: get_color("axis_color_y"),
             axis_color_z: get_color("axis_color_z"),
+            frustum_color: get_color("frustum_color"),
 
             color_table: colors,
         }
