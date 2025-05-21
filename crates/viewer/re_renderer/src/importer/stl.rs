@@ -25,7 +25,7 @@ pub fn load_stl_from_buffer(
     // https://github.com/hmeyer/stl_io/pull/26
     let name = reader.name().cloned().unwrap_or_default();
 
-    let (normals, vertices): (Vec<_>, Vec<_>) = reader
+    let (normals, triangles): (Vec<_>, Vec<_>) = reader
         .into_iter()
         .map(|triangle| triangle.unwrap())
         .map(|triangle| {
@@ -40,7 +40,7 @@ pub fn load_stl_from_buffer(
         })
         .unzip();
 
-    let num_vertices = vertices.len() * 3;
+    let num_vertices = triangles.len() * 3;
 
     let material = mesh::Material {
         label: name.clone().into(),
@@ -56,7 +56,7 @@ pub fn load_stl_from_buffer(
             .map(glam::UVec3::from)
             .collect::<Vec<_>>(),
 
-        vertex_positions: bytemuck::cast_vec(vertices),
+        vertex_positions: bytemuck::cast_vec(triangles),
 
         // Normals on STL are per triangle, not per vertex.
         // Yes, this makes STL always look faceted.
