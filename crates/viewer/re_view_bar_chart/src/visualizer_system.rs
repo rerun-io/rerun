@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use re_chunk_store::ChunkStoreEvent;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_types::{
@@ -8,11 +7,11 @@ use re_types::{
     components::{self},
     datatypes,
 };
-use re_view::{DataResultQuery as _, diff_component_filter};
+use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, QueryContext,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizerQueryInfo,
+    VisualizerSystem, auto_color_for_entity_path,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -27,26 +26,9 @@ impl IdentifiedViewSystem for BarChartVisualizerSystem {
     }
 }
 
-struct BarChartVisualizabilityFilter;
-
-impl DataBasedVisualizabilityFilter for BarChartVisualizabilityFilter {
-    #[inline]
-    fn update_visualizability(&mut self, event: &ChunkStoreEvent) -> bool {
-        diff_component_filter(
-            event,
-            &BarChart::descriptor_values(),
-            |tensor: &re_types::components::TensorData| tensor.is_vector(),
-        )
-    }
-}
-
 impl VisualizerSystem for BarChartVisualizerSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<BarChart>()
-    }
-
-    fn data_based_visualizability_filter(&self) -> Option<Box<dyn DataBasedVisualizabilityFilter>> {
-        Some(Box::new(BarChartVisualizabilityFilter))
     }
 
     fn execute(
