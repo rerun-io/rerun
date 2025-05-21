@@ -6,7 +6,7 @@ use re_log_types::{
     ResolvedTimeRange,
     example_components::{MyColor, MyLabel, MyPoint, MyPoints},
 };
-use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
+use re_types_core::{ComponentDescriptor, Loggable as _};
 
 // ---
 
