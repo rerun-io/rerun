@@ -1029,9 +1029,7 @@ impl PendingTimeColumn {
 mod tests {
     use crossbeam::channel::TryRecvError;
 
-    use re_log_types::example_components::{
-        MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints,
-    };
+    use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
     use re_types_core::{Component as _, Loggable as _};
 
     use super::*;

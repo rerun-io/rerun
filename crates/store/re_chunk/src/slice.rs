@@ -868,7 +868,6 @@ mod tests {
         TimePoint,
         example_components::{MyColor, MyLabel, MyPoint, MyPoints},
     };
-    
 
     use crate::{Chunk, RowId, Timeline};
 
