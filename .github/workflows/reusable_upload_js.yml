@@ -138,4 +138,3 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
-

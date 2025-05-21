@@ -207,7 +207,7 @@ jobs:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
-  
+
   upload-js:
     name: "Upload JS"
     needs: [build-js]
