@@ -485,7 +485,9 @@ impl<'a> DataQueryPropertyResolver<'a> {
                     override_path,
                     [&blueprint_archetypes::VisualizerOverrides::descriptor_ranges()],
                 )
-                .component_batch::<blueprint_components::VisualizerOverride>()
+                .component_batch::<blueprint_components::VisualizerOverride>(
+                    &blueprint_archetypes::VisualizerOverrides::descriptor_ranges(),
+                )
             {
                 node.data_result.visualizers = viz_override
                     .into_iter()

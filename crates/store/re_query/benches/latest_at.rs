@@ -275,8 +275,12 @@ fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Save
             Points2D::all_components().iter(), // no generics!
         );
 
-        let points = results.component_batch_quiet::<Position2D>().unwrap();
-        let colors = results.component_batch_quiet::<Color>().unwrap_or_default();
+        let points = results
+            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .unwrap();
+        let colors = results
+            .component_batch_quiet::<Color>(&Points2D::descriptor_colors())
+            .unwrap_or_default();
         let color_default_fn = || Color::from(0xFF00FFFF);
 
         for (point, color) in clamped_zip_1x1(points, colors, color_default_fn) {
@@ -307,8 +311,12 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
             Points2D::all_components().iter(), // no generics!
         );
 
-        let points = results.component_batch_quiet::<Position2D>().unwrap();
-        let labels = results.component_batch_quiet::<Text>().unwrap_or_default();
+        let points = results
+            .component_batch_quiet::<Position2D>(&Points2D::descriptor_positions())
+            .unwrap();
+        let labels = results
+            .component_batch_quiet::<Text>(&Points2D::descriptor_labels())
+            .unwrap_or_default();
         let label_default_fn = || Text(String::new().into());
 
         for (_point, label) in clamped_zip_1x1(points, labels, label_default_fn) {

@@ -73,9 +73,6 @@ type UntypedComponentEditOrViewCallback = Box<
 
 /// How to display components in a Ui.
 pub struct ComponentUiRegistry {
-    /// Ui method to use if there was no specific one registered for a component.
-    fallback_ui: LegacyDisplayComponentUiCallback,
-
     /// Older component uis - TODO(#6661): we're in the process of removing these.
     ///
     /// The main issue with these is that they take a lot of parameters:
@@ -101,10 +98,15 @@ pub struct ComponentUiRegistry {
     component_multiline_edit_or_view: BTreeMap<ComponentName, UntypedComponentEditOrViewCallback>,
 }
 
+impl Default for ComponentUiRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComponentUiRegistry {
-    pub fn new(fallback_ui: LegacyDisplayComponentUiCallback) -> Self {
+    pub fn new() -> Self {
         Self {
-            fallback_ui,
             legacy_display_component_uis: Default::default(),
             component_singleline_edit_or_view: Default::default(),
             component_multiline_edit_or_view: Default::default(),
@@ -267,17 +269,7 @@ impl ComponentUiRegistry {
 
         // Component UI can only show a single instance.
         if array.len() == 0 || (instance.is_all() && array.len() > 1) {
-            (*self.fallback_ui)(
-                ctx,
-                ui,
-                ui_layout,
-                query,
-                db,
-                entity_path,
-                component_descr,
-                unit.row_id(),
-                &array,
-            );
+            fallback_ui(ui, ui_layout, array.as_ref());
             return;
         }
 
@@ -323,17 +315,7 @@ impl ComponentUiRegistry {
         re_tracing::profile_function!(component_descr.display_name());
 
         if component_raw.len() != 1 {
-            (*self.fallback_ui)(
-                ctx,
-                ui,
-                ui_layout,
-                query,
-                db,
-                entity_path,
-                component_descr,
-                row_id,
-                component_raw,
-            );
+            fallback_ui(ui, ui_layout, component_raw);
             return;
         }
 
@@ -374,17 +356,7 @@ impl ComponentUiRegistry {
             return;
         }
 
-        (*self.fallback_ui)(
-            ctx,
-            ui,
-            ui_layout,
-            query,
-            db,
-            entity_path,
-            component_descr,
-            row_id,
-            component_raw,
-        );
+        fallback_ui(ui, ui_layout, component_raw);
     }
 
     /// Show a multi-line editor for this instance of this component.
@@ -610,4 +582,9 @@ fn try_deserialize<C: re_types::Component>(value: &dyn arrow::array::Array) -> O
             None
         }
     }
+}
+
+/// The ui we fall back to if everything else fails.
+fn fallback_ui(ui: &mut egui::Ui, ui_layout: UiLayout, component: &dyn arrow::array::Array) {
+    re_ui::arrow_ui(ui, ui_layout, component);
 }

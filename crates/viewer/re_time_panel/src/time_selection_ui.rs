@@ -1,6 +1,7 @@
 use egui::{CursorIcon, Id, NumExt as _, Rect};
 
 use re_log_types::{Duration, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType};
+use re_ui::UiExt as _;
 use re_viewer_context::{Looping, TimeControl};
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -26,9 +27,11 @@ pub fn loop_selection_ui(
     let is_active = time_ctrl.looping() == Looping::Selection;
 
     let selection_color = if is_active {
-        re_ui::DesignTokens::loop_selection_color().gamma_multiply(0.7)
+        ui.design_tokens().loop_selection_color()
     } else {
-        re_ui::DesignTokens::loop_selection_color().gamma_multiply(0.5)
+        ui.design_tokens()
+            .loop_selection_color()
+            .gamma_multiply(0.7)
     };
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
