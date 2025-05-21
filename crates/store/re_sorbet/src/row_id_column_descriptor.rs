@@ -26,7 +26,7 @@ impl RowIdColumnDescriptor {
     #[inline]
     #[expect(clippy::unused_self)]
     pub fn short_name(&self) -> String {
-        RowId::descriptor().display_name()
+        RowId::untagged_descriptor().display_name()
     }
 
     /// Human-readable name for this column.
@@ -61,7 +61,7 @@ impl RowIdColumnDescriptor {
 
         let nullable = false; // All rows has an id
         ArrowField::new(
-            RowId::descriptor().to_string(),
+            RowId::untagged_descriptor().to_string(),
             RowId::arrow_datatype(),
             nullable,
         )
