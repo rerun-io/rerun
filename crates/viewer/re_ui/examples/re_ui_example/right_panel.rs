@@ -283,7 +283,7 @@ impl RightPanel {
                             list_item::PropertyContent::new("Some item:").value_fn(|ui, _| {
                                 ui.ctx().debug_painter().debug_rect(
                                     ui.max_rect(),
-                                    egui::Color32::LIGHT_BLUE, // TODO: use design token
+                                    egui::Color32::LIGHT_BLUE,
                                     "space for value",
                                 );
                             }),

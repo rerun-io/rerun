@@ -94,7 +94,7 @@ impl framework::Example for Outlines {
         view_builder.queue_draw(re_renderer::renderer::WorldGridDrawData::new(
             re_ctx,
             &re_renderer::renderer::WorldGridConfiguration {
-                color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5), // TODO: check light mode
+                color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
                 spacing: 0.1,
                 thickness_ui: 1.0,
                 plane: re_math::Plane3::ZX,
