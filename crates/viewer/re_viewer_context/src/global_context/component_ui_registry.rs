@@ -253,7 +253,7 @@ impl ComponentUiRegistry {
         .insert(C::name().into(), untyped_callback);
     }
 
-    /// Registers singleline UI to view Arrow data using a specific [`ComponentUiIdentifier::Variant`].
+    /// Registers singleline UI to view Arrow data using a specific [`VariantName`].
     pub fn add_variant_ui(
         &mut self,
         variant_name: impl Into<VariantName>,
