@@ -2468,7 +2468,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 }
 
 fn preview_files_being_dropped(egui_ctx: &egui::Context) {
-    use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
+    use egui::{Align2, Id, LayerId, Order, TextStyle};
 
     // Preview hovering files:
     if !egui_ctx.input(|i| i.raw.hovered_files.is_empty()) {
@@ -2489,7 +2489,15 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
         let screen_rect = egui_ctx.screen_rect();
-        painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
+        painter.rect_filled(
+            screen_rect,
+            0.0,
+            egui_ctx
+                .style()
+                .visuals
+                .extreme_bg_color
+                .gamma_multiply_u8(192),
+        );
         painter.text(
             screen_rect.center(),
             Align2::CENTER_CENTER,
