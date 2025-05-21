@@ -192,6 +192,7 @@ impl<'a> PropertyContent<'a> {
     pub fn value_color(self, rgba: &'a [u8; 4]) -> Self {
         self.value_fn(|ui, _| {
             let [r, g, b, a] = rgba;
+            #[allow(clippy::disallowed_methods)] // This is not a hard-coded color.
             let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
             let response = egui::color_picker::show_color(ui, color, ui.spacing().interact_size);
             response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));

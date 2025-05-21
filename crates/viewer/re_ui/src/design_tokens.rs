@@ -104,6 +104,12 @@ pub struct DesignTokens {
     /// being hovered (e.g., a container in the blueprint tree)
     pub drop_target_container_stroke: Stroke,
 
+    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
+    pub tile_drag_preview_stroke: Stroke,
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
+    pub tile_drag_preview_color: Color32,
+
     pub floating_color: Color32,
     pub faint_bg_color: Color32,
     pub extreme_bg_color: Color32,
@@ -192,6 +198,8 @@ impl DesignTokens {
             drag_pill_nondroppable_fill: get_color("drag_pill_nondroppable_fill"),
             drag_pill_nondroppable_stroke: get_color("drag_pill_nondroppable_stroke"),
             drop_target_container_stroke: get_stroke("drop_target_container_stroke"),
+            tile_drag_preview_stroke: get_stroke("tile_drag_preview_stroke"),
+            tile_drag_preview_color: get_color("tile_drag_preview_color"),
 
             floating_color: get_color("floating_color"),
             faint_bg_color: get_color("faint_bg_color"),

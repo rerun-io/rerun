@@ -107,7 +107,11 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
 }
 
 pub fn design_tokens_of_style(style: &egui::Style) -> &'static DesignTokens {
-    if style.visuals.dark_mode {
+    design_tokens_of_visuals(&style.visuals)
+}
+
+pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignTokens {
+    if visuals.dark_mode {
         design_tokens_of(egui::Theme::Dark)
     } else {
         design_tokens_of(egui::Theme::Light)

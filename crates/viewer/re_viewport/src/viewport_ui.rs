@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
+use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _, design_tokens_of_visuals};
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
@@ -583,6 +583,16 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
         visuals.panel_fill.gamma_multiply(0.5)
+    }
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
+    fn drag_preview_stroke(&self, visuals: &egui::Visuals) -> egui::Stroke {
+        design_tokens_of_visuals(visuals).tile_drag_preview_stroke
+    }
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
+    fn drag_preview_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        design_tokens_of_visuals(visuals).tile_drag_preview_color
     }
 
     /// The height of the bar holding tab titles.

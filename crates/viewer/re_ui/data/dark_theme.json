@@ -109,7 +109,12 @@
       "color": "{Blue.350}",
       "width": 2
     },
-    "drag_preview_fill": {
+    "tile_drag_preview_stroke" : {
+      "color": "{Gray.1000}",
+      "alpha": 127,
+      "width": 1
+    },
+    "tile_drag_preview_color": {
       "color": "{Gray.1000}",
       "alpha": 26
     },
