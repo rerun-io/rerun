@@ -9462,8 +9462,9 @@ dependencies = [
 
 [[package]]
 name = "stl_io"
-version = "0.9.0"
-source = "git+https://github.com/oxkitsune/stl_io?branch=gijs%2Fmesh-name#b4325a398f16ed7b3ce9c35f21d49d7269687e6e"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cff2e145168af9fef3b518ac0c6f9849c407b3df8a28582ced9f1fda510aa34c"
 dependencies = [
  "byteorder",
  "float-cmp",
