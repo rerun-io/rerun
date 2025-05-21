@@ -32,6 +32,7 @@ pub fn redap_uri_button(
 
     let uri = RedapUri::from_str(url_str)?;
 
+    //TODO(ab): we should provide feedback if the URI is already loaded, e.g. have "go to" instead of "open"
     if ui
         .button("Open")
         .on_hover_ui(|ui| {

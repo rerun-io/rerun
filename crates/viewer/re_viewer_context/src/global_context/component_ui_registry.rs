@@ -57,6 +57,11 @@ pub enum EditOrView {
     View,
 }
 
+re_string_interner::declare_new_type!(
+    /// The name of a UI variant (see [`ComponentUiIdentifier::Variant`]).
+    pub struct VariantName;
+);
+
 /// The identifier under which component UIs are registered.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 enum ComponentUiIdentifier {
@@ -64,7 +69,7 @@ enum ComponentUiIdentifier {
     Component(ComponentName),
 
     /// Component UI explicitly opted into by providing a variant name.
-    Variant(&'static str),
+    Variant(VariantName),
 }
 
 impl From<ComponentName> for ComponentUiIdentifier {
@@ -73,8 +78,8 @@ impl From<ComponentName> for ComponentUiIdentifier {
     }
 }
 
-impl From<&'static str> for ComponentUiIdentifier {
-    fn from(name: &'static str) -> Self {
+impl From<VariantName> for ComponentUiIdentifier {
+    fn from(name: VariantName) -> Self {
         Self::Variant(name)
     }
 }
@@ -251,7 +256,7 @@ impl ComponentUiRegistry {
     /// Registers singleline UI to view Arrow data using a specific [`ComponentUiIdentifier::Variant`].
     pub fn add_variant_ui(
         &mut self,
-        variant_name: &'static str,
+        variant_name: impl Into<VariantName>,
         callback: impl Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
@@ -263,6 +268,7 @@ impl ComponentUiRegistry {
         + Sync
         + 'static,
     ) {
+        let variant_name = variant_name.into();
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, component_descriptor, row_id, value, edit_or_view| {
                 match edit_or_view {
@@ -448,7 +454,7 @@ impl ComponentUiRegistry {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        variant_name: &'static str,
+        variant_name: VariantName,
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_raw: &dyn arrow::array::Array,
