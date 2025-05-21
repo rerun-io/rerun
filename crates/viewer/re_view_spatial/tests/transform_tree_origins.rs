@@ -1,8 +1,10 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::{SpatialView3D, SpatialViewState};
-use re_viewer_context::test_context::{HarnessExt, TestContext};
-use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{
+    RecommendedView, ViewClass as _, ViewId,
+    test_context::{HarnessExt as _, TestContext},
+};
 use re_viewport_blueprint::ViewBlueprint;
 use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
