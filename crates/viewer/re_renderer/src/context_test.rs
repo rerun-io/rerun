@@ -37,7 +37,9 @@ impl RenderContext {
         self.queue.submit(command_buffers);
 
         // Wait for all GPU work to finish.
-        self.device.poll(wgpu::Maintain::Wait);
+        self.device
+            .poll(wgpu::Maintain::Wait)
+            .expect("Failed to wait for GPU work to finish");
 
         // Start a new frame in order to handle the previous' frame errors.
         self.begin_frame();

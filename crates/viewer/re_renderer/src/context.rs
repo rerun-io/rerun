@@ -305,7 +305,8 @@ impl RenderContext {
         if cfg!(target_arch = "wasm32")
             && self.device_caps.backend_type == WgpuBackendType::WgpuCore
         {
-            self.device.poll(wgpu::PollType::Wait);
+            // TODO: remove?
+            let _ = self.device.poll(wgpu::PollType::Wait);
             return;
         }
 
@@ -320,9 +321,15 @@ impl RenderContext {
             .drain(0..num_submissions_to_wait_for)
             .last()
         {
-            self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
+            if let Err(err) = self.device.poll(wgpu::PollType::WaitForSubmissionIndex(
                 newest_submission_to_wait_for,
-            ));
+            )) {
+                re_log::warn_once!(
+                    "Failed to limit number of in-flight GPU frames to {}: {:?}",
+                    Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
+                    err
+                );
+            }
         }
     }
 
