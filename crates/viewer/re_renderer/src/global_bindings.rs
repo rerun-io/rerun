@@ -63,7 +63,7 @@ impl GlobalBindings {
                         // The global per-frame uniform buffer.
                         wgpu::BindGroupLayoutEntry {
                             binding: 0,
-                            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::VERTEX, // TODO(gfx-rs/wgpu#7708): Don't use `all()` since it includes shader stages that aren't available on WebGPU.
+                            visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::VERTEX, // TODO(gfx-rs/wgpu#7708): We want to use `all()`, but can't since it includes shader stages that aren't available on WebGPU.
                             ty: wgpu::BindingType::Buffer {
                                 ty: wgpu::BufferBindingType::Uniform,
                                 has_dynamic_offset: false,
