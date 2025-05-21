@@ -24,7 +24,7 @@ This installs both [rerun-sdk](https://pypi.org/project/rerun-sdk/) and [rerun-n
 ## The APIs
 
 When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
-you send them to a sink such as via `rr.connect()` or `rr.save()`.
+you send them to a sink such as via `rr.connect_grpc()` or `rr.save()`.
 
 When using Rerun in a notebook, rather than using the other sinks, you have the option to use [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show). This method embeds the [web viewer](./embed-web.md) using the IPython `display` mechanism in the cell output, and sends the current recording data to it.
 
@@ -58,7 +58,7 @@ rr.notebook_show()
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/notebook_example/e47920b7ca7988aba305d73b2aea2da7b81c93e3/1200w.png">
 </picture>
 
-This is similar to calling `rr.connect()` or `rr.serve()` in that it configures the Rerun SDK to send data to a viewer instance.
+This is similar to calling `rr.connect_grpc()` or `rr.serve()` in that it configures the Rerun SDK to send data to a viewer instance.
 
 Note that the call to `rr.notebook_show()` drains the recording of its data. This means that any subsequent calls to `rr.notebook_show()`
 will not result in the same data being displayed, because it has already been removed from the recording.

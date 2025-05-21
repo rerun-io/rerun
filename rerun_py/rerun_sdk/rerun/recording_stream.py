@@ -98,7 +98,7 @@ def new_recording(
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
-        you call either `connect`, `show`, or `save`
+        you call either `connect_grpc`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
@@ -493,14 +493,19 @@ class RecordingStream:
         default_blueprint: BlueprintLike | None = None,
     ) -> None:
         """
-        Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+        Connect to a remote Rerun Viewer on the given URL.
 
         This function returns immediately.
 
         Parameters
         ----------
         url:
-            The HTTP(S) URL to connect to
+            The URL to connect to
+
+            The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+            and the pathname must be `/proxy`.
+
+            The default is `rerun+http://127.0.0.1:9876/proxy`.
         flush_timeout_sec:
             The minimum time the SDK will wait during a flush before potentially
             dropping data if progress is not being made. Passing `None` indicates no timeout,

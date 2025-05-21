@@ -34,7 +34,7 @@ use crate::sink::{LogSink, MemorySinkStorage};
 /// Private environment variable meant for tests.
 ///
 /// When set, all recording streams will write to disk at the path indicated by the env-var rather
-/// than doing what they were asked to do - `connect()`, `buffered()`, even `save()` will re-use the same sink.
+/// than doing what they were asked to do - `connect_grpc()`, `buffered()`, even `save()` will re-use the same sink.
 const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 
 /// Returns path for force sink if private environment variable `_RERUN_TEST_FORCE_SAVE` is set
@@ -2520,7 +2520,7 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
-    use re_log_types::example_components::MyLabel;
+    use re_log_types::example_components::{MyLabel, MyPoints};
 
     use super::*;
 
@@ -2810,7 +2810,7 @@ mod tests {
 
     fn example_rows(static_: bool) -> Vec<PendingRow> {
         use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
-        use re_types::{Component as _, Loggable};
+        use re_types::Loggable;
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
@@ -2830,7 +2830,7 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoint::descriptor(),
+                        MyPoints::descriptor_points(),
                         <MyPoint as Loggable>::to_arrow([
                             MyPoint::new(10.0, 10.0),
                             MyPoint::new(20.0, 20.0),
@@ -2838,11 +2838,11 @@ mod tests {
                         .unwrap(),
                     ), //
                     (
-                        MyColor::descriptor(),
+                        MyPoints::descriptor_colors(),
                         <MyColor as Loggable>::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
                     ), //
                     (
-                        MyLabel::descriptor(),
+                        MyPoints::descriptor_labels(),
                         <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
@@ -2857,15 +2857,15 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoint::descriptor(),
+                        MyPoints::descriptor_points(),
                         <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
-                        MyColor::descriptor(),
+                        MyPoints::descriptor_colors(),
                         <MyColor as Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
                     ), //
                     (
-                        MyLabel::descriptor(),
+                        MyPoints::descriptor_labels(),
                         <MyLabel as Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
@@ -2880,15 +2880,15 @@ mod tests {
                 timepoint: timepoint(1),
                 components: [
                     (
-                        MyPoint::descriptor(),
+                        MyPoints::descriptor_points(),
                         <MyPoint as Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
-                        MyColor::descriptor(),
+                        MyPoints::descriptor_colors(),
                         <MyColor as Loggable>::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
                     ), //
                     (
-                        MyLabel::descriptor(),
+                        MyPoints::descriptor_labels(),
                         <MyLabel as Loggable>::to_arrow([MyLabel("hey".into())]).unwrap(),
                     ), //
                 ]

@@ -10,7 +10,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use re_chunk::{Chunk, RowId};
 use re_log_types::{
     LogMsg, StoreId, StoreKind, TimeInt, TimeType, Timeline, entity_path,
-    example_components::{MyColor, MyPoint},
+    example_components::{MyColor, MyPoint, MyPoints},
 };
 
 use re_log_encoding::EncodingOptions;
@@ -87,8 +87,14 @@ fn mono_points_arrow(c: &mut Criterion) {
                         RowId::ZERO,
                         [build_frame_nr(TimeInt::ZERO)],
                         [
-                            &MyPoint::from_iter(0..1) as _,
-                            &MyColor::from_iter(0..1) as _,
+                            (
+                                MyPoints::descriptor_points(),
+                                &MyPoint::from_iter(0..1) as _,
+                            ),
+                            (
+                                MyPoints::descriptor_colors(),
+                                &MyColor::from_iter(0..1) as _,
+                            ),
                         ],
                     )
                     .build()
@@ -152,8 +158,14 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
                 RowId::ZERO,
                 [build_frame_nr(TimeInt::ZERO)],
                 [
-                    &MyPoint::from_iter(0..1) as _,
-                    &MyColor::from_iter(0..1) as _,
+                    (
+                        MyPoints::descriptor_points(),
+                        &MyPoint::from_iter(0..1) as _,
+                    ),
+                    (
+                        MyPoints::descriptor_colors(),
+                        &MyColor::from_iter(0..1) as _,
+                    ),
                 ],
             );
         }
@@ -215,8 +227,14 @@ fn batch_points_arrow(c: &mut Criterion) {
                     RowId::ZERO,
                     [build_frame_nr(TimeInt::ZERO)],
                     [
-                        &MyPoint::from_iter(0..NUM_POINTS as u32) as _,
-                        &MyColor::from_iter(0..NUM_POINTS as u32) as _,
+                        (
+                            MyPoints::descriptor_points(),
+                            &MyPoint::from_iter(0..NUM_POINTS as u32) as _,
+                        ),
+                        (
+                            MyPoints::descriptor_colors(),
+                            &MyColor::from_iter(0..NUM_POINTS as u32) as _,
+                        ),
                     ],
                 )
                 .build()

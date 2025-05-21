@@ -307,6 +307,9 @@ upload-rrd = "python scripts/upload_rrd.py"
 # Check whether there's too large files in the repository.
 check-large-files = "python scripts/ci/check_large_files.py"
 
+# Check whether there are `publish=true` crates which depend on `publish=false` crates in the repository.
+check-publish-flags = "python scripts/ci/crates.py check-publish-flags"
+
 # Download a specific artifact from gcloud.
 #
 # Requires that gcloud authentication has already been set up in your shell.

@@ -48,7 +48,7 @@ my_blueprint = rrb.Blueprint(
 
 ## Sending the blueprint to the Viewer
 
-To provide a blueprint, simply pass it to either `init` or `connect` using the `default_blueprint`
+To provide a blueprint, simply pass it to either `init` or `connect_grpc` using the `default_blueprint`
 parameter.
 
 Using `init` with `spawn=True`:
@@ -59,7 +59,7 @@ my_blueprint = rrb.Blueprint(...)
 rr.init("rerun_example_my_blueprint", spawn=True, default_blueprint=my_blueprint)
 ```
 
-Or if you use `connect` separate from `init`:
+Or if you use `connect_grpc` separate from `init`:
 
 ```python
 my_blueprint = rrb.Blueprint(...)
@@ -68,7 +68,7 @@ rr.init("rerun_example_my_blueprint")
 
 ...
 
-rr.connect(default_blueprint=my_blueprint)
+rr.connect_grpc(default_blueprint=my_blueprint)
 ```
 
 ## Activating the default blueprint
