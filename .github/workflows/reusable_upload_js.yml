@@ -73,7 +73,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js_package"
-          destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}/rerun_js"
+          destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun_js"
           parent: false
           process_gcloudignore: false
 
@@ -82,7 +82,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js_package"
-          destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}/rerun_js"
+          destination: "rerun-builds/version/${{inputs.RELEASE_VERSION}}/rerun_js"
           parent: false
           process_gcloudignore: false
 
@@ -91,7 +91,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js_package"
-          destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}/rerun_js"
+          destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_js"
           parent: false
           process_gcloudignore: false
 
@@ -100,7 +100,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js"
-          destination: "rerun-web-viewer/prerelease/rerun_js"
+          destination: "rerun-builds/prerelease/rerun_js"
           parent: false
           process_gcloudignore: false
           headers: |-
@@ -111,7 +111,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js_package"
-          destination: "rerun-web-viewer/version/main/rerun_js"
+          destination: "rerun-builds/version/main/rerun_js"
           parent: false
           process_gcloudignore: false
           headers: |-
@@ -122,7 +122,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js"
-          destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}/rerun_js"
+          destination: "rerun-builds/pr/${{ inputs.PR_NUMBER }}/rerun_js"
           parent: false
           process_gcloudignore: false
           headers: |-
@@ -133,7 +133,7 @@ jobs:
         uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "rerun_js"
-          destination: "rerun-web-viewer/version/nightly/rerun_js"
+          destination: "rerun-builds/version/nightly/rerun_js"
           parent: false
           process_gcloudignore: false
           headers: |-
