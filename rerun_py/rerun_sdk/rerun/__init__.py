@@ -275,7 +275,7 @@ def init(
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
-        you call either `connect`, `show`, or `save`
+        you call either `connect_grpc`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.

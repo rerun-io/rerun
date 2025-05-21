@@ -815,8 +815,7 @@ def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
     """
     Disconnect from remote server (if any).
 
-    Subsequent log messages will be buffered and either sent on the next call to `connect`,
-    or shown with `show`.
+    Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
 def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None:

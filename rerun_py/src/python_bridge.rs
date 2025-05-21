@@ -626,7 +626,7 @@ fn connect_grpc(
         .map_err(|err| PyRuntimeError::wrap(err, format!("invalid endpoint {url:?}")))?;
 
     if re_sdk::forced_sink_path().is_some() {
-        re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
+        re_log::debug!("Ignored call to `connect_grpc()` since _RERUN_TEST_FORCE_SAVE is set");
         return Ok(());
     }
 
@@ -1157,8 +1157,7 @@ fn serve_web(
 
 /// Disconnect from remote server (if any).
 ///
-/// Subsequent log messages will be buffered and either sent on the next call to `connect`,
-/// or shown with `show`.
+/// Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
 #[pyfunction]
 #[pyo3(signature = (recording=None))]
 fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
