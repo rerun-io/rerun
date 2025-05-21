@@ -56,8 +56,16 @@
     "thumbnail_background_color": {
       "color": "{Gray.250}"
     },
+
     "example_card_background_color": {
       "color": "#FFFFFF0A"
+    },
+    "example_tag_bg_fill": {
+      "color": "{Gray.300}",
+    },
+    "example_tag_stroke": {
+      "color": "{Gray.200}",
+      "width": 1
     },
 
     "breadcrumb_text_color": {

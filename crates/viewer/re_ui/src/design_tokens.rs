@@ -59,6 +59,9 @@ pub struct DesignTokens {
     /// Color for example card backgrounds
     pub example_card_background_color: Color32,
 
+    pub example_tag_bg_fill: Color32,
+    pub example_tag_stroke: Stroke,
+
     /// Color for breadcrumb text
     pub breadcrumb_text_color: Color32,
 
@@ -190,7 +193,11 @@ impl DesignTokens {
             loop_everything_color: get_color("loop_everything_color"),
 
             thumbnail_background_color: get_color("thumbnail_background_color"),
+
             example_card_background_color: get_color("example_card_background_color"),
+            example_tag_bg_fill: get_color("example_tag_bg_fill"),
+            example_tag_stroke: get_stroke("example_tag_stroke"),
+
             breadcrumb_text_color: get_color("breadcrumb_text_color"),
             breadcrumb_separator_color: get_color("breadcrumb_separator_color"),
             panel_bg_color: get_color("panel_bg_color"),
