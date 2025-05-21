@@ -509,6 +509,7 @@ impl SpatialView3D {
         if state.state_3d.show_axes {
             let axis_length = 1.0; // The axes are also a measuring stick
             crate::visualizers::add_axis_arrows(
+                ctx.design_tokens(),
                 &mut line_builder,
                 glam::Affine3A::IDENTITY,
                 None,

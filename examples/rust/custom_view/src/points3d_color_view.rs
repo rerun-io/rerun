@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods)] // It's just an example
+
 use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
 use rerun::external::{
     egui,

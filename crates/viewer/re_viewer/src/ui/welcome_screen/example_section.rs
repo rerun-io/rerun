@@ -549,7 +549,7 @@ impl ExampleDescLayout {
                             Theme::Dark => Color32::from_rgb(26, 29, 30), // TODO: design tokens
                             Theme::Light => Color32::from_rgb(219, 222, 228), // TODO: design tokens
                         })
-                        .stroke(egui::Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.086)))
+                        .stroke(egui::Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.086))) // TODO: design tokens
                         .wrap_mode(egui::TextWrapMode::Extend),
                     );
                 }

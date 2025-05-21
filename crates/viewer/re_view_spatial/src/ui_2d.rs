@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
+use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
 use re_math::IsoTransform;
 
 use re_entity_db::EntityPath;

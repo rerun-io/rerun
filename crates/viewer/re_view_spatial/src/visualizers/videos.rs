@@ -368,7 +368,8 @@ impl VideoFrameReferenceVisualizer {
                 texture_filter_magnification: TextureFilterMag::Linear,
                 texture_filter_minification: TextureFilterMin::Linear,
                 outline_mask: spatial_ctx.highlight.overall,
-                multiplicative_tint: egui::Rgba::from_rgb(0.5, 0.5, 0.5),
+                #[expect(clippy::disallowed_methods)] // Ok to just dim it
+                multiplicative_tint: egui::Rgba::from_gray(0.5),
                 ..Default::default()
             },
         };

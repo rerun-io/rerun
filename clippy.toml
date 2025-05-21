@@ -65,6 +65,7 @@ disallowed-methods = [
   { path = "egui::Color32::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Color32::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Rgba::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Rgba::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Rgba::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "egui::Rgba::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },

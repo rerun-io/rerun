@@ -189,6 +189,23 @@
     },
     "popup_shadow_color": {
       "color": "#00000080"
+    },
+
+    "density_graph_selected": {
+      "color": "{Blue.800}"
+    },
+    "density_graph_unselected": {
+      "color": "{Gray.700}"
+    },
+
+    "axis_color_x": {
+      "color": "{Red.600}"
+    },
+    "axis_color_y": {
+      "color": "{Green.600}"
+    },
+    "axis_color_z": {
+      "color": "{Blue.600}"
     }
   },
   "Global": {

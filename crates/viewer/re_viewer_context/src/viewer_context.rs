@@ -7,6 +7,7 @@ use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
+use re_ui::ContextExt as _;
 
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::{
@@ -75,6 +76,10 @@ impl ViewerContext<'_> {
     /// Global options for the whole viewer.
     pub fn app_options(&self) -> &AppOptions {
         self.global_context.app_options
+    }
+
+    pub fn design_tokens(&self) -> &'static re_ui::DesignTokens {
+        self.egui_ctx().design_tokens()
     }
 
     /// Runtime info about components and archetypes.
