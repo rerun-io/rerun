@@ -5,7 +5,7 @@ use egui::{Frame, Margin, RichText};
 
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::{
-    DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
+    DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_CREATED_AT_FIELD_NAME,
 };
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
@@ -147,7 +147,7 @@ impl Server {
                     desc.display_name().as_str(),
                     RECORDING_LINK_FIELD_NAME
                         | DATASET_MANIFEST_ID_FIELD_NAME
-                        | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME
+                        | DATASET_MANIFEST_CREATED_AT_FIELD_NAME
                 )
             }
         })
