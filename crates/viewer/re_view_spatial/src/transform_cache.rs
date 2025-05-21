@@ -1995,7 +1995,7 @@ mod tests {
             );
             // Since rotation isn't 100% accurate, we need to check for equality with a small tolerance.
             let eps = 0.000001;
-            // Rotation on the first box affects all insteances since it's splatted.
+            // Rotation on the first box affects all instances since it's splatted.
             let rotation = glam::Affine3A::from_axis_angle(
                 glam::Vec3::new(0.0, 1.0, 0.0),
                 90.0_f32.to_radians(),
