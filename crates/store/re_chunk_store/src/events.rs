@@ -206,7 +206,7 @@ mod tests {
     use re_chunk::{RowId, TimelineName};
     use re_log_types::{
         EntityPath, TimeInt, TimePoint, Timeline,
-        example_components::{MyColor, MyIndex, MyPoint},
+        example_components::{MyColor, MyIndex, MyPoint, MyPoints},
     };
     use re_types_core::{Component as _, ComponentName};
 
@@ -305,7 +305,11 @@ mod tests {
         ]);
         let entity_path1: EntityPath = "entity_a".into();
         let chunk1 = Chunk::builder(entity_path1.clone())
-            .with_component_batch(row_id1, timepoint1.clone(), &MyIndex::from_iter(0..10))
+            .with_component_batch(
+                row_id1,
+                timepoint1.clone(),
+                (MyIndex::descriptor(), &MyIndex::from_iter(0..10)),
+            )
             .build()?;
 
         view.on_events(&store.insert_chunk(&Arc::new(chunk1))?);
@@ -349,7 +353,14 @@ mod tests {
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
             Chunk::builder(entity_path2.clone())
-                .with_component_batches(row_id2, timepoint2.clone(), [&points as _, &colors as _])
+                .with_component_batches(
+                    row_id2,
+                    timepoint2.clone(),
+                    [
+                        (MyPoints::descriptor_points(), &points as _),
+                        (MyPoints::descriptor_colors(), &colors as _),
+                    ],
+                )
                 .build()?
         };
 
@@ -395,8 +406,11 @@ mod tests {
                     row_id3,
                     timepoint3.clone(),
                     [
-                        &MyIndex::from_iter(0..num_instances as _) as _,
-                        &colors as _,
+                        (
+                            MyIndex::descriptor(),
+                            &MyIndex::from_iter(0..num_instances as _) as _,
+                        ),
+                        (MyPoints::descriptor_colors(), &colors as _),
                     ],
                 )
                 .build()?
