@@ -29,7 +29,6 @@ pub use outlines::{
 pub use query::{
     DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
 };
-use re_types::ComponentDescriptor;
 pub use results_ext::{
     HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,
     RangeResultsExt,
