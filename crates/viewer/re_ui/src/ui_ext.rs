@@ -6,7 +6,7 @@ use egui::{
     pos2,
 };
 
-use crate::{DesignTokens, Icon, LabelStyle, SUCCESS_COLOR, icons, list_item};
+use crate::{DesignTokens, Icon, LabelStyle, icons, list_item};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -65,9 +65,10 @@ pub trait UiExt {
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
+        let success_text_color = self.design_tokens().success_text_color;
         let ui = self.ui_mut();
         let success_text = success_text.into();
-        notification_label(ui, SUCCESS_COLOR, "✅", &success_text, &success_text)
+        notification_label(ui, success_text_color, "✅", &success_text, &success_text)
     }
 
     /// Shows a warning label with a large border.
@@ -242,7 +243,7 @@ pub trait UiExt {
             .inner
     }
 
-    #[allow(clippy::disallowed_methods)]
+    #[expect(clippy::disallowed_methods)]
     fn re_radio_value<Value: PartialEq>(
         &mut self,
         current_value: &mut Value,
@@ -946,7 +947,7 @@ pub trait UiExt {
             let visuals = ui.style().interact(&response);
             let expanded_rect = visual_rect.expand(visuals.expansion);
             let fg_fill_off = visuals.bg_fill;
-            let fg_fill_on = egui::Color32::from_rgba_premultiplied(0, 128, 255, 255);
+            let fg_fill_on = ui.visuals().selection.bg_fill;
             let fg_fill = fg_fill_off.lerp_to_gamma(fg_fill_on, how_on);
             let bg_fill_off = visuals.text_color();
 

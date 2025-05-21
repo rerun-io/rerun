@@ -113,6 +113,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                     let SegmentationImageComponentData { image, opacity } = data;
 
                     let opacity = opacity.unwrap_or_else(|| self.fallback_for(ctx));
+                    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
                     let multiplicative_tint =
                         re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
                     let colormap = None;

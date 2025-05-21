@@ -33,6 +33,14 @@
     "trace_log_text_color": {
       "color": "{Gray.700}"
     },
+
+    "success_text_color": {
+      "color": "{Green.700}"
+    },
+    "info_text_color": {
+      "color": "{Blue.700}"
+    },
+
     "label_button_icon_color": {
       "color": "{Gray.500}"
     },

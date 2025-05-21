@@ -1,6 +1,5 @@
 use egui::{Align2, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
 
-use crate::SUCCESS_COLOR;
 use crate::{DesignTokens, TopBarStyle};
 
 /// Extension trait for [`egui::Context`].
@@ -66,7 +65,7 @@ pub trait ContextExt {
     /// Text colored to indicate success.
     #[must_use]
     fn success_text(&self, text: impl Into<String>) -> egui::RichText {
-        egui::RichText::new(text).color(SUCCESS_COLOR)
+        egui::RichText::new(text).color(self.design_tokens().success_text_color)
     }
 
     /// Text colored to indicate a warning.

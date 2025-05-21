@@ -756,6 +756,7 @@ fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
 
 fn make_brighter(color: Color32) -> Color32 {
     let [r, g, b, _] = color.to_array();
+    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
     egui::Color32::from_rgb(
         r.saturating_add(64),
         g.saturating_add(64),
@@ -765,6 +766,7 @@ fn make_brighter(color: Color32) -> Color32 {
 
 fn make_darker(color: Color32) -> Color32 {
     let [r, g, b, _] = color.to_array();
+    #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
     egui::Color32::from_rgb(
         r.saturating_sub(64),
         g.saturating_sub(64),

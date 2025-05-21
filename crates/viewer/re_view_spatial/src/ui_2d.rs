@@ -454,7 +454,7 @@ fn show_projections_from_3d_space(
                     shapes.push(Shape::rect_filled(
                         rect,
                         2.0,
-                        Color32::from_black_alpha(196), // TODO: design tokens
+                        ui.visuals().extreme_bg_color.gamma_multiply_u8(196),
                     ));
                     shapes.push(Shape::galley(rect.min, galley, text_color));
                 }

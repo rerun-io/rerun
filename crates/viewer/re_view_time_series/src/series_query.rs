@@ -131,7 +131,7 @@ pub fn collect_colors(
 
     fn map_raw_color(raw: &u32) -> re_renderer::Color32 {
         let [a, b, g, r] = raw.to_le_bytes();
-        #[allow(clippy::disallowed_methods)] // This is not a hard-coded color.
+        #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
         re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
     }
     let all_color_chunks = results.get_optional_chunks(color_descriptor.clone());

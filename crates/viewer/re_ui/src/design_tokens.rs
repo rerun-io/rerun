@@ -39,6 +39,9 @@ pub struct DesignTokens {
     pub debug_log_text_color: Color32,
     pub trace_log_text_color: Color32,
 
+    pub success_text_color: Color32,
+    pub info_text_color: Color32,
+
     /// Color of an icon next to a label
     pub label_button_icon_color: Color32,
 
@@ -169,6 +172,9 @@ impl DesignTokens {
             info_log_text_color: get_color("info_log_text_color"),
             debug_log_text_color: get_color("debug_log_text_color"),
             trace_log_text_color: get_color("trace_log_text_color"),
+
+            success_text_color: get_color("success_text_color"),
+            info_text_color: get_color("info_text_color"),
 
             label_button_icon_color: get_color("label_button_icon_color"),
             section_collapsing_header_color: get_color("section_collapsing_header_color"),

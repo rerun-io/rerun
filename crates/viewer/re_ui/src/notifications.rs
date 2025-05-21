@@ -22,10 +22,10 @@ pub enum NotificationLevel {
 impl NotificationLevel {
     fn color(&self, ui: &egui::Ui) -> egui::Color32 {
         match self {
-            Self::Info => crate::INFO_COLOR,
+            Self::Info => ui.design_tokens().info_text_color,
             Self::Warning => ui.style().visuals.warn_fg_color,
             Self::Error => ui.style().visuals.error_fg_color,
-            Self::Success => crate::SUCCESS_COLOR,
+            Self::Success => ui.design_tokens().success_text_color,
         }
     }
 }
@@ -439,13 +439,7 @@ fn notification_age_label(ui: &mut egui::Ui, notification: &Notification) {
 }
 
 fn log_level_icon(ui: &mut egui::Ui, level: NotificationLevel) {
-    let color = match level {
-        NotificationLevel::Info => crate::INFO_COLOR,
-        NotificationLevel::Warning => ui.style().visuals.warn_fg_color,
-        NotificationLevel::Error => ui.style().visuals.error_fg_color,
-        NotificationLevel::Success => crate::SUCCESS_COLOR,
-    };
-
+    let color = level.color(ui);
     let (rect, _) = ui.allocate_exact_size(egui::vec2(10.0, 10.0), egui::Sense::hover());
     ui.painter()
         .circle_filled(rect.center() + egui::vec2(0.0, 2.0), 5.0, color);

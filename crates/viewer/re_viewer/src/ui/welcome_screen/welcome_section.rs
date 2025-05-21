@@ -53,6 +53,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         }
 
         ui.add_space(9.0);
+        // TODO: use our hyperlink icon
         if ui
             .button(
                 egui::RichText::new("Go to documentation →")
