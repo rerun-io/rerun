@@ -219,7 +219,7 @@ fn latest_at() -> anyhow::Result<()> {
             row_id1,
             [build_frame_nr(frame1)],
             [
-                (MyIndex::descriptor(), &indices1 as _),
+                (MyIndex::untagged_descriptor(), &indices1 as _),
                 (MyPoints::descriptor_colors(), &colors1 as _),
             ],
         )
@@ -232,7 +232,7 @@ fn latest_at() -> anyhow::Result<()> {
             row_id2,
             [build_frame_nr(frame2)],
             [
-                (MyIndex::descriptor(), &indices1 as _),
+                (MyIndex::untagged_descriptor(), &indices1 as _),
                 (MyPoints::descriptor_points(), &points2 as _),
             ],
         )
@@ -302,7 +302,7 @@ fn latest_at() -> anyhow::Result<()> {
         frame0,
         &[
             (MyPoints::descriptor_colors(), Some(row_id5)), // static
-            (MyIndex::descriptor(), None),
+            (MyIndex::untagged_descriptor(), None),
             (MyPoints::descriptor_points(), None),
         ],
     );
@@ -310,7 +310,7 @@ fn latest_at() -> anyhow::Result<()> {
         frame1,
         &[
             (MyPoints::descriptor_colors(), Some(row_id5)), // static
-            (MyIndex::descriptor(), Some(row_id1)),
+            (MyIndex::untagged_descriptor(), Some(row_id1)),
             (MyPoints::descriptor_points(), None),
         ],
     );
@@ -319,7 +319,7 @@ fn latest_at() -> anyhow::Result<()> {
         &[
             (MyPoints::descriptor_colors(), Some(row_id5)),
             (MyPoints::descriptor_points(), Some(row_id2)),
-            (MyIndex::descriptor(), Some(row_id2)),
+            (MyIndex::untagged_descriptor(), Some(row_id2)),
         ],
     );
     assert_latest_components(
@@ -327,7 +327,7 @@ fn latest_at() -> anyhow::Result<()> {
         &[
             (MyPoints::descriptor_colors(), Some(row_id5)),
             (MyPoints::descriptor_points(), Some(row_id3)),
-            (MyIndex::descriptor(), Some(row_id2)),
+            (MyIndex::untagged_descriptor(), Some(row_id2)),
         ],
     );
     assert_latest_components(
@@ -335,7 +335,7 @@ fn latest_at() -> anyhow::Result<()> {
         &[
             (MyPoints::descriptor_colors(), Some(row_id5)),
             (MyPoints::descriptor_points(), Some(row_id3)),
-            (MyIndex::descriptor(), Some(row_id2)),
+            (MyIndex::untagged_descriptor(), Some(row_id2)),
         ],
     );
 
@@ -400,7 +400,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             row_id1_1,
             [build_frame_nr(frame1)],
             [
-                (MyIndex::descriptor(), None),
+                (MyIndex::untagged_descriptor(), None),
                 (
                     MyPoints::descriptor_points(),
                     Some(&MyPoint::from_iter(0..1) as _),
@@ -411,7 +411,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             row_id1_2,
             [build_frame_nr(frame2)],
             [
-                (MyIndex::descriptor(), None),
+                (MyIndex::untagged_descriptor(), None),
                 (
                     MyPoints::descriptor_points(),
                     Some(&MyPoint::from_iter(1..2) as _),
@@ -422,7 +422,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             row_id1_3,
             [build_frame_nr(frame3)],
             [
-                (MyIndex::descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
+                (MyIndex::untagged_descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
                 (
                     MyPoints::descriptor_points(),
                     Some(&MyPoint::from_iter(2..3) as _),
@@ -444,7 +444,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
             row_id2_1,
             [build_frame_nr(frame2)],
             [
-                (MyIndex::descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
+                (MyIndex::untagged_descriptor(), Some(&MyIndex::from_iter(2..3) as _)),
                 (
                     MyPoints::descriptor_points(),
                     Some(&MyPoint::from_iter(1..2) as _),
@@ -465,7 +465,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
     let row_id = query_latest_array(
         &store,
         &entity_path,
-        &MyIndex::descriptor(),
+        &MyIndex::untagged_descriptor(),
         &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
     )
     .map(|(_data_time, row_id, _array)| row_id);
@@ -703,7 +703,7 @@ fn range() -> anyhow::Result<()> {
                 row_id1,
                 [build_frame_nr(frame1)],
                 [
-                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyIndex::untagged_descriptor(), &indices1 as _),
                     (MyPoints::descriptor_colors(), &colors1 as _),
                 ],
             )
@@ -718,7 +718,7 @@ fn range() -> anyhow::Result<()> {
                 row_id2,
                 [build_frame_nr(frame2)],
                 [
-                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyIndex::untagged_descriptor(), &indices1 as _),
                     (MyPoints::descriptor_points(), &points2 as _),
                 ],
             )
@@ -746,7 +746,7 @@ fn range() -> anyhow::Result<()> {
                 row_id4_1,
                 [build_frame_nr(frame4)],
                 [
-                    (MyIndex::descriptor(), &indices4_1 as _),
+                    (MyIndex::untagged_descriptor(), &indices4_1 as _),
                     (MyPoints::descriptor_colors(), &colors4_1 as _),
                 ],
             )
@@ -762,7 +762,7 @@ fn range() -> anyhow::Result<()> {
                 row_id4_2,
                 [build_frame_nr(frame4)],
                 [
-                    (MyIndex::descriptor(), &indices4_2 as _),
+                    (MyIndex::untagged_descriptor(), &indices4_2 as _),
                     (MyPoints::descriptor_colors(), &colors4_2 as _),
                 ],
             )
@@ -777,7 +777,7 @@ fn range() -> anyhow::Result<()> {
                 row_id4_25,
                 [build_frame_nr(frame4)],
                 [
-                    (MyIndex::descriptor(), &indices4_2 as _),
+                    (MyIndex::untagged_descriptor(), &indices4_2 as _),
                     (MyPoints::descriptor_points(), &points4_25 as _),
                 ],
             )
@@ -793,7 +793,7 @@ fn range() -> anyhow::Result<()> {
                 row_id4_3,
                 [build_frame_nr(frame4)],
                 [
-                    (MyIndex::descriptor(), &indices4_3 as _),
+                    (MyIndex::untagged_descriptor(), &indices4_3 as _),
                     (MyPoints::descriptor_colors(), &colors4_3 as _),
                 ],
             )
@@ -808,7 +808,7 @@ fn range() -> anyhow::Result<()> {
                 row_id4_4,
                 [build_frame_nr(frame4)],
                 [
-                    (MyIndex::descriptor(), &indices4_3 as _),
+                    (MyIndex::untagged_descriptor(), &indices4_3 as _),
                     (MyPoints::descriptor_points(), &points4_4 as _),
                 ],
             )

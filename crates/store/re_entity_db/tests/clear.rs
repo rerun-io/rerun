@@ -310,7 +310,10 @@ fn clears() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id,
                 timepoint,
-                [(<re_log_types::example_components::MyIndex as re_types_core::Component>::descriptor(), &[instance] as _)],
+                [(
+                    re_log_types::example_components::MyIndex::untagged_descriptor(),
+                    &[instance] as _,
+                )],
             )
             .build()?;
 

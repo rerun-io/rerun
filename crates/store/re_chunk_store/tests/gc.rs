@@ -130,7 +130,7 @@ fn simple_static() -> anyhow::Result<()> {
                 row_id1,
                 [build_frame_nr(frame1)],
                 [
-                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyIndex::untagged_descriptor(), &indices1 as _),
                     (MyPoints::descriptor_colors(), &colors1 as _),
                 ],
             )
@@ -145,7 +145,7 @@ fn simple_static() -> anyhow::Result<()> {
                 row_id2,
                 [build_frame_nr(frame2)],
                 [
-                    (MyIndex::descriptor(), &indices1 as _),
+                    (MyIndex::untagged_descriptor(), &indices1 as _),
                     (MyPoints::descriptor_points(), &points2 as _),
                 ],
             )
@@ -213,7 +213,7 @@ fn simple_static() -> anyhow::Result<()> {
     assert_latest_components(
         TimeInt::MAX,
         &[
-            (MyIndex::descriptor(), row_id2_static),
+            (MyIndex::untagged_descriptor(), row_id2_static),
             (MyPoints::descriptor_colors(), row_id1_static),
             (MyPoints::descriptor_points(), row_id2_static),
         ],
@@ -245,7 +245,7 @@ fn protected() -> anyhow::Result<()> {
             row_id1,
             [build_frame_nr(frame1)],
             [
-                (MyIndex::descriptor(), &indices1 as _),
+                (MyIndex::untagged_descriptor(), &indices1 as _),
                 (MyPoints::descriptor_colors(), &colors1 as _),
             ],
         )
@@ -258,7 +258,7 @@ fn protected() -> anyhow::Result<()> {
             row_id2,
             [build_frame_nr(frame2)],
             [
-                (MyIndex::descriptor(), &indices1 as _),
+                (MyIndex::untagged_descriptor(), &indices1 as _),
                 (MyPoints::descriptor_points(), &points2 as _),
             ],
         )
@@ -316,7 +316,7 @@ fn protected() -> anyhow::Result<()> {
     assert_latest_components(
         frame1,
         &[
-            (MyIndex::descriptor(), None),
+            (MyIndex::untagged_descriptor(), None),
             (MyPoints::descriptor_colors(), None),
             (MyPoints::descriptor_points(), None),
         ],
@@ -325,7 +325,7 @@ fn protected() -> anyhow::Result<()> {
     assert_latest_components(
         frame2,
         &[
-            (MyIndex::descriptor(), Some(row_id2)),
+            (MyIndex::untagged_descriptor(), Some(row_id2)),
             (MyPoints::descriptor_colors(), None),
             (MyPoints::descriptor_points(), Some(row_id2)),
         ],
@@ -334,7 +334,7 @@ fn protected() -> anyhow::Result<()> {
     assert_latest_components(
         frame3,
         &[
-            (MyIndex::descriptor(), Some(row_id2)),
+            (MyIndex::untagged_descriptor(), Some(row_id2)),
             (MyPoints::descriptor_colors(), None),
             (MyPoints::descriptor_points(), Some(row_id3)),
         ],
@@ -343,7 +343,7 @@ fn protected() -> anyhow::Result<()> {
     assert_latest_components(
         frame4,
         &[
-            (MyIndex::descriptor(), Some(row_id2)),
+            (MyIndex::untagged_descriptor(), Some(row_id2)),
             (MyPoints::descriptor_colors(), Some(row_id4)),
             (MyPoints::descriptor_points(), Some(row_id3)),
         ],
@@ -375,7 +375,7 @@ fn protected_time_ranges() -> anyhow::Result<()> {
             row_id1,
             [build_frame_nr(frame1)],
             [
-                (MyIndex::descriptor(), &indices1 as _),
+                (MyIndex::untagged_descriptor(), &indices1 as _),
                 (MyPoints::descriptor_colors(), &colors1 as _),
             ],
         )
@@ -388,7 +388,7 @@ fn protected_time_ranges() -> anyhow::Result<()> {
             row_id2,
             [build_frame_nr(frame2)],
             [
-                (MyIndex::descriptor(), &indices1 as _),
+                (MyIndex::untagged_descriptor(), &indices1 as _),
                 (MyPoints::descriptor_points(), &points2 as _),
             ],
         )
@@ -469,7 +469,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id1,
                 [build_frame_nr(10)],
-                [(MyIndex::descriptor(), &indices1 as _)],
+                [(MyIndex::untagged_descriptor(), &indices1 as _)],
             )
             .build()?,
     );
@@ -481,7 +481,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id2,
                 [build_log_time(Timestamp::now())],
-                [(MyIndex::descriptor(), &indices2 as _)],
+                [(MyIndex::untagged_descriptor(), &indices2 as _)],
             )
             .build()?,
     );
@@ -493,7 +493,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id3,
                 TimePoint::default(),
-                [(MyIndex::descriptor(), &indices3 as _)],
+                [(MyIndex::untagged_descriptor(), &indices3 as _)],
             )
             .build()?,
     );
@@ -505,7 +505,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id4,
                 [build_frame_nr(42), build_log_time(Timestamp::now())],
-                [(MyIndex::descriptor(), &indices4 as _)],
+                [(MyIndex::untagged_descriptor(), &indices4 as _)],
             )
             .build()?,
     );
@@ -519,7 +519,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
                                entity_path: &EntityPath,
                                query: &LatestAtQuery,
                                expected_row_id: Option<RowId>| {
-        let row_id = query_latest_array(store, entity_path, &MyIndex::descriptor(), query)
+        let row_id = query_latest_array(store, entity_path, &MyIndex::untagged_descriptor(), query)
             .map(|(_data_time, row_id, _array)| row_id);
 
         assert_eq!(expected_row_id, row_id);

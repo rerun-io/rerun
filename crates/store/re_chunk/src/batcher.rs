@@ -1060,17 +1060,17 @@ mod tests {
         let components1 = [
             (MyPoints::descriptor_points(), points1.clone()),
             (MyPoints::descriptor_labels(), labels1.clone()),
-            (MyIndex::descriptor(), indices1.clone()),
+            (MyIndex::untagged_descriptor(), indices1.clone()),
         ];
         let components2 = [
             (MyPoints::descriptor_points(), points2.clone()),
             (MyPoints::descriptor_labels(), labels2.clone()),
-            (MyIndex::descriptor(), indices2.clone()),
+            (MyIndex::untagged_descriptor(), indices2.clone()),
         ];
         let components3 = [
             (MyPoints::descriptor_points(), points3.clone()),
             (MyPoints::descriptor_labels(), labels3.clone()),
-            (MyIndex::descriptor(), indices3.clone()),
+            (MyIndex::untagged_descriptor(), indices3.clone()),
         ];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
@@ -1121,7 +1121,7 @@ mod tests {
                     arrays_to_list_array_opt(&[&*labels1, &*labels2, &*labels3].map(Some)).unwrap(),
                 ), //
                 (
-                    MyIndex::descriptor(),
+                    MyIndex::untagged_descriptor(),
                     arrays_to_list_array_opt(&[&*indices1, &*indices2, &*indices3].map(Some))
                         .unwrap(),
                 ), //
@@ -1167,18 +1167,18 @@ mod tests {
         let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
 
         let components1 = [
-            (MyIndex::descriptor(), indices1.clone()),
+            (MyIndex::untagged_descriptor(), indices1.clone()),
             (MyPoints::descriptor_points(), points1.clone()),
             (MyPoints::descriptor_labels(), labels1.clone()),
         ];
         let components2 = [
             (MyPoints::descriptor_points(), points2.clone()),
             (MyPoints::descriptor_labels(), labels2.clone()),
-            (MyIndex::descriptor(), indices2.clone()),
+            (MyIndex::untagged_descriptor(), indices2.clone()),
         ];
         let components3 = [
             (MyPoints::descriptor_labels(), labels3.clone()),
-            (MyIndex::descriptor(), indices3.clone()),
+            (MyIndex::untagged_descriptor(), indices3.clone()),
             (MyPoints::descriptor_points(), points3.clone()),
         ];
 
@@ -1232,7 +1232,7 @@ mod tests {
             MyPoints::descriptor_colors(),
             MyPoints::descriptor_labels(),
             MyPoint64::descriptor(),
-            MyIndex::descriptor(),
+            MyIndex::untagged_descriptor(),
         ];
 
         let expected: IntMap<ComponentDescriptor, ()> =

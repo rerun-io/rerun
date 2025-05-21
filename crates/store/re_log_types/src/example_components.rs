@@ -513,6 +513,11 @@ impl MyIndex {
     pub fn from_iter(it: impl IntoIterator<Item = u64>) -> Vec<Self> {
         it.into_iter().map(Self).collect()
     }
+
+    #[inline]
+    pub fn untagged_descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new(Self::name())
+    }
 }
 
 re_types_core::macros::impl_into_cow!(MyIndex);
