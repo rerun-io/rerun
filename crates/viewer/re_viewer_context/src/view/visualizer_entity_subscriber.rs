@@ -41,6 +41,7 @@ pub struct VisualizerEntitySubscriber {
     additional_filter: Box<dyn DataBasedVisualizabilityFilter>,
 }
 
+// TODO(#6889): Create writeup for things that changed and an issue for how things should move forward (i.e. descriptor overrides).
 /// Additional filter for visualizability on top of the default check for required components.
 ///
 /// This is part of the "maybe visualizable" criteria.

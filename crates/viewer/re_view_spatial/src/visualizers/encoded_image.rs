@@ -3,12 +3,12 @@ use re_types::{
     components::{DrawOrder, MediaType, Opacity},
     image::ImageKind,
 };
-use re_view::{HybridResults, diff_component_filter};
+use re_view::HybridResults;
 use re_viewer_context::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageDecodeCache,
-    MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
@@ -39,30 +39,9 @@ impl IdentifiedViewSystem for EncodedImageVisualizer {
     }
 }
 
-struct ImageMediaTypeFilter;
-
-impl DataBasedVisualizabilityFilter for ImageMediaTypeFilter {
-    /// Marks entities only as "maybe visualizable" for `EncodedImage` if they have an image media type.
-    ///
-    /// Otherwise the image encoder might be suggested for other blobs like video.
-    fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |media_type: &re_types::components::MediaType| {
-            media_type.is_image()
-        }) || diff_component_filter(event, |image: &re_types::components::Blob| {
-            MediaType::guess_from_data(&image.0).is_some_and(|media| media.is_image())
-        })
-    }
-}
-
 impl VisualizerSystem for EncodedImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<EncodedImage>()
-    }
-
-    fn data_based_visualizability_filter(
-        &self,
-    ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
-        Some(Box::new(ImageMediaTypeFilter))
     }
 
     fn filter_visualizable_entities(
