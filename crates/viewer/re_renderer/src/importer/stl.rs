@@ -1,6 +1,5 @@
 use itertools::Itertools as _;
 use smallvec::smallvec;
-use stl_io::IndexedMesh;
 
 use crate::{CpuModel, RenderContext, mesh};
 
