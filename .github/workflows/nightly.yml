@@ -449,6 +449,12 @@ jobs:
             FetchContent_MakeAvailable(rerun_sdk)
             ```
 
+            ## Web Viewer NPM package
+            Can be installed with:
+            ```
+            npm install https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_js
+            ```
+
           prerelease: true
           # Be explicit about the commit we're releasing/tagging.
           # Otherwise it can happen that there's a discrepancy between the tag and the commit for which we uploaded & linked artifacts.
