@@ -225,6 +225,9 @@ impl ComponentUiRegistry {
     ) {
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, _component_descriptor, _row_id, value, edit_or_view| {
+                // if we end up being called with a mismatching component, its likely a bug.
+                debug_assert_eq!(_component_descriptor.component_name, C::name());
+
                 try_deserialize(value).and_then(|mut deserialized_value| match edit_or_view {
                     EditOrView::View => {
                         callback(ctx, ui, &mut MaybeMutRef::Ref(&deserialized_value));
