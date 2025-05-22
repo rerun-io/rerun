@@ -14,10 +14,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1.12.5
 
-      - name: Cargo binstall
-        uses: cargo-bins/cargo-binstall@main
+      - name: Install Cargo Shear
+        uses: taiki-e/install-action@v2.48.7
+        with:
+          tool: cargo-shear@1.1.11
 
-      - name: Cargo Shear
+      - name: Run Cargo Shear
         run: |
-          cargo +stable binstall cargo-shear@1.1.11 -y --locked
           cargo shear
