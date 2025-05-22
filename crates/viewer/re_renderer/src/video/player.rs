@@ -50,7 +50,7 @@ pub struct VideoTexture {
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple video players.
 pub struct VideoPlayer {
-    data: Arc<re_video::VideoData>,
+    data: Arc<re_video::VideoDataDescription>,
     chunk_decoder: VideoChunkDecoder,
 
     /// The video texture is created lazily on the first received frame.
@@ -69,7 +69,7 @@ pub struct VideoPlayer {
 impl VideoPlayer {
     pub fn new(
         debug_name: &str,
-        data: Arc<re_video::VideoData>,
+        data: Arc<re_video::VideoDataDescription>,
         decode_settings: &DecodeSettings,
     ) -> Result<Self, VideoPlayerError> {
         let debug_name = format!(

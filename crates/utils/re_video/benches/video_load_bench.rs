@@ -14,7 +14,7 @@ fn video_load(c: &mut Criterion) {
     c.bench_function("video_load", |b| {
         b.iter_batched(
             || {},
-            |()| re_video::VideoData::load_from_bytes(&video, "video/mp4"),
+            |()| re_video::VideoDataDescription::load_from_bytes(&video, "video/mp4"),
             criterion::BatchSize::LargeInput,
         );
     });

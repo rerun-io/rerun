@@ -8,7 +8,7 @@ use re_ui::{
     DesignTokens, UiExt as _,
     list_item::{self, PropertyContent},
 };
-use re_video::{VideoData, decode::FrameInfo};
+use re_video::{VideoDataDescription, decode::FrameInfo};
 use re_viewer_context::UiLayout;
 
 pub fn video_result_ui(
@@ -48,7 +48,7 @@ pub fn video_result_ui(
     }
 }
 
-fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData) {
+fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoDataDescription) {
     re_tracing::profile_function!();
 
     if let Some([w, h]) = video_data.dimensions() {
@@ -102,7 +102,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
 
     if ui_layout != UiLayout::Tooltip {
         ui.list_item_collapsible_noninteractive_label("MP4 tracks", false, |ui| {
-            for (track_id, track_kind) in &video_data.mp4_tracks {
+            for (track_id, track_kind) in &video_data.tracks {
                 let track_kind_string = match track_kind {
                     Some(re_video::TrackKind::Audio) => "audio",
                     Some(re_video::TrackKind::Subtitle) => "subtitle",
@@ -141,7 +141,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
     }
 }
 
-fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
+fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription) {
     re_tracing::profile_function!();
 
     egui_extras::TableBuilder::new(ui)
@@ -237,7 +237,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
         });
 }
 
-fn timestamp_ui(ui: &mut egui::Ui, video_data: &VideoData, timestamp: re_video::Time) {
+fn timestamp_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription, timestamp: re_video::Time) {
     ui.monospace(re_format::format_int(timestamp.0))
         .on_hover_ui(|ui| {
             ui.monospace(re_format::format_timestamp_secs(
@@ -347,7 +347,7 @@ pub fn show_decoded_frame_info(
     }
 }
 
-fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
+fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoDataDescription) {
     let FrameInfo {
         is_sync,
         sample_idx,
@@ -379,7 +379,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
 
     fn value_fn_for_time(
         time: re_video::Time,
-        video_data: &re_video::VideoData,
+        video_data: &re_video::VideoDataDescription,
     ) -> impl FnOnce(&mut egui::Ui, list_item::ListVisuals) + '_ {
         move |ui, _| {
             timestamp_ui(ui, video_data, time);

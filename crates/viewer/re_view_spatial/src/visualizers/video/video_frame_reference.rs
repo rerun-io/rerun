@@ -26,12 +26,12 @@ use crate::{
     contexts::SpatialSceneEntityContext,
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
-    visualizers::{LoadingSpinner, entity_iterator, filter_visualizable_2d_entities},
-};
-
-use super::{
-    SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
-    entity_iterator::process_archetype,
+    visualizers::{
+        LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
+        entity_iterator::{self, process_archetype},
+        filter_visualizable_2d_entities,
+        video::video_stream_id,
+    },
 };
 
 // TODO(#9832): Support opacity for videos
@@ -150,9 +150,7 @@ impl VideoFrameReferenceVisualizer {
     ) {
         re_tracing::profile_function!();
 
-        let player_stream_id = re_renderer::video::VideoPlayerStreamId(
-            Hash64::hash((entity_path.hash(), view_id)).hash64(),
-        );
+        let player_stream_id = video_stream_id(entity_path, view_id, Self::identifier());
 
         // Follow the reference to the video asset.
         let video_reference: EntityPath = video_references

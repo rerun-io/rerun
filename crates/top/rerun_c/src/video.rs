@@ -35,7 +35,7 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         return std::ptr::null_mut();
     };
 
-    let video = match re_video::VideoData::load_from_bytes(video_bytes, media_type_str) {
+    let video = match re_video::VideoDataDescription::load_from_bytes(video_bytes, media_type_str) {
         Ok(video) => video,
         Err(err) => {
             CError::new(

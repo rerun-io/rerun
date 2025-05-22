@@ -10,7 +10,7 @@ use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
 };
-use re_video::{VideoData, decode::DecodeSettings};
+use re_video::{VideoDataDescription, decode::DecodeSettings};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -84,7 +84,7 @@ struct PlayerEntry {
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
 pub struct Video {
     debug_name: String,
-    data: Arc<re_video::VideoData>,
+    data: Arc<re_video::VideoDataDescription>,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
     decode_settings: DecodeSettings,
 }
@@ -94,7 +94,11 @@ impl Video {
     ///
     /// Currently supports the following media types:
     /// - `video/mp4`
-    pub fn load(debug_name: String, data: Arc<VideoData>, decode_settings: DecodeSettings) -> Self {
+    pub fn load(
+        debug_name: String,
+        data: Arc<VideoDataDescription>,
+        decode_settings: DecodeSettings,
+    ) -> Self {
         let players = Mutex::new(HashMap::default());
 
         Self {
@@ -107,7 +111,7 @@ impl Video {
 
     /// The video data
     #[inline]
-    pub fn data(&self) -> &Arc<re_video::VideoData> {
+    pub fn data(&self) -> &Arc<re_video::VideoDataDescription> {
         &self.data
     }
 

@@ -1,5 +1,4 @@
-use re_chunk_store::RangeQuery;
-use re_log_types::{EntityPath, ResolvedTimeRange, hash::Hash64};
+use re_log_types::{EntityPath, hash::Hash64};
 use re_renderer::{
     renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
@@ -11,11 +10,10 @@ use re_types::{
     archetypes::VideoStream,
     components::{self},
 };
-use re_video::VideoData;
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
+    VideoStreamCache, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -23,10 +21,11 @@ use crate::{
     contexts::{EntityDepthOffsets, TransformTreeContext},
     ui::SpatialViewState,
     view_kind::SpatialViewKind,
-    visualizers::filter_visualizable_2d_entities,
+    visualizers::{
+        LoadingSpinner, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget,
+        filter_visualizable_2d_entities, video::video_stream_id,
+    },
 };
-
-use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 
 // TODO(#9832): Support opacity for videos
 // TODO(jan): Fallback opacity in the same way as color/depth/segmentation images
@@ -70,6 +69,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let viewer_ctx = ctx.viewer_ctx;
         let transforms = context_systems.get::<TransformTreeContext>()?;
         let depth_offsets = context_systems.get::<EntityDepthOffsets>()?;
         let latest_at = view_query.latest_at_query();
@@ -95,21 +95,17 @@ impl VisualizerSystem for VideoStreamVisualizer {
             // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
             let mut video_resolution = glam::vec2(1280.0, 720.0);
 
-            // Query for all video chunks on the **entire** timeline.
-            // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
-            // even for a running stream, so let's stick with the cache!
-            //
-            // TODO(andreas): Can we be more clever about the chunk range here?
-            // Kinda tricky since we need to know how far back (and ahead for b-frames) we have to look.
-            let entire_timeline_query =
-                RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
-            let all_video_chunks = ctx.recording().storage_engine().cache().range(
-                &entire_timeline_query,
-                entity_path,
-                &[VideoStream::descriptor_chunk_data()],
-            );
-            let Ok(video_chunks) =
-                all_video_chunks.get_required(&VideoStream::descriptor_chunk_data())
+            let Some(video) = viewer_ctx
+                .store_context
+                .caches
+                .entry(|c: &mut VideoStreamCache| {
+                    c.entry(
+                        viewer_ctx.recording(),
+                        entity_path,
+                        view_query.timeline,
+                        viewer_ctx.app_options().video_decoder_settings(),
+                    )
+                })
             else {
                 self.show_video_error(
                     &query_context,
@@ -119,51 +115,92 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     video_resolution,
                     entity_path,
                 );
-
-                // No video chunks found, skip this entity.
                 continue;
             };
 
-            // Setup video decoder...
+            // TODO: reconciliate, document
+            let time_since_video_start_in_secs = query_context.query.at().as_f64();
 
-            // TODO: this needs improvements.
-            // TODO: should we try reading out the first few packages to guess some stuff?
-            // let video_data = re_video::VideoData {
-            //     config: re_video::Mp4Config {
-            //         dimensions: Some([1280, 720]),
-            //         ..Default::default()
-            //     },
-            // };
+            // TODO: same code as on video frame reference
+            match video.video_renderer.frame_at(
+                ctx.viewer_ctx.render_ctx(),
+                video_stream_id(entity_path, ctx.view_id, Self::identifier()),
+                time_since_video_start_in_secs,
+                &video.video_sample_data,
+            ) {
+                Ok(re_renderer::video::VideoFrameTexture {
+                    texture,
+                    is_pending,
+                    show_spinner,
+                    frame_info: _,
+                    source_pixel_format: _,
+                }) => {
+                    // Make sure to use the video instead of texture size here,
+                    // since the texture may be a placeholder which doesn't have the full size yet.
+                    let top_left_corner_position =
+                        world_from_entity.transform_point3(glam::Vec3::ZERO);
+                    let extent_u =
+                        world_from_entity.transform_vector3(glam::Vec3::X * texture.width() as f32);
+                    let extent_v = world_from_entity
+                        .transform_vector3(glam::Vec3::Y * texture.height() as f32);
 
-            // let video = ctx
-            //     .viewer_ctx
-            //     .store_context
-            //     .caches
-            //     .entry(|c: &mut VideoCache| {
-            //         let debug_name = entity_path.to_string();
-            //         c.entry(
-            //             debug_name,
-            //             blob_row_id,
-            //             &VideoStream::descriptor_chunk_data(),
-            //             &blob,
-            //             media_type.as_ref(),
-            //             ctx.app_options().video_decoder_settings(),
-            //         )
-            //     });
+                    if is_pending {
+                        // Keep polling for a fresh texture
+                        ctx.viewer_ctx.egui_ctx().request_repaint();
+                    }
 
-            // TODO:
-            self.show_video_error(
-                &query_context,
-                highlight,
-                world_from_entity,
-                format!("Got {:?} chunks", video_chunks.len()),
-                video_resolution,
-                entity_path,
-            );
+                    if show_spinner {
+                        // Show loading rectangle:
+                        self.data.loading_spinners.push(LoadingSpinner {
+                            center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                            half_extent_u: 0.5 * extent_u,
+                            half_extent_v: 0.5 * extent_v,
+                        });
+                    }
+
+                    let depth_offset = depth_offsets
+                        .per_entity_and_visualizer
+                        .get(&(Self::identifier(), entity_path.hash()))
+                        .copied()
+                        .unwrap_or_default();
+                    let textured_rect = TexturedRect {
+                        top_left_corner_position,
+                        extent_u,
+                        extent_v,
+                        colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
+                        options: RectangleOptions {
+                            texture_filter_magnification: TextureFilterMag::Nearest,
+                            texture_filter_minification: TextureFilterMin::Linear,
+                            outline_mask: highlight.overall,
+                            depth_offset,
+                            ..Default::default()
+                        },
+                    };
+                    self.data.pickable_rects.push(PickableTexturedRect {
+                        ent_path: entity_path.clone(),
+                        textured_rect,
+                        source_data: PickableRectSourceData::Video,
+                    });
+                }
+
+                Err(err) => {
+                    if let Some([w, h]) = video.video_renderer.dimensions() {
+                        video_resolution = glam::vec2(w as _, h as _);
+                    }
+                    self.show_video_error(
+                        &query_context,
+                        &highlight,
+                        world_from_entity,
+                        err.to_string(),
+                        video_resolution,
+                        entity_path,
+                    );
+                }
+            }
         }
 
         Ok(vec![PickableTexturedRect::to_draw_data(
-            ctx.viewer_ctx.render_ctx(),
+            viewer_ctx.render_ctx(),
             &self.data.pickable_rects,
         )?])
     }

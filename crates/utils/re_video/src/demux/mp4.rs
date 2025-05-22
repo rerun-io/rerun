@@ -1,10 +1,10 @@
 #![allow(clippy::map_err_ignore)]
 
-use super::{GroupOfPictures, Mp4Config, Sample, VideoData, VideoLoadError};
+use super::{GroupOfPictures, Mp4Config, Sample, VideoDataDescription, VideoLoadError};
 
 use crate::{Time, Timescale, demux::SamplesStatistics};
 
-impl VideoData {
+impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
@@ -156,7 +156,7 @@ impl VideoData {
             samples_statistics,
             gops,
             samples,
-            mp4_tracks,
+            tracks: mp4_tracks,
         })
     }
 }

@@ -49,9 +49,11 @@ pub enum VideoCodec {
     Other(String),
 }
 
-/// Encoded, demuxed video data.
+/// Description of video data.
+///
+/// Doesn't contain the actual data, but rather refers to samples with a byte offset.
 #[derive(Clone)]
-pub struct VideoData {
+pub struct VideoDataDescription {
     /// The codec used to encode the video.
     pub codec: VideoCodec,
 
@@ -84,7 +86,7 @@ pub struct VideoData {
     /// All the tracks in the mp4; not just the video track.
     ///
     /// Can be nice to show in a UI.
-    pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
+    pub tracks: BTreeMap<TrackId, Option<TrackKind>>,
 }
 
 /// Meta informationa about the video samples.
@@ -102,6 +104,11 @@ pub struct SamplesStatistics {
 }
 
 impl SamplesStatistics {
+    pub const NO_BFRAMES: Self = Self {
+        dts_always_equal_pts: true,
+        has_sample_highest_pts_so_far: None,
+    };
+
     pub fn new(samples: &[Sample]) -> Self {
         re_tracing::profile_function!();
 
@@ -131,7 +138,7 @@ impl SamplesStatistics {
     }
 }
 
-impl VideoData {
+impl VideoDataDescription {
     /// Loads a video from the given data.
     ///
     /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
@@ -590,7 +597,7 @@ pub enum VideoLoadError {
     UnsupportedCodec(re_mp4::FourCC),
 }
 
-impl std::fmt::Debug for VideoData {
+impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")
             .field("config", &self.config)
@@ -690,7 +697,7 @@ mod tests {
 
         // Test queries on the samples.
         let query_pts = |pts| {
-            VideoData::latest_sample_index_at_presentation_timestamp_internal(
+            VideoDataDescription::latest_sample_index_at_presentation_timestamp_internal(
                 &samples,
                 &sample_statistics,
                 pts,

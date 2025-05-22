@@ -192,7 +192,7 @@ fn size_from_blob(blob: &[u8], media_type: &MediaType) -> Option<[u32; 2]> {
         reader.into_dimensions().ok().map(|size| size.into())
     } else if media_type.is_video() {
         re_tracing::profile_scope!("video");
-        re_video::VideoData::load_from_bytes(blob, media_type)
+        re_video::VideoDataDescription::load_from_bytes(blob, media_type)
             .ok()
             .and_then(|video| video.dimensions())
     } else {

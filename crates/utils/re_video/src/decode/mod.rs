@@ -172,7 +172,7 @@ pub trait AsyncDecoder: Send + Sync {
 /// Creates a new async decoder for the given `video` data.
 pub fn new_decoder(
     debug_name: &str,
-    video: &crate::VideoData,
+    video: &crate::VideoDataDescription,
     decode_settings: &DecodeSettings,
     on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
 ) -> Result<Box<dyn AsyncDecoder>> {
