@@ -12,7 +12,7 @@ use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    Component, ComponentDescriptor, ComponentName, archetypes, components::ClearIsRecursive,
+    Component, ComponentDescriptor, archetypes, components::ClearIsRecursive,
     external::arrow::array::ArrayRef,
 };
 
@@ -300,18 +300,6 @@ impl LatestAtResults {
 impl LatestAtResults {
     // --- Batch ---
 
-    // TODO(#6889): Workaround, we should instead always pass component descriptor to the respective methods.
-    fn find_component_descriptor(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<&ComponentDescriptor> {
-        let component_descr = self
-            .components
-            .keys()
-            .find(|component_descr| component_descr.component_name == component_name)?;
-        Some(component_descr)
-    }
-
     /// Returns the `RowId` for the specified component.
     #[inline]
     pub fn component_row_id(&self, component_descr: &ComponentDescriptor) -> Option<RowId> {
@@ -344,17 +332,6 @@ impl LatestAtResults {
                 unit.component_batch(component_descr)?,
             )
         })
-    }
-
-    // TODO(#6889): Is this our tagged component endgame?
-    /// Returns the deserialized data for the specified component.
-    ///
-    /// Logs an error if the data cannot be deserialized.
-    #[inline]
-    pub fn component_batch_by_name<C: Component>(&self) -> Option<Vec<C>> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
-        self.component_batch_with_log_level(re_log::Level::Error, component_descr)
     }
 
     /// Returns the deserialized data for the specified component.
