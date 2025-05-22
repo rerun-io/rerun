@@ -181,7 +181,9 @@ impl ::re_types_core::Archetype for TextDocument {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TextDocumentIndicator::DEFAULT.serialized().unwrap()
+        TextDocumentIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

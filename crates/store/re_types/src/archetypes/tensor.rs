@@ -148,7 +148,9 @@ impl ::re_types_core::Archetype for Tensor {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TensorIndicator::DEFAULT.serialized().unwrap()
+        TensorIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

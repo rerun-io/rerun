@@ -408,7 +408,9 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        AffixFuzzer1Indicator::DEFAULT.serialized().unwrap()
+        AffixFuzzer1Indicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

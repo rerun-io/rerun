@@ -136,7 +136,9 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForceCollisionRadiusIndicator::DEFAULT.serialized().unwrap()
+        ForceCollisionRadiusIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

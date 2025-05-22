@@ -155,7 +155,9 @@ impl ::re_types_core::Archetype for ViewBlueprint {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ViewBlueprintIndicator::DEFAULT.serialized().unwrap()
+        ViewBlueprintIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

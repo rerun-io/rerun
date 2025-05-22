@@ -311,7 +311,9 @@ impl ::re_types_core::Archetype for Points2D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Points2DIndicator::DEFAULT.serialized().unwrap()
+        Points2DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

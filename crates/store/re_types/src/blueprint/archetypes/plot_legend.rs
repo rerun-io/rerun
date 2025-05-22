@@ -118,7 +118,9 @@ impl ::re_types_core::Archetype for PlotLegend {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        PlotLegendIndicator::DEFAULT.serialized().unwrap()
+        PlotLegendIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

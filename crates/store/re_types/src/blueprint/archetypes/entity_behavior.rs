@@ -124,7 +124,9 @@ impl ::re_types_core::Archetype for EntityBehavior {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        EntityBehaviorIndicator::DEFAULT.serialized().unwrap()
+        EntityBehaviorIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

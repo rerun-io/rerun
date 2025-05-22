@@ -50,6 +50,7 @@ pub trait ComponentBatch: LoggableBatch {
     /// Returns the complete [`ComponentDescriptor`] for this [`ComponentBatch`].
     ///
     /// Every component batch is uniquely identified by its [`ComponentDescriptor`].
+    #[deprecated]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor>;
 
     /// Serializes the contents of this [`ComponentBatch`].
@@ -69,15 +70,15 @@ pub trait ComponentBatch: LoggableBatch {
     ///
     /// [`AsComponents`]: [crate::AsComponents]
     #[inline]
-    fn serialized(&self) -> Option<SerializedComponentBatch> {
-        match self.try_serialized() {
+    fn serialized(&self, component_descr: ComponentDescriptor) -> Option<SerializedComponentBatch> {
+        match self.try_serialized(component_descr.clone()) {
             Ok(array) => Some(array),
 
             #[cfg(debug_assertions)]
             Err(err) => {
                 panic!(
                     "failed to serialize data for {}: {}",
-                    self.descriptor(),
+                    component_descr,
                     re_error::format_ref(&err)
                 )
             }
@@ -85,7 +86,7 @@ pub trait ComponentBatch: LoggableBatch {
             #[cfg(not(debug_assertions))]
             Err(err) => {
                 re_log::error!(
-                    descriptor = %self.descriptor(),
+                    descriptor = %component_descr,
                     "failed to serialize data: {}",
                     re_error::format_ref(&err)
                 );
@@ -108,10 +109,13 @@ pub trait ComponentBatch: LoggableBatch {
     ///
     /// [`AsComponents`]: [crate::AsComponents]
     #[inline]
-    fn try_serialized(&self) -> SerializationResult<SerializedComponentBatch> {
+    fn try_serialized(
+        &self,
+        component_descr: ComponentDescriptor,
+    ) -> SerializationResult<SerializedComponentBatch> {
         Ok(SerializedComponentBatch {
             array: self.to_arrow()?,
-            descriptor: self.descriptor().into_owned(),
+            descriptor: component_descr,
         })
     }
 
@@ -124,6 +128,7 @@ pub trait ComponentBatch: LoggableBatch {
     /// `Self::name()` must exactly match the value returned by `self.descriptor().component_name`,
     /// or undefined behavior ensues.
     #[inline]
+    #[deprecated]
     fn name(&self) -> ComponentName {
         self.descriptor().component_name
     }

@@ -207,9 +207,21 @@ mod tests {
     use itertools::Itertools as _;
     use similar_asserts::assert_eq;
 
+    use crate::{Component, ComponentDescriptor};
+
     #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     #[repr(transparent)]
     pub struct MyColor(pub u32);
+
+    impl MyColor {
+        fn descriptor() -> ComponentDescriptor {
+            ComponentDescriptor {
+                archetype_name: Some("test".into()),
+                archetype_field_name: Some("color".into()),
+                component_name: MyColor::name(),
+            }
+        }
+    }
 
     crate::macros::impl_into_cow!(MyColor);
 
@@ -271,7 +283,7 @@ mod tests {
 
         let got = {
             let red = &red as &dyn crate::ComponentBatch;
-            vec![red.try_serialized().unwrap().array]
+            vec![red.try_serialized(MyColor::descriptor()).unwrap().array]
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
@@ -298,7 +310,7 @@ mod tests {
 
         let got = {
             let red = &red as &dyn crate::ComponentBatch;
-            vec![red.try_serialized().unwrap().array]
+            vec![red.try_serialized(MyColor::descriptor()).unwrap().array]
         };
         let expected = vec![
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>,
@@ -328,9 +340,9 @@ mod tests {
             let green = &green as &dyn crate::ComponentBatch;
             let blue = &blue as &dyn crate::ComponentBatch;
             [
-                red.try_serialized().unwrap(),
-                green.try_serialized().unwrap(),
-                blue.try_serialized().unwrap(),
+                red.try_serialized(MyColor::descriptor()).unwrap(),
+                green.try_serialized(MyColor::descriptor()).unwrap(),
+                blue.try_serialized(MyColor::descriptor()).unwrap(),
             ]
             .into_iter()
             .map(|batch| batch.array)

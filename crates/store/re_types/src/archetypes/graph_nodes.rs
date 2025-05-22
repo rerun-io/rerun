@@ -209,7 +209,9 @@ impl ::re_types_core::Archetype for GraphNodes {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        GraphNodesIndicator::DEFAULT.serialized().unwrap()
+        GraphNodesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]
