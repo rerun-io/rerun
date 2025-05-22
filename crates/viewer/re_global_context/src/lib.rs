@@ -1,8 +1,4 @@
-//! Ultimately the goal is to have hierarchy of contexts from general to
-//! increasingly specific. Each part of the viewer should only have access a
-//! narrow context. Unfortunately, right now everything is still very
-//! intertwined with [`ViewerContext`](crate::ViewerContext) so we can't pull
-//! the [`GlobalContext`] out of this crate yet.
+//! State that is shared with most top-level crates.
 
 mod app_options;
 mod blueprint_id;
@@ -33,11 +29,11 @@ pub struct GlobalContext<'a> {
 
     /// Runtime info about components and archetypes.
     ///
-    /// The component placeholder values for components are to be used when [`crate::ComponentFallbackProvider::try_provide_fallback`]
+    /// The component placeholder values for components are to be used when `ComponentFallbackProvider::try_provide_fallback`
     /// is not able to provide a value.
     ///
     /// ⚠️ In almost all cases you should not use this directly, but instead use the currently best fitting
-    /// [`crate::ComponentFallbackProvider`] and call [`crate::ComponentFallbackProvider::fallback_for`] instead.
+    /// `ComponentFallbackProvider` and call `ComponentFallbackProvider::fallback_for` instead.
     pub reflection: &'a re_types_core::reflection::Reflection,
 
     /// The [`egui::Context`].

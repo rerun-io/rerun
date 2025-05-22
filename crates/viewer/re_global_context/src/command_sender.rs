@@ -66,8 +66,7 @@ pub enum SystemCommand {
     ///
     /// For blueprints,the [`StoreId`] should generally be the currently selected blueprint.
     ///
-    /// Instead of using this directly, consider using
-    /// [`crate::ViewerContext::save_blueprint_archetype`] or similar.
+    /// Instead of using this directly, consider using `save_blueprint_archetype` or similar.
     AppendToStore(StoreId, Vec<Chunk>),
 
     UndoBlueprint {
