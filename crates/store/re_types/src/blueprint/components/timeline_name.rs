@@ -28,8 +28,8 @@ pub struct TimelineName(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for TimelineName {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.TimelineName")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.TimelineName".into()
     }
 }
 

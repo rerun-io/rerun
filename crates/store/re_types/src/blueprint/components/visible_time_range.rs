@@ -30,8 +30,8 @@ pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);
 
 impl ::re_types_core::Component for VisibleTimeRange {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.VisibleTimeRange")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.VisibleTimeRange".into()
     }
 }
 

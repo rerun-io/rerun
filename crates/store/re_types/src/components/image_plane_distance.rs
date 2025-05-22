@@ -27,8 +27,8 @@ pub struct ImagePlaneDistance(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for ImagePlaneDistance {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ImagePlaneDistance")
+    fn name() -> ComponentName {
+        "rerun.components.ImagePlaneDistance".into()
     }
 }
 

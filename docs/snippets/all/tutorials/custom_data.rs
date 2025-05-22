@@ -77,8 +77,8 @@ impl rerun::Loggable for Confidence {
 
 impl rerun::Component for Confidence {
     #[inline]
-    fn descriptor() -> rerun::ComponentDescriptor {
-        rerun::ComponentDescriptor::new("user.Confidence")
+    fn name() -> rerun::ComponentName {
+        "user.Confidence".into()
     }
 }
 

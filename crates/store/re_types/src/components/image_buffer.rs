@@ -28,8 +28,8 @@ pub struct ImageBuffer(pub crate::datatypes::Blob);
 
 impl ::re_types_core::Component for ImageBuffer {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ImageBuffer")
+    fn name() -> ComponentName {
+        "rerun.components.ImageBuffer".into()
     }
 }
 

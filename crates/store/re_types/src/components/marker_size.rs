@@ -26,8 +26,8 @@ pub struct MarkerSize(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for MarkerSize {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.MarkerSize")
+    fn name() -> ComponentName {
+        "rerun.components.MarkerSize".into()
     }
 }
 

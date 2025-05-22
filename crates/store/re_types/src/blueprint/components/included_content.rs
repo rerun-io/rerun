@@ -33,8 +33,8 @@ pub struct IncludedContent(
 
 impl ::re_types_core::Component for IncludedContent {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.IncludedContent")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.IncludedContent".into()
     }
 }
 

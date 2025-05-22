@@ -30,8 +30,8 @@ pub struct ForceStrength(pub crate::datatypes::Float64);
 
 impl ::re_types_core::Component for ForceStrength {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ForceStrength")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ForceStrength".into()
     }
 }
 

@@ -26,8 +26,8 @@ pub struct AxisLength(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for AxisLength {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.AxisLength")
+    fn name() -> ComponentName {
+        "rerun.components.AxisLength".into()
     }
 }
 

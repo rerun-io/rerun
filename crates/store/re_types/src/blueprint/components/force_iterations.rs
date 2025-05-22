@@ -30,8 +30,8 @@ pub struct ForceIterations(pub crate::datatypes::UInt64);
 
 impl ::re_types_core::Component for ForceIterations {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ForceIterations")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ForceIterations".into()
     }
 }
 

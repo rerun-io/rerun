@@ -28,8 +28,8 @@ pub struct Enabled(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for Enabled {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.Enabled")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.Enabled".into()
     }
 }
 

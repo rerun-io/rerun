@@ -1016,8 +1016,8 @@ fn quote_trait_impls_for_datatype_or_component(
         quote! {
             impl ::re_types_core::Component for #name {
                 #[inline]
-                fn descriptor() -> ComponentDescriptor {
-                    ComponentDescriptor::new(#fqname)
+                fn name() -> ComponentName {
+                    #fqname.into()
                 }
             }
         }

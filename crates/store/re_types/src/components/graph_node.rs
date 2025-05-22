@@ -26,8 +26,8 @@ pub struct GraphNode(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for GraphNode {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.GraphNode")
+    fn name() -> ComponentName {
+        "rerun.components.GraphNode".into()
     }
 }
 

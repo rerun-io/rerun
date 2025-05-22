@@ -34,8 +34,8 @@ pub struct TextLogLevel(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for TextLogLevel {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TextLogLevel")
+    fn name() -> ComponentName {
+        "rerun.components.TextLogLevel".into()
     }
 }
 

@@ -26,8 +26,8 @@ pub struct Range1D(pub crate::datatypes::Range1D);
 
 impl ::re_types_core::Component for Range1D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Range1D")
+    fn name() -> ComponentName {
+        "rerun.components.Range1D".into()
     }
 }
 

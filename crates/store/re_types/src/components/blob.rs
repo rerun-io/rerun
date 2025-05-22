@@ -28,8 +28,8 @@ pub struct Blob(pub crate::datatypes::Blob);
 
 impl ::re_types_core::Component for Blob {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Blob")
+    fn name() -> ComponentName {
+        "rerun.components.Blob".into()
     }
 }
 

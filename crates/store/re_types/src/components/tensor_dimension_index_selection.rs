@@ -26,8 +26,8 @@ pub struct TensorDimensionIndexSelection(pub crate::datatypes::TensorDimensionIn
 
 impl ::re_types_core::Component for TensorDimensionIndexSelection {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TensorDimensionIndexSelection")
+    fn name() -> ComponentName {
+        "rerun.components.TensorDimensionIndexSelection".into()
     }
 }
 
