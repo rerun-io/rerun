@@ -75,6 +75,21 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
+  build-js:
+    name: "Build JS"
+    uses: ./.github/workflows/reusable_build_js.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+    secrets: inherit
+
+  upload-js:
+    name: "Upload JS"
+    needs: [build-js]
+    uses: ./.github/workflows/reusable_upload_js.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+    secrets: inherit
+
   build-examples:
     name: "Build Examples"
     needs: [build-wheel-linux-x64]
