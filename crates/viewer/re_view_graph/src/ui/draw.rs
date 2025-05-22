@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use egui::{
-    epaint::CubicBezierShape, Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2,
-    Rect, Response, RichText, Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
+    Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2, Rect, Response, RichText,
+    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText, epaint::CubicBezierShape,
 };
 use re_chunk::EntityPath;
-use re_data_ui::{item_ui, DataUi as _};
+use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePath;
 use re_types::ArrowString;
 use re_ui::list_item;
@@ -53,11 +53,7 @@ pub enum LevelOfDetail {
 
 impl LevelOfDetail {
     pub fn from_scaling(scale: f32) -> Self {
-        if scale < 0.20 {
-            Self::Low
-        } else {
-            Self::Full
-        }
+        if scale < 0.20 { Self::Low } else { Self::Full }
     }
 }
 

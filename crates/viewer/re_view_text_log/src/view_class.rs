@@ -3,12 +3,12 @@ use std::collections::BTreeMap;
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimelineName};
 use re_types::View as _;
-use re_types::{components::TextLogLevel, ViewClassIdentifier};
+use re_types::{ViewClassIdentifier, components::TextLogLevel};
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
-    level_to_rich_text, IdentifiedViewSystem as _, ViewClass, ViewClassRegistryError, ViewId,
-    ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewerContext,
+    IdentifiedViewSystem as _, ViewClass, ViewClassRegistryError, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    level_to_rich_text,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};

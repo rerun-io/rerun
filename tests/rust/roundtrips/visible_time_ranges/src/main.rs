@@ -1,9 +1,9 @@
 //! Logs a `VisibleTimeRanges` archetype for roundtrip checks.
 
 use rerun::{
+    RecordingStream,
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary, VisibleTimeRange},
     external::re_types::blueprint::archetypes::VisibleTimeRanges,
-    RecordingStream,
 };
 
 #[derive(Debug, clap::Parser)]

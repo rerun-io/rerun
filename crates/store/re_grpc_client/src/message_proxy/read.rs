@@ -1,13 +1,13 @@
 use re_log_encoding::protobuf_conversions::log_msg_from_proto;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesRequest;
 use re_protos::sdk_comms::v1alpha1::ReadMessagesResponse;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use tokio_stream::StreamExt as _;
 
+use crate::MAX_DECODING_MESSAGE_SIZE;
 use crate::StreamError;
 use crate::TonicStatusError;
-use crate::MAX_DECODING_MESSAGE_SIZE;
 
 pub fn stream(
     uri: re_uri::ProxyUri,

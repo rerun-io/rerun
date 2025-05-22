@@ -7,10 +7,10 @@ use ahash::HashMap;
 use parking_lot::Mutex;
 
 use crate::{
-    resource_managers::{GpuTexture2D, SourceImageDataFormat},
     RenderContext,
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
 };
-use re_video::{decode::DecodeSettings, VideoData};
+use re_video::{VideoData, decode::DecodeSettings};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]

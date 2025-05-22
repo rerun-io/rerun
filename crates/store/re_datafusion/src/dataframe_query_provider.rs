@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use arrow::array::{new_null_array, Array, RecordBatch, StringArray};
+use arrow::array::{Array, RecordBatch, StringArray, new_null_array};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
 use datafusion::{
-    catalog::{streaming::StreamingTable, TableProvider},
+    catalog::{TableProvider, streaming::StreamingTable},
     error::DataFusionError,
     execution::SendableRecordBatchStream,
     physical_plan::{stream::RecordBatchStreamAdapter, streaming::PartitionStream},

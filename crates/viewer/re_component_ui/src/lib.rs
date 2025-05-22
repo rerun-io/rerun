@@ -6,7 +6,6 @@
 mod color;
 mod datatype_uis;
 mod entity_path;
-mod fallback_ui;
 mod geo_line_string;
 mod image_format;
 mod lat_lon;
@@ -61,8 +60,7 @@ const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry {
     re_tracing::profile_function!();
 
-    let mut registry =
-        re_viewer_context::ComponentUiRegistry::new(Box::new(&fallback_ui::fallback_component_ui));
+    let mut registry = re_viewer_context::ComponentUiRegistry::new();
 
     // Color components:
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);

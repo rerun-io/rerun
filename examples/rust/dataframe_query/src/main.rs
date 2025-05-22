@@ -3,9 +3,9 @@
 use itertools::Itertools;
 
 use rerun::{
+    ChunkStoreConfig, StoreKind,
     dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName},
     external::{arrow, re_format_arrow::format_record_batch},
-    ChunkStoreConfig, StoreKind,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

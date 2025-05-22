@@ -43,7 +43,6 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-backtrace.workspace = true
 indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true

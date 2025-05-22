@@ -8,8 +8,8 @@ use re_chunk_store::{
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
-    components::{PinholeProjection, ViewCoordinates},
     Component as _,
+    components::{PinholeProjection, ViewCoordinates},
 };
 
 bitflags::bitflags! {
@@ -419,8 +419,8 @@ impl SpatialTopology {
 mod tests {
     use re_log_types::EntityPath;
     use re_types::{
-        components::{PinholeProjection, ViewCoordinates},
         Component as _, ComponentName,
+        components::{PinholeProjection, ViewCoordinates},
     };
 
     use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};

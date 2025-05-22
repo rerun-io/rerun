@@ -1,20 +1,22 @@
+use std::ops::ControlFlow;
+
 use egui::{Response, Ui};
 use smallvec::SmallVec;
 
-use re_context_menu::{context_menu_ui_for_item_with_context, SelectionUpdateBehavior};
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ApplicationId, EntityPath};
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    drag_and_drop::DropTarget, filter_widget, list_item, ContextExt as _, DesignTokens, UiExt as _,
+    ContextExt as _, DesignTokens, UiExt as _, drag_and_drop::DropTarget, filter_widget, list_item,
 };
 use re_viewer_context::{
-    contents_name_style, icon_for_container_kind, CollapseScope, ContainerId, Contents,
-    DragAndDropFeedback, DragAndDropPayload, HoverHighlight, Item, ItemContext,
-    SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
+    CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
+    Item, ItemContext, SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
+    contents_name_style, icon_for_container_kind,
 };
-use re_viewport_blueprint::{ui::show_add_view_or_container_modal, ViewportBlueprint};
+use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
 use crate::data::{
     BlueprintTreeData, ContainerData, ContentsData, DataResultData, DataResultKind, ViewData,
@@ -55,6 +57,12 @@ pub struct BlueprintTree {
     /// This is the item we used as a starting point for range selection. It is set and remembered
     /// everytime the user clicks on an item _without_ holding shift.
     range_selection_anchor_item: Option<Item>,
+
+    /// Used when the selection is modified using key navigation.
+    ///
+    /// IMPORTANT: Always make sure that the item will be drawn this or next frame when setting this
+    /// to `Some`, so that this flag is immediately consumed.
+    scroll_to_me_item: Option<Item>,
 }
 
 impl BlueprintTree {
@@ -186,6 +194,14 @@ impl BlueprintTree {
     ) {
         let item = Item::Container(container_data.id);
 
+        // It's possible that the root becomes technically collapsed (e.g. context menu or arrow
+        // navigation), even though we don't allow that in the ui. We really don't want that,
+        // though, because it breaks the collapse-based tree data visiting. To avoid that, we always
+        // force uncollapse this item.
+        self.collapse_scope()
+            .container(container_data.id)
+            .set_open(ctx.egui_ctx(), true);
+
         let item_response = ui
             .list_item()
             .render_offscreen(false)
@@ -218,7 +234,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &item_response,
         );
 
@@ -336,7 +352,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &response,
         );
 
@@ -448,7 +464,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &response,
         );
 
@@ -618,7 +634,7 @@ impl BlueprintTree {
             viewport_blueprint,
             blueprint_tree_data,
             ui,
-            item,
+            &item,
             &response,
         );
     }
@@ -632,13 +648,13 @@ impl BlueprintTree {
         viewport_blueprint: &ViewportBlueprint,
         blueprint_tree_data: &BlueprintTreeData,
         ui: &egui::Ui,
-        item: Item,
+        item: &Item,
         response: &Response,
     ) {
         context_menu_ui_for_item_with_context(
             ctx,
             viewport_blueprint,
-            &item,
+            item,
             // expand/collapse context menu actions need this information
             ItemContext::BlueprintTree {
                 filter_session_id: self.filter_state.session_id(),
@@ -646,10 +662,105 @@ impl BlueprintTree {
             response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_needed(ui, &item, response);
+        self.scroll_to_me_if_needed(ui, item, response);
         ctx.handle_select_hover_drag_interactions(response, item.clone(), true);
 
-        self.handle_range_selection(ctx, blueprint_tree_data, item, response);
+        self.handle_range_selection(ctx, blueprint_tree_data, item.clone(), response);
+
+        self.handle_key_navigation(ctx, blueprint_tree_data, item);
+    }
+
+    fn handle_key_navigation(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        blueprint_tree_data: &BlueprintTreeData,
+        item: &Item,
+    ) {
+        if ctx.selection_state().selected_items().single_item() != Some(item) {
+            return;
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), true);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+        {
+            if let Some(collapse_id) = self.collapse_scope().item(item.clone()) {
+                collapse_id.set_open(ctx.egui_ctx(), false);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+        {
+            let mut found_current = false;
+
+            let result = blueprint_tree_data.visit(|tree_item| {
+                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
+
+                if &tree_item.item() == item {
+                    found_current = true;
+
+                    return if is_item_collapsed {
+                        VisitorControlFlow::SkipBranch
+                    } else {
+                        VisitorControlFlow::Continue
+                    };
+                }
+
+                if found_current {
+                    VisitorControlFlow::Break(Some(tree_item.item()))
+                } else if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
+            }
+        }
+
+        if ctx
+            .egui_ctx()
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+        {
+            let mut last_item = None;
+
+            let result = blueprint_tree_data.visit(|tree_item| {
+                let is_item_collapsed = !tree_item.is_open(ctx.egui_ctx(), self.collapse_scope());
+
+                if &tree_item.item() == item {
+                    return VisitorControlFlow::Break(last_item.clone());
+                }
+
+                last_item = Some(tree_item.item());
+
+                if is_item_collapsed {
+                    VisitorControlFlow::SkipBranch
+                } else {
+                    VisitorControlFlow::Continue
+                }
+            });
+
+            if let ControlFlow::Break(Some(item)) = result {
+                ctx.selection_state().set_selection(item.clone());
+                self.scroll_to_me_item = Some(item.clone());
+                self.range_selection_anchor_item = Some(item);
+            }
+        }
     }
 
     /// Handle setting/extending the selection based on shift-clicking.
@@ -738,9 +849,7 @@ impl BlueprintTree {
                 return VisitorControlFlow::Break(());
             }
 
-            let is_expanded = blueprint_tree_item
-                .is_open(ctx.egui_ctx(), collapse_scope)
-                .unwrap_or(false);
+            let is_expanded = blueprint_tree_item.is_open(ctx.egui_ctx(), collapse_scope);
 
             if is_expanded {
                 VisitorControlFlow::Continue
@@ -757,7 +866,7 @@ impl BlueprintTree {
     }
 
     /// Check if the provided item should be scrolled to.
-    fn scroll_to_me_if_needed(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
+    fn scroll_to_me_if_needed(&mut self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
         if Some(item) == self.blueprint_tree_scroll_to_item.as_ref() {
             // Scroll only if the entity isn't already visible. This is important because that's what
             // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
@@ -765,6 +874,13 @@ impl BlueprintTree {
             if !ui.clip_rect().contains_rect(response.rect) {
                 response.scroll_to_me(Some(egui::Align::Center));
             }
+        }
+
+        if Some(item) == self.scroll_to_me_item.as_ref() {
+            // This is triggered by keyboard navigation, so in this case we just want to scroll
+            // minimally for the item to be visible.
+            response.scroll_to_me(None);
+            self.scroll_to_me_item = None;
         }
     }
 
@@ -1140,13 +1256,10 @@ fn add_new_view_or_container_menu_button(
     ui: &mut egui::Ui,
 ) {
     if ui
-        .add(egui::Button::image_and_text(
-            &re_ui::icons::ADD,
-            "Add view or container…",
-        ))
+        .add(re_ui::icons::ADD.as_button_with_label(ui.design_tokens(), "Add view or container…"))
         .clicked()
     {
-        ui.close_menu();
+        ui.close();
 
         // If a single container is selected, we use it as target. Otherwise, we target the
         // root container.
@@ -1188,7 +1301,8 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let mut response = ui
         .add_enabled(
             enabled,
-            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to default blueprint"),
+            re_ui::icons::RESET
+                .as_button_with_label(ui.design_tokens(), "Reset to default blueprint"),
         )
         .on_hover_text("Reset to the default blueprint for this app");
 
@@ -1197,7 +1311,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     };
 
     if response.clicked() {
-        ui.close_menu();
+        ui.close();
         ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
     }
@@ -1214,12 +1328,13 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
     if ui
         .add_enabled(
             enabled,
-            egui::Button::image_and_text(&re_ui::icons::RESET, "Reset to heuristic blueprint"),
+            re_ui::icons::RESET
+                .as_button_with_label(ui.design_tokens(), "Reset to heuristic blueprint"),
         )
         .on_hover_text("Re-populate viewport with automatically chosen views")
         .clicked()
     {
-        ui.close_menu();
+        ui.close();
         ctx.command_sender()
             .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
     }

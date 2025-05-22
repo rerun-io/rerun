@@ -23,10 +23,10 @@ impl From<crate::Compression> for re_protos::log_msg::v1alpha1::Compression {
 pub fn log_msg_from_proto(
     message: re_protos::log_msg::v1alpha1::LogMsg,
 ) -> Result<re_log_types::LogMsg, crate::decoder::DecodeError> {
-    use crate::codec::{arrow::decode_arrow, CodecError};
+    use crate::codec::{CodecError, arrow::decode_arrow};
     use crate::decoder::DecodeError;
     use re_protos::{
-        log_msg::v1alpha1::{log_msg::Msg, Encoding},
+        log_msg::v1alpha1::{Encoding, log_msg::Msg},
         missing_field,
     };
 

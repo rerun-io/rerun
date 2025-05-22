@@ -258,15 +258,11 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
         gen_page=False,
     ),
-    Section(
-        title="Deprecated",
-        class_list=[
-            "archetypes.Scalar",
-            "archetypes.SeriesLine",
-            "archetypes.SeriesPoint",
-        ],
-        gen_page=False,
-    ),
+    # Section(
+    #     title="Deprecated",
+    #     class_list=[],
+    #     gen_page=False,
+    # ),
     ################################################################################
     # Other referenced things
     Section(

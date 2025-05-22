@@ -2,18 +2,18 @@
 
 use std::sync::Arc;
 
-use re_video::{decode::FrameContent, Chunk, Frame, Time};
+use re_video::{Chunk, Frame, Time, decode::FrameContent};
 
 use parking_lot::Mutex;
 
 use crate::{
+    RenderContext,
     resource_managers::SourceImageDataFormat,
     video::{
-        player::{TimedDecodingError, VideoTexture},
         VideoPlayerError,
+        player::{TimedDecodingError, VideoTexture},
     },
     wgpu_resources::GpuTexture,
-    RenderContext,
 };
 
 #[derive(Default)]
@@ -229,8 +229,8 @@ fn copy_native_video_frame_to_texture(
     target_texture: &GpuTexture,
 ) -> Result<SourceImageDataFormat, VideoPlayerError> {
     use crate::resource_managers::{
-        transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
-        YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+        transfer_image_data_to_texture,
     };
 
     let format = match frame.format {

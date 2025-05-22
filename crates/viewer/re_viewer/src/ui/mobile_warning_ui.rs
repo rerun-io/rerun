@@ -1,4 +1,4 @@
-use re_ui::ContextExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 
 pub fn mobile_warning_ui(ui: &mut egui::Ui) {
     // We have not yet optimized the UI experience for mobile. Show a warning banner
@@ -9,7 +9,7 @@ pub fn mobile_warning_ui(ui: &mut egui::Ui) {
     {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..re_ui::DesignTokens::bottom_panel_frame()
+            ..ui.design_tokens().bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("warning_panel")

@@ -1,6 +1,6 @@
 use egui::Vec2;
 use egui_kittest::SnapshotOptions;
-use re_ui::{list_item, UiExt as _};
+use re_ui::{UiExt as _, list_item};
 
 #[test]
 pub fn test_list_items_should_match_snapshot() {

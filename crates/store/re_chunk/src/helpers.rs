@@ -4,8 +4,7 @@ use arrow::array::Array as _;
 use arrow::array::ArrayRef as ArrowArrayRef;
 
 use re_log_types::{TimeInt, TimelineName};
-use re_types_core::ComponentDescriptor;
-use re_types_core::{Component, ComponentName};
+use re_types_core::{Component, ComponentDescriptor};
 
 use crate::{Chunk, ChunkResult, RowId};
 
@@ -20,31 +19,34 @@ impl Chunk {
     #[inline]
     pub fn component_batch_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         row_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        self.get_first_component(*component_name)
-            .and_then(|list_array| {
-                if list_array.len() > row_index {
-                    list_array
-                        .is_valid(row_index)
-                        .then(|| Ok(list_array.value(row_index)))
-                } else {
-                    Some(Err(crate::ChunkError::IndexOutOfBounds {
-                        kind: "row".to_owned(),
-                        len: list_array.len(),
-                        index: row_index,
-                    }))
-                }
-            })
+        self.components.get(component_descr).and_then(|list_array| {
+            if list_array.len() > row_index {
+                list_array
+                    .is_valid(row_index)
+                    .then(|| Ok(list_array.value(row_index)))
+            } else {
+                Some(Err(crate::ChunkError::IndexOutOfBounds {
+                    kind: "row".to_owned(),
+                    len: list_array.len(),
+                    index: row_index,
+                }))
+            }
+        })
     }
 
     /// Returns the deserialized data for the specified component.
     ///
     /// Returns an error if the data cannot be deserialized, or if the row index is out of bounds.
     #[inline]
-    pub fn component_batch<C: Component>(&self, row_index: usize) -> Option<ChunkResult<Vec<C>>> {
-        let res = self.component_batch_raw(&C::name(), row_index)?;
+    pub fn component_batch<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+        row_index: usize,
+    ) -> Option<ChunkResult<Vec<C>>> {
+        let res = self.component_batch_raw(component_descr, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -63,11 +65,11 @@ impl Chunk {
     #[inline]
     pub fn component_instance_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         row_index: usize,
         instance_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let res = self.component_batch_raw(component_name, row_index)?;
+        let res = self.component_batch_raw(component_descr, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -92,10 +94,11 @@ impl Chunk {
     #[inline]
     pub fn component_instance<C: Component>(
         &self,
+        component_descr: &ComponentDescriptor,
         row_index: usize,
         instance_index: usize,
     ) -> Option<ChunkResult<C>> {
-        let res = self.component_instance_raw(&C::name(), row_index, instance_index)?;
+        let res = self.component_instance_raw(component_descr, row_index, instance_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -117,10 +120,10 @@ impl Chunk {
     #[inline]
     pub fn component_mono_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         row_index: usize,
     ) -> Option<ChunkResult<ArrowArrayRef>> {
-        let res = self.component_batch_raw(component_name, row_index)?;
+        let res = self.component_batch_raw(component_descr, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -143,8 +146,12 @@ impl Chunk {
     /// Returns an error if the data cannot be deserialized, or if either the row index is out of bounds,
     /// or the underlying batch is not of unit length.
     #[inline]
-    pub fn component_mono<C: Component>(&self, row_index: usize) -> Option<ChunkResult<C>> {
-        let res = self.component_mono_raw(&C::name(), row_index)?;
+    pub fn component_mono<C: Component>(
+        &self,
+        component_descr: &ComponentDescriptor,
+        row_index: usize,
+    ) -> Option<ChunkResult<C>> {
+        let res = self.component_mono_raw(component_descr, row_index)?;
 
         let array = match res {
             Ok(array) => array,
@@ -237,11 +244,11 @@ impl UnitChunkShared {
 
     /// Returns the number of instances of the single row within for a given component.
     #[inline]
-    pub fn num_instances(&self, component_name: &ComponentName) -> u64 {
+    pub fn num_instances(&self, component_descr: &ComponentDescriptor) -> u64 {
         debug_assert!(self.num_rows() == 1);
         self.components
             .iter()
-            .filter(|&(descr, _list_array)| (descr.component_name == *component_name))
+            .filter(|&(descr, _list_array)| descr == component_descr)
             .map(|(_descr, list_array)| {
                 let array = list_array.value(0);
                 array.nulls().map_or_else(
@@ -258,22 +265,6 @@ impl UnitChunkShared {
 
 impl UnitChunkShared {
     // --- Batch ---
-
-    /// Returns the raw data for the specified component name.
-    ///
-    /// Indetermined which batch is returned if there are multiple components with the same name.
-    /// TODO(#6889): Can we remove this method?
-    #[inline]
-    pub fn component_batch_raw_by_component_name(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<ArrowArrayRef> {
-        debug_assert!(self.num_rows() == 1);
-        self.components
-            .get_by_component_name(component_name)
-            .next()
-            .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
-    }
 
     /// Returns the raw data for the specified component.
     #[inline]

@@ -1,6 +1,6 @@
 use re_log_types::{TimeInt, TimelineName};
 use re_types::Archetype;
-use re_view::{AnnotationSceneContext, DataResultQuery as _, HybridResults};
+use re_view::{AnnotationSceneContext, ChunksWithDescriptor, DataResultQuery as _, HybridResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError,
@@ -143,7 +143,7 @@ where
 
 // ---
 
-use re_chunk::{Chunk, ChunkComponentIterItem, ComponentName, RowId};
+use re_chunk::{ChunkComponentIterItem, RowId};
 use re_chunk_store::external::re_chunk;
 
 /// Iterate `chunks` as indexed deserialized batches.
@@ -151,15 +151,14 @@ use re_chunk_store::external::re_chunk;
 /// For simple cases (i.e. everything up to flat structs), prefer [`iter_slices`] instead which is
 /// faster.
 ///
-/// See [`Chunk::iter_component`] for more information.
+/// See [`re_chunk::Chunk::iter_component`] for more information.
 pub fn iter_component<'a, C: re_types::Component>(
-    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    chunks: &'a ChunksWithDescriptor<'a>,
     timeline: TimelineName,
-    component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), ChunkComponentIterItem<C>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
+            chunk.iter_component_indices(&timeline),
             chunk.iter_component::<C>()
         )
     })
@@ -167,16 +166,15 @@ pub fn iter_component<'a, C: re_types::Component>(
 
 /// Iterate `chunks` as indexed primitives.
 ///
-/// See [`Chunk::iter_slices`] for more information.
+/// See [`re_chunk::Chunk::iter_slices`] for more information.
 pub fn iter_slices<'a, T: 'a + re_chunk::ChunkComponentSlicer>(
-    chunks: &'a std::borrow::Cow<'a, [Chunk]>,
+    chunks: &'a ChunksWithDescriptor<'a>,
     timeline: TimelineName,
-    component_name: ComponentName,
 ) -> impl Iterator<Item = ((TimeInt, RowId), T::Item<'a>)> + 'a {
     chunks.iter().flat_map(move |chunk| {
         itertools::izip!(
-            chunk.iter_component_indices(&timeline, &component_name),
-            chunk.iter_slices::<T>(component_name)
+            chunk.iter_component_indices(&timeline),
+            chunk.iter_slices::<T>()
         )
     })
 }

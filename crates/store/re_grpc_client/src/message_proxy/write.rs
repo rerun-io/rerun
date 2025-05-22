@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use re_log_encoding::Compression;
 use re_log_types::LogMsg;
-use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::sdk_comms::v1alpha1::WriteMessagesRequest;
+use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_uri::ProxyUri;
 use tokio::runtime;
 use tokio::sync::mpsc;
@@ -99,7 +99,9 @@ impl Client {
                     if let Some(timeout) = self.flush_timeout {
                         let elapsed = start.elapsed();
                         if elapsed >= timeout {
-                            re_log::warn!("Flush timed out, not all messages were sent. The timeout can be adjusted when connecting via gRPC.");
+                            re_log::warn!(
+                                "Flush timed out, not all messages were sent. The timeout can be adjusted when connecting via gRPC."
+                            );
                             break;
                         }
                     }
@@ -166,7 +168,8 @@ async fn message_proxy_client(
             }
         }
     };
-    let mut client = MessageProxyServiceClient::new(channel);
+    let mut client = MessageProxyServiceClient::new(channel)
+        .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
 
     let stream = async_stream::stream! {
         loop {

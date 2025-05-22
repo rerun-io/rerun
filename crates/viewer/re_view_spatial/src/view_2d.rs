@@ -3,8 +3,8 @@ use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_types::{
-    blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
     View as _, ViewClassIdentifier,
+    blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D},
 };
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;

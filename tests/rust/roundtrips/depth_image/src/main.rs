@@ -1,7 +1,7 @@
 //! Logs a `DepthImage` archetype for roundtrip checks.
 
 use image::GrayImage;
-use rerun::{archetypes::DepthImage, RecordingStream};
+use rerun::{RecordingStream, archetypes::DepthImage};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

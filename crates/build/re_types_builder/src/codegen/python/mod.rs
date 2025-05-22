@@ -10,21 +10,20 @@ use itertools::Itertools as _;
 use unindent::unindent;
 
 use crate::{
+    ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, CodeGenerator, Docs, ElementType,
+    GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
     codegen::{
-        autogen_warning,
-        common::{collect_snippets_for_api_docs, Example},
-        StringExt as _,
+        StringExt as _, autogen_warning,
+        common::{Example, collect_snippets_for_api_docs},
     },
     data_type::{AtomicDataType, DataType, Field, UnionMode},
     format_path,
     objects::{ObjectClass, State},
-    CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, TypeRegistry, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use self::views::code_for_view;
 
-use super::{common::ExampleInfo, Target};
+use super::{Target, common::ExampleInfo};
 
 /// The standard python init method.
 const INIT_METHOD: &str = "__init__";

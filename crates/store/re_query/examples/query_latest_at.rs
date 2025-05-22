@@ -9,10 +9,9 @@ use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::build_frame_nr;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types::Component as _;
 use re_types_core::Archetype as _;
 
-use re_query::{clamped_zip_1x2, LatestAtResults};
+use re_query::{LatestAtResults, clamped_zip_1x2};
 
 // ---
 
@@ -40,9 +39,15 @@ fn main() -> anyhow::Result<()> {
     //
     // These APIs will log errors instead of returning them.
     {
-        let points = results.component_batch::<MyPoint>().context("missing")?;
-        let colors = results.component_batch::<MyColor>().unwrap_or_default();
-        let labels = results.component_batch::<MyLabel>().unwrap_or_default();
+        let points = results
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+            .context("missing")?;
+        let colors = results
+            .component_batch::<MyColor>(&MyPoints::descriptor_colors())
+            .unwrap_or_default();
+        let labels = results
+            .component_batch::<MyLabel>(&MyPoints::descriptor_labels())
+            .unwrap_or_default();
 
         // Then apply your instance-level joining logic, if any:
         let color_default_fn = || MyColor(0xFF00FFFF);
@@ -61,17 +66,17 @@ fn main() -> anyhow::Result<()> {
     {
         // * `get_required` returns an error if the chunk is missing.
         // * `get` returns an option.
-        let points = results.get_required(&MyPoint::name())?;
-        let colors = results.get(&MyColor::name());
-        let labels = results.get(&MyLabel::name());
+        let points = results.get_required(&MyPoints::descriptor_points())?;
+        let colors = results.get(&MyPoints::descriptor_colors());
+        let labels = results.get(&MyPoints::descriptor_labels());
 
         // You can always use the standard deserialization path:
         let points = points
-            .component_batch::<MyPoint>(&MyPoint::descriptor())
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
             .context("missing")??;
         let labels = labels
             .and_then(|unit| {
-                unit.component_batch::<MyLabel>(&MyLabel::descriptor())?
+                unit.component_batch::<MyLabel>(&MyPoints::descriptor_labels())?
                     .ok()
             })
             .unwrap_or_default();
@@ -80,7 +85,7 @@ fn main() -> anyhow::Result<()> {
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw(&MyColor::descriptor())
+            .component_batch_raw(&MyPoints::descriptor_colors())
             .context("invalid")?;
         let colors = colors
             .downcast_array_ref::<ArrowUInt32Array>()
@@ -113,15 +118,12 @@ fn store() -> anyhow::Result<ChunkStoreHandle> {
         let timepoint = [build_frame_nr(123)];
 
         let chunk = Chunk::builder(entity_path.into())
-            .with_component_batches(
+            .with_archetype(
                 RowId::new(),
                 timepoint,
-                [
-                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)]
-                        as &dyn re_types_core::ComponentBatch, //
-                    &[MyColor::from_rgb(255, 0, 0)],
-                    &[MyLabel("a".into()), MyLabel("b".into())],
-                ],
+                &MyPoints::new([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])
+                    .with_colors([MyColor::from_rgb(255, 0, 0)])
+                    .with_labels([MyLabel("a".into()), MyLabel("b".into())]),
             )
             .build()?;
 

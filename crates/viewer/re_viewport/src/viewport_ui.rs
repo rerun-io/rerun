@@ -5,15 +5,15 @@
 use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 
-use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
+use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{design_tokens, ContextExt as _, DesignTokens, Icon, UiExt as _};
+use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    icon_for_container_kind, Contents, DragAndDropFeedback, DragAndDropPayload, Item,
-    PublishedViewInfo, SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext,
+    Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
+    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
 use re_viewport_blueprint::{
-    create_entity_add_info, ViewBlueprint, ViewportBlueprint, ViewportCommand,
+    ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
 };
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
@@ -144,7 +144,7 @@ impl ViewportUi {
                     };
 
                     let stroke = if should_display_drop_destination_frame {
-                        design_tokens().drop_target_container_stroke()
+                        ui.design_tokens().drop_target_container_stroke()
                     } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
@@ -572,8 +572,13 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     // Styling:
 
-    fn tab_bar_color(&self, _visuals: &egui::Visuals) -> egui::Color32 {
-        re_ui::design_tokens().tab_bar_color
+    fn tab_bar_color(&self, visuals: &egui::Visuals) -> egui::Color32 {
+        let theme = if visuals.dark_mode {
+            egui::Theme::Dark
+        } else {
+            egui::Theme::Light
+        };
+        re_ui::design_tokens_of(theme).tab_bar_color
     }
 
     fn dragged_overlay_color(&self, visuals: &egui::Visuals) -> egui::Color32 {

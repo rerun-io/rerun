@@ -1,6 +1,6 @@
 use re_log::ResultExt as _;
 
-use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
+use crate::{DebugLabel, RenderContext, wgpu_resources::BindGroupEntry};
 
 struct UniformBufferSizeCheck<T> {
     pub _marker: std::marker::PhantomData<T>,

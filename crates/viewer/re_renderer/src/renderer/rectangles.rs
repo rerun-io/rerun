@@ -10,10 +10,11 @@
 //! Since we're not allowed to bind many textures at once (no widespread bindless support!),
 //! we are forced to have individual bind groups per rectangle and thus a draw call per rectangle.
 
-use itertools::{izip, Itertools as _};
+use itertools::{Itertools as _, izip};
 use smallvec::smallvec;
 
 use crate::{
+    Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
     allocator::create_and_fill_uniform_buffer_batch,
     depth_offset::DepthOffset,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
@@ -25,7 +26,6 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    Colormap, OutlineMaskPreference, PickingLayerProcessor, Rgba,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};

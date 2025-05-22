@@ -2,9 +2,9 @@
 
 use itertools::Itertools as _;
 use re_renderer::{
+    Color32, OutlineConfig, OutlineMaskPreference,
     renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, OutlineConfig, OutlineMaskPreference,
 };
 use winit::event::ElementState;
 

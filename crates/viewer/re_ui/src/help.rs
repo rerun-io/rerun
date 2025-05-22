@@ -1,5 +1,5 @@
 use crate::icon_text::{IconText, IconTextItem};
-use crate::{design_tokens, icons, ColorToken, DesignTokens, Scale, UiExt as _};
+use crate::{ColorToken, DesignTokens, Scale, UiExt as _, icons};
 use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 /// A help popup where you can show markdown text and controls as a table.
@@ -109,7 +109,7 @@ impl Help {
                 .widgets
                 .noninteractive
                 .bg_stroke
-                .color = design_tokens().color_table.gray(Scale::S400);
+                .color = ui.design_tokens().color_table.gray(Scale::S400);
             ui.separator();
         });
     }
@@ -130,7 +130,7 @@ impl Help {
                             ui.spacing_mut().item_spacing.x = 2.0;
                             let hovered = ui.response().hovered();
 
-                            let tint = design_tokens().color(ColorToken::gray(if hovered {
+                            let tint = ui.design_tokens().color(ColorToken::gray(if hovered {
                                 Scale::S900
                             } else {
                                 Scale::S700
@@ -163,7 +163,7 @@ impl Help {
                                 ui.strong(RichText::new(&row.text).size(11.0));
                             },
                             |ui| {
-                                let color = design_tokens().color(ColorToken::gray(Scale::S700));
+                                let color = ui.design_tokens().color(ColorToken::gray(Scale::S700));
                                 ui.set_height(DesignTokens::small_icon_size().y);
                                 ui.spacing_mut().item_spacing.x = 2.0;
                                 ui.style_mut().override_text_style = Some(TextStyle::Monospace);

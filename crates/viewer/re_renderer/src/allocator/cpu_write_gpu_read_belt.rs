@@ -603,7 +603,7 @@ impl CpuWriteGpuReadBelt {
                 .clone()
                 .slice(..)
                 .map_async(wgpu::MapMode::Write, move |_| {
-                    let _ = sender.send(chunk);
+                    sender.send(chunk).ok();
                 });
         }
     }

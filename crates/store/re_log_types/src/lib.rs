@@ -784,12 +784,11 @@ impl SizeBytes for ArrowMsg {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             chunk_id,
-            timepoint_max,
             batch,
             on_release: _,
         } = self;
 
-        chunk_id.heap_size_bytes() + timepoint_max.heap_size_bytes() + batch.heap_size_bytes()
+        chunk_id.heap_size_bytes() + batch.heap_size_bytes()
     }
 }
 
@@ -806,49 +805,6 @@ impl SizeBytes for LogMsg {
             }
         }
     }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Runtime asserts that an archetype has the given components.
-///
-/// In particular, this is useful to statically check that an archetype
-/// has a specific component.
-///
-/// ```
-/// # #[macro_use] extern crate re_log_types;
-/// # use re_log_types::example_components::*;
-/// debug_assert_archetype_has_components!(MyPoints, colors: MyColor);
-/// ```
-///
-/// This will panic because the type is wrong:
-///
-/// ```should_panic
-/// # #[macro_use] extern crate re_log_types;
-/// # use re_log_types::example_components::*;
-/// debug_assert_archetype_has_components!(MyPoints, colors: MyPoint);
-/// ```
-///
-/// This will fail to compile because the field is missing:
-///
-/// ```compile_fail
-/// # #[macro_use] extern crate re_log_types;
-/// # use re_log_types::example_components::*;
-/// debug_assert_archetype_has_components!(MyPoints, colours: MyColor);
-/// ```
-///
-#[macro_export]
-macro_rules! debug_assert_archetype_has_components {
-    ($arch:ty, $($field:ident: $field_typ:ty),+ $(,)?) => {
-        #[cfg(debug_assertions)]
-        {
-            use re_log_types::external::re_types_core::{Component as _};
-            let archetype = <$arch>::clear_fields();
-            $(
-                assert_eq!(archetype.$field.map(|batch| batch.descriptor.component_name), Some(<$field_typ>::name()));
-            )+
-        }
-    };
 }
 
 // ----------------------------------------------------------------------------

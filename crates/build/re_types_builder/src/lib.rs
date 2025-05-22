@@ -131,9 +131,9 @@ use re_build_tools::{
 use crate::format::NoopCodeFormatter;
 
 pub use self::reflection::reflection::{
-    root_as_schema, BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal,
-    Field as FbsField, KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema,
-    Type as FbsType,
+    BaseType as FbsBaseType, Enum as FbsEnum, EnumVal as FbsEnumVal, Field as FbsField,
+    KeyValue as FbsKeyValue, Object as FbsObject, Schema as FbsSchema, Type as FbsType,
+    root_as_schema,
 };
 
 // NOTE: This crate isn't only okay with `unimplemented`, it actively encourages it.
@@ -235,7 +235,7 @@ pub fn compile_binary_schemas(
     let output_dir_path = output_dir_path.as_ref().as_str();
     let entrypoint_path = entrypoint_path.as_ref().as_str();
 
-    use xshell::{cmd, Shell};
+    use xshell::{Shell, cmd};
     let sh = Shell::new().unwrap();
     cmd!(
         sh,

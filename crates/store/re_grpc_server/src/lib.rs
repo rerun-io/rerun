@@ -18,11 +18,11 @@ use tokio::net::TcpListener;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::Stream;
 use tokio_stream::StreamExt as _;
-use tonic::transport::server::TcpIncoming;
+use tokio_stream::wrappers::BroadcastStream;
 use tonic::transport::Server;
+use tonic::transport::server::TcpIncoming;
 use tower_http::cors::CorsLayer;
 
 use re_memory::MemoryLimit;
@@ -32,8 +32,8 @@ use re_protos::{
     },
     log_msg::v1alpha1::LogMsg as LogMsgProto,
     sdk_comms::v1alpha1::{
-        message_proxy_service_server, ReadMessagesRequest, ReadMessagesResponse,
-        WriteMessagesResponse,
+        ReadMessagesRequest, ReadMessagesResponse, WriteMessagesResponse,
+        message_proxy_service_server,
     },
 };
 
@@ -41,8 +41,8 @@ use re_protos::{
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 pub const DEFAULT_MEMORY_LIMIT: MemoryLimit = MemoryLimit::UNLIMITED;
 
-const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
-const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
+pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+pub const MAX_ENCODING_MESSAGE_SIZE: usize = MAX_DECODING_MESSAGE_SIZE;
 
 // Channel capacity is completely arbitrary, e just want something large enough
 // to handle bursts of messages. This is roughly 16 MiB of `Msg` (excluding their contents).
@@ -71,7 +71,7 @@ pub async fn serve(
     addr: SocketAddr,
     memory_limit: MemoryLimit,
     shutdown: shutdown::Shutdown,
-) -> Result<(), tonic::transport::Error> {
+) -> anyhow::Result<()> {
     serve_impl(addr, MessageProxy::new(memory_limit), shutdown).await
 }
 
@@ -79,20 +79,19 @@ async fn serve_impl(
     addr: SocketAddr,
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
-) -> Result<(), tonic::transport::Error> {
-    let tcp_listener = TcpListener::bind(addr)
-        .await
-        .unwrap_or_else(|err| panic!("failed to bind listener on {addr}: {err}"));
-
+) -> anyhow::Result<()> {
+    let tcp_listener = TcpListener::bind(addr).await?;
     let incoming =
-        TcpIncoming::from_listener(tcp_listener, true, None).expect("failed to init listener");
+        TcpIncoming::from_listener(tcp_listener, true, None).map_err(|err| anyhow::anyhow!(err))?;
 
     let connect_addr = if addr.ip().is_loopback() || addr.ip().is_unspecified() {
         format!("rerun+http://127.0.0.1:{}/proxy", addr.port())
     } else {
         format!("rerun+http://{addr}/proxy")
     };
-    re_log::info!("Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`");
+    re_log::info!(
+        "Listening for gRPC connections on {addr}. Connect by running `rerun --connect {connect_addr}`"
+    );
 
     let cors = CorsLayer::very_permissive();
     let grpc_web = tonic_web::GrpcWebLayer::new();
@@ -115,7 +114,9 @@ async fn serve_impl(
         .layer(grpc_web) // Support `grpc-web` clients
         .add_routes(routes)
         .serve_with_incoming_shutdown(incoming, shutdown.wait())
-        .await
+        .await?;
+
+    Ok(())
 }
 
 /// Start a Rerun server, listening on `addr`.
@@ -504,7 +505,7 @@ impl EventLoop {
             }
 
             // Blueprint data
-            Msg::ArrowMsg(ref inner)
+            Msg::ArrowMsg(inner)
                 if inner
                     .store_id
                     .as_ref()
@@ -799,8 +800,8 @@ mod tests {
 
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
     use re_log_encoding::Compression;
+    use re_log_encoding::protobuf_conversions::{log_msg_from_proto, log_msg_to_proto};
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
@@ -814,9 +815,9 @@ mod tests {
     use std::time::Duration;
     use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;
-    use tonic::transport::server::TcpIncoming;
     use tonic::transport::Channel;
     use tonic::transport::Endpoint;
+    use tonic::transport::server::TcpIncoming;
 
     #[derive(Clone)]
     struct Completion(Arc<CancellationToken>);
@@ -945,9 +946,11 @@ mod tests {
             let completion = completion.clone();
             async move {
                 tonic::transport::Server::builder()
-                    .add_service(MessageProxyServiceServer::new(super::MessageProxy::new(
-                        memory_limit,
-                    )))
+                    .add_service(
+                        MessageProxyServiceServer::new(super::MessageProxy::new(memory_limit))
+                            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+                            .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+                    )
                     .serve_with_incoming_shutdown(
                         TcpIncoming::from_listener(tcp_listener, true, None).unwrap(),
                         completion.wait(),
@@ -968,6 +971,7 @@ mod tests {
                 .await
                 .unwrap(),
         )
+        .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE)
     }
 
     async fn read_log_stream(

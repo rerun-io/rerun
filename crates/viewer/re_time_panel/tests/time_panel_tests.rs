@@ -5,12 +5,12 @@ use egui::Vec2;
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::{
-    build_frame_nr, example_components::MyPoint, external::re_types_core::Component as _,
-    EntityPath, TimeInt, TimePoint, TimeType, Timeline,
+    EntityPath, TimeInt, TimePoint, TimeType, Timeline, build_frame_nr,
+    example_components::{MyPoint, MyPoints},
 };
 use re_time_panel::TimePanel;
 use re_types::archetypes::Points2D;
-use re_viewer_context::{blueprint_timeline, test_context::TestContext, CollapseScope, TimeView};
+use re_viewer_context::{CollapseScope, TimeView, blueprint_timeline, test_context::TestContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[test]
@@ -25,7 +25,7 @@ pub fn time_panel_two_sections_should_match_snapshot() {
                 builder = builder.with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(frame)],
-                    [(MyPoint::descriptor(), Some(&points1 as _))],
+                    [(MyPoints::descriptor_points(), Some(&points1 as _))],
                 );
             }
 
@@ -66,7 +66,7 @@ pub fn time_panel_dense_data_should_match_snapshot() {
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(frame)],
-                [(MyPoint::descriptor(), Some(&points1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points1 as _))],
             );
         }
 
@@ -110,7 +110,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(1)],
-                [(MyPoint::descriptor(), Some(&points1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points1 as _))],
             );
 
             builder
@@ -122,7 +122,7 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(1)],
-                [(MyPoint::descriptor(), Some(&points1 as _))],
+                [(MyPoints::descriptor_points(), Some(&points1 as _))],
             );
 
             builder

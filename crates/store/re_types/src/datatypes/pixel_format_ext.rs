@@ -46,12 +46,12 @@ impl PixelFormat {
             Self::Y_U_V24_FullRange | Self::Y_U_V24_LimitedRange => num_pixels * 4,
 
             // 422 formats.
-            Self::Y_U_V16_FullRange | Self::Y_U_V16_LimitedRange | Self::NV12 => {
+            Self::Y_U_V16_FullRange | Self::Y_U_V16_LimitedRange | Self::YUY2 => {
                 16 * num_pixels / 8
             }
 
             // 420 formats.
-            Self::Y_U_V12_FullRange | Self::Y_U_V12_LimitedRange | Self::YUY2 => {
+            Self::Y_U_V12_FullRange | Self::Y_U_V12_LimitedRange | Self::NV12 => {
                 12 * num_pixels / 8
             }
 

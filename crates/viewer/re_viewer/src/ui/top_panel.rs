@@ -7,7 +7,7 @@ use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{ContextExt as _, UICommand, UiExt as _};
 use re_viewer_context::StoreContext;
 
-use crate::{app_blueprint::AppBlueprint, App};
+use crate::{App, app_blueprint::AppBlueprint};
 
 pub fn top_panel(
     frame: &eframe::Frame,
@@ -21,7 +21,7 @@ pub fn top_panel(
 
     let style_like_web = app.is_screenshotting();
     let top_bar_style = ui.ctx().top_bar_style(style_like_web);
-    let top_panel_frame = re_ui::DesignTokens::top_panel_frame();
+    let top_panel_frame = ui.design_tokens().top_panel_frame();
 
     let mut content = |ui: &mut egui::Ui, show_content: bool| {
         // React to dragging and double-clicking the top bar:
@@ -45,7 +45,7 @@ pub fn top_panel(
             }
         }
 
-        egui::menu::bar(ui, |ui| {
+        egui::containers::menu::Bar::new().ui(ui, |ui| {
             ui.set_height(top_bar_style.height);
             ui.add_space(top_bar_style.indent);
 
@@ -321,7 +321,8 @@ fn website_link_ui(ui: &mut egui::Ui) {
 
     let image = re_ui::icons::RERUN_IO_TEXT
         .as_image()
-        .max_height(desired_height);
+        .max_height(desired_height)
+        .tint(ui.design_tokens().strong_fg_color());
 
     let url = "https://rerun.io/";
     let response = ui

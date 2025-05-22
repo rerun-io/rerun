@@ -2,11 +2,11 @@ use egui::Color32;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
+use re_types::archetypes::GraphNodes;
 use re_types::components::{Color, Radius, ShowLabels};
 use re_types::{
-    self, archetypes,
+    self, ArrowString, archetypes,
     components::{self},
-    ArrowString, Component as _,
 };
 use re_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_viewer_context::{
@@ -78,13 +78,13 @@ impl VisualizerSystem for NodeVisualizer {
                     &timeline_query,
                 );
 
-            let all_nodes = results.iter_as(query.timeline, components::GraphNode::name());
-            let all_colors = results.iter_as(query.timeline, components::Color::name());
-            let all_positions = results.iter_as(query.timeline, components::Position2D::name());
-            let all_labels = results.iter_as(query.timeline, components::Text::name());
-            let all_radii = results.iter_as(query.timeline, components::Radius::name());
+            let all_nodes = results.iter_as(query.timeline, GraphNodes::descriptor_node_ids());
+            let all_colors = results.iter_as(query.timeline, GraphNodes::descriptor_colors());
+            let all_positions = results.iter_as(query.timeline, GraphNodes::descriptor_positions());
+            let all_labels = results.iter_as(query.timeline, GraphNodes::descriptor_labels());
+            let all_radii = results.iter_as(query.timeline, GraphNodes::descriptor_radii());
             let show_label = results
-                .get_mono::<components::ShowLabels>()
+                .get_mono::<components::ShowLabels>(&GraphNodes::descriptor_show_labels())
                 .is_none_or(bool::from);
 
             let data = range_zip_1x4(
@@ -121,7 +121,7 @@ impl VisualizerSystem for NodeVisualizer {
                             color,
                         },
                         (None, true) => Label::Text {
-                            text: node.0 .0.clone(),
+                            text: node.0.0.clone(),
                             color,
                         },
                         _ => Label::Circle {

@@ -182,6 +182,16 @@ impl ArchetypeName {
             full_name
         }
     }
+
+    /// Url to the rerun docs for this Rerun archetype.
+    pub fn doc_url(&self) -> Option<String> {
+        // This code should be correct as long as this url passes our link checker:
+        // https://rerun.io/docs/reference/types/archetypes/line_strips3d
+        let short_name_pascal_case = self.full_name().strip_prefix("rerun.archetypes.")?;
+        let archetype_name_snake_case = re_case::to_snake_case(short_name_pascal_case);
+        let base_url = "https://rerun.io/docs/reference/types/archetypes";
+        Some(format!("{base_url}/{archetype_name_snake_case}"))
+    }
 }
 
 impl re_byte_size::SizeBytes for ArchetypeName {

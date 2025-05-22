@@ -92,12 +92,9 @@ from .archetypes import (
     Pinhole as Pinhole,
     Points2D as Points2D,
     Points3D as Points3D,
-    Scalar as Scalar,
     Scalars as Scalars,
     SegmentationImage as SegmentationImage,
-    SeriesLine as SeriesLine,
     SeriesLines as SeriesLines,
-    SeriesPoint as SeriesPoint,
     SeriesPoints as SeriesPoints,
     Tensor as Tensor,
     TextDocument as TextDocument,
@@ -275,7 +272,7 @@ def init(
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
-        you call either `connect`, `show`, or `save`
+        you call either `connect_grpc`, `show`, or `save`
     default_enabled
         Should Rerun logging be on by default?
         Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.

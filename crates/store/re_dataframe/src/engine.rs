@@ -4,7 +4,7 @@ use re_chunk::EntityPath;
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression};
 use re_log_types::{EntityPathFilter, StoreId};
 use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
-use re_sorbet::SorbetColumnDescriptors;
+use re_sorbet::ChunkColumnDescriptors;
 
 use crate::QueryHandle;
 
@@ -69,7 +69,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
-    pub fn schema(&self) -> SorbetColumnDescriptors {
+    pub fn schema(&self) -> ChunkColumnDescriptors {
         self.engine.with(|store, _cache| store.schema())
     }
 
@@ -79,7 +79,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
-    pub fn schema_for_query(&self, query: &QueryExpression) -> SorbetColumnDescriptors {
+    pub fn schema_for_query(&self, query: &QueryExpression) -> ChunkColumnDescriptors {
         self.engine
             .with(|store, _cache| store.schema_for_query(query))
     }
@@ -95,7 +95,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     pub fn iter_entity_paths_sorted<'a>(
         &self,
         filter: &'a EntityPathFilter,
-    ) -> impl Iterator<Item = EntityPath> + 'a {
+    ) -> impl Iterator<Item = EntityPath> + 'a + use<'a, E> {
         let filter = filter.clone().resolve_without_substitutions();
         self.engine.with(|store, _cache| {
             store

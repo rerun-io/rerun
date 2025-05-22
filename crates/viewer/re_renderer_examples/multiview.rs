@@ -9,13 +9,13 @@ use rand::Rng as _;
 use re_math::IsoTransform;
 
 use re_renderer::{
+    Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
+    Rgba, ScreenshotProcessor, Size,
     renderer::{
         GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
         TestTriangleDrawData,
     },
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
-    Color32, GpuReadbackIdentifier, Hsva, LineDrawableBuilder, PointCloudBuilder, RenderContext,
-    Rgba, ScreenshotProcessor, Size,
 };
 use winit::{event::ElementState, keyboard};
 
@@ -162,9 +162,9 @@ struct Multiview {
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
     Hsva {
-        h: rnd.gen::<f32>(),
-        s: rnd.gen::<f32>() * 0.5 + 0.5,
-        v: rnd.gen::<f32>() * 0.5 + 0.5,
+        h: rnd.r#gen::<f32>(),
+        s: rnd.r#gen::<f32>() * 0.5 + 0.5,
+        v: rnd.r#gen::<f32>() * 0.5 + 0.5,
         a: 1.0,
     }
     .into()

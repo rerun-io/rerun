@@ -1,8 +1,6 @@
-use re_log_types::hash::Hash64;
-use re_types_core::{
-    reflection::ArchetypeFieldReflection, Archetype, ArchetypeReflectionMarker, ComponentName,
-};
-use re_ui::{list_item, UiExt as _};
+use re_types::ComponentDescriptor;
+use re_types_core::{Archetype, ArchetypeReflectionMarker, reflection::ArchetypeFieldReflection};
+use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     ComponentFallbackProvider, ComponentUiTypes, QueryContext, ViewId, ViewState, ViewerContext,
 };
@@ -90,10 +88,10 @@ pub fn view_property_component_ui(
     field: &ArchetypeFieldReflection,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
-    let component_array = property.component_raw(field.component_name);
-    let cache_key = property
-        .component_row_id(field.component_name)
-        .map(Hash64::hash);
+    let component_descr = field.component_descriptor(property.archetype_name);
+
+    let component_array = property.component_raw(&component_descr);
+    let row_id = property.component_row_id(field.component_name);
 
     let ui_types = ctx
         .viewer_ctx
@@ -105,9 +103,9 @@ pub fn view_property_component_ui(
             ctx,
             ui,
             ctx.viewer_ctx.blueprint_db(),
-            ctx.target_entity_path,
-            field.component_name,
-            cache_key,
+            ctx.target_entity_path.clone(),
+            &component_descr,
+            row_id,
             component_array.as_deref(),
             fallback_provider,
         );
@@ -118,9 +116,9 @@ pub fn view_property_component_ui(
             ctx,
             ui,
             ctx.viewer_ctx.blueprint_db(),
-            ctx.target_entity_path,
-            field.component_name,
-            cache_key,
+            ctx.target_entity_path.clone(),
+            &component_descr,
+            row_id,
             component_array.as_deref(),
             fallback_provider,
         );
@@ -157,15 +155,17 @@ pub fn view_property_component_ui_custom(
     singleline_ui: &dyn Fn(&mut egui::Ui),
     multiline_ui: Option<&dyn Fn(&mut egui::Ui)>,
 ) {
+    let component_descr = field.component_descriptor(property.archetype_name);
+
     let singleline_list_item_content = list_item::PropertyContent::new(display_name)
         .menu_button(&re_ui::icons::MORE, |ui| {
-            menu_more(ctx.viewer_ctx, ui, property, field.component_name);
+            menu_more(ctx.viewer_ctx, ui, property, &component_descr);
         })
         .value_fn(move |ui, _| singleline_ui(ui));
 
     let list_item_response = if let Some(multiline_ui) = multiline_ui {
         let default_open = false;
-        let id = egui::Id::new((ctx.target_entity_path.hash(), field.component_name));
+        let id = egui::Id::new((ctx.target_entity_path.hash(), &component_descr));
         ui.list_item()
             .interactive(false)
             .show_hierarchical_with_children(
@@ -194,12 +194,12 @@ fn menu_more(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     property: &ViewProperty,
-    component_name: ComponentName,
+    component_descr: &ComponentDescriptor,
 ) {
-    let component_array = property.component_raw(component_name);
+    let component_array = property.component_raw(component_descr);
 
     let property_differs_from_default = component_array
-        != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component_name);
+        != ctx.raw_latest_at_in_default_blueprint(&property.blueprint_store_path, component_descr);
 
     let response = ui
         .add_enabled(
@@ -214,8 +214,11 @@ If no default blueprint was set or it didn't set any value for this field, this 
             "The property is already set to the same value it has in the default blueprint",
         );
     if response.clicked() {
-        ctx.reset_blueprint_component_by_name(&property.blueprint_store_path, component_name);
-        ui.close_menu();
+        ctx.reset_blueprint_component(
+            property.blueprint_store_path.clone(),
+            component_descr.clone(),
+        );
+        ui.close();
     }
 
     let response = ui
@@ -229,8 +232,11 @@ This has the same effect as not setting the value in the blueprint at all."
         )
         .on_disabled_hover_text("The property is already unset.");
     if response.clicked() {
-        ctx.clear_blueprint_component_by_name(&property.blueprint_store_path, component_name);
-        ui.close_menu();
+        ctx.clear_blueprint_component(
+            property.blueprint_store_path.clone(),
+            component_descr.clone(),
+        );
+        ui.close();
     }
 
     // TODO(andreas): The next logical thing here is now to save it to the default blueprint!

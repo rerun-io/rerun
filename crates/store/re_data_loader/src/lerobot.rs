@@ -85,9 +85,7 @@ pub enum LeRobotError {
     #[error("Missing dataset info: {0}")]
     MissingDatasetInfo(String),
 
-    #[error(
-        "Invalid feature dtype, expected {key} to be of type {expected:?}, but got {actual:?}"
-    )]
+    #[error("Invalid feature dtype, expected {key} to be of type {expected:?}, but got {actual:?}")]
     InvalidFeatureDtype {
         key: String,
         expected: DType,
@@ -683,10 +681,12 @@ mod tests {
         let json = r#"["a", ["b"]]"#; // Mixed flat and nested
         let result: Result<Names, _> = serde_json::from_str(json);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Cannot mix flat strings and nested lists"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Cannot mix flat strings and nested lists")
+        );
     }
 
     #[test]
@@ -694,9 +694,11 @@ mod tests {
         let json = r#"{ "axes": ["x"], "motors": ["m"] }"#;
         let result: Result<Names, _> = serde_json::from_str(json);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("a Names object with exactly one entry"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("a Names object with exactly one entry")
+        );
     }
 }

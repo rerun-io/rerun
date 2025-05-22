@@ -317,7 +317,7 @@ impl GpuReadbackBelt {
                         // This should never happen. Drop the chunk and report.
                         re_log::error_once!("Failed to map staging buffer for reading");
                     } else {
-                        let _ = sender.send(chunk);
+                        sender.send(chunk).ok();
                     }
                 },
             );

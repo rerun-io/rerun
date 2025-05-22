@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 
@@ -6,8 +6,9 @@ use re_log_types::EntityPath;
 use re_types_core::ChunkId;
 
 use crate::{
-    ArrowBatchMetadata, ComponentColumnDescriptor, IndexColumnDescriptor, RowIdColumnDescriptor,
-    SorbetColumnDescriptors, SorbetError, SorbetSchema,
+    ArrowBatchMetadata, ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor,
+    RowIdColumnDescriptor, SorbetColumnDescriptors, SorbetError, SorbetSchema,
+    chunk_columns::ChunkColumnDescriptors,
 };
 
 /// The parsed schema of a Rerun chunk, i.e. multiple columns of data for a single entity.
@@ -19,8 +20,8 @@ pub struct ChunkSchema {
     sorbet: SorbetSchema,
 
     // Some things here are also in [`SorbetSchema]`, but are duplicated
-    // here because they are non-optional:
-    row_id: RowIdColumnDescriptor,
+    // here because they have additional constraints (e.g. ordering, non-optional):
+    chunk_columns: ChunkColumnDescriptors,
     chunk_id: ChunkId,
     entity_path: EntityPath,
 }
@@ -41,6 +42,13 @@ impl Deref for ChunkSchema {
     }
 }
 
+impl DerefMut for ChunkSchema {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.sorbet
+    }
+}
+
 /// ## Builders
 impl ChunkSchema {
     pub fn new(
@@ -53,15 +61,23 @@ impl ChunkSchema {
         Self {
             sorbet: SorbetSchema {
                 columns: SorbetColumnDescriptors {
-                    row_id: Some(row_id.clone()),
-                    indices,
-                    components,
+                    columns: itertools::chain!(
+                        std::iter::once(ColumnDescriptor::RowId(row_id.clone())),
+                        indices.iter().cloned().map(ColumnDescriptor::Time),
+                        components.iter().cloned().map(ColumnDescriptor::Component),
+                    )
+                    .collect(),
                 },
+                partition_id: None, // TODO(#9977): This should be required in the future.
                 chunk_id: Some(chunk_id),
                 entity_path: Some(entity_path.clone()),
                 heap_size_bytes: None,
             },
-            row_id,
+            chunk_columns: ChunkColumnDescriptors {
+                row_id,
+                indices,
+                components,
+            },
             chunk_id,
             entity_path,
         }
@@ -103,17 +119,7 @@ impl ChunkSchema {
 
     #[inline]
     pub fn row_id_column(&self) -> &RowIdColumnDescriptor {
-        &self.row_id
-    }
-
-    #[inline]
-    pub fn index_columns(&self) -> &[IndexColumnDescriptor] {
-        &self.sorbet.columns.indices
-    }
-
-    #[inline]
-    pub fn component_columns(&self) -> &[ComponentColumnDescriptor] {
-        &self.sorbet.columns.components
+        &self.chunk_columns.row_id
     }
 
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
@@ -148,20 +154,15 @@ impl TryFrom<SorbetSchema> for ChunkSchema {
 
     fn try_from(sorbet_schema: SorbetSchema) -> Result<Self, Self::Error> {
         Ok(Self {
-            row_id: sorbet_schema
-                .columns
-                .row_id
-                .clone()
-                .ok_or_else(|| SorbetError::custom("Missing row_id column"))?,
-            chunk_id: sorbet_schema
-                .chunk_id
-                .ok_or_else(|| SorbetError::custom("Missing chunk_id"))?,
+            sorbet: sorbet_schema.clone(),
+
+            chunk_columns: ChunkColumnDescriptors::try_from(sorbet_schema.columns.clone())?,
+
+            chunk_id: sorbet_schema.chunk_id.ok_or(SorbetError::MissingChunkId)?,
+
             entity_path: sorbet_schema
                 .entity_path
-                .clone()
-                .ok_or_else(|| SorbetError::custom("Missing entity_path"))?,
-
-            sorbet: sorbet_schema,
+                .ok_or(SorbetError::MissingEntityPath)?,
         })
     }
 }

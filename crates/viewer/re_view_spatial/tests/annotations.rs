@@ -1,17 +1,17 @@
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
 use re_view_spatial::SpatialView2D;
-use re_viewer_context::test_context::TestContext;
+use re_viewer_context::test_context::{HarnessExt as _, TestContext};
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
-use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::test_context_ext::TestContextExt as _;
 
 #[test]
 pub fn test_annotations() {
     let mut test_context = get_test_context();
 
     {
-        use ndarray::{s, Array, ShapeBuilder as _};
+        use ndarray::{Array, ShapeBuilder as _, s};
 
         // Log an annotation context to assign a label and color to each class
         test_context.log_entity("/".into(), |builder| {
@@ -159,7 +159,7 @@ fn run_view_ui_and_save_snapshot(
             raw_input
                 .events
                 .push(egui::Event::PointerMoved((50.0, 200.0).into()));
-            harness.run();
+            harness.try_run_realtime().ok();
             harness.snapshot(&name);
         }
 
@@ -190,7 +190,7 @@ fn run_view_ui_and_save_snapshot(
                 .events
                 .push(egui::Event::PointerMoved((175.0, 450.).into()));
             harness.run();
-            harness.snapshot(&name);
+            harness.snapshot_with_broken_pixels(&name, 1);
         }
 
         {

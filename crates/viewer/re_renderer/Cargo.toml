@@ -45,7 +45,7 @@ import-obj = ["dep:tobj"]
 import-gltf = ["dep:gltf"]
 
 ## Support importing binary & ascii .stl files
-import-stl = ["dep:tinystl"]
+import-stl = ["dep:stl_io"]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
@@ -85,7 +85,7 @@ wgpu.workspace = true
 
 # optional
 gltf = { workspace = true, optional = true }
-tinystl = { workspace = true, features = ["bytemuck"], optional = true }
+stl_io = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 tobj = { workspace = true, optional = true }
 

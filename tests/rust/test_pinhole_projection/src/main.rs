@@ -4,7 +4,7 @@
 //! cargo run -p test_pinhole_projection
 //! ```
 
-use rerun::{external::re_log, RecordingStream};
+use rerun::{RecordingStream, external::re_log};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

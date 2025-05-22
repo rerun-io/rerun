@@ -109,8 +109,7 @@ class Boxes2D(Boxes2DExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
-
-            The default for 2D boxes is 10.0.
+            Defaults to `10.0`.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
 
@@ -187,8 +186,7 @@ class Boxes2D(Boxes2DExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
-
-            The default for 2D boxes is 10.0.
+            Defaults to `10.0`.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
 
@@ -318,8 +316,7 @@ class Boxes2D(Boxes2DExt, Archetype):
     # An optional floating point value that specifies the 2D drawing order.
     #
     # Objects with higher values are drawn on top of those with lower values.
-    #
-    # The default for 2D boxes is 10.0.
+    # Defaults to `10.0`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

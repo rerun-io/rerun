@@ -1,7 +1,7 @@
 use re_log_types::EntityPathHash;
 
 use super::UiLabel;
-use crate::{view_kind::SpatialViewKind, visualizers::LoadingSpinner, PickableTexturedRect};
+use crate::{PickableTexturedRect, view_kind::SpatialViewKind, visualizers::LoadingSpinner};
 
 /// Common data struct for all spatial scene elements.
 ///

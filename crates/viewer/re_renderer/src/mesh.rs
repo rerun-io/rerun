@@ -1,15 +1,15 @@
 use std::{mem::size_of, ops::Range};
 
 use ecolor::Rgba;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::{
+    RenderContext, Rgba32Unmul,
     allocator::create_and_fill_uniform_buffer_batch,
     debug_label::DebugLabel,
     renderer::MeshRenderer,
     resource_managers::GpuTexture2D,
     wgpu_resources::{BindGroupDesc, BindGroupEntry, BufferDesc, GpuBindGroup, GpuBuffer},
-    RenderContext, Rgba32Unmul,
 };
 
 /// Defines how mesh vertices are built.

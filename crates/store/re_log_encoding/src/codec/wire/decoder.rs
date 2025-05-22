@@ -2,8 +2,8 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 
 use re_protos::common::v1alpha1::RerunChunk;
 
-use crate::codec::arrow::read_arrow_from_bytes;
 use crate::codec::CodecError;
+use crate::codec::arrow::read_arrow_from_bytes;
 
 /// Decode transport data from a byte stream.
 fn decode(

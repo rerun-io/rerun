@@ -961,8 +961,8 @@ impl std::hash::Hash for ResolvedEntityPathRule {
 #[cfg(test)]
 mod tests {
     use crate::{
-        path::entity_path_filter::{split_whitespace_smart, ResolvedEntityPathRule},
         EntityPath, EntityPathFilter, EntityPathSubs, RuleEffect,
+        path::entity_path_filter::{ResolvedEntityPathRule, split_whitespace_smart},
     };
 
     #[test]

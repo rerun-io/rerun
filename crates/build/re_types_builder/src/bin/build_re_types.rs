@@ -9,7 +9,7 @@
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };
-use re_types_builder::{compute_re_types_hash, SourceLocations};
+use re_types_builder::{SourceLocations, compute_re_types_hash};
 
 use camino::Utf8Path;
 

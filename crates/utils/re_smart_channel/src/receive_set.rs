@@ -198,7 +198,7 @@ impl<T: Send> ReceiveSet<T> {
 
 #[test]
 fn test_receive_set() {
-    use crate::{smart_channel, SmartMessageSource};
+    use crate::{SmartMessageSource, smart_channel};
 
     let timeout = std::time::Duration::from_millis(100);
 

@@ -1,4 +1,4 @@
-use super::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
+use super::{DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL, ingest, meili};
 use cargo_metadata::semver::Version;
 
 /// Index documentation, examples, and API references for all languages

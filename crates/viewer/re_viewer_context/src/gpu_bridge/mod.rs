@@ -16,11 +16,11 @@ use crate::TensorStats;
 // ----------------------------------------------------------------------------
 
 use re_renderer::{
+    RenderContext, ViewBuilder,
     renderer::{ColormappedTexture, RectangleOptions},
     resource_managers::{
         GpuTexture2D, ImageDataDesc, ImageDataToTextureError, TextureManager2DError,
     },
-    RenderContext, ViewBuilder,
 };
 
 // ----------------------------------------------------------------------------

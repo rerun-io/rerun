@@ -3,9 +3,9 @@ use std::sync::Arc;
 use slotmap::{SecondaryMap, SlotMap};
 
 use crate::{
+    RenderContext,
     mesh::{CpuMesh, GpuMesh, MeshError},
     renderer::GpuMeshInstance,
-    RenderContext,
 };
 
 slotmap::new_key_type! {

@@ -7,6 +7,7 @@ mod dataset;
 mod entry;
 mod errors;
 mod table;
+mod task;
 
 use std::sync::Arc;
 
@@ -14,16 +15,17 @@ use arrow::{
     array::{Float32Array, RecordBatch},
     datatypes::Field,
 };
-use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
+use pyo3::{Bound, PyResult, exceptions::PyRuntimeError, prelude::*};
 
 use crate::catalog::dataframe_query::PyDataframeQueryView;
 
-pub use catalog_client::PyCatalogClient;
-pub use connection_handle::ConnectionHandle;
-pub use dataset::PyDataset;
-pub use entry::{PyEntry, PyEntryId, PyEntryKind};
-pub use errors::to_py_err;
-pub use table::PyTable;
+pub(crate) use catalog_client::PyCatalogClient;
+pub(crate) use connection_handle::ConnectionHandle;
+pub(crate) use dataset::PyDataset;
+pub(crate) use entry::{PyEntry, PyEntryId, PyEntryKind};
+pub(crate) use errors::to_py_err;
+pub(crate) use table::PyTable;
+pub(crate) use task::{PyTask, PyTasks};
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -34,6 +36,8 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyEntry>()?;
     m.add_class::<PyDataset>()?;
     m.add_class::<PyTable>()?;
+    m.add_class::<PyTask>()?;
+    m.add_class::<PyTasks>()?;
 
     m.add_class::<PyDataframeQueryView>()?;
 

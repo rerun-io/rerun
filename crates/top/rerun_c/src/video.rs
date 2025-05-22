@@ -1,7 +1,7 @@
 use crate::{CError, CErrorCode, CStringView};
 
 #[allow(unsafe_code)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
     video_bytes: *const u8,
     video_bytes_len: u64,

@@ -156,6 +156,7 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `-10.0`.
         std::optional<ComponentBatch> draw_order;
 
       public:
@@ -268,14 +269,32 @@ namespace rerun::archetypes {
                   resolution, color_model, get_datatype(elements)
               ) {}
 
-        /// Assumes single channel greyscale/luminance with 8-bit per value.
+        /// Assumes single channel grayscale/luminance with 8-bit per value.
         ///
         /// @param bytes Pixel data as a `rerun::Collection`.
         /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
         /// explicitly ahead of time with `rerun::Collection::take_ownership`.
         /// The length of the data should be `W * H`.
         /// @param resolution The resolution of the image as {width, height}.
-        static Image from_greyscale8(Collection<uint8_t> bytes, WidthHeight resolution) {
+        static Image from_grayscale8(Collection<uint8_t> bytes, WidthHeight resolution) {
+            return Image(
+                bytes,
+                resolution,
+                datatypes::ColorModel::L,
+                datatypes::ChannelDatatype::U8
+            );
+        }
+
+        /// Assumes single channel grayscale/luminance with 8-bit per value.
+        ///
+        /// @param bytes Pixel data as a `rerun::Collection`.
+        /// If the data does not outlive the image, use `std::move` or create the `rerun::Collection`
+        /// explicitly ahead of time with `rerun::Collection::take_ownership`.
+        /// The length of the data should be `W * H`.
+        /// @param resolution The resolution of the image as {width, height}.
+        [[deprecated("Renamed `from_grayscale8`")]] static Image from_greyscale8(
+            Collection<uint8_t> bytes, WidthHeight resolution
+        ) {
             return Image(
                 bytes,
                 resolution,
@@ -383,6 +402,7 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `-10.0`.
         Image with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();

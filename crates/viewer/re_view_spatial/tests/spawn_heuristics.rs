@@ -2,8 +2,8 @@
 #![expect(clippy::unwrap_used)]
 
 use re_log_types::{EntityPath, Timeline};
-use re_types::{archetypes, AsComponents};
-use re_viewer_context::{test_context::TestContext, ViewClass as _};
+use re_types::{AsComponents, archetypes};
+use re_viewer_context::{ViewClass as _, test_context::TestContext};
 
 use ndarray::{Array, ShapeBuilder as _};
 

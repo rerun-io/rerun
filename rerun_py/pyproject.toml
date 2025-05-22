@@ -11,12 +11,14 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Visualization",
 ]
+# Keep in mind that tested dependencies are usually goverend by `pixi.toml`
+# which means that any changes to the dependencies here should be reflected there as well.
 dependencies = [
   # Must match list in `.github/workflows/reusable_test_wheels.yml`
   "attrs>=23.1.0",
-  "numpy>=1.23",
+  "numpy>=2",
   "pillow>=8.0.0",          # Used for JPEG encoding. 8.0.0 added the `format` arguments to `Image.open`
-  "pyarrow>=14.0.2",
+  "pyarrow>=18.0.0",
   "typing_extensions>=4.5", # Used for PEP-702 deprecated decorator
 ]
 description = "The Rerun Logging SDK"

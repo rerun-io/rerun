@@ -15,6 +15,7 @@ use itertools::Itertools as _;
 use smallvec::smallvec;
 
 use crate::{
+    Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
@@ -25,7 +26,6 @@ use crate::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
 };
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
@@ -33,7 +33,7 @@ use super::{DrawData, DrawError, RenderContext, Renderer};
 // ---
 
 mod gpu_data {
-    use crate::{wgpu_buffer_types, PickingLayerObjectId};
+    use crate::{PickingLayerObjectId, wgpu_buffer_types};
 
     use super::DepthCloudDrawDataError;
 

@@ -130,7 +130,7 @@ pub use re_log::default_log_filter;
 pub use log_integration::Logger;
 
 #[cfg(feature = "run")]
-pub use commands::{run, CallSource};
+pub use commands::{CallSource, run};
 
 #[cfg(feature = "sdk")]
 pub use sdk::*;

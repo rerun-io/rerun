@@ -14,15 +14,15 @@ pub struct UnsupportedTimeType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexColumnDescriptor {
     /// The timeline this column is associated with.
-    timeline: Timeline,
+    pub timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    datatype: ArrowDatatype,
+    pub datatype: ArrowDatatype,
 
     /// Are the indices in this column sorted?
     ///
     /// `false` means either "unsorted" or "unknown".
-    is_sorted: bool,
+    pub is_sorted: bool,
 }
 
 impl PartialOrd for IndexColumnDescriptor {
@@ -137,7 +137,7 @@ impl TryFrom<&ArrowField> for IndexColumnDescriptor {
         let name = if let Some(name) = field.metadata().get("rerun.index_name") {
             name.to_owned()
         } else {
-            re_log::warn_once!(
+            re_log::debug_once!(
                 "Timeline '{}' is missing 'rerun.index_name' metadata. Falling back on field/column name",
                 field.name()
             );

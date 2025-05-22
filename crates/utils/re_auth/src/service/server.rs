@@ -1,10 +1,10 @@
 use tonic::{
+    Request, Status,
     metadata::{Ascii, MetadataValue},
     service::Interceptor,
-    Request, Status,
 };
 
-use crate::{provider::VerificationOptions, Error, Jwt, RedapProvider};
+use crate::{Error, Jwt, RedapProvider, provider::VerificationOptions};
 
 use super::{AUTHORIZATION_KEY, TOKEN_PREFIX};
 

@@ -120,6 +120,7 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `-20.0`.
         std::optional<ComponentBatch> draw_order;
 
       public:
@@ -372,6 +373,7 @@ namespace rerun::archetypes {
         /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
         ///
         /// Objects with higher values are drawn on top of those with lower values.
+        /// Defaults to `-20.0`.
         DepthImage with_draw_order(const rerun::components::DrawOrder& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();

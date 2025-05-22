@@ -1,10 +1,10 @@
 use crate::{
+    ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER, Object, Objects, Reporter,
     codegen::{
+        Target,
         common::StringExt as _,
         python::{quote_doc_lines, quote_obj_docs},
-        Target,
     },
-    Object, Objects, Reporter, ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER,
 };
 
 use super::ExtensionClass;

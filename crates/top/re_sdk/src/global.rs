@@ -370,21 +370,25 @@ mod tests {
                     let local_data = RecordingStreamBuilder::new("rerun_example_local_data")
                         .buffered()
                         .unwrap();
-                    assert!(RecordingStream::set_thread_local(
-                        StoreKind::Recording,
-                        Some(local_data.clone())
-                    )
-                    .is_none());
+                    assert!(
+                        RecordingStream::set_thread_local(
+                            StoreKind::Recording,
+                            Some(local_data.clone())
+                        )
+                        .is_none()
+                    );
 
                     let local_blueprint =
                         RecordingStreamBuilder::new("rerun_example_local_blueprint")
                             .buffered()
                             .unwrap();
-                    assert!(RecordingStream::set_thread_local(
-                        StoreKind::Blueprint,
-                        Some(local_blueprint.clone())
-                    )
-                    .is_none());
+                    assert!(
+                        RecordingStream::set_thread_local(
+                            StoreKind::Blueprint,
+                            Some(local_blueprint.clone())
+                        )
+                        .is_none()
+                    );
 
                     // locals are set for this thread -- locals win
                     check_store_id(
@@ -432,11 +436,10 @@ mod tests {
         let local_blueprint = RecordingStreamBuilder::new("rerun_example_local_blueprint")
             .buffered()
             .unwrap();
-        assert!(RecordingStream::set_thread_local(
-            StoreKind::Blueprint,
-            Some(local_blueprint.clone())
-        )
-        .is_none());
+        assert!(
+            RecordingStream::set_thread_local(StoreKind::Blueprint, Some(local_blueprint.clone()))
+                .is_none()
+        );
 
         check_store_id(
             &global_data,

@@ -5,7 +5,9 @@ pub enum Error {
     #[error(transparent)]
     Parse(#[from] url::ParseError),
 
-    #[error("Invalid or missing scheme (expected one of: `rerun://`, `rerun+http://`, `rerun+https://`)")]
+    #[error(
+        "Invalid or missing scheme (expected one of: `rerun://`, `rerun+http://`, `rerun+https://`)"
+    )]
     InvalidScheme,
 
     #[error("Invalid time range (expected `TIMELINE@time..time`): {0}")]

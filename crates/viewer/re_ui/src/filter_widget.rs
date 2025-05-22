@@ -4,7 +4,7 @@ use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
 use smallvec::SmallVec;
 
-use crate::{list_item, UiExt as _};
+use crate::{UiExt as _, list_item};
 
 /// State for the filter widget when it is toggled on.
 #[derive(Debug, Clone)]
@@ -435,7 +435,10 @@ impl PathRanges {
     }
 
     /// Remove the ranges for the given part and (if any) return them sorted and merged.
-    pub fn remove(&mut self, part_index: usize) -> Option<impl Iterator<Item = Range<usize>>> {
+    pub fn remove(
+        &mut self,
+        part_index: usize,
+    ) -> Option<impl Iterator<Item = Range<usize>> + use<>> {
         self.ranges.remove(&part_index).map(MergeRanges::new)
     }
 

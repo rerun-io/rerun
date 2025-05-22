@@ -9,7 +9,7 @@ use itertools::Either;
 
 use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
-use re_sdk::{external::arrow, EntityPath};
+use re_sdk::{EntityPath, external::arrow};
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 

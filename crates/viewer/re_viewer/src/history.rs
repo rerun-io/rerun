@@ -12,17 +12,17 @@
 //!   an example, so that examples can be shared directly by just
 //!   copying the link.
 
-use crate::web_tools::{url_to_receiver, window, JsResultExt as _};
+use crate::web_tools::{JsResultExt as _, url_to_receiver, window};
 use js_sys::wasm_bindgen;
 use parking_lot::Mutex;
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 use std::sync::Arc;
 use std::sync::OnceLock;
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsError;
 use wasm_bindgen::JsValue;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::prelude::wasm_bindgen;
 use web_sys::History;
 use web_sys::UrlSearchParams;
 

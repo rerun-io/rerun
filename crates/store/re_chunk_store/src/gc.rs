@@ -1,5 +1,5 @@
 use std::{
-    collections::{btree_map::Entry as BTreeMapEntry, hash_map::Entry as HashMapEntry, BTreeSet},
+    collections::{BTreeSet, btree_map::Entry as BTreeMapEntry, hash_map::Entry as HashMapEntry},
     time::Duration,
 };
 
@@ -13,8 +13,8 @@ use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt};
 use re_types_core::ComponentDescriptor;
 
 use crate::{
-    store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind,
-    ChunkStoreEvent, ChunkStoreStats,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStoreStats, store::ChunkIdSetPerTime,
 };
 
 // Used all over in docstrings.

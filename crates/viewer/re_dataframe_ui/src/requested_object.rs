@@ -1,4 +1,4 @@
-use std::sync::mpsc::{sync_channel, Receiver};
+use std::sync::mpsc::{Receiver, sync_channel};
 
 use re_viewer_context::{AsyncRuntimeHandle, WasmNotSend};
 
@@ -24,7 +24,7 @@ impl<T: Send + 'static> RequestedObject<T> {
         runtime.spawn_future(async move {
             //TODO(#9836): implement cancellation using another channel (see `make_future_send`)
             let result = func.await;
-            let _ = tx.send(result);
+            tx.send(result).ok();
         });
 
         handle

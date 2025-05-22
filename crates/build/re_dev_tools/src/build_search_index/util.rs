@@ -120,12 +120,13 @@ pub trait CheckStatus {
 
 impl CheckStatus for std::process::ExitStatus {
     fn check(&self) -> io::Result<()> {
-        match self.success() {
-            true => Ok(()),
-            false => Err(io::Error::new(
+        if self.success() {
+            Ok(())
+        } else {
+            Err(io::Error::new(
                 io::ErrorKind::Other,
                 ExitCode(self.code().unwrap_or(-1)),
-            )),
+            ))
         }
     }
 }

@@ -7,7 +7,7 @@
 use std::ops::RangeInclusive;
 
 use egui::emath::Rangef;
-use egui::{lerp, remap, NumExt as _};
+use egui::{NumExt as _, lerp, remap};
 use itertools::Itertools as _;
 
 use re_log_types::{ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal};

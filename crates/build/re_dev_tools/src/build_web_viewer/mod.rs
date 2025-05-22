@@ -3,7 +3,7 @@ mod lib;
 use argh::FromArgs;
 use cargo_metadata::camino::Utf8PathBuf;
 
-use lib::{build, default_build_dir, Profile, Target};
+use lib::{Profile, Target, build, default_build_dir};
 
 /// Build the web-viewer.
 #[derive(FromArgs)]
@@ -50,7 +50,7 @@ fn default_features() -> String {
 
 pub fn main(args: Args) -> anyhow::Result<()> {
     let profile = if args.release && !args.debug {
-        Profile::Release
+        Profile::WebRelease
     } else if !args.release && args.debug {
         Profile::Debug
     } else {

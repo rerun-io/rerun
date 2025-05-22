@@ -4,6 +4,7 @@ use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
 use re_log_types::TableId;
+use re_ui::UiExt as _;
 use re_viewer_context::{
     ContainerId, Contents, Item, ItemCollection, ItemContext, ViewId, ViewerContext,
 };
@@ -14,6 +15,7 @@ pub mod collapse_expand;
 mod sub_menu;
 
 use actions::{
+    CopyEntityPathToClipboard,
     add_container::AddContainerAction,
     add_entities_to_new_view::AddEntitiesToNewViewAction,
     add_view::AddViewAction,
@@ -22,7 +24,6 @@ use actions::{
     move_contents_to_new_container::MoveContentsToNewContainerAction,
     remove::RemoveAction,
     show_hide::{HideAction, ShowAction},
-    CopyEntityPathToClipboard,
 };
 
 use sub_menu::SubMenu;
@@ -87,7 +88,7 @@ fn context_menu_ui_for_item_with_context_impl(
 ) {
     item_response.context_menu(|ui| {
         if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            ui.close_menu();
+            ui.close();
             return;
         }
 
@@ -227,7 +228,7 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
 
             let response = action.ui(ctx, ui);
             if response.clicked() {
-                ui.close_menu();
+                ui.close();
             }
         }
 
@@ -330,7 +331,7 @@ trait ContextMenuAction {
         let label = self.label(ctx);
 
         let response = if let Some(icon) = self.icon() {
-            ui.add(egui::Button::image_and_text(icon.as_image(), label))
+            ui.add(icon.as_button_with_label(ui.design_tokens(), label))
         } else {
             ui.button(label)
         };

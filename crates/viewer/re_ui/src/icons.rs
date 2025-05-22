@@ -1,5 +1,7 @@
 use egui::{Image, ImageSource};
 
+use crate::DesignTokens;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Icon {
     /// Human readable unique id
@@ -27,6 +29,24 @@ impl Icon {
         // Default size is the same size as the source data specifies
         const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
         Image::new(self.as_image_source()).fit_to_original_size(ICON_SCALE)
+    }
+
+    #[inline]
+    pub fn as_button(&self) -> egui::Button<'_> {
+        egui::Button::image(self.as_image()).image_tint_follows_text_color(true)
+    }
+
+    #[inline]
+    pub fn as_button_with_label(
+        &self,
+        design_tokens: &DesignTokens,
+        label: impl Into<egui::WidgetText>,
+    ) -> egui::Button<'_> {
+        egui::Button::image_and_text(
+            self.as_image()
+                .tint(design_tokens.label_button_icon_color()),
+            label,
+        )
     }
 }
 
@@ -153,3 +173,4 @@ pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.png");
 pub const CONTROL: Icon = icon_from_path!("../data/icons/control.png");
 pub const COMMAND: Icon = icon_from_path!("../data/icons/command.png");
 pub const OPTION: Icon = icon_from_path!("../data/icons/option.png");
+pub const COPY: Icon = icon_from_path!("../data/icons/copy.png");

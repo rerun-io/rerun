@@ -3,10 +3,11 @@ mod hierarchical_drag_and_drop;
 mod right_panel;
 
 use egui::Modifiers;
+use egui::containers::menu;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    filter_widget::FilterState, list_item, maybe_plus, modifiers_text, CommandPalette,
-    ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
+    CommandPalette, ContextExt as _, DesignTokens, Help, UICommand, UICommandSender, UiExt as _,
+    filter_widget::FilterState, list_item, maybe_plus, modifiers_text,
 };
 use re_ui::{icon_text, icons, notifications};
 
@@ -142,7 +143,11 @@ impl ExampleApp {
 
 impl eframe::App for ExampleApp {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
+        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            [0.0; 4] // transparent
+        } else {
+            [1.0, 0.0, 1.0, 1.0] // Find any background color peaking through that shouldn't
+        }
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -151,7 +156,7 @@ impl eframe::App for ExampleApp {
         self.top_bar(egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(DesignTokens::bottom_panel_frame())
+            .frame(egui_ctx.design_tokens().bottom_panel_frame())
             .show_animated(egui_ctx, self.show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
@@ -190,6 +195,11 @@ impl eframe::App for ExampleApp {
         // bottom section closure
         let left_panel_bottom_section_ui = |ui: &mut egui::Ui| {
             ui.horizontal(|ui| {
+                ui.label("Theme:");
+                egui::global_theme_preference_buttons(ui);
+            });
+
+            ui.horizontal(|ui| {
                 ui.label("Toggle switch:");
                 ui.toggle_switch(8.0, &mut self.dummy_bool);
             });
@@ -209,7 +219,7 @@ impl eframe::App for ExampleApp {
             self.modal_handler.ui(
                 ui.ctx(),
                 || re_ui::modal::ModalWrapper::new("Modal window"),
-                |ui, _| ui.label("This is a modal window."),
+                |ui| ui.label("This is a modal window."),
             );
 
             // ---
@@ -221,7 +231,7 @@ impl eframe::App for ExampleApp {
             self.full_span_modal_handler.ui(
                 ui.ctx(),
                 || re_ui::modal::ModalWrapper::new("Modal window").full_span_content(true),
-                |ui, _| {
+                |ui| {
                     list_item::list_item_scope(ui, "modal demo", |ui| {
                         for idx in 0..10 {
                             list_item::ListItem::new()
@@ -389,7 +399,7 @@ impl ExampleApp {
         let top_bar_style = egui_ctx.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
-            .frame(DesignTokens::top_panel_frame())
+            .frame(egui_ctx.design_tokens().top_panel_frame())
             .exact_height(top_bar_style.height)
             .show(egui_ctx, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -412,7 +422,7 @@ impl ExampleApp {
                     }
                 }
 
-                egui::menu::bar(ui, |ui| {
+                menu::Bar::new().ui(ui, |ui| {
                     ui.set_height(top_bar_style.height);
                     ui.add_space(top_bar_style.indent);
 

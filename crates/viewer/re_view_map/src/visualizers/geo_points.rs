@@ -1,18 +1,17 @@
 use re_log_types::EntityPath;
-use re_renderer::{renderer::PointCloudDrawDataError, PickingLayerInstanceId};
+use re_renderer::{PickingLayerInstanceId, renderer::PointCloudDrawDataError};
 use re_types::{
     archetypes::GeoPoints,
-    components::{ClassId, Color, LatLon, Radius},
-    Component as _,
+    components::{Color, Radius},
 };
 use re_view::{
-    process_annotation_slices, process_color_slice, AnnotationSceneContext, DataResultQuery as _,
-    RangeResultsExt as _,
+    AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
+    process_color_slice,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
-    VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewHighlights, ViewQuery, ViewSystemExecutionError,
+    VisualizerQueryInfo, VisualizerSystem, auto_color_for_entity_path,
 };
 
 #[derive(Debug, Default)]
@@ -57,10 +56,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_positions = results.iter_as(timeline, LatLon::name());
-            let all_colors = results.iter_as(timeline, Color::name());
-            let all_radii = results.iter_as(timeline, Radius::name());
-            let all_class_ids = results.iter_as(timeline, ClassId::name());
+            let all_positions = results.iter_as(timeline, GeoPoints::descriptor_positions());
+            let all_colors = results.iter_as(timeline, GeoPoints::descriptor_colors());
+            let all_radii = results.iter_as(timeline, GeoPoints::descriptor_radii());
+            let all_class_ids = results.iter_as(timeline, GeoPoints::descriptor_class_ids());
 
             // fallback component values
             let query_context = ctx.query_context(data_result, &latest_at_query);
@@ -96,7 +95,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 let radii = radii.unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0 .0);
+                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0.0);
 
                 // iterate over all instances
                 for (instance_index, (position, color, radius)) in itertools::izip!(

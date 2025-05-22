@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::{Docs, Objects, Reporter};
 
-use super::{lines_from_docs, quote_doc_comment, quote_doc_lines, NEWLINE_TOKEN};
+use super::{NEWLINE_TOKEN, lines_from_docs, quote_doc_comment, quote_doc_lines};
 
 #[derive(Default)]
 pub struct MethodDeclaration {

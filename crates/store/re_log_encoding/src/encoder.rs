@@ -1,9 +1,9 @@
 //! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
-use crate::codec;
-use crate::codec::file::{self, encoder};
 use crate::FileHeader;
 use crate::Serializer;
+use crate::codec;
+use crate::codec::file::{self, encoder};
 use crate::{Compression, EncodingOptions};
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};

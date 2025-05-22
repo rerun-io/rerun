@@ -16,7 +16,7 @@ pub use selection_panel::SelectionPanel;
 mod test {
     use super::*;
     use re_chunk_store::LatestAtQuery;
-    use re_viewer_context::{blueprint_timeline, Item, ViewId};
+    use re_viewer_context::{Item, ViewId, blueprint_timeline};
     use re_viewport_blueprint::ViewportBlueprint;
 
     /// This test mainly serve to demonstrate that non-trivial UI code can be executed with a "fake"

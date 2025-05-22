@@ -183,7 +183,7 @@ use std::{
 };
 
 use ahash::{HashMap, HashSet, HashSetExt as _};
-use anyhow::{anyhow, bail, ensure, Context as _};
+use anyhow::{Context as _, anyhow, bail, ensure};
 use clean_path::Clean as _;
 
 use crate::FileSystem;

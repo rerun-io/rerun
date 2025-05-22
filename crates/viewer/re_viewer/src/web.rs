@@ -17,7 +17,7 @@ use re_viewer_context::{AsyncRuntimeHandle, SystemCommand, SystemCommandSender a
 
 use crate::app_state::recording_config_entry;
 use crate::history::install_popstate_listener;
-use crate::web_tools::{url_to_receiver, Callback, JsResultExt as _, StringOrStringArray};
+use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray, url_to_receiver};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -386,7 +386,7 @@ impl WebHandle {
     pub fn get_active_timeline(&self, store_id: &str) -> Option<String> {
         let mut app = self.runner.app_mut::<crate::App>()?;
         let crate::App {
-            store_hub: Some(ref hub),
+            store_hub: Some(hub),
             state,
             ..
         } = &mut *app
@@ -415,7 +415,7 @@ impl WebHandle {
             return;
         };
         let crate::App {
-            store_hub: Some(ref hub),
+            store_hub: Some(hub),
             state,
             egui_ctx,
             ..
@@ -465,7 +465,7 @@ impl WebHandle {
             return;
         };
         let crate::App {
-            store_hub: Some(ref hub),
+            store_hub: Some(hub),
             state,
             egui_ctx,
             ..
@@ -500,7 +500,7 @@ impl WebHandle {
             return JsValue::null();
         };
         let crate::App {
-            store_hub: Some(ref hub),
+            store_hub: Some(hub),
             ..
         } = &*app
         else {
@@ -533,7 +533,7 @@ impl WebHandle {
     pub fn get_playing(&self, store_id: &str) -> Option<bool> {
         let app = self.runner.app_mut::<crate::App>()?;
         let crate::App {
-            store_hub: Some(ref hub),
+            store_hub: Some(hub),
             state,
             ..
         } = &*app

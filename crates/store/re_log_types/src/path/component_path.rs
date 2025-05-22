@@ -1,4 +1,4 @@
-use re_types_core::ComponentName;
+use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::path::EntityPath;
 
@@ -11,16 +11,16 @@ pub struct ComponentPath {
     /// `camera / "left" / points / #42`
     pub entity_path: EntityPath,
 
-    /// "color"
-    pub component_name: ComponentName,
+    /// e.g. `Points3D:Color#color`
+    pub component_descriptor: ComponentDescriptor,
 }
 
 impl ComponentPath {
     #[inline]
-    pub fn new(entity_path: EntityPath, component_name: ComponentName) -> Self {
+    pub fn new(entity_path: EntityPath, component_descriptor: ComponentDescriptor) -> Self {
         Self {
             entity_path,
-            component_name,
+            component_descriptor,
         }
     }
 
@@ -30,8 +30,13 @@ impl ComponentPath {
     }
 
     #[inline]
-    pub fn component_name(&self) -> &ComponentName {
-        &self.component_name
+    pub fn component_name(&self) -> ComponentName {
+        self.component_descriptor.component_name
+    }
+
+    #[inline]
+    pub fn component_descriptor(&self) -> &ComponentDescriptor {
+        &self.component_descriptor
     }
 }
 
@@ -39,7 +44,7 @@ impl std::fmt::Display for ComponentPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.entity_path.fmt(f)?;
         f.write_str(":")?;
-        self.component_name.fmt(f)?;
+        self.component_descriptor.fmt(f)?;
         Ok(())
     }
 }

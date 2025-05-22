@@ -2,8 +2,8 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
-use re_log_types::{hash::Hash64, EntityPath};
-use re_types::{ComponentDescriptor, ComponentName};
+use re_log_types::EntityPath;
+use re_types::{ComponentDescriptor, RowId};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 mod annotation_context;
@@ -29,19 +29,6 @@ pub use component::ComponentPathLatestAtResults;
 pub use component_ui_registry::{add_to_registry, register_component_uis};
 
 /// Sort components for display in the UI.
-pub fn sorted_component_name_list_for_ui<'a>(
-    iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
-) -> Vec<ComponentName> {
-    let mut components: Vec<ComponentName> = iter.into_iter().copied().collect();
-
-    // Put indicator components first.
-    // We then sort by the short name, as that is what is shown in the UI.
-    components.sort_by_key(|c| (!c.is_indicator_component(), c.short_name()));
-
-    components
-}
-
-/// Sort components for display in the UI.
 pub fn sorted_component_list_for_ui<'a>(
     iter: impl IntoIterator<Item = &'a ComponentDescriptor> + 'a,
 ) -> Vec<ComponentDescriptor> {
@@ -49,7 +36,7 @@ pub fn sorted_component_list_for_ui<'a>(
 
     // Put indicator components first.
     // We then sort by the short name, as that is what is shown in the UI.
-    components.sort_by_key(|c| (!c.component_name.is_indicator_component(), c.short_name()));
+    components.sort_by_key(|c| (!c.component_name.is_indicator_component(), c.display_name()));
 
     components
 }
@@ -84,7 +71,8 @@ pub trait EntityDataUi {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        cache_key: Option<Hash64>,
+        component_descriptor: &ComponentDescriptor,
+        row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
@@ -100,7 +88,8 @@ where
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _cache_key: Option<Hash64>,
+        _component_descriptor: &ComponentDescriptor,
+        _row_id: Option<RowId>,
         query: &re_chunk_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {

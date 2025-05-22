@@ -4,9 +4,9 @@ use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
 use crate::{
+    DebugLabel, RenderContext, Texture2DBufferInfo,
     renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
-    DebugLabel, RenderContext, Texture2DBufferInfo,
 };
 
 /// Image data format that can be converted to a wgpu texture.

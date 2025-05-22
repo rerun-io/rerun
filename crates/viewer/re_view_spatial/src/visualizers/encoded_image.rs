@@ -1,25 +1,26 @@
-use re_log_types::hash::Hash64;
 use re_types::{
+    Archetype as _,
     archetypes::EncodedImage,
-    components::{Blob, DrawOrder, MediaType, Opacity},
-    Component as _,
+    components::{DrawOrder, MediaType, Opacity},
+    image::ImageKind,
 };
-use re_view::{diff_component_filter, HybridResults};
+use re_view::HybridResults;
 use re_viewer_context::{
-    DataBasedVisualizabilityFilter, IdentifiedViewSystem, ImageDecodeCache,
-    MaybeVisualizableEntities, QueryContext, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
-    VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ImageDecodeCache, MaybeVisualizableEntities, QueryContext,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use crate::{
+    PickableRectSourceData, PickableTexturedRect,
     contexts::SpatialSceneEntityContext,
+    ui::SpatialViewState,
     view_kind::SpatialViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableRectSourceData, PickableTexturedRect,
 };
 
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, entity_iterator::process_archetype};
 
 pub struct EncodedImageVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -39,30 +40,9 @@ impl IdentifiedViewSystem for EncodedImageVisualizer {
     }
 }
 
-struct ImageMediaTypeFilter;
-
-impl DataBasedVisualizabilityFilter for ImageMediaTypeFilter {
-    /// Marks entities only as "maybe visualizable" for `EncodedImage` if they have an image media type.
-    ///
-    /// Otherwise the image encoder might be suggested for other blobs like video.
-    fn update_visualizability(&mut self, event: &re_chunk_store::ChunkStoreEvent) -> bool {
-        diff_component_filter(event, |media_type: &re_types::components::MediaType| {
-            media_type.is_image()
-        }) || diff_component_filter(event, |image: &re_types::components::Blob| {
-            MediaType::guess_from_data(&image.0).is_some_and(|media| media.is_image())
-        })
-    }
-}
-
 impl VisualizerSystem for EncodedImageVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<EncodedImage>()
-    }
-
-    fn data_based_visualizability_filter(
-        &self,
-    ) -> Option<Box<dyn re_viewer_context::DataBasedVisualizabilityFilter>> {
-        Some(Box::new(ImageMediaTypeFilter))
     }
 
     fn filter_visualizable_entities(
@@ -135,14 +115,15 @@ impl EncodedImageVisualizer {
 
         let entity_path = ctx.target_entity_path;
 
-        let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+        let Some(all_blob_chunks) = results.get_required_chunks(EncodedImage::descriptor_blob())
+        else {
             return;
         };
 
         let timeline = ctx.query.timeline();
-        let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline, Blob::name());
-        let all_media_types = results.iter_as(timeline, MediaType::name());
-        let all_opacities = results.iter_as(timeline, Opacity::name());
+        let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
+        let all_media_types = results.iter_as(timeline, EncodedImage::descriptor_media_type());
+        let all_opacities = results.iter_as(timeline, EncodedImage::descriptor_opacity());
 
         for ((_time, tensor_data_row_id), blobs, media_types, opacities) in re_query::range_zip_1x2(
             all_blobs_indexed,
@@ -161,7 +142,12 @@ impl EncodedImageVisualizer {
                 .store_context
                 .caches
                 .entry(|c: &mut ImageDecodeCache| {
-                    c.entry(Hash64::hash(tensor_data_row_id), blob, media_type.as_ref())
+                    c.entry(
+                        tensor_data_row_id,
+                        &EncodedImage::descriptor_blob(),
+                        blob,
+                        media_type.as_ref(),
+                    )
                 });
 
             let image = match image {
@@ -188,7 +174,7 @@ impl EncodedImageVisualizer {
                 &image,
                 colormap,
                 multiplicative_tint,
-                "EncodedImage",
+                EncodedImage::name(),
                 &mut self.data,
             ) {
                 self.data.pickable_rects.push(PickableTexturedRect {
@@ -205,8 +191,21 @@ impl EncodedImageVisualizer {
 }
 
 impl TypedComponentFallbackProvider<Opacity> for EncodedImageVisualizer {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
-        1.0.into()
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Opacity {
+        // Color images should be transparent whenever they're on top of other images,
+        // But fully opaque if there are no other images in the scene.
+        let Some(view_state) = ctx.view_state.as_any().downcast_ref::<SpatialViewState>() else {
+            return 1.0.into();
+        };
+
+        // Known cosmetic issues with this approach:
+        // * The first frame we have more than one image, the image will be opaque.
+        //      It's too complex to do a full view query just for this here.
+        //      However, we should be able to analyze the `DataQueryResults` instead to check how many entities are fed to the Image/DepthImage visualizers.
+        // * In 3D scenes, images that are on a completely different plane will cause this to become transparent.
+        view_state
+            .fallback_opacity_for_image_kind(ImageKind::Color)
+            .into()
     }
 }
 

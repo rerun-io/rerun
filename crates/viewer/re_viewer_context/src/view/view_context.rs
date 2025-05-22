@@ -3,7 +3,7 @@ use std::sync::Arc;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
-use re_types::{AsComponents, ComponentBatch, ComponentName};
+use re_types::{AsComponents, ComponentBatch, ComponentDescriptor};
 
 use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
 
@@ -94,20 +94,16 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn save_blueprint_array(
         &self,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
         array: arrow::array::ArrayRef,
     ) {
         self.viewer_ctx
-            .save_blueprint_array(entity_path, component_name, array);
+            .save_blueprint_array(entity_path, component_descr, array);
     }
 
     #[inline]
-    pub fn save_blueprint_archetype(
-        &self,
-        entity_path: &EntityPath,
-        components: &dyn AsComponents,
-    ) {
+    pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
         self.viewer_ctx
             .save_blueprint_archetype(entity_path, components);
     }
@@ -115,41 +111,33 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn save_blueprint_component(
         &self,
-        entity_path: &EntityPath,
-        components: &dyn ComponentBatch,
+        entity_path: EntityPath,
+        component_desc: &ComponentDescriptor,
+        component_batch: &dyn ComponentBatch,
     ) {
         self.viewer_ctx
-            .save_blueprint_component(entity_path, components);
+            .save_blueprint_component(entity_path, component_desc, component_batch);
     }
 
     #[inline]
-    pub fn save_empty_blueprint_component<C>(&self, entity_path: &EntityPath)
-    where
-        C: re_types::Component + 'a,
-    {
-        self.viewer_ctx
-            .save_empty_blueprint_component::<C>(entity_path);
-    }
-
-    #[inline]
-    pub fn reset_blueprint_component_by_name(
+    pub fn reset_blueprint_component(
         &self,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
     ) {
         self.viewer_ctx
-            .reset_blueprint_component_by_name(entity_path, component_name);
+            .reset_blueprint_component(entity_path, component_descr);
     }
 
     /// Clears a component in the blueprint store by logging an empty array if it exists.
     #[inline]
-    pub fn clear_blueprint_component_by_name(
+    pub fn clear_blueprint_component(
         &self,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
     ) {
         self.viewer_ctx
-            .clear_blueprint_component_by_name(entity_path, component_name);
+            .clear_blueprint_component(entity_path, component_descr);
     }
 
     #[inline]

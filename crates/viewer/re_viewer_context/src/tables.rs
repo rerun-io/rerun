@@ -1,35 +1,43 @@
 use std::sync::Arc;
 
-use arrow::array::{Float32Array, Int64Array, ListArray};
+use arrow::array::{ArrayRef, Float32Array, Int64Array, ListArray, RecordBatch};
 use arrow::buffer::OffsetBuffer;
-use arrow::datatypes::{DataType, Field};
+use arrow::datatypes::{DataType, Field, Schema};
+use datafusion::common::DataFusionError;
+use datafusion::datasource::MemTable;
+use datafusion::prelude::SessionContext;
 
 use re_log_types::TableId;
 use re_sorbet::ComponentColumnDescriptor;
-use re_types::external::arrow::{
-    array::{ArrayRef, RecordBatch},
-    datatypes::Schema,
-};
+
 use re_types_core::ComponentBatch as _;
 
 #[derive(Default)]
-struct SorbetBatchStore {
-    batches: Vec<re_sorbet::SorbetBatch>,
-}
-
-#[derive(Default)]
 pub struct TableStore {
-    // Don't ever expose this to the outside world.
-    store_engine: parking_lot::RwLock<SorbetBatchStore>,
+    record_batches: parking_lot::RwLock<Vec<RecordBatch>>,
+    session_ctx: Arc<SessionContext>,
 }
 
 impl TableStore {
-    pub fn batches(&self) -> Vec<re_sorbet::SorbetBatch> {
-        self.store_engine.read().batches.clone()
+    pub const TABLE_NAME: &'static str = "__table__";
+
+    pub fn session_context(&self) -> Arc<SessionContext> {
+        self.session_ctx.clone()
     }
 
-    pub fn add_batch(&self, batch: re_sorbet::SorbetBatch) {
-        self.store_engine.write().batches.push(batch);
+    pub fn add_record_batch(&self, record_batch: RecordBatch) -> Result<(), DataFusionError> {
+        let schema = record_batch.schema();
+        self.session_ctx.deregister_table(Self::TABLE_NAME).ok();
+
+        let mut record_batches = self.record_batches.write();
+        record_batches.push(record_batch);
+
+        let table = MemTable::try_new(schema, vec![record_batches.clone()])?;
+
+        self.session_ctx
+            .register_table(Self::TABLE_NAME, Arc::new(table))?;
+
+        Ok(())
     }
 
     /// This is just for testing purposes and will go away soon™
@@ -145,17 +153,12 @@ impl TableStore {
         let batch =
             RecordBatch::try_new(schema.clone(), columns).expect("could not create record batch");
 
-        let batch =
-            re_sorbet::SorbetBatch::try_from_record_batch(&batch, re_sorbet::BatchType::Dataframe)
-                .expect("could not build sorbet batch");
+        let store = Self::default();
+        store
+            .add_record_batch(batch)
+            .expect("could not add record batch");
 
-        let store = SorbetBatchStore {
-            batches: vec![batch],
-        };
-
-        Self {
-            store_engine: parking_lot::RwLock::new(store),
-        }
+        store
     }
 }
 

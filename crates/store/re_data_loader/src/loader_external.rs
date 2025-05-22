@@ -1,6 +1,6 @@
 use std::{
     io::Read as _,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use ahash::HashMap;

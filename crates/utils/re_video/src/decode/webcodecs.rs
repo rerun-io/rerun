@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
-use wasm_bindgen::{closure::Closure, JsCast as _};
+use wasm_bindgen::{JsCast as _, closure::Closure};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,
@@ -187,7 +187,7 @@ impl AsyncDecoder for WebVideoDecoder {
         // """
         // -> Nothing of this indicates that we _have_ to call it and rather discourages it,
         // but it points out that it might be a good idea once "all desired work is queued".
-        let _ = self.decoder.flush();
+        let _ignored = self.decoder.flush();
 
         Ok(())
     }

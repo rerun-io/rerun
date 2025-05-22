@@ -13,10 +13,10 @@
 use parking_lot::Mutex;
 
 use crate::{
+    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
     allocator::GpuReadbackError,
     texture_info::Texture2DBufferInfo,
     wgpu_resources::{GpuTexture, TextureDesc},
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RenderContext,
 };
 
 /// Type used as user data on the gpu readback belt.

@@ -14,7 +14,7 @@ use re_byte_size::SizeBytes as _;
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, TimePoint, Timeline, TimelineName};
 use re_types_core::ComponentDescriptor;
 
-use crate::{chunk::ChunkComponents, Chunk, ChunkId, ChunkResult, RowId, TimeColumn};
+use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
 
 // ---
 
@@ -270,11 +270,16 @@ impl ChunkBatcherConfig {
 
 #[test]
 fn chunk_batcher_config() {
+    #![allow(unsafe_code)] // It's only a test
+
     // Detect breaking changes in our environment variables.
-    std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.3");
-    std::env::set_var("RERUN_FLUSH_NUM_BYTES", "42");
-    std::env::set_var("RERUN_FLUSH_NUM_ROWS", "666");
-    std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "7777");
+    // SAFETY: it's a test
+    unsafe {
+        std::env::set_var("RERUN_FLUSH_TICK_SECS", "0.3");
+        std::env::set_var("RERUN_FLUSH_NUM_BYTES", "42");
+        std::env::set_var("RERUN_FLUSH_NUM_ROWS", "666");
+        std::env::set_var("RERUN_CHUNK_MAX_ROWS_IF_UNSORTED", "7777");
+    }
 
     let config = ChunkBatcherConfig::from_env().unwrap();
     let expected = ChunkBatcherConfig {
@@ -286,7 +291,10 @@ fn chunk_batcher_config() {
     };
     assert_eq!(expected, config);
 
-    std::env::set_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED", "9999");
+    // SAFETY: it's a test
+    unsafe {
+        std::env::set_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED", "9999");
+    }
 
     let config = ChunkBatcherConfig::from_env().unwrap();
     let expected = ChunkBatcherConfig {
@@ -1021,7 +1029,7 @@ impl PendingTimeColumn {
 mod tests {
     use crossbeam::channel::TryRecvError;
 
-    use re_log_types::example_components::{MyColor, MyIndex, MyLabel, MyPoint, MyPoint64};
+    use re_log_types::example_components::{MyIndex, MyLabel, MyPoint, MyPoint64, MyPoints};
     use re_types_core::{Component as _, Loggable as _};
 
     use super::*;
@@ -1050,18 +1058,18 @@ mod tests {
         let indices3 = MyIndex::to_arrow([MyIndex(4), MyIndex(5)])?;
 
         let components1 = [
-            (MyPoint::descriptor(), points1.clone()),
-            (MyLabel::descriptor(), labels1.clone()),
+            (MyPoints::descriptor_points(), points1.clone()),
+            (MyPoints::descriptor_labels(), labels1.clone()),
             (MyIndex::descriptor(), indices1.clone()),
         ];
         let components2 = [
-            (MyPoint::descriptor(), points2.clone()),
-            (MyLabel::descriptor(), labels2.clone()),
+            (MyPoints::descriptor_points(), points2.clone()),
+            (MyPoints::descriptor_labels(), labels2.clone()),
             (MyIndex::descriptor(), indices2.clone()),
         ];
         let components3 = [
-            (MyPoint::descriptor(), points3.clone()),
-            (MyLabel::descriptor(), labels3.clone()),
+            (MyPoints::descriptor_points(), points3.clone()),
+            (MyPoints::descriptor_labels(), labels3.clone()),
             (MyIndex::descriptor(), indices3.clone()),
         ];
 
@@ -1105,11 +1113,11 @@ mod tests {
             )];
             let expected_components = [
                 (
-                    MyPoint::descriptor(),
+                    MyPoints::descriptor_points(),
                     arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
                 ), //
                 (
-                    MyLabel::descriptor(),
+                    MyPoints::descriptor_labels(),
                     arrays_to_list_array_opt(&[&*labels1, &*labels2, &*labels3].map(Some)).unwrap(),
                 ), //
                 (
@@ -1160,18 +1168,18 @@ mod tests {
 
         let components1 = [
             (MyIndex::descriptor(), indices1.clone()),
-            (MyPoint::descriptor(), points1.clone()),
-            (MyLabel::descriptor(), labels1.clone()),
+            (MyPoints::descriptor_points(), points1.clone()),
+            (MyPoints::descriptor_labels(), labels1.clone()),
         ];
         let components2 = [
-            (MyPoint::descriptor(), points2.clone()),
-            (MyLabel::descriptor(), labels2.clone()),
+            (MyPoints::descriptor_points(), points2.clone()),
+            (MyPoints::descriptor_labels(), labels2.clone()),
             (MyIndex::descriptor(), indices2.clone()),
         ];
         let components3 = [
-            (MyLabel::descriptor(), labels3.clone()),
+            (MyPoints::descriptor_labels(), labels3.clone()),
             (MyIndex::descriptor(), indices3.clone()),
-            (MyPoint::descriptor(), points3.clone()),
+            (MyPoints::descriptor_points(), points3.clone()),
         ];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
@@ -1220,9 +1228,9 @@ mod tests {
     #[allow(clippy::zero_sized_map_values)]
     fn intmap_order_is_deterministic() {
         let descriptors = [
-            MyPoint::descriptor(),
-            MyColor::descriptor(),
-            MyLabel::descriptor(),
+            MyPoints::descriptor_points(),
+            MyPoints::descriptor_colors(),
+            MyPoints::descriptor_labels(),
             MyPoint64::descriptor(),
             MyIndex::descriptor(),
         ];
@@ -1258,9 +1266,9 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())];
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
+        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
+        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
 
         let row1 = PendingRow::new(static_.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(static_.clone(), components2.into_iter().collect());
@@ -1298,7 +1306,7 @@ mod tests {
             let expected_row_ids = vec![row1.row_id, row2.row_id, row3.row_id];
             let expected_timelines = [];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1333,9 +1341,9 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())];
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
+        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
+        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1377,7 +1385,7 @@ mod tests {
                 TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1401,7 +1409,7 @@ mod tests {
                 TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1441,9 +1449,9 @@ mod tests {
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())];
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
+        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
+        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1484,7 +1492,7 @@ mod tests {
                 TimeColumn::new(Some(true), timeline1, vec![42].into()),
             )];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points1].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1514,7 +1522,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1550,9 +1558,9 @@ mod tests {
             MyPoint64::to_arrow([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
         let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())]; // same name, different datatype
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
+        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
+        let components2 = [(MyPoints::descriptor_points(), points2.clone())]; // same name, different datatype
+        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
 
         let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
@@ -1593,7 +1601,7 @@ mod tests {
                 TimeColumn::new(Some(true), timeline1, vec![42, 44].into()),
             )];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points1, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1617,7 +1625,7 @@ mod tests {
                 TimeColumn::new(Some(true), timeline1, vec![43].into()),
             )];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points2].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1668,10 +1676,10 @@ mod tests {
         let points4 =
             MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())];
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
-        let components4 = [(MyPoint::descriptor(), points4.clone())];
+        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
+        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
+        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components4 = [(MyPoints::descriptor_points(), points4.clone())];
 
         let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
@@ -1720,7 +1728,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points1, &*points2, &*points3, &*points4].map(Some))
                     .unwrap(),
             )];
@@ -1772,10 +1780,10 @@ mod tests {
         let points4 =
             MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
-        let components1 = [(MyPoint::descriptor(), points1.clone())];
-        let components2 = [(MyPoint::descriptor(), points2.clone())];
-        let components3 = [(MyPoint::descriptor(), points3.clone())];
-        let components4 = [(MyPoint::descriptor(), points4.clone())];
+        let components1 = [(MyPoints::descriptor_points(), points1.clone())];
+        let components2 = [(MyPoints::descriptor_points(), points2.clone())];
+        let components3 = [(MyPoints::descriptor_points(), points3.clone())];
+        let components4 = [(MyPoints::descriptor_points(), points4.clone())];
 
         let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
         let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
@@ -1824,7 +1832,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points1, &*points2, &*points3].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(
@@ -1854,7 +1862,7 @@ mod tests {
                 ),
             ];
             let expected_components = [(
-                MyPoint::descriptor(),
+                MyPoints::descriptor_points(),
                 arrays_to_list_array_opt(&[&*points4].map(Some)).unwrap(),
             )];
             let expected_chunk = Chunk::from_native_row_ids(

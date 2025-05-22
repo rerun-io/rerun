@@ -4,6 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_types::ViewClassIdentifier;
+use re_ui::UiExt as _;
 use re_viewer_context::{Item, RecommendedView, ViewClassExt as _};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -48,10 +49,12 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
                         })
                         .sorted_by_key(|(_, class)| class.display_name().to_owned())
                     {
-                        let btn = egui::Button::image_and_text(class.icon(), class.display_name());
+                        let btn = class
+                            .icon()
+                            .as_button_with_label(ui.design_tokens(), class.display_name());
                         if ui.add(btn).clicked() {
                             create_view_for_selected_entities(ctx, *identifier);
-                            ui.close_menu();
+                            ui.close();
                         }
                     }
                 };

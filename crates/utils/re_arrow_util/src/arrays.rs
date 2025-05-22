@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use arrow::{
     array::{
-        new_empty_array, Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray,
-        ListArray, PrimitiveArray, UInt32Array,
+        Array, ArrayRef, ArrowPrimitiveType, BooleanArray, FixedSizeListArray, ListArray,
+        PrimitiveArray, UInt32Array, new_empty_array,
     },
     buffer::{NullBuffer, OffsetBuffer},
     datatypes::{DataType, Field},

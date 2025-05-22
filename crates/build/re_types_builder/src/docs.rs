@@ -1,4 +1,4 @@
-use crate::{codegen::Target, Objects, Reporter};
+use crate::{Objects, Reporter, codegen::Target};
 
 /// A high-level representation of the contents of a flatbuffer docstring.
 #[derive(Debug, Clone, Default)]
@@ -71,11 +71,7 @@ impl Docs {
             .iter()
             .filter_map(
                 |(t, line)| {
-                    if t == tag {
-                        Some(line.as_str())
-                    } else {
-                        None
-                    }
+                    if t == tag { Some(line.as_str()) } else { None }
                 },
             )
             .collect()
@@ -479,10 +475,10 @@ mod doclink_translation {
 #[cfg(test)]
 mod tests {
     use crate::{
+        Attributes, Docs, Object, ObjectKind, Objects,
         codegen::Target,
         docs::doclink_translation::{tokenize, translate_doc_line},
         objects::State,
-        Attributes, Docs, Object, ObjectKind, Objects,
     };
 
     fn test_objects() -> Objects {

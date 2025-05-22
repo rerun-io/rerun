@@ -2,10 +2,13 @@ use std::sync::Arc;
 
 use re_entity_db::InstancePath;
 use re_log_types::{
-    external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart, Instance,
+    ComponentPath, EntityPath, EntityPathPart, Instance,
+    external::re_types_core::{
+        ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName,
+    },
 };
 
-use egui::{text::LayoutJob, Color32, Style, TextFormat};
+use egui::{Color32, Style, TextFormat, text::LayoutJob};
 
 // ----------------------------------------------------------------------------
 pub trait SyntaxHighlighting {
@@ -80,7 +83,11 @@ fn text_format(style: &Style) -> TextFormat {
 
 fn faint_text_format(style: &Style) -> TextFormat {
     TextFormat {
-        color: Color32::WHITE,
+        color: if style.visuals.dark_mode {
+            Color32::WHITE
+        } else {
+            Color32::BLACK
+        },
 
         ..text_format(style)
     }
@@ -142,15 +149,33 @@ impl SyntaxHighlighting for ComponentName {
     }
 }
 
+impl SyntaxHighlighting for ArchetypeName {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        self.short_name().syntax_highlight_into(style, job);
+    }
+}
+
+impl SyntaxHighlighting for ArchetypeFieldName {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        self.as_str().syntax_highlight_into(style, job);
+    }
+}
+
+impl SyntaxHighlighting for ComponentDescriptor {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        self.display_name().syntax_highlight_into(style, job);
+    }
+}
+
 impl SyntaxHighlighting for ComponentPath {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         let Self {
             entity_path,
-            component_name,
+            component_descriptor,
         } = self;
         entity_path.syntax_highlight_into(style, job);
         job.append(":", 0.0, faint_text_format(style));
-        component_name.syntax_highlight_into(style, job);
+        component_descriptor.syntax_highlight_into(style, job);
     }
 }
 

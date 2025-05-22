@@ -18,7 +18,7 @@ use std::{
 
 use anyhow::Context as _;
 
-use rerun::{external::re_log, TimeCell};
+use rerun::{TimeCell, external::re_log};
 
 // --- Rerun logging ---
 

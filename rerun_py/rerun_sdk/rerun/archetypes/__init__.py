@@ -28,12 +28,9 @@ from .pinhole import Pinhole
 from .points2d import Points2D
 from .points3d import Points3D
 from .recording_properties import RecordingProperties
-from .scalar import Scalar
 from .scalars import Scalars
 from .segmentation_image import SegmentationImage
-from .series_line import SeriesLine
 from .series_lines import SeriesLines
-from .series_point import SeriesPoint
 from .series_points import SeriesPoints
 from .tensor import Tensor
 from .text_document import TextDocument
@@ -69,12 +66,9 @@ __all__ = [
     "Points2D",
     "Points3D",
     "RecordingProperties",
-    "Scalar",
     "Scalars",
     "SegmentationImage",
-    "SeriesLine",
     "SeriesLines",
-    "SeriesPoint",
     "SeriesPoints",
     "Tensor",
     "TextDocument",

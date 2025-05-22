@@ -16,8 +16,8 @@ mod python;
 mod cpp;
 
 use camino::Utf8Path;
-use cargo_metadata::semver::Version;
 use cargo_metadata::Package;
+use cargo_metadata::semver::Version;
 use indicatif::MultiProgress;
 use indicatif::ProgressBar;
 use std::borrow::Cow;

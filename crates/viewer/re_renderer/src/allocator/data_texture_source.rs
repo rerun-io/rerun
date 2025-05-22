@@ -1,8 +1,8 @@
 use bytemuck::Pod;
 
 use crate::{
-    wgpu_resources::{self, GpuTexture},
     DebugLabel, RenderContext,
+    wgpu_resources::{self, GpuTexture},
 };
 
 use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};

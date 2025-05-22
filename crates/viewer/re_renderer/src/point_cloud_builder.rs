@@ -1,16 +1,16 @@
-use itertools::{izip, Itertools as _};
+use itertools::{Itertools as _, izip};
 
 use re_log::ResultExt as _;
 
 use crate::{
+    Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
+    PickingLayerInstanceId, RenderContext, Size,
     allocator::DataTextureSource,
     draw_phases::PickingLayerObjectId,
     renderer::{
-        gpu_data::PositionRadius, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
-        PointCloudDrawDataError,
+        PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+        gpu_data::PositionRadius,
     },
-    Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
-    PickingLayerInstanceId, RenderContext, Size,
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].

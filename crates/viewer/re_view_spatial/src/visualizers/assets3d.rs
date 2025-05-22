@@ -1,20 +1,16 @@
 use arrow::buffer::ScalarBuffer;
 
 use re_chunk_store::RowId;
-use re_log_types::{hash::Hash64, Instance, TimeInt};
+use re_log_types::{Instance, TimeInt, hash::Hash64};
 use re_renderer::renderer::GpuMeshInstance;
-use re_types::{
-    archetypes::Asset3D,
-    components::{AlbedoFactor, Blob, MediaType},
-    ArrowString, Component as _,
-};
+use re_types::{Archetype as _, ArrowString, archetypes::Asset3D, components::AlbedoFactor};
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, QueryContext, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
+use super::{SpatialViewVisualizerData, filter_visualizable_3d_entities};
 
 use crate::{
     contexts::SpatialSceneEntityContext,
@@ -91,7 +87,10 @@ impl Asset3DVisualizer {
 
                 // Let's draw the mesh once for every instance transform.
                 // TODO(#7026): This a rare form of hybrid joining.
-                for &world_from_pose in &ent_context.transform_info.reference_from_instances {
+                for &world_from_pose in ent_context
+                    .transform_info
+                    .reference_from_instances(Asset3D::name())
+                {
                     instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
                         let pose_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_pose * pose_from_mesh;
@@ -151,15 +150,16 @@ impl VisualizerSystem for Asset3DVisualizer {
             |ctx, spatial_ctx, results| {
                 use re_view::RangeResultsExt as _;
 
-                let Some(all_blob_chunks) = results.get_required_chunks(&Blob::name()) else {
+                let Some(all_blob_chunks) = results.get_required_chunks(Asset3D::descriptor_blob())
+                else {
                     return Ok(());
                 };
 
                 let timeline = ctx.query.timeline();
-                let all_blobs_indexed =
-                    iter_slices::<&[u8]>(&all_blob_chunks, timeline, Blob::name());
-                let all_media_types = results.iter_as(timeline, MediaType::name());
-                let all_albedo_factors = results.iter_as(timeline, AlbedoFactor::name());
+                let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
+                let all_media_types = results.iter_as(timeline, Asset3D::descriptor_media_type());
+                let all_albedo_factors =
+                    results.iter_as(timeline, Asset3D::descriptor_albedo_factor());
 
                 let query_result_hash = results.query_result_hash();
 

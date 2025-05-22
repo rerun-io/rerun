@@ -3,7 +3,9 @@ use arrow::datatypes::Field as ArrowField;
 use crate::MetadataExt as _;
 
 #[derive(thiserror::Error, Debug)]
-#[error("Unknown `rerun.kind` {kind:?} in column {column_name:?}. Expect one of `row_id`, `index`, or `component`.")]
+#[error(
+    "Unknown `rerun.kind` {kind:?} in column {column_name:?}. Expect one of `row_id`, `index`, or `component`."
+)]
 pub struct UnknownColumnKind {
     pub kind: String,
     pub column_name: String,

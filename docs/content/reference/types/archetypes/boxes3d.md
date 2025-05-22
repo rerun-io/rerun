@@ -5,9 +5,8 @@ title: "Boxes3D"
 
 3D boxes with half-extents and optional center, rotations, colors etc.
 
-Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
-Some of its component are repeated here for convenience.
-If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+If there's more instance poses than half sizes, the last box's orientation will be repeated for the remaining poses.
+Orienting and placing boxes forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) and [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
 
 ## Fields
 ### Required

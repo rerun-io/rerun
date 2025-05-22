@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use egui::{lerp, pos2, remap_clamp, Align2, Color32, Rect, Rgba, Shape, Stroke};
+use egui::{Align2, Color32, Rect, Rgba, Shape, Stroke, lerp, pos2, remap_clamp};
 
 use re_format::next_grid_tick_magnitude_nanos;
 use re_log_types::{ResolvedTimeRangeF, TimeReal, TimeType, TimestampFormat};
@@ -150,7 +150,7 @@ fn paint_ticks(
         let alpha = remap_clamp(
             spacing_time as f32 * points_per_time,
             expected_text_width..=(3.0 * expected_text_width),
-            0.0..=0.5,
+            0.0..=0.7,
         );
         color_from_alpha(alpha)
     };
@@ -168,9 +168,11 @@ fn paint_ticks(
     let medium_line_strength = line_strength_from_spacing(medium_spacing_time);
     let small_line_strength = line_strength_from_spacing(small_spacing_time);
 
-    let big_line_color = color_from_alpha(0.4 * big_line_strength);
-    let medium_line_color = color_from_alpha(0.4 * medium_line_strength);
-    let small_line_color = color_from_alpha(0.4 * small_line_strength);
+    let base_strength = 0.7;
+
+    let big_line_color = color_from_alpha(base_strength * big_line_strength);
+    let medium_line_color = color_from_alpha(base_strength * medium_line_strength);
+    let small_line_color = color_from_alpha(base_strength * small_line_strength);
 
     let big_text_color = text_color_from_spacing(big_spacing_time);
     let medium_text_color = text_color_from_spacing(medium_spacing_time);

@@ -8,8 +8,8 @@ use datafusion::{
     error::{DataFusionError, Result as DataFusionResult},
     execution::{RecordBatchStream, SendableRecordBatchStream, TaskContext},
     physical_plan::{
-        streaming::{PartitionStream, StreamingTableExec},
         ExecutionPlan,
+        streaming::{PartitionStream, StreamingTableExec},
     },
     prelude::Expr,
 };
@@ -25,7 +25,7 @@ pub trait GrpcStreamToTable:
     async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef>;
 
     fn process_response(&mut self, response: Self::GrpcStreamData)
-        -> DataFusionResult<RecordBatch>;
+    -> DataFusionResult<RecordBatch>;
 
     async fn send_streaming_request(
         &mut self,

@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use glam::{uvec3, vec3, Vec3, Vec3A};
+use glam::{Vec3, Vec3A, uvec3, vec3};
 use hexasphere::BaseShape;
 use itertools::Itertools as _;
 use ordered_float::NotNan;
@@ -12,8 +12,8 @@ use smallvec::smallvec;
 
 use re_math::MeshGen;
 use re_renderer::{
-    mesh::{self, GpuMesh, MeshError},
     RenderContext,
+    mesh::{self, GpuMesh, MeshError},
 };
 use re_viewer_context::Cache;
 

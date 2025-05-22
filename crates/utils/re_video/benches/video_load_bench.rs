@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 
 fn video_load(c: &mut Criterion) {
     let video_path = Path::new(env!("CARGO_MANIFEST_DIR"))

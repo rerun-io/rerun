@@ -5,8 +5,11 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_format::format_uint;
 use re_log_types::{ApplicationId, EntityPath, TableId, TimeInt, TimeType, Timeline, TimelineName};
-use re_types::components::{Name, Timestamp};
-use re_ui::{icons, list_item, SyntaxHighlighting as _, UiExt as _};
+use re_types::{
+    archetypes::RecordingProperties,
+    components::{Name, Timestamp},
+};
+use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
 use re_viewer_context::{
     HoverHighlight, Item, SystemCommand, SystemCommandSender as _, UiLayout, ViewId, ViewerContext,
 };
@@ -689,15 +692,19 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let recording_name = if let Some(recording_name) = entity_db.recording_property::<Name>() {
+    let recording_name = if let Some(recording_name) =
+        entity_db.recording_property::<Name>(&RecordingProperties::descriptor_name())
+    {
         Some(recording_name.to_string())
     } else {
-        entity_db.recording_property::<Timestamp>().map(|started| {
-            re_log_types::Timestamp::from(started.0)
-                .to_jiff_zoned(ctx.app_options().timestamp_format)
-                .strftime("%H:%M:%S")
-                .to_string()
-        })
+        entity_db
+            .recording_property::<Timestamp>(&RecordingProperties::descriptor_start_time())
+            .map(|started| {
+                re_log_types::Timestamp::from(started.0)
+                    .to_jiff_zoned(ctx.app_options().timestamp_format)
+                    .strftime("%H:%M:%S")
+                    .to_string()
+            })
     }
     .unwrap_or("<unknown>".to_owned());
 
@@ -774,10 +781,9 @@ pub fn entity_db_button_ui(
             ctx.command_sender()
                 .send_system(SystemCommand::ActivateEntry(store_id.clone().into()));
         }
-
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
     }
+
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 }
 
 pub fn table_id_button_ui(
@@ -828,7 +834,6 @@ pub fn table_id_button_ui(
     if response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::ActivateEntry(table_id.clone().into()));
-        ctx.command_sender()
-            .send_system(SystemCommand::SetSelection(item));
     }
+    ctx.handle_select_hover_drag_interactions(&response, item, false);
 }

@@ -9,9 +9,9 @@ use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 
 use crate::{
-    codegen::{autogen_warning, common::ExampleInfo, Target},
-    objects::{FieldKind, ViewReference},
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    codegen::{Target, autogen_warning, common::ExampleInfo},
+    objects::{FieldKind, ViewReference},
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";

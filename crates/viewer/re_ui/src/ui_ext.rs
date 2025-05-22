@@ -1,12 +1,12 @@
 use std::hash::Hash;
 
 use egui::{
+    Align2, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2, Widget as _,
     emath::{GuiRounding as _, Rot2},
-    pos2, Align2, Button, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2,
-    Widget as _,
+    pos2,
 };
 
-use crate::{design_tokens, icons, list_item, DesignTokens, Icon, LabelStyle, SUCCESS_COLOR};
+use crate::{DesignTokens, Icon, LabelStyle, SUCCESS_COLOR, icons, list_item};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -52,6 +52,14 @@ fn notification_label(
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
+
+    fn theme(&self) -> egui::Theme {
+        self.ui().ctx().theme()
+    }
+
+    fn design_tokens(&self) -> &'static DesignTokens {
+        crate::design_tokens_of(self.theme())
+    }
 
     /// Shows a success label with a large border.
     ///
@@ -318,7 +326,13 @@ pub trait UiExt {
     ) -> Option<R> {
         let ui = self.ui();
 
-        if !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+        if !ui.memory_mut(|mem| {
+            let is_open = mem.is_popup_open(popup_id);
+            if is_open {
+                mem.keep_popup_open(popup_id);
+            }
+            is_open
+        }) {
             return None;
         }
 
@@ -356,7 +370,7 @@ pub trait UiExt {
             });
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) || widget_response.clicked_elsewhere() {
-            ui.memory_mut(|mem| mem.close_popup());
+            ui.memory_mut(|mem| mem.close_popup(popup_id));
         }
         ret
     }
@@ -605,7 +619,7 @@ pub trait UiExt {
 
     /// Draws a shadow into the given rect with the shadow direction given from dark to light
     fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
-        let color_dark = design_tokens().shadow_gradient_dark_start;
+        let color_dark = self.design_tokens().shadow_gradient_dark_start;
         let color_bright = Color32::TRANSPARENT;
 
         let (left_top, right_top, left_bottom, right_bottom) = match direction {
@@ -978,10 +992,8 @@ pub trait UiExt {
             let style = ui.style_mut();
             style.visuals.button_frame = false;
 
-            let tint = ui.style().visuals.widgets.noninteractive.fg_stroke.color;
-            let image = crate::icons::EXTERNAL_LINK.as_image().tint(tint);
             let response = ui
-                .add(Button::image_and_text(image, text))
+                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(ui.design_tokens(), text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             // Inspired from `egui::Ui::Hyperlink::ui()`
@@ -1151,7 +1163,7 @@ pub trait UiExt {
 
         egui::Frame {
             inner_margin: egui::Margin::same(3),
-            stroke: design_tokens().bottom_bar_stroke,
+            stroke: ui.design_tokens().bottom_bar_stroke,
             corner_radius: ui.visuals().widgets.hovered.corner_radius + egui::CornerRadius::same(3),
             ..Default::default()
         }

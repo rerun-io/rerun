@@ -1,11 +1,11 @@
-use egui::{lerp, NumExt as _, Rect};
-use glam::{vec3, Mat4, Quat, Vec3};
+use egui::{NumExt as _, Rect, lerp};
+use glam::{Mat4, Quat, Vec3, vec3};
 
 use re_math::IsoTransform;
 
 use re_view::controls::{
-    RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
-    ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER,
+    DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON,
+    RuntimeModifiers, SPEED_UP_3D_MODIFIER,
 };
 
 use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};

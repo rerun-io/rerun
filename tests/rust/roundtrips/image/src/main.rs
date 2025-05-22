@@ -6,7 +6,7 @@
 use half::f16;
 use image::{Rgb, RgbImage};
 use ndarray::{Array, ShapeBuilder as _};
-use rerun::{archetypes::Image, RecordingStream};
+use rerun::{RecordingStream, archetypes::Image};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]

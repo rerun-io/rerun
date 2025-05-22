@@ -22,6 +22,13 @@ impl MyPoints {
 }
 
 impl MyPoints {
+    pub fn new(points: impl IntoIterator<Item = impl Into<MyPoint>>) -> Self {
+        Self {
+            points: re_types_core::try_serialize_field(Self::descriptor_points(), points),
+            ..Self::default()
+        }
+    }
+
     pub fn descriptor_points() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
@@ -46,6 +53,18 @@ impl MyPoints {
         }
     }
 
+    pub fn descriptor_indicator() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("example.MyPoints".into()),
+            component_name: "rerun.components.MyPointsIndicator".into(),
+            archetype_field_name: None,
+        }
+    }
+
+    pub fn update_fields() -> Self {
+        Self::default()
+    }
+
     pub fn clear_fields() -> Self {
         Self {
             points: Some(SerializedComponentBatch::new(
@@ -68,6 +87,12 @@ impl MyPoints {
         self.labels = re_types_core::try_serialize_field(Self::descriptor_labels(), labels);
         self
     }
+
+    #[inline]
+    pub fn with_colors(mut self, colors: impl IntoIterator<Item = impl Into<MyColor>>) -> Self {
+        self.colors = re_types_core::try_serialize_field(Self::descriptor_colors(), colors);
+        self
+    }
 }
 
 impl re_types_core::Archetype for MyPoints {
@@ -77,7 +102,7 @@ impl re_types_core::Archetype for MyPoints {
         use re_types_core::ComponentBatch as _;
         // These is no such thing as failing to serialized an indicator.
         #[allow(clippy::unwrap_used)]
-        Self::Indicator::default().serialized().unwrap()
+        Self::Indicator::DEFAULT.serialized().unwrap()
     }
 
     fn name() -> re_types_core::ArchetypeName {
@@ -89,14 +114,14 @@ impl re_types_core::Archetype for MyPoints {
     }
 
     fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentDescriptor]> {
-        vec![MyPoint::descriptor()].into()
+        vec![Self::descriptor_points()].into()
     }
 
     fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentDescriptor]> {
         vec![
-            re_types_core::ComponentBatch::descriptor(&Self::Indicator::default()).into_owned(),
-            MyColor::descriptor(),
-            MyLabel::descriptor(),
+            Self::descriptor_indicator(),
+            Self::descriptor_colors(),
+            Self::descriptor_labels(),
         ]
         .into()
     }

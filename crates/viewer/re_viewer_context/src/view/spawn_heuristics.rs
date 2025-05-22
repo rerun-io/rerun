@@ -1,4 +1,4 @@
-use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter};
+use re_log_types::{EntityPath, EntityPathFilter, hash::Hash64};
 use re_types::ViewClassIdentifier;
 
 /// Properties of a view that as recommended to be spawned by default via view spawn heuristics.

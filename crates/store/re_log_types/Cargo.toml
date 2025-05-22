@@ -31,7 +31,6 @@ default = []
 ## Enable (de)serialization using serde.
 serde = [
   "dep:serde",
-  "dep:serde_bytes",
   "fixed/serde",
   "re_build_info/serde",
   "re_string_interner/serde",
@@ -79,7 +78,6 @@ web-time.workspace = true
 
 # Optional dependencies:
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
-serde_bytes = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion.workspace = true

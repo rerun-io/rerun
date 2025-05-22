@@ -592,7 +592,7 @@ class Blueprint:
         make_default: bool = True,
     ) -> None:
         """
-        Connect to a remote Rerun Viewer on the given HTTP(S) URL and send this blueprint.
+        Connect to a remote Rerun Viewer on the given URL and send this blueprint.
 
         Parameters
         ----------
@@ -600,7 +600,12 @@ class Blueprint:
             The application ID to use for this blueprint. This must match the application ID used
             when initiating rerun for any data logging you wish to associate with this blueprint.
         url:
-            The HTTP(S) URL to connect to
+            The URL to connect to
+
+            The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+            and the pathname must be `/proxy`.
+
+            The default is `rerun+http://127.0.0.1:9876/proxy`.
         make_active:
             Immediately make this the active blueprint for the associated `app_id`.
             Note that setting this to `false` does not mean the blueprint may not still end

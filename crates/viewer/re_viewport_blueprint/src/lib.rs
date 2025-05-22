@@ -15,13 +15,13 @@ mod viewport_blueprint;
 mod viewport_command;
 
 pub use container::ContainerBlueprint;
-pub use entity_add_info::{create_entity_add_info, CanAddToView, EntityAddInfo};
+pub use entity_add_info::{CanAddToView, EntityAddInfo, create_entity_add_info};
 use re_chunk::EntityPath;
 use re_viewer_context::ViewerContext;
 pub use view::ViewBlueprint;
 pub use view_contents::{DataQueryPropertyResolver, ViewContents};
-pub use view_properties::{entity_path_for_view_property, ViewProperty, ViewPropertyQueryError};
-pub use viewport_blueprint::{tree_simplification_options, ViewportBlueprint};
+pub use view_properties::{ViewProperty, ViewPropertyQueryError, entity_path_for_view_property};
+pub use viewport_blueprint::{ViewportBlueprint, tree_simplification_options};
 pub use viewport_command::ViewportCommand;
 
 /// The entity path of the viewport blueprint in the blueprint store.

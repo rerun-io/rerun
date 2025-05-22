@@ -2,7 +2,7 @@
 name = "re_types"
 authors.workspace = true
 description = "The built-in Rerun data types, component types, and archetypes."
-edition.workspace = true
+edition = "2021"                                                                # TODO(#9943): Update to 2024
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
