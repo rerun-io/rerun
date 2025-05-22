@@ -38,12 +38,10 @@ fn roundtrip() {
         .serialized(Mesh3D::descriptor_vertex_texcoords()),
         albedo_factor: AlbedoFactor(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33))
             .serialized(Mesh3D::descriptor_albedo_factor()),
-        albedo_texture_format: texture_format.serialized().map(|batch| {
-            batch.with_descriptor_override(Mesh3D::descriptor_albedo_texture_format())
-        }),
-        albedo_texture_buffer: texture_buffer.serialized().map(|batch| {
-            batch.with_descriptor_override(Mesh3D::descriptor_albedo_texture_buffer())
-        }),
+        albedo_texture_format: texture_format
+            .serialized(Mesh3D::descriptor_albedo_texture_format()),
+        albedo_texture_buffer: texture_buffer
+            .serialized(Mesh3D::descriptor_albedo_texture_buffer()),
         class_ids: vec![
             ClassId::from(126), //
             ClassId::from(127), //
