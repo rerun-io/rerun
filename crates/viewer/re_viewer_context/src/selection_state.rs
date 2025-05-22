@@ -3,9 +3,11 @@ use indexmap::IndexMap;
 use itertools::Itertools as _;
 use parking_lot::Mutex;
 
-use crate::{ViewerContext, global_context::resolve_mono_instance_path_item};
 use re_entity_db::EntityPath;
+use re_global_context::resolve_mono_instance_path_item;
 use re_log_types::StoreKind;
+
+use crate::ViewerContext;
 
 use super::Item;
 
@@ -115,13 +117,23 @@ impl From<Item> for ItemCollection {
     }
 }
 
-impl<T> From<T> for ItemCollection
-where
-    T: Iterator<Item = (Item, Option<ItemContext>)>,
-{
-    #[inline]
-    fn from(value: T) -> Self {
-        Self(value.collect())
+// impl<T> From<T> for ItemCollection
+// where
+//     T: IntoIterator<Item = (Item, Option<ItemContext>)>,
+//     // This constraint ensures I cannot be Item itself
+//     T::IntoIter: Iterator<Item = (Item, Option<ItemContext>)>,
+// {
+//     #[inline]
+//     fn from(value: T) -> Self {
+//         Self(value.into_iter().collect())
+//     }
+// }
+
+impl ItemCollection {
+    pub fn from_items_and_context(
+        items: impl IntoIterator<Item = (Item, Option<ItemContext>)>,
+    ) -> Self {
+        Self(items.into_iter().collect())
     }
 }
 

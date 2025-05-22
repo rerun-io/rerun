@@ -9,8 +9,8 @@ use re_ui::{
 };
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    Item, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
-    VisualizerCollection,
+    Item, ItemCollection, ItemContext, UiLayout, ViewQuery, ViewSystemExecutionError,
+    ViewerContext, VisualizerCollection,
 };
 
 use crate::{
@@ -190,12 +190,10 @@ pub fn picking(
     // Associate the hovered space with the first item in the hovered item list.
     // If we were to add several, views might render unnecessary additional hints.
     // TODO(andreas): Should there be context if no item is hovered at all? There's no usecase for that today it seems.
-    let mut hovered_items = hovered_items
-        .into_iter()
-        .map(|item| (item, None))
-        .collect::<Vec<_>>();
+    let mut hovered_items =
+        ItemCollection::from_items_and_context(hovered_items.into_iter().map(|item| (item, None)));
 
-    if let Some((_, context)) = hovered_items.first_mut() {
+    if let Some((_, context)) = hovered_items.iter_mut().next() {
         *context = Some(match spatial_kind {
             SpatialViewKind::TwoD => ItemContext::TwoD {
                 space_2d: query.space_origin.clone(),
@@ -227,7 +225,7 @@ pub fn picking(
         });
     };
 
-    ctx.handle_select_hover_drag_interactions(&response, hovered_items.into_iter(), false);
+    ctx.handle_select_hover_drag_interactions(&response, hovered_items, false);
 
     Ok(response)
 }
