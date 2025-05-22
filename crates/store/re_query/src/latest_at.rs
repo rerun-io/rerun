@@ -396,11 +396,9 @@ impl LatestAtResults {
     pub fn component_instance_raw_with_log_level(
         &self,
         log_level: re_log::Level,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
         self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -416,12 +414,12 @@ impl LatestAtResults {
     #[inline]
     pub fn component_instance_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
         self.component_instance_raw_with_log_level(
             re_log::Level::Error,
-            component_name,
+            component_descr,
             instance_index,
         )
     }
