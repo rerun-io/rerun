@@ -12,7 +12,7 @@ use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_types_core::{
-    Component, ComponentDescriptor, ComponentName, archetypes, components::ClearIsRecursive,
+    Component, ComponentDescriptor, archetypes, components::ClearIsRecursive,
     external::arrow::array::ArrayRef,
 };
 
@@ -247,14 +247,6 @@ impl LatestAtResults {
         self.components.get(component_descr)
     }
 
-    // TODO(#6889): Going forward, we should avoid querying by name.
-    /// Returns the [`UnitChunkShared`] for the specified [`Component`].
-    #[inline]
-    pub fn get_by_name(&self, component_name: &ComponentName) -> Option<&UnitChunkShared> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-        self.components.get(component_descr)
-    }
-
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
@@ -308,18 +300,6 @@ impl LatestAtResults {
 impl LatestAtResults {
     // --- Batch ---
 
-    // TODO(#6889): Workaround, we should instead always pass component descriptor to the respective methods.
-    fn find_component_descriptor(
-        &self,
-        component_name: ComponentName,
-    ) -> Option<&ComponentDescriptor> {
-        let component_descr = self
-            .components
-            .keys()
-            .find(|component_descr| component_descr.component_name == component_name)?;
-        Some(component_descr)
-    }
-
     /// Returns the `RowId` for the specified component.
     #[inline]
     pub fn component_row_id(&self, component_descr: &ComponentDescriptor) -> Option<RowId> {
@@ -354,17 +334,6 @@ impl LatestAtResults {
         })
     }
 
-    // TODO(#6889): Is this our tagged component endgame?
-    /// Returns the deserialized data for the specified component.
-    ///
-    /// Logs an error if the data cannot be deserialized.
-    #[inline]
-    pub fn component_batch_by_name<C: Component>(&self) -> Option<Vec<C>> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
-        self.component_batch_with_log_level(re_log::Level::Error, component_descr)
-    }
-
     /// Returns the deserialized data for the specified component.
     ///
     /// Logs an error if the data cannot be deserialized.
@@ -396,11 +365,9 @@ impl LatestAtResults {
     pub fn component_instance_raw_with_log_level(
         &self,
         log_level: re_log::Level,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        let component_descr = self.find_component_descriptor(*component_name)?;
-
         self.components.get(component_descr).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -416,12 +383,12 @@ impl LatestAtResults {
     #[inline]
     pub fn component_instance_raw(
         &self,
-        component_name: &ComponentName,
+        component_descr: &ComponentDescriptor,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
         self.component_instance_raw_with_log_level(
             re_log::Level::Error,
-            component_name,
+            component_descr,
             instance_index,
         )
     }

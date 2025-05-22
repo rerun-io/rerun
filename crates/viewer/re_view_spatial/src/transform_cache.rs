@@ -1057,19 +1057,19 @@ fn query_and_resolve_instance_from_pose_for_archetype_name(
     }
 
     let batch_translation = result
-        .component_batch_by_name::<components::PoseTranslation3D>()
+        .component_batch::<components::PoseTranslation3D>(descriptor_translations)
         .unwrap_or_default();
     let batch_rotation_quat = result
-        .component_batch_by_name::<components::PoseRotationQuat>()
+        .component_batch::<components::PoseRotationQuat>(&descriptor_quaternions)
         .unwrap_or_default();
     let batch_rotation_axis_angle = result
-        .component_batch_by_name::<components::PoseRotationAxisAngle>()
+        .component_batch::<components::PoseRotationAxisAngle>(&descriptor_rotation_axis_angles)
         .unwrap_or_default();
     let batch_scale = result
-        .component_batch_by_name::<components::PoseScale3D>()
+        .component_batch::<components::PoseScale3D>(&descriptor_scales)
         .unwrap_or_default();
     let batch_mat3x3 = result
-        .component_batch_by_name::<components::PoseTransformMat3x3>()
+        .component_batch::<components::PoseTransformMat3x3>(&descriptor_mat3x3)
         .unwrap_or_default();
 
     if batch_translation.is_empty()
