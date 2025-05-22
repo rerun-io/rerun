@@ -6734,6 +6734,7 @@ dependencies = [
  "egui_plot",
  "itertools 0.14.0",
  "nohash-hasher",
+ "re_arrow_util",
  "re_data_ui",
  "re_format",
  "re_log_types",
@@ -6741,6 +6742,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_uri",
  "re_viewer_context",
 ]
 

@@ -230,7 +230,7 @@ impl DisplayComponentColumn {
                 }
             }
 
-            ctx.component_ui_registry().ui_raw(
+            ctx.component_ui_registry().component_ui_raw(
                 ctx,
                 ui,
                 UiLayout::List,
