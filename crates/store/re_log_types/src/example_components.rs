@@ -279,7 +279,7 @@ impl MyPoint64 {
     }
 
     #[inline]
-    pub fn untagged_descriptor() -> ComponentDescriptor {
+    pub fn partial_descriptor() -> ComponentDescriptor {
         ComponentDescriptor::new(Self::name())
     }
 }
@@ -521,7 +521,7 @@ impl MyIndex {
     }
 
     #[inline]
-    pub fn untagged_descriptor() -> ComponentDescriptor {
+    pub fn partial_descriptor() -> ComponentDescriptor {
         ComponentDescriptor::new(Self::name())
     }
 }

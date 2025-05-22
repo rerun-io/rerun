@@ -311,7 +311,7 @@ fn clears() -> anyhow::Result<()> {
                 row_id,
                 timepoint,
                 [(
-                    re_log_types::example_components::MyIndex::untagged_descriptor(),
+                    re_log_types::example_components::MyIndex::partial_descriptor(),
                     &[instance] as _,
                 )],
             )

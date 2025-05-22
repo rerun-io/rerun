@@ -387,7 +387,7 @@ mod tests {
                     (timeline_other, 666),     //
                     (timeline_yet_another, 1), //
                 ]),
-                (MyIndex::untagged_descriptor(), &MyIndex::from_iter(0..10)),
+                (MyIndex::partial_descriptor(), &MyIndex::from_iter(0..10)),
             )
             .build()?;
 
@@ -425,7 +425,7 @@ mod tests {
                     TimePoint::default(),
                     [
                         (
-                            MyIndex::untagged_descriptor(),
+                            MyIndex::partial_descriptor(),
                             &MyIndex::from_iter(0..num_instances as _) as _,
                         ),
                         (MyPoints::descriptor_colors(), &colors as _),

@@ -318,7 +318,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
             RowId::new(),
             [build_log_time(now), build_frame_nr(frame40)],
             (
-                MyIndex::untagged_descriptor(),
+                MyIndex::partial_descriptor(),
                 &MyIndex::from_iter(0..num_instances),
             ),
         )
@@ -334,7 +334,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
-            &MyIndex::untagged_descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -344,7 +344,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
-            &MyIndex::untagged_descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -354,7 +354,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            &MyIndex::untagged_descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }
@@ -364,7 +364,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         let chunks = store.latest_at_relevant_chunks(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            &MyIndex::untagged_descriptor(),
+            &MyIndex::partial_descriptor(),
         );
         assert!(chunks.is_empty());
     }

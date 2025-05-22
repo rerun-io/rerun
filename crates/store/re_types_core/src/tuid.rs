@@ -89,7 +89,7 @@ macro_rules! delegate_arrow_tuid {
 
         impl $typ {
             #[inline]
-            pub fn untagged_descriptor() -> $crate::ComponentDescriptor {
+            pub fn partial_descriptor() -> $crate::ComponentDescriptor {
                 $crate::ComponentDescriptor::new($fqname)
             }
         }
