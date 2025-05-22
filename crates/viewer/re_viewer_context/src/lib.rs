@@ -34,9 +34,8 @@ pub mod test_context;
 pub mod gpu_bridge;
 mod visitor_flow_control;
 
-// if you use a ViewerContext, you probably want to to use the inner GlobalContext, so we re-export
+// if you use a ViewerContext, you probably want to use the inner GlobalContext, so we re-export
 // everything
-
 pub use re_global_context::*;
 
 pub use self::{

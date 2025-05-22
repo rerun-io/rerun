@@ -59,5 +59,3 @@ home.workspace = true
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures.workspace = true
-
-
