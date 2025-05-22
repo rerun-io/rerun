@@ -91,7 +91,7 @@ pub fn view_property_component_ui(
     let component_descr = field.component_descriptor(property.archetype_name);
 
     let component_array = property.component_raw(&component_descr);
-    let row_id = property.component_row_id(field.component_name);
+    let row_id = property.component_row_id(&component_descr);
 
     let ui_types = ctx
         .viewer_ctx
