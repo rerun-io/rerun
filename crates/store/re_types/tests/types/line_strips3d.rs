@@ -10,32 +10,26 @@ fn roundtrip() {
             components::LineStrip3D::from_iter([[0., 0., 1.], [2., 1., 2.], [4., -1., 3.], [6., 0., 4.]]),
             components::LineStrip3D::from_iter([[0., 3., 1.], [1., 4., 2.], [2.,  2., 3.], [3., 4., 4.], [4., 2., 5.], [5., 4., 6.], [6., 3., 7.]]),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(LineStrips3D::descriptor_strips())),
+        .serialized(LineStrips3D::descriptor_strips()),
         radii: vec![
             components::Radius::from(42.0), //
             components::Radius::from(43.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(LineStrips3D::descriptor_radii())),
+        .serialized(LineStrips3D::descriptor_radii()),
         colors: vec![
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(LineStrips3D::descriptor_colors())),
+        .serialized(LineStrips3D::descriptor_colors()),
         labels: (vec!["hello".into(), "friend".into()] as Vec<components::Text>)
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(LineStrips3D::descriptor_labels())),
+            .serialized(LineStrips3D::descriptor_labels()),
         class_ids: vec![
             components::ClassId::from(126), //
             components::ClassId::from(127), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(LineStrips3D::descriptor_class_ids())),
+        .serialized(LineStrips3D::descriptor_class_ids()),
         show_labels: components::ShowLabels(true.into())
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(LineStrips3D::descriptor_show_labels())),
+            .serialized(LineStrips3D::descriptor_show_labels()),
     };
 
     #[rustfmt::skip]

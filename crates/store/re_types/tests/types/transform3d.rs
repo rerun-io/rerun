@@ -10,15 +10,12 @@ use re_types::{
 #[test]
 fn roundtrip() {
     let translation_serialized = Translation3D::new(1.0, 2.0, 3.0)
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_translation()));
+        .serialized(Transform3D::descriptor_translation());
     let scale_serialized = Scale3D::uniform(42.0)
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_scale()));
+        .serialized(Transform3D::descriptor_scale());
 
     let mat3x3_serialized = TransformMat3x3::from([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_mat3x3()));
+        .serialized(Transform3D::descriptor_mat3x3());
     let rotation_axis_angle_serialized =
         RotationAxisAngle::new([0.2, 0.2, 0.8], Angle::from_radians(0.5 * TAU))
             .serialized()
@@ -26,11 +23,9 @@ fn roundtrip() {
                 batch.with_descriptor_override(Transform3D::descriptor_rotation_axis_angle())
             });
     let relation_child_from_parent_serialized = TransformRelation::ChildFromParent
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_relation()));
+        .serialized(Transform3D::descriptor_relation());
     let relation_parent_from_child_serialized = TransformRelation::ParentFromChild
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Transform3D::descriptor_relation()));
+        .serialized(Transform3D::descriptor_relation());
 
     let all_expected = [
         Transform3D::clear_fields(),

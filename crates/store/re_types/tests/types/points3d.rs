@@ -9,38 +9,31 @@ fn roundtrip() {
             components::Position3D::new(1.0, 2.0, 3.0), //
             components::Position3D::new(4.0, 5.0, 6.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points3D::descriptor_positions())),
+        .serialized(Points3D::descriptor_positions()),
         radii: vec![
             components::Radius::from(42.0), //
             components::Radius::from(43.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points3D::descriptor_radii())),
+        .serialized(Points3D::descriptor_radii()),
         colors: vec![
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC), //
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points3D::descriptor_colors())),
+        .serialized(Points3D::descriptor_colors()),
         labels: (vec!["hello".into(), "friend".into()] as Vec<components::Text>)
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Points3D::descriptor_labels())),
+            .serialized(Points3D::descriptor_labels()),
         class_ids: vec![
             components::ClassId::from(126), //
             components::ClassId::from(127), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points3D::descriptor_class_ids())),
+        .serialized(Points3D::descriptor_class_ids()),
         keypoint_ids: vec![
             components::KeypointId::from(2), //
             components::KeypointId::from(3), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Points3D::descriptor_keypoint_ids())),
+        .serialized(Points3D::descriptor_keypoint_ids()),
         show_labels: components::ShowLabels(true.into())
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Points3D::descriptor_show_labels())),
+            .serialized(Points3D::descriptor_show_labels()),
     };
 
     let arch = Points3D::new([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])

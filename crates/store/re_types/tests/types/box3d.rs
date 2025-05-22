@@ -10,55 +10,45 @@ fn roundtrip() {
             components::HalfSize3D::new(1.0, 2.0, 3.0), //
             components::HalfSize3D::new(4.0, 5.0, 6.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_half_sizes())),
+        .serialized(Boxes3D::descriptor_half_sizes()),
         centers: vec![
             components::PoseTranslation3D::new(1.0, 2.0, 3.0), //
             components::PoseTranslation3D::new(4.0, 5.0, 6.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_centers())),
+        .serialized(Boxes3D::descriptor_centers()),
         quaternions: vec![components::PoseRotationQuat::from(
             datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0]),
         )]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_quaternions())),
+        .serialized(Boxes3D::descriptor_quaternions()),
         rotation_axis_angles: vec![components::PoseRotationAxisAngle::new(
             [1.0, 2.0, 3.0],
             datatypes::Angle::from_radians(4.0),
         )]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_rotation_axis_angles())),
+        .serialized(Boxes3D::descriptor_rotation_axis_angles()),
         colors: vec![
             components::Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC),
             components::Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_colors())),
+        .serialized(Boxes3D::descriptor_colors()),
         radii: vec![
             components::Radius::from(42.0),
             components::Radius::from(43.0),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_radii())),
+        .serialized(Boxes3D::descriptor_radii()),
         fill_mode: components::FillMode::Solid
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_fill_mode())),
+            .serialized(Boxes3D::descriptor_fill_mode()),
         labels: vec![
             components::Text::from("hello"),
             components::Text::from("friend"),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_labels())),
+        .serialized(Boxes3D::descriptor_labels()),
         class_ids: vec![
             components::ClassId::from(126),
             components::ClassId::from(127),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_class_ids())),
+        .serialized(Boxes3D::descriptor_class_ids()),
         show_labels: components::ShowLabels(false.into())
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Boxes3D::descriptor_show_labels())),
+            .serialized(Boxes3D::descriptor_show_labels()),
     };
 
     let arch = Boxes3D::from_half_sizes([(1.0, 2.0, 3.0), (4.0, 5.0, 6.0)])

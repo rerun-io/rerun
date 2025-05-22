@@ -17,11 +17,9 @@ fn segmentation_image_roundtrip() {
 
     let all_expected = [SegmentationImage {
         buffer: ImageBuffer::from(vec![1, 2, 3, 4, 5, 6])
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(SegmentationImage::descriptor_buffer())),
+            .serialized(SegmentationImage::descriptor_buffer()),
         format: format_expected
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(SegmentationImage::descriptor_format())),
+            .serialized(SegmentationImage::descriptor_format()),
         draw_order: None,
         opacity: None,
     }];

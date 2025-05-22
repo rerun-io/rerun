@@ -15,35 +15,29 @@ fn roundtrip() {
             Position3D(Vec3D([1.0, 2.0, 3.0])),
             Position3D(Vec3D([10.0, 20.0, 30.0])),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_positions())),
+        .serialized(Mesh3D::descriptor_vertex_positions()),
         triangle_indices: vec![
             TriangleIndices(UVec3D([1, 2, 3])), //
             TriangleIndices(UVec3D([4, 5, 6])), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_triangle_indices())),
+        .serialized(Mesh3D::descriptor_triangle_indices()),
         vertex_normals: vec![
             Vector3D(Vec3D([4.0, 5.0, 6.0])),    //
             Vector3D(Vec3D([40.0, 50.0, 60.0])), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_normals())),
+        .serialized(Mesh3D::descriptor_vertex_normals()),
         vertex_colors: vec![
             Color::from_unmultiplied_rgba(0xAA, 0x00, 0x00, 0xCC),
             Color::from_unmultiplied_rgba(0x00, 0xBB, 0x00, 0xDD),
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_colors())),
+        .serialized(Mesh3D::descriptor_vertex_colors()),
         vertex_texcoords: vec![
             Texcoord2D(Vec2D([0.0, 1.0])), //
             Texcoord2D(Vec2D([2.0, 3.0])), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_vertex_texcoords())),
+        .serialized(Mesh3D::descriptor_vertex_texcoords()),
         albedo_factor: AlbedoFactor(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33))
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_albedo_factor())),
+            .serialized(Mesh3D::descriptor_albedo_factor()),
         albedo_texture_format: texture_format.serialized().map(|batch| {
             batch.with_descriptor_override(Mesh3D::descriptor_albedo_texture_format())
         }),
@@ -54,8 +48,7 @@ fn roundtrip() {
             ClassId::from(126), //
             ClassId::from(127), //
         ]
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Mesh3D::descriptor_class_ids())),
+        .serialized(Mesh3D::descriptor_class_ids()),
     };
 
     let arch = Mesh3D::new([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])
