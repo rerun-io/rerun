@@ -6,6 +6,7 @@ use std::sync::{
 use ahash::HashMap;
 
 use arrow::buffer::Buffer;
+use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{EntityPath, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::EntityPathHash;
@@ -116,29 +117,48 @@ fn load_video_data_from_chunks(
 
     // TODO: multiple chunks?
     let first_chunk = video_chunks.first()?;
-    let raw_array_data = first_chunk
-        .raw_component_memory(&component_descr)?
-        .to_data();
-    let raw_memory = raw_array_data.buffers().first()?; // TODO: do some sanity check ahead of time.
+    let raw_component_memory = first_chunk.raw_component_memory(&component_descr)?;
+
+    let inner_list_array = raw_component_memory.downcast_array_ref::<arrow::array::ListArray>()?; // TODO: better error handling
+    let values = inner_list_array
+        .values()
+        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()?; // TODO: better error handling
+    let values = values.values();
+
+    let offsets = inner_list_array.offsets();
+    let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
 
     // TODO: don't build this up every frame.
+
     let samples = first_chunk
         .iter_component_offsets(&component_descr)
-        .enumerate()
-        .map(|(sample_idx, (byte_offset, byte_length))| {
+        .zip(first_chunk.iter_component_indices(&timeline, &component_descr))
+        .map(|((idx, len), (time, _row_id))| {
+            debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
+
+            let byte_offset = &offsets[idx..idx + len];
+            let byte_length = &lengths[idx..idx + len];
+
+            // TODO:
+            debug_assert_eq!(byte_offset.len(), 1);
+            debug_assert_eq!(byte_length.len(), 1);
+            let byte_offset = byte_offset[0];
+            let byte_length = byte_length[0];
+
             re_video::Sample {
                 // not the case.
                 is_sync: true,
 
                 // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
-                sample_idx,
-                frame_nr: sample_idx,
+                sample_idx: idx,
+                frame_nr: idx,
 
                 // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
                 // TODO: what's the actual timestamp...?
-                decode_timestamp: re_video::Time(sample_idx as _),
-                presentation_timestamp: re_video::Time(sample_idx as _),
+                decode_timestamp: re_video::Time(time.as_i64()),
+                presentation_timestamp: re_video::Time(time.as_i64()),
 
+                // TODO: unused. but should just fill it in! last one will always be unknown
                 duration: re_video::Time(0),
 
                 // We're using offsets directly into the chunk data.
@@ -148,16 +168,33 @@ fn load_video_data_from_chunks(
         })
         .collect::<Vec<_>>();
 
+    // Calculate duration from samples. No bframes means we can just check first and last sample.
+    // TODO(BFRAMETICKET): This may be slightly incorrect for b-frames.
+    let (decode_start_time, duration) =
+        if let (Some(first_sample), Some(last_sample)) = (samples.first(), samples.last()) {
+            (
+                first_sample.decode_timestamp,
+                // TODO: duration of a video is really the range from start to finish.
+                // But that messes with our time seeking a little bit because we start at the end. sort of.
+                // We'd probably be best of renaming duration to something like "video end timestamp"
+                // last_sample.presentation_timestamp - first_sample.presentation_timestamp
+                //     + last_sample.duration,
+                last_sample.presentation_timestamp + last_sample.duration,
+            )
+        } else {
+            (re_video::Time(0), re_video::Time(0))
+        };
+
     Some((
         re_video::VideoDataDescription {
             codec: re_video::VideoCodec::H264, // TODO, query or guess.
             config: None,
             timescale: re_video::Timescale::NO_SCALE, // TODO: We don't have to work with mp4 scaled time here, so 1 seems alright?
-            duration: re_video::Time(samples.len() as _), // TODO: do we need this?s
+            duration,
 
             // TODO: how to determine? Player relies on this for seeking.
             gops: vec![re_video::demux::GroupOfPictures {
-                decode_start_time: re_video::Time(0),
+                decode_start_time,
                 sample_range: 0..(samples.len() as _),
             }],
 
@@ -165,7 +202,7 @@ fn load_video_data_from_chunks(
             samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(BFRAMETICKET): No b-frames for now.
             tracks: std::iter::once((0, Some(re_video::TrackKind::Video))).collect(),
         },
-        raw_memory.clone(),
+        values.inner().clone(),
     ))
 }
 

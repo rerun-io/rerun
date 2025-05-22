@@ -8,10 +8,8 @@ from CompressedVideo_pb2 import CompressedVideo
 mcap_path = sys.argv[1]
 
 rr.init("rerun_example_mcap_video", spawn=True)
-rr.set_time("time", sequence=0)
+rr.set_time("time", timestamp=0)
 
-
-t = 0
 
 with open(mcap_path, "rb") as f:
     reader = make_reader(f)
@@ -24,8 +22,9 @@ with open(mcap_path, "rb") as f:
             print(f"Format: {video_msg.format}")
             print(f"Data size: {len(video_msg.data)} bytes")
 
-            t += 1
-            rr.set_time("time", sequence=t)
+            print(f"First 16 bytes: {' '.join(f'{b:02x}' for b in video_msg.data[:16])}")
+
+            rr.set_time("time", timestamp=video_msg.timestamp.seconds + video_msg.timestamp.nanos / 1_000_000_000.0)
             rr.log("video_stream", rr.VideoStream(video_msg.data))
 
 
