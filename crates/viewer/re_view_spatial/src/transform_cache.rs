@@ -839,13 +839,17 @@ fn query_and_resolve_tree_transform_at_entity(
     let mono_log_level = re_log::Level::Warn;
 
     // The order of the components here is important, and checked by `debug_assert_transform_field_order`
-    if let Some(translation) =
-        results.component_mono_with_log_level_by_name::<components::Translation3D>(mono_log_level)
-    {
+    if let Some(translation) = results.component_mono_with_log_level::<components::Translation3D>(
+        &archetypes::Transform3D::descriptor_translation(),
+        mono_log_level,
+    ) {
         transform = Affine3A::from(translation);
     }
     if let Some(axis_angle) = results
-        .component_mono_with_log_level_by_name::<components::RotationAxisAngle>(mono_log_level)
+        .component_mono_with_log_level::<components::RotationAxisAngle>(
+            &archetypes::Transform3D::descriptor_rotation_axis_angle(),
+            mono_log_level,
+        )
     {
         if let Ok(axis_angle) = Affine3A::try_from(axis_angle) {
             transform *= axis_angle;
@@ -853,26 +857,29 @@ fn query_and_resolve_tree_transform_at_entity(
             return Some(Affine3A::ZERO);
         }
     }
-    if let Some(quaternion) =
-        results.component_mono_with_log_level_by_name::<components::RotationQuat>(mono_log_level)
-    {
+    if let Some(quaternion) = results.component_mono_with_log_level::<components::RotationQuat>(
+        &archetypes::Transform3D::descriptor_quaternion(),
+        mono_log_level,
+    ) {
         if let Ok(quaternion) = Affine3A::try_from(quaternion) {
             transform *= quaternion;
         } else {
             return Some(Affine3A::ZERO);
         }
     }
-    if let Some(scale) =
-        results.component_mono_with_log_level_by_name::<components::Scale3D>(mono_log_level)
-    {
+    if let Some(scale) = results.component_mono_with_log_level::<components::Scale3D>(
+        &archetypes::Transform3D::descriptor_scale(),
+        mono_log_level,
+    ) {
         if scale.x() == 0.0 && scale.y() == 0.0 && scale.z() == 0.0 {
             return Some(Affine3A::ZERO);
         }
         transform *= Affine3A::from(scale);
     }
-    if let Some(mat3x3) =
-        results.component_mono_with_log_level_by_name::<components::TransformMat3x3>(mono_log_level)
-    {
+    if let Some(mat3x3) = results.component_mono_with_log_level::<components::TransformMat3x3>(
+        &archetypes::Transform3D::descriptor_mat3x3(),
+        mono_log_level,
+    ) {
         let affine_transform = Affine3A::from(mat3x3);
         if affine_transform.matrix3.determinant() == 0.0 {
             return Some(Affine3A::ZERO);
@@ -880,9 +887,10 @@ fn query_and_resolve_tree_transform_at_entity(
         transform *= affine_transform;
     }
 
-    if results
-        .component_mono_with_log_level_by_name::<components::TransformRelation>(mono_log_level)
-        == Some(components::TransformRelation::ChildFromParent)
+    if results.component_mono_with_log_level::<components::TransformRelation>(
+        &archetypes::Transform3D::descriptor_relation(),
+        mono_log_level,
+    ) == Some(components::TransformRelation::ChildFromParent)
     {
         let determinant = transform.matrix3.determinant();
         if determinant != 0.0 && determinant.is_finite() {

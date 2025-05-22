@@ -554,27 +554,6 @@ impl LatestAtResults {
         })
     }
 
-    // TODO(#6889): Is this our tagged component endgame?
-    /// Returns the deserialized data for the specified component, assuming a mono-batch.
-    ///
-    /// Logs at the specified `log_level` if the data cannot be deserialized, or if the underlying batch
-    /// is not of unit length.
-    #[inline]
-    pub fn component_mono_with_log_level_by_name<C: Component>(
-        &self,
-        log_level: re_log::Level,
-    ) -> Option<C> {
-        let component_descr = self.find_component_descriptor(C::name())?;
-
-        self.components.get(component_descr).and_then(|unit| {
-            self.ok_or_log_err(
-                log_level,
-                component_descr,
-                unit.component_mono(component_descr)?,
-            )
-        })
-    }
-
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
     ///
     /// Logs an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
