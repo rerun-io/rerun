@@ -26,8 +26,8 @@ pub struct ImageFormat(pub crate::datatypes::ImageFormat);
 
 impl ::re_types_core::Component for ImageFormat {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ImageFormat")
+    fn name() -> ComponentName {
+        "rerun.components.ImageFormat".into()
     }
 }
 

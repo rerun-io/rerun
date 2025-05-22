@@ -76,8 +76,8 @@ pub enum Colormap {
 
 impl ::re_types_core::Component for Colormap {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Colormap")
+    fn name() -> ComponentName {
+        "rerun.components.Colormap".into()
     }
 }
 

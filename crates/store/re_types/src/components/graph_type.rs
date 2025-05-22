@@ -34,8 +34,8 @@ pub enum GraphType {
 
 impl ::re_types_core::Component for GraphType {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.GraphType")
+    fn name() -> ComponentName {
+        "rerun.components.GraphType".into()
     }
 }
 

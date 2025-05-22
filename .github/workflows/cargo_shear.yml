@@ -12,9 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Shear
+      - name: Install Cargo Shear
+        uses: taiki-e/install-action@v2.48.7
+        with:
+          tool: cargo-shear@1.1.11
+
+      - name: Run Cargo Shear
         run: |
-          cargo +stable install cargo-shear@1.1.11 --locked
           cargo shear

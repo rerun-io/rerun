@@ -1,8 +1,14 @@
 #![allow(missing_docs)] // It's only for testing
 
+use re_types_core::{Component, ComponentDescriptor};
+
 pub mod archetypes;
 pub mod components;
 pub mod datatypes;
+
+pub fn large_struct_descriptor() -> ComponentDescriptor {
+    ComponentDescriptor::new(<LargeStruct as Component>::name())
+}
 
 /// Large struct used for benchmarking.
 pub type LargeStruct = components::AffixFuzzer1;

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
-
+use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::{
     DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
@@ -117,7 +117,7 @@ impl Server {
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
-        const RECORDING_LINK_FIELD_NAME: &str = "recording link";
+        const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
 
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
@@ -129,30 +129,38 @@ impl Server {
                 .send(Command::RefreshCollection(self.origin.clone()))
                 .ok();
         }))
-        .column_name(|desc| {
-            //TODO(ab): with this strategy, we do not display relevant entity path if any.
-            let name = desc.display_name();
-
-            name.strip_prefix("rerun_")
+        .column_blueprint(|desc| {
+            let name = default_display_name_for_column(desc);
+            let name = name
+                .strip_prefix("rerun_")
                 .unwrap_or(name.as_ref())
-                .replace('_', " ")
-        })
-        .default_column_visibility(|desc| {
-            if desc.entity_path().is_some_and(|entity_path| {
+                .replace('_', " ");
+
+            let default_visible = if desc.entity_path().is_some_and(|entity_path| {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
                 true
             } else {
                 matches!(
                     desc.display_name().as_str(),
-                    RECORDING_LINK_FIELD_NAME
+                    RECORDING_LINK_COLUMN_NAME
                         | DATASET_MANIFEST_ID_FIELD_NAME
                         | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME
                 )
+            };
+
+            let mut blueprint = ColumnBlueprint::default()
+                .display_name(name)
+                .default_visibility(default_visible);
+
+            if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
             }
+
+            blueprint
         })
         .generate_partition_links(
-            RECORDING_LINK_FIELD_NAME,
+            RECORDING_LINK_COLUMN_NAME,
             DATASET_MANIFEST_ID_FIELD_NAME,
             self.origin.clone(),
             dataset.id(),

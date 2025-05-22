@@ -28,8 +28,8 @@ pub struct ValueRange(pub crate::datatypes::Range1D);
 
 impl ::re_types_core::Component for ValueRange {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ValueRange")
+    fn name() -> ComponentName {
+        "rerun.components.ValueRange".into()
     }
 }
 

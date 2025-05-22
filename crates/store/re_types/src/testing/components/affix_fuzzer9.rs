@@ -24,8 +24,8 @@ pub struct AffixFuzzer9(pub ::re_types_core::ArrowString);
 
 impl ::re_types_core::Component for AffixFuzzer9 {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer9")
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer9".into()
     }
 }
 

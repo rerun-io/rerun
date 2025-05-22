@@ -54,7 +54,7 @@ pub use self::{
     global_context::{
         AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, ComponentUiTypes,
         DisplayMode, EditTarget, GlobalContext, Item, SystemCommand, SystemCommandSender,
-        command_channel,
+        VariantName, command_channel,
     },
     image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
     maybe_mut_ref::MaybeMutRef,

@@ -308,7 +308,7 @@ mod tests {
             .with_component_batch(
                 row_id1,
                 timepoint1.clone(),
-                (MyIndex::descriptor(), &MyIndex::from_iter(0..10)),
+                (MyIndex::partial_descriptor(), &MyIndex::from_iter(0..10)),
             )
             .build()?;
 
@@ -407,7 +407,7 @@ mod tests {
                     timepoint3.clone(),
                     [
                         (
-                            MyIndex::descriptor(),
+                            MyIndex::partial_descriptor(),
                             &MyIndex::from_iter(0..num_instances as _) as _,
                         ),
                         (MyPoints::descriptor_colors(), &colors as _),

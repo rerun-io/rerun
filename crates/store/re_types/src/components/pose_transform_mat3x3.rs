@@ -38,8 +38,8 @@ pub struct PoseTransformMat3x3(pub crate::datatypes::Mat3x3);
 
 impl ::re_types_core::Component for PoseTransformMat3x3 {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.PoseTransformMat3x3")
+    fn name() -> ComponentName {
+        "rerun.components.PoseTransformMat3x3".into()
     }
 }
 

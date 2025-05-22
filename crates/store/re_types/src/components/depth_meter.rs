@@ -35,8 +35,8 @@ pub struct DepthMeter(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for DepthMeter {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.DepthMeter")
+    fn name() -> ComponentName {
+        "rerun.components.DepthMeter".into()
     }
 }
 

@@ -43,8 +43,8 @@ pub struct KeypointId(pub crate::datatypes::KeypointId);
 
 impl ::re_types_core::Component for KeypointId {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.KeypointId")
+    fn name() -> ComponentName {
+        "rerun.components.KeypointId".into()
     }
 }
 

@@ -28,8 +28,8 @@ pub struct SelectedColumns(pub crate::blueprint::datatypes::SelectedColumns);
 
 impl ::re_types_core::Component for SelectedColumns {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.SelectedColumns")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.SelectedColumns".into()
     }
 }
 

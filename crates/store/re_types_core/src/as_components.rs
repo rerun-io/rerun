@@ -251,8 +251,8 @@ mod tests {
     }
 
     impl crate::Component for MyColor {
-        fn descriptor() -> crate::ComponentDescriptor {
-            crate::ComponentDescriptor::new("example.MyColor")
+        fn name() -> crate::ComponentName {
+            "example.MyColor".into()
         }
     }
 

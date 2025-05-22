@@ -1,5 +1,5 @@
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
-use re_types_core::{Component as _, Loggable as _, RowId};
+use re_types_core::{Loggable as _, RowId};
 
 use crate::MetadataExt as _;
 
@@ -26,7 +26,7 @@ impl RowIdColumnDescriptor {
     #[inline]
     #[expect(clippy::unused_self)]
     pub fn short_name(&self) -> String {
-        RowId::descriptor().display_name()
+        RowId::partial_descriptor().display_name()
     }
 
     /// Human-readable name for this column.
@@ -61,7 +61,7 @@ impl RowIdColumnDescriptor {
 
         let nullable = false; // All rows has an id
         ArrowField::new(
-            RowId::descriptor().to_string(),
+            RowId::partial_descriptor().to_string(),
             RowId::arrow_datatype(),
             nullable,
         )
