@@ -117,18 +117,6 @@ impl From<Item> for ItemCollection {
     }
 }
 
-// impl<T> From<T> for ItemCollection
-// where
-//     T: IntoIterator<Item = (Item, Option<ItemContext>)>,
-//     // This constraint ensures I cannot be Item itself
-//     T::IntoIter: Iterator<Item = (Item, Option<ItemContext>)>,
-// {
-//     #[inline]
-//     fn from(value: T) -> Self {
-//         Self(value.into_iter().collect())
-//     }
-// }
-
 impl ItemCollection {
     pub fn from_items_and_context(
         items: impl IntoIterator<Item = (Item, Option<ItemContext>)>,
