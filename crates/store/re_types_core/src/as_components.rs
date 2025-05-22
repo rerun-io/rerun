@@ -390,7 +390,7 @@ mod tests {
 
         let got = {
             let colors = &colors as &dyn crate::ComponentBatch;
-            vec![colors.try_serialized().unwrap().array]
+            vec![colors.try_serialized(MyColor::descriptor()).unwrap().array]
         };
         let expected = vec![Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
             red.0, green.0, blue.0,
@@ -406,9 +406,9 @@ mod tests {
         let got = {
             let colors = &colors as &dyn crate::ComponentBatch;
             vec![
-                colors.try_serialized().unwrap().array,
-                colors.try_serialized().unwrap().array,
-                colors.try_serialized().unwrap().array,
+                colors.try_serialized(MyColor::descriptor()).unwrap().array,
+                colors.try_serialized(MyColor::descriptor()).unwrap().array,
+                colors.try_serialized(MyColor::descriptor()).unwrap().array,
             ]
         };
         let expected = vec![
