@@ -59,11 +59,6 @@ thiserror.workspace = true
 serde = { workspace = true, optional = true }
 
 
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-backtrace.workspace = true
-
-
 [dev-dependencies]
 criterion.workspace = true
 similar-asserts.workspace = true
