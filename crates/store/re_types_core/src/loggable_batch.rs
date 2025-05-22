@@ -1,7 +1,5 @@
-use std::borrow::Cow;
-
 use crate::{
-    ArchetypeFieldName, ArchetypeName, Component, ComponentDescriptor, ComponentName, Loggable,
+    ArchetypeFieldName, ArchetypeName, Component, ComponentDescriptor, Loggable,
     SerializationResult,
 };
 
@@ -35,6 +33,7 @@ fn assert_loggablebatch_object_safe() {
     let _: &dyn LoggableBatch;
 }
 
+// TODO(#6889): `ComponentBatch` does not offer much more over `Loggable` now -> consolidate?
 /// A [`ComponentBatch`] represents an array's worth of [`Component`] instances.
 pub trait ComponentBatch: LoggableBatch {
     /// Serializes the batch into an Arrow list array with a single component per list.
@@ -46,12 +45,6 @@ pub trait ComponentBatch: LoggableBatch {
         let field = arrow::datatypes::Field::new("item", array.data_type().clone(), nullable);
         ArrowListArray::try_new(field.into(), offsets, array, None).map_err(|err| err.into())
     }
-
-    /// Returns the complete [`ComponentDescriptor`] for this [`ComponentBatch`].
-    ///
-    /// Every component batch is uniquely identified by its [`ComponentDescriptor`].
-    #[deprecated]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor>;
 
     /// Serializes the contents of this [`ComponentBatch`].
     ///
@@ -117,20 +110,6 @@ pub trait ComponentBatch: LoggableBatch {
             array: self.to_arrow()?,
             descriptor: component_descr,
         })
-    }
-
-    /// The fully-qualified name of this component batch, e.g. `rerun.components.Position2D`.
-    ///
-    /// This is a trivial but useful helper for `self.descriptor().component_name`.
-    ///
-    /// The default implementation already does the right thing. Do not override unless you know
-    /// what you're doing.
-    /// `Self::name()` must exactly match the value returned by `self.descriptor().component_name`,
-    /// or undefined behavior ensues.
-    #[inline]
-    #[deprecated]
-    fn name(&self) -> ComponentName {
-        self.descriptor().component_name
     }
 }
 
@@ -349,13 +328,7 @@ impl<L: Clone + Loggable> LoggableBatch for L {
     }
 }
 
-impl<C: Component> ComponentBatch for C {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component> ComponentBatch for C {}
 
 // --- Unary Option ---
 
@@ -366,13 +339,7 @@ impl<L: Clone + Loggable> LoggableBatch for Option<L> {
     }
 }
 
-impl<C: Component> ComponentBatch for Option<C> {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component> ComponentBatch for Option<C> {}
 
 // --- Vec ---
 
@@ -383,13 +350,7 @@ impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
     }
 }
 
-impl<C: Component> ComponentBatch for Vec<C> {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component> ComponentBatch for Vec<C> {}
 
 // --- Vec<Option> ---
 
@@ -403,13 +364,7 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
     }
 }
 
-impl<C: Component> ComponentBatch for Vec<Option<C>> {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component> ComponentBatch for Vec<Option<C>> {}
 
 // --- Array ---
 
@@ -420,13 +375,7 @@ impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
     }
 }
 
-impl<C: Component, const N: usize> ComponentBatch for [C; N] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component, const N: usize> ComponentBatch for [C; N] {}
 
 // --- Array<Option> ---
 
@@ -440,13 +389,7 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
     }
 }
 
-impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {}
 
 // --- Slice ---
 
@@ -457,13 +400,7 @@ impl<L: Loggable> LoggableBatch for [L] {
     }
 }
 
-impl<C: Component> ComponentBatch for [C] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component> ComponentBatch for [C] {}
 
 // --- Slice<Option> ---
 
@@ -477,10 +414,4 @@ impl<L: Loggable> LoggableBatch for [Option<L>] {
     }
 }
 
-impl<C: Component> ComponentBatch for [Option<C>] {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        // TODO(#6889): This is still untagged.
-        ComponentDescriptor::new(C::name()).into()
-    }
-}
+impl<C: Component> ComponentBatch for [Option<C>] {}

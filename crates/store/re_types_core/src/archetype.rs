@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
@@ -261,14 +261,7 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     }
 }
 
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        let component_name =
-            format!("{}Indicator", A::name().full_name()).replace("archetypes", "components");
-        ComponentDescriptor::new(component_name).into()
-    }
-}
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {}
 
 /// A generic [indicator component] array of a given length.
 ///
@@ -291,12 +284,7 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
     }
 }
 
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        ComponentDescriptor::new(GenericIndicatorComponent::<A>::DEFAULT.name()).into()
-    }
-}
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {}
 
 // ---
 
@@ -313,9 +301,4 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
     }
 }
 
-impl crate::ComponentBatch for NamedIndicatorComponent {
-    #[inline]
-    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        ComponentDescriptor::new(self.0).into()
-    }
-}
+impl crate::ComponentBatch for NamedIndicatorComponent {}

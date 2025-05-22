@@ -207,7 +207,7 @@ mod tests {
     use itertools::Itertools as _;
     use similar_asserts::assert_eq;
 
-    use crate::{Component, ComponentDescriptor};
+    use crate::{Component as _, ComponentDescriptor};
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
     #[repr(transparent)]
@@ -218,7 +218,7 @@ mod tests {
             ComponentDescriptor {
                 archetype_name: Some("test".into()),
                 archetype_field_name: Some("color".into()),
-                component_name: MyColor::name(),
+                component_name: Self::name(),
             }
         }
     }
