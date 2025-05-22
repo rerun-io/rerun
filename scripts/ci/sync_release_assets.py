@@ -39,6 +39,7 @@ def fetch_binary_assets(
     do_rerun_c: bool = True,
     do_rerun_cpp_sdk: bool = True,
     do_rerun_cli: bool = True,
+    do_rerun_js: bool = True,
 ) -> Assets:
     """Given a release ID, fetches all associated binary assets from our cloud storage (build.rerun.io)."""
     assets = {}
@@ -56,6 +57,8 @@ def fetch_binary_assets(
         print("  - C++ uber SDK")
     if do_rerun_cli:
         print("  - CLI (Viewer)")
+    if do_rerun_js:
+        print("  - JS package")
 
     all_found = True
 
@@ -176,6 +179,29 @@ def fetch_binary_assets(
                 all_found = False
                 print(f"Failed to fetch blob {blob_url} ({name})")
 
+    # rerun-js
+    if do_rerun_js:
+        # note: we don't include the version tag in the asset name here,
+        #       otherwise `latest` downloads contain the version number.
+        rerun_js_blobs = [
+            (
+                "rerun-js-web-viewer.tar.gz",
+                f"commit/{commit_short}/rerun_js/web-viewer.tar.gz",
+            ),
+            (
+                "rerun-js-web-viewer-react.tar.gz",
+                f"commit/{commit_short}/rerun_js/web-viewer-react.tar.gz",
+            )
+        ]
+        for name, blob_url in rerun_js_blobs:
+            blob = bucket.get_blob(blob_url)
+            if blob is not None:
+                print(f"Found Rerun JS package: {name}")
+                assets[name] = blob
+            else:
+                all_found = False
+                print(f"Failed to fetch blob {blob_url} ({name})")
+
     if not all_found:
         raise Exception("Some requested assets were not found")
 
@@ -234,6 +260,7 @@ def main() -> None:
     parser.add_argument("--no-rerun-c", action="store_true", help="Don't upload C libraries")
     parser.add_argument("--no-rerun-cpp-sdk", action="store_true", help="Don't upload C++ uber SDK")
     parser.add_argument("--no-rerun-cli", action="store_true", help="Don't upload CLI")
+    parser.add_argument("--no-rerun-js", action="store_true", help="Don't upload JS package")
     args = parser.parse_args()
 
     # Wait for a bit before doing anything, if you must.
@@ -258,6 +285,7 @@ def main() -> None:
         do_rerun_c=not args.no_rerun_c,
         do_rerun_cpp_sdk=not args.no_rerun_cpp_sdk,
         do_rerun_cli=not args.no_rerun_cli,
+        do_rerun_js=not args.no_rerun_js,
     )
 
     if args.remove:
