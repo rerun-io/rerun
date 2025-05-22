@@ -94,13 +94,13 @@ impl Default for ColumnBlueprint {
 impl ColumnBlueprint {
     /// Same as [`Self::default()`], but returns a reference to a static instance.
     pub fn default_ref() -> &'static Self {
-        use std::sync::OnceLock;
-        static DEFAULT: OnceLock<ColumnBlueprint> = OnceLock::new();
-        DEFAULT.get_or_init(Self::default)
+        use std::sync::LazyLock;
+        static DEFAULT: LazyLock<ColumnBlueprint> = LazyLock::new(ColumnBlueprint::default);
+        &DEFAULT
     }
 
     /// Set the name to use for this column in the UI.
-    pub fn name(self, name: impl Into<String>) -> Self {
+    pub fn display_name(self, name: impl Into<String>) -> Self {
         Self {
             display_name: Some(name.into()),
             ..self

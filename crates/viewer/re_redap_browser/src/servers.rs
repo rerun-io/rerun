@@ -150,7 +150,7 @@ impl Server {
             };
 
             let mut blueprint = ColumnBlueprint::default()
-                .name(name)
+                .display_name(name)
                 .default_visibility(default_visible);
 
             if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {

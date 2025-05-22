@@ -23,7 +23,7 @@ use crate::table_utils::{
 use crate::{DisplayRecordBatch, default_display_name_for_column};
 
 struct Column<'a> {
-    /// The ID of the column (based on it's corresponding [`ColumnDescriptor`]).
+    /// The ID of the column (based on it's corresponding [`re_sorbet::ColumnDescriptor`]).
     id: egui::Id,
 
     /// Reference to the descriptor of this column.
