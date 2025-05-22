@@ -14,7 +14,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Shear
+      - name: Cargo binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Cargo Shear
         run: |
-          cargo +stable install cargo-shear@1.1.11 --locked
+          cargo +stable binstall cargo-shear@1.1.11 --locked
           cargo shear
