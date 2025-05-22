@@ -12,7 +12,6 @@ use arrow::{
     buffer::ScalarBuffer as ArrowScalarBuffer,
     datatypes::DataType as ArrowDataType,
 };
-use re_types::ComponentDescriptor;
 use thiserror::Error;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -21,9 +20,12 @@ use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_sorbet::{ColumnDescriptorRef, ComponentColumnDescriptor};
+use re_types::ComponentDescriptor;
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{UiLayout, VariantName, ViewerContext};
+
+use crate::table_blueprint::ColumnBlueprint;
 
 #[derive(Error, Debug)]
 pub enum DisplayRecordBatchError {
@@ -168,6 +170,9 @@ pub struct DisplayComponentColumn {
 
     // if available, used to pass a row id to the component UI (e.g. to cache image)
     row_ids: Option<Arc<Vec<RowId>>>,
+
+    /// The UI variant to use for this column, if any.
+    variant_name: Option<VariantName>,
 }
 
 impl DisplayComponentColumn {
@@ -230,17 +235,29 @@ impl DisplayComponentColumn {
                 }
             }
 
-            ctx.component_ui_registry().component_ui_raw(
-                ctx,
-                ui,
-                UiLayout::List,
-                latest_at_query,
-                ctx.recording(),
-                &self.entity_path,
-                &self.component_descr,
-                row_id,
-                data_to_display.as_ref(),
-            );
+            if let Some(variant_name) = self.variant_name {
+                ctx.component_ui_registry().variant_ui_raw(
+                    ctx,
+                    ui,
+                    UiLayout::List,
+                    variant_name,
+                    &self.component_descr,
+                    row_id,
+                    data_to_display.as_ref(),
+                );
+            } else {
+                ctx.component_ui_registry().component_ui_raw(
+                    ctx,
+                    ui,
+                    UiLayout::List,
+                    latest_at_query,
+                    ctx.recording(),
+                    &self.entity_path,
+                    &self.component_descr,
+                    row_id,
+                    data_to_display.as_ref(),
+                );
+            }
         } else {
             ui.label("-");
         }
@@ -264,6 +281,7 @@ pub enum DisplayColumn {
 impl DisplayColumn {
     fn try_new(
         column_descriptor: &ColumnDescriptorRef<'_>,
+        column_blueprint: &ColumnBlueprint,
         column_data: &ArrowArrayRef,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
@@ -291,6 +309,7 @@ impl DisplayColumn {
                 component_descr: desc.component_descriptor(),
                 component_data: ComponentData::try_new(desc, column_data)?,
                 row_ids: None,
+                variant_name: column_blueprint.variant_ui,
             })),
         }
     }
@@ -398,18 +417,19 @@ impl DisplayRecordBatch {
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
     pub fn try_new<'a>(
-        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, ArrowArrayRef)>,
+        data: impl Iterator<Item = (ColumnDescriptorRef<'a>, &'a ColumnBlueprint, ArrowArrayRef)>,
     ) -> Result<Self, DisplayRecordBatchError> {
         let mut num_rows = None;
         let mut batch_row_ids = None;
 
         let mut columns = data
-            .map(|(column_descriptor, column_data)| {
+            .map(|(column_descriptor, column_blueprint, column_data)| {
                 if num_rows.is_none() {
                     num_rows = Some(column_data.len());
                 }
 
-                let column = DisplayColumn::try_new(&column_descriptor, &column_data);
+                let column =
+                    DisplayColumn::try_new(&column_descriptor, column_blueprint, &column_data);
 
                 // find the batch row ids, if any
                 if batch_row_ids.is_none() {

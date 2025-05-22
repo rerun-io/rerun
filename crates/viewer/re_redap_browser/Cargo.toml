@@ -20,6 +20,7 @@ all-features = true
 
 
 [dependencies]
+re_component_ui.workspace = true
 re_data_ui.workspace = true
 re_dataframe_ui.workspace = true
 re_datafusion.workspace = true
