@@ -476,6 +476,7 @@ impl ComponentUiRegistry {
             self.component_singleline_edit_or_view
                 .get(&variant_name.into())
         };
+
         if let Some(edit_or_view_ui) = edit_or_view_ui {
             // Use it in view mode (no mutation).
             (*edit_or_view_ui)(
@@ -487,6 +488,12 @@ impl ComponentUiRegistry {
                 EditOrView::View,
             );
             return;
+        } else {
+            re_log::debug_once!(
+                "Variant name {variant_name} was not found, using fallback ui instead"
+            );
+
+            //TODO(ab): should we instead revert to using the component based ui?
         }
 
         fallback_ui(ui, ui_layout, component_raw);
