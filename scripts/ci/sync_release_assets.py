@@ -191,7 +191,7 @@ def fetch_binary_assets(
             (
                 "rerun-js-web-viewer-react.tar.gz",
                 f"commit/{commit_short}/rerun_js/web-viewer-react.tar.gz",
-            )
+            ),
         ]
         for name, blob_url in rerun_js_blobs:
             blob = bucket.get_blob(blob_url)
