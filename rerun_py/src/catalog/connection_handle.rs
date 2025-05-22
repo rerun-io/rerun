@@ -7,6 +7,7 @@ use pyo3::{
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
 
@@ -283,12 +284,23 @@ impl ConnectionHandle {
 
                 // TODO(andrea): all this column unrwapping is a bit hideous. Maybe the idea of returning a dataframe rather
                 // than a nicely typed object should be revisited.
+
                 let schema = item.schema();
-                let col_indices = ["task_id", "exec_status", "msgs"]
-                    .iter()
-                    .map(|name| schema.index_of(name))
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|err| PyValueError::new_err(format!("missing column: {err}")))?;
+                if !schema.contains(&QueryTasksResponse::schema()) {
+                    return Err(PyValueError::new_err(
+                        "invalid schema for QueryTasksResponse",
+                    ));
+                }
+
+                let col_indices = [
+                    QueryTasksResponse::TASK_ID,
+                    QueryTasksResponse::EXEC_STATUS,
+                    QueryTasksResponse::MSGS,
+                ]
+                .iter()
+                .map(|name| schema.index_of(name))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| PyValueError::new_err(format!("missing column: {err}")))?;
 
                 let projected = item.project(&col_indices).map_err(to_py_err)?;
 
