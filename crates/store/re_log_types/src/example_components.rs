@@ -103,7 +103,9 @@ impl re_types_core::Archetype for MyPoints {
         use re_types_core::ComponentBatch as _;
         // These is no such thing as failing to serialized an indicator.
         #[allow(clippy::unwrap_used)]
-        Self::Indicator::DEFAULT.serialized().unwrap()
+        Self::Indicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     fn name() -> re_types_core::ArchetypeName {

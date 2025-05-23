@@ -164,7 +164,9 @@ impl ::re_types_core::Archetype for TextLog {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TextLogIndicator::DEFAULT.serialized().unwrap()
+        TextLogIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

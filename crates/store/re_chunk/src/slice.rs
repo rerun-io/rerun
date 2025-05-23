@@ -976,8 +976,8 @@ mod tests {
 
         assert!(!chunk.is_sorted());
         for (row_id, component_desc, expected) in expectations {
-            let expected =
-                expected.and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+            let expected = expected
+                .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
             eprintln!("{component_desc} @ {row_id}");
             similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
         }
@@ -986,8 +986,8 @@ mod tests {
         assert!(chunk.is_sorted());
 
         for (row_id, component_desc, expected) in expectations {
-            let expected =
-                expected.and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+            let expected = expected
+                .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
             eprintln!("{component_desc} @ {row_id}");
             similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
         }
@@ -1105,7 +1105,7 @@ mod tests {
 
             for (row_id, component_desc, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                    .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
                 eprintln!("{component_desc} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
             }
@@ -1136,7 +1136,7 @@ mod tests {
 
             for (row_id, component_desc, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                    .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
                 eprintln!("{component_desc} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
             }
@@ -1232,7 +1232,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                    .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }
@@ -1251,7 +1251,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                    .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }
@@ -1380,7 +1380,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                    .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }
@@ -1529,7 +1529,7 @@ mod tests {
 
             for (row_id, component_name, expected) in expectations {
                 let expected = expected
-                    .and_then(|expected| re_types_core::LoggableBatch::to_arrow(expected).ok());
+                    .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
                 eprintln!("{component_name} @ {row_id}");
                 similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
             }

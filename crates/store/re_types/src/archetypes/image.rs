@@ -255,7 +255,9 @@ impl ::re_types_core::Archetype for Image {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ImageIndicator::DEFAULT.serialized().unwrap()
+        ImageIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

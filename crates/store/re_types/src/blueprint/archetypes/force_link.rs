@@ -135,7 +135,9 @@ impl ::re_types_core::Archetype for ForceLink {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForceLinkIndicator::DEFAULT.serialized().unwrap()
+        ForceLinkIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

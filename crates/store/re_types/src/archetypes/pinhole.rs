@@ -255,7 +255,9 @@ impl ::re_types_core::Archetype for Pinhole {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        PinholeIndicator::DEFAULT.serialized().unwrap()
+        PinholeIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

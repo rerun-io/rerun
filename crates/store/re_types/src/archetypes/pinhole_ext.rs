@@ -69,8 +69,7 @@ impl Pinhole {
         let image_from_camera = self.image_from_camera_from_arrow().unwrap_or_default();
         self.image_from_camera = image_from_camera
             .with_principal_point(principal_point)
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Self::descriptor_image_from_camera()));
+            .serialized(Self::descriptor_image_from_camera());
         self
     }
 

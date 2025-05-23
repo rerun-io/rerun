@@ -234,7 +234,9 @@ impl ::re_types_core::Archetype for InstancePoses3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        InstancePoses3DIndicator::DEFAULT.serialized().unwrap()
+        InstancePoses3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

@@ -140,7 +140,9 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TensorScalarMappingIndicator::DEFAULT.serialized().unwrap()
+        TensorScalarMappingIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

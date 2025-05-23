@@ -116,7 +116,9 @@ impl ::re_types_core::Archetype for ForceCenter {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForceCenterIndicator::DEFAULT.serialized().unwrap()
+        ForceCenterIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

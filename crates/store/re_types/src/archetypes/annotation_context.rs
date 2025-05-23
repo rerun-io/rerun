@@ -143,7 +143,9 @@ impl ::re_types_core::Archetype for AnnotationContext {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        AnnotationContextIndicator::DEFAULT.serialized().unwrap()
+        AnnotationContextIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

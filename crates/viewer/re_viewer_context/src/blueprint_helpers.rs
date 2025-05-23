@@ -60,10 +60,7 @@ impl ViewerContext<'_> {
         component_descr: &ComponentDescriptor,
         component_batch: &dyn ComponentBatch,
     ) {
-        let Some(serialized) = component_batch
-            .serialized()
-            .map(|b| b.with_descriptor_override(component_descr.clone()))
-        else {
+        let Some(serialized) = component_batch.serialized(component_descr.clone()) else {
             re_log::warn!("could not serialize components with descriptor `{component_descr}`");
             return;
         };

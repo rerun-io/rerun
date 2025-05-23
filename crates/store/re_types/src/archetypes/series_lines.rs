@@ -240,7 +240,9 @@ impl ::re_types_core::Archetype for SeriesLines {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        SeriesLinesIndicator::DEFAULT.serialized().unwrap()
+        SeriesLinesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

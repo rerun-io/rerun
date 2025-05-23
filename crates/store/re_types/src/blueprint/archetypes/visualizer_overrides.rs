@@ -103,7 +103,9 @@ impl ::re_types_core::Archetype for VisualizerOverrides {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        VisualizerOverridesIndicator::DEFAULT.serialized().unwrap()
+        VisualizerOverridesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

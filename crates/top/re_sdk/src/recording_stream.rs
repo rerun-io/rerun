@@ -2917,7 +2917,12 @@ mod tests {
 
         // This call used to *not* compile due to a lack of `?Sized` bounds.
         use re_types::ComponentBatch as _;
-        rec.log("labels", &labels.try_serialized().unwrap())
-            .unwrap();
+        rec.log(
+            "labels",
+            &labels
+                .try_serialized(MyPoints::descriptor_labels())
+                .unwrap(),
+        )
+        .unwrap();
     }
 }

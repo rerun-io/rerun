@@ -330,7 +330,9 @@ impl ::re_types_core::Archetype for Mesh3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Mesh3DIndicator::DEFAULT.serialized().unwrap()
+        Mesh3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]
