@@ -26,18 +26,25 @@ pub enum Command {
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_dataset_from_redap(
     uri: DatasetDataUri,
+    token: Option<re_auth::Jwt>,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
     re_log::debug!("Loading {uri}…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
-        re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
+        re_smart_channel::SmartMessageSource::RedapGrpcStream {
+            uri: uri.clone(),
+            token: token.clone(),
+        },
+        re_smart_channel::SmartChannelSource::RedapGrpcStream {
+            uri: uri.clone(),
+            token: token.clone(),
+        },
     );
 
     spawn_future(async move {
-        if let Err(err) = stream_partition_async(tx, uri.clone(), on_cmd, on_msg).await {
+        if let Err(err) = stream_partition_async(tx, uri.clone(), token, on_cmd, on_msg).await {
             re_log::error!(
                 "Error while streaming {uri}: {}",
                 re_error::format_ref(&err)
@@ -122,11 +129,13 @@ pub type RedapClient = FrontendServiceClient<
 >;
 
 #[cfg(target_arch = "wasm32")]
-pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
+pub async fn client(
+    origin: Origin,
+    token: Option<re_auth::Jwt>,
+) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    //TODO(ab): actually provide a token here
-    let auth = AuthDecorator::new(None);
+    let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
         .layer(tonic::service::interceptor::interceptor(auth))
@@ -158,30 +167,32 @@ pub type RedapClient = FrontendServiceClient<
 // >;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
+pub async fn client(
+    origin: Origin,
+    token: Option<re_auth::Jwt>,
+) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    // Use the token from the env var if available, logging any error
-    //
-    // TODO(rerun-io/dataplatform#721): we should support configuring the token from
-    // the UI and/or API too
-    let maybe_token = std::env::var("REDAP_TOKEN")
-        .map_err(|err| match err {
-            std::env::VarError::NotPresent => {}
-            std::env::VarError::NotUnicode(..) => {
-                re_log::warn_once!("REDAP_TOKEN env var is malformed: {err}");
-            }
-        })
-        .and_then(|t| {
-            re_auth::Jwt::try_from(t).map_err(|err| {
-                re_log::warn_once!(
-                    "REDAP_TOKEN env var is present, but the token is invalid: {err}"
-                );
+    let token = token.or_else(|| {
+        // default to using the REDAP_TOKEN env var if no token is provided
+        std::env::var("REDAP_TOKEN")
+            .map_err(|err| match err {
+                std::env::VarError::NotPresent => {}
+                std::env::VarError::NotUnicode(..) => {
+                    re_log::warn_once!("REDAP_TOKEN env var is malformed: {err}");
+                }
             })
-        })
-        .ok();
+            .and_then(|t| {
+                re_auth::Jwt::try_from(t).map_err(|err| {
+                    re_log::warn_once!(
+                        "REDAP_TOKEN env var is present, but the token is invalid: {err}"
+                    );
+                })
+            })
+            .ok()
+    });
 
-    let auth = AuthDecorator::new(maybe_token);
+    let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
         .layer(tonic::service::interceptor::interceptor(auth))
@@ -219,6 +230,7 @@ pub fn get_chunks_response_to_chunk_and_partition_id(
 pub async fn stream_partition_async(
     tx: re_smart_channel::Sender<LogMsg>,
     uri: re_uri::DatasetDataUri,
+    token: Option<re_auth::Jwt>,
     on_cmd: Box<dyn Fn(Command) + Send + Sync>,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> Result<(), StreamError> {
@@ -231,7 +243,7 @@ pub async fn stream_partition_async(
     } = uri;
 
     re_log::debug!("Connecting to {}…", origin);
-    let mut client = client(origin).await?;
+    let mut client = client(origin, token).await?;
 
     re_log::debug!("Fetching catalog data for partition {partition_id} of dataset {dataset_id}…");
 

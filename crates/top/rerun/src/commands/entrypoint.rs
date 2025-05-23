@@ -731,17 +731,21 @@ fn run_impl(
             .url_or_paths
             .iter()
             .cloned()
-            .map(|uri| DataSource::from_uri(re_log_types::FileSource::Cli, uri))
+            //TODO(#10068): add support for a `--token` argument
+            .map(|uri| DataSource::from_uri(re_log_types::FileSource::Cli, uri, None))
             .collect_vec();
 
         #[cfg(feature = "web_viewer")]
         if data_sources.len() == 1 && args.web_viewer {
-            if let DataSource::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) =
-                data_sources[0].clone()
+            if let DataSource::RerunGrpcStream {
+                uri: re_uri::RedapUri::Proxy(uri),
+                token: _,
+            } = data_sources[0].clone()
             {
                 // Special case! We are connecting a web-viewer to a gRPC address.
                 // Instead of piping, just host a web-viewer that connects to the gRPC server directly:
 
+                //TODO(#10069): forward known tokens to the web-viewer
                 WebViewerConfig {
                     bind_ip: args.bind.to_string(),
                     web_port: args.web_viewer_port,
@@ -782,13 +786,13 @@ fn run_impl(
                 |data_source| match data_source.stream(on_cmd.clone(), None) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => Some(Ok(rx)),
 
-                    Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
-                        redap_uris.push(RedapUri::Catalog(uri));
+                    Ok(re_data_source::StreamSource::CatalogUri { uri, token }) => {
+                        redap_uris.push((RedapUri::Catalog(uri), token));
                         None
                     }
 
-                    Ok(re_data_source::StreamSource::EntryUri(uri)) => {
-                        redap_uris.push(RedapUri::Entry(uri));
+                    Ok(re_data_source::StreamSource::EntryUri { uri, token }) => {
+                        redap_uris.push((RedapUri::Entry(uri), token));
                         None
                     }
 
@@ -1015,14 +1019,14 @@ fn run_impl(
                     if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
                         app.set_examples_manifest_url(url);
                     }
-                    for uri in redap_uris {
+                    for (uri, token) in redap_uris {
                         match uri {
                             RedapUri::Catalog(uri) => {
-                                app.add_redap_server(uri.origin.clone());
+                                app.add_redap_server(uri.origin.clone(), token);
                             }
 
                             RedapUri::Entry(uri) => {
-                                app.select_redap_entry(&uri);
+                                app.select_redap_entry(&uri, token);
                             }
 
                             // these should not happen

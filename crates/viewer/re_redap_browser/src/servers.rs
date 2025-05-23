@@ -21,6 +21,7 @@ use crate::tables_session_context::TablesSessionContext;
 
 struct Server {
     origin: re_uri::Origin,
+    token: Option<re_auth::Jwt>,
     entries: Entries,
 
     /// Session context wrapper which holds all the table-like entries of the server.
@@ -30,13 +31,20 @@ struct Server {
 }
 
 impl Server {
-    fn new(runtime: AsyncRuntimeHandle, egui_ctx: &egui::Context, origin: re_uri::Origin) -> Self {
-        let entries = Entries::new(&runtime, egui_ctx, origin.clone());
+    fn new(
+        runtime: AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+        token: Option<re_auth::Jwt>,
+    ) -> Self {
+        let entries = Entries::new(&runtime, egui_ctx, origin.clone(), token.clone());
 
-        let tables_session_ctx = TablesSessionContext::new(&runtime, egui_ctx, origin.clone());
+        let tables_session_ctx =
+            TablesSessionContext::new(&runtime, egui_ctx, origin.clone(), token.clone());
 
         Self {
             origin,
+            token,
             entries,
             tables_session_ctx,
             runtime,
@@ -44,10 +52,11 @@ impl Server {
     }
 
     fn refresh_entries(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
+        self.entries = Entries::new(runtime, egui_ctx, self.origin.clone(), self.token.clone());
 
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx = TablesSessionContext::new(runtime, egui_ctx, self.origin.clone());
+        self.tables_session_ctx =
+            TablesSessionContext::new(runtime, egui_ctx, self.origin.clone(), self.token.clone());
     }
 
     fn on_frame_start(&mut self) {
@@ -235,7 +244,7 @@ pub struct RedapServers {
 
     /// When deserializing we can't construct the [`Server`]s right away
     /// so they get queued here.
-    pending_servers: Vec<re_uri::Origin>,
+    pending_servers: Vec<(re_uri::Origin, Option<re_auth::Jwt>)>,
 
     // message queue for commands
     command_sender: Sender<Command>,
@@ -250,7 +259,11 @@ impl serde::Serialize for RedapServers {
         S: serde::Serializer,
     {
         self.servers
-            .keys()
+            .iter()
+            .map(|(origin, server)| {
+                let token = server.token.clone();
+                (origin.clone(), token)
+            })
             .collect::<Vec<_>>()
             .serialize(serializer)
     }
@@ -261,7 +274,7 @@ impl<'de> serde::Deserialize<'de> for RedapServers {
     where
         D: serde::Deserializer<'de>,
     {
-        let origins = Vec::<re_uri::Origin>::deserialize(deserializer)?;
+        let origins = Vec::<(re_uri::Origin, Option<re_auth::Jwt>)>::deserialize(deserializer)?;
 
         let mut servers = Self::default();
 
@@ -291,7 +304,10 @@ impl Default for RedapServers {
 
 pub enum Command {
     OpenAddServerModal,
-    AddServer(re_uri::Origin),
+    AddServer {
+        origin: re_uri::Origin,
+        token: Option<re_auth::Jwt>,
+    },
     RemoveServer(re_uri::Origin),
     RefreshCollection(re_uri::Origin),
 }
@@ -303,12 +319,14 @@ impl RedapServers {
 
     /// Whether we already know about a given server (or have it queued to be added).
     pub fn has_server(&self, origin: &re_uri::Origin) -> bool {
-        self.servers.contains_key(origin) || self.pending_servers.contains(origin)
+        self.servers.contains_key(origin) || self.pending_servers.iter().any(|(o, _)| o == origin)
     }
 
     /// Add a server to the hub.
-    pub fn add_server(&self, origin: re_uri::Origin) {
-        self.command_sender.send(Command::AddServer(origin)).ok();
+    pub fn add_server(&self, origin: re_uri::Origin, token: Option<re_auth::Jwt>) {
+        self.command_sender
+            .send(Command::AddServer { origin, token })
+            .ok();
     }
 
     /// Per-frame housekeeping.
@@ -316,8 +334,10 @@ impl RedapServers {
     /// - Process commands from the queue.
     /// - Update all servers.
     pub fn on_frame_start(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        self.pending_servers.drain(..).for_each(|origin| {
-            self.command_sender.send(Command::AddServer(origin)).ok();
+        self.pending_servers.drain(..).for_each(|(origin, token)| {
+            self.command_sender
+                .send(Command::AddServer { origin, token })
+                .ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
             self.handle_command(runtime, egui_ctx, command);
@@ -339,11 +359,11 @@ impl RedapServers {
                 self.add_server_modal_ui.open();
             }
 
-            Command::AddServer(origin) => {
+            Command::AddServer { origin, token } => {
                 if !self.servers.contains_key(&origin) {
                     self.servers.insert(
                         origin.clone(),
-                        Server::new(runtime.clone(), egui_ctx, origin.clone()),
+                        Server::new(runtime.clone(), egui_ctx, origin.clone(), token),
                     );
                 } else {
                     // Since we persist the server list on disk this happens quite often.

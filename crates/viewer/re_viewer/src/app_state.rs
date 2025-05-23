@@ -123,15 +123,25 @@ impl AppState {
         &mut self.app_options
     }
 
-    pub fn add_redap_server(&self, command_sender: &CommandSender, origin: Origin) {
+    pub fn add_redap_server(
+        &self,
+        command_sender: &CommandSender,
+        origin: Origin,
+        token: Option<re_auth::Jwt>,
+    ) {
         if !self.redap_servers.has_server(&origin) {
-            command_sender.send_system(SystemCommand::AddRedapServer(origin));
+            command_sender.send_system(SystemCommand::AddRedapServer { origin, token });
         }
     }
 
-    pub fn select_redap_entry(&self, command_sender: &CommandSender, uri: &re_uri::EntryUri) {
+    pub fn select_redap_entry(
+        &self,
+        command_sender: &CommandSender,
+        uri: &re_uri::EntryUri,
+        token: Option<re_auth::Jwt>,
+    ) {
         // make sure the server exists
-        self.add_redap_server(command_sender, uri.origin.clone());
+        self.add_redap_server(command_sender, uri.origin.clone(), token);
 
         command_sender.send_system(SystemCommand::SetSelection(Item::RedapEntry(uri.entry_id)));
     }
@@ -889,7 +899,8 @@ fn check_for_clicked_hyperlinks(
                     let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
 
                     command_sender.send_system(SystemCommand::LoadDataSource(
-                        re_data_source::DataSource::RerunGrpcStream(uri),
+                        //TODO: fetch from known servers
+                        re_data_source::DataSource::RerunGrpcStream { uri, token: None },
                     ));
 
                     if is_dataset_uri && !open_url.new_tab {

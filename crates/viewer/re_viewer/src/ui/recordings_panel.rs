@@ -62,7 +62,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             // We only show things we know are very-soon-to-be recordings:
             SmartChannelSource::File(path) => format!("Loading {}…", path.display()),
             SmartChannelSource::RrdHttpStream { url, .. } => format!("Loading {url}…"),
-            SmartChannelSource::RedapGrpcStream(uri) => format!("Loading {uri}…"),
+            SmartChannelSource::RedapGrpcStream { uri, token: _ } => format!("Loading {uri}…"),
 
             SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }

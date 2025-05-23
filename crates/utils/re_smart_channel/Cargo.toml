@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_auth.workspace = true
 re_tracing.workspace = true
 re_uri.workspace = true
 

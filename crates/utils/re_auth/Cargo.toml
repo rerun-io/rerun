@@ -18,13 +18,13 @@ workspace = true
 re_log.workspace = true
 
 jsonwebtoken.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 tonic.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 base64.workspace = true
 rand.workspace = true
-serde.workspace = true
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }

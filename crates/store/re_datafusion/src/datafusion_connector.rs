@@ -16,8 +16,8 @@ pub struct DataFusionConnector {
 }
 
 impl DataFusionConnector {
-    pub async fn new(origin: &str) -> anyhow::Result<Self> {
-        let catalog = re_grpc_client::redap::client(origin.parse()?).await?;
+    pub async fn new(origin: re_uri::Origin, token: Option<re_auth::Jwt>) -> anyhow::Result<Self> {
+        let catalog = re_grpc_client::redap::client(origin, token).await?;
         Ok(Self { catalog })
     }
 }

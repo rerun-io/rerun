@@ -24,6 +24,7 @@ all-features = true
 testing = []
 
 [dependencies]
+re_auth.workspace = true
 re_capabilities.workspace = true
 re_chunk_store.workspace = true
 re_chunk.workspace = true

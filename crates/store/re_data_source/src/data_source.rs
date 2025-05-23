@@ -31,14 +31,23 @@ pub enum DataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording or catalog.
-    RerunGrpcStream(re_uri::RedapUri),
+    RerunGrpcStream {
+        uri: re_uri::RedapUri,
+        token: Option<re_auth::Jwt>,
+    },
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
 pub enum StreamSource {
     LogMessages(Receiver<LogMsg>),
-    CatalogUri(re_uri::CatalogUri),
-    EntryUri(re_uri::EntryUri),
+    CatalogUri {
+        uri: re_uri::CatalogUri,
+        token: Option<re_auth::Jwt>,
+    },
+    EntryUri {
+        uri: re_uri::EntryUri,
+        token: Option<re_auth::Jwt>,
+    },
 }
 
 impl DataSource {
@@ -47,7 +56,11 @@ impl DataSource {
     /// Tries to figure out if it looks like a local path,
     /// a web-socket address, or a http url.
     #[cfg_attr(target_arch = "wasm32", allow(clippy::needless_pass_by_value))]
-    pub fn from_uri(_file_source: re_log_types::FileSource, uri: String) -> Self {
+    pub fn from_uri(
+        _file_source: re_log_types::FileSource,
+        uri: String,
+        redap_token: Option<re_auth::Jwt>,
+    ) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
         {
             use itertools::Itertools as _;
@@ -104,7 +117,10 @@ impl DataSource {
         }
 
         if let Ok(uri) = uri.as_str().parse::<re_uri::RedapUri>() {
-            return Self::RerunGrpcStream(uri);
+            return Self::RerunGrpcStream {
+                uri,
+                token: redap_token,
+            };
         }
 
         // by default, we just assume an rrd over http
@@ -227,10 +243,19 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::DatasetData(uri),
+                token,
+            } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
+                    re_smart_channel::SmartMessageSource::RedapGrpcStream {
+                        uri: uri.clone(),
+                        token: token.clone(),
+                    },
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream {
+                        uri: uri.clone(),
+                        token: token.clone(),
+                    },
                 );
 
                 let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
@@ -249,6 +274,7 @@ impl DataSource {
                     if let Err(err) = re_grpc_client::redap::stream_partition_async(
                         tx,
                         uri.clone(),
+                        token,
                         on_cmd,
                         on_msg,
                     )
@@ -263,15 +289,22 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
-                Ok(StreamSource::CatalogUri(uri))
-            }
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::Catalog(uri),
+                token,
+            } => Ok(StreamSource::CatalogUri { uri, token }),
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => Ok(StreamSource::EntryUri(uri)),
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::Entry(uri),
+                token,
+            } => Ok(StreamSource::EntryUri { uri, token }),
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Ok(StreamSource::LogMessages(
-                message_proxy::stream(uri, on_msg),
-            )),
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::Proxy(uri),
+                token: _,
+            } => Ok(StreamSource::LogMessages(message_proxy::stream(
+                uri, on_msg,
+            ))),
         }
     }
 }
@@ -343,7 +376,7 @@ fn test_data_source_from_uri() {
 
     for uri in file {
         if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::from_uri(file_source.clone(), uri.to_owned(), None),
             DataSource::FilePath { .. }
         ) {
             eprintln!("Expected {uri:?} to be categorized as FilePath");
@@ -353,7 +386,7 @@ fn test_data_source_from_uri() {
 
     for uri in http {
         if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::from_uri(file_source.clone(), uri.to_owned(), None),
             DataSource::RrdHttpUrl { .. }
         ) {
             eprintln!("Expected {uri:?} to be categorized as RrdHttpUrl");
@@ -363,7 +396,7 @@ fn test_data_source_from_uri() {
 
     for uri in grpc {
         if !matches!(
-            DataSource::from_uri(file_source.clone(), uri.to_owned()),
+            DataSource::from_uri(file_source.clone(), uri.to_owned(), None),
             DataSource::RerunGrpcStream { .. }
         ) {
             eprintln!("Expected {uri:?} to be categorized as MessageProxy");

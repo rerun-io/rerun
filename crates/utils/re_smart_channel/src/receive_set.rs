@@ -54,7 +54,7 @@ impl<T: Send> ReceiveSet<T> {
             // - don't point at the given `uri`
             SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
             SmartChannelSource::MessageProxy(url) => url.to_string() != uri,
-            SmartChannelSource::RedapGrpcStream(url) => url.to_string() != uri,
+            SmartChannelSource::RedapGrpcStream { uri: url, token: _ } => url.to_string() != uri,
 
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
@@ -218,22 +218,18 @@ fn test_receive_set() {
 
     assert_eq!(set.try_recv(), None);
     assert_eq!(set.recv_timeout(timeout), None);
-    assert_eq!(
-        set.sources(),
-        vec![Arc::new(SmartChannelSource::File("path".into()))]
-    );
+    assert_eq!(set.sources(), vec![Arc::new(SmartChannelSource::File(
+        "path".into()
+    ))]);
 
     set.add(rx_sdk);
 
     assert_eq!(set.try_recv(), None);
     assert_eq!(set.recv_timeout(timeout), None);
-    assert_eq!(
-        set.sources(),
-        vec![
-            Arc::new(SmartChannelSource::File("path".into())),
-            Arc::new(SmartChannelSource::Sdk)
-        ]
-    );
+    assert_eq!(set.sources(), vec![
+        Arc::new(SmartChannelSource::File("path".into())),
+        Arc::new(SmartChannelSource::Sdk)
+    ]);
 
     tx_sdk.send(42).unwrap();
     assert_eq!(set.try_recv().unwrap().0, Arc::new(SmartChannelSource::Sdk));
@@ -246,10 +242,9 @@ fn test_receive_set() {
 
     assert_eq!(set.try_recv(), None);
     assert_eq!(set.recv_timeout(timeout), None);
-    assert_eq!(
-        set.sources(),
-        vec![Arc::new(SmartChannelSource::File("path".into()))]
-    );
+    assert_eq!(set.sources(), vec![Arc::new(SmartChannelSource::File(
+        "path".into()
+    ))]);
 
     drop(tx_file);
 

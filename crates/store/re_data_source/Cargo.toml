@@ -23,6 +23,7 @@ default = []
 
 
 [dependencies]
+re_auth.workspace = true
 re_data_loader.workspace = true
 re_error.workspace = true
 re_grpc_client.workspace = true

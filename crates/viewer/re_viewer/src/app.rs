@@ -360,8 +360,8 @@ impl App {
         //
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
-        if let SmartChannelSource::RedapGrpcStream(uri) = rx.source() {
-            self.add_redap_server(uri.origin.clone());
+        if let SmartChannelSource::RedapGrpcStream { uri, token } = rx.source() {
+            self.add_redap_server(uri.origin.clone(), token.clone());
 
             self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
         }
@@ -492,8 +492,8 @@ impl App {
             SystemCommand::ChangeDisplayMode(display_mode) => {
                 self.state.navigation.replace(display_mode);
             }
-            SystemCommand::AddRedapServer(origin) => {
-                self.state.redap_servers.add_server(origin.clone());
+            SystemCommand::AddRedapServer { origin, token } => {
+                self.state.redap_servers.add_server(origin.clone(), token);
 
                 if self
                     .store_hub
@@ -538,12 +538,12 @@ impl App {
                 match data_source.clone().stream(on_cmd, Some(waker)) {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
 
-                    Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
-                        self.add_redap_server(uri.origin.clone());
+                    Ok(re_data_source::StreamSource::CatalogUri { uri, token }) => {
+                        self.add_redap_server(uri.origin.clone(), token);
                     }
 
-                    Ok(re_data_source::StreamSource::EntryUri(uri)) => {
-                        self.select_redap_entry(&uri);
+                    Ok(re_data_source::StreamSource::EntryUri { uri, token }) => {
+                        self.select_redap_entry(&uri, token);
                     }
 
                     Err(err) => {
@@ -1297,7 +1297,8 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut uri)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStream { mut uri, token: _ }) =
+            entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1610,7 +1611,9 @@ impl App {
             if was_empty && !entity_db.is_empty() {
                 // Hack: we cannot go to a specific timeline or entity until we know about it.
                 // Now we _hopefully_ do.
-                if let SmartChannelSource::RedapGrpcStream(uri) = channel_source.as_ref() {
+                if let SmartChannelSource::RedapGrpcStream { uri, token: _ } =
+                    channel_source.as_ref()
+                {
                     self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
                 }
             }
@@ -2064,12 +2067,14 @@ impl App {
         }
     }
 
-    pub fn add_redap_server(&self, origin: Origin) {
-        self.state.add_redap_server(&self.command_sender, origin);
+    pub fn add_redap_server(&self, origin: Origin, token: Option<re_auth::Jwt>) {
+        self.state
+            .add_redap_server(&self.command_sender, origin, token);
     }
 
-    pub fn select_redap_entry(&self, uri: &re_uri::EntryUri) {
-        self.state.select_redap_entry(&self.command_sender, uri);
+    pub fn select_redap_entry(&self, uri: &re_uri::EntryUri, token: Option<re_auth::Jwt>) {
+        self.state
+            .select_redap_entry(&self.command_sender, uri, token);
     }
 }
 
