@@ -9,7 +9,16 @@ rr.spawn()
 
 rr.log(
     "data",
-    [rr.components.Position3DBatch([1, 2, 3]).described()],
+    [
+        rr.components.Position3DBatch([1, 2, 3]).with_descriptor(
+            rr.ComponentDescriptor(
+                # TODO(#6889): Temporary fix, should improve API
+                "rerun.components.Position3D",
+                archetype_name="user.CustomPoints3D",
+                archetype_field_name="custom_positions",
+            )
+        )
+    ],
     static=True,
 )
 
