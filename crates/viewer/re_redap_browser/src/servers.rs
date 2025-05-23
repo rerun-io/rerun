@@ -5,7 +5,7 @@ use egui::{Frame, Margin, RichText};
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::{
-    DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
+    DATASET_MANIFEST_CREATED_AT_FIELD_NAME, DATASET_MANIFEST_ID_FIELD_NAME,
 };
 use re_sorbet::BatchType;
 use re_ui::list_item::ItemActionButton;
@@ -153,7 +153,7 @@ impl Server {
                     desc.display_name().as_str(),
                     RECORDING_LINK_COLUMN_NAME
                         | DATASET_MANIFEST_ID_FIELD_NAME
-                        | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME
+                        | DATASET_MANIFEST_CREATED_AT_FIELD_NAME
                 )
             };
 
