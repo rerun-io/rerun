@@ -18,12 +18,12 @@ pub fn apply_table_style_fixes(style: &mut Style) {
     let design_tokens = design_tokens_of(theme);
 
     style.visuals.widgets.hovered.bg_stroke =
-        Stroke::new(1.0, design_tokens.table_interaction_hovered_bg_stroke());
+        Stroke::new(1.0, design_tokens.table_interaction_hovered_bg_stroke);
     style.visuals.widgets.active.bg_stroke =
-        Stroke::new(1.0, design_tokens.table_interaction_active_bg_stroke());
+        Stroke::new(1.0, design_tokens.table_interaction_active_bg_stroke);
     style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(
         1.0,
-        design_tokens.table_interaction_noninteractive_bg_stroke(),
+        design_tokens.table_interaction_noninteractive_bg_stroke,
     );
 }
 
@@ -40,7 +40,7 @@ pub fn header_ui<R>(
 ) -> egui::InnerResponse<R> {
     let response = Frame::new()
         .inner_margin(CELL_MARGIN)
-        .fill(ui.design_tokens().table_header_bg_fill())
+        .fill(ui.design_tokens().table_header_bg_fill)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             content(ui)
@@ -51,7 +51,7 @@ pub fn header_ui<R>(
     ui.painter().hline(
         rect.x_range(),
         rect.max.y - 1.0, // - 1.0 prevents it from being overdrawn by the following row
-        Stroke::new(1.0, ui.design_tokens().table_header_stroke_color()),
+        Stroke::new(1.0, ui.design_tokens().table_header_stroke_color),
     );
 
     response
@@ -74,7 +74,7 @@ pub fn cell_ui<R>(
         Stroke::new(
             1.0,
             ui.design_tokens()
-                .table_interaction_noninteractive_bg_stroke(),
+                .table_interaction_noninteractive_bg_stroke,
         ),
     );
 

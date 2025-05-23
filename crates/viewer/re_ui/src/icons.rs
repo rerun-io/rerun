@@ -59,8 +59,7 @@ impl Icon {
         label: impl Into<egui::WidgetText>,
     ) -> egui::Button<'_> {
         egui::Button::image_and_text(
-            self.as_image()
-                .tint(design_tokens.label_button_icon_color()),
+            self.as_image().tint(design_tokens.label_button_icon_color),
             label,
         )
     }

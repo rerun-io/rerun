@@ -344,7 +344,7 @@ impl ExampleSection {
                                 ui.painter().rect_filled(
                                     example.rect,
                                     THUMBNAIL_RADIUS,
-                                    ui.design_tokens().example_card_background_color(),
+                                    ui.design_tokens().example_card_background_color,
                                 );
 
                                 if response.clicked() {
@@ -412,7 +412,8 @@ impl ExampleSection {
                                     ui.painter().rect_filled(
                                         example.rect,
                                         THUMBNAIL_RADIUS,
-                                        //TODO(ab): use design tokens
+                                        // We respect the theme, but TODO(ab): use design tokens
+                                        #[expect(clippy::disallowed_methods)]
                                         match ui.theme() {
                                             Theme::Dark => Color32::from_additive_luminance(25),
                                             Theme::Light => Color32::from_black_alpha(20),
@@ -545,11 +546,8 @@ impl ExampleDescLayout {
                         )
                         .sense(egui::Sense::hover())
                         .corner_radius(6)
-                        .fill(match ui.theme() {
-                            Theme::Dark => egui::Color32::from_rgb(26, 29, 30),
-                            Theme::Light => Color32::from_rgb(219, 222, 228),
-                        })
-                        .stroke(egui::Stroke::new(1.0, Color32::WHITE.gamma_multiply(0.086)))
+                        .fill(ui.design_tokens().example_tag_bg_fill)
+                        .stroke(ui.design_tokens().example_tag_stroke)
                         .wrap_mode(egui::TextWrapMode::Extend),
                     );
                 }

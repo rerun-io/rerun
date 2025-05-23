@@ -4,7 +4,6 @@ mod color_table;
 mod command;
 mod command_palette;
 mod context_ext;
-mod design_token_colors;
 mod design_tokens;
 pub mod drag_and_drop;
 pub mod filter_widget;
@@ -21,11 +20,9 @@ mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
 
-use egui::Color32;
 use egui::NumExt as _;
 
 pub use self::{
-    color_table::{ColorTable, ColorToken, Hue, Scale},
     command::{UICommand, UICommandSender},
     command_palette::CommandPalette,
     context_ext::ContextExt,
@@ -61,9 +58,6 @@ pub const CUSTOM_WINDOW_DECORATIONS: bool = false; // !FULLSIZE_CONTENT; // TODO
 /// If true, we show the native window decorations/chrome with the
 /// close/maximize/minimize buttons and app title.
 pub const NATIVE_WINDOW_BAR: bool = !FULLSIZE_CONTENT && !CUSTOM_WINDOW_DECORATIONS;
-
-pub const INFO_COLOR: Color32 = Color32::from_rgb(0, 155, 255);
-pub const SUCCESS_COLOR: Color32 = Color32::from_rgb(0, 240, 32);
 
 // ----------------------------------------------------------------------------
 
@@ -105,6 +99,18 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
         egui::Theme::Light => {
             DESIGN_TOKENS_LIGHT.get_or_init(|| DesignTokens::load(egui::Theme::Light))
         }
+    }
+}
+
+pub fn design_tokens_of_style(style: &egui::Style) -> &'static DesignTokens {
+    design_tokens_of_visuals(&style.visuals)
+}
+
+pub fn design_tokens_of_visuals(visuals: &egui::Visuals) -> &'static DesignTokens {
+    if visuals.dark_mode {
+        design_tokens_of(egui::Theme::Dark)
+    } else {
+        design_tokens_of(egui::Theme::Light)
     }
 }
 

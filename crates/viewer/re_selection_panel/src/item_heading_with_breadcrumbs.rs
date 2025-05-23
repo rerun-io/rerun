@@ -51,7 +51,7 @@ pub fn item_heading_with_breadcrumbs(
 
                 // First the C>R>U>M>B>S>
                 {
-                    let breadcrumb_text_color = ui.design_tokens().breadcrumb_text_color();
+                    let breadcrumb_text_color = ui.design_tokens().breadcrumb_text_color;
                     let previous_style = ui.style().clone();
                     // Dimmer colors for breadcrumbs
                     let visuals = ui.visuals_mut();
@@ -252,7 +252,7 @@ pub fn separator_icon_ui(ui: &mut egui::Ui) {
     ui.add(
         icons::BREADCRUMBS_SEPARATOR
             .as_image()
-            .tint(ui.design_tokens().breadcrumb_separator_color()),
+            .tint(ui.design_tokens().breadcrumb_separator_color),
     );
 }
 

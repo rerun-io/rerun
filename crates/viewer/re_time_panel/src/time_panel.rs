@@ -1457,7 +1457,11 @@ fn paint_range_highlight(
         painter.rect_filled(
             visible_history_area_rect,
             0.0,
-            egui::Color32::WHITE.gamma_multiply(0.1),
+            painter
+                .ctx()
+                .design_tokens()
+                .extreme_fg_color
+                .gamma_multiply(0.1),
         );
     }
 }

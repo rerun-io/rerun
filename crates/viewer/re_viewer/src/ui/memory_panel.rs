@@ -430,6 +430,8 @@ impl MemoryPanel {
             )
         }
 
+        let ram_purge_color = ui.visuals().warn_fg_color;
+
         egui_plot::Plot::new("mem_history_plot")
             .min_size(egui::Vec2::splat(200.0))
             .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
@@ -449,7 +451,7 @@ impl MemoryPanel {
                 for &time in &self.memory_purge_times {
                     plot_ui.vline(
                         egui_plot::VLine::new("RAM purge", time)
-                            .color(egui::Color32::from_rgb(252, 161, 3))
+                            .color(ram_purge_color)
                             .width(2.0),
                     );
                 }

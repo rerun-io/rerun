@@ -3,7 +3,9 @@
 use egui::{Color32, NumExt as _, Response, Shape, Ui, emath::GuiRounding as _};
 
 use crate::{
-    DesignTokens, Scale, UiExt as _, design_tokens_of,
+    DesignTokens, UiExt as _,
+    color_table::Scale,
+    design_tokens_of,
     list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
 };
 
@@ -160,7 +162,7 @@ impl ListVisuals {
                 } else if self.hovered {
                     design_tokens.color_table.gray(Scale::S600)
                 } else {
-                    design_tokens.label_button_icon_color()
+                    design_tokens.label_button_icon_color
                 }
             }
             egui::Theme::Light => {
@@ -171,7 +173,7 @@ impl ListVisuals {
                 } else if self.hovered {
                     design_tokens.color_table.gray(Scale::S400)
                 } else {
-                    design_tokens.label_button_icon_color()
+                    design_tokens.label_button_icon_color
                 }
             }
         }
@@ -586,7 +588,7 @@ impl ListItem {
             let bg_rect_to_paint = bg_rect.round_to_pixels(ui.pixels_per_point());
 
             if drag_target {
-                let stroke = ui.design_tokens().drop_target_container_stroke();
+                let stroke = ui.design_tokens().drop_target_container_stroke;
                 ui.painter().set(
                     background_frame,
                     Shape::rect_stroke(
