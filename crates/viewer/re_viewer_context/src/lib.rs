@@ -5,14 +5,11 @@
 mod annotations;
 mod async_runtime_handle;
 mod blueprint_helpers;
-mod blueprint_id;
 mod cache;
 mod collapsed_id;
 mod component_fallbacks;
-mod contents;
+mod component_ui_registry;
 mod drag_and_drop;
-mod file_dialog;
-mod global_context;
 mod image_info;
 mod maybe_mut_ref;
 mod query_context;
@@ -37,25 +34,22 @@ pub mod test_context;
 pub mod gpu_bridge;
 mod visitor_flow_control;
 
+// if you use a ViewerContext, you probably want to use the inner GlobalContext, so we re-export
+// everything
+pub use re_global_context::*;
+
 pub use self::{
     annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
     async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend},
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
-    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
     component_fallbacks::{
         ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
         TypedComponentFallbackProvider,
     },
-    contents::{Contents, ContentsName, blueprint_id_to_tile_id},
+    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, EditTarget, VariantName},
     drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload},
-    file_dialog::santitize_file_name,
-    global_context::{
-        AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, ComponentUiTypes,
-        DisplayMode, EditTarget, GlobalContext, Item, SystemCommand, SystemCommandSender,
-        VariantName, command_channel,
-    },
     image_info::{ColormapWithRange, ImageInfo, StoredBlobCacheKey},
     maybe_mut_ref::MaybeMutRef,
     query_context::{
@@ -68,7 +62,7 @@ pub use self::{
     },
     storage_context::StorageContext,
     store_context::StoreContext,
-    store_hub::{StoreHub, StoreHubEntry},
+    store_hub::StoreHub,
     tables::{TableStore, TableStores},
     tensor::{ImageStats, TensorStats},
     time_control::{Looping, PlayState, TimeControl, TimeControlResponse, TimeView},

@@ -9,50 +9,12 @@ use re_chunk_store::{
     GarbageCollectionTarget,
 };
 use re_entity_db::{EntityDb, StoreBundle};
+use re_global_context::StoreHubEntry;
 use re_log_types::{ApplicationId, ResolvedTimeRange, StoreId, StoreKind, TableId};
 use re_query::CachesStats;
 use re_types::{archetypes, components::Timestamp};
 
 use crate::{BlueprintUndoState, Caches, StorageContext, StoreContext, TableStore, TableStores};
-
-#[derive(Clone, Debug)]
-pub enum StoreHubEntry {
-    Recording {
-        store_id: StoreId,
-        // TODO(grtlr): Add `applicationId` here.
-    },
-    Table {
-        table_id: TableId,
-    },
-}
-
-impl From<StoreId> for StoreHubEntry {
-    fn from(store_id: StoreId) -> Self {
-        Self::Recording { store_id }
-    }
-}
-
-impl From<TableId> for StoreHubEntry {
-    fn from(table_id: TableId) -> Self {
-        Self::Table { table_id }
-    }
-}
-
-impl StoreHubEntry {
-    pub fn recording_ref(&self) -> Option<&StoreId> {
-        match self {
-            Self::Recording { store_id } => Some(store_id),
-            Self::Table { .. } => None,
-        }
-    }
-
-    pub fn table_ref(&self) -> Option<&TableId> {
-        match self {
-            Self::Table { table_id } => Some(table_id),
-            Self::Recording { .. } => None,
-        }
-    }
-}
 
 /// Interface for accessing all blueprints and recordings
 ///

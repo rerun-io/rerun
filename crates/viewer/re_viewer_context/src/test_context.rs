@@ -398,12 +398,13 @@ impl TestContext {
             global_context: GlobalContext {
                 app_options: &Default::default(),
                 reflection: &self.reflection,
-                component_ui_registry: &self.component_ui_registry,
-                view_class_registry: &self.view_class_registry,
+
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
             },
+            component_ui_registry: &self.component_ui_registry,
+            view_class_registry: &self.view_class_registry,
             store_context: &store_context,
             active_redap_entry: None,
             active_table_id: None,

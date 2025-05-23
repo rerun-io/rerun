@@ -722,7 +722,7 @@ fn run_impl(
     };
 
     #[allow(unused_variables)]
-    let (command_sender, command_receiver) = re_viewer_context::command_channel();
+    let (command_sender, command_receiver) = re_global_context::command_channel();
 
     // Where do we get the data from?
     let mut redap_uris: Vec<_> = Vec::new();
@@ -759,7 +759,7 @@ fn run_impl(
 
         let command_sender = command_sender.clone();
         let on_cmd = Box::new(move |cmd| {
-            use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+            use re_global_context::{SystemCommand, SystemCommandSender as _};
             match cmd {
                 re_data_source::DataSourceCommand::SetLoopSelection {
                     recording_id,
