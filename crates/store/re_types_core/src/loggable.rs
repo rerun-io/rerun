@@ -112,7 +112,7 @@ impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
     #[inline]
     fn from(name: ComponentName) -> Self {
         name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(name))
+        Cow::Owned(ComponentDescriptor::partial(name))
     }
 }
 
@@ -123,7 +123,7 @@ impl From<&ComponentName> for Cow<'static, ComponentDescriptor> {
     #[inline]
     fn from(name: &ComponentName) -> Self {
         name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(*name))
+        Cow::Owned(ComponentDescriptor::partial(*name))
     }
 }
 

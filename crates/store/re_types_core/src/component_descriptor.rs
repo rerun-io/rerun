@@ -163,7 +163,7 @@ impl re_byte_size::SizeBytes for ComponentDescriptor {
 
 impl ComponentDescriptor {
     #[inline]
-    pub fn new(component_name: impl Into<ComponentName>) -> Self {
+    pub fn partial(component_name: impl Into<ComponentName>) -> Self {
         let component_name = component_name.into();
         component_name.sanity_check();
         Self {

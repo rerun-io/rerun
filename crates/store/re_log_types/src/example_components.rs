@@ -282,7 +282,7 @@ impl MyPoint64 {
 
     #[inline]
     pub fn partial_descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new(Self::name())
+        ComponentDescriptor::partial(Self::name())
     }
 }
 
@@ -524,7 +524,7 @@ impl MyIndex {
 
     #[inline]
     pub fn partial_descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new(Self::name())
+        ComponentDescriptor::partial(Self::name())
     }
 }
 

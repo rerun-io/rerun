@@ -415,7 +415,7 @@ impl ChunkStore {
             .and_then(|per_descr| per_descr.iter().next());
 
         let component_descr = column_info.map_or(
-            ComponentDescriptor::new(selected_component_name),
+            ComponentDescriptor::partial(selected_component_name),
             |(descr, _metadata)| descr.clone(),
         );
         component_descr.component_name.sanity_check();
