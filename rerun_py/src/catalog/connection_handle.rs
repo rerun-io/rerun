@@ -38,16 +38,31 @@ create_exception!(catalog, ConnectionError, PyConnectionError);
 pub struct ConnectionHandle {
     origin: re_uri::Origin,
 
+    //TODO(rerun-io/dataplatform#723): add support for this
+    #[expect(dead_code)]
+    token: Option<re_auth::Jwt>,
+
     /// The actual tonic connection.
     client: RedapClient,
 }
 
 impl ConnectionHandle {
-    pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, re_grpc_client::redap::client(origin.clone()))
-            .map_err(to_py_err)?;
+    pub fn new(
+        py: Python<'_>,
+        origin: re_uri::Origin,
+        token: Option<re_auth::Jwt>,
+    ) -> PyResult<Self> {
+        let client = wait_for_future(
+            py,
+            re_grpc_client::redap::client(origin.clone(), token.clone()),
+        )
+        .map_err(to_py_err)?;
 
-        Ok(Self { origin, client })
+        Ok(Self {
+            origin,
+            client,
+            token,
+        })
     }
 
     pub fn client(&self) -> RedapClient {

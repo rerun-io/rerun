@@ -44,8 +44,6 @@ struct Table {
 //TODO(ab): add support for local caching of table data
 pub struct TablesSessionContext {
     pub ctx: Arc<SessionContext>,
-    #[expect(dead_code)]
-    origin: re_uri::Origin,
 
     registered_tables: RequestedObject<Result<Vec<Table>, SessionContextError>>,
 }
@@ -55,6 +53,7 @@ impl TablesSessionContext {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
+        token: Option<re_auth::Jwt>,
     ) -> Self {
         let ctx = Arc::new(SessionContext::new());
 
@@ -62,13 +61,12 @@ impl TablesSessionContext {
             RequestedObject::new_with_repaint(
                 runtime,
                 egui_ctx.clone(),
-                register_all_table_entries(ctx.clone(), origin.clone()),
+                register_all_table_entries(ctx.clone(), origin, token),
             )
         };
 
         Self {
             ctx,
-            origin,
             registered_tables,
         }
     }
@@ -81,8 +79,9 @@ impl TablesSessionContext {
 async fn register_all_table_entries(
     ctx: Arc<SessionContext>,
     origin: re_uri::Origin,
+    token: Option<re_auth::Jwt>,
 ) -> Result<Vec<Table>, SessionContextError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = redap::client(origin.clone(), token.clone()).await?;
 
     let entries = client
         .find_entries(FindEntriesRequest {
@@ -105,7 +104,7 @@ async fn register_all_table_entries(
         let table_provider = match entry.kind {
             EntryKind::Dataset => Some(
                 PartitionTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
+                    re_grpc_client::redap::client(origin.clone(), token.clone()).await?,
                     entry.id,
                 )
                 .into_provider()
@@ -114,7 +113,7 @@ async fn register_all_table_entries(
 
             EntryKind::Table => Some(
                 TableEntryTableProvider::new(
-                    re_grpc_client::redap::client(origin.clone()).await?,
+                    re_grpc_client::redap::client(origin.clone(), token.clone()).await?,
                     entry.id,
                 )
                 .into_provider()

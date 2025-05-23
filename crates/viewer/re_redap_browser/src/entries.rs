@@ -81,8 +81,9 @@ impl Entries {
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
+        token: Option<re_auth::Jwt>,
     ) -> Self {
-        let datasets = fetch_dataset_entries(origin);
+        let datasets = fetch_dataset_entries(origin, token);
 
         Self {
             datasets: RequestedObject::new_with_repaint(runtime, egui_ctx.clone(), datasets),
@@ -182,7 +183,8 @@ pub fn sort_datasets<'a>(viewer_ctx: &ViewerContext<'a>) -> SortDatasetsResults<
         let Some(app_id) = entity_db.app_id().cloned() else {
             continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
         };
-        if let Some(SmartChannelSource::RedapGrpcStream(uri)) = &entity_db.data_source {
+        if let Some(SmartChannelSource::RedapGrpcStream { uri, token: _ }) = &entity_db.data_source
+        {
             let origin_recordings = remote_recordings.entry(uri.origin.clone()).or_default();
 
             let dataset_recordings = origin_recordings
@@ -359,8 +361,9 @@ pub fn dataset_and_its_recordings_ui(
 
 async fn fetch_dataset_entries(
     origin: re_uri::Origin,
+    token: Option<re_auth::Jwt>,
 ) -> Result<HashMap<EntryId, Dataset>, EntryError> {
-    let mut client = redap::client(origin.clone()).await?;
+    let mut client = redap::client(origin.clone(), token).await?;
 
     let resp = client
         .find_entries(FindEntriesRequest {

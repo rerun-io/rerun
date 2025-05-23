@@ -36,7 +36,8 @@ impl PyCatalogClient {
     fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        let connection = ConnectionHandle::new(py, origin.clone())?;
+        //TODO(rerun-io/dataplatform#723): add support for token in the API.
+        let connection = ConnectionHandle::new(py, origin.clone(), None)?;
 
         let datafusion_ctx = py
             .import("datafusion")
@@ -54,28 +55,22 @@ impl PyCatalogClient {
     fn entries(self_: Py<Self>, py: Python<'_>) -> PyResult<Vec<Py<PyEntry>>> {
         let mut connection = self_.borrow(py).connection.clone();
 
-        let entry_details = connection.find_entries(
-            py,
-            EntryFilter {
-                id: None,
-                name: None,
-                entry_kind: None,
-            },
-        )?;
+        let entry_details = connection.find_entries(py, EntryFilter {
+            id: None,
+            name: None,
+            entry_kind: None,
+        })?;
 
         // Generate entry objects.
         entry_details
             .into_iter()
             .map(|details| {
                 let id = Py::new(py, PyEntryId::from(details.id))?;
-                Py::new(
-                    py,
-                    PyEntry {
-                        client: self_.clone_ref(py),
-                        id,
-                        details,
-                    },
-                )
+                Py::new(py, PyEntry {
+                    client: self_.clone_ref(py),
+                    id,
+                    details,
+                })
             })
             .collect()
     }
@@ -196,26 +191,20 @@ impl EntryIdLike {
         match self {
             Self::Str(name_or_id) => {
                 // First try to find by name
-                let mut entry_details = connection.find_entries(
-                    py,
-                    EntryFilter {
-                        id: None,
-                        name: Some(name_or_id.clone()),
-                        entry_kind: None,
-                    },
-                )?;
+                let mut entry_details = connection.find_entries(py, EntryFilter {
+                    id: None,
+                    name: Some(name_or_id.clone()),
+                    entry_kind: None,
+                })?;
 
                 // If that fails, try to find by id
                 if entry_details.is_empty() {
                     if let Ok(entry_id) = EntryId::from_str(name_or_id.as_str()) {
-                        entry_details = connection.find_entries(
-                            py,
-                            EntryFilter {
-                                id: Some(entry_id.into()),
-                                name: None,
-                                entry_kind: None,
-                            },
-                        )?;
+                        entry_details = connection.find_entries(py, EntryFilter {
+                            id: Some(entry_id.into()),
+                            name: None,
+                            entry_kind: None,
+                        })?;
                     }
                 }
 
@@ -225,12 +214,9 @@ impl EntryIdLike {
                     )));
                 }
 
-                Py::new(
-                    py,
-                    PyEntryId {
-                        id: entry_details[0].id,
-                    },
-                )
+                Py::new(py, PyEntryId {
+                    id: entry_details[0].id,
+                })
             }
             Self::Id(id) => Ok(id),
         }

@@ -91,7 +91,13 @@ impl AddServerModal {
                         if ui.button("Add").clicked() {
                             ui.close();
 
-                            ctx.command_sender.send(Command::AddServer(origin)).ok();
+                            ctx.command_sender
+                                .send(Command::AddServer {
+                                    origin,
+                                    //TODO(rerun-io/dataplatform#724): add UI for token and populate it here
+                                    token: None,
+                                })
+                                .ok();
                         }
                     } else {
                         ui.add_enabled(false, egui::Button::new("Add"));

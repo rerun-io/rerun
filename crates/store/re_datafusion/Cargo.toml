@@ -30,11 +30,13 @@ default = []
 
 [dependencies]
 # Rerun dependencies:
+re_auth.workspace = true
 re_dataframe.workspace = true
 re_grpc_client.workspace = true
 re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
+re_uri.workspace = true
 
 # External dependencies:
 anyhow.workspace = true

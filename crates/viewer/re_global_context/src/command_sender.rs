@@ -26,7 +26,10 @@ pub enum SystemCommand {
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Add a new server to the redap browser.
-    AddRedapServer(re_uri::Origin),
+    AddRedapServer {
+        origin: re_uri::Origin,
+        token: Option<re_auth::Jwt>,
+    },
 
     ChangeDisplayMode(crate::DisplayMode),
 
