@@ -151,7 +151,7 @@ impl FromIterator<(ComponentName, ArrowListArray)> for ChunkComponents {
     fn from_iter<T: IntoIterator<Item = (ComponentName, ArrowListArray)>>(iter: T) -> Self {
         iter.into_iter()
             .map(|(component_name, list_array)| {
-                let component_desc = ComponentDescriptor::new(component_name);
+                let component_desc = ComponentDescriptor::partial(component_name);
                 (component_desc, list_array)
             })
             .collect()
