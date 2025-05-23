@@ -1,8 +1,6 @@
 use tokio_stream::{Stream, StreamExt as _};
 
-#[cfg(not(target_arch = "wasm32"))]
-use re_auth::{Jwt, client::AuthDecorator};
-
+use re_auth::client::AuthDecorator;
 use re_chunk::Chunk;
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_log_types::{LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource};
@@ -119,14 +117,29 @@ pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, Connec
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClient = FrontendServiceClient<tonic_web_wasm_client::Client>;
+pub type RedapClient = FrontendServiceClient<
+    tonic::service::interceptor::InterceptedService<tonic_web_wasm_client::Client, AuthDecorator>,
+>;
 
 #[cfg(target_arch = "wasm32")]
-pub async fn client(
-    origin: Origin,
-) -> Result<FrontendServiceClient<tonic_web_wasm_client::Client>, ConnectionError> {
+pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
-    Ok(FrontendServiceClient::new(channel).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
+
+    //TODO(ab): provide auth
+    let auth = AuthDecorator::new(None);
+
+    let middlewares = tower::ServiceBuilder::new()
+        .layer(tonic::service::interceptor::interceptor(auth))
+        // TODO(cmc): figure out how we integrate redap_telemetry in mainline Rerun
+        // .layer(redap_telemetry::new_grpc_tracing_layer())
+        // .layer(redap_telemetry::TracingInjectorInterceptor::new_layer())
+        .into_inner();
+
+    let svc = tower::ServiceBuilder::new()
+        .layer(middlewares)
+        .service(channel);
+
+    Ok(FrontendServiceClient::new(svc).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -160,7 +173,7 @@ pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
             }
         })
         .and_then(|t| {
-            Jwt::try_from(t).map_err(|err| {
+            re_auth::Jwt::try_from(t).map_err(|err| {
                 re_log::warn_once!(
                     "REDAP_TOKEN env var is present, but the token is invalid: {err}"
                 );
