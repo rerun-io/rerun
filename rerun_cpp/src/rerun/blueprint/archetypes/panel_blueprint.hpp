@@ -36,7 +36,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `state` field.
         static constexpr auto Descriptor_state = ComponentDescriptor(
             ArchetypeName, "state",
-            Loggable<rerun::blueprint::components::PanelState>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::PanelState>::ComponentName
         );
 
       public:

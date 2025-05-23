@@ -40,11 +40,11 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `kind` field.
         static constexpr auto Descriptor_kind = ComponentDescriptor(
             ArchetypeName, "kind",
-            Loggable<rerun::blueprint::components::BackgroundKind>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::BackgroundKind>::ComponentName
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentName
         );
 
       public:

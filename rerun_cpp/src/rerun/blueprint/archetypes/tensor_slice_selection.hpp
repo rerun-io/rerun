@@ -58,24 +58,22 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `width` field.
         static constexpr auto Descriptor_width = ComponentDescriptor(
-            ArchetypeName, "width",
-            Loggable<rerun::components::TensorWidthDimension>::Descriptor.component_name
+            ArchetypeName, "width", Loggable<rerun::components::TensorWidthDimension>::ComponentName
         );
         /// `ComponentDescriptor` for the `height` field.
         static constexpr auto Descriptor_height = ComponentDescriptor(
             ArchetypeName, "height",
-            Loggable<rerun::components::TensorHeightDimension>::Descriptor.component_name
+            Loggable<rerun::components::TensorHeightDimension>::ComponentName
         );
         /// `ComponentDescriptor` for the `indices` field.
         static constexpr auto Descriptor_indices = ComponentDescriptor(
             ArchetypeName, "indices",
-            Loggable<rerun::components::TensorDimensionIndexSelection>::Descriptor.component_name
+            Loggable<rerun::components::TensorDimensionIndexSelection>::ComponentName
         );
         /// `ComponentDescriptor` for the `slider` field.
         static constexpr auto Descriptor_slider = ComponentDescriptor(
             ArchetypeName, "slider",
-            Loggable<rerun::blueprint::components::TensorDimensionIndexSlider>::Descriptor
-                .component_name
+            Loggable<rerun::blueprint::components::TensorDimensionIndexSlider>::ComponentName
         );
 
       public:

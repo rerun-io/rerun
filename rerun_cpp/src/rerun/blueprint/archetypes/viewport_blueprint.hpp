@@ -65,28 +65,27 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `root_container` field.
         static constexpr auto Descriptor_root_container = ComponentDescriptor(
             ArchetypeName, "root_container",
-            Loggable<rerun::blueprint::components::RootContainer>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::RootContainer>::ComponentName
         );
         /// `ComponentDescriptor` for the `maximized` field.
         static constexpr auto Descriptor_maximized = ComponentDescriptor(
             ArchetypeName, "maximized",
-            Loggable<rerun::blueprint::components::ViewMaximized>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::ViewMaximized>::ComponentName
         );
         /// `ComponentDescriptor` for the `auto_layout` field.
         static constexpr auto Descriptor_auto_layout = ComponentDescriptor(
             ArchetypeName, "auto_layout",
-            Loggable<rerun::blueprint::components::AutoLayout>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::AutoLayout>::ComponentName
         );
         /// `ComponentDescriptor` for the `auto_views` field.
         static constexpr auto Descriptor_auto_views = ComponentDescriptor(
             ArchetypeName, "auto_views",
-            Loggable<rerun::blueprint::components::AutoViews>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::AutoViews>::ComponentName
         );
         /// `ComponentDescriptor` for the `past_viewer_recommendations` field.
         static constexpr auto Descriptor_past_viewer_recommendations = ComponentDescriptor(
             ArchetypeName, "past_viewer_recommendations",
-            Loggable<rerun::blueprint::components::ViewerRecommendationHash>::Descriptor
-                .component_name
+            Loggable<rerun::blueprint::components::ViewerRecommendationHash>::ComponentName
         );
 
       public:

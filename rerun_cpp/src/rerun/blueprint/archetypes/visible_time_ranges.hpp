@@ -47,7 +47,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `ranges` field.
         static constexpr auto Descriptor_ranges = ComponentDescriptor(
             ArchetypeName, "ranges",
-            Loggable<rerun::blueprint::components::VisibleTimeRange>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::VisibleTimeRange>::ComponentName
         );
 
       public:

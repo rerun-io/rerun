@@ -38,7 +38,7 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `near_clip_plane` field.
         static constexpr auto Descriptor_near_clip_plane = ComponentDescriptor(
             ArchetypeName, "near_clip_plane",
-            Loggable<rerun::blueprint::components::NearClipPlane>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::NearClipPlane>::ComponentName
         );
 
       public:

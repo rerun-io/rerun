@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <rerun/component_descriptor.hpp>
 #include <rerun/result.hpp>
 
 namespace arrow {
@@ -42,7 +41,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::PrimitiveComponent> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.testing.datatypes.PrimitiveComponent";
 
         /// Returns the arrow data type this type corresponds to.

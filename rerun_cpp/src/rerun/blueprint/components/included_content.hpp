@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/entity_path.hpp"
 #include "../../result.hpp"
 
@@ -56,7 +55,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::IncludedContent> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.blueprint.components.IncludedContent";
 
         /// Returns the arrow data type this type corresponds to.

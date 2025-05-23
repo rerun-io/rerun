@@ -136,12 +136,11 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `blob` field.
         static constexpr auto Descriptor_blob = ComponentDescriptor(
-            ArchetypeName, "blob", Loggable<rerun::components::Blob>::Descriptor.component_name
+            ArchetypeName, "blob", Loggable<rerun::components::Blob>::ComponentName
         );
         /// `ComponentDescriptor` for the `media_type` field.
         static constexpr auto Descriptor_media_type = ComponentDescriptor(
-            ArchetypeName, "media_type",
-            Loggable<rerun::components::MediaType>::Descriptor.component_name
+            ArchetypeName, "media_type", Loggable<rerun::components::MediaType>::ComponentName
         );
 
       public: // START of extensions from asset_video_ext.cpp:

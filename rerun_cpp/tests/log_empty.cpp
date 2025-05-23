@@ -20,7 +20,7 @@ SCENARIO("Log empty data", TEST_TAG) {
             stream.log(
                 "empty",
                 rerun::ComponentBatch::empty<rerun::Position3D>(
-                    rerun::Loggable<rerun::Position3D>::Descriptor
+                    rerun::Points3D::Descriptor_positions
                 )
             );
         });

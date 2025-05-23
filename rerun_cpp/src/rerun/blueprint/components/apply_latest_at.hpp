@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../../component_descriptor.hpp"
 #include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
 
@@ -49,7 +48,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<blueprint::components::ApplyLatestAt> {
-        static constexpr ComponentDescriptor Descriptor =
+        static constexpr std::string_view ComponentName =
             "rerun.blueprint.components.ApplyLatestAt";
 
         /// Returns the arrow data type this type corresponds to.
