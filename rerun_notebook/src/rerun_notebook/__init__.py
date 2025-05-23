@@ -146,7 +146,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
         self.send({"type": "table"}, buffers=[data])
 
-    def block_until_ready(self, timeout: float = 10.0) -> None:
+    def block_until_ready(self, timeout: float = 30.0) -> None:
         """Block until the viewer is ready."""
 
         start = time.time()
@@ -161,7 +161,6 @@ If not, consider setting `RERUN_NOTEBOOK_ASSET`. Consult https://pypi.org/projec
                     )
                     return
                 poll(1)
-                time.sleep(0.1)
 
     def update_panel_states(self, panel_states: Mapping[Panel, PanelState | Literal["default"]]) -> None:
         new_panel_states = dict(self._panel_states.items()) if self._panel_states else {}
