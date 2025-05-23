@@ -125,7 +125,7 @@ pub type RedapClient = FrontendServiceClient<
 pub async fn client(origin: Origin) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    //TODO(ab): provide auth
+    //TODO(ab): actually provide a token here
     let auth = AuthDecorator::new(None);
 
     let middlewares = tower::ServiceBuilder::new()
