@@ -104,7 +104,7 @@ pub trait ComponentBatch {
 }
 
 #[allow(dead_code)]
-fn assert_ComponentBatch_object_safe() {
+fn assert_component_batch_object_safe() {
     let _: &dyn ComponentBatch;
 }
 
