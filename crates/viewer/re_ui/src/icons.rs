@@ -128,7 +128,7 @@ pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.png");
 ///
 /// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
 /// but don't add `.on_hover_text(url)`.
-pub const EXTERNAL_LINK: Icon = icon_from_path!("../data/icons/external_link.png");
+pub const EXTERNAL_LINK: Icon = icon_from_path!("../data/icons/external_link.svg");
 pub const DISCORD: Icon = icon_from_path!("../data/icons/discord.png");
 
 pub const CONTAINER_HORIZONTAL: Icon = icon_from_path!("../data/icons/container_horizontal.svg");
@@ -163,9 +163,9 @@ pub const COMPONENT_STATIC: Icon = icon_from_path!("../data/icons/component_stat
 
 pub const APPLICATION: Icon = icon_from_path!("../data/icons/application.svg");
 pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.png");
-pub const TABLE: Icon = icon_from_path!("../data/icons/table.png");
+pub const TABLE: Icon = icon_from_path!("../data/icons/table.svg");
 pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.svg");
-pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
+pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.svg");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
 
 pub const GITHUB: Icon = icon_from_path!("../data/icons/github.svg");
@@ -173,9 +173,9 @@ pub const GITHUB: Icon = icon_from_path!("../data/icons/github.svg");
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
 
 // drag and drop icons
-pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.png");
-pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.png");
-pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.png");
+pub const DND_ADD_NEW: Icon = icon_from_path!("../data/icons/dnd_add_new.svg");
+pub const DND_ADD_TO_EXISTING: Icon = icon_from_path!("../data/icons/dnd_add_to_existing.svg");
+pub const DND_MOVE: Icon = icon_from_path!("../data/icons/dnd_move.svg");
 pub const DND_HANDLE: Icon = icon_from_path!("../data/icons/dnd_handle.png");
 
 /// `>`
