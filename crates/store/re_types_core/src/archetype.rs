@@ -2,7 +2,7 @@ use std::{borrow::Cow, sync::Arc};
 
 use crate::{
     ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
-    SerializedComponentBatch, _Backtrace,
+    SerializedComponentBatch,
 };
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
@@ -122,7 +122,7 @@ pub trait Archetype {
         _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets
         Err(crate::DeserializationError::NotImplemented {
             fqname: Self::name().to_string(),
-            backtrace: _Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         })
     }
 }

@@ -7144,7 +7144,6 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
- "backtrace",
  "bytemuck",
  "clean-path",
  "criterion",
@@ -7653,7 +7652,6 @@ version = "0.24.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
- "backtrace",
  "bytemuck",
  "criterion",
  "document-features",
