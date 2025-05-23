@@ -42,9 +42,13 @@ impl Icon {
 
     #[inline]
     pub fn as_image(&self) -> Image<'static> {
+        let scale = if self.uri.ends_with(".svg") {
+            1.0
+        } else {
+            0.5 // Because we save all png icons as 2x
+        };
         // Default size is the same size as the source data specifies
-        const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
-        Image::new(self.as_image_source()).fit_to_original_size(ICON_SCALE)
+        Image::new(self.as_image_source()).fit_to_original_size(scale)
     }
 
     #[inline]
