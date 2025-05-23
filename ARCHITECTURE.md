@@ -98,11 +98,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/a0fc732f2e6a79a7dc8b4ef5232e969d5bcccb22/1200w.png">
+  <img src="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/bcb1f21ad8a038212c2be5d9101fca3822d7ab6c/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -140,6 +140,7 @@ Update instructions:
 | re_chunk_store_ui     | A chunk store browser UI.                                                                                  |
 | re_component_ui       | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui       | Rich table widget over DataFusion.                                                                         |
+| re_global_context     | Rerun state that is shared with most top-level crates.                                                     |
 | re_selection_panel    | The UI for the selection panel.                                                                            |
 | re_view               | Types & utilities for defining View classes and communicating with the Viewport.                           |
 | re_view_bar_chart     | A View that shows a single bar chart.                                                                      |

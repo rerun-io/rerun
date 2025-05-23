@@ -313,12 +313,13 @@ impl AppState {
                     global_context: GlobalContext {
                         app_options,
                         reflection,
-                        component_ui_registry,
-                        view_class_registry,
+
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
                     },
+                    component_ui_registry,
+                    view_class_registry,
                     store_context,
                     storage_context,
                     maybe_visualizable_entities_per_visualizer:
@@ -395,12 +396,13 @@ impl AppState {
                     global_context: GlobalContext {
                         app_options,
                         reflection,
-                        component_ui_registry,
-                        view_class_registry,
+
                         egui_ctx: &egui_ctx,
                         render_ctx,
                         command_sender,
                     },
+                    component_ui_registry,
+                    view_class_registry,
                     store_context,
                     storage_context,
                     maybe_visualizable_entities_per_visualizer:

@@ -13,8 +13,8 @@ use re_ui::{
 };
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DragAndDropFeedback, DragAndDropPayload, HoverHighlight,
-    Item, ItemContext, SystemCommandSender as _, ViewId, ViewerContext, VisitorControlFlow,
-    contents_name_style, icon_for_container_kind,
+    Item, ItemCollection, ItemContext, SystemCommandSender as _, ViewId, ViewerContext,
+    VisitorControlFlow, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ui::show_add_view_or_container_modal};
 
@@ -793,19 +793,21 @@ impl BlueprintTree {
                     // the user switched to another recording. In either case, we invalidate it.
                     self.range_selection_anchor_item = None;
                 } else {
-                    let items_iterator = items_in_range.into_iter().map(|item| {
-                        (
-                            item,
-                            Some(ItemContext::BlueprintTree {
-                                filter_session_id: self.filter_state.session_id(),
-                            }),
-                        )
-                    });
+                    let items = ItemCollection::from_items_and_context(
+                        items_in_range.into_iter().map(|item| {
+                            (
+                                item,
+                                Some(ItemContext::BlueprintTree {
+                                    filter_session_id: self.filter_state.session_id(),
+                                }),
+                            )
+                        }),
+                    );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items_iterator);
+                        ctx.selection_state.extend_selection(items);
                     } else {
-                        ctx.selection_state.set_selection(items_iterator);
+                        ctx.selection_state.set_selection(items);
                     }
                 }
             }

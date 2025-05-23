@@ -102,7 +102,8 @@ fn context_menu_ui_for_item_with_context_impl(
             show_context_menu_for_selection(&context_menu_ctx, ui);
         };
 
-        let item_collection = ItemCollection::from(std::iter::once((item.clone(), item_context)));
+        let item_collection =
+            ItemCollection::from_items_and_context(std::iter::once((item.clone(), item_context)));
 
         // handle selection
         match selection_update_behavior {

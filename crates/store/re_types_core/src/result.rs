@@ -4,9 +4,9 @@ use std::{any, fmt::Display, ops::Deref};
 
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
 // attempt to use nightly features.
-pub type _Backtrace = backtrace::Backtrace;
+pub type _Backtrace = std::backtrace::Backtrace;
 
-#[derive(thiserror::Error, Clone)]
+#[derive(thiserror::Error)]
 pub enum SerializationError {
     #[error("Failed to serialize {location:?}")]
     Context {
@@ -34,16 +34,10 @@ pub enum SerializationError {
 
 impl std::fmt::Debug for SerializationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let bt = self.backtrace().map(|mut bt| {
-            bt.resolve();
-            bt
-        });
-
-        let err = Box::new(self.clone()) as Box<dyn std::error::Error>;
-        if let Some(bt) = bt {
-            f.write_fmt(format_args!("{}:\n{:#?}", re_error::format(&err), bt))
+        if let Some(backtrace) = self.backtrace() {
+            f.write_fmt(format_args!("{self}:\n{backtrace:#?}"))
         } else {
-            f.write_fmt(format_args!("{}", re_error::format(&err)))
+            f.write_fmt(format_args!("{self}"))
         }
     }
 }
@@ -53,7 +47,7 @@ impl SerializationError {
     pub fn missing_extension_metadata(fqname: impl AsRef<str>) -> Self {
         Self::MissingExtensionMetadata {
             fqname: fqname.as_ref().into(),
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -62,17 +56,17 @@ impl SerializationError {
         Self::NotImplemented {
             fqname: fqname.as_ref().into(),
             reason: reason.as_ref().into(),
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
     /// Returns the _unresolved_ backtrace associated with this error, if it exists.
     ///
     /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
-    pub fn backtrace(&self) -> Option<_Backtrace> {
+    pub fn backtrace(&self) -> Option<&_Backtrace> {
         match self {
             Self::MissingExtensionMetadata { backtrace, .. }
-            | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
+            | Self::NotImplemented { backtrace, .. } => Some(backtrace),
             Self::ArrowError { .. } | Self::Context { .. } => None,
         }
     }
@@ -121,7 +115,7 @@ pub type SerializationResult<T> = ::std::result::Result<T, SerializationError>;
 
 // ---
 
-#[derive(thiserror::Error, Clone)]
+#[derive(thiserror::Error)]
 pub enum DeserializationError {
     #[error("Failed to deserialize {location:?}")]
     Context {
@@ -201,16 +195,10 @@ pub enum DeserializationError {
 
 impl std::fmt::Debug for DeserializationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let bt = self.backtrace().map(|mut bt| {
-            bt.resolve();
-            bt
-        });
-
-        let err = Box::new(self.clone()) as Box<dyn std::error::Error>;
-        if let Some(bt) = bt {
-            f.write_fmt(format_args!("{}:\n{:#?}", re_error::format(&err), bt))
+        if let Some(backtrace) = self.backtrace() {
+            f.write_fmt(format_args!("{self}:\n{backtrace:#?}"))
         } else {
-            f.write_fmt(format_args!("{}", re_error::format(&err)))
+            f.write_fmt(format_args!("{self}"))
         }
     }
 }
@@ -219,7 +207,7 @@ impl DeserializationError {
     #[inline]
     pub fn missing_data() -> Self {
         Self::MissingData {
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -231,7 +219,7 @@ impl DeserializationError {
         Self::MissingStructField {
             datatype: datatype.into(),
             field_name: field_name.as_ref().into(),
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -247,7 +235,7 @@ impl DeserializationError {
             field1_length,
             field2_name: field2_name.as_ref().into(),
             field2_length,
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -261,7 +249,7 @@ impl DeserializationError {
             datatype: datatype.into(),
             arm_name: arm_name.as_ref().into(),
             arm_index,
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -273,7 +261,7 @@ impl DeserializationError {
         Self::DatatypeMismatch {
             expected: expected.into(),
             got: got.into(),
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -282,7 +270,7 @@ impl DeserializationError {
         Self::OffsetOutOfBounds {
             offset,
             len,
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -292,7 +280,7 @@ impl DeserializationError {
             from,
             to,
             len,
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -300,7 +288,7 @@ impl DeserializationError {
     pub fn downcast_error<ToType>() -> Self {
         Self::DowncastError {
             to: any::type_name::<ToType>().to_owned(),
-            backtrace: ::backtrace::Backtrace::new_unresolved(),
+            backtrace: std::backtrace::Backtrace::capture(),
         }
     }
 
@@ -308,7 +296,7 @@ impl DeserializationError {
     ///
     /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
     #[inline]
-    pub fn backtrace(&self) -> Option<_Backtrace> {
+    pub fn backtrace(&self) -> Option<&_Backtrace> {
         match self {
             Self::Context {
                 location: _,
@@ -322,7 +310,7 @@ impl DeserializationError {
             | Self::DatatypeMismatch { backtrace, .. }
             | Self::OffsetOutOfBounds { backtrace, .. }
             | Self::OffsetSliceOutOfBounds { backtrace, .. }
-            | Self::DowncastError { backtrace, .. } => Some(backtrace.clone()),
+            | Self::DowncastError { backtrace, .. } => Some(backtrace),
             Self::DataCellError(_) | Self::ValidationError(_) => None,
         }
     }

@@ -115,6 +115,7 @@ re_context_menu = { path = "crates/viewer/re_context_menu", version = "=0.24.0-a
 re_chunk_store_ui = { path = "crates/viewer/re_chunk_store_ui", version = "=0.24.0-alpha.1", default-features = false }
 re_dataframe_ui = { path = "crates/viewer/re_dataframe_ui", version = "=0.24.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/viewer/re_data_ui", version = "=0.24.0-alpha.1", default-features = false }
+re_global_context = { path = "crates/viewer/re_global_context", version = "=0.24.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/viewer/re_renderer", version = "=0.24.0-alpha.1", default-features = false }
 re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = "=0.24.0-alpha.1", default-features = false }
 re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.24.0-alpha.1", default-features = false }
