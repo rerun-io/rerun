@@ -2,7 +2,7 @@ use re_types::{
     archetypes::DepthImage,
     components::{DepthMeter, ImageBuffer, ImageFormat},
     datatypes::{self, ChannelDatatype},
-    Archetype as _, AsComponents as _, ComponentBatch as _,
+    Archetype as _, AsComponents as _, LoggableBatch as _,
 };
 
 #[test]
@@ -18,10 +18,8 @@ fn depth_image_roundtrip() {
     let all_expected = [DepthImage {
         buffer: ImageBuffer::from(vec![1, 2, 3, 4, 5, 6])
             .serialized(DepthImage::descriptor_buffer()),
-        format: format_expected
-            .serialized(DepthImage::descriptor_format()),
-        meter: DepthMeter::from(1000.0)
-            .serialized(DepthImage::descriptor_meter()),
+        format: format_expected.serialized(DepthImage::descriptor_format()),
+        meter: DepthMeter::from(1000.0).serialized(DepthImage::descriptor_meter()),
         draw_order: None,
         colormap: None,
         point_fill_ratio: None,

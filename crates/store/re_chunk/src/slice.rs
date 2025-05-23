@@ -966,7 +966,7 @@ mod tests {
 
         eprintln!("chunk:\n{chunk}");
 
-        let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
+        let expectations: &[(_, _, Option<&dyn re_types_core::LoggableBatch>)] = &[
             (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
             (row_id2, MyPoints::descriptor_labels(), Some(labels4 as _)),
             (row_id3, MyPoints::descriptor_colors(), None),
@@ -1093,7 +1093,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(2, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::LoggableBatch>)] = &[
                 (row_id3, MyPoints::descriptor_points(), Some(points3 as _)),
                 (row_id3, MyPoints::descriptor_colors(), None),
                 (row_id3, MyPoints::descriptor_labels(), Some(labels3 as _)),
@@ -1116,7 +1116,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(5, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::LoggableBatch>)] = &[
                 (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
                 (row_id1, MyPoints::descriptor_colors(), None),
                 (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
@@ -1224,7 +1224,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::LoggableBatch>)] = &[
                 (row_id5, MyPoints::descriptor_points(), None),
                 (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
                 (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
@@ -1243,7 +1243,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::LoggableBatch>)] = &[
                 (row_id5, MyPoints::descriptor_points(), None),
                 (row_id5, MyPoints::descriptor_colors(), Some(colors5 as _)),
                 (row_id5, MyPoints::descriptor_labels(), Some(labels5 as _)),
@@ -1364,7 +1364,7 @@ mod tests {
                 got.num_rows()
             );
 
-            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::LoggableBatch>)] = &[
                 (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
                 (row_id1, MyPoints::descriptor_colors(), None),
                 (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),
@@ -1513,7 +1513,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(indices.len(), got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::LoggableBatch>)] = &[
                 (row_id1, MyPoints::descriptor_points(), Some(points1 as _)),
                 (row_id1, MyPoints::descriptor_colors(), None),
                 (row_id1, MyPoints::descriptor_labels(), Some(labels1 as _)),

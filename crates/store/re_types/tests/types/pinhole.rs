@@ -1,5 +1,5 @@
 use re_types::{
-    archetypes::Pinhole, components, Archetype as _, AsComponents as _, ComponentBatch as _,
+    archetypes::Pinhole, components, Archetype as _, AsComponents as _, LoggableBatch as _,
 };
 
 #[test]
@@ -11,8 +11,7 @@ fn roundtrip() {
         .serialized(Pinhole::descriptor_image_from_camera()),
         resolution: components::Resolution([1.0, 2.0].into())
             .serialized(Pinhole::descriptor_resolution()),
-        camera_xyz: components::ViewCoordinates::RDF
-            .serialized(Pinhole::descriptor_camera_xyz()),
+        camera_xyz: components::ViewCoordinates::RDF.serialized(Pinhole::descriptor_camera_xyz()),
         image_plane_distance: None,
     };
 

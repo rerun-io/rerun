@@ -1,6 +1,6 @@
 use re_types::{
     archetypes::Boxes3D, components, datatypes, Archetype as _, AsComponents as _,
-    ComponentBatch as _,
+    LoggableBatch as _,
 };
 
 #[test]
@@ -35,8 +35,7 @@ fn roundtrip() {
             components::Radius::from(43.0),
         ]
         .serialized(Boxes3D::descriptor_radii()),
-        fill_mode: components::FillMode::Solid
-            .serialized(Boxes3D::descriptor_fill_mode()),
+        fill_mode: components::FillMode::Solid.serialized(Boxes3D::descriptor_fill_mode()),
         labels: vec![
             components::Text::from("hello"),
             components::Text::from("friend"),

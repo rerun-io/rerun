@@ -60,7 +60,7 @@ impl std::ops::Deref for ChunkStoreEvent {
 /// A deletion is the result of a chunk being completely removed from the store as part of the
 /// garbage collection process.
 ///
-/// A clear, on the other hand, is the act of logging an empty [`re_types_core::ComponentBatch`],
+/// A clear, on the other hand, is the act of logging an empty [`re_types_core::LoggableBatch`],
 /// either directly using the logging APIs, or indirectly through the use of a
 /// [`re_types_core::archetypes::Clear`] archetype.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

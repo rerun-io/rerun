@@ -3,7 +3,7 @@ use std::sync::Arc;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor};
+use re_types::{AsComponents, ComponentDescriptor, LoggableBatch};
 
 use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
 
@@ -113,7 +113,7 @@ impl<'a> ViewContext<'a> {
         &self,
         entity_path: EntityPath,
         component_desc: &ComponentDescriptor,
-        component_batch: &dyn ComponentBatch,
+        component_batch: &dyn LoggableBatch,
     ) {
         self.viewer_ctx
             .save_blueprint_component(entity_path, component_desc, component_batch);

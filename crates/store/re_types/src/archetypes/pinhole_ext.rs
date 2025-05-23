@@ -64,7 +64,7 @@ impl Pinhole {
     #[cfg(feature = "glam")]
     #[inline]
     pub fn with_principal_point(mut self, principal_point: impl Into<Vec2D>) -> Self {
-        use re_types_core::ComponentBatch as _;
+        use re_types_core::LoggableBatch as _;
 
         let image_from_camera = self.image_from_camera_from_arrow().unwrap_or_default();
         self.image_from_camera = image_from_camera

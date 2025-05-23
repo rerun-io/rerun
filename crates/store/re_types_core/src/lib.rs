@@ -47,9 +47,7 @@ pub use self::{
         Component, ComponentDescriptorSet, ComponentName, DatatypeName, Loggable,
         UnorderedComponentDescriptorSet,
     },
-    loggable_batch::{
-        ComponentBatch, LoggableBatch, SerializedComponentBatch, SerializedComponentColumn,
-    },
+    loggable_batch::{LoggableBatch, SerializedComponentBatch, SerializedComponentColumn},
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,

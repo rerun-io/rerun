@@ -3,7 +3,7 @@ use itertools::Either;
 use re_chunk::{Chunk, RowId};
 use re_log_types::{EntityPath, TimePoint};
 use re_types::Archetype;
-use re_types::ComponentBatch;
+use re_types::LoggableBatch;
 use re_types::archetypes::{AssetVideo, VideoFrameReference};
 use re_types::components::VideoTimestamp;
 
@@ -209,7 +209,7 @@ fn load_video(
                 .copied()
                 .map(VideoTimestamp::from_nanos)
                 .collect::<Vec<_>>();
-            let video_timestamp_batch = &video_timestamps as &dyn ComponentBatch;
+            let video_timestamp_batch = &video_timestamps as &dyn LoggableBatch;
             let video_timestamp_list_array = video_timestamp_batch
                 .to_arrow_list_array()
                 .map_err(re_chunk::ChunkError::from)?;

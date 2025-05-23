@@ -1,6 +1,6 @@
 use re_types::{
     archetypes::ViewCoordinates, components, view_coordinates::ViewDir, Archetype as _,
-    AsComponents as _, ComponentBatch as _,
+    AsComponents as _, LoggableBatch as _,
 };
 
 #[test]

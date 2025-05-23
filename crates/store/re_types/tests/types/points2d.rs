@@ -1,7 +1,7 @@
 use re_types::{
     archetypes::Points2D,
     components::{self, ShowLabels},
-    Archetype as _, AsComponents as _, ComponentBatch as _,
+    Archetype as _, AsComponents as _, LoggableBatch as _,
 };
 
 #[test]

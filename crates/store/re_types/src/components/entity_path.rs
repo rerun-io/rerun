@@ -15,9 +15,9 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Component**: A path to an entity, usually to reference some data that is part of the target entity.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]

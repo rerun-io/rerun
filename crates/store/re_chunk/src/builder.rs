@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
-use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
+use re_types_core::{AsComponents, ComponentDescriptor, LoggableBatch, SerializedComponentBatch};
 
 use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
 
@@ -131,7 +131,7 @@ impl ChunkBuilder {
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batch: (ComponentDescriptor, &dyn ComponentBatch),
+        component_batch: (ComponentDescriptor, &dyn LoggableBatch),
     ) -> Self {
         self.with_row(
             row_id,
@@ -150,7 +150,7 @@ impl ChunkBuilder {
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batches: impl IntoIterator<Item = (ComponentDescriptor, &'a dyn ComponentBatch)>,
+        component_batches: impl IntoIterator<Item = (ComponentDescriptor, &'a dyn LoggableBatch)>,
     ) -> Self {
         self.with_row(
             row_id,
@@ -173,7 +173,7 @@ impl ChunkBuilder {
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
         component_batches: impl IntoIterator<
-            Item = (ComponentDescriptor, Option<&'a dyn ComponentBatch>),
+            Item = (ComponentDescriptor, Option<&'a dyn LoggableBatch>),
         >,
     ) -> Self {
         self.with_sparse_row(

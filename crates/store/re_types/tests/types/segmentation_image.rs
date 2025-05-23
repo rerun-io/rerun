@@ -2,7 +2,7 @@ use re_types::{
     archetypes::SegmentationImage,
     components::{ImageBuffer, ImageFormat},
     datatypes::{self, ChannelDatatype},
-    Archetype as _, AsComponents as _, ComponentBatch as _,
+    Archetype as _, AsComponents as _, LoggableBatch as _,
 };
 
 #[test]
@@ -18,8 +18,7 @@ fn segmentation_image_roundtrip() {
     let all_expected = [SegmentationImage {
         buffer: ImageBuffer::from(vec![1, 2, 3, 4, 5, 6])
             .serialized(SegmentationImage::descriptor_buffer()),
-        format: format_expected
-            .serialized(SegmentationImage::descriptor_format()),
+        format: format_expected.serialized(SegmentationImage::descriptor_format()),
         draw_order: None,
         opacity: None,
     }];

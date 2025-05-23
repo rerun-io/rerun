@@ -4,9 +4,9 @@ use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::ChunkStore;
 use re_log_types::{
     EntityPath, Timestamp, build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex},
+    example_components::{MyColor, MyIndex, MyPoints},
 };
-use re_types_core::ComponentBatch as _;
+use re_types_core::LoggableBatch as _;
 
 /// Ensure that `ChunkStore::to_string()` is nice and readable.
 #[test]
@@ -38,7 +38,7 @@ fn format_chunk_store() -> anyhow::Result<()> {
                 ],
                 [
                     indices1.try_serialized(MyIndex::partial_descriptor())?,
-                    colors1.try_serialized(MyIndex::partial_descriptor())?,
+                    colors1.try_serialized(MyPoints::descriptor_colors())?,
                 ],
             )
             .build()?,

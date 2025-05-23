@@ -1,4 +1,4 @@
-use rerun::{ChunkStore, ChunkStoreConfig, ComponentBatch as _, ComponentDescriptor};
+use rerun::{ChunkStore, ChunkStoreConfig, LoggableBatch as _, ComponentDescriptor};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
     let positions =

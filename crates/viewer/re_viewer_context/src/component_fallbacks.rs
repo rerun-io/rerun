@@ -20,7 +20,7 @@ pub enum ComponentFallbackProviderResult {
     SerializationError(re_types::SerializationError),
 }
 
-impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackProviderResult {
+impl<T: re_types::LoggableBatch> From<T> for ComponentFallbackProviderResult {
     fn from(batch: T) -> Self {
         match batch.to_arrow() {
             Ok(value) => Self::Value(value),

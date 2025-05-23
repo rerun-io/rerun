@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use crate::{
-    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
+    ComponentDescriptor, ComponentName, DeserializationResult, LoggableBatch, SerializationResult,
     SerializedComponentBatch, _Backtrace,
 };
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
-use crate::{Component, Loggable, LoggableBatch};
+use crate::{Component, Loggable};
 
 // ---
 
@@ -36,8 +36,8 @@ pub trait Archetype {
     //
     // TODO(rust-lang/rust#29661): We'd like to just default this to the right thing which is
     // pretty much always `A::Indicator`, but defaults are unstable.
-    // type Indicator: ComponentBatch = A::Indicator;
-    type Indicator: 'static + ComponentBatch + Default;
+    // type Indicator: LoggableBatch = A::Indicator;
+    type Indicator: 'static + LoggableBatch + Default;
 
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
@@ -261,8 +261,6 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     }
 }
 
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {}
-
 /// A generic [indicator component] array of a given length.
 ///
 /// This can be useful when sending columns of indicators with
@@ -284,8 +282,6 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
     }
 }
 
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {}
-
 // ---
 
 /// An arbitrary named [indicator component].
@@ -300,5 +296,3 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
         Ok(Arc::new(arrow::array::NullArray::new(1)))
     }
 }
-
-impl crate::ComponentBatch for NamedIndicatorComponent {}

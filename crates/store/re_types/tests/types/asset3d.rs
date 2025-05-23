@@ -2,7 +2,7 @@ use re_types::{
     archetypes::Asset3D,
     components::{AlbedoFactor, Blob, MediaType},
     datatypes::{Rgba32, Utf8},
-    Archetype as _, AsComponents as _, ComponentBatch as _,
+    Archetype as _, AsComponents as _, LoggableBatch as _,
 };
 
 #[test]

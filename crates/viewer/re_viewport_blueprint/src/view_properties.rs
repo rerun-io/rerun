@@ -2,7 +2,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
 use re_types::{
-    Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
+    Archetype, ArchetypeName, ComponentDescriptor, DeserializationError, LoggableBatch,
 };
 use re_viewer_context::{
     ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewId,
@@ -191,7 +191,7 @@ impl ViewProperty {
         &self,
         ctx: &ViewerContext<'_>,
         component_descr: &ComponentDescriptor,
-        component_batch: &dyn ComponentBatch,
+        component_batch: &dyn LoggableBatch,
     ) {
         if !self.component_descrs.contains(component_descr) {
             if cfg!(debug_assertions) {

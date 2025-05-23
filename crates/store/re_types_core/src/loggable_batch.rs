@@ -1,6 +1,5 @@
 use crate::{
-    ArchetypeFieldName, ArchetypeName, Component, ComponentDescriptor, Loggable,
-    SerializationResult,
+    ArchetypeFieldName, ArchetypeName, ComponentDescriptor, Loggable, SerializationResult,
 };
 
 use arrow::array::ListArray as ArrowListArray;
@@ -26,16 +25,7 @@ pub trait LoggableBatch {
 
     /// Serializes the batch into an Arrow array.
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef>;
-}
 
-#[allow(dead_code)]
-fn assert_loggablebatch_object_safe() {
-    let _: &dyn LoggableBatch;
-}
-
-// TODO(#6889): `ComponentBatch` does not offer much more over `Loggable` now -> consolidate?
-/// A [`ComponentBatch`] represents an array's worth of [`Component`] instances.
-pub trait ComponentBatch: LoggableBatch {
     /// Serializes the batch into an Arrow list array with a single component per list.
     fn to_arrow_list_array(&self) -> SerializationResult<ArrowListArray> {
         let array = self.to_arrow()?;
@@ -46,7 +36,7 @@ pub trait ComponentBatch: LoggableBatch {
         ArrowListArray::try_new(field.into(), offsets, array, None).map_err(|err| err.into())
     }
 
-    /// Serializes the contents of this [`ComponentBatch`].
+    /// Serializes the contents of this [`LoggableBatch`].
     ///
     /// Once serialized, the data is ready to be logged into Rerun via the [`AsComponents`] trait.
     ///
@@ -59,7 +49,7 @@ pub trait ComponentBatch: LoggableBatch {
     /// For that reason, this method favors a nice user experience over error handling: errors will
     /// merely be logged, not returned (except in debug builds, where all errors panic).
     ///
-    /// See also [`ComponentBatch::try_serialized`].
+    /// See also [`LoggableBatch::try_serialized`].
     ///
     /// [`AsComponents`]: [crate::AsComponents]
     #[inline]
@@ -88,7 +78,7 @@ pub trait ComponentBatch: LoggableBatch {
         }
     }
 
-    /// Serializes the contents of this [`ComponentBatch`].
+    /// Serializes the contents of this [`LoggableBatch`].
     ///
     /// Once serialized, the data is ready to be logged into Rerun via the [`AsComponents`] trait.
     ///
@@ -98,7 +88,7 @@ pub trait ComponentBatch: LoggableBatch {
     /// in practice.
     ///
     /// For that reason, it generally makes sense to favor a nice user experience over error handling
-    /// in most cases, see [`ComponentBatch::serialized`].
+    /// in most cases, see [`LoggableBatch::serialized`].
     ///
     /// [`AsComponents`]: [crate::AsComponents]
     #[inline]
@@ -114,7 +104,7 @@ pub trait ComponentBatch: LoggableBatch {
 }
 
 #[allow(dead_code)]
-fn assert_component_batch_object_safe() {
+fn assert_loggablebatch_object_safe() {
     let _: &dyn LoggableBatch;
 }
 
@@ -328,8 +318,6 @@ impl<L: Clone + Loggable> LoggableBatch for L {
     }
 }
 
-impl<C: Component> ComponentBatch for C {}
-
 // --- Unary Option ---
 
 impl<L: Clone + Loggable> LoggableBatch for Option<L> {
@@ -339,8 +327,6 @@ impl<L: Clone + Loggable> LoggableBatch for Option<L> {
     }
 }
 
-impl<C: Component> ComponentBatch for Option<C> {}
-
 // --- Vec ---
 
 impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
@@ -349,8 +335,6 @@ impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
-
-impl<C: Component> ComponentBatch for Vec<C> {}
 
 // --- Vec<Option> ---
 
@@ -364,8 +348,6 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
     }
 }
 
-impl<C: Component> ComponentBatch for Vec<Option<C>> {}
-
 // --- Array ---
 
 impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
@@ -374,8 +356,6 @@ impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
-
-impl<C: Component, const N: usize> ComponentBatch for [C; N] {}
 
 // --- Array<Option> ---
 
@@ -389,8 +369,6 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
     }
 }
 
-impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {}
-
 // --- Slice ---
 
 impl<L: Loggable> LoggableBatch for [L] {
@@ -399,8 +377,6 @@ impl<L: Loggable> LoggableBatch for [L] {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
-
-impl<C: Component> ComponentBatch for [C] {}
 
 // --- Slice<Option> ---
 
@@ -413,5 +389,3 @@ impl<L: Loggable> LoggableBatch for [Option<L>] {
         )
     }
 }
-
-impl<C: Component> ComponentBatch for [Option<C>] {}

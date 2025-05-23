@@ -15,9 +15,9 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
+use crate::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]

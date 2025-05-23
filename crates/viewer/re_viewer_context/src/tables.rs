@@ -10,7 +10,7 @@ use datafusion::prelude::SessionContext;
 use re_log_types::TableId;
 use re_sorbet::ComponentColumnDescriptor;
 
-use re_types_core::ComponentBatch as _;
+use re_types_core::LoggableBatch as _;
 
 #[derive(Default)]
 pub struct TableStore {

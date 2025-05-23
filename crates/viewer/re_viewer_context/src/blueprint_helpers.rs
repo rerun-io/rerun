@@ -2,7 +2,7 @@ use arrow::array::ArrayRef;
 use re_chunk::{RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
-use re_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
+use re_types::{AsComponents, ComponentDescriptor, LoggableBatch, SerializedComponentBatch};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -58,7 +58,7 @@ impl ViewerContext<'_> {
         &self,
         entity_path: EntityPath,
         component_descr: &ComponentDescriptor,
-        component_batch: &dyn ComponentBatch,
+        component_batch: &dyn LoggableBatch,
     ) {
         let Some(serialized) = component_batch.serialized(component_descr.clone()) else {
             re_log::warn!("could not serialize components with descriptor `{component_descr}`");

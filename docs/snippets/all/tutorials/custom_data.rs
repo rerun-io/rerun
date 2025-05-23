@@ -3,7 +3,7 @@
 use rerun::{
     demo_util::grid,
     external::{arrow, glam, re_types},
-    ComponentBatch as _, ComponentDescriptor, SerializedComponentBatch,
+    LoggableBatch as _, ComponentDescriptor, SerializedComponentBatch,
 };
 
 // ---

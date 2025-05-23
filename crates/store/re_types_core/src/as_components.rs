@@ -173,7 +173,7 @@ fn many_ascomponents_wrapped() {}
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let comps = vec![comp, comp, comp];
-/// let _ = (&[comps] as &dyn re_types_core::ComponentBatch).to_arrow();
+/// let _ = (&[comps] as &dyn re_types_core::LoggableBatch).to_arrow();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
@@ -191,7 +191,7 @@ fn many_ascomponents_wrapped_many() {}
 /// ```compile_fail
 /// let comp = re_types_core::components::ClearIsRecursive::default();
 /// let comps = vec![comp, comp, comp];
-/// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::ComponentBatch).to_arrow();
+/// let _ = (&[comps.clone(), comps.clone(), comps.clone()] as &dyn re_types_core::LoggableBatch).to_arrow();
 /// ```
 #[allow(dead_code)]
 #[allow(rustdoc::private_doc_tests)] // doc-tests are the only way to assert failed compilation
@@ -282,7 +282,7 @@ mod tests {
         let (red, _, _, _) = data();
 
         let got = {
-            let red = &red as &dyn crate::ComponentBatch;
+            let red = &red as &dyn crate::LoggableBatch;
             vec![red.try_serialized(MyColor::descriptor()).unwrap().array]
         };
         let expected = vec![
@@ -296,7 +296,7 @@ mod tests {
         let (red, _, _, _) = data();
 
         // A single component should autocast to a batch with a single instance.
-        let got = (&red as &dyn crate::ComponentBatch).to_arrow()?;
+        let got = (&red as &dyn crate::LoggableBatch).to_arrow()?;
         let expected =
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>;
         similar_asserts::assert_eq!(&expected, &got);
@@ -309,7 +309,7 @@ mod tests {
         let (red, _, _, _) = data();
 
         let got = {
-            let red = &red as &dyn crate::ComponentBatch;
+            let red = &red as &dyn crate::LoggableBatch;
             vec![red.try_serialized(MyColor::descriptor()).unwrap().array]
         };
         let expected = vec![
@@ -323,7 +323,7 @@ mod tests {
         let (red, _, _, _) = data();
 
         // Nothing out of the ordinary here, a slice of components is indeed a batch.
-        let got = (&[red] as &dyn crate::ComponentBatch).to_arrow()?;
+        let got = (&[red] as &dyn crate::LoggableBatch).to_arrow()?;
         let expected =
             Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![red.0])) as Arc<dyn ArrowArray>;
         similar_asserts::assert_eq!(&expected, &got);
@@ -336,9 +336,9 @@ mod tests {
         let (red, green, blue, _) = data();
 
         let got = {
-            let red = &red as &dyn crate::ComponentBatch;
-            let green = &green as &dyn crate::ComponentBatch;
-            let blue = &blue as &dyn crate::ComponentBatch;
+            let red = &red as &dyn crate::LoggableBatch;
+            let green = &green as &dyn crate::LoggableBatch;
+            let blue = &blue as &dyn crate::LoggableBatch;
             [
                 red.try_serialized(MyColor::descriptor()).unwrap(),
                 green.try_serialized(MyColor::descriptor()).unwrap(),
@@ -361,7 +361,7 @@ mod tests {
         let (red, green, blue, _) = data();
 
         // Nothing out of the ordinary here, a slice of components is indeed a batch.
-        let got = (&[red, green, blue] as &dyn crate::ComponentBatch).to_arrow()?;
+        let got = (&[red, green, blue] as &dyn crate::LoggableBatch).to_arrow()?;
         let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
             red.0, green.0, blue.0,
         ])) as Arc<dyn ArrowArray>;
@@ -375,7 +375,7 @@ mod tests {
         let (red, green, blue, colors) = data();
 
         // Nothing out of the ordinary here, a batch is indeed a batch.
-        let got = (&colors as &dyn crate::ComponentBatch).to_arrow()?;
+        let got = (&colors as &dyn crate::LoggableBatch).to_arrow()?;
         let expected = Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
             red.0, green.0, blue.0,
         ])) as Arc<dyn ArrowArray>;
@@ -389,7 +389,7 @@ mod tests {
         let (red, green, blue, colors) = data();
 
         let got = {
-            let colors = &colors as &dyn crate::ComponentBatch;
+            let colors = &colors as &dyn crate::LoggableBatch;
             vec![colors.try_serialized(MyColor::descriptor()).unwrap().array]
         };
         let expected = vec![Arc::new(ArrowPrimitiveArray::<UInt32Type>::from(vec![
@@ -404,7 +404,7 @@ mod tests {
 
         // Nothing out of the ordinary here, a collection of batches is indeed a collection of batches.
         let got = {
-            let colors = &colors as &dyn crate::ComponentBatch;
+            let colors = &colors as &dyn crate::LoggableBatch;
             vec![
                 colors.try_serialized(MyColor::descriptor()).unwrap().array,
                 colors.try_serialized(MyColor::descriptor()).unwrap().array,

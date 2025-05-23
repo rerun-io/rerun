@@ -15,7 +15,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
 };
 use re_query::QueryCache;
-use re_types_core::{Archetype as _, ComponentBatch as _};
+use re_types_core::{Archetype as _, LoggableBatch as _};
 
 // ---
 

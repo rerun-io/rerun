@@ -15,9 +15,9 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
-use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
+use crate::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
