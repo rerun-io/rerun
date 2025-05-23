@@ -3,7 +3,7 @@ use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor};
 // TODO(#6889): Remove `as rerun::Component` cast once `ComponentBatch::name()` is gone.
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
-    use rerun::LoggableBatch as _;
+    use rerun::ComponentBatch as _;
     rec.log_static(
         "data",
         &[

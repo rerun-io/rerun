@@ -15,9 +15,9 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
+use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
-use crate::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Datatype**: Left or right boundary of a time range.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]

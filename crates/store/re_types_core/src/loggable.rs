@@ -7,7 +7,7 @@ use re_byte_size::SizeBytes;
 use crate::{ComponentDescriptor, DeserializationResult, SerializationResult};
 
 #[expect(unused_imports, clippy::unused_trait_names)] // used in docstrings
-use crate::{Archetype, LoggableBatch};
+use crate::{Archetype, ComponentBatch};
 
 // ---
 
@@ -19,7 +19,7 @@ use crate::{Archetype, LoggableBatch};
 /// A [`Loggable`] has no semantics (such as a name, for example): it's just data.
 /// If you want to encode semantics, then you're looking for a [`Component`], which extends [`Loggable`].
 ///
-/// Implementing the [`Loggable`] trait automatically derives the [`LoggableBatch`] implementation,
+/// Implementing the [`Loggable`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
@@ -86,7 +86,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
 ///
-/// Implementing the [`Component`] trait automatically derives the [`LoggableBatch`] implementation,
+/// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Component: Loggable {
     /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.

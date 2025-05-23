@@ -9,16 +9,16 @@ use crate::Archetype;
 
 // ---
 
-/// A [`LoggableBatch`] represents an array's worth of [`Loggable`] instances, ready to be
+/// A [`ComponentBatch`] represents an array's worth of [`Loggable`] instances, ready to be
 /// serialized.
 ///
-/// [`LoggableBatch`] is carefully designed to be erasable ("object-safe"), so that it is possible
-/// to build heterogeneous collections of [`LoggableBatch`]s (e.g. `Vec<dyn LoggableBatch>`).
+/// [`ComponentBatch`] is carefully designed to be erasable ("object-safe"), so that it is possible
+/// to build heterogeneous collections of [`ComponentBatch`]s (e.g. `Vec<dyn ComponentBatch>`).
 /// This erasability is what makes extending [`Archetype`]s possible with little effort.
 ///
-/// You should almost never need to implement [`LoggableBatch`] manually, as it is already
+/// You should almost never need to implement [`ComponentBatch`] manually, as it is already
 /// blanket implemented for most common use cases (arrays/vectors/slices of loggables, etc).
-pub trait LoggableBatch {
+pub trait ComponentBatch {
     // NOTE: It'd be tempting to have the following associated type, but that'd be
     // counterproductive, the whole point of this is to allow for heterogeneous collections!
     // type Loggable: Loggable;
@@ -36,7 +36,7 @@ pub trait LoggableBatch {
         ArrowListArray::try_new(field.into(), offsets, array, None).map_err(|err| err.into())
     }
 
-    /// Serializes the contents of this [`LoggableBatch`].
+    /// Serializes the contents of this [`ComponentBatch`].
     ///
     /// Once serialized, the data is ready to be logged into Rerun via the [`AsComponents`] trait.
     ///
@@ -49,7 +49,7 @@ pub trait LoggableBatch {
     /// For that reason, this method favors a nice user experience over error handling: errors will
     /// merely be logged, not returned (except in debug builds, where all errors panic).
     ///
-    /// See also [`LoggableBatch::try_serialized`].
+    /// See also [`ComponentBatch::try_serialized`].
     ///
     /// [`AsComponents`]: [crate::AsComponents]
     #[inline]
@@ -78,7 +78,7 @@ pub trait LoggableBatch {
         }
     }
 
-    /// Serializes the contents of this [`LoggableBatch`].
+    /// Serializes the contents of this [`ComponentBatch`].
     ///
     /// Once serialized, the data is ready to be logged into Rerun via the [`AsComponents`] trait.
     ///
@@ -88,7 +88,7 @@ pub trait LoggableBatch {
     /// in practice.
     ///
     /// For that reason, it generally makes sense to favor a nice user experience over error handling
-    /// in most cases, see [`LoggableBatch::serialized`].
+    /// in most cases, see [`ComponentBatch::serialized`].
     ///
     /// [`AsComponents`]: [crate::AsComponents]
     #[inline]
@@ -104,16 +104,16 @@ pub trait LoggableBatch {
 }
 
 #[allow(dead_code)]
-fn assert_loggablebatch_object_safe() {
-    let _: &dyn LoggableBatch;
+fn assert_ComponentBatch_object_safe() {
+    let _: &dyn ComponentBatch;
 }
 
 // ---
 
-/// The serialized contents of a [`LoggableBatch`] with associated [`ComponentDescriptor`].
+/// The serialized contents of a [`ComponentBatch`] with associated [`ComponentDescriptor`].
 ///
 /// This is what gets logged into Rerun:
-/// * See [`LoggableBatch`] to easily serialize component data.
+/// * See [`ComponentBatch`] to easily serialize component data.
 /// * See [`AsComponents`] for logging serialized data.
 ///
 /// [`AsComponents`]: [crate::AsComponents]
@@ -311,7 +311,7 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
 
 // --- Unary ---
 
-impl<L: Clone + Loggable> LoggableBatch for L {
+impl<L: Clone + Loggable> ComponentBatch for L {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow([std::borrow::Cow::Borrowed(self)])
@@ -320,7 +320,7 @@ impl<L: Clone + Loggable> LoggableBatch for L {
 
 // --- Unary Option ---
 
-impl<L: Clone + Loggable> LoggableBatch for Option<L> {
+impl<L: Clone + Loggable> ComponentBatch for Option<L> {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
@@ -329,7 +329,7 @@ impl<L: Clone + Loggable> LoggableBatch for Option<L> {
 
 // --- Vec ---
 
-impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
+impl<L: Clone + Loggable> ComponentBatch for Vec<L> {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
@@ -338,7 +338,7 @@ impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
 
 // --- Vec<Option> ---
 
-impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
+impl<L: Loggable> ComponentBatch for Vec<Option<L>> {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow_opt(
@@ -350,7 +350,7 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
 
 // --- Array ---
 
-impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
+impl<L: Loggable, const N: usize> ComponentBatch for [L; N] {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
@@ -359,7 +359,7 @@ impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
 
 // --- Array<Option> ---
 
-impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
+impl<L: Loggable, const N: usize> ComponentBatch for [Option<L>; N] {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow_opt(
@@ -371,7 +371,7 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
 
 // --- Slice ---
 
-impl<L: Loggable> LoggableBatch for [L] {
+impl<L: Loggable> ComponentBatch for [L] {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
@@ -380,7 +380,7 @@ impl<L: Loggable> LoggableBatch for [L] {
 
 // --- Slice<Option> ---
 
-impl<L: Loggable> LoggableBatch for [Option<L>] {
+impl<L: Loggable> ComponentBatch for [Option<L>] {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         L::to_arrow_opt(

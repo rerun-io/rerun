@@ -1,4 +1,4 @@
-use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor, LoggableBatch as _};
+use rerun::{ChunkStore, ChunkStoreConfig, ComponentBatch as _, ComponentDescriptor};
 
 struct CustomPoints3D {
     positions: Vec<rerun::components::Position3D>,

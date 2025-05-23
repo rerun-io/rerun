@@ -2,7 +2,7 @@ use re_types::{
     archetypes::DepthImage,
     components::{DepthMeter, ImageBuffer, ImageFormat},
     datatypes::{self, ChannelDatatype},
-    Archetype as _, AsComponents as _, LoggableBatch as _,
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

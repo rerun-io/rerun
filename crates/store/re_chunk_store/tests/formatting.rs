@@ -6,7 +6,7 @@ use re_log_types::{
     EntityPath, Timestamp, build_frame_nr, build_log_time,
     example_components::{MyColor, MyIndex, MyPoints},
 };
-use re_types_core::LoggableBatch as _;
+use re_types_core::ComponentBatch as _;
 
 /// Ensure that `ChunkStore::to_string()` is nice and readable.
 #[test]

@@ -15,9 +15,9 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
-use ::re_types_core::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Component**: The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 ///

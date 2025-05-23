@@ -2916,7 +2916,7 @@ mod tests {
             .unwrap();
 
         // This call used to *not* compile due to a lack of `?Sized` bounds.
-        use re_types::LoggableBatch as _;
+        use re_types::ComponentBatch as _;
         rec.log(
             "labels",
             &labels

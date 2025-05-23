@@ -15,9 +15,9 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
+use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
-use crate::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Datatype**: A 32bit unsigned integer.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]

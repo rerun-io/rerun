@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    ComponentDescriptor, ComponentName, DeserializationResult, LoggableBatch, SerializationResult,
+    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult, SerializationResult,
     SerializedComponentBatch,
 };
 
@@ -31,13 +31,13 @@ pub trait Archetype {
     ///
     /// Since null arrays aren't actually arrays and we don't actually have any data to shuffle
     /// around per-se, we can't implement the usual [`Loggable`] traits.
-    /// For this reason, indicator components directly implement [`LoggableBatch`] instead, and
+    /// For this reason, indicator components directly implement [`ComponentBatch`] instead, and
     /// bypass the entire iterator machinery.
     //
     // TODO(rust-lang/rust#29661): We'd like to just default this to the right thing which is
     // pretty much always `A::Indicator`, but defaults are unstable.
-    // type Indicator: LoggableBatch = A::Indicator;
-    type Indicator: 'static + LoggableBatch + Default;
+    // type Indicator: ComponentBatch = A::Indicator;
+    type Indicator: 'static + ComponentBatch + Default;
 
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
@@ -47,7 +47,7 @@ pub trait Archetype {
 
     // ---
 
-    /// Creates a [`LoggableBatch`] out of the associated [`Self::Indicator`] component.
+    /// Creates a [`ComponentBatch`] out of the associated [`Self::Indicator`] component.
     ///
     /// This allows for associating arbitrary indicator components with arbitrary data.
     fn indicator() -> SerializedComponentBatch;
@@ -254,7 +254,7 @@ impl<A: Archetype> Default for GenericIndicatorComponent<A> {
     }
 }
 
-impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         Ok(Arc::new(arrow::array::NullArray::new(1)))
@@ -275,7 +275,7 @@ pub struct GenericIndicatorComponentArray<A: Archetype> {
     _phantom: std::marker::PhantomData<A>,
 }
 
-impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         Ok(Arc::new(arrow::array::NullArray::new(self.len)))
@@ -290,7 +290,7 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
 #[derive(Debug, Clone, Copy)]
 pub struct NamedIndicatorComponent(pub ComponentName);
 
-impl crate::LoggableBatch for NamedIndicatorComponent {
+impl crate::ComponentBatch for NamedIndicatorComponent {
     #[inline]
     fn to_arrow(&self) -> SerializationResult<arrow::array::ArrayRef> {
         Ok(Arc::new(arrow::array::NullArray::new(1)))

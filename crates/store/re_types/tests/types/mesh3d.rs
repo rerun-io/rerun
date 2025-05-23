@@ -2,7 +2,7 @@ use re_types::{
     archetypes::Mesh3D,
     components::{AlbedoFactor, ClassId, Color, Position3D, Texcoord2D, TriangleIndices, Vector3D},
     datatypes::{Rgba32, UVec3D, Vec2D, Vec3D},
-    Archetype as _, AsComponents as _, LoggableBatch as _,
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

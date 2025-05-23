@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntityPath, NonMinI64, TimePoint, Timeline, TimelineName};
-use re_types_core::{AsComponents, ComponentDescriptor, LoggableBatch, SerializedComponentBatch};
+use re_types_core::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{Chunk, ChunkId, ChunkResult, RowId, TimeColumn, chunk::ChunkComponents};
 
@@ -125,13 +125,13 @@ impl ChunkBuilder {
         self.with_serialized_batches(row_id, timepoint, batches)
     }
 
-    /// Add a row's worth of data by serializing a single [`LoggableBatch`].
+    /// Add a row's worth of data by serializing a single [`ComponentBatch`].
     #[inline]
     pub fn with_component_batch(
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batch: (ComponentDescriptor, &dyn LoggableBatch),
+        component_batch: (ComponentDescriptor, &dyn ComponentBatch),
     ) -> Self {
         self.with_row(
             row_id,
@@ -144,13 +144,13 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many [`LoggableBatch`]es.
+    /// Add a row's worth of data by serializing many [`ComponentBatch`]es.
     #[inline]
     pub fn with_component_batches<'a>(
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batches: impl IntoIterator<Item = (ComponentDescriptor, &'a dyn LoggableBatch)>,
+        component_batches: impl IntoIterator<Item = (ComponentDescriptor, &'a dyn ComponentBatch)>,
     ) -> Self {
         self.with_row(
             row_id,
@@ -166,14 +166,14 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many sparse [`LoggableBatch`]es.
+    /// Add a row's worth of data by serializing many sparse [`ComponentBatch`]es.
     #[inline]
     pub fn with_sparse_component_batches<'a>(
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
         component_batches: impl IntoIterator<
-            Item = (ComponentDescriptor, Option<&'a dyn LoggableBatch>),
+            Item = (ComponentDescriptor, Option<&'a dyn ComponentBatch>),
         >,
     ) -> Self {
         self.with_sparse_row(
@@ -190,7 +190,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing a single [`LoggableBatch`].
+    /// Add a row's worth of data by serializing a single [`ComponentBatch`].
     #[inline]
     pub fn with_serialized_batch(
         self,
@@ -205,7 +205,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many [`LoggableBatch`]es.
+    /// Add a row's worth of data by serializing many [`ComponentBatch`]es.
     #[inline]
     pub fn with_serialized_batches(
         self,
@@ -222,7 +222,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many sparse [`LoggableBatch`]es.
+    /// Add a row's worth of data by serializing many sparse [`ComponentBatch`]es.
     #[inline]
     pub fn with_sparse_serialized_batches(
         self,

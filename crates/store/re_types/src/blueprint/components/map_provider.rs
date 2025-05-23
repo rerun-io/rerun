@@ -16,9 +16,9 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
-use ::re_types_core::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Component**: Name of the map provider to be used in Map views.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]

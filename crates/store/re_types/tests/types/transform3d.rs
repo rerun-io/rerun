@@ -4,7 +4,7 @@ use re_types::{
     archetypes::Transform3D,
     components::{RotationAxisAngle, Scale3D, TransformMat3x3, TransformRelation, Translation3D},
     datatypes::Angle,
-    Archetype as _, AsComponents as _, LoggableBatch as _,
+    Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

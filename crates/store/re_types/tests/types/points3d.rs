@@ -1,5 +1,5 @@
 use re_types::{
-    archetypes::Points3D, components, Archetype as _, AsComponents as _, LoggableBatch as _,
+    archetypes::Points3D, components, Archetype as _, AsComponents as _, ComponentBatch as _,
 };
 
 #[test]

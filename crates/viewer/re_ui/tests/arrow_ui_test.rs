@@ -24,7 +24,7 @@ fn show_some_arrow_ui(ui: &mut egui::Ui) {
     // We use a handful of realistic data in this test.
 
     use re_types::{
-        LoggableBatch as _,
+        ComponentBatchh as _,
         components::Blob,
         datatypes::{Utf8, Vec3D},
     };

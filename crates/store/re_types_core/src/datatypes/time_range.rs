@@ -15,9 +15,9 @@
 
 use crate::try_serialize_field;
 use crate::SerializationResult;
+use crate::{ComponentBatch as _, SerializedComponentBatch};
 use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
-use crate::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Datatype**: Visible time range bounds for a specific timeline.
 #[derive(Clone, Debug, PartialEq, Eq)]

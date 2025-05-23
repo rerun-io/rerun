@@ -15,9 +15,9 @@
 
 use ::re_types_core::try_serialize_field;
 use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
-use ::re_types_core::{LoggableBatch as _, SerializedComponentBatch};
 
 /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///

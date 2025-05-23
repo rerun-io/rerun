@@ -11,7 +11,7 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint, MyPoints},
 };
 use re_types_core::{
-    ComponentDescriptor, LoggableBatch as _, archetypes::Clear, components::ClearIsRecursive,
+    ComponentBatch as _, ComponentDescriptor, archetypes::Clear, components::ClearIsRecursive,
 };
 
 // ---

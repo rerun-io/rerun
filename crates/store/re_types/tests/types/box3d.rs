@@ -1,6 +1,6 @@
 use re_types::{
     archetypes::Boxes3D, components, datatypes, Archetype as _, AsComponents as _,
-    LoggableBatch as _,
+    ComponentBatch as _,
 };
 
 #[test]

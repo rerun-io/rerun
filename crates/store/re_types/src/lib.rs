@@ -182,7 +182,7 @@ pub use re_types_core::DEFAULT_DISPLAY_DECIMALS;
 ///
 /// All archetypes implement the [`Archetype`] trait.
 ///
-/// Each archetype is a collection of homogeneous [`LoggableBatch`]es.
+/// Each archetype is a collection of homogeneous [`ComponentBatch`]es.
 /// For instance, the [`Points3D`][archetypes::Points3D] archetype contains a
 /// batch of positions, a batch of colors, etc.
 ///
