@@ -201,8 +201,6 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
             }
 
-            dbg!(video_resolution);
-
             if context_systems.view_class_identifier == SpatialView2D::identifier() {
                 let bounding_box = re_math::BoundingBox::from_min_size(
                     world_from_entity.transform_point3(glam::Vec3::ZERO),

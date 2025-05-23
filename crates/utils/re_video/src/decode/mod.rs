@@ -89,7 +89,6 @@ mod ffmpeg_h264;
 pub use ffmpeg_h264::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
 };
-use re_mp4::StsdBoxContent;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
@@ -222,7 +221,7 @@ pub fn new_decoder(
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
                 video.config.clone().map(|c| match c.stsd.contents {
-                    StsdBoxContent::Avc1(avc1) => avc1,
+                    re_mp4::StsdBoxContent::Avc1(avc1) => avc1,
                     _ => {
                         unreachable!("TODO: this is unreachable? should be!!!")
                     }
@@ -288,9 +287,31 @@ pub struct FrameContent {
     pub format: PixelFormat,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+impl FrameContent {
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+}
+
 /// Data for a decoded frame on the web.
 #[cfg(target_arch = "wasm32")]
 pub type FrameContent = webcodecs::WebVideoFrame;
+
+#[cfg(target_arch = "wasm32")]
+impl FrameContent {
+    pub fn width(&self) -> u32 {
+        self.display_width()
+    }
+
+    pub fn height(&self) -> u32 {
+        self.display_height()
+    }
+}
 
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]

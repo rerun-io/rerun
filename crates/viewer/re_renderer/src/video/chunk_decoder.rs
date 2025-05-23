@@ -146,8 +146,8 @@ impl VideoChunkDecoder {
                 texture: alloc_video_frame_texture(
                     &render_ctx.device,
                     &render_ctx.gpu_resources.textures,
-                    frame.content.width,
-                    frame.content.height,
+                    frame.content.width(),
+                    frame.content.height(),
                 ),
                 frame_info: None,
                 // Placeholder, going to be replaced.

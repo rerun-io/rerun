@@ -11,7 +11,7 @@ use web_sys::{
 use super::{
     AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, OutputCallback, Result,
 };
-use crate::{Config, Time, Timescale, VideoData};
+use crate::{Mp4Config, Time, Timescale, VideoCodec, VideoDataDescription};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -33,7 +33,8 @@ impl std::ops::Deref for WebVideoFrame {
 }
 
 pub struct WebVideoDecoder {
-    video_config: Config,
+    codec: VideoCodec,
+    mp4_video_config: Option<Mp4Config>,
     timescale: Timescale,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
@@ -103,7 +104,7 @@ impl Drop for WebVideoDecoder {
 
 impl WebVideoDecoder {
     pub fn new(
-        video: &VideoData,
+        video: &VideoDataDescription,
         hw_acceleration: DecodeHardwareAcceleration,
         on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
@@ -111,7 +112,8 @@ impl WebVideoDecoder {
         let decoder = init_video_decoder(on_output.clone(), video.timescale)?;
 
         Ok(Self {
-            video_config: video.config.clone(),
+            codec: video.codec.clone(),
+            mp4_video_config: video.config.clone(),
             timescale: video.timescale,
             decoder,
             hw_acceleration,
@@ -137,9 +139,13 @@ impl AsyncDecoder for WebVideoDecoder {
             type_,
         );
 
-        let duration_millis =
-            1e-3 * video_chunk.duration.duration(self.timescale).as_nanos() as f64;
-        web_chunk.set_duration(duration_millis);
+        // TODO: is duration optional, is it fine not to set? find out
+        if video_chunk.duration != Time::MAX {
+            let duration_millis =
+                1e-3 * video_chunk.duration.duration(self.timescale).as_nanos() as f64;
+            web_chunk.set_duration(duration_millis);
+        }
+
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
             .map_err(|err| Error::CreateChunk(js_error_to_string(&err)))?;
         self.decoder
@@ -162,7 +168,8 @@ impl AsyncDecoder for WebVideoDecoder {
 
         self.decoder
             .configure(&js_video_decoder_config(
-                &self.video_config,
+                &self.codec,
+                &self.mp4_video_config,
                 self.hw_acceleration,
             ))
             .map_err(|err| Error::ConfigureFailure(js_error_to_string(&err)))?;
@@ -195,7 +202,7 @@ impl AsyncDecoder for WebVideoDecoder {
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
         // TODO(#8848): For some h264 videos (which??) we need to enqueue more samples, otherwise Safari will not provide us with any frames.
         // (The same happens with FFmpeg-cli decoder for the affected videos)
-        if self.video_config.is_h264() && *IS_SAFARI {
+        if self.codec == VideoCodec::H264 && *IS_SAFARI {
             16 // Safari needs more samples queued for h264
         } else {
             // No such workaround are needed anywhere else,
@@ -254,15 +261,36 @@ fn init_video_decoder(
 }
 
 fn js_video_decoder_config(
-    config: &Config,
+    codec: &VideoCodec,
+    mp4_config: &Option<Mp4Config>,
     hw_acceleration: DecodeHardwareAcceleration,
 ) -> VideoDecoderConfig {
-    let js = VideoDecoderConfig::new(&config.stsd.contents.codec_string().unwrap_or_default());
-    js.set_coded_width(config.coded_width as u32);
-    js.set_coded_height(config.coded_height as u32);
-    let description = Uint8Array::new_with_length(config.description.len() as u32);
-    description.copy_from(&config.description[..]);
-    js.set_description(&description);
+    let codec_string = mp4_config
+        .as_ref()
+        .and_then(|config| config.stsd.contents.codec_string())
+        .unwrap_or_else(|| {
+            // TODO: This is neat, but doesn't work. Need the full codec string as described by the spec.
+            codec
+                .base_webcodec_string()
+                .unwrap_or_else(|| {
+                    if cfg!(debug_assertions) {
+                        unreachable!("Unknown codec should be caught earlier.")
+                    }
+                    "<unknown>"
+                })
+                .to_owned()
+        });
+
+    let js = VideoDecoderConfig::new(&codec_string);
+
+    if let Some(mp4_config) = mp4_config.as_ref() {
+        js.set_coded_width(mp4_config.coded_width as u32);
+        js.set_coded_height(mp4_config.coded_height as u32);
+        let description = Uint8Array::new_with_length(mp4_config.description.len() as u32);
+        description.copy_from(&mp4_config.description[..]);
+        js.set_description(&description);
+    }
+
     js.set_optimize_for_latency(true);
 
     match hw_acceleration {

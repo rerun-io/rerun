@@ -39,7 +39,7 @@ impl std::fmt::Display for ChromaSubsamplingModes {
 }
 
 /// The basic codec family used to encode the video.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VideoCodec {
     Av1,
     H264,
@@ -47,6 +47,35 @@ pub enum VideoCodec {
     Vp8,
     Vp9,
     Other(String),
+}
+
+impl VideoCodec {
+    /// Base part of the web codec string, without additional parameters.
+    ///
+    /// See <https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry>
+    pub fn base_webcodec_string(&self) -> Option<&'static str> {
+        match self {
+            // https://www.w3.org/TR/webcodecs-av1-codec-registration/#fully-qualified-codec-strings
+            VideoCodec::Av1 => Some("av01"),
+
+            // https://www.w3.org/TR/webcodecs-avc-codec-registration/#fully-qualified-codec-strings
+            // avc3 is valid as well.
+            VideoCodec::H264 => Some("avc1"),
+
+            // https://www.w3.org/TR/webcodecs-hevc-codec-registration/#fully-qualified-codec-strings
+            // hvc1 is valid as well.
+            VideoCodec::H265 => Some("hev1"),
+
+            // https://www.w3.org/TR/webcodecs-vp8-codec-registration/#fully-qualified-codec-strings
+            // Special! This *is* the fully qualified codec string.
+            VideoCodec::Vp8 => Some("vp8"),
+
+            // https://www.w3.org/TR/webcodecs-vp9-codec-registration/#fully-qualified-codec-strings
+            VideoCodec::Vp9 => Some("vp09"),
+
+            VideoCodec::Other(_) => None,
+        }
+    }
 }
 
 /// Description of video data.
