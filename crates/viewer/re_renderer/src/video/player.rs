@@ -7,7 +7,10 @@ use re_video::{
     decode::{DecodeSettings, FrameInfo},
 };
 
-use super::{VideoFrameTexture, chunk_decoder::VideoChunkDecoder};
+use super::{
+    VideoFrameTexture,
+    chunk_decoder::{self, VideoChunkDecoder},
+};
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
@@ -130,10 +133,18 @@ impl VideoPlayer {
         let error_on_last_frame_at = self.last_error.is_some();
         self.enqueue_samples(presentation_timestamp, video_data)?;
 
-        let previous_video_texture = self.video_texture.take();
-        let video_texture =
-            self.update_video_texture(render_ctx, previous_video_texture, presentation_timestamp)?;
-        let video_texture = self.video_texture.insert(video_texture);
+        update_video_texture(
+            render_ctx,
+            &self.chunk_decoder,
+            &mut self.last_error,
+            &mut self.video_texture,
+            presentation_timestamp,
+        )?;
+        let Some(video_texture) = &mut self.video_texture else {
+            // Decoder hasn't produced a texture yet, but isn't in an error state.
+            // It's simply just busy.
+            return Err(VideoPlayerError::EmptyBuffer);
+        };
 
         if let Some(frame_info) = video_texture.frame_info.clone() {
             let time_range = frame_info.presentation_time_range();
@@ -305,55 +316,6 @@ impl VideoPlayer {
         Ok(())
     }
 
-    fn update_video_texture(
-        &mut self,
-        render_ctx: &RenderContext,
-        previous_video_texture: Option<VideoTexture>,
-        presentation_timestamp: Time,
-    ) -> Result<VideoTexture, VideoPlayerError> {
-        let result = self.chunk_decoder.update_video_texture(
-            render_ctx,
-            previous_video_texture,
-            presentation_timestamp,
-        );
-
-        match result {
-            Ok(video_texture) => {
-                self.last_error = None;
-                Ok(video_texture.clone())
-            }
-            Err(err) => {
-                if matches!(err, VideoPlayerError::EmptyBuffer) {
-                    // No buffered frames
-
-                    // Might this be due to an error?
-                    //
-                    // We only care about decoding errors when we don't find the requested frame,
-                    // since we want to keep playing the video fine even if parts of it are broken.
-                    // That said, practically we reset the decoder and thus all frames upon error,
-                    // so it doesn't make a lot of difference.
-                    if let Some(timed_error) = &self.last_error {
-                        if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
-                            // Report the error only if we have been in an error state for a certain amount of time.
-                            // Don't immediately report the error, since we might immediately recover from it.
-                            // Otherwise, this would cause aggressive flickering!
-                            return Err(timed_error.latest_error.clone());
-                        }
-                    }
-
-                    // Don't return a zeroed texture, because we may just be behind on decoding
-                    // and showing an old frame is better than showing a blank frame,
-                    // because it causes "black flashes" to appear
-                    self.video_texture
-                        .clone()
-                        .ok_or(VideoPlayerError::EmptyBuffer)
-                } else {
-                    Err(err)
-                }
-            }
-        }
-    }
-
     /// Enqueue all samples in the given GOP.
     ///
     /// Does nothing if the index is out of bounds.
@@ -391,6 +353,51 @@ impl VideoPlayer {
         self.last_enqueued_gop_idx = None;
         // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
+    }
+}
+
+fn update_video_texture(
+    render_ctx: &RenderContext,
+    chunk_decoder: &VideoChunkDecoder,
+    last_error: &mut Option<TimedDecodingError>,
+    video_texture: &mut Option<VideoTexture>,
+    presentation_timestamp: Time,
+) -> Result<(), VideoPlayerError> {
+    let result =
+        chunk_decoder.update_video_texture(render_ctx, video_texture, presentation_timestamp);
+
+    match result {
+        Ok(()) => {
+            *last_error = None;
+            Ok(())
+        }
+        Err(err) => {
+            if matches!(err, VideoPlayerError::EmptyBuffer) {
+                // No buffered frames
+
+                // Might this be due to an error?
+                //
+                // We only care about decoding errors when we don't find the requested frame,
+                // since we want to keep playing the video fine even if parts of it are broken.
+                // That said, practically we reset the decoder and thus all frames upon error,
+                // so it doesn't make a lot of difference.
+                if let Some(timed_error) = last_error {
+                    if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
+                        // Report the error only if we have been in an error state for a certain amount of time.
+                        // Don't immediately report the error, since we might immediately recover from it.
+                        // Otherwise, this would cause aggressive flickering!
+                        return Err(timed_error.latest_error.clone());
+                    }
+                }
+
+                // Don't zeroed the texture, because we may just be behind on decoding
+                // and showing an old frame is better than showing a blank frame,
+                // because it causes "black flashes" to appear
+                Ok(())
+            } else {
+                Err(err)
+            }
+        }
     }
 }
 

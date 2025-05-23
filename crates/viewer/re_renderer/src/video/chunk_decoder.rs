@@ -115,9 +115,9 @@ impl VideoChunkDecoder {
     pub fn update_video_texture(
         &self,
         render_ctx: &RenderContext,
-        previous_video_texture: Option<VideoTexture>,
+        video_texture: &mut Option<VideoTexture>,
         presentation_timestamp: Time,
-    ) -> Result<VideoTexture, VideoPlayerError> {
+    ) -> Result<(), VideoPlayerError> {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
@@ -139,9 +139,7 @@ impl VideoChunkDecoder {
 
         let frame_time_range = frame.info.presentation_time_range();
 
-        let mut video_texture = if let Some(video_texture) = previous_video_texture {
-            video_texture
-        } else {
+        let video_texture = video_texture.get_or_insert_with(|| {
             VideoTexture {
                 texture: alloc_video_frame_texture(
                     &render_ctx.device,
@@ -156,7 +154,7 @@ impl VideoChunkDecoder {
                     wgpu::TextureFormat::Rgba8Unorm,
                 ),
             }
-        };
+        });
 
         let is_up_to_date = video_texture
             .frame_info
@@ -184,7 +182,7 @@ impl VideoChunkDecoder {
             video_texture.frame_info = Some(frame.info.clone());
         }
 
-        Ok(video_texture)
+        Ok(())
     }
 
     /// Reset the video decoder and discard all frames.
