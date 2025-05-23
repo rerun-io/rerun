@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["image_stats","tensor_stats"]};

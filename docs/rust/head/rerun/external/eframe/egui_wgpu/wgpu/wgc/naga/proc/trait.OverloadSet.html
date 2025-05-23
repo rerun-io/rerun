@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="A trait for types representing of a set of Naga IR type rules."><title>OverloadSet in rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../" data-static-root-path="../../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Overload<wbr>Set</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#automatic-conversions" title="Automatic conversions">Automatic conversions</a></li><li><a href="#how-to-use-overloadset" title="How to use `OverloadSet`">How to use <code>OverloadSet</code></a></li><li><a href="#concrete-implementations" title="Concrete implementations">Concrete implementations</a></li></ul><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.allowed_args" title="allowed_args">allowed_args</a></li><li><a href="#tymethod.arg" title="arg">arg</a></li><li><a href="#tymethod.concrete_only" title="concrete_only">concrete_only</a></li><li><a href="#tymethod.for_debug" title="for_debug">for_debug</a></li><li><a href="#tymethod.is_empty" title="is_empty">is_empty</a></li><li><a href="#tymethod.max_arguments" title="max_arguments">max_arguments</a></li><li><a href="#tymethod.min_arguments" title="min_arguments">min_arguments</a></li><li><a href="#tymethod.most_preferred" title="most_preferred">most_preferred</a></li><li><a href="#tymethod.overload_list" title="overload_list">overload_list</a></li></ul><h3><a href="#dyn-compatibility">Dyn Compatibility</a></h3><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>eframe::<wbr>egui_<wbr>wgpu::<wbr>wgpu::<wbr>wgc::<wbr>naga::<wbr>proc</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../../index.html">external</a>::<wbr><a href="../../../../../index.html">eframe</a>::<wbr><a href="../../../../index.html">egui_wgpu</a>::<wbr><a href="../../../index.html">wgpu</a>::<wbr><a href="../../index.html">wgc</a>::<wbr><a href="../index.html">naga</a>::<wbr><a href="index.html">proc</a></span><h1>Trait <span class="trait">OverloadSet</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub trait OverloadSet: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> {
+    // Required methods
+    fn <a href="#tymethod.is_empty" class="fn">is_empty</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.min_arguments" class="fn">min_arguments</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.max_arguments" class="fn">max_arguments</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.arg" class="fn">arg</a>(&amp;self, i: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a>, ty: &amp;<a class="enum" href="../enum.TypeInner.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::TypeInner">TypeInner</a>, types: &amp;<a class="struct" href="../struct.UniqueArena.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::UniqueArena">UniqueArena</a>&lt;<a class="struct" href="../struct.Type.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::Type">Type</a>&gt;) -&gt; Self;
+<span class="item-spacer"></span>    fn <a href="#tymethod.concrete_only" class="fn">concrete_only</a>(self, types: &amp;<a class="struct" href="../struct.UniqueArena.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::UniqueArena">UniqueArena</a>&lt;<a class="struct" href="../struct.Type.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::Type">Type</a>&gt;) -&gt; Self;
+<span class="item-spacer"></span>    fn <a href="#tymethod.most_preferred" class="fn">most_preferred</a>(&amp;self) -&gt; <a class="struct" href="struct.Rule.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::Rule">Rule</a>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.overload_list" class="fn">overload_list</a>(&amp;self, gctx: &amp;<a class="struct" href="struct.GlobalCtx.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::GlobalCtx">GlobalCtx</a>&lt;'_&gt;) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="struct.Rule.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::Rule">Rule</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.allowed_args" class="fn">allowed_args</a>(
+        &amp;self,
+        i: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a>,
+        gctx: &amp;<a class="struct" href="struct.GlobalCtx.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::GlobalCtx">GlobalCtx</a>&lt;'_&gt;,
+    ) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="enum.TypeResolution.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::TypeResolution">TypeResolution</a>&gt;;
+<span class="item-spacer"></span>    fn <a href="#tymethod.for_debug" class="fn">for_debug</a>(&amp;self, types: &amp;<a class="struct" href="../struct.UniqueArena.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::UniqueArena">UniqueArena</a>&lt;<a class="struct" href="../struct.Type.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::Type">Type</a>&gt;) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a>;
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A trait for types representing of a set of Naga IR type rules.</p>
+<p>Given an expression like <code>max(x, y)</code>, there are multiple type rules that
+could apply, depending on the types of <code>x</code> and <code>y</code>, like:</p>
+<ul>
+<li><code>max(i32, i32) -&gt; i32</code></li>
+<li><code>max(vec4&lt;f32&gt;, vec4&lt;f32&gt;) -&gt; vec4&lt;f32&gt;</code></li>
+</ul>
+<p>and so on. Borrowing WGSL’s terminology, Naga calls the full set of type
+rules that might apply to a given expression its “overload candidates”, or
+“overloads” for short.</p>
+<p>This trait is meant to be implemented by types that represent a set of
+overload candidates. For example, <a href="../enum.MathFunction.html#method.overloads" title="method rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::MathFunction::overloads"><code>MathFunction::overloads</code></a> returns an
+<code>impl OverloadSet</code> describing the overloads for the given Naga IR math
+function. Naga’s typifier, validator, and WGSL front end use this trait for
+their work.</p>
+<h2 id="automatic-conversions"><a class="doc-anchor" href="#automatic-conversions">§</a>Automatic conversions</h2>
+<p>In principle, overload sets are easy: you simply list all the overloads the
+function supports, and then when you’re presented with a call to typecheck,
+you just see if the actual argument types presented in the source code match
+some overload from the list.</p>
+<p>However, Naga supports languages like WGSL, which apply certain <a href="https://gpuweb.github.io/gpuweb/wgsl/#feasible-automatic-conversion">automatic
+conversions</a> if necessary to make a call fit some overload’s requirements.
+This means that the set of calls that are effectively allowed by a given set
+of overloads can be quite large, since any combination of automatic
+conversions might be applied.</p>
+<p>For example, if <code>x</code> is a <code>u32</code>, and <code>100</code> is an abstract integer, then even
+though <code>max</code> has no overload like <code>max(u32, AbstractInt) -&gt; ...</code>, the
+expression <code>max(x, 100)</code> is still allowed, because AbstractInt automatically
+converts to <code>u32</code>.</p>
+<h2 id="how-to-use-overloadset"><a class="doc-anchor" href="#how-to-use-overloadset">§</a>How to use <code>OverloadSet</code></h2>
+<p>The general process of using an <code>OverloadSet</code> is as follows:</p>
+<ul>
+<li>
+<p>Obtain an <code>OverloadSet</code> for a given operation (say, by calling
+<a href="../enum.MathFunction.html#method.overloads" title="method rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::MathFunction::overloads"><code>MathFunction::overloads</code></a>). This set is fixed by Naga IR’s semantics.</p>
+</li>
+<li>
+<p>Call its <a href="trait.OverloadSet.html#tymethod.arg" title="method rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::OverloadSet::arg"><code>arg</code></a> method, supplying the type of the argument passed to the
+operation at a certain index. This returns a new <code>OverloadSet</code> containing
+only those overloads that could accept the given type for the given
+argument. This includes overloads that only match if automatic conversions
+are applied.</p>
+</li>
+<li>
+<p>If, at some point, the overload set becomes empty, then the set of
+arguments is not allowed for this operation, and the program is invalid.
+The <code>OverloadSet</code> trait provides an <a href="trait.OverloadSet.html#tymethod.is_empty" title="method rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::OverloadSet::is_empty"><code>is_empty</code></a> method.</p>
+</li>
+<li>
+<p>After all arguments have been supplied, if the overload set is still
+non-empty, you can call its <a href="trait.OverloadSet.html#tymethod.most_preferred" title="method rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::OverloadSet::most_preferred"><code>most_preferred</code></a> method to find out which
+overload has the least cost in terms of automatic conversions.</p>
+</li>
+<li>
+<p>If the call is rejected, you can use <code>OverloadSet</code> to help produce
+diagnostic messages that explain exactly what went wrong. <code>OverloadSet</code>
+implementations are meant to be cheap to <a href="https://doc.rust-lang.org/1.85.0/core/clone/trait.Clone.html" title="trait core::clone::Clone"><code>Clone</code></a>, so it is fine to keep
+the original overload set value around, and re-run the selection process,
+attempting to supply the rejected argument at each step to see exactly
+which preceding argument ruled it out. The <a href="trait.OverloadSet.html#tymethod.overload_list" title="method rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::OverloadSet::overload_list"><code>overload_list</code></a> and
+<a href="trait.OverloadSet.html#tymethod.allowed_args" title="method rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::OverloadSet::allowed_args"><code>allowed_args</code></a> methods are helpful for this.</p>
+</li>
+</ul>
+<h2 id="concrete-implementations"><a class="doc-anchor" href="#concrete-implementations">§</a>Concrete implementations</h2>
+<p>This module contains two private implementations of <code>OverloadSet</code>:</p>
+<ul>
+<li>
+<p>The <a href="list::List"><code>List</code></a> type is a straightforward list of overloads. It is general,
+but verbose to use. The [<code>utils</code>] module exports functions that construct
+<code>List</code> overload sets for the functions that need this.</p>
+</li>
+<li>
+<p>The <a href="regular::Regular"><code>Regular</code></a> type is a compact, efficient representation for the kinds
+of overload sets commonly seen for Naga IR mathematical functions.
+However, in return for its simplicity, it is not as flexible as <a href="list::List"><code>List</code></a>.
+This module use the <a href="regular::regular"><code>regular!</code></a> macro as a legible notation for <code>Regular</code>
+sets.</p>
+</li>
+</ul>
+</div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.is_empty" class="method"><h4 class="code-header">fn <a href="#tymethod.is_empty" class="fn">is_empty</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Return true if <code>self</code> is the empty set of overloads.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.min_arguments" class="method"><h4 class="code-header">fn <a href="#tymethod.min_arguments" class="fn">min_arguments</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a></h4></section></summary><div class="docblock"><p>Return the smallest number of arguments in any type rule in the set.</p>
+<h5 id="panics"><a class="doc-anchor" href="#panics">§</a>Panics</h5>
+<p>Panics if <code>self</code> is empty.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.max_arguments" class="method"><h4 class="code-header">fn <a href="#tymethod.max_arguments" class="fn">max_arguments</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a></h4></section></summary><div class="docblock"><p>Return the largest number of arguments in any type rule in the set.</p>
+<h5 id="panics-1"><a class="doc-anchor" href="#panics-1">§</a>Panics</h5>
+<p>Panics if <code>self</code> is empty.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.arg" class="method"><h4 class="code-header">fn <a href="#tymethod.arg" class="fn">arg</a>(&amp;self, i: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a>, ty: &amp;<a class="enum" href="../enum.TypeInner.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::TypeInner">TypeInner</a>, types: &amp;<a class="struct" href="../struct.UniqueArena.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::UniqueArena">UniqueArena</a>&lt;<a class="struct" href="../struct.Type.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::Type">Type</a>&gt;) -&gt; Self</h4></section></summary><div class="docblock"><p>Find the overloads that could accept a given argument.</p>
+<p>Return a new overload set containing those members of <code>self</code> that could
+accept a value of type <code>ty</code> for their <code>i</code>’th argument, once
+feasible automatic conversions have been applied.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.concrete_only" class="method"><h4 class="code-header">fn <a href="#tymethod.concrete_only" class="fn">concrete_only</a>(self, types: &amp;<a class="struct" href="../struct.UniqueArena.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::UniqueArena">UniqueArena</a>&lt;<a class="struct" href="../struct.Type.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::Type">Type</a>&gt;) -&gt; Self</h4></section></summary><div class="docblock"><p>Limit <code>self</code> to overloads whose arguments are all concrete types.</p>
+<p>Naga’s overload resolution is based on WGSL’s <a href="https://gpuweb.github.io/gpuweb/wgsl/#overload-resolution-section">overload resolution
+algorithm</a>, which includes the following step:</p>
+<blockquote>
+<p>Eliminate any candidate where one of its subexpressions resolves to
+an abstract type after feasible automatic conversions, but another of
+the candidate’s subexpressions is not a const-expression.</p>
+<p>Note: As a consequence, if any subexpression in the phrase is not a
+const-expression, then all subexpressions in the phrase must have a
+concrete type.</p>
+</blockquote>
+<p>Essentially, if any one of the arguments is not a constant expression,
+then the operation is going to be evaluated at runtime, so all its
+arguments must be converted to a concrete type. If you determine that an
+argument is non-constant, you can use this trait method to toss out any
+overloads that would accept abstract types.</p>
+<p>In almost all cases, this operation has no effect. Only constant
+expressions can have abstract types, so if any argument is not a
+constant expression, it must have a concrete type. Although many
+operations in Naga IR have overloads for both abstract types and
+concrete types, few operations have overloads that accept a mix of
+abstract and concrete types. Thus, a single concrete argument will
+usually have eliminated all overloads that accept abstract types anyway.
+(The exceptions are oddities like <code>Expression::Select</code>, where the
+<code>condition</code> operand could be a runtime expression even as the <code>accept</code>
+and <code>reject</code> operands have abstract types.)</p>
+<p>Note that it is <em>not</em> correct to just <a href="https://gpuweb.github.io/gpuweb/wgsl/#concretization">concretize</a> all arguments once
+you’ve noticed that some argument is non-constant. The type to which
+each argument is converted depends on the overloads available, not just
+the argument’s own type.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.most_preferred" class="method"><h4 class="code-header">fn <a href="#tymethod.most_preferred" class="fn">most_preferred</a>(&amp;self) -&gt; <a class="struct" href="struct.Rule.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::Rule">Rule</a></h4></section></summary><div class="docblock"><p>Return the most preferred candidate.</p>
+<p>Rank the candidates in <code>self</code> as described in WGSL’s <a href="https://gpuweb.github.io/gpuweb/wgsl/#overload-resolution-section">overload
+resolution algorithm</a>, and return a singleton set containing the
+most preferred candidate.</p>
+<h5 id="simplifications-versus-wgsl"><a class="doc-anchor" href="#simplifications-versus-wgsl">§</a>Simplifications versus WGSL</h5>
+<p>Naga’s process for selecting the most preferred candidate is simpler
+than WGSL’s:</p>
+<ul>
+<li>
+<p>WGSL allows for the possibility of ambiguous calls, where multiple
+overload candidates exist, no one candidate is clearly better than all
+the others. For example, if a function has the two overloads <code>(i32, f32) -&gt; bool</code> and <code>(f32, i32) -&gt; bool</code>, and the arguments are both
+AbstractInt, neither overload is preferred over the other. Ambiguous
+calls are errors.</p>
+<p>However, Naga IR includes no operations whose overload sets allow such
+situations to arise, so there is always a most preferred candidate.
+Thus, this method infallibly returns a <code>Rule</code>, and has no way to
+indicate ambiguity.</p>
+</li>
+<li>
+<p>WGSL says that the most preferred candidate depends on the conversion
+rank for each argument, as determined by the types of the arguments
+being passed.</p>
+<p>However, the overloads of every operation in Naga IR can be ranked
+even without knowing the argument types. So this method does not
+require the argument types as a parameter.</p>
+</li>
+</ul>
+<h5 id="panics-2"><a class="doc-anchor" href="#panics-2">§</a>Panics</h5>
+<p>Panics if <code>self</code> is empty, or if no argument types have been supplied.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.overload_list" class="method"><h4 class="code-header">fn <a href="#tymethod.overload_list" class="fn">overload_list</a>(&amp;self, gctx: &amp;<a class="struct" href="struct.GlobalCtx.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::GlobalCtx">GlobalCtx</a>&lt;'_&gt;) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="struct.Rule.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::Rule">Rule</a>&gt;</h4></section></summary><div class="docblock"><p>Return a type rule for each of the overloads in <code>self</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.allowed_args" class="method"><h4 class="code-header">fn <a href="#tymethod.allowed_args" class="fn">allowed_args</a>(&amp;self, i: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.usize.html">usize</a>, gctx: &amp;<a class="struct" href="struct.GlobalCtx.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::GlobalCtx">GlobalCtx</a>&lt;'_&gt;) -&gt; <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="enum" href="enum.TypeResolution.html" title="enum rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::proc::TypeResolution">TypeResolution</a>&gt;</h4></section></summary><div class="docblock"><p>Return a list of the types allowed for argument <code>i</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.for_debug" class="method"><h4 class="code-header">fn <a href="#tymethod.for_debug" class="fn">for_debug</a>(&amp;self, types: &amp;<a class="struct" href="../struct.UniqueArena.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::UniqueArena">UniqueArena</a>&lt;<a class="struct" href="../struct.Type.html" title="struct rerun::external::eframe::egui_wgpu::wgpu::wgc::naga::Type">Type</a>&gt;) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a></h4></section></summary><div class="docblock"><p>Return an object that can be formatted with <a href="https://doc.rust-lang.org/1.85.0/core/fmt/trait.Debug.html" title="trait core::fmt::Debug"><code>core::fmt::Debug</code></a>.</p>
+</div></details></div><h2 id="dyn-compatibility" class="section-header">Dyn Compatibility<a href="#dyn-compatibility" class="anchor">§</a></h2><div class="dyn-compatibility-info"><p>This trait is <b>not</b> <a href="https://doc.rust-lang.org/1.85.0/reference/items/traits.html#object-safety">dyn compatible</a>.</p><p><i>In older versions of Rust, dyn compatibility was called "object safety", so this trait is not object safe.</i></p></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../../../../../../../../trait.impl/naga/proc/overloads/trait.OverloadSet.js" async></script></section></div></main></body></html>

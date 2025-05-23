@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_data_type"],"struct":["DisplayDatatype","DisplayIntervalUnit","DisplayTimeUnit"]};

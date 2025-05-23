@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["id_from_session_context_and_table","title_ui"],"struct":["Columns","DataFusionTableDelegate","DataFusionTableWidget"],"type":["ColumnRenamerFn"]};

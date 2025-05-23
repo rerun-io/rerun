@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["__populate_example_store","get_component_with_instances","query_archetype"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FFMPEG_MINIMUM_VERSION_MAJOR","FFMPEG_MINIMUM_VERSION_MINOR"],"enum":["FFmpegVersionParseError"],"fn":["ffmpeg_version","file_modification_time"],"struct":["FFmpegVersion","VersionCache"],"type":["FfmpegVersionResult"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["OLD_RRD_HEADERS","RRD_HEADER"],"enum":["Compression","FileSinkError","LegacyMessageHeader","OptionsError","Serializer"],"mod":["codec","decoder","encoder","file_sink","legacy","protobuf_conversions","stream_rrd_from_http"],"struct":["EncodingOptions","FileHeader","FileSink"]};

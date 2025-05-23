@@ -1,0 +1,1 @@
+searchState.loadedDescShard("viewer_callbacks", 0, "This example shows how to wrap the Rerun Viewer in your …\nReturns the argument unchanged.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.\nCalled whenever we need repainting, which could be 60 Hz.")

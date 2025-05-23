@@ -1,0 +1,298 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Provides convenience methods for querying nodes in the tree, inspired by https://testing-library.com/."><title>Queryable in rerun::external::re_viewer_context::external::egui_kittest::kittest - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../" data-static-root-path="../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1+dev</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Queryable</a></h2><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.node" title="node">node</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.get" title="get">get</a></li><li><a href="#method.get_all" title="get_all">get_all</a></li><li><a href="#method.get_all_by" title="get_all_by">get_all_by</a></li><li><a href="#method.get_all_by_label" title="get_all_by_label">get_all_by_label</a></li><li><a href="#method.get_all_by_label_contains" title="get_all_by_label_contains">get_all_by_label_contains</a></li><li><a href="#method.get_all_by_role" title="get_all_by_role">get_all_by_role</a></li><li><a href="#method.get_all_by_role_and_label" title="get_all_by_role_and_label">get_all_by_role_and_label</a></li><li><a href="#method.get_all_by_value" title="get_all_by_value">get_all_by_value</a></li><li><a href="#method.get_by" title="get_by">get_by</a></li><li><a href="#method.get_by_label" title="get_by_label">get_by_label</a></li><li><a href="#method.get_by_label_contains" title="get_by_label_contains">get_by_label_contains</a></li><li><a href="#method.get_by_role" title="get_by_role">get_by_role</a></li><li><a href="#method.get_by_role_and_label" title="get_by_role_and_label">get_by_role_and_label</a></li><li><a href="#method.get_by_value" title="get_by_value">get_by_value</a></li><li><a href="#method.query" title="query">query</a></li><li><a href="#method.query_all" title="query_all">query_all</a></li><li><a href="#method.query_all_by" title="query_all_by">query_all_by</a></li><li><a href="#method.query_all_by_label" title="query_all_by_label">query_all_by_label</a></li><li><a href="#method.query_all_by_label_contains" title="query_all_by_label_contains">query_all_by_label_contains</a></li><li><a href="#method.query_all_by_role" title="query_all_by_role">query_all_by_role</a></li><li><a href="#method.query_all_by_role_and_label" title="query_all_by_role_and_label">query_all_by_role_and_label</a></li><li><a href="#method.query_all_by_value" title="query_all_by_value">query_all_by_value</a></li><li><a href="#method.query_by" title="query_by">query_by</a></li><li><a href="#method.query_by_label" title="query_by_label">query_by_label</a></li><li><a href="#method.query_by_label_contains" title="query_by_label_contains">query_by_label_contains</a></li><li><a href="#method.query_by_role" title="query_by_role">query_by_role</a></li><li><a href="#method.query_by_role_and_label" title="query_by_role_and_label">query_by_role_and_label</a></li><li><a href="#method.query_by_value" title="query_by_value">query_by_value</a></li></ul><h3><a href="#dyn-compatibility">Dyn Compatibility</a></h3><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>re_<wbr>viewer_<wbr>context::<wbr>external::<wbr>egui_<wbr>kittest::<wbr>kittest</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../index.html">rerun</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">re_viewer_context</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">egui_kittest</a>::<wbr><a href="index.html">kittest</a></span><h1>Trait <span class="trait">Queryable</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub trait Queryable&lt;'tree, 'node&gt; {
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 29 methods</span></summary>    // Required method
+    fn <a href="#tymethod.node" class="fn">node</a>(&amp;'node self) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;;
+
+    // Provided methods
+    fn <a href="#method.query_all" class="fn">query_all</a>(
+        &amp;'node self,
+        by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_all" class="fn">get_all</a>(
+        &amp;'node self,
+        by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query" class="fn">query</a>(&amp;'node self, by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get" class="fn">get</a>(&amp;'node self, by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_all_by_label" class="fn">query_all_by_label</a>(
+        &amp;'node self,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_all_by_label" class="fn">get_all_by_label</a>(
+        &amp;'node self,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_by_label" class="fn">query_by_label</a>(&amp;'node self, label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_by_label" class="fn">get_by_label</a>(&amp;'node self, label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_all_by_label_contains" class="fn">query_all_by_label_contains</a>(
+        &amp;'node self,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_all_by_label_contains" class="fn">get_all_by_label_contains</a>(
+        &amp;'node self,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_by_label_contains" class="fn">query_by_label_contains</a>(
+        &amp;'node self,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_by_label_contains" class="fn">get_by_label_contains</a>(&amp;'node self, label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_all_by_role_and_label" class="fn">query_all_by_role_and_label</a>(
+        &amp;'node self,
+        role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_all_by_role_and_label" class="fn">get_all_by_role_and_label</a>(
+        &amp;'node self,
+        role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_by_role_and_label" class="fn">query_by_role_and_label</a>(
+        &amp;'node self,
+        role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_by_role_and_label" class="fn">get_by_role_and_label</a>(
+        &amp;'node self,
+        role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+        label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_all_by_role" class="fn">query_all_by_role</a>(
+        &amp;'node self,
+        role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_all_by_role" class="fn">get_all_by_role</a>(
+        &amp;'node self,
+        role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_by_role" class="fn">query_by_role</a>(&amp;'node self, role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_by_role" class="fn">get_by_role</a>(&amp;'node self, role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_all_by_value" class="fn">query_all_by_value</a>(
+        &amp;'node self,
+        value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_all_by_value" class="fn">get_all_by_value</a>(
+        &amp;'node self,
+        value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_by_value" class="fn">query_by_value</a>(&amp;'node self, value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_by_value" class="fn">get_by_value</a>(&amp;'node self, value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_all_by" class="fn">query_all_by</a>(
+        &amp;'node self,
+        f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_all_by" class="fn">get_all_by</a>(
+        &amp;'node self,
+        f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree,
+    ) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree { ... }
+<span class="item-spacer"></span>    fn <a href="#method.query_by" class="fn">query_by</a>(
+        &amp;'node self,
+        f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.get_by" class="fn">get_by</a>(&amp;'node self, f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt; { ... }
+</details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Provides convenience methods for querying nodes in the tree, inspired by <a href="https://testing-library.com/">https://testing-library.com/</a>.</p>
+</div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><section id="tymethod.node" class="method"><h4 class="code-header">fn <a href="#tymethod.node" class="fn">node</a>(&amp;'node self) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="method.query_all" class="method"><h4 class="code-header">fn <a href="#method.query_all" class="fn">query_all</a>(
+    &amp;'node self,
+    by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Query all nodes in the tree where
+the node matches the given <a href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By"><code>By</code></a> filter.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_all" class="method"><h4 class="code-header">fn <a href="#method.get_all" class="fn">get_all</a>(
+    &amp;'node self,
+    by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Get all nodes in the tree where
+the node matches the given <a href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By"><code>By</code></a> filter.
+Returns at least one node.</p>
+<h5 id="panics"><a class="doc-anchor" href="#panics">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query" class="method"><h4 class="code-header">fn <a href="#method.query" class="fn">query</a>(&amp;'node self, by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt;</h4></section></summary><div class="docblock"><p>Query a single node in the tree where
+the node matches the given <a href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By"><code>By</code></a> filter.
+Returns <code>None</code> if no nodes are found.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get" class="method"><h4 class="code-header">fn <a href="#method.get" class="fn">get</a>(&amp;'node self, by: <a class="struct" href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By">By</a>&lt;'tree&gt;) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></summary><div class="docblock"><p>Get a single node in the tree where
+the node matches the given <a href="struct.By.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::By"><code>By</code></a> filter.</p>
+<h5 id="panics-1"><a class="doc-anchor" href="#panics-1">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+<li>if more than one node is found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_all_by_label" class="method"><h4 class="code-header">fn <a href="#method.query_all_by_label" class="fn">query_all_by_label</a>(
+    &amp;'node self,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Query all nodes in the tree where
+the node label exactly matches given label.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_all_by_label" class="method"><h4 class="code-header">fn <a href="#method.get_all_by_label" class="fn">get_all_by_label</a>(
+    &amp;'node self,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Get all nodes in the tree where
+the node label exactly matches given label.
+Returns at least one node.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+<h5 id="panics-2"><a class="doc-anchor" href="#panics-2">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_by_label" class="method"><h4 class="code-header">fn <a href="#method.query_by_label" class="fn">query_by_label</a>(&amp;'node self, label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt;</h4></section></summary><div class="docblock"><p>Query a single node in the tree where
+the node label exactly matches given label.
+Returns <code>None</code> if no nodes are found.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_by_label" class="method"><h4 class="code-header">fn <a href="#method.get_by_label" class="fn">get_by_label</a>(&amp;'node self, label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></summary><div class="docblock"><p>Get a single node in the tree where
+the node label exactly matches given label.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+<h5 id="panics-3"><a class="doc-anchor" href="#panics-3">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+<li>if more than one node is found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_all_by_label_contains" class="method"><h4 class="code-header">fn <a href="#method.query_all_by_label_contains" class="fn">query_all_by_label_contains</a>(
+    &amp;'node self,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Query all nodes in the tree where
+the node label contains the given substring.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_all_by_label_contains" class="method"><h4 class="code-header">fn <a href="#method.get_all_by_label_contains" class="fn">get_all_by_label_contains</a>(
+    &amp;'node self,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Get all nodes in the tree where
+the node label contains the given substring.
+Returns at least one node.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+<h5 id="panics-4"><a class="doc-anchor" href="#panics-4">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_by_label_contains" class="method"><h4 class="code-header">fn <a href="#method.query_by_label_contains" class="fn">query_by_label_contains</a>(
+    &amp;'node self,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt;</h4></section></summary><div class="docblock"><p>Query a single node in the tree where
+the node label contains the given substring.
+Returns <code>None</code> if no nodes are found.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_by_label_contains" class="method"><h4 class="code-header">fn <a href="#method.get_by_label_contains" class="fn">get_by_label_contains</a>(&amp;'node self, label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></summary><div class="docblock"><p>Get a single node in the tree where
+the node label contains the given substring.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+<h5 id="panics-5"><a class="doc-anchor" href="#panics-5">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+<li>if more than one node is found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_all_by_role_and_label" class="method"><h4 class="code-header">fn <a href="#method.query_all_by_role_and_label" class="fn">query_all_by_role_and_label</a>(
+    &amp;'node self,
+    role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Query all nodes in the tree where
+the node role and label exactly match the given role and label.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_all_by_role_and_label" class="method"><h4 class="code-header">fn <a href="#method.get_all_by_role_and_label" class="fn">get_all_by_role_and_label</a>(
+    &amp;'node self,
+    role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Get all nodes in the tree where
+the node role and label exactly match the given role and label.
+Returns at least one node.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+<h5 id="panics-6"><a class="doc-anchor" href="#panics-6">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_by_role_and_label" class="method"><h4 class="code-header">fn <a href="#method.query_by_role_and_label" class="fn">query_by_role_and_label</a>(
+    &amp;'node self,
+    role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt;</h4></section></summary><div class="docblock"><p>Query a single node in the tree where
+the node role and label exactly match the given role and label.
+Returns <code>None</code> if no nodes are found.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_by_role_and_label" class="method"><h4 class="code-header">fn <a href="#method.get_by_role_and_label" class="fn">get_by_role_and_label</a>(
+    &amp;'node self,
+    role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+    label: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></summary><div class="docblock"><p>Get a single node in the tree where
+the node role and label exactly match the given role and label.</p>
+<p>If a node is labelled by another node, the label node will not be included in the results.</p>
+<h5 id="panics-7"><a class="doc-anchor" href="#panics-7">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+<li>if more than one node is found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_all_by_role" class="method"><h4 class="code-header">fn <a href="#method.query_all_by_role" class="fn">query_all_by_role</a>(
+    &amp;'node self,
+    role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Query all nodes in the tree where
+the node role matches the given role.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_all_by_role" class="method"><h4 class="code-header">fn <a href="#method.get_all_by_role" class="fn">get_all_by_role</a>(
+    &amp;'node self,
+    role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Get all nodes in the tree where
+the node role matches the given role.
+Returns at least one node.</p>
+<h5 id="panics-8"><a class="doc-anchor" href="#panics-8">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_by_role" class="method"><h4 class="code-header">fn <a href="#method.query_by_role" class="fn">query_by_role</a>(&amp;'node self, role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt;</h4></section></summary><div class="docblock"><p>Query a single node in the tree where
+the node role matches the given role.
+Returns <code>None</code> if no nodes are found.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_by_role" class="method"><h4 class="code-header">fn <a href="#method.get_by_role" class="fn">get_by_role</a>(&amp;'node self, role: <a class="enum" href="../../../../eframe/egui/accesskit/enum.Role.html" title="enum rerun::external::eframe::egui::accesskit::Role">Role</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></summary><div class="docblock"><p>Get a single node in the tree where
+the node role matches the given role.</p>
+<h5 id="panics-9"><a class="doc-anchor" href="#panics-9">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+<li>if more than one node is found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_all_by_value" class="method"><h4 class="code-header">fn <a href="#method.query_all_by_value" class="fn">query_all_by_value</a>(
+    &amp;'node self,
+    value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Query all nodes in the tree where
+the node value exactly matches the given value.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_all_by_value" class="method"><h4 class="code-header">fn <a href="#method.get_all_by_value" class="fn">get_all_by_value</a>(
+    &amp;'node self,
+    value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Get all nodes in the tree where
+the node value exactly matches the given value.
+Returns at least one node.</p>
+<h5 id="panics-10"><a class="doc-anchor" href="#panics-10">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_by_value" class="method"><h4 class="code-header">fn <a href="#method.query_by_value" class="fn">query_by_value</a>(&amp;'node self, value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt;</h4></section></summary><div class="docblock"><p>Query a single node in the tree where
+the node value exactly matches the given value.
+Returns <code>None</code> if no nodes are found.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_by_value" class="method"><h4 class="code-header">fn <a href="#method.get_by_value" class="fn">get_by_value</a>(&amp;'node self, value: &amp;'tree <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></summary><div class="docblock"><p>Get a single node in the tree where
+the node value exactly matches the given value.</p>
+<h5 id="panics-11"><a class="doc-anchor" href="#panics-11">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+<li>if more than one node is found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_all_by" class="method"><h4 class="code-header">fn <a href="#method.query_all_by" class="fn">query_all_by</a>(
+    &amp;'node self,
+    f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Query all nodes in the tree where
+the node matches the given predicate.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_all_by" class="method"><h4 class="code-header">fn <a href="#method.get_all_by" class="fn">get_all_by</a>(
+    &amp;'node self,
+    f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree,
+) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/double_ended/trait.DoubleEndedIterator.html" title="trait core::iter::traits::double_ended::DoubleEndedIterator">DoubleEndedIterator</a> + <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/iter/traits/marker/trait.FusedIterator.html" title="trait core::iter::traits::marker::FusedIterator">FusedIterator</a> + 'tree</h4></section></summary><div class="docblock"><p>Get all nodes in the tree where
+the node matches the given predicate.
+Returns at least one node.</p>
+<h5 id="panics-12"><a class="doc-anchor" href="#panics-12">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.query_by" class="method"><h4 class="code-header">fn <a href="#method.query_by" class="fn">query_by</a>(
+    &amp;'node self,
+    f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;&gt;</h4></section></summary><div class="docblock"><p>Query a single node in the tree where
+the node matches the given predicate.
+Returns <code>None</code> if no nodes are found.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.get_by" class="method"><h4 class="code-header">fn <a href="#method.get_by" class="fn">get_by</a>(&amp;'node self, f: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;<a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'_&gt;) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a> + 'tree) -&gt; <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'tree&gt;</h4></section></summary><div class="docblock"><p>Get a single node in the tree where
+the node matches the given predicate.</p>
+<h5 id="panics-13"><a class="doc-anchor" href="#panics-13">§</a>Panics</h5>
+<ul>
+<li>if no nodes are found matching the query.</li>
+<li>if more than one node is found matching the query.</li>
+</ul>
+</div></details></div><h2 id="dyn-compatibility" class="section-header">Dyn Compatibility<a href="#dyn-compatibility" class="anchor">§</a></h2><div class="dyn-compatibility-info"><p>This trait is <b>not</b> <a href="https://doc.rust-lang.org/1.85.0/reference/items/traits.html#object-safety">dyn compatible</a>.</p><p><i>In older versions of Rust, dyn compatibility was called "object safety", so this trait is not object safe.</i></p></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-Queryable%3C't,+'n%3E-for-Node%3C't%3E" class="impl"><a href="#impl-Queryable%3C't,+'n%3E-for-Node%3C't%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'t, 'n&gt; <a class="trait" href="trait.Queryable.html" title="trait rerun::external::re_viewer_context::external::egui_kittest::kittest::Queryable">Queryable</a>&lt;'t, 'n&gt; for <a class="struct" href="struct.Node.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::Node">Node</a>&lt;'t&gt;</h3></section><section id="impl-Queryable%3C't,+'n%3E-for-Harness%3C'_,+State%3E" class="impl"><a href="#impl-Queryable%3C't,+'n%3E-for-Harness%3C'_,+State%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'t, 'n, State&gt; <a class="trait" href="trait.Queryable.html" title="trait rerun::external::re_viewer_context::external::egui_kittest::kittest::Queryable">Queryable</a>&lt;'t, 'n&gt; for <a class="struct" href="../struct.Harness.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::Harness">Harness</a>&lt;'_, State&gt;<div class="where">where
+    'n: 't,</div></h3></section><section id="impl-Queryable%3C'tree,+'node%3E-for-State" class="impl"><a href="#impl-Queryable%3C'tree,+'node%3E-for-State" class="anchor">§</a><h3 class="code-header">impl&lt;'tree, 'node&gt; <a class="trait" href="trait.Queryable.html" title="trait rerun::external::re_viewer_context::external::egui_kittest::kittest::Queryable">Queryable</a>&lt;'tree, 'node&gt; for <a class="struct" href="struct.State.html" title="struct rerun::external::re_viewer_context::external::egui_kittest::kittest::State">State</a><div class="where">where
+    'node: 'tree,</div></h3></section></div><script src="../../../../../../trait.impl/kittest/query/trait.Queryable.js" data-ignore-extern-crates="egui_kittest,kittest" async></script></section></div></main></body></html>

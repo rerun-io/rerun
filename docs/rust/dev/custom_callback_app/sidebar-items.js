@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["animated_snake","handle_dynamic_update","handle_message","main"]};

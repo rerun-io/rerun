@@ -1,0 +1,1 @@
+searchState.loadedDescShard("graph_lattice", 0, "Shows how to draw a graph with various node properties.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

@@ -1,0 +1,237 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="A complete, safe, native Rust implementation of Apache Arrow, a cross-language development platform for in-memory data."><title>re_sdk::external::arrow - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_sdk" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="../../../crates.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../re_sdk/index.html">re_sdk</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#columnar-format" title="Columnar Format">Columnar Format</a></li><li><a href="#type-erasure--trait-objects" title="Type Erasure / Trait Objects">Type Erasure / Trait Objects</a></li><li><a href="#compute-kernels" title="Compute Kernels">Compute Kernels</a></li><li><a href="#tabular-representation" title="Tabular Representation">Tabular Representation</a></li><li><a href="#io" title="IO">IO</a></li><li><a href="#serde-compatibility" title="Serde Compatibility">Serde Compatibility</a></li><li><a href="#crate-topology" title="Crate Topology">Crate Topology</a></li><li><a href="#safety-and-security" title="Safety and Security">Safety and Security</a></li><li><a href="#higher-level-processing" title="Higher-level Processing">Higher-level Processing</a></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#macros" title="Macros">Macros</a></li><li><a href="#constants" title="Constants">Constants</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In re_<wbr>sdk::<wbr>external</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../index.html">re_sdk</a>::<wbr><a href="../index.html">external</a></span><h1>Crate <span>arrow</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A complete, safe, native Rust implementation of <a href="https://arrow.apache.org">Apache Arrow</a>, a cross-language
+development platform for in-memory data.</p>
+<p>Please see the <a href="https://crates.io/crates/arrow">arrow crates.io</a>
+page for feature flags and tips to improve performance.</p>
+<h2 id="columnar-format"><a class="doc-anchor" href="#columnar-format">§</a>Columnar Format</h2>
+<p>The <a href="../re_types_core/external/arrow/array/index.html" title="mod re_sdk::external::re_types_core::external::arrow::array"><code>array</code></a> module provides statically typed implementations of all the array types as defined
+by the <a href="https://arrow.apache.org/docs/format/Columnar.html">Arrow Columnar Format</a></p>
+<p>For example, an <a href="../re_types_core/external/arrow/array/type.Int32Array.html" title="type re_sdk::external::re_types_core::external::arrow::array::Int32Array"><code>Int32Array</code></a> represents a nullable array of <code>i32</code></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>array = Int32Array::from(<span class="macro">vec!</span>[<span class="prelude-val">Some</span>(<span class="number">1</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>)]);
+<span class="macro">assert_eq!</span>(array.len(), <span class="number">3</span>);
+<span class="macro">assert_eq!</span>(array.value(<span class="number">0</span>), <span class="number">1</span>);
+<span class="macro">assert_eq!</span>(array.is_null(<span class="number">1</span>), <span class="bool-val">true</span>);
+
+<span class="kw">let </span>collected: Vec&lt;<span class="kw">_</span>&gt; = array.iter().collect();
+<span class="macro">assert_eq!</span>(collected, <span class="macro">vec!</span>[<span class="prelude-val">Some</span>(<span class="number">1</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">3</span>)]);
+<span class="macro">assert_eq!</span>(array.values(), <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">0</span>, <span class="number">3</span>])</code></pre></div>
+<p>It is also possible to write generic code for different concrete types.
+For example, since the following function is generic over all primitively
+typed arrays, when invoked the Rust compiler will generate specialized implementations
+with optimized code for each concrete type.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>sum&lt;T: ArrowPrimitiveType&gt;(array: <span class="kw-2">&amp;</span>PrimitiveArray&lt;T&gt;) -&gt; T::Native
+<span class="kw">where
+    </span>T: ArrowPrimitiveType,
+    T::Native: Sum
+{
+    array.iter().map(|v| v.unwrap_or_default()).sum()
+}
+
+<span class="macro">assert_eq!</span>(sum(<span class="kw-2">&amp;</span>Float32Array::from(<span class="macro">vec!</span>[<span class="number">1.1</span>, <span class="number">2.9</span>, <span class="number">3.</span>])), <span class="number">7.</span>);
+<span class="macro">assert_eq!</span>(sum(<span class="kw-2">&amp;</span>TimestampNanosecondArray::from(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])), <span class="number">6</span>);</code></pre></div>
+<p>And the following uses <a href="../re_types_core/external/arrow/array/trait.ArrayAccessor.html" title="trait re_sdk::external::re_types_core::external::arrow::array::ArrayAccessor"><code>ArrayAccessor</code></a> to implement a generic function
+over all arrays with comparable values.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>min&lt;T: ArrayAccessor&gt;(array: T) -&gt; <span class="prelude-ty">Option</span>&lt;T::Item&gt;
+<span class="kw">where
+    </span>T::Item: Ord
+{
+    ArrayIter::new(array).filter_map(|v| v).min()
+}
+
+<span class="macro">assert_eq!</span>(min(<span class="kw-2">&amp;</span>Int32Array::from(<span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">2</span>, <span class="number">1</span>, <span class="number">6</span>])), <span class="prelude-val">Some</span>(<span class="number">1</span>));
+<span class="macro">assert_eq!</span>(min(<span class="kw-2">&amp;</span>StringArray::from(<span class="macro">vec!</span>[<span class="string">"b"</span>, <span class="string">"a"</span>, <span class="string">"c"</span>])), <span class="prelude-val">Some</span>(<span class="string">"a"</span>));</code></pre></div>
+<p><strong>For more examples, and details consult the [arrow_array] docs.</strong></p>
+<h2 id="type-erasure--trait-objects"><a class="doc-anchor" href="#type-erasure--trait-objects">§</a>Type Erasure / Trait Objects</h2>
+<p>It is common to write code that handles any type of array, without necessarily
+knowing its concrete type. This is done using the <a href="../re_types_core/external/arrow/array/index.html" title="mod re_sdk::external::re_types_core::external::arrow::array"><code>Array</code></a> trait and using
+<a href="../re_types_core/external/arrow/datatypes/enum.DataType.html" title="enum re_sdk::external::re_types_core::external::arrow::datatypes::DataType"><code>DataType</code></a> to determine the appropriate <code>downcast_ref</code>.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>impl_string(array: <span class="kw-2">&amp;</span>StringArray) {}
+<span class="kw">fn </span>impl_f32(array: <span class="kw-2">&amp;</span>Float32Array) {}
+
+<span class="kw">fn </span>impl_dyn(array: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Array) {
+    <span class="kw">match </span>array.data_type() {
+        <span class="comment">// downcast `dyn Array` to concrete `StringArray`
+        </span>DataType::Utf8 =&gt; impl_string(array.as_any().downcast_ref().unwrap()),
+        <span class="comment">// downcast `dyn Array` to concrete `Float32Array`
+        </span>DataType::Float32 =&gt; impl_f32(array.as_any().downcast_ref().unwrap()),
+        <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>()
+    }
+}</code></pre></div>
+<p>You can use the <a href="../re_types_core/external/arrow/array/cast/trait.AsArray.html" title="trait re_sdk::external::re_types_core::external::arrow::array::cast::AsArray"><code>AsArray</code></a> extension trait to facilitate downcasting:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>impl_string(array: <span class="kw-2">&amp;</span>StringArray) {}
+<span class="kw">fn </span>impl_f32(array: <span class="kw-2">&amp;</span>Float32Array) {}
+
+<span class="kw">fn </span>impl_dyn(array: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Array) {
+    <span class="kw">match </span>array.data_type() {
+        DataType::Utf8 =&gt; impl_string(array.as_string()),
+        DataType::Float32 =&gt; impl_f32(array.as_primitive()),
+        <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>()
+    }
+}</code></pre></div>
+<p>It is also common to want to write a function that returns one of a number of possible
+array implementations. <a href="../re_types_core/external/arrow/array/type.ArrayRef.html" title="type re_sdk::external::re_types_core::external::arrow::array::ArrayRef"><code>ArrayRef</code></a> is a type-alias for <a href="../re_types_core/external/arrow/array/trait.Array.html" title="trait re_sdk::external::re_types_core::external::arrow::array::Array"><code>Arc&lt;dyn Array&gt;</code></a>
+which is frequently used for this purpose</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>parse_to_primitive&lt;<span class="lifetime">'a</span>, T, I&gt;(iter: I) -&gt; PrimitiveArray&lt;T&gt;
+<span class="kw">where
+    </span>T: ArrowPrimitiveType,
+    T::Native: FromStr,
+    I: IntoIterator&lt;Item=<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
+{
+    PrimitiveArray::from_iter(iter.into_iter().map(|val| T::Native::from_str(val).ok()))
+}
+
+<span class="kw">fn </span>parse_strings&lt;<span class="lifetime">'a</span>, I&gt;(iter: I, to_data_type: DataType) -&gt; ArrayRef
+<span class="kw">where
+    </span>I: IntoIterator&lt;Item=<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
+{
+   <span class="kw">match </span>to_data_type {
+       DataType::Int32 =&gt; Arc::new(parse_to_primitive::&lt;Int32Type, <span class="kw">_</span>&gt;(iter)) <span class="kw">as _</span>,
+       DataType::UInt32 =&gt; Arc::new(parse_to_primitive::&lt;UInt32Type, <span class="kw">_</span>&gt;(iter)) <span class="kw">as _</span>,
+       <span class="kw">_ </span>=&gt; <span class="macro">unimplemented!</span>()
+   }
+}
+
+<span class="kw">let </span>array = parse_strings([<span class="string">"1"</span>, <span class="string">"2"</span>, <span class="string">"3"</span>], DataType::Int32);
+<span class="kw">let </span>integers = array.as_any().downcast_ref::&lt;Int32Array&gt;().unwrap();
+<span class="macro">assert_eq!</span>(integers.values(), <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])</code></pre></div>
+<h2 id="compute-kernels"><a class="doc-anchor" href="#compute-kernels">§</a>Compute Kernels</h2>
+<p>The <a href="../re_types_core/external/arrow/compute/index.html" title="mod re_sdk::external::re_types_core::external::arrow::compute"><code>compute</code></a> module provides optimised implementations of many common operations,
+for example the <code>parse_strings</code> operation above could also be implemented as follows:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>parse_strings&lt;<span class="lifetime">'a</span>, I&gt;(iter: I, to_data_type: <span class="kw-2">&amp;</span>DataType) -&gt; <span class="prelude-ty">Result</span>&lt;ArrayRef&gt;
+<span class="kw">where
+    </span>I: IntoIterator&lt;Item=<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
+{
+    <span class="kw">let </span>array = StringArray::from_iter(iter.into_iter().map(<span class="prelude-val">Some</span>));
+    arrow::compute::cast(<span class="kw-2">&amp;</span>array, to_data_type)
+}
+
+<span class="kw">let </span>array = parse_strings([<span class="string">"1"</span>, <span class="string">"2"</span>, <span class="string">"3"</span>], <span class="kw-2">&amp;</span>DataType::UInt32).unwrap();
+<span class="kw">let </span>integers = array.as_any().downcast_ref::&lt;UInt32Array&gt;().unwrap();
+<span class="macro">assert_eq!</span>(integers.values(), <span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])</code></pre></div>
+<p>This module also implements many common vertical operations:</p>
+<ul>
+<li>All mathematical binary operators, such as <a href="../re_types_core/external/arrow/compute/kernels/numeric/fn.sub.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::kernels::numeric::sub"><code>sub</code></a></li>
+<li>All boolean binary operators such as <a href="../re_types_core/external/arrow/compute/kernels/cmp/fn.eq.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::kernels::cmp::eq"><code>equality</code></a></li>
+<li><a href="../re_types_core/external/arrow/compute/fn.cast.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::cast"><code>cast</code></a></li>
+<li><a href="../re_types_core/external/arrow/compute/fn.filter.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::filter"><code>filter</code></a></li>
+<li><a href="../re_types_core/external/arrow/compute/fn.take.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::take"><code>take</code></a></li>
+<li><a href="../re_types_core/external/arrow/compute/fn.sort.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::sort"><code>sort</code></a></li>
+<li>some string operators such as <a href="../re_types_core/external/arrow/compute/kernels/substring/fn.substring.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::kernels::substring::substring"><code>substring</code></a> and <a href="../re_types_core/external/arrow/compute/kernels/length/fn.length.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::kernels::length::length"><code>length</code></a></li>
+</ul>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>array = Int32Array::from_iter(<span class="number">0</span>..<span class="number">100</span>);
+<span class="comment">// Create a 32-bit integer scalar (single) value:
+</span><span class="kw">let </span>scalar = Int32Array::new_scalar(<span class="number">60</span>);
+<span class="comment">// find all rows in the array that are greater than 60
+</span><span class="kw">let </span>predicate = gt(<span class="kw-2">&amp;</span>array, <span class="kw-2">&amp;</span>scalar).unwrap();
+<span class="comment">// copy all matching rows into a new array
+</span><span class="kw">let </span>filtered = filter(<span class="kw-2">&amp;</span>array, <span class="kw-2">&amp;</span>predicate).unwrap();
+
+<span class="kw">let </span>expected = Int32Array::from_iter(<span class="number">61</span>..<span class="number">100</span>);
+<span class="macro">assert_eq!</span>(<span class="kw-2">&amp;</span>expected, filtered.as_primitive::&lt;Int32Type&gt;());</code></pre></div>
+<p>As well as some horizontal operations, such as:</p>
+<ul>
+<li><a href="../re_types_core/external/arrow/compute/fn.min.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::min"><code>min</code></a> and <a href="../re_types_core/external/arrow/compute/fn.max.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::max"><code>max</code></a></li>
+<li><a href="../re_types_core/external/arrow/compute/fn.sum.html" title="fn re_sdk::external::re_types_core::external::arrow::compute::sum"><code>sum</code></a></li>
+</ul>
+<h2 id="tabular-representation"><a class="doc-anchor" href="#tabular-representation">§</a>Tabular Representation</h2>
+<p>It is common to want to group one or more columns together into a tabular representation. This
+is provided by <a href="../re_types_core/external/arrow/record_batch/struct.RecordBatch.html" title="struct re_sdk::external::re_types_core::external::arrow::record_batch::RecordBatch"><code>RecordBatch</code></a> which combines a <a href="../re_types_core/external/arrow/datatypes/struct.Schema.html" title="struct re_sdk::external::re_types_core::external::arrow::datatypes::Schema"><code>Schema</code></a>
+and a corresponding list of <a href="../re_types_core/external/arrow/array/type.ArrayRef.html" title="type re_sdk::external::re_types_core::external::arrow::array::ArrayRef"><code>ArrayRef</code></a>.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>col_1 = Arc::new(Int32Array::from_iter([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])) <span class="kw">as _</span>;
+<span class="kw">let </span>col_2 = Arc::new(Float32Array::from_iter([<span class="number">1.</span>, <span class="number">6.3</span>, <span class="number">4.</span>])) <span class="kw">as _</span>;
+
+<span class="kw">let </span>batch = RecordBatch::try_from_iter([(<span class="string">"col1"</span>, col_1), (<span class="string">"col_2"</span>, col_2)]).unwrap();</code></pre></div>
+<h2 id="io"><a class="doc-anchor" href="#io">§</a>IO</h2>
+<p>This crate provides readers and writers for various formats to/from <a href="../re_types_core/external/arrow/record_batch/struct.RecordBatch.html" title="struct re_sdk::external::re_types_core::external::arrow::record_batch::RecordBatch"><code>RecordBatch</code></a></p>
+<ul>
+<li>JSON: <a href="../re_types_core/external/arrow/json/struct.Reader.html" title="struct re_sdk::external::re_types_core::external::arrow::json::Reader"><code>Reader</code></a> and <a href="../re_types_core/external/arrow/json/struct.Writer.html" title="struct re_sdk::external::re_types_core::external::arrow::json::Writer"><code>Writer</code></a></li>
+<li>CSV: <a href="../re_types_core/external/arrow/csv/type.Reader.html" title="type re_sdk::external::re_types_core::external::arrow::csv::Reader"><code>Reader</code></a> and <a href="../re_types_core/external/arrow/csv/struct.Writer.html" title="struct re_sdk::external::re_types_core::external::arrow::csv::Writer"><code>Writer</code></a></li>
+<li>IPC: <a href="../re_types_core/external/arrow/ipc/reader/struct.StreamReader.html" title="struct re_sdk::external::re_types_core::external::arrow::ipc::reader::StreamReader"><code>Reader</code></a> and <a href="../re_types_core/external/arrow/ipc/writer/struct.FileWriter.html" title="struct re_sdk::external::re_types_core::external::arrow::ipc::writer::FileWriter"><code>Writer</code></a></li>
+</ul>
+<p>Parquet is published as a <a href="https://crates.io/crates/parquet">separate crate</a></p>
+<h2 id="serde-compatibility"><a class="doc-anchor" href="#serde-compatibility">§</a>Serde Compatibility</h2>
+<p><a href="../re_types_core/external/arrow/json/reader/struct.Decoder.html" title="struct re_sdk::external::re_types_core::external::arrow::json::reader::Decoder"><code>arrow_json::reader::Decoder</code></a> provides a mechanism to convert arbitrary, serde-compatible
+structures into <a href="../re_types_core/external/arrow/record_batch/struct.RecordBatch.html" title="struct re_sdk::external::re_types_core::external::arrow::record_batch::RecordBatch"><code>RecordBatch</code></a>.</p>
+<p>Whilst likely less performant than implementing a custom builder, as described in
+<a href="../re_types_core/external/arrow/array/builder/index.html" title="mod re_sdk::external::re_types_core::external::arrow::array::builder">arrow_array::builder</a>, this provides a simple mechanism to get up and running quickly</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(Serialize)]
+</span><span class="kw">struct </span>MyStruct {
+    int32: i32,
+    string: String,
+}
+
+<span class="kw">let </span>schema = Schema::new(<span class="macro">vec!</span>[
+    Field::new(<span class="string">"int32"</span>, DataType::Int32, <span class="bool-val">false</span>),
+    Field::new(<span class="string">"string"</span>, DataType::Utf8, <span class="bool-val">false</span>),
+]);
+
+<span class="kw">let </span>rows = <span class="macro">vec!</span>[
+    MyStruct{ int32: <span class="number">5</span>, string: <span class="string">"bar"</span>.to_string() },
+    MyStruct{ int32: <span class="number">8</span>, string: <span class="string">"foo"</span>.to_string() },
+];
+
+<span class="kw">let </span><span class="kw-2">mut </span>decoder = ReaderBuilder::new(Arc::new(schema)).build_decoder().unwrap();
+decoder.serialize(<span class="kw-2">&amp;</span>rows).unwrap();
+
+<span class="kw">let </span>batch = decoder.flush().unwrap().unwrap();
+
+<span class="comment">// Expect batch containing two columns
+</span><span class="kw">let </span>int32 = batch.column(<span class="number">0</span>).as_primitive::&lt;Int32Type&gt;();
+<span class="macro">assert_eq!</span>(int32.values(), <span class="kw-2">&amp;</span>[<span class="number">5</span>, <span class="number">8</span>]);
+
+<span class="kw">let </span>string = batch.column(<span class="number">1</span>).as_string::&lt;i32&gt;();
+<span class="macro">assert_eq!</span>(string.value(<span class="number">0</span>), <span class="string">"bar"</span>);
+<span class="macro">assert_eq!</span>(string.value(<span class="number">1</span>), <span class="string">"foo"</span>);</code></pre></div>
+<h2 id="crate-topology"><a class="doc-anchor" href="#crate-topology">§</a>Crate Topology</h2>
+<p>The <a href="https://github.com/apache/arrow-rs"><code>arrow</code></a> project is implemented as multiple sub-crates, which are then re-exported by
+this top-level crate.</p>
+<p>Crate authors can choose to depend on this top-level crate, or just
+the sub-crates they need.</p>
+<p>The current list of sub-crates is:</p>
+<ul>
+<li>[<code>arrow-arith</code>][arrow_arith] - arithmetic kernels</li>
+<li>[<code>arrow-array</code>][arrow_array] - type-safe arrow array abstractions</li>
+<li>[<code>arrow-buffer</code>][arrow_buffer] - buffer abstractions for arrow arrays</li>
+<li>[<code>arrow-cast</code>][arrow_cast] - cast kernels for arrow arrays</li>
+<li><a href="../re_types_core/external/arrow/csv/index.html" title="mod re_sdk::external::re_types_core::external::arrow::csv"><code>arrow-csv</code></a> - read/write CSV to arrow format</li>
+<li>[<code>arrow-data</code>][arrow_data] - the underlying data of arrow arrays</li>
+<li><a href="../re_types_core/external/arrow/ipc/index.html" title="mod re_sdk::external::re_types_core::external::arrow::ipc"><code>arrow-ipc</code></a> - read/write IPC to arrow format</li>
+<li><a href="../re_types_core/external/arrow/json/index.html" title="mod re_sdk::external::re_types_core::external::arrow::json"><code>arrow-json</code></a> - read/write JSON to arrow format</li>
+<li>[<code>arrow-ord</code>][arrow_ord] - ordering kernels for arrow arrays</li>
+<li><a href="../re_types_core/external/arrow/row/index.html" title="mod re_sdk::external::re_types_core::external::arrow::row"><code>arrow-row</code></a> - comparable row format</li>
+<li>[<code>arrow-schema</code>][arrow_schema] - the logical types for arrow arrays</li>
+<li>[<code>arrow-select</code>][arrow_select] - selection kernels for arrow arrays</li>
+<li>[<code>arrow-string</code>][arrow_string] - string kernels for arrow arrays</li>
+</ul>
+<p>Some functionality is also distributed independently of this crate:</p>
+<ul>
+<li><a href="https://docs.rs/arrow-flight/latest/arrow_flight/"><code>arrow-flight</code></a> - support for <a href="https://arrow.apache.org/docs/format/Flight.html">Arrow Flight RPC</a></li>
+<li><a href="https://docs.rs/arrow-integration-test/latest/arrow_integration_test/"><code>arrow-integration-test</code></a> - support for <a href="https://github.com/apache/arrow/blob/master/docs/source/format/Integration.rst#json-test-data-format">Arrow JSON Test Format</a></li>
+<li><a href="https://docs.rs/parquet/latest/parquet/"><code>parquet</code></a> - support for <a href="https://parquet.apache.org/">Apache Parquet</a></li>
+</ul>
+<h2 id="safety-and-security"><a class="doc-anchor" href="#safety-and-security">§</a>Safety and Security</h2>
+<p>Like many crates, this crate makes use of unsafe where prudent. However, it endeavours to be
+sound. Specifically, <strong>it should not be possible to trigger undefined behaviour using safe APIs.</strong></p>
+<p>If you think you have found an instance where this is possible, please file
+a ticket in our <a href="https://github.com/apache/arrow-rs/issues">issue tracker</a> and it will be triaged and fixed. For more information on
+arrow’s use of unsafe, see <a href="https://github.com/apache/arrow-rs/tree/main/arrow#safety">here</a>.</p>
+<h2 id="higher-level-processing"><a class="doc-anchor" href="#higher-level-processing">§</a>Higher-level Processing</h2>
+<p>This crate aims to provide reusable, low-level primitives for operating on columnar data. For
+more sophisticated query processing workloads, consider checking out <a href="https://github.com/apache/arrow-datafusion">DataFusion</a>. This
+orchestrates the primitives exported by this crate into an embeddable query engine, with
+SQL and DataFrame frontends, and heavily influences this crate’s roadmap.</p>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="alloc/index.html" title="mod re_sdk::external::arrow::alloc">alloc</a></div><div class="desc docblock-short">Defines the low-level <a href="../re_types_core/external/arrow/alloc/trait.Allocation.html" title="trait re_sdk::external::re_types_core::external::arrow::alloc::Allocation"><code>Allocation</code></a> API for shared memory regions</div></li><li><div class="item-name"><a class="mod" href="array/index.html" title="mod re_sdk::external::arrow::array">array</a></div><div class="desc docblock-short">Statically typed implementations of Arrow Arrays</div></li><li><div class="item-name"><a class="mod" href="buffer/index.html" title="mod re_sdk::external::arrow::buffer">buffer</a></div><div class="desc docblock-short">Types of shared memory region</div></li><li><div class="item-name"><a class="mod" href="compute/index.html" title="mod re_sdk::external::arrow::compute">compute</a></div><div class="desc docblock-short">Computation kernels on Arrow Arrays</div></li><li><div class="item-name"><a class="mod" href="csv/index.html" title="mod re_sdk::external::arrow::csv">csv</a></div><div class="desc docblock-short">Transfer data between the Arrow memory format and CSV (comma-separated values).</div></li><li><div class="item-name"><a class="mod" href="datatypes/index.html" title="mod re_sdk::external::arrow::datatypes">datatypes</a></div><div class="desc docblock-short">Defines the logical data types of Arrow arrays.</div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod re_sdk::external::arrow::error">error</a></div><div class="desc docblock-short">Defines <code>ArrowError</code> for representing failures in various Arrow operations.</div></li><li><div class="item-name"><a class="mod" href="ipc/index.html" title="mod re_sdk::external::arrow::ipc">ipc</a></div><div class="desc docblock-short">Support for the <a href="https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc">Arrow IPC Format</a></div></li><li><div class="item-name"><a class="mod" href="json/index.html" title="mod re_sdk::external::arrow::json">json</a></div><div class="desc docblock-short">Transfer data between the Arrow memory format and JSON line-delimited records.</div></li><li><div class="item-name"><a class="mod" href="pyarrow/index.html" title="mod re_sdk::external::arrow::pyarrow">pyarrow</a></div><div class="desc docblock-short">Pass Arrow objects from and to PyArrow, using Arrow’s
+<a href="https://arrow.apache.org/docs/format/CDataInterface.html">C Data Interface</a>
+and <a href="https://docs.rs/pyo3/latest/pyo3/">pyo3</a>.</div></li><li><div class="item-name"><a class="mod" href="record_batch/index.html" title="mod re_sdk::external::arrow::record_batch">record_<wbr>batch</a></div><div class="desc docblock-short">Contains the <code>RecordBatch</code> type and associated traits</div></li><li><div class="item-name"><a class="mod" href="row/index.html" title="mod re_sdk::external::arrow::row">row</a></div><div class="desc docblock-short">A comparable row-oriented representation of a collection of <a href="../re_types_core/external/arrow/array/trait.Array.html" title="trait re_sdk::external::re_types_core::external::arrow::array::Array"><code>Array</code></a>.</div></li><li><div class="item-name"><a class="mod" href="tensor/index.html" title="mod re_sdk::external::arrow::tensor">tensor</a></div><div class="desc docblock-short">Arrow Tensor Type, defined in
+<a href="https://github.com/apache/arrow/blob/master/format/Tensor.fbs"><code>format/Tensor.fbs</code></a>.</div></li><li><div class="item-name"><a class="mod" href="util/index.html" title="mod re_sdk::external::arrow::util">util</a></div><div class="desc docblock-short">Utility functions for working with Arrow data</div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.downcast_dictionary_array.html" title="macro re_sdk::external::arrow::downcast_dictionary_array">downcast_<wbr>dictionary_<wbr>array</a></div><div class="desc docblock-short">Downcast an <a href="../re_types_core/external/arrow/array/trait.Array.html" title="trait re_sdk::external::re_types_core::external::arrow::array::Array"><code>Array</code></a> to a <a href="../re_types_core/external/arrow/array/struct.DictionaryArray.html" title="struct re_sdk::external::re_types_core::external::arrow::array::DictionaryArray"><code>DictionaryArray</code></a> based on its <a href="../re_types_core/external/arrow/datatypes/enum.DataType.html" title="enum re_sdk::external::re_types_core::external::arrow::datatypes::DataType"><code>DataType</code></a>, accepts
+a number of subsequent patterns to match the data type</div></li><li><div class="item-name"><a class="macro" href="macro.downcast_primitive_array.html" title="macro re_sdk::external::arrow::downcast_primitive_array">downcast_<wbr>primitive_<wbr>array</a></div><div class="desc docblock-short">Downcast an <a href="../re_types_core/external/arrow/array/trait.Array.html" title="trait re_sdk::external::re_types_core::external::arrow::array::Array"><code>Array</code></a> to a <a href="../re_types_core/external/arrow/array/struct.PrimitiveArray.html" title="struct re_sdk::external::re_types_core::external::arrow::array::PrimitiveArray"><code>PrimitiveArray</code></a> based on its <a href="../re_types_core/external/arrow/datatypes/enum.DataType.html" title="enum re_sdk::external::re_types_core::external::arrow::datatypes::DataType"><code>DataType</code></a>
+accepts a number of subsequent patterns to match the data type</div></li></ul><h2 id="constants" class="section-header">Constants<a href="#constants" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="constant" href="constant.ARROW_VERSION.html" title="constant re_sdk::external::arrow::ARROW_VERSION">ARROW_<wbr>VERSION</a></div><div class="desc docblock-short">Arrow crate version</div></li></ul></section></div></main></body></html>

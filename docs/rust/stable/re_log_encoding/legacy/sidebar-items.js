@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["LegacyLogMsg","LegacyStoreKind","LegacyTimeType"],"fn":["arrow_from_ipc"],"struct":["LegacyArrowMsg","LegacyBlueprintActivationCommand","LegacySetStoreInfo","LegacyStoreId","LegacyStoreInfo","LegacyTimePoint","LegacyTimeline","LegacyTuid"]};

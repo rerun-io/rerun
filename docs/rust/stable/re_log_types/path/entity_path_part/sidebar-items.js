@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["PROPERTIES_PART","RECORDING_PART","RESERVED_NAMESPACE_PREFIX"],"fn":["parse_unicode_escape"],"struct":["EntityPathPart"]};

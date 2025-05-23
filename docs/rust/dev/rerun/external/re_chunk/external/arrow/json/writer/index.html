@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="JSON Writer"><title>rerun::external::re_chunk::external::arrow::json::writer - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../" data-static-root-path="../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../static.files/storage-59e33391.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module writer</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#json-writer" title="JSON Writer">JSON Writer</a><ul><li><a href="#writing-json-formatted-byte-streams" title="Writing JSON formatted byte streams">Writing JSON formatted byte streams</a></li><li><a href="#writing-to-serde_json-json-objects" title="Writing to serde_json JSON Objects">Writing to serde_json JSON Objects</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In rerun::<wbr>external::<wbr>re_<wbr>chunk::<wbr>external::<wbr>arrow::<wbr>json</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../index.html">external</a>::<wbr><a href="../../../../index.html">re_chunk</a>::<wbr><a href="../../../index.html">external</a>::<wbr><a href="../../index.html">arrow</a>::<wbr><a href="../index.html">json</a></span><h1>Module <span>writer</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="json-writer"><a class="doc-anchor" href="#json-writer">§</a>JSON Writer</h2>
+<p>This JSON writer converts Arrow <a href="../../../../../re_chunk_store/external/arrow/array/struct.RecordBatch.html" title="struct rerun::external::re_chunk_store::external::arrow::array::RecordBatch"><code>RecordBatch</code></a>es into arrays of
+JSON objects or JSON formatted byte streams.</p>
+<h3 id="writing-json-formatted-byte-streams"><a class="doc-anchor" href="#writing-json-formatted-byte-streams">§</a>Writing JSON formatted byte streams</h3>
+<p>To serialize <a href="../../../../../re_chunk_store/external/arrow/array/struct.RecordBatch.html" title="struct rerun::external::re_chunk_store::external::arrow::array::RecordBatch"><code>RecordBatch</code></a>es into line-delimited JSON bytes, use
+<a href="../../../../../re_chunk_store/external/arrow/json/type.LineDelimitedWriter.html" title="type rerun::external::re_chunk_store::external::arrow::json::LineDelimitedWriter"><code>LineDelimitedWriter</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>
+<span class="kw">let </span>schema = Schema::new(<span class="macro">vec!</span>[Field::new(<span class="string">"a"</span>, DataType::Int32, <span class="bool-val">false</span>)]);
+<span class="kw">let </span>a = Int32Array::from(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<span class="kw">let </span>batch = RecordBatch::try_new(Arc::new(schema), <span class="macro">vec!</span>[Arc::new(a)]).unwrap();
+
+<span class="comment">// Write the record batch out as JSON
+</span><span class="kw">let </span>buf = Vec::new();
+<span class="kw">let </span><span class="kw-2">mut </span>writer = arrow_json::LineDelimitedWriter::new(buf);
+writer.write_batches(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="kw-2">&amp;</span>batch]).unwrap();
+writer.finish().unwrap();
+
+<span class="comment">// Get the underlying buffer back,
+</span><span class="kw">let </span>buf = writer.into_inner();
+<span class="macro">assert_eq!</span>(<span class="string">r#"{"a":1}
+{"a":2}
+{"a":3}
+"#</span>, String::from_utf8(buf).unwrap())</code></pre></div>
+<p>To serialize <a href="../../../../../re_chunk_store/external/arrow/array/struct.RecordBatch.html" title="struct rerun::external::re_chunk_store::external::arrow::array::RecordBatch"><code>RecordBatch</code></a>es into a well formed JSON array, use
+<a href="../../../../../re_chunk_store/external/arrow/json/type.ArrayWriter.html" title="type rerun::external::re_chunk_store::external::arrow::json::ArrayWriter"><code>ArrayWriter</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>arrow_schema::{DataType, Field, Schema};
+
+<span class="kw">let </span>schema = Schema::new(<span class="macro">vec!</span>[Field::new(<span class="string">"a"</span>, DataType::Int32, <span class="bool-val">false</span>)]);
+<span class="kw">let </span>a = Int32Array::from(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<span class="kw">let </span>batch = RecordBatch::try_new(Arc::new(schema), <span class="macro">vec!</span>[Arc::new(a)]).unwrap();
+
+<span class="comment">// Write the record batch out as a JSON array
+</span><span class="kw">let </span>buf = Vec::new();
+<span class="kw">let </span><span class="kw-2">mut </span>writer = arrow_json::ArrayWriter::new(buf);
+writer.write_batches(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="kw-2">&amp;</span>batch]).unwrap();
+writer.finish().unwrap();
+
+<span class="comment">// Get the underlying buffer back,
+</span><span class="kw">let </span>buf = writer.into_inner();
+<span class="macro">assert_eq!</span>(<span class="string">r#"[{"a":1},{"a":2},{"a":3}]"#</span>, String::from_utf8(buf).unwrap())</code></pre></div>
+<p><a href="../../../../../re_chunk_store/external/arrow/json/type.LineDelimitedWriter.html" title="type rerun::external::re_chunk_store::external::arrow::json::LineDelimitedWriter"><code>LineDelimitedWriter</code></a> and <a href="../../../../../re_chunk_store/external/arrow/json/type.ArrayWriter.html" title="type rerun::external::re_chunk_store::external::arrow::json::ArrayWriter"><code>ArrayWriter</code></a> will omit writing keys with null values.
+In order to explicitly write null values for keys, configure a custom <a href="../../../../../re_chunk_store/external/arrow/json/struct.Writer.html" title="struct rerun::external::re_chunk_store::external::arrow::json::Writer"><code>Writer</code></a> by
+using a <a href="../../../../../re_chunk_store/external/arrow/json/struct.WriterBuilder.html" title="struct rerun::external::re_chunk_store::external::arrow::json::WriterBuilder"><code>WriterBuilder</code></a> to construct a <a href="../../../../../re_chunk_store/external/arrow/json/struct.Writer.html" title="struct rerun::external::re_chunk_store::external::arrow::json::Writer"><code>Writer</code></a>.</p>
+<h3 id="writing-to-serde_json-json-objects"><a class="doc-anchor" href="#writing-to-serde_json-json-objects">§</a>Writing to <a href="https://docs.rs/serde_json/1.0.132/serde_json/index.html" title="mod serde_json">serde_json</a> JSON Objects</h3>
+<p>To serialize <a href="../../../../../re_chunk_store/external/arrow/array/struct.RecordBatch.html" title="struct rerun::external::re_chunk_store::external::arrow::array::RecordBatch"><code>RecordBatch</code></a>es into an array of
+<a href="https://docs.serde.rs/serde_json/">JSON</a> objects you can reparse the resulting JSON string.
+Note that this is less efficient than using the <code>Writer</code> API.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>schema = Schema::new(<span class="macro">vec!</span>[Field::new(<span class="string">"a"</span>, DataType::Int32, <span class="bool-val">false</span>)]);
+<span class="kw">let </span>a = Int32Array::from(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+<span class="kw">let </span>batch = RecordBatch::try_new(Arc::new(schema), <span class="macro">vec!</span>[Arc::new(a)]).unwrap();
+
+<span class="comment">// Write the record batch out as json bytes (string)
+</span><span class="kw">let </span>buf = Vec::new();
+<span class="kw">let </span><span class="kw-2">mut </span>writer = arrow_json::ArrayWriter::new(buf);
+writer.write_batches(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="kw-2">&amp;</span>batch]).unwrap();
+writer.finish().unwrap();
+<span class="kw">let </span>json_data = writer.into_inner();
+
+<span class="comment">// Parse the string using serde_json
+</span><span class="kw">use </span>serde_json::{Map, Value};
+<span class="kw">let </span>json_rows: Vec&lt;Map&lt;String, Value&gt;&gt; = serde_json::from_reader(json_data.as_slice()).unwrap();
+<span class="macro">assert_eq!</span>(
+    serde_json::Value::Object(json_rows[<span class="number">1</span>].clone()),
+    <span class="macro">serde_json::json!</span>({<span class="string">"a"</span>: <span class="number">2</span>}),
+);</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.JsonArray.html" title="struct rerun::external::re_chunk::external::arrow::json::writer::JsonArray">Json<wbr>Array</a></div><div class="desc docblock-short">Produces JSON output as a single JSON array.</div></li><li><div class="item-name"><a class="struct" href="struct.LineDelimited.html" title="struct rerun::external::re_chunk::external::arrow::json::writer::LineDelimited">Line<wbr>Delimited</a></div><div class="desc docblock-short">Produces JSON output with one record per line.</div></li><li><div class="item-name"><a class="struct" href="struct.Writer.html" title="struct rerun::external::re_chunk::external::arrow::json::writer::Writer">Writer</a></div><div class="desc docblock-short">A JSON writer which serializes <a href="../../../../../re_chunk_store/external/arrow/array/struct.RecordBatch.html" title="struct rerun::external::re_chunk_store::external::arrow::array::RecordBatch"><code>RecordBatch</code></a>es to a stream of
+<code>u8</code> encoded JSON objects.</div></li><li><div class="item-name"><a class="struct" href="struct.WriterBuilder.html" title="struct rerun::external::re_chunk::external::arrow::json::writer::WriterBuilder">Writer<wbr>Builder</a></div><div class="desc docblock-short">JSON writer builder.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.JsonFormat.html" title="trait rerun::external::re_chunk::external::arrow::json::writer::JsonFormat">Json<wbr>Format</a></div><div class="desc docblock-short">This trait defines how to format a sequence of JSON objects to a
+byte stream.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.ArrayWriter.html" title="type rerun::external::re_chunk::external::arrow::json::writer::ArrayWriter">Array<wbr>Writer</a></div><div class="desc docblock-short">A JSON writer which serializes <a href="../../../../../re_chunk_store/external/arrow/array/struct.RecordBatch.html" title="struct rerun::external::re_chunk_store::external::arrow::array::RecordBatch"><code>RecordBatch</code></a>es to JSON arrays.</div></li><li><div class="item-name"><a class="type" href="type.LineDelimitedWriter.html" title="type rerun::external::re_chunk::external::arrow::json::writer::LineDelimitedWriter">Line<wbr>Delimited<wbr>Writer</a></div><div class="desc docblock-short">A JSON writer which serializes <a href="../../../../../re_chunk_store/external/arrow/array/struct.RecordBatch.html" title="struct rerun::external::re_chunk_store::external::arrow::array::RecordBatch"><code>RecordBatch</code></a>es to newline delimited JSON objects.</div></li></ul></section></div></main></body></html>

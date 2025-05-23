@@ -1,0 +1,1 @@
+searchState.loadedDescShard("minimal", 0, "Demonstrates the most barebone usage of the Rerun SDK.")

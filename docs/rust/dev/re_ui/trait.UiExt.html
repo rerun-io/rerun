@@ -1,0 +1,330 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Rerun custom extensions to `egui::Ui`."><title>UiExt in re_ui - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="re_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../re_ui/index.html">re_ui</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">UiExt</a></h2><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.ui" title="ui">ui</a></li><li><a href="#tymethod.ui_mut" title="ui_mut">ui_mut</a></li></ul><h3><a href="#provided-methods">Provided Methods</a></h3><ul class="block"><li><a href="#method.bullet" title="bullet">bullet</a></li><li><a href="#method.center" title="center">center</a></li><li><a href="#method.checkbox_indeterminate" title="checkbox_indeterminate">checkbox_indeterminate</a></li><li><a href="#method.collapsing_header" title="collapsing_header">collapsing_header</a></li><li><a href="#method.design_tokens" title="design_tokens">design_tokens</a></li><li><a href="#method.draw_shadow_line" title="draw_shadow_line">draw_shadow_line</a></li><li><a href="#method.drop_down_menu" title="drop_down_menu">drop_down_menu</a></li><li><a href="#method.error_label" title="error_label">error_label</a></li><li><a href="#method.error_label_background_color" title="error_label_background_color">error_label_background_color</a></li><li><a href="#method.error_with_details_on_hover" title="error_with_details_on_hover">error_with_details_on_hover</a></li><li><a href="#method.full_span" title="full_span">full_span</a></li><li><a href="#method.full_span_scope" title="full_span_scope">full_span_scope</a></li><li><a href="#method.full_span_separator" title="full_span_separator">full_span_separator</a></li><li><a href="#method.grid_left_hand_label" title="grid_left_hand_label">grid_left_hand_label</a></li><li><a href="#method.help_hover_button" title="help_hover_button">help_hover_button</a></li><li><a href="#method.large_button" title="large_button">large_button</a></li><li><a href="#method.large_button_impl" title="large_button_impl">large_button_impl</a></li><li><a href="#method.large_button_selected" title="large_button_selected">large_button_selected</a></li><li><a href="#method.list_item" title="list_item">list_item</a></li><li><a href="#method.list_item_collapsible_noninteractive_label" title="list_item_collapsible_noninteractive_label">list_item_collapsible_noninteractive_label</a></li><li><a href="#method.list_item_flat_noninteractive" title="list_item_flat_noninteractive">list_item_flat_noninteractive</a></li><li><a href="#method.list_item_popup" title="list_item_popup">list_item_popup</a></li><li><a href="#method.list_item_scope" title="list_item_scope">list_item_scope</a></li><li><a href="#method.markdown_ui" title="markdown_ui">markdown_ui</a></li><li><a href="#method.maybe_collapsing_header" title="maybe_collapsing_header">maybe_collapsing_header</a></li><li><a href="#method.medium_icon_toggle_button" title="medium_icon_toggle_button">medium_icon_toggle_button</a></li><li><a href="#method.native_window_buttons_ui" title="native_window_buttons_ui">native_window_buttons_ui</a></li><li><a href="#method.paint_collapsing_triangle" title="paint_collapsing_triangle">paint_collapsing_triangle</a></li><li><a href="#method.paint_time_cursor" title="paint_time_cursor">paint_time_cursor</a></li><li><a href="#method.panel_content" title="panel_content">panel_content</a></li><li><a href="#method.panel_title_bar" title="panel_title_bar">panel_title_bar</a></li><li><a href="#method.panel_title_bar_with_buttons" title="panel_title_bar_with_buttons">panel_title_bar_with_buttons</a></li><li><a href="#method.re_checkbox" title="re_checkbox">re_checkbox</a></li><li><a href="#method.re_hyperlink" title="re_hyperlink">re_hyperlink</a></li><li><a href="#method.re_radio_value" title="re_radio_value">re_radio_value</a></li><li><a href="#method.section_collapsing_header" title="section_collapsing_header">section_collapsing_header</a></li><li><a href="#method.selectable_label_with_icon" title="selectable_label_with_icon">selectable_label_with_icon</a></li><li><a href="#method.selectable_toggle" title="selectable_toggle">selectable_toggle</a></li><li><a href="#method.selection_grid" title="selection_grid">selection_grid</a></li><li><a href="#method.set_truncate_style" title="set_truncate_style">set_truncate_style</a></li><li><a href="#method.small_icon" title="small_icon">small_icon</a></li><li><a href="#method.small_icon_button" title="small_icon_button">small_icon_button</a></li><li><a href="#method.small_icon_button_widget" title="small_icon_button_widget">small_icon_button_widget</a></li><li><a href="#method.success_label" title="success_label">success_label</a></li><li><a href="#method.theme" title="theme">theme</a></li><li><a href="#method.toggle_switch" title="toggle_switch">toggle_switch</a></li><li><a href="#method.visibility_toggle_button" title="visibility_toggle_button">visibility_toggle_button</a></li><li><a href="#method.warning_label" title="warning_label">warning_label</a></li></ul><h3><a href="#foreign-impls">Implementations on Foreign Types</a></h3><ul class="block"><li><a href="#impl-UiExt-for-Ui" title="Ui">Ui</a></li></ul><h3><a href="#dyn-compatibility">Dyn Compatibility</a></h3><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="index.html">In crate re_<wbr>ui</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="index.html">re_ui</a></span><h1>Trait <span class="trait">UiExt</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/re_ui/ui_ext.rs.html#52-1204">Source</a> </span></div><pre class="rust item-decl"><code>pub trait UiExt {
+<details class="toggle type-contents-toggle"><summary class="hideme"><span>Show 50 methods</span></summary>    // Required methods
+    fn <a href="#tymethod.ui" class="fn">ui</a>(&amp;self) -&gt; &amp;Ui;
+<span class="item-spacer"></span>    fn <a href="#tymethod.ui_mut" class="fn">ui_mut</a>(&amp;mut self) -&gt; &amp;mut Ui;
+
+    // Provided methods
+    fn <a href="#method.theme" class="fn">theme</a>(&amp;self) -&gt; Theme { ... }
+<span class="item-spacer"></span>    fn <a href="#method.design_tokens" class="fn">design_tokens</a>(&amp;self) -&gt; &amp;'static <a class="struct" href="struct.DesignTokens.html" title="struct re_ui::DesignTokens">DesignTokens</a> { ... }
+<span class="item-spacer"></span>    fn <a href="#method.success_label" class="fn">success_label</a>(&amp;mut self, success_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.warning_label" class="fn">warning_label</a>(&amp;mut self, warning_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.error_with_details_on_hover" class="fn">error_with_details_on_hover</a>(
+        &amp;mut self,
+        error_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.error_label_background_color" class="fn">error_label_background_color</a>(&amp;self) -&gt; Color32 { ... }
+<span class="item-spacer"></span>    fn <a href="#method.error_label" class="fn">error_label</a>(&amp;mut self, error_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.small_icon_button" class="fn">small_icon_button</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.small_icon_button_widget" class="fn">small_icon_button_widget</a>&lt;'a&gt;(&amp;self, icon: &amp;'a <a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>) -&gt; Button&lt;'a&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.small_icon" class="fn">small_icon</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>, tint: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Color32&gt;) -&gt; Rect { ... }
+<span class="item-spacer"></span>    fn <a href="#method.medium_icon_toggle_button" class="fn">medium_icon_toggle_button</a>(
+        &amp;mut self,
+        icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>,
+        selected: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.large_button_impl" class="fn">large_button_impl</a>(
+        &amp;mut self,
+        icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>,
+        bg_fill: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Color32&gt;,
+        tint: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Color32&gt;,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.re_checkbox" class="fn">re_checkbox</a>(
+        &amp;mut self,
+        selected: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.checkbox_indeterminate" class="fn">checkbox_indeterminate</a>(
+        &amp;mut self,
+        selected: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+        indeterminate: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.re_radio_value" class="fn">re_radio_value</a>&lt;Value: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/cmp/trait.PartialEq.html" title="trait core::cmp::PartialEq">PartialEq</a>&gt;(
+        &amp;mut self,
+        current_value: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.reference.html">&amp;mut Value</a>,
+        alternative: Value,
+        text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.large_button" class="fn">large_button</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.large_button_selected" class="fn">large_button_selected</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>, selected: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.visibility_toggle_button" class="fn">visibility_toggle_button</a>(&amp;mut self, visible: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.full_span_separator" class="fn">full_span_separator</a>(&amp;mut self) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_item_popup" class="fn">list_item_popup</a>&lt;R&gt;(
+        &amp;self,
+        popup_id: Id,
+        widget_response: &amp;Response,
+        vertical_offset: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>,
+        add_contents: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;R&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.panel_content" class="fn">panel_content</a>&lt;R&gt;(&amp;mut self, add_contents: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R) -&gt; R { ... }
+<span class="item-spacer"></span>    fn <a href="#method.panel_title_bar" class="fn">panel_title_bar</a>(&amp;mut self, label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>, hover_text: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>&gt;) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.panel_title_bar_with_buttons" class="fn">panel_title_bar_with_buttons</a>&lt;R&gt;(
+        &amp;mut self,
+        label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+        hover_text: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>&gt;,
+        add_right_buttons: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; R { ... }
+<span class="item-spacer"></span>    fn <a href="#method.collapsing_header" class="fn">collapsing_header</a>&lt;R&gt;(
+        &amp;mut self,
+        label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+        default_open: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        add_body: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; CollapsingResponse&lt;R&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.maybe_collapsing_header" class="fn">maybe_collapsing_header</a>&lt;R&gt;(
+        &amp;mut self,
+        collapsing: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+        default_open: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        add_body: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; CollapsingResponse&lt;R&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.paint_collapsing_triangle" class="fn">paint_collapsing_triangle</a>(
+        &amp;self,
+        openness: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>,
+        center: Pos2,
+        color: Color32,
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.grid_left_hand_label" class="fn">grid_left_hand_label</a>(&amp;mut self, label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.selection_grid" class="fn">selection_grid</a>(&amp;self, id: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; Grid { ... }
+<span class="item-spacer"></span>    fn <a href="#method.draw_shadow_line" class="fn">draw_shadow_line</a>(&amp;self, rect: Rect, direction: Direction) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_item_scope" class="fn">list_item_scope</a>&lt;R&gt;(
+        &amp;mut self,
+        id_salt: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,
+        content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; R { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_item" class="fn">list_item</a>(&amp;self) -&gt; <a class="struct" href="list_item/struct.ListItem.html" title="struct re_ui::list_item::ListItem">ListItem</a> { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_item_flat_noninteractive" class="fn">list_item_flat_noninteractive</a>(
+        &amp;mut self,
+        content: impl <a class="trait" href="list_item/trait.ListItemContent.html" title="trait re_ui::list_item::ListItemContent">ListItemContent</a>,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.list_item_collapsible_noninteractive_label" class="fn">list_item_collapsible_noninteractive_label</a>&lt;R&gt;(
+        &amp;mut self,
+        label: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+        default_open: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        children_ui: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;R&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.section_collapsing_header" class="fn">section_collapsing_header</a>&lt;'a&gt;(
+        &amp;self,
+        label: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+    ) -&gt; <a class="struct" href="struct.SectionCollapsingHeader.html" title="struct re_ui::SectionCollapsingHeader">SectionCollapsingHeader</a>&lt;'a&gt; { ... }
+<span class="item-spacer"></span>    fn <a href="#method.selectable_label_with_icon" class="fn">selectable_label_with_icon</a>(
+        &amp;mut self,
+        icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>,
+        text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+        selected: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+        style: <a class="enum" href="enum.LabelStyle.html" title="enum re_ui::LabelStyle">LabelStyle</a>,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.paint_time_cursor" class="fn">paint_time_cursor</a>(
+        &amp;self,
+        painter: &amp;Painter,
+        response: &amp;Response,
+        x: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>,
+        y: Rangef,
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.bullet" class="fn">bullet</a>(&amp;mut self, color: Color32) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.center" class="fn">center</a>&lt;R&gt;(
+        &amp;mut self,
+        id_salt: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,
+        add_contents: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; R { ... }
+<span class="item-spacer"></span>    fn <a href="#method.toggle_switch" class="fn">toggle_switch</a>(&amp;mut self, height: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>, on: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.re_hyperlink" class="fn">re_hyperlink</a>(
+        &amp;mut self,
+        text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+        url: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/alloc/string/trait.ToString.html" title="trait alloc::string::ToString">ToString</a>,
+        always_new_tab: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    ) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.native_window_buttons_ui" class="fn">native_window_buttons_ui</a>(&amp;mut self) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.help_hover_button" class="fn">help_hover_button</a>(&amp;mut self) -&gt; Response { ... }
+<span class="item-spacer"></span>    fn <a href="#method.markdown_ui" class="fn">markdown_ui</a>(&amp;mut self, markdown: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.drop_down_menu" class="fn">drop_down_menu</a>(
+        &amp;mut self,
+        id_salt: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,
+        selected_text: <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>,
+        content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui),
+    ) { ... }
+<span class="item-spacer"></span>    fn <a href="#method.full_span_scope" class="fn">full_span_scope</a>&lt;R&gt;(
+        &amp;mut self,
+        span: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;Rangef&gt;,
+        content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+    ) -&gt; R { ... }
+<span class="item-spacer"></span>    fn <a href="#method.full_span" class="fn">full_span</a>(&amp;self) -&gt; Rangef { ... }
+<span class="item-spacer"></span>    fn <a href="#method.selectable_toggle" class="fn">selectable_toggle</a>&lt;R&gt;(&amp;mut self, content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R) -&gt; R { ... }
+<span class="item-spacer"></span>    fn <a href="#method.set_truncate_style" class="fn">set_truncate_style</a>(&amp;mut self) { ... }
+</details>}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Rerun custom extensions to [<code>egui::Ui</code>].</p>
+</div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><section id="tymethod.ui" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#53">Source</a><h4 class="code-header">fn <a href="#tymethod.ui" class="fn">ui</a>(&amp;self) -&gt; &amp;Ui</h4></section><section id="tymethod.ui_mut" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#54">Source</a><h4 class="code-header">fn <a href="#tymethod.ui_mut" class="fn">ui_mut</a>(&amp;mut self) -&gt; &amp;mut Ui</h4></section></div><h2 id="provided-methods" class="section-header">Provided Methods<a href="#provided-methods" class="anchor">§</a></h2><div class="methods"><section id="method.theme" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#56-58">Source</a><h4 class="code-header">fn <a href="#method.theme" class="fn">theme</a>(&amp;self) -&gt; Theme</h4></section><section id="method.design_tokens" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#60-62">Source</a><h4 class="code-header">fn <a href="#method.design_tokens" class="fn">design_tokens</a>(&amp;self) -&gt; &amp;'static <a class="struct" href="struct.DesignTokens.html" title="struct re_ui::DesignTokens">DesignTokens</a></h4></section><details class="toggle method-toggle" open><summary><section id="method.success_label" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#67-71">Source</a><h4 class="code-header">fn <a href="#method.success_label" class="fn">success_label</a>(&amp;mut self, success_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; Response</h4></section></summary><div class="docblock"><p>Shows a success label with a large border.</p>
+<p>If you don’t want a border, use <a href="trait.ContextExt.html#method.success_text" title="method re_ui::ContextExt::success_text"><code>crate::ContextExt::success_text</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.warning_label" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#76-86">Source</a><h4 class="code-header">fn <a href="#method.warning_label" class="fn">warning_label</a>(&amp;mut self, warning_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; Response</h4></section></summary><div class="docblock"><p>Shows a warning label with a large border.</p>
+<p>If you don’t want a border, use <a href="trait.ContextExt.html#method.warning_text" title="method re_ui::ContextExt::warning_text"><code>crate::ContextExt::warning_text</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.error_with_details_on_hover" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#91-100">Source</a><h4 class="code-header">fn <a href="#method.error_with_details_on_hover" class="fn">error_with_details_on_hover</a>(
+    &amp;mut self,
+    error_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;,
+) -&gt; Response</h4></section></summary><div class="docblock"><p>Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.</p>
+<p>This has a large border! If you don’t want a border, use <a href="trait.ContextExt.html#method.error_text" title="method re_ui::ContextExt::error_text"><code>crate::ContextExt::error_text</code></a>.</p>
+</div></details><section id="method.error_label_background_color" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#102-104">Source</a><h4 class="code-header">fn <a href="#method.error_label_background_color" class="fn">error_label_background_color</a>(&amp;self) -&gt; Color32</h4></section><details class="toggle method-toggle" open><summary><section id="method.error_label" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#112-122">Source</a><h4 class="code-header">fn <a href="#method.error_label" class="fn">error_label</a>(&amp;mut self, error_text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;) -&gt; Response</h4></section></summary><div class="docblock"><p>Shows an error label with the entire error text and copies the text to the clipboard on click.</p>
+<p>Use this only if the error message is short, or you have a lot of room.
+Otherwise, use <a href="trait.UiExt.html#method.error_with_details_on_hover"><code>Self::error_with_details_on_hover</code></a>.</p>
+<p>This has a large border! If you don’t want a border, use <a href="trait.ContextExt.html#method.error_text" title="method re_ui::ContextExt::error_text"><code>crate::ContextExt::error_text</code></a>.</p>
+</div></details><section id="method.small_icon_button" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#124-127">Source</a><h4 class="code-header">fn <a href="#method.small_icon_button" class="fn">small_icon_button</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>) -&gt; Response</h4></section><section id="method.small_icon_button_widget" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#129-136">Source</a><h4 class="code-header">fn <a href="#method.small_icon_button_widget" class="fn">small_icon_button_widget</a>&lt;'a&gt;(&amp;self, icon: &amp;'a <a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>) -&gt; Button&lt;'a&gt;</h4></section><details class="toggle method-toggle" open><summary><section id="method.small_icon" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#141-151">Source</a><h4 class="code-header">fn <a href="#method.small_icon" class="fn">small_icon</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>, tint: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Color32&gt;) -&gt; Rect</h4></section></summary><div class="docblock"><p>Adds a non-interactive, optionally tinted small icon.</p>
+<p>Uses <a href="struct.DesignTokens.html#method.small_icon_size" title="associated function re_ui::DesignTokens::small_icon_size"><code>DesignTokens::small_icon_size</code></a>. Returns the rect where the icon was painted.</p>
+</div></details><section id="method.medium_icon_toggle_button" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#153-169">Source</a><h4 class="code-header">fn <a href="#method.medium_icon_toggle_button" class="fn">medium_icon_toggle_button</a>(
+    &amp;mut self,
+    icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>,
+    selected: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+) -&gt; Response</h4></section><section id="method.large_button_impl" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#171-215">Source</a><h4 class="code-header">fn <a href="#method.large_button_impl" class="fn">large_button_impl</a>(
+    &amp;mut self,
+    icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>,
+    bg_fill: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Color32&gt;,
+    tint: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Color32&gt;,
+) -&gt; Response</h4></section><section id="method.re_checkbox" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#217-223">Source</a><h4 class="code-header">fn <a href="#method.re_checkbox" class="fn">re_checkbox</a>(
+    &amp;mut self,
+    selected: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+) -&gt; Response</h4></section><section id="method.checkbox_indeterminate" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#226-243">Source</a><h4 class="code-header">fn <a href="#method.checkbox_indeterminate" class="fn">checkbox_indeterminate</a>(
+    &amp;mut self,
+    selected: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+    indeterminate: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+) -&gt; Response</h4></section><section id="method.re_radio_value" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#246-261">Source</a><h4 class="code-header">fn <a href="#method.re_radio_value" class="fn">re_radio_value</a>&lt;Value: <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/cmp/trait.PartialEq.html" title="trait core::cmp::PartialEq">PartialEq</a>&gt;(
+    &amp;mut self,
+    current_value: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.reference.html">&amp;mut Value</a>,
+    alternative: Value,
+    text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+) -&gt; Response</h4></section><section id="method.large_button" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#263-265">Source</a><h4 class="code-header">fn <a href="#method.large_button" class="fn">large_button</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>) -&gt; Response</h4></section><section id="method.large_button_selected" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#267-272">Source</a><h4 class="code-header">fn <a href="#method.large_button_selected" class="fn">large_button_selected</a>(&amp;mut self, icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>, selected: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>) -&gt; Response</h4></section><section id="method.visibility_toggle_button" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#274-285">Source</a><h4 class="code-header">fn <a href="#method.visibility_toggle_button" class="fn">visibility_toggle_button</a>(&amp;mut self, visible: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>) -&gt; Response</h4></section><details class="toggle method-toggle" open><summary><section id="method.full_span_separator" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#292-314">Source</a><h4 class="code-header">fn <a href="#method.full_span_separator" class="fn">full_span_separator</a>(&amp;mut self) -&gt; Response</h4></section></summary><div class="docblock"><p>Create a separator similar to [<code>egui::Separator</code>] but with the full span behavior.</p>
+<p>The span is determined using <a href="trait.UiExt.html#method.full_span" title="method re_ui::UiExt::full_span"><code>crate::UiExt::full_span</code></a>. Contrary to
+[<code>egui::Separator</code>], this separator allocates a single pixel in height, as spacing is
+typically handled by content when full span highlighting is used.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.list_item_popup" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#320-376">Source</a><h4 class="code-header">fn <a href="#method.list_item_popup" class="fn">list_item_popup</a>&lt;R&gt;(
+    &amp;self,
+    popup_id: Id,
+    widget_response: &amp;Response,
+    vertical_offset: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>,
+    add_contents: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;R&gt;</h4></section></summary><div class="docblock"><p>Popup similar to [<code>egui::popup_below_widget</code>] but suitable for use with
+<a href="list_item/struct.ListItem.html" title="struct re_ui::list_item::ListItem"><code>crate::list_item::ListItem</code></a>.</p>
+<p>Note that <code>add_contents</code> is called within a <a href="list_item/fn.list_item_scope.html" title="fn re_ui::list_item::list_item_scope"><code>crate::list_item::list_item_scope</code></a>.</p>
+</div></details><section id="method.panel_content" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#380-387">Source</a><h4 class="code-header">fn <a href="#method.panel_content" class="fn">panel_content</a>&lt;R&gt;(&amp;mut self, add_contents: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R) -&gt; R</h4></section><details class="toggle method-toggle" open><summary><section id="method.panel_title_bar" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#395-397">Source</a><h4 class="code-header">fn <a href="#method.panel_title_bar" class="fn">panel_title_bar</a>(&amp;mut self, label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>, hover_text: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>&gt;)</h4></section></summary><div class="docblock"><p>Static title bar used to separate panels into section.</p>
+<p>This title bar is meant to be used in a panel with proper inner margin and clip rectangle
+set.</p>
+<p>Use <a href="trait.UiExt.html#method.panel_title_bar_with_buttons" title="method re_ui::UiExt::panel_title_bar_with_buttons"><code>UiExt::panel_title_bar_with_buttons</code></a> to display buttons in the title bar.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.panel_title_bar_with_buttons" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#403-442">Source</a><h4 class="code-header">fn <a href="#method.panel_title_bar_with_buttons" class="fn">panel_title_bar_with_buttons</a>&lt;R&gt;(
+    &amp;mut self,
+    label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    hover_text: <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>&gt;,
+    add_right_buttons: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; R</h4></section></summary><div class="docblock"><p>Static title bar used to separate panels into section with custom buttons when hovered.
+h
+This title bar is meant to be used in a panel with proper inner margin and clip rectangle
+set.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.collapsing_header" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#448-539">Source</a><h4 class="code-header">fn <a href="#method.collapsing_header" class="fn">collapsing_header</a>&lt;R&gt;(
+    &amp;mut self,
+    label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    default_open: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    add_body: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; CollapsingResponse&lt;R&gt;</h4></section></summary><div class="docblock"><p>Replacement for [<code>egui::CollapsingHeader</code>] that respect our style.</p>
+<p>The layout is fine-tuned to fit well in inspector panels (such as Rerun’s Selection Panel)
+where the collapsing header should align nicely with checkboxes and other controls.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.maybe_collapsing_header" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#546-565">Source</a><h4 class="code-header">fn <a href="#method.maybe_collapsing_header" class="fn">maybe_collapsing_header</a>&lt;R&gt;(
+    &amp;mut self,
+    collapsing: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    default_open: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    add_body: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; CollapsingResponse&lt;R&gt;</h4></section></summary><div class="docblock"><p>Conditionally collapsing header.</p>
+<p>Display content under a header that is conditionally collapsible. If <code>collapsing</code> is <code>true</code>,
+this is equivalent to <a href="trait.UiExt.html#method.collapsing_header"><code>Self::collapsing_header</code></a>. If <code>collapsing</code> is <code>false</code>, the content
+is displayed under a static, non-collapsible header.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.paint_collapsing_triangle" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#571-597">Source</a><h4 class="code-header">fn <a href="#method.paint_collapsing_triangle" class="fn">paint_collapsing_triangle</a>(&amp;self, openness: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>, center: Pos2, color: Color32)</h4></section></summary><div class="docblock"><p>Paint a collapsing triangle in the Rerun’s style.</p>
+<p>Alternative to [<code>egui::collapsing_header::paint_default_icon</code>]. Note that the triangle is
+painted with a fixed size.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.grid_left_hand_label" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#602-608">Source</a><h4 class="code-header">fn <a href="#method.grid_left_hand_label" class="fn">grid_left_hand_label</a>(&amp;mut self, label: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; Response</h4></section></summary><div class="docblock"><p>Workaround for putting a label into a grid at the top left of its row.</p>
+<p>You only need to use this if you expect the right side to have multi-line entries.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.selection_grid" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#614-618">Source</a><h4 class="code-header">fn <a href="#method.selection_grid" class="fn">selection_grid</a>(&amp;self, id: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>) -&gt; Grid</h4></section></summary><div class="docblock"><p>Two-column grid to be used in selection view.</p>
+<p>Use this when you expect the right column to have multi-line entries.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.draw_shadow_line" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#621-660">Source</a><h4 class="code-header">fn <a href="#method.draw_shadow_line" class="fn">draw_shadow_line</a>(&amp;self, rect: Rect, direction: Direction)</h4></section></summary><div class="docblock"><p>Draws a shadow into the given rect with the shadow direction given from dark to light</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.list_item_scope" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#664-670">Source</a><h4 class="code-header">fn <a href="#method.list_item_scope" class="fn">list_item_scope</a>&lt;R&gt;(
+    &amp;mut self,
+    id_salt: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,
+    content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; R</h4></section></summary><div class="docblock"><p>Convenience function to create a <a href="list_item/fn.list_item_scope.html" title="fn re_ui::list_item::list_item_scope"><code>list_item::list_item_scope</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.list_item" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#674-676">Source</a><h4 class="code-header">fn <a href="#method.list_item" class="fn">list_item</a>(&amp;self) -&gt; <a class="struct" href="list_item/struct.ListItem.html" title="struct re_ui::list_item::ListItem">ListItem</a></h4></section></summary><div class="docblock"><p>Convenience function to create a <a href="list_item/struct.ListItem.html" title="struct re_ui::list_item::ListItem"><code>list_item::ListItem</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.list_item_flat_noninteractive" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#679-686">Source</a><h4 class="code-header">fn <a href="#method.list_item_flat_noninteractive" class="fn">list_item_flat_noninteractive</a>(
+    &amp;mut self,
+    content: impl <a class="trait" href="list_item/trait.ListItemContent.html" title="trait re_ui::list_item::ListItemContent">ListItemContent</a>,
+) -&gt; Response</h4></section></summary><div class="docblock"><p>Convenience for adding a flat non-interactive <a href="list_item/trait.ListItemContent.html" title="trait re_ui::list_item::ListItemContent"><code>list_item::ListItemContent</code></a></p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.list_item_collapsible_noninteractive_label" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#690-709">Source</a><h4 class="code-header">fn <a href="#method.list_item_collapsible_noninteractive_label" class="fn">list_item_collapsible_noninteractive_label</a>&lt;R&gt;(
+    &amp;mut self,
+    label: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+    default_open: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    children_ui: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;R&gt;</h4></section></summary><div class="docblock"><p>Convenience to create a non-interactive, collapsible <a href="list_item/struct.ListItem.html" title="struct re_ui::list_item::ListItem"><code>list_item::ListItem</code></a> with just a
+label. The children UI is wrapped in a <a href="list_item/fn.list_item_scope.html" title="fn re_ui::list_item::list_item_scope"><code>list_item::list_item_scope</code></a>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.section_collapsing_header" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#713-718">Source</a><h4 class="code-header">fn <a href="#method.section_collapsing_header" class="fn">section_collapsing_header</a>&lt;'a&gt;(
+    &amp;self,
+    label: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+) -&gt; <a class="struct" href="struct.SectionCollapsingHeader.html" title="struct re_ui::SectionCollapsingHeader">SectionCollapsingHeader</a>&lt;'a&gt;</h4></section></summary><div class="docblock"><p>Convenience function to create a <a href="struct.SectionCollapsingHeader.html" title="struct re_ui::SectionCollapsingHeader"><code>crate::SectionCollapsingHeader</code></a>.</p>
+</div></details><section id="method.selectable_label_with_icon" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#720-816">Source</a><h4 class="code-header">fn <a href="#method.selectable_label_with_icon" class="fn">selectable_label_with_icon</a>(
+    &amp;mut self,
+    icon: &amp;<a class="struct" href="icons/struct.Icon.html" title="struct re_ui::icons::Icon">Icon</a>,
+    text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+    selected: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+    style: <a class="enum" href="enum.LabelStyle.html" title="enum re_ui::LabelStyle">LabelStyle</a>,
+) -&gt; Response</h4></section><details class="toggle method-toggle" open><summary><section id="method.paint_time_cursor" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#819-857">Source</a><h4 class="code-header">fn <a href="#method.paint_time_cursor" class="fn">paint_time_cursor</a>(
+    &amp;self,
+    painter: &amp;Painter,
+    response: &amp;Response,
+    x: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>,
+    y: Rangef,
+)</h4></section></summary><div class="docblock"><p>Paints a time cursor for indicating the time on a time axis along x.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.bullet" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#860-872">Source</a><h4 class="code-header">fn <a href="#method.bullet" class="fn">bullet</a>(&amp;mut self, color: Color32)</h4></section></summary><div class="docblock"><p>Draw a bullet (for text lists).</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.center" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#877-922">Source</a><h4 class="code-header">fn <a href="#method.center" class="fn">center</a>&lt;R&gt;(
+    &amp;mut self,
+    id_salt: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,
+    add_contents: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; R</h4></section></summary><div class="docblock"><p>Center the content within [<code>egui::Ui::max_rect()</code>].</p>
+<p>The <code>add_contents</code> closure is executed in the context of a vertical layout.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.toggle_switch" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#927-972">Source</a><h4 class="code-header">fn <a href="#method.toggle_switch" class="fn">toggle_switch</a>(&amp;mut self, height: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.f32.html">f32</a>, on: &amp;mut <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>) -&gt; Response</h4></section></summary><div class="docblock"><p>Binary toggle switch.</p>
+<p>Adapted from <code>egui_demo_lib/src/demo/toggle_switch.rs</code></p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.re_hyperlink" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#983-1012">Source</a><h4 class="code-header">fn <a href="#method.re_hyperlink" class="fn">re_hyperlink</a>(
+    &amp;mut self,
+    text: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;WidgetText&gt;,
+    url: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/alloc/string/trait.ToString.html" title="trait alloc::string::ToString">ToString</a>,
+    always_new_tab: <a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.bool.html">bool</a>,
+) -&gt; Response</h4></section></summary><div class="docblock"><p>Helper for adding a list-item hyperlink.</p>
+<p>By default, the url is open in the same tab or a new tab based on the mouse button and
+modifiers, as per usual in browsers. If <code>always_new_tab</code> is <code>true</code>, then the url is opened
+in a new tab regardless.</p>
+<p>NOTE: for most kinds of URL, the <code>always_new_tab</code> is indirectly overridden to <code>true</code> by
+<code>re_viewer::app_state::check_for_clicked_hyperlinks()</code>, unless the URL is special-cased by
+that function (e.g. <code>rerun://</code> URLs).</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.native_window_buttons_ui" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1020-1058">Source</a><h4 class="code-header">fn <a href="#method.native_window_buttons_ui" class="fn">native_window_buttons_ui</a>(&amp;mut self)</h4></section></summary><div class="docblock"><p>Show some close/maximize/minimize buttons for the native window.</p>
+<p>Assumes it is in a right-to-left layout.</p>
+<p>Use when <a href="constant.CUSTOM_WINDOW_DECORATIONS.html" title="constant re_ui::CUSTOM_WINDOW_DECORATIONS"><code>crate::CUSTOM_WINDOW_DECORATIONS</code></a> is set.</p>
+</div></details><section id="method.help_hover_button" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1060-1066">Source</a><h4 class="code-header">fn <a href="#method.help_hover_button" class="fn">help_hover_button</a>(&amp;mut self) -&gt; Response</h4></section><details class="toggle method-toggle" open><summary><section id="method.markdown_ui" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1069-1082">Source</a><h4 class="code-header">fn <a href="#method.markdown_ui" class="fn">markdown_ui</a>(&amp;mut self, markdown: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>)</h4></section></summary><div class="docblock"><p>Show some markdown</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.drop_down_menu" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1089-1103">Source</a><h4 class="code-header">fn <a href="#method.drop_down_menu" class="fn">drop_down_menu</a>(
+    &amp;mut self,
+    id_salt: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/hash/trait.Hash.html" title="trait core::hash::Hash">Hash</a>,
+    selected_text: <a class="struct" href="https://doc.rust-lang.org/1.85.0/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>,
+    content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui),
+)</h4></section></summary><div class="docblock"><p>A drop-down menu with a list of options.</p>
+<p>Designed for use with <a href="list_item/index.html" title="mod re_ui::list_item"><code>list_item</code></a> content.</p>
+<p>Use this instead of using [<code>egui::ComboBox</code>] directly.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.full_span_scope" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1108-1121">Source</a><h4 class="code-header">fn <a href="#method.full_span_scope" class="fn">full_span_scope</a>&lt;R&gt;(
+    &amp;mut self,
+    span: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;Rangef&gt;,
+    content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R,
+) -&gt; R</h4></section></summary><div class="docblock"><p>Use the provided range as full span for the nested content.</p>
+<p>See <a href="trait.UiExt.html#method.full_span"><code>Self::full_span</code></a> for details.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.full_span" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1128-1145">Source</a><h4 class="code-header">fn <a href="#method.full_span" class="fn">full_span</a>(&amp;self) -&gt; Rangef</h4></section></summary><div class="docblock"><p>Retrieve the current full-span scope.</p>
+<p>By default, this method uses a heuristics to identify which parent <code>Ui</code>’s boundary should be
+used (e.g. top-level panel, tooltip, etc.). Use <a href="trait.UiExt.html#method.full_span_scope"><code>Self::full_span_scope</code></a> to set a specific
+range as full span.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.selectable_toggle" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1161-1192">Source</a><h4 class="code-header">fn <a href="#method.selectable_toggle" class="fn">selectable_toggle</a>&lt;R&gt;(&amp;mut self, content: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;mut Ui) -&gt; R) -&gt; R</h4></section></summary><div class="docblock"><p>Style [<code>egui::Ui::selectable_value</code>]s and friends into a horizontal, toggle-like widget.</p>
+<h5 id="example"><a class="doc-anchor" href="#example">§</a>Example</h5>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span><span class="kw-2">mut </span>flag = <span class="bool-val">false</span>;
+ui.selectable_toggle(|ui| {
+    ui.selectable_value(<span class="kw-2">&amp;mut </span>flag, <span class="bool-val">false</span>, <span class="string">"Inactive"</span>);
+    ui.selectable_value(<span class="kw-2">&amp;mut </span>flag, <span class="bool-val">true</span>, <span class="string">"Active"</span>);
+});</code></pre></div>
+</div></details><details class="toggle method-toggle" open><summary><section id="method.set_truncate_style" class="method"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1196-1203">Source</a><h4 class="code-header">fn <a href="#method.set_truncate_style" class="fn">set_truncate_style</a>(&amp;mut self)</h4></section></summary><div class="docblock"><p>Set [<code>egui::Style::wrap_mode</code>] to [<code>egui::TextWrapMode::Truncate</code>], unless this is a sizing
+pass, in which case it is set to [<code>egui::TextWrapMode::Extend</code>].</p>
+</div></details></div><h2 id="dyn-compatibility" class="section-header">Dyn Compatibility<a href="#dyn-compatibility" class="anchor">§</a></h2><div class="dyn-compatibility-info"><p>This trait is <b>not</b> <a href="https://doc.rust-lang.org/1.85.0/reference/items/traits.html#object-safety">dyn compatible</a>.</p><p><i>In older versions of Rust, dyn compatibility was called "object safety", so this trait is not object safe.</i></p></div><h2 id="foreign-impls" class="section-header">Implementations on Foreign Types<a href="#foreign-impls" class="anchor">§</a></h2><details class="toggle implementors-toggle"><summary><section id="impl-UiExt-for-Ui" class="impl"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1206-1216">Source</a><a href="#impl-UiExt-for-Ui" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.UiExt.html" title="trait re_ui::UiExt">UiExt</a> for Ui</h3></section></summary><div class="impl-items"><section id="method.ui" class="method trait-impl"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1208-1210">Source</a><a href="#method.ui" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.ui" class="fn">ui</a>(&amp;self) -&gt; &amp;Ui</h4></section><section id="method.ui_mut" class="method trait-impl"><a class="src rightside" href="../src/re_ui/ui_ext.rs.html#1213-1215">Source</a><a href="#method.ui_mut" class="anchor">§</a><h4 class="code-header">fn <a href="#tymethod.ui_mut" class="fn">ui_mut</a>(&amp;mut self) -&gt; &amp;mut Ui</h4></section></div></details><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"></div><script src="../trait.impl/re_ui/ui_ext/trait.UiExt.js" data-ignore-extern-crates="egui" async></script></section></div></main></body></html>

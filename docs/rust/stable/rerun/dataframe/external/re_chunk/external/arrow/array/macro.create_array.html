@@ -1,0 +1,66 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Creates an array from a literal slice of values, suitable for rapid testing and development."><title>create_array in rerun::dataframe::external::re_chunk::external::arrow::array - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../static.files/rustdoc-42caa33d.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../" data-static-root-path="../../../../../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.84.0 (9fc6b4312 2025-01-07)" data-channel="1.84.0" data-search-js="search-92e6798f.js" data-settings-js="settings-0f613d39.js" ><script src="../../../../../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../../../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../../../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc macro"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../../../../../rerun/index.html">rerun</a><span class="version">0.23.2</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>dataframe::<wbr>external::<wbr>re_<wbr>chunk::<wbr>external::<wbr>arrow::<wbr>array</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../../../../../index.html">rerun</a>::<wbr><a href="../../../../../index.html">dataframe</a>::<wbr><a href="../../../../index.html">external</a>::<wbr><a href="../../../index.html">re_chunk</a>::<wbr><a href="../../index.html">external</a>::<wbr><a href="../index.html">arrow</a>::<wbr><a href="index.html">array</a></span><h1>Macro <span class="macro">create_array</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>macro_rules! create_array {
+    (@from Boolean) =&gt; { ... };
+    (@from Int8) =&gt; { ... };
+    (@from Int16) =&gt; { ... };
+    (@from Int32) =&gt; { ... };
+    (@from Int64) =&gt; { ... };
+    (@from UInt8) =&gt; { ... };
+    (@from UInt16) =&gt; { ... };
+    (@from UInt32) =&gt; { ... };
+    (@from UInt64) =&gt; { ... };
+    (@from Float16) =&gt; { ... };
+    (@from Float32) =&gt; { ... };
+    (@from Float64) =&gt; { ... };
+    (@from Utf8) =&gt; { ... };
+    (@from Utf8View) =&gt; { ... };
+    (@from LargeUtf8) =&gt; { ... };
+    (@from IntervalDayTime) =&gt; { ... };
+    (@from IntervalYearMonth) =&gt; { ... };
+    (@from Second) =&gt; { ... };
+    (@from Millisecond) =&gt; { ... };
+    (@from Microsecond) =&gt; { ... };
+    (@from Nanosecond) =&gt; { ... };
+    (@from Second32) =&gt; { ... };
+    (@from Millisecond32) =&gt; { ... };
+    (@from Microsecond64) =&gt; { ... };
+    (@from Nanosecond64) =&gt; { ... };
+    (@from DurationSecond) =&gt; { ... };
+    (@from DurationMillisecond) =&gt; { ... };
+    (@from DurationMicrosecond) =&gt; { ... };
+    (@from DurationNanosecond) =&gt; { ... };
+    (@from Decimal128) =&gt; { ... };
+    (@from Decimal256) =&gt; { ... };
+    (@from TimestampSecond) =&gt; { ... };
+    (@from TimestampMillisecond) =&gt; { ... };
+    (@from TimestampMicrosecond) =&gt; { ... };
+    (@from TimestampNanosecond) =&gt; { ... };
+    (@from $ty: ident) =&gt; { ... };
+    (Null, $size: expr) =&gt; { ... };
+    (Binary, [$($values: expr),*]) =&gt; { ... };
+    (LargeBinary, [$($values: expr),*]) =&gt; { ... };
+    ($ty: tt, [$($values: expr),*]) =&gt; { ... };
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Creates an array from a literal slice of values,
+suitable for rapid testing and development.</p>
+<p>Example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>
+<span class="kw">use </span>arrow_array::create_array;
+
+<span class="kw">let </span>array = <span class="macro">create_array!</span>(Int32, [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]);
+<span class="kw">let </span>array = <span class="macro">create_array!</span>(Utf8, [<span class="prelude-val">Some</span>(<span class="string">"a"</span>), <span class="prelude-val">Some</span>(<span class="string">"b"</span>), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="string">"e"</span>)]);</code></pre></div>
+<p>Support for limited data types is available. The macro will return a compile error if an unsupported data type is used.
+Presently supported data types are:</p>
+<ul>
+<li><code>Boolean</code>, <code>Null</code></li>
+<li><code>Decimal128</code>, <code>Decimal256</code></li>
+<li><code>Float16</code>, <code>Float32</code>, <code>Float64</code></li>
+<li><code>Int8</code>, <code>Int16</code>, <code>Int32</code>, <code>Int64</code></li>
+<li><code>UInt8</code>, <code>UInt16</code>, <code>UInt32</code>, <code>UInt64</code></li>
+<li><code>IntervalDayTime</code>, <code>IntervalYearMonth</code></li>
+<li><code>Second</code>, <code>Millisecond</code>, <code>Microsecond</code>, <code>Nanosecond</code></li>
+<li><code>Second32</code>, <code>Millisecond32</code>, <code>Microsecond64</code>, <code>Nanosecond64</code></li>
+<li><code>DurationSecond</code>, <code>DurationMillisecond</code>, <code>DurationMicrosecond</code>, <code>DurationNanosecond</code></li>
+<li><code>TimestampSecond</code>, <code>TimestampMillisecond</code>, <code>TimestampMicrosecond</code>, <code>TimestampNanosecond</code></li>
+<li><code>Utf8</code>, <code>Utf8View</code>, <code>LargeUtf8</code>, <code>Binary</code>, <code>LargeBinary</code></li>
+</ul>
+</div></details></section></div></main></body></html>

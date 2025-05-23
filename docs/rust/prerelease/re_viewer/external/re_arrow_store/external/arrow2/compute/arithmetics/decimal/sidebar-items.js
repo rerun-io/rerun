@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["adaptive_add","adaptive_div","adaptive_mul","adaptive_sub","add","checked_add","checked_div","checked_mul","checked_sub","div","div_scalar","mul","mul_scalar","saturating_add","saturating_div","saturating_mul","saturating_sub","sub"]};

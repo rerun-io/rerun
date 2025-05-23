@@ -1,0 +1,34 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="The simplest way to get started when writing a native app."><title>run_simple_native in rerun::external::eframe - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-46132b98.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.85.0 (4d91de4e4 2025-02-17)" data-channel="1.85.0" data-search-js="search-75f5ac3e.js" data-settings-js="settings-0f613d39.js" ><script src="../../../static.files/storage-59e33391.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-5f194d8c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../rerun/index.html">rerun</a><span class="version">0.24.0-alpha.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">run_<wbr>simple_<wbr>native</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#example" title="Example">Example</a></li><li><a href="#errors" title="Errors">Errors</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="index.html">In rerun::<wbr>external::<wbr>eframe</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../../index.html">rerun</a>::<wbr><a href="../index.html">external</a>::<wbr><a href="index.html">eframe</a></span><h1>Function <span class="fn">run_simple_native</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"></span></div><pre class="rust item-decl"><code>pub fn run_simple_native(
+    app_name: &amp;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.str.html">str</a>,
+    native_options: <a class="struct" href="struct.NativeOptions.html" title="struct rerun::external::eframe::NativeOptions">NativeOptions</a>,
+    update_fun: impl <a class="trait" href="https://doc.rust-lang.org/1.85.0/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="egui/struct.Context.html" title="struct rerun::external::eframe::egui::Context">Context</a>, &amp;mut <a class="struct" href="struct.Frame.html" title="struct rerun::external::eframe::Frame">Frame</a>) + 'static,
+) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.85.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.85.0/std/primitive.unit.html">()</a>, <a class="enum" href="enum.Error.html" title="enum rerun::external::eframe::Error">Error</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>The simplest way to get started when writing a native app.</p>
+<p>This does NOT support persistence of custom user data. For that you need to use <a href="fn.run_native.html" title="fn rerun::external::eframe::run_native"><code>run_native</code></a>.
+However, it DOES support persistence of egui data (window positions and sizes, how far the user has scrolled in a
+<a href="egui/struct.ScrollArea.html" title="struct rerun::external::eframe::egui::ScrollArea"><code>ScrollArea</code></a>, etc.) if the persistence feature is enabled.</p>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">fn </span>main() -&gt; eframe::Result {
+    <span class="comment">// Our application state:
+    </span><span class="kw">let </span><span class="kw-2">mut </span>name = <span class="string">"Arthur"</span>.to_owned();
+    <span class="kw">let </span><span class="kw-2">mut </span>age = <span class="number">42</span>;
+
+    <span class="kw">let </span>options = eframe::NativeOptions::default();
+    eframe::run_simple_native(<span class="string">"My egui App"</span>, options, <span class="kw">move </span>|ctx, _frame| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading(<span class="string">"My egui Application"</span>);
+            ui.horizontal(|ui| {
+                <span class="kw">let </span>name_label = ui.label(<span class="string">"Your name: "</span>);
+                ui.text_edit_singleline(<span class="kw-2">&amp;mut </span>name)
+                    .labelled_by(name_label.id);
+            });
+            ui.add(egui::Slider::new(<span class="kw-2">&amp;mut </span>age, <span class="number">0</span>..=<span class="number">120</span>).text(<span class="string">"age"</span>));
+            <span class="kw">if </span>ui.button(<span class="string">"Increment"</span>).clicked() {
+                age += <span class="number">1</span>;
+            }
+            ui.label(<span class="macro">format!</span>(<span class="string">"Hello '{name}', age {age}"</span>));
+        });
+    })
+}</code></pre></div>
+<h2 id="errors"><a class="doc-anchor" href="#errors">§</a>Errors</h2>
+<p>This function can fail if we fail to set up a graphics context.</p>
+</div></details></section></div></main></body></html>

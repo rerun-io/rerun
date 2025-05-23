@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DisplayRecordBatchError","RequestedObject"],"fn":["default_display_name_for_column"],"mod":["datafusion_adapter","datafusion_table_widget","display_record_batch","requested_object","table_blueprint","table_utils"],"struct":["ColumnBlueprint","DataFusionTableWidget","DisplayRecordBatch","TableBlueprint"]};

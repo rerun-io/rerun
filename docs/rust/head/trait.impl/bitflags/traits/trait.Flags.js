@@ -1,0 +1,9 @@
+(function() {
+    var implementors = Object.fromEntries([["re_renderer",[["impl Flags for <a class=\"struct\" href=\"re_renderer/renderer/struct.LineStripFlags.html\" title=\"struct re_renderer::renderer::LineStripFlags\">LineStripFlags</a>"],["impl Flags for <a class=\"struct\" href=\"re_renderer/renderer/struct.PointCloudBatchFlags.html\" title=\"struct re_renderer::renderer::PointCloudBatchFlags\">PointCloudBatchFlags</a>"]]],["re_view_spatial",[["impl Flags for <a class=\"struct\" href=\"re_view_spatial/max_image_dimension_subscriber/struct.ImageTypes.html\" title=\"struct re_view_spatial::max_image_dimension_subscriber::ImageTypes\">ImageTypes</a>"],["impl Flags for <a class=\"struct\" href=\"re_view_spatial/spatial_topology/struct.HeuristicHints.html\" title=\"struct re_view_spatial::spatial_topology::HeuristicHints\">HeuristicHints</a>"],["impl Flags for <a class=\"struct\" href=\"re_view_spatial/spatial_topology/struct.SubSpaceConnectionFlags.html\" title=\"struct re_view_spatial::spatial_topology::SubSpaceConnectionFlags\">SubSpaceConnectionFlags</a>"],["impl Flags for <a class=\"struct\" href=\"re_view_spatial/transform_cache/struct.TransformAspect.html\" title=\"struct re_view_spatial::transform_cache::TransformAspect\">TransformAspect</a>"]]],["re_viewer_context",[["impl Flags for <a class=\"struct\" href=\"re_viewer_context/struct.ComponentUiTypes.html\" title=\"struct re_viewer_context::ComponentUiTypes\">ComponentUiTypes</a>"]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":57,"fragment_lengths":[375,842,193]}

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["IndicatedEntities","MaybeVisualizableEntities","PerVisualizer","VisualizableEntities"]};
