@@ -110,10 +110,10 @@ fn assert_loggablebatch_object_safe() {
 
 // ---
 
-/// The serialized contents of a [`ComponentBatch`] with associated [`ComponentDescriptor`].
+/// The serialized contents of a [`LoggableBatch`] with associated [`ComponentDescriptor`].
 ///
 /// This is what gets logged into Rerun:
-/// * See [`ComponentBatch`] to easily serialize component data.
+/// * See [`LoggableBatch`] to easily serialize component data.
 /// * See [`AsComponents`] for logging serialized data.
 ///
 /// [`AsComponents`]: [crate::AsComponents]

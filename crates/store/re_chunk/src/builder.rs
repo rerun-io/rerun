@@ -125,7 +125,7 @@ impl ChunkBuilder {
         self.with_serialized_batches(row_id, timepoint, batches)
     }
 
-    /// Add a row's worth of data by serializing a single [`ComponentBatch`].
+    /// Add a row's worth of data by serializing a single [`LoggableBatch`].
     #[inline]
     pub fn with_component_batch(
         self,
@@ -144,7 +144,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many [`ComponentBatch`]es.
+    /// Add a row's worth of data by serializing many [`LoggableBatch`]es.
     #[inline]
     pub fn with_component_batches<'a>(
         self,
@@ -166,7 +166,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many sparse [`ComponentBatch`]es.
+    /// Add a row's worth of data by serializing many sparse [`LoggableBatch`]es.
     #[inline]
     pub fn with_sparse_component_batches<'a>(
         self,
@@ -190,7 +190,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing a single [`ComponentBatch`].
+    /// Add a row's worth of data by serializing a single [`LoggableBatch`].
     #[inline]
     pub fn with_serialized_batch(
         self,
@@ -205,7 +205,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many [`ComponentBatch`]es.
+    /// Add a row's worth of data by serializing many [`LoggableBatch`]es.
     #[inline]
     pub fn with_serialized_batches(
         self,
@@ -222,7 +222,7 @@ impl ChunkBuilder {
         )
     }
 
-    /// Add a row's worth of data by serializing many sparse [`ComponentBatch`]es.
+    /// Add a row's worth of data by serializing many sparse [`LoggableBatch`]es.
     #[inline]
     pub fn with_sparse_serialized_batches(
         self,

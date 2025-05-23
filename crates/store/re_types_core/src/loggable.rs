@@ -86,7 +86,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
 ///
-/// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
+/// Implementing the [`Component`] trait automatically derives the [`LoggableBatch`] implementation,
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Component: Loggable {
     /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.

@@ -7,7 +7,7 @@
 //! Rerun (and the underlying Arrow data framework) is designed to work with large arrays of
 //! [`Component`]s, as opposed to single instances.
 //! When multiple instances of a [`Component`] are put together in an array, they yield a
-//! [`ComponentBatch`]: the atomic unit of (de)serialization.
+//! [`LoggableBatch`]: the atomic unit of (de)serialization.
 //!
 //! Internally, [`Component`]s are implemented using many different [`Loggable`]s.
 //!

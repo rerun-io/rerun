@@ -47,7 +47,7 @@ pub trait Archetype {
 
     // ---
 
-    /// Creates a [`ComponentBatch`] out of the associated [`Self::Indicator`] component.
+    /// Creates a [`LoggableBatch`] out of the associated [`Self::Indicator`] component.
     ///
     /// This allows for associating arbitrary indicator components with arbitrary data.
     fn indicator() -> SerializedComponentBatch;
