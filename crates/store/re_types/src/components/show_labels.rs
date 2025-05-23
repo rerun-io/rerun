@@ -32,8 +32,8 @@ pub struct ShowLabels(
 
 impl ::re_types_core::Component for ShowLabels {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ShowLabels")
+    fn name() -> ComponentName {
+        "rerun.components.ShowLabels".into()
     }
 }
 

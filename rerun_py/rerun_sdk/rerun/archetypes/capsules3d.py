@@ -30,6 +30,9 @@ class Capsules3D(Capsules3DExt, Archetype):
     Capsules in other orientations may be produced by applying a rotation to the entity or
     instances.
 
+    If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
+    Orienting and placing capsules forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
+
     Example
     -------
     ### Batch of capsules:
@@ -132,17 +135,14 @@ class Capsules3D(Capsules3DExt, Archetype):
             Optional translations of the capsules.
 
             If not specified, one end of each capsule will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the capsules.
         labels:
@@ -216,17 +216,14 @@ class Capsules3D(Capsules3DExt, Archetype):
             Optional translations of the capsules.
 
             If not specified, one end of each capsule will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the capsules.
         labels:
@@ -325,7 +322,6 @@ class Capsules3D(Capsules3DExt, Archetype):
     # Optional translations of the capsules.
     #
     # If not specified, one end of each capsule will be at (0, 0, 0).
-    # Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -337,7 +333,6 @@ class Capsules3D(Capsules3DExt, Archetype):
     # Rotations via axis + angle.
     #
     # If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -349,7 +344,6 @@ class Capsules3D(Capsules3DExt, Archetype):
     # Rotations via quaternion.
     #
     # If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

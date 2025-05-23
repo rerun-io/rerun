@@ -1,7 +1,7 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, renderer::LineStripFlags};
 use re_types::{
-    ArrowString,
+    Archetype as _, ArrowString,
     archetypes::LineStrips2D,
     components::{ClassId, Color, DrawOrder, Radius, ShowLabels},
 };
@@ -68,7 +68,7 @@ impl Lines2DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, "Lines2D");
+                .single_entity_transform_required(entity_path, LineStrips2D::name());
 
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())

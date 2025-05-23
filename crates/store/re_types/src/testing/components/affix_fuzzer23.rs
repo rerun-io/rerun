@@ -24,8 +24,8 @@ pub struct AffixFuzzer23(pub Option<crate::testing::datatypes::MultiEnum>);
 
 impl ::re_types_core::Component for AffixFuzzer23 {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer23")
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer23".into()
     }
 }
 

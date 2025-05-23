@@ -113,7 +113,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 }
             } else {
                 transform_info
-                    .single_entity_transform_required(&data_result.entity_path, "Transform3DArrows")
+                    .single_entity_transform_required(&data_result.entity_path, Transform3D::name())
             };
 
             // Note, we use this interface instead of `data_result.latest_at_with_blueprint_resolved_data` to avoid querying

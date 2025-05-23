@@ -31,8 +31,8 @@ pub struct DrawOrder(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for DrawOrder {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.DrawOrder")
+    fn name() -> ComponentName {
+        "rerun.components.DrawOrder".into()
     }
 }
 

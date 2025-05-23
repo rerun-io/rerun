@@ -32,8 +32,8 @@ pub struct GammaCorrection(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for GammaCorrection {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.GammaCorrection")
+    fn name() -> ComponentName {
+        "rerun.components.GammaCorrection".into()
     }
 }
 

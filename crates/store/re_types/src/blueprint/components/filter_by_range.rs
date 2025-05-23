@@ -28,8 +28,8 @@ pub struct FilterByRange(pub crate::blueprint::datatypes::FilterByRange);
 
 impl ::re_types_core::Component for FilterByRange {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.FilterByRange")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.FilterByRange".into()
     }
 }
 

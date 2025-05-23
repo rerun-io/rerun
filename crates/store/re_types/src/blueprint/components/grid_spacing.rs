@@ -30,8 +30,8 @@ pub struct GridSpacing(
 
 impl ::re_types_core::Component for GridSpacing {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.GridSpacing")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.GridSpacing".into()
     }
 }
 

@@ -15,7 +15,7 @@ impl CustomPoints3D {
     }
 
     fn overridden_color_descriptor() -> ComponentDescriptor {
-        <rerun::components::Color as rerun::Component>::descriptor()
+        ComponentDescriptor::new(<rerun::components::Color as rerun::Component>::name())
             .or_with_archetype_name(|| "user.CustomPoints3D".into())
             .or_with_archetype_field_name(|| "colors".into())
     }

@@ -26,8 +26,8 @@ pub struct GeoLineString(pub Vec<crate::datatypes::DVec2D>);
 
 impl ::re_types_core::Component for GeoLineString {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.GeoLineString")
+    fn name() -> ComponentName {
+        "rerun.components.GeoLineString".into()
     }
 }
 

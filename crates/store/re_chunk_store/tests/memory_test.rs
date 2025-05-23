@@ -73,7 +73,7 @@ use re_chunk::{
 };
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{TimePoint, Timeline};
-use re_types::{Component as _, Loggable as _, components::Scalar};
+use re_types::{Loggable as _, archetypes, components::Scalar};
 
 /// The memory overhead of storing many scalars in the store.
 #[test]
@@ -105,7 +105,7 @@ fn scalar_memory_overhead() {
 
             let row = PendingRow::new(
                 timepoint,
-                std::iter::once((Scalar::descriptor(), scalars)).collect(),
+                std::iter::once((archetypes::Scalars::descriptor_scalars(), scalars)).collect(),
             );
 
             batcher.push_row(entity_path.clone(), row);

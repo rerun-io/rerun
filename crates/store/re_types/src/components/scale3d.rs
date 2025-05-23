@@ -30,8 +30,8 @@ pub struct Scale3D(pub crate::datatypes::Vec3D);
 
 impl ::re_types_core::Component for Scale3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Scale3D")
+    fn name() -> ComponentName {
+        "rerun.components.Scale3D".into()
     }
 }
 

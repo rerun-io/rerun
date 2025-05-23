@@ -4,6 +4,7 @@ use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_types::{
+    Archetype as _,
     archetypes::DepthImage,
     components::{
         self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ValueRange,
@@ -59,9 +60,6 @@ impl DepthImageVisualizer {
         images: impl Iterator<Item = DepthImageComponentData>,
     ) {
         let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
-        ent_context
-            .transform_info
-            .warn_on_per_instance_transform(ctx.target_entity_path, "DepthImage");
 
         let entity_path = ctx.target_entity_path;
 
@@ -104,7 +102,7 @@ impl DepthImageVisualizer {
                 &image,
                 Some(&colormap_with_range),
                 re_renderer::Rgba::WHITE,
-                "DepthImage",
+                DepthImage::name(),
                 &mut self.data,
             ) else {
                 // If we can't create a textured rect from this, we don't have to bother with clouds either.

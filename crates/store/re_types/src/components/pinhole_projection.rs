@@ -35,8 +35,8 @@ pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
 
 impl ::re_types_core::Component for PinholeProjection {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.PinholeProjection")
+    fn name() -> ComponentName {
+        "rerun.components.PinholeProjection".into()
     }
 }
 

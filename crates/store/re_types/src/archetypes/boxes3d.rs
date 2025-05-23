@@ -21,9 +21,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: 3D boxes with half-extents and optional center, rotations, colors etc.
 ///
-/// Note that orienting and placing the box is handled via `[archetypes.InstancePoses3D]`.
-/// Some of its component are repeated here for convenience.
-/// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+/// If there's more instance poses than half sizes, the last box's orientation will be repeated for the remaining poses.
+/// Orienting and placing boxes forms a separate transform that is applied prior to [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D] and [`archetypes::Transform3D`][crate::archetypes::Transform3D].
 ///
 /// ## Example
 ///
@@ -72,19 +71,16 @@ pub struct Boxes3D {
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub centers: Option<SerializedComponentBatch>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub rotation_axis_angles: Option<SerializedComponentBatch>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     pub quaternions: Option<SerializedComponentBatch>,
 
     /// Optional colors for the boxes.
@@ -602,7 +598,6 @@ impl Boxes3D {
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    /// Note that this uses a [`components::PoseTranslation3D`][crate::components::PoseTranslation3D] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_centers(
         mut self,
@@ -615,7 +610,6 @@ impl Boxes3D {
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationAxisAngle`][crate::components::PoseRotationAxisAngle] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_rotation_axis_angles(
         mut self,
@@ -633,7 +627,6 @@ impl Boxes3D {
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    /// Note that this uses a [`components::PoseRotationQuat`][crate::components::PoseRotationQuat] which is also used by [`archetypes::InstancePoses3D`][crate::archetypes::InstancePoses3D].
     #[inline]
     pub fn with_quaternions(
         mut self,

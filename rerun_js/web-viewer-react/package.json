@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build:types": "tsc --noEmit && dts-buddy",
-    "build": "npm run build:types"
+    "build": "npm run build:types",
+    "pack": "yarn pack --filename web-viewer-react.tar.gz"
   },
   "repository": {
     "type": "git",
