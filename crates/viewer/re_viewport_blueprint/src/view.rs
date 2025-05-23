@@ -507,7 +507,10 @@ mod tests {
                     .with_component_batches(
                         RowId::new(),
                         TimePoint::default(),
-                        [&[MyPoint::new(1.0, 2.0)] as _],
+                        [(
+                            MyPoints::descriptor_points(),
+                            &[MyPoint::new(1.0, 2.0)] as _,
+                        )],
                     )
                     .build()
                     .unwrap();

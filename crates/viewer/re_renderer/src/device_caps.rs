@@ -219,7 +219,7 @@ impl DeviceCaps {
         };
 
         let backend_type = match adapter.get_info().backend {
-            wgpu::Backend::Empty
+            wgpu::Backend::Noop
             | wgpu::Backend::Vulkan
             | wgpu::Backend::Metal
             | wgpu::Backend::Dx12
@@ -327,6 +327,7 @@ impl DeviceCaps {
             required_features: self.tier.features(),
             required_limits: self.limits(),
             memory_hints: Default::default(),
+            trace: wgpu::Trace::Off,
         }
     }
 }
@@ -386,11 +387,7 @@ pub fn testing_instance_descriptor() -> wgpu::InstanceDescriptor {
     let backends = wgpu::Backends::VULKAN | wgpu::Backends::METAL;
 
     let flags = (
-        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER
-        // Validation would be great, but it looks like we don't always get validation layers, causing this error:
-        // `InstanceFlags::VALIDATION requested, but unable to find layer: VK_LAYER_KHRONOS_validation`
-        //| wgpu::InstanceFlags::VALIDATION
-
+        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER | wgpu::InstanceFlags::VALIDATION
         // TODO(andreas): GPU based validation layer sounds like a great idea,
         // but as of writing this makes tests crash on my Windows machine!
         // It looks like the crash is in the Vulkan/Nvidia driver, but further investigation is needed.
@@ -425,7 +422,7 @@ pub fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter {
         wgpu::Backend::Dx12 => 2,
         wgpu::Backend::Gl => 4,
         wgpu::Backend::BrowserWebGpu => 6,
-        wgpu::Backend::Empty => 7,
+        wgpu::Backend::Noop => 7,
     });
 
     // Prefer CPU adapters, otherwise if we can't, prefer discrete GPU over integrated GPU.
@@ -495,7 +492,7 @@ pub fn parse_graphics_backend(backend: &str) -> Option<wgpu::Backend> {
 /// There are still many other reasons why a backend may not work on a given platform/build combination.
 pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result<(), &'static str> {
     match backend {
-        wgpu::Backend::Empty => {
+        wgpu::Backend::Noop => {
             // This should never happen.
             return Err("Cannot run with empty backend.");
         }

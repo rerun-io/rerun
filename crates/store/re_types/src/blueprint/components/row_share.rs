@@ -30,8 +30,8 @@ pub struct RowShare(
 
 impl ::re_types_core::Component for RowShare {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.RowShare")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.RowShare".into()
     }
 }
 

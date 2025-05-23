@@ -22,8 +22,8 @@ use re_ui::{
     icon_text, icons, list_item, maybe_plus, modifiers_text,
 };
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, ItemContext, RecordingConfig, TimeControl, TimeView,
-    UiLayout, ViewerContext, VisitorControlFlow,
+    CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
+    TimeView, UiLayout, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -1152,19 +1152,21 @@ impl TimePanel {
                     // the user switched to another recording. In either case, we invalidate it.
                     self.range_selection_anchor_item = None;
                 } else {
-                    let items_iterator = items_in_range.into_iter().map(|item| {
-                        (
-                            item,
-                            Some(ItemContext::BlueprintTree {
-                                filter_session_id: self.filter_state.session_id(),
-                            }),
-                        )
-                    });
+                    let items = ItemCollection::from_items_and_context(
+                        items_in_range.into_iter().map(|item| {
+                            (
+                                item,
+                                Some(ItemContext::BlueprintTree {
+                                    filter_session_id: self.filter_state.session_id(),
+                                }),
+                            )
+                        }),
+                    );
 
                     if modifiers.command {
-                        ctx.selection_state.extend_selection(items_iterator);
+                        ctx.selection_state.extend_selection(items);
                     } else {
-                        ctx.selection_state.set_selection(items_iterator);
+                        ctx.selection_state.set_selection(items);
                     }
                 }
             }

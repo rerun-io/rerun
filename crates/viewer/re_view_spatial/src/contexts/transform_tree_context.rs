@@ -4,7 +4,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityTree};
 use re_log_types::EntityPathHash;
 use re_types::{
-    Archetype as _, ComponentDescriptorSet,
+    Archetype as _, ArchetypeName, ComponentDescriptorSet,
     archetypes::{self, InstancePoses3D, Transform3D},
     components::ImagePlaneDistance,
 };
@@ -14,11 +14,13 @@ use vec1::smallvec_v1::SmallVec1;
 
 use crate::{
     transform_cache::{
-        CachedTransformsForTimeline, ResolvedPinholeProjection, TransformCacheStoreSubscriber,
+        CachedTransformsForTimeline, PoseTransformArchetypeMap, ResolvedPinholeProjection,
+        TransformCacheStoreSubscriber,
     },
     visualizers::image_view_coordinates,
 };
 
+// TODO(andreas): this is struct is comically large for what we're doing here. Need to refactor this to make it smaller & more efficient.
 #[derive(Clone, Debug)]
 pub struct TransformInfo {
     /// The transform from the entity to the reference space.
@@ -32,7 +34,13 @@ pub struct TransformInfo {
     /// If no poses are present, this is always the same as `reference_from_entity`.
     /// (also implying that in this case there is only a single element).
     /// If there are poses there may be more than one element.
-    pub reference_from_instances: SmallVec1<[glam::Affine3A; 1]>,
+    ///
+    /// Does not take into account archetype specific transforms.
+    reference_from_instances_overall: SmallVec1<[glam::Affine3A; 1]>,
+
+    /// Like [`Self::reference_from_instances_overall`] but _on top_ also has archetype specific transforms applied
+    /// if there are any present.
+    reference_from_archetype: IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>>,
 
     /// If this entity is under (!) a pinhole camera, this contains additional information.
     ///
@@ -57,7 +65,8 @@ impl Default for TransformInfo {
     fn default() -> Self {
         Self {
             reference_from_entity: glam::Affine3A::IDENTITY,
-            reference_from_instances: SmallVec1::new(glam::Affine3A::IDENTITY),
+            reference_from_instances_overall: SmallVec1::new(glam::Affine3A::IDENTITY),
+            reference_from_archetype: Default::default(),
             twod_in_threed_info: None,
         }
     }
@@ -66,14 +75,10 @@ impl Default for TransformInfo {
 impl TransformInfo {
     /// Warns that multiple transforms within the entity are not supported.
     #[inline]
-    pub fn warn_on_per_instance_transform(
-        &self,
-        entity_name: &EntityPath,
-        visualizer_name: &'static str,
-    ) {
-        if self.reference_from_instances.len() > 1 {
+    fn warn_on_per_instance_transform(&self, entity_name: &EntityPath, archetype: ArchetypeName) {
+        if self.reference_from_instances_overall.len() > 1 {
             re_log::warn_once!(
-                "There are multiple poses for entity {entity_name:?}. Visualizer {visualizer_name:?} supports only one transform per entity. Using the first one."
+                "There are multiple poses for entity {entity_name:?}. {archetype:?} supports only one transform per entity. Using the first one."
             );
         }
     }
@@ -83,25 +88,28 @@ impl TransformInfo {
     pub fn single_entity_transform_required(
         &self,
         entity_name: &EntityPath,
-        visualizer_name: &'static str,
+        archetype: ArchetypeName,
     ) -> glam::Affine3A {
-        self.warn_on_per_instance_transform(entity_name, visualizer_name);
-        *self.reference_from_instances.first()
+        self.warn_on_per_instance_transform(entity_name, archetype);
+
+        if let Some(transform) = self.reference_from_archetype.get(&archetype) {
+            *transform.first()
+        } else {
+            *self.reference_from_instances_overall.first()
+        }
     }
 
-    /// Returns the first instance transform and does not warn if there are multiple.
+    /// Returns reference from instance transforms.
     #[inline]
-    pub fn single_entity_transform_silent(&self) -> glam::Affine3A {
-        *self.reference_from_instances.first()
-    }
-
-    /// Returns reference from instance transforms, repeating the last value indefinitely.
-    #[inline]
-    pub fn clamped_reference_from_instances(&self) -> impl Iterator<Item = glam::Affine3A> + '_ {
-        self.reference_from_instances
-            .iter()
-            .chain(std::iter::repeat(self.reference_from_instances.last()))
-            .copied()
+    pub fn reference_from_instances(
+        &self,
+        archetype: ArchetypeName,
+    ) -> &SmallVec1<[glam::Affine3A; 1]> {
+        if let Some(transform) = self.reference_from_archetype.get(&archetype) {
+            transform
+        } else {
+            &self.reference_from_instances_overall
+        }
     }
 }
 
@@ -376,6 +384,54 @@ fn lookup_image_plane_distance(
         .into()
 }
 
+fn compute_reference_from_instances(
+    reference_from_entity: glam::Affine3A,
+    instance_from_poses: &[glam::Affine3A],
+) -> SmallVec1<[glam::Affine3A; 1]> {
+    let Ok(mut reference_from_poses) =
+        SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(instance_from_poses)
+    else {
+        return SmallVec1::new(reference_from_entity);
+    };
+
+    // Until now `reference_from_poses` is actually `reference_from_entity`.
+    for reference_from_pose in &mut reference_from_poses {
+        let entity_from_pose = *reference_from_pose;
+        *reference_from_pose = reference_from_entity * entity_from_pose;
+    }
+    reference_from_poses
+}
+
+fn compute_references_from_instances_overall(
+    reference_from_entity: glam::Affine3A,
+    pose_transforms: Option<&PoseTransformArchetypeMap>,
+) -> SmallVec1<[glam::Affine3A; 1]> {
+    compute_reference_from_instances(
+        reference_from_entity,
+        pose_transforms.map_or(&[], |poses| &poses.instance_from_overall_poses),
+    )
+}
+
+fn compute_reference_from_archetype(
+    reference_from_entity: glam::Affine3A,
+    entity_from_instance_poses: Option<&PoseTransformArchetypeMap>,
+) -> IntMap<ArchetypeName, SmallVec1<[glam::Affine3A; 1]>> {
+    entity_from_instance_poses
+        .map(|poses| {
+            poses
+                .instance_from_archetype_poses_per_archetype
+                .iter()
+                .map(|(archetype, poses)| {
+                    (
+                        *archetype,
+                        compute_reference_from_instances(reference_from_entity, poses),
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 /// Compute transform info for when we walk up the tree from the reference.
 fn transform_info_for_upward_propagation(
     reference_from_ancestor: glam::Affine3A,
@@ -395,35 +451,25 @@ fn transform_info_for_upward_propagation(
         reference_from_entity *= entity_from_2d_pinhole_content.inverse();
     }
 
-    // Collect & compute poses.
-    let (mut reference_from_instances, has_instance_transforms) =
-        if let Ok(mut entity_from_instances) = SmallVec1::<[glam::Affine3A; 1]>::try_from_slice(
-            transforms_at_entity.entity_from_instance_poses,
-        ) {
-            for entity_from_instance in &mut entity_from_instances {
-                *entity_from_instance = reference_from_entity * entity_from_instance.inverse();
-                // Now this is actually `reference_from_instance`.
-            }
-            (entity_from_instances, true)
-        } else {
-            (SmallVec1::new(reference_from_entity), false)
-        };
-
     // Apply tree transform.
     reference_from_entity *= transforms_at_entity
         .parent_from_entity_tree_transform
         .inverse();
-    if has_instance_transforms {
-        for reference_from_instance in &mut reference_from_instances {
-            *reference_from_instance = reference_from_entity * (*reference_from_instance);
-        }
-    } else {
-        *reference_from_instances.first_mut() = reference_from_entity;
-    }
+
+    // Collect & compute poses.
+    let reference_from_instances_overall = compute_references_from_instances_overall(
+        reference_from_entity,
+        transforms_at_entity.entity_from_instance_poses,
+    );
+    let reference_from_archetype = compute_reference_from_archetype(
+        reference_from_entity,
+        transforms_at_entity.entity_from_instance_poses,
+    );
 
     TransformInfo {
         reference_from_entity,
-        reference_from_instances,
+        reference_from_instances_overall,
+        reference_from_archetype,
 
         // Going up the tree, we can only encounter 2D->3D transforms.
         // 3D->2D transforms can't happen because `Pinhole` represents 3D->2D (and we're walking backwards!)
@@ -441,22 +487,7 @@ fn transform_info_for_downward_propagation(
     let mut reference_from_entity = reference_from_parent;
 
     // Apply tree transform.
-
     reference_from_entity *= transforms_at_entity.parent_from_entity_tree_transform;
-
-    // Collect & compute poses.
-    let (mut reference_from_instances, has_instance_transforms) =
-        if let Ok(mut entity_from_instances) =
-            SmallVec1::try_from_slice(transforms_at_entity.entity_from_instance_poses)
-        {
-            for entity_from_instance in &mut entity_from_instances {
-                *entity_from_instance = reference_from_entity * (*entity_from_instance);
-                // Now this is actually `reference_from_instance`.
-            }
-            (entity_from_instances, true)
-        } else {
-            (SmallVec1::new(reference_from_entity), false)
-        };
 
     // Apply 2D->3D transform if present.
     if let Some(entity_from_2d_pinhole_content) =
@@ -473,20 +504,22 @@ fn transform_info_for_downward_propagation(
             reference_from_pinhole_entity: reference_from_entity,
         });
         reference_from_entity *= entity_from_2d_pinhole_content;
-
-        // Need to update per instance transforms as well if there are poses!
-        if has_instance_transforms {
-            *reference_from_instances.first_mut() = reference_from_entity;
-        } else {
-            for reference_from_instance in &mut reference_from_instances {
-                *reference_from_instance *= entity_from_2d_pinhole_content;
-            }
-        }
     }
+
+    // Collect & compute poses.
+    let reference_from_instances_overall = compute_references_from_instances_overall(
+        reference_from_entity,
+        transforms_at_entity.entity_from_instance_poses,
+    );
+    let reference_from_archetype = compute_reference_from_archetype(
+        reference_from_entity,
+        transforms_at_entity.entity_from_instance_poses,
+    );
 
     TransformInfo {
         reference_from_entity,
-        reference_from_instances,
+        reference_from_instances_overall,
+        reference_from_archetype,
         twod_in_threed_info,
     }
 }
@@ -581,7 +614,7 @@ fn transform_from_pinhole_with_image_plane(
 #[derive(Default)]
 struct TransformsAtEntity<'a> {
     parent_from_entity_tree_transform: glam::Affine3A,
-    entity_from_instance_poses: &'a [glam::Affine3A],
+    entity_from_instance_poses: Option<&'a PoseTransformArchetypeMap>,
     instance_from_pinhole_image_plane: Option<glam::Affine3A>,
 }
 
@@ -599,7 +632,7 @@ fn transforms_at<'a>(
     };
 
     let parent_from_entity_tree_transform = entity_transforms.latest_at_tree_transform(query);
-    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses(query);
+    let entity_from_instance_poses = entity_transforms.latest_at_instance_poses_all(query);
     let instance_from_pinhole_image_plane =
         entity_transforms
             .latest_at_pinhole(query)

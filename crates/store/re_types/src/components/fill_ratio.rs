@@ -31,8 +31,8 @@ pub struct FillRatio(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for FillRatio {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.FillRatio")
+    fn name() -> ComponentName {
+        "rerun.components.FillRatio".into()
     }
 }
 

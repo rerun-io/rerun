@@ -234,7 +234,7 @@ fn test_single_component_ui_as_list_item(
     let actual_ui = |ctx: &ViewerContext<'_>, ui: &mut egui::Ui| {
         ui.list_item_flat_noninteractive(
             list_item::PropertyContent::new("ComponentName").value_fn(|ui, _| {
-                ctx.component_ui_registry().ui_raw(
+                ctx.component_ui_registry().component_ui_raw(
                     ctx,
                     ui,
                     UiLayout::List,

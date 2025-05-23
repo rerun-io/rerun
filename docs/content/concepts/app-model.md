@@ -66,7 +66,7 @@ Deployment:
 # This will also start the gRPC server on its default port (9876, use `--port`
 # to pick another one).
 #
-# We could also have just used `spawn()` instead of `connect()` in the logging
+# We could also have just used `spawn()` instead of `connect_grpc()` in the logging
 # script above, and # we wouldn't have had to start the Native Viewer manually.
 # `spawn()` does exactly this: it fork-execs a Native Viewer in the background
 # using the first `rerun` # binary available # on your $PATH.
@@ -88,10 +88,10 @@ Dataflow:
 
 
 Reference:
-* [SDK operating modes: `connect`](../reference/sdk/operating-modes.md#connect)
-* [🐍 Python `connect`](https://ref.rerun.io/docs/python/0.19.0/common/initialization_functions/#rerun.connect)
-* [🦀 Rust `connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect)
-* [🌊 C++ `connect`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#aef3377ffaa2441b906d2bac94dd8fc64)
+* [SDK operating modes: `connect_grpc`](../reference/sdk/operating-modes.md#connect_grpc)
+* [🐍 Python `connect_grpc`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect_grpc)
+* [🦀 Rust `connect_grpc`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect_grpc)
+* [🌊 C++ `connect_grpc`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#aef3377ffaa2441b906d2bac94dd8fc64)
 
 ### Asynchronous workflow
 

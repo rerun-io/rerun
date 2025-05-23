@@ -1,4 +1,5 @@
 use re_types::{
+    Archetype as _,
     archetypes::Image,
     components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
@@ -167,7 +168,7 @@ impl ImageVisualizer {
                 &image,
                 colormap,
                 multiplicative_tint,
-                "Image",
+                Image::name(),
                 &mut self.data,
             ) {
                 self.data.pickable_rects.push(PickableTexturedRect {

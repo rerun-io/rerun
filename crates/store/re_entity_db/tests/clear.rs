@@ -307,7 +307,14 @@ fn clears() -> anyhow::Result<()> {
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
         let instance = MyIndex(0);
         let chunk = Chunk::builder(entity_path_parent.clone())
-            .with_component_batches(row_id, timepoint, [&[instance] as _])
+            .with_component_batches(
+                row_id,
+                timepoint,
+                [(
+                    re_log_types::example_components::MyIndex::partial_descriptor(),
+                    &[instance] as _,
+                )],
+            )
             .build()?;
 
         db.add_chunk(&Arc::new(chunk))?;

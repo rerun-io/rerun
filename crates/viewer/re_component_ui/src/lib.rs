@@ -19,6 +19,7 @@ mod resolution;
 mod response_utils;
 mod timeline;
 mod transforms;
+mod variant_uis;
 mod video_timestamp;
 mod view_coordinates;
 mod visual_bounds2d;
@@ -50,6 +51,10 @@ use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
+
+// ---
+
+pub const REDAP_URI_BUTTON_VARIANT: &str = "redap_uri";
 
 // ----
 
@@ -177,6 +182,12 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(plane3d::edit_or_view_plane3d);
     registry.add_multiline_edit_or_view(plane3d::multiline_edit_or_view_plane3d);
+
+    // --------------------------------------------------------------------------------
+    // All variant UIs:
+    // --------------------------------------------------------------------------------
+
+    registry.add_variant_ui(REDAP_URI_BUTTON_VARIANT, variant_uis::redap_uri_button);
 
     registry
 }

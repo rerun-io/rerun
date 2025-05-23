@@ -175,7 +175,12 @@ When persisted, the state will be stored at the following locations:
 
     /// Do not attempt to start a new server, instead try to connect to an existing one.
     ///
-    /// Optionally accepts an HTTP(S) URL to a gRPC server.
+    /// Optionally accepts a URL to a gRPC server.
+    ///
+    /// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+    /// and the pathname must be `/proxy`.
+    ///
+    /// The default is `rerun+http://127.0.0.1:9876/proxy`.
     #[clap(long)]
     #[allow(clippy::option_option)] // Tri-state: none, --connect, --connect <url>.
     connect: Option<Option<String>>,
@@ -717,7 +722,7 @@ fn run_impl(
     };
 
     #[allow(unused_variables)]
-    let (command_sender, command_receiver) = re_viewer_context::command_channel();
+    let (command_sender, command_receiver) = re_global_context::command_channel();
 
     // Where do we get the data from?
     let mut redap_uris: Vec<_> = Vec::new();
@@ -754,7 +759,7 @@ fn run_impl(
 
         let command_sender = command_sender.clone();
         let on_cmd = Box::new(move |cmd| {
-            use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+            use re_global_context::{SystemCommand, SystemCommandSender as _};
             match cmd {
                 re_data_source::DataSourceCommand::SetLoopSelection {
                     recording_id,

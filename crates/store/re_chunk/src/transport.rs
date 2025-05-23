@@ -269,9 +269,9 @@ mod tests {
 
     use re_log_types::{
         EntityPath, Timeline,
-        example_components::{MyColor, MyPoint},
+        example_components::{MyColor, MyPoint, MyPoints},
     };
-    use re_types_core::{ChunkId, Component as _, Loggable as _, RowId};
+    use re_types_core::{ChunkId, Loggable as _, RowId};
 
     use super::*;
 
@@ -307,7 +307,7 @@ mod tests {
         let colors4 = None;
 
         let components = [
-            (MyPoint::descriptor(), {
+            (MyPoints::descriptor_points(), {
                 let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*points1),
                     points2,
@@ -318,7 +318,7 @@ mod tests {
                 assert_eq!(4, list_array.len());
                 list_array
             }),
-            (MyPoint::descriptor(), {
+            (MyPoints::descriptor_points(), {
                 let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*colors1),
                     Some(&*colors2),

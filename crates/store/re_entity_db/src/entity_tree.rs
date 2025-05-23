@@ -261,7 +261,10 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{EntityPath, StoreId, TimePoint, Timeline, example_components::MyPoint};
+    use re_log_types::{
+        EntityPath, StoreId, TimePoint, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
 
     use crate::EntityDb;
 
@@ -284,7 +287,11 @@ mod tests {
             let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
             let point = MyPoint::new(1.0, 2.0);
             let chunk = Chunk::builder(entity_path_grandchild.clone())
-                .with_component_batches(row_id, timepoint, [&[point] as _])
+                .with_component_batches(
+                    row_id,
+                    timepoint,
+                    [(MyPoints::descriptor_points(), &[point] as _)],
+                )
                 .build()?;
 
             db.add_chunk(&Arc::new(chunk))?;

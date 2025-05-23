@@ -31,6 +31,7 @@ mod visualizers;
 
 mod transform_cache;
 
+pub use ui::SpatialViewState;
 pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
 

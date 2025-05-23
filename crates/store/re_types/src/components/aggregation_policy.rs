@@ -52,8 +52,8 @@ pub enum AggregationPolicy {
 
 impl ::re_types_core::Component for AggregationPolicy {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.AggregationPolicy")
+    fn name() -> ComponentName {
+        "rerun.components.AggregationPolicy".into()
     }
 }
 

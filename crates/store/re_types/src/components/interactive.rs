@@ -28,8 +28,8 @@ pub struct Interactive(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for Interactive {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Interactive")
+    fn name() -> ComponentName {
+        "rerun.components.Interactive".into()
     }
 }
 

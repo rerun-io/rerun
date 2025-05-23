@@ -45,7 +45,7 @@ pub struct ImageCounts {
     pub depth: usize,
 }
 
-/// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by [`View3DState`], not the other way round.
+/// TODO(andreas): Should turn this "inside out" - [`SpatialViewState`] should be used by `View3DState`, not the other way round.
 #[derive(Clone, Default)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
@@ -56,7 +56,7 @@ pub struct SpatialViewState {
     /// Last frame's picking result.
     pub previous_picking_result: Option<PickingResult>,
 
-    pub(super) state_3d: View3DState,
+    pub state_3d: View3DState,
 
     /// Pinhole component logged at the origin if any.
     pub pinhole_at_origin: Option<Pinhole>,

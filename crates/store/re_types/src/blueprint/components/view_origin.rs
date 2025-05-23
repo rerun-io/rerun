@@ -28,8 +28,8 @@ pub struct ViewOrigin(pub crate::datatypes::EntityPath);
 
 impl ::re_types_core::Component for ViewOrigin {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ViewOrigin")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ViewOrigin".into()
     }
 }
 

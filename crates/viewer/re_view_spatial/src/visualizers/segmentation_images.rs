@@ -1,4 +1,5 @@
 use re_types::{
+    Archetype as _,
     archetypes::SegmentationImage,
     components::{DrawOrder, ImageFormat, Opacity},
     image::ImageKind,
@@ -125,7 +126,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         &image,
                         colormap,
                         multiplicative_tint,
-                        "SegmentationImage",
+                        SegmentationImage::name(),
                         &mut self.data,
                     ) {
                         self.data.pickable_rects.push(PickableTexturedRect {

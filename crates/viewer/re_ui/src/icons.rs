@@ -4,24 +4,40 @@ use crate::DesignTokens;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Icon {
-    /// Human readable unique id
-    pub id: &'static str,
+    /// Human readable unique id.
+    ///
+    /// This usually ends with `.png` or `.svg`.
+    uri: &'static str,
 
-    pub png_bytes: &'static [u8],
+    /// The raw contents of e.g. a PNG or SVG file.
+    image_bytes: &'static [u8],
 }
 
 impl Icon {
     #[inline]
-    pub const fn new(id: &'static str, png_bytes: &'static [u8]) -> Self {
-        Self { id, png_bytes }
+    pub const fn new(uri: &'static str, image_bytes: &'static [u8]) -> Self {
+        Self { uri, image_bytes }
+    }
+
+    pub fn uri(&self) -> &'static str {
+        self.uri
     }
 
     #[inline]
     pub fn as_image_source(&self) -> ImageSource<'static> {
         ImageSource::Bytes {
-            uri: self.id.into(),
-            bytes: self.png_bytes.into(),
+            uri: self.uri.into(),
+            bytes: self.image_bytes.into(),
         }
+    }
+
+    pub fn load_image(
+        &self,
+        egui_ctx: &egui::Context,
+        size_hint: egui::SizeHint,
+    ) -> egui::load::ImageLoadResult {
+        egui_ctx.include_bytes(self.uri(), self.image_bytes);
+        egui_ctx.try_load_image(self.uri(), size_hint)
     }
 
     #[inline]

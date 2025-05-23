@@ -46,7 +46,6 @@ re_tuid = { workspace = true, features = ["bytemuck"] }
 # External
 anyhow.workspace = true
 arrow.workspace = true
-backtrace.workspace = true
 bytemuck = { workspace = true, features = ["derive"] }
 document-features.workspace = true
 half.workspace = true
@@ -55,8 +54,10 @@ nohash-hasher.workspace = true
 once_cell.workspace = true
 thiserror.workspace = true
 
+
 # Optional dependencies
 serde = { workspace = true, optional = true }
+
 
 [dev-dependencies]
 criterion.workspace = true

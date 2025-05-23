@@ -29,8 +29,8 @@ pub struct Color(pub crate::datatypes::Rgba32);
 
 impl ::re_types_core::Component for Color {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Color")
+    fn name() -> ComponentName {
+        "rerun.components.Color".into()
     }
 }
 

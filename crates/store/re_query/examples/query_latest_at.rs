@@ -9,7 +9,6 @@ use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::build_frame_nr;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types::Component as _;
 use re_types_core::Archetype as _;
 
 use re_query::{LatestAtResults, clamped_zip_1x2};
@@ -73,7 +72,7 @@ fn main() -> anyhow::Result<()> {
 
         // You can always use the standard deserialization path:
         let points = points
-            .component_batch::<MyPoint>(&MyPoint::descriptor())
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
             .context("missing")??;
         let labels = labels
             .and_then(|unit| {
@@ -86,7 +85,7 @@ fn main() -> anyhow::Result<()> {
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw(&MyColor::descriptor())
+            .component_batch_raw(&MyPoints::descriptor_colors())
             .context("invalid")?;
         let colors = colors
             .downcast_array_ref::<ArrowUInt32Array>()

@@ -1,5 +1,7 @@
-use re_log_types::EntryId;
+use re_log_types::{EntityPath, EntryId};
+use re_sorbet::{BatchType, ColumnDescriptorRef};
 use re_ui::UiExt as _;
+use re_viewer_context::VariantName;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
@@ -64,4 +66,76 @@ pub struct PartitionLinksSpec {
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
     pub partition_links: Option<PartitionLinksSpec>,
+}
+
+/// The blueprint for a specific column.
+// TODO(ab): these should eventually be stored in `TableBlueprint`, but is currently not strictly
+// necessary since we don't need to store the column blueprint for now.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ColumnBlueprint {
+    /// The name to use for this column in the UI.
+    ///
+    /// If `None`, the column will be named using [`default_display_name_for_column`].
+    pub display_name: Option<String>,
+    pub default_visibility: bool,
+    pub variant_ui: Option<VariantName>,
+}
+
+impl Default for ColumnBlueprint {
+    fn default() -> Self {
+        Self {
+            display_name: None,
+            default_visibility: true,
+            variant_ui: None,
+        }
+    }
+}
+
+impl ColumnBlueprint {
+    /// Same as [`Self::default()`], but returns a reference to a static instance.
+    pub fn default_ref() -> &'static Self {
+        use std::sync::LazyLock;
+        static DEFAULT: LazyLock<ColumnBlueprint> = LazyLock::new(ColumnBlueprint::default);
+        &DEFAULT
+    }
+
+    /// Set the name to use for this column in the UI.
+    pub fn display_name(self, name: impl Into<String>) -> Self {
+        Self {
+            display_name: Some(name.into()),
+            ..self
+        }
+    }
+
+    /// Set the default visibility of this column.
+    pub fn default_visibility(self, initial_visibility: bool) -> Self {
+        Self {
+            default_visibility: initial_visibility,
+            ..self
+        }
+    }
+
+    /// Set the alternate UI to use for this column
+    pub fn variant_ui(self, variant_ui: impl Into<VariantName>) -> Self {
+        Self {
+            variant_ui: Some(variant_ui.into()),
+            ..self
+        }
+    }
+}
+
+pub fn default_display_name_for_column(desc: &ColumnDescriptorRef<'_>) -> String {
+    match desc {
+        ColumnDescriptorRef::RowId(_) | ColumnDescriptorRef::Time(_) => desc.display_name(),
+
+        ColumnDescriptorRef::Component(desc) => {
+            if desc.entity_path == EntityPath::root() {
+                // In most case, user tables don't have any entities, so we filter out the root entity
+                // noise in column names.
+                desc.column_name(BatchType::Chunk)
+            } else {
+                desc.column_name(BatchType::Dataframe)
+            }
+        }
+    }
 }

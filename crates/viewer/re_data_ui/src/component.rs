@@ -146,7 +146,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                 }
             }
 
-            ctx.component_ui_registry().ui(
+            ctx.component_ui_registry().component_ui(
                 ctx,
                 ui,
                 ui_layout,
@@ -194,7 +194,7 @@ impl DataUi for ComponentPathLatestAtResults<'_> {
                             );
                         });
                         row.col(|ui| {
-                            ctx.component_ui_registry().ui(
+                            ctx.component_ui_registry().component_ui(
                                 ctx,
                                 ui,
                                 UiLayout::List,

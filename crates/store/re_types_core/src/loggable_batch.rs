@@ -347,7 +347,8 @@ impl<L: Clone + Loggable> LoggableBatch for L {
 impl<C: Component> ComponentBatch for C {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }
 
@@ -363,7 +364,8 @@ impl<L: Clone + Loggable> LoggableBatch for Option<L> {
 impl<C: Component> ComponentBatch for Option<C> {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }
 
@@ -379,7 +381,8 @@ impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
 impl<C: Component> ComponentBatch for Vec<C> {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }
 
@@ -398,7 +401,8 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
 impl<C: Component> ComponentBatch for Vec<Option<C>> {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }
 
@@ -414,7 +418,8 @@ impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
 impl<C: Component, const N: usize> ComponentBatch for [C; N] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }
 
@@ -433,7 +438,8 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
 impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }
 
@@ -449,7 +455,8 @@ impl<L: Loggable> LoggableBatch for [L] {
 impl<C: Component> ComponentBatch for [C] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }
 
@@ -468,6 +475,7 @@ impl<L: Loggable> LoggableBatch for [Option<L>] {
 impl<C: Component> ComponentBatch for [Option<C>] {
     #[inline]
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
-        C::descriptor().into()
+        // TODO(#6889): This is still untagged.
+        ComponentDescriptor::new(C::name()).into()
     }
 }

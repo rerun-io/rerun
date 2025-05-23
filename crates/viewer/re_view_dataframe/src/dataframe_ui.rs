@@ -9,7 +9,7 @@ use itertools::Itertools as _;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::QueryHandle;
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
-use re_dataframe_ui::{DisplayRecordBatch, DisplayRecordBatchError};
+use re_dataframe_ui::{ColumnBlueprint, DisplayRecordBatch, DisplayRecordBatchError};
 use re_log_types::{EntityPath, TimeInt, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
@@ -152,7 +152,11 @@ impl RowsDisplayData {
             .into_iter()
             .map(|data| {
                 DisplayRecordBatch::try_new(
-                    selected_columns.iter().map(|desc| desc.into()).zip(data),
+                    selected_columns
+                        .iter()
+                        .map(|desc| desc.into())
+                        .zip(data)
+                        .map(|(desc, data)| (desc, ColumnBlueprint::default_ref(), data)),
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;

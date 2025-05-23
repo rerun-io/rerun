@@ -131,15 +131,16 @@ impl ChunkBuilder {
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batch: &dyn ComponentBatch,
+        component_batch: (ComponentDescriptor, &dyn ComponentBatch),
     ) -> Self {
         self.with_row(
             row_id,
             timepoint,
             component_batch
+                .1
                 .to_arrow()
                 .ok()
-                .map(|array| (component_batch.descriptor().into_owned(), array)),
+                .map(|array| (component_batch.0, array)),
         )
     }
 
@@ -149,17 +150,19 @@ impl ChunkBuilder {
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        component_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+        component_batches: impl IntoIterator<Item = (ComponentDescriptor, &'a dyn ComponentBatch)>,
     ) -> Self {
         self.with_row(
             row_id,
             timepoint,
-            component_batches.into_iter().filter_map(|component_batch| {
-                component_batch
-                    .to_arrow()
-                    .ok()
-                    .map(|array| (component_batch.descriptor().into_owned(), array))
-            }),
+            component_batches
+                .into_iter()
+                .filter_map(|(component_descr, component_batch)| {
+                    component_batch
+                        .to_arrow()
+                        .ok()
+                        .map(|array| (component_descr, array))
+                }),
         )
     }
 

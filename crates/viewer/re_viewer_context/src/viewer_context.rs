@@ -25,6 +25,12 @@ pub struct ViewerContext<'a> {
 
     pub storage_context: &'a StorageContext<'a>,
 
+    /// Registry of all known classes of views.
+    pub view_class_registry: &'a ViewClassRegistry,
+
+    /// How to display components.
+    pub component_ui_registry: &'a ComponentUiRegistry,
+
     /// Mapping from class and system to entities for the store
     ///
     /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable entities etc.
@@ -95,12 +101,12 @@ impl ViewerContext<'_> {
 
     /// How to display components.
     pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
-        self.global_context.component_ui_registry
+        self.component_ui_registry
     }
 
     /// Registry of all known classes of views.
     pub fn view_class_registry(&self) -> &ViewClassRegistry {
-        self.global_context.view_class_registry
+        self.view_class_registry
     }
 
     /// The [`egui::Context`].

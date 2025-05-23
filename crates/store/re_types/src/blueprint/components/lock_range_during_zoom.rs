@@ -30,8 +30,8 @@ pub struct LockRangeDuringZoom(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for LockRangeDuringZoom {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.LockRangeDuringZoom")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.LockRangeDuringZoom".into()
     }
 }
 

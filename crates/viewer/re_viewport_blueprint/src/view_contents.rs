@@ -634,7 +634,10 @@ mod tests {
 
     use re_chunk::{Chunk, RowId};
     use re_entity_db::EntityDb;
-    use re_log_types::{StoreId, TimePoint, Timeline, example_components::MyPoint};
+    use re_log_types::{
+        StoreId, TimePoint, Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
     use re_viewer_context::{StoreContext, VisualizableEntities, blueprint_timeline};
 
     use super::*;
@@ -655,7 +658,11 @@ mod tests {
             let row_id = RowId::new();
             let point = MyPoint::new(1.0, 2.0);
             let chunk = Chunk::builder(entity_path.into())
-                .with_component_batch(row_id, timepoint.clone(), &[point] as _)
+                .with_component_batch(
+                    row_id,
+                    timepoint.clone(),
+                    (MyPoints::descriptor_points(), &[point] as _),
+                )
                 .build()
                 .unwrap();
 

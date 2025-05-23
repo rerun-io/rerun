@@ -312,7 +312,7 @@ mod tests {
     use re_chunk::{Chunk, RowId};
     use re_log_types::{
         StoreId, TimePoint, Timeline,
-        example_components::{MyColor, MyIndex, MyPoint},
+        example_components::{MyColor, MyIndex, MyPoint, MyPoints},
     };
 
     use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};
@@ -387,7 +387,7 @@ mod tests {
                     (timeline_other, 666),     //
                     (timeline_yet_another, 1), //
                 ]),
-                &MyIndex::from_iter(0..10),
+                (MyIndex::partial_descriptor(), &MyIndex::from_iter(0..10)),
             )
             .build()?;
 
@@ -406,7 +406,10 @@ mod tests {
                         (timeline_frame, 42),      //
                         (timeline_yet_another, 1), //
                     ]),
-                    [&points as _, &colors as _],
+                    [
+                        (MyPoints::descriptor_points(), &points as _),
+                        (MyPoints::descriptor_colors(), &colors as _),
+                    ],
                 )
                 .build()?
         };
@@ -421,8 +424,11 @@ mod tests {
                     RowId::new(),
                     TimePoint::default(),
                     [
-                        &MyIndex::from_iter(0..num_instances as _) as _,
-                        &colors as _,
+                        (
+                            MyIndex::partial_descriptor(),
+                            &MyIndex::from_iter(0..num_instances as _) as _,
+                        ),
+                        (MyPoints::descriptor_colors(), &colors as _),
                     ],
                 )
                 .build()?

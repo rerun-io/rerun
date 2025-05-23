@@ -659,7 +659,7 @@ impl ChunkStore {
 #[cfg(test)]
 mod tests {
     use re_chunk::{TimePoint, Timeline};
-    use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use similar_asserts::assert_eq;
 
     use crate::ChunkStoreDiffKind;
@@ -705,22 +705,62 @@ mod tests {
         let points5 = &[MyPoint::new(5.0, 5.0)];
 
         let chunk1 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [points2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _])
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
             .build()?;
         let chunk2 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id4, timepoint4, [points4 as _])
-            .with_component_batches(row_id5, timepoint5, [points5 as _])
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
             .build()?;
         let chunk3 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id6, timepoint1, [points1 as _])
-            .with_component_batches(row_id7, timepoint2, [points2 as _])
-            .with_component_batches(row_id8, timepoint3, [points3 as _])
+            .with_component_batches(
+                row_id6,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id7,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id8,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
             .build()?;
         let chunk4 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id9, timepoint4, [points4 as _])
-            .with_component_batches(row_id10, timepoint5, [points5 as _])
+            .with_component_batches(
+                row_id9,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id10,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
             .build()?;
 
         let chunk1 = Arc::new(chunk1);
@@ -753,16 +793,56 @@ mod tests {
             .unwrap();
 
         let expected = Chunk::builder_with_id(got.id(), entity_path.clone())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [points2 as _])
-            .with_component_batches(row_id3, timepoint3, [points3 as _])
-            .with_component_batches(row_id4, timepoint4, [points4 as _])
-            .with_component_batches(row_id5, timepoint5, [points5 as _])
-            .with_component_batches(row_id6, timepoint1, [points1 as _])
-            .with_component_batches(row_id7, timepoint2, [points2 as _])
-            .with_component_batches(row_id8, timepoint3, [points3 as _])
-            .with_component_batches(row_id9, timepoint4, [points4 as _])
-            .with_component_batches(row_id10, timepoint5, [points5 as _])
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id3,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
+            .with_component_batches(
+                row_id4,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id5,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
+            .with_component_batches(
+                row_id6,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id7,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
+            .with_component_batches(
+                row_id8,
+                timepoint3,
+                [(MyPoints::descriptor_points(), points3 as _)],
+            )
+            .with_component_batches(
+                row_id9,
+                timepoint4,
+                [(MyPoints::descriptor_points(), points4 as _)],
+            )
+            .with_component_batches(
+                row_id10,
+                timepoint5,
+                [(MyPoints::descriptor_points(), points5 as _)],
+            )
             .build()?;
 
         assert_eq!(1, store.chunks_per_chunk_id.len());
@@ -810,18 +890,29 @@ mod tests {
             .with_component_batches(
                 row_id1_1,
                 timepoint_static.clone(),
-                [points1 as _, colors1 as _, labels1 as _],
+                [
+                    (MyPoints::descriptor_points(), points1 as _),
+                    (MyPoints::descriptor_colors(), colors1 as _),
+                    (MyPoints::descriptor_labels(), labels1 as _),
+                ],
             )
             .build()?;
         let chunk2 = Chunk::builder(entity_path.clone())
             .with_component_batches(
                 row_id2_1,
                 timepoint_static.clone(),
-                [points2 as _, colors2 as _],
+                [
+                    (MyPoints::descriptor_points(), points2 as _),
+                    (MyPoints::descriptor_colors(), colors2 as _),
+                ],
             )
             .build()?;
         let chunk3 = Chunk::builder(entity_path.clone())
-            .with_component_batches(row_id2_2, timepoint_static, [labels2 as _])
+            .with_component_batches(
+                row_id2_2,
+                timepoint_static,
+                [(MyPoints::descriptor_labels(), labels2 as _)],
+            )
             .build()?;
 
         let chunk1 = Arc::new(chunk1);

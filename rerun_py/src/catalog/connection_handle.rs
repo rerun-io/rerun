@@ -7,6 +7,7 @@ use pyo3::{
 };
 use re_log_encoding::codec::wire::decoder::Decode as _;
 use re_protos::manifest_registry::v1alpha1::RegisterWithDatasetResponse;
+use re_protos::redap_tasks::v1alpha1::QueryTasksResponse;
 use std::collections::BTreeMap;
 use tokio_stream::StreamExt as _;
 
@@ -269,48 +270,73 @@ impl ConnectionHandle {
                 .map_err(to_py_err)?
                 .into_inner();
 
-            // cheat: we know there is only one item in the stream
-            let tasks_statuses = if let Some(response) = response_stream.next().await {
-                response
+            let mut errors: Vec<String> = Vec::new();
+
+            // loop until all the tasks are done or the timeout is reached: both cases
+            // will complete the stream
+            while let Some(response) = response_stream.next().await {
+                let item = response
                     .map_err(to_py_err)?
                     .data
                     .ok_or_else(|| PyValueError::new_err("received response without data"))?
                     .decode()
-                    .map_err(to_py_err)?
-            } else {
-                return Err(PyConnectionError::new_err("no response from task"));
-            };
+                    .map_err(to_py_err)?;
 
-            // TODO(andrea): this is a bit hideous. Maybe the idea of returning a dataframe rather
-            // than a nicely typed object should be revisited.
+                // TODO(andrea): all this column unrwapping is a bit hideous. Maybe the idea of returning a dataframe rather
+                // than a nicely typed object should be revisited.
 
-            let exec_statuses = tasks_statuses
-                .column_by_name("exec_status")
-                .ok_or_else(|| {
-                    PyValueError::new_err("bug: exec_status column not found in response")
-                })?
-                .try_downcast_array_ref::<arrow::array::StringArray>()
-                .map_err(to_py_err)?;
+                let schema = item.schema();
+                if !schema.contains(&QueryTasksResponse::schema()) {
+                    return Err(PyValueError::new_err(
+                        "invalid schema for QueryTasksResponse",
+                    ));
+                }
 
-            let msgs = tasks_statuses
-                .column_by_name("msgs")
-                .ok_or_else(|| PyValueError::new_err("bug: msgs column not found in response"))?
-                .try_downcast_array_ref::<arrow::array::StringArray>()
-                .map_err(to_py_err)?;
+                let col_indices = [
+                    QueryTasksResponse::TASK_ID,
+                    QueryTasksResponse::EXEC_STATUS,
+                    QueryTasksResponse::MSGS,
+                ]
+                .iter()
+                .map(|name| schema.index_of(name))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| PyValueError::new_err(format!("missing column: {err}")))?;
 
-            // report the first non success error
-            for (i, status) in exec_statuses.iter().enumerate() {
-                let status = status.ok_or_else(|| PyValueError::new_err("missing status value"))?;
+                let projected = item.project(&col_indices).map_err(to_py_err)?;
 
-                if status != "success" {
-                    return Err(PyValueError::new_err(format!(
-                        "task failed: {}",
-                        msgs.value(i)
-                    )));
+                let (task_ids, statuses, msgs) = {
+                    (
+                        projected
+                            .column(0)
+                            .try_downcast_array_ref::<arrow::array::StringArray>()
+                            .map_err(to_py_err)?,
+                        projected
+                            .column(1)
+                            .try_downcast_array_ref::<arrow::array::StringArray>()
+                            .map_err(to_py_err)?,
+                        projected
+                            .column(2)
+                            .try_downcast_array_ref::<arrow::array::StringArray>()
+                            .map_err(to_py_err)?,
+                    )
+                };
+                for i in 0..projected.num_rows() {
+                    if statuses.value(i) != "success" {
+                        let err = format!("task {}: {}", task_ids.value(i), msgs.value(i));
+                        errors.push(err);
+                    }
                 }
             }
 
-            Ok(())
+            if !errors.is_empty() {
+                let msg = format!(
+                    "all tasks completed, but the following errors occurred:\n{}",
+                    errors.join("\n")
+                );
+                Err(PyValueError::new_err(msg))
+            } else {
+                Ok(())
+            }
         })
     }
 

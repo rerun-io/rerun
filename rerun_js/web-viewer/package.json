@@ -15,7 +15,8 @@
     "build:js": "tsc && node bundle.mjs",
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
-    "build:debug": "npm run build:wasm:debug && npm run build:js"
+    "build:debug": "npm run build:wasm:debug && npm run build:js",
+    "pack": "yarn pack --filename web-viewer.tar.gz"
   },
   "repository": {
     "type": "git",

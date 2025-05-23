@@ -31,8 +31,8 @@ pub struct HalfSize3D(pub crate::datatypes::Vec3D);
 
 impl ::re_types_core::Component for HalfSize3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.HalfSize3D")
+    fn name() -> ComponentName {
+        "rerun.components.HalfSize3D".into()
     }
 }
 

@@ -32,8 +32,8 @@ pub struct ActiveTab(
 
 impl ::re_types_core::Component for ActiveTab {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ActiveTab")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ActiveTab".into()
     }
 }
 

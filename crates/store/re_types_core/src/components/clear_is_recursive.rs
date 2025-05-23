@@ -28,8 +28,8 @@ pub struct ClearIsRecursive(
 
 impl crate::Component for ClearIsRecursive {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.ClearIsRecursive")
+    fn name() -> ComponentName {
+        "rerun.components.ClearIsRecursive".into()
     }
 }
 
