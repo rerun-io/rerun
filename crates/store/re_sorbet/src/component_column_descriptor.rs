@@ -1,8 +1,11 @@
+use std::hash::Hash;
+
 use arrow::datatypes::{DataType as ArrowDatatype, Field as ArrowField};
 
 use re_log_types::{ComponentPath, EntityPath};
 use re_types_core::{ArchetypeFieldName, ArchetypeName, ComponentDescriptor, ComponentName};
 
+use crate::metadata::DrainMetadata;
 use crate::{ArrowFieldMetadata, BatchType, ColumnKind, MetadataExt as _};
 
 /// Describes a data/component column, such as `Position3D`, in a dataframe.
@@ -11,7 +14,7 @@ use crate::{ArrowFieldMetadata, BatchType, ColumnKind, MetadataExt as _};
 //
 // TODO(#6889): Fully sorbetize this thing? `ArchetypeName` and such don't make sense in that
 // context. And whatever `archetype_field_name` ends up being, it needs interning.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentColumnDescriptor {
     /// The Arrow datatype of the stored column.
     ///
@@ -19,6 +22,9 @@ pub struct ComponentColumnDescriptor {
     /// in a chunk. Currently this will always be an [`arrow::array::ListArray`], but as
     /// we introduce mono-type optimization, this might be a native type instead.
     pub store_datatype: ArrowDatatype,
+
+    /// The Arrow metadata that is not explicitly deserialized into other fields.
+    pub arrow_metadata: ArrowFieldMetadata,
 
     /// Semantic name associated with this data.
     ///
@@ -66,6 +72,38 @@ pub struct ComponentColumnDescriptor {
     pub is_semantically_empty: bool,
 }
 
+impl Hash for ComponentColumnDescriptor {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let Self {
+            store_datatype,
+            arrow_metadata,
+            component_name,
+            entity_path,
+            archetype_name,
+            archetype_field_name,
+            is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
+        } = self;
+
+        store_datatype.hash(state);
+        <ComponentName as Hash>::hash(component_name, state);
+        <EntityPath as Hash>::hash(entity_path, state);
+        for (k, v) in arrow_metadata {
+            k.hash(state);
+            v.hash(state);
+        }
+        archetype_name.hash(state);
+        archetype_field_name.hash(state);
+        is_static.hash(state);
+        is_indicator.hash(state);
+        is_tombstone.hash(state);
+        is_semantically_empty.hash(state);
+    }
+}
+
 impl PartialOrd for ComponentColumnDescriptor {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -82,6 +120,7 @@ impl Ord for ComponentColumnDescriptor {
             archetype_field_name,
             component_name,
             store_datatype: _,
+            arrow_metadata: _,
             is_static: _,
             is_indicator: _,
             is_tombstone: _,
@@ -106,6 +145,7 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             archetype_field_name: _,
             component_name: _,
             store_datatype: _,
+            arrow_metadata: _,
             is_static,
             is_indicator: _,
             is_tombstone: _,
@@ -191,6 +231,7 @@ impl ComponentColumnDescriptor {
             archetype_field_name,
             component_name,
             store_datatype: _,
+            arrow_metadata,
             is_static,
             is_indicator,
             is_tombstone,
@@ -243,6 +284,8 @@ impl ComponentColumnDescriptor {
         if *is_semantically_empty {
             metadata.insert("rerun.is_semantically_empty".to_owned(), "true".to_owned());
         }
+
+        metadata.extend(arrow_metadata.iter().map(|(k, v)| (k.clone(), v.clone())));
 
         metadata
     }
@@ -302,30 +345,51 @@ impl ComponentColumnDescriptor {
     /// `chunk_entity_path`: if this column is part of a chunk batch,
     /// what is its entity path (so we can set [`ComponentColumnDescriptor::entity_path`])?
     pub fn from_arrow_field(chunk_entity_path: Option<&EntityPath>, field: &ArrowField) -> Self {
-        let entity_path = if let Some(entity_path) = field.get_opt("rerun.entity_path") {
-            EntityPath::parse_forgiving(entity_path)
+        let metadata = DrainMetadata::new(field.metadata().clone());
+
+        let field_name = field.name();
+        let store_datatype = field.data_type().clone();
+
+        // shadow `field` to make sure we use `metadata` from now on.
+        #[expect(unused_variables)]
+        let field = ();
+
+        let entity_path = if let Some(entity_path) = metadata.get_opt("rerun.entity_path") {
+            EntityPath::parse_forgiving(entity_path.as_ref())
         } else if let Some(chunk_entity_path) = chunk_entity_path {
             chunk_entity_path.clone()
         } else {
             EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
         };
 
-        let component_name = if let Some(component_name) = field.get_opt("rerun.component") {
-            ComponentName::from(component_name)
+        let component_name = if let Some(component_name) = metadata.get_opt("rerun.component") {
+            ComponentName::from(component_name.as_ref())
         } else {
-            ComponentName::new(field.name()) // Legacy fallback
+            ComponentName::new(field_name) // Legacy fallback
         };
 
+        let archetype_name = metadata
+            .get_opt("rerun.archetype")
+            .map(|x| x.as_ref().into());
+        let archetype_field_name = metadata
+            .get_opt("rerun.archetype_field")
+            .map(|x| x.as_ref().into());
+        let is_static = metadata.get_bool("rerun.is_static");
+        let is_indicator = metadata.get_bool("rerun.is_indicator");
+        let is_tombstone = metadata.get_bool("rerun.is_tombstone");
+        let is_semantically_empty = metadata.get_bool("rerun.is_semantically_empty");
+
         let schema = Self {
-            store_datatype: field.data_type().clone(),
+            store_datatype,
             entity_path,
-            archetype_name: field.get_opt("rerun.archetype").map(|x| x.into()),
-            archetype_field_name: field.get_opt("rerun.archetype_field").map(|x| x.into()),
+            archetype_name,
+            archetype_field_name,
             component_name,
-            is_static: field.get_bool("rerun.is_static"),
-            is_indicator: field.get_bool("rerun.is_indicator"),
-            is_tombstone: field.get_bool("rerun.is_tombstone"),
-            is_semantically_empty: field.get_bool("rerun.is_semantically_empty"),
+            is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
+            arrow_metadata: metadata.residual(),
         };
 
         schema.sanity_check();
