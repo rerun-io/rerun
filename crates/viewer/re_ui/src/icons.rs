@@ -90,14 +90,14 @@ pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.png");
 
 pub const RERUN_IO_TEXT: Icon = icon_from_path!("../data/icons/rerun_io.png");
 
-pub const PLAY: Icon = icon_from_path!("../data/icons/play.png");
+pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.png");
-pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.png");
-pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.png");
-pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.png");
-pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.png");
-pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.png");
-pub const LOOP: Icon = icon_from_path!("../data/icons/loop.png");
+pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
+pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.svg");
+pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.svg");
+pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
+pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
+pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
 
 pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.png");
 pub const RIGHT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/right_panel_toggle.png");
@@ -106,17 +106,17 @@ pub const LEFT_PANEL_TOGGLE: Icon = icon_from_path!("../data/icons/left_panel_to
 
 pub const MINIMIZE: Icon = icon_from_path!("../data/icons/minimize.png");
 pub const MAXIMIZE: Icon = icon_from_path!("../data/icons/maximize.png");
-pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.png");
+pub const EXPAND: Icon = icon_from_path!("../data/icons/expand.svg");
 pub const COLUMN_VISIBILITY: Icon = icon_from_path!("../data/icons/column_visibility.png");
 
 pub const VISIBLE: Icon = icon_from_path!("../data/icons/visible.png");
 pub const INVISIBLE: Icon = icon_from_path!("../data/icons/invisible.png");
 
-pub const ADD: Icon = icon_from_path!("../data/icons/add.png");
+pub const ADD: Icon = icon_from_path!("../data/icons/add.svg");
 
-pub const REMOVE: Icon = icon_from_path!("../data/icons/remove.png");
+pub const REMOVE: Icon = icon_from_path!("../data/icons/remove.svg");
 
-pub const RESET: Icon = icon_from_path!("../data/icons/reset.png");
+pub const RESET: Icon = icon_from_path!("../data/icons/reset.svg");
 
 pub const EDIT: Icon = icon_from_path!("../data/icons/edit.png");
 pub const MORE: Icon = icon_from_path!("../data/icons/more.png");
@@ -166,9 +166,9 @@ pub const DATA_SOURCE: Icon = icon_from_path!("../data/icons/data_source.png");
 pub const TABLE: Icon = icon_from_path!("../data/icons/table.png");
 pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.png");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.png");
-pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.png");
+pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
 
-pub const GITHUB: Icon = icon_from_path!("../data/icons/github.png");
+pub const GITHUB: Icon = icon_from_path!("../data/icons/github.svg");
 
 pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
 
@@ -181,7 +181,7 @@ pub const DND_HANDLE: Icon = icon_from_path!("../data/icons/dnd_handle.png");
 /// `>`
 pub const BREADCRUMBS_SEPARATOR: Icon = icon_from_path!("../data/icons/breadcrumbs_separator.png");
 
-pub const SEARCH: Icon = icon_from_path!("../data/icons/search.png");
+pub const SEARCH: Icon = icon_from_path!("../data/icons/search.svg");
 pub const SETTINGS: Icon = icon_from_path!("../data/icons/settings.png");
 
 /// Shortcut icons
@@ -189,7 +189,7 @@ pub const LEFT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/lmc.png");
 pub const RIGHT_MOUSE_CLICK: Icon = icon_from_path!("../data/icons/rmc.png");
 pub const SCROLL: Icon = icon_from_path!("../data/icons/scroll.png");
 pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.png");
-pub const CONTROL: Icon = icon_from_path!("../data/icons/control.png");
-pub const COMMAND: Icon = icon_from_path!("../data/icons/command.png");
+pub const CONTROL: Icon = icon_from_path!("../data/icons/control.svg");
+pub const COMMAND: Icon = icon_from_path!("../data/icons/command.svg");
 pub const OPTION: Icon = icon_from_path!("../data/icons/option.png");
-pub const COPY: Icon = icon_from_path!("../data/icons/copy.png");
+pub const COPY: Icon = icon_from_path!("../data/icons/copy.svg");
