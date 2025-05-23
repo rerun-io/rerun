@@ -144,7 +144,7 @@ impl Server {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
                 // Property column, just hide indicator components
-                //TODO(ab): remove this when we no longer have indicator components
+                //TODO(#8129): remove this when we no longer have indicator components
                 !desc
                     .column_name(BatchType::Dataframe)
                     .ends_with("Indicator")
