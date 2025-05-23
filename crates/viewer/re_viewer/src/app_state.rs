@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{text_selection::LabelSelectionState, NumExt as _};
+use egui::{text_edit::TextEditState, text_selection::LabelSelectionState, NumExt as _, Ui};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -649,8 +649,12 @@ impl AppState {
             self.selection_state.clear_selection();
         }
 
-        // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
-        if !LabelSelectionState::load(ui.ctx()).has_selection()
+        // If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
+        if ui
+            .memory(|mem| mem.focused())
+            .and_then(|id| TextEditState::load(ui.ctx(), id))
+            .is_none()
+            && !LabelSelectionState::load(ui.ctx()).has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
             self.selection_state
