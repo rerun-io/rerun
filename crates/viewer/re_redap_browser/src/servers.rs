@@ -133,12 +133,12 @@ impl Server {
         .column_blueprint(|desc| {
             let mut name = default_display_name_for_column(desc);
 
-            if name.starts_with("rerun_") {
-                name = name
-                    .strip_prefix("rerun_")
-                    .unwrap_or(name.as_ref())
-                    .replace('_', " ");
-            }
+            // strip prefix and remove underscores, _only_ for the base columns (aka not the
+            // properties)
+            name = name
+                .strip_prefix("rerun_")
+                .map(|name| name.replace('_', " "))
+                .unwrap_or(name);
 
             let default_visible = if desc.entity_path().is_some_and(|entity_path| {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
