@@ -248,7 +248,7 @@ impl App {
                 )
             },
         );
-        analytics.on_viewer_started(build_info, adapter_backend, device_tier);
+        analytics.on_viewer_started(build_info.clone(), adapter_backend, device_tier);
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 

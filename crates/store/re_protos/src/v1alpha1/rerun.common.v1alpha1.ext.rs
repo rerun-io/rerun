@@ -1,10 +1,13 @@
 use std::hash::Hasher;
 use std::sync::Arc;
 
+use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
+
+use re_log_types::{TableId, external::re_types_core::ComponentDescriptor};
+
 use crate::v1alpha1::rerun_common_v1alpha1::TaskId;
 use crate::{TypeConversionError, invalid_field, missing_field};
-use arrow::{datatypes::Schema as ArrowSchema, error::ArrowError};
-use re_log_types::{TableId, external::re_types_core::ComponentDescriptor};
+
 // --- Arrow ---
 
 impl TryFrom<&crate::common::v1alpha1::Schema> for ArrowSchema {
@@ -893,6 +896,100 @@ impl Eq for TaskId {}
 impl std::hash::Hash for TaskId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.as_str().hash(state)
+    }
+}
+
+// ---
+
+impl From<re_build_info::BuildInfo> for crate::common::v1alpha1::BuildInfo {
+    fn from(build_info: re_build_info::BuildInfo) -> Self {
+        Self {
+            crate_name: Some(build_info.crate_name.to_string()),
+            features: Some(build_info.features.to_string()),
+            version: Some(build_info.version.into()),
+            rustc_version: Some(build_info.rustc_version.to_string()),
+            llvm_version: Some(build_info.llvm_version.to_string()),
+            git_hash: Some(build_info.git_hash.to_string()),
+            git_branch: Some(build_info.git_branch.to_string()),
+            target_triple: Some(build_info.target_triple.to_string()),
+            build_time: Some(build_info.datetime.to_string()),
+        }
+    }
+}
+
+impl From<crate::common::v1alpha1::BuildInfo> for re_build_info::BuildInfo {
+    fn from(build_info: crate::common::v1alpha1::BuildInfo) -> Self {
+        Self {
+            crate_name: build_info.crate_name().to_owned().into(),
+            features: build_info.features().to_owned().into(),
+            version: build_info.version.clone().unwrap_or_default().into(),
+            rustc_version: build_info.rustc_version().to_owned().into(),
+            llvm_version: build_info.llvm_version().to_owned().into(),
+            git_hash: build_info.git_hash().to_owned().into(),
+            git_branch: build_info.git_branch().to_owned().into(),
+            is_in_rerun_workspace: false,
+            target_triple: build_info.target_triple().to_owned().into(),
+            datetime: build_info.build_time().to_owned().into(),
+        }
+    }
+}
+
+impl From<re_build_info::CrateVersion> for crate::common::v1alpha1::SemanticVersion {
+    fn from(version: re_build_info::CrateVersion) -> Self {
+        crate::common::v1alpha1::SemanticVersion {
+            major: Some(version.major.into()),
+            minor: Some(version.minor.into()),
+            patch: Some(version.patch.into()),
+            meta: version.meta.map(Into::into),
+        }
+    }
+}
+
+impl From<crate::common::v1alpha1::SemanticVersion> for re_build_info::CrateVersion {
+    fn from(version: crate::common::v1alpha1::SemanticVersion) -> Self {
+        Self {
+            major: version.major() as u8,
+            minor: version.minor() as u8,
+            patch: version.patch() as u8,
+            meta: version.meta.map(Into::into),
+        }
+    }
+}
+
+impl From<re_build_info::Meta> for crate::common::v1alpha1::semantic_version::Meta {
+    fn from(version_meta: re_build_info::Meta) -> Self {
+        match version_meta {
+            re_build_info::Meta::Rc(v) => Self::Rc(v.into()),
+
+            re_build_info::Meta::Alpha(v) => Self::Alpha(v.into()),
+
+            re_build_info::Meta::DevAlpha { alpha, commit } => {
+                Self::DevAlpha(crate::common::v1alpha1::DevAlpha {
+                    alpha: Some(alpha.into()),
+                    commit: commit.map(|s| String::from_utf8_lossy(s).to_string()),
+                })
+            }
+        }
+    }
+}
+
+impl From<crate::common::v1alpha1::semantic_version::Meta> for re_build_info::Meta {
+    fn from(version_meta: crate::common::v1alpha1::semantic_version::Meta) -> Self {
+        match version_meta {
+            crate::common::v1alpha1::semantic_version::Meta::Rc(v) => Self::Rc(v as _),
+
+            crate::common::v1alpha1::semantic_version::Meta::Alpha(v) => Self::Alpha(v as _),
+
+            crate::common::v1alpha1::semantic_version::Meta::DevAlpha(dev_alpha) => {
+                Self::DevAlpha {
+                    alpha: dev_alpha.alpha() as u8,
+                    // TODO(cmc): support this, but that means DevAlpha is not-const
+                    // anymore, which trigger a chain reaction of changes that I really
+                    // don't want to get in right now.
+                    commit: None,
+                }
+            }
+        }
     }
 }
 
