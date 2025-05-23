@@ -76,7 +76,7 @@ pub struct VideoPlayerStreamId(pub u64);
 
 struct PlayerEntry {
     player: player::VideoPlayer,
-    frame_index: u64,
+    global_frame_idx: u64,
 }
 
 /// Video data + decoder(s).
@@ -169,12 +169,12 @@ impl Video {
                 )?;
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,
-                    frame_index: global_frame_idx,
+                    global_frame_idx,
                 })
             }
         };
 
-        decoder_entry.frame_index = render_context.active_frame_idx();
+        decoder_entry.global_frame_idx = render_context.active_frame_idx();
         decoder_entry
             .player
             .frame_at(render_context, time_since_video_start_in_secs, video_data)
@@ -189,6 +189,6 @@ impl Video {
         }
 
         let mut players = self.players.lock();
-        players.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
+        players.retain(|_, decoder| decoder.global_frame_idx >= active_frame_idx - 1);
     }
 }

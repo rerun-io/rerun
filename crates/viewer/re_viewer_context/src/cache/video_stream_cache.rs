@@ -130,7 +130,7 @@ fn load_video_data_from_chunks(
 
     // TODO: don't build this up every frame.
 
-    let samples = first_chunk
+    let mut samples = first_chunk
         .iter_component_offsets(&component_descr)
         .zip(first_chunk.iter_component_indices(&timeline, &component_descr))
         .map(|((idx, len), (time, _row_id))| {
@@ -158,8 +158,8 @@ fn load_video_data_from_chunks(
                 decode_timestamp: re_video::Time(time.as_i64()),
                 presentation_timestamp: re_video::Time(time.as_i64()),
 
-                // TODO: unused. but should just fill it in! last one will always be unknown
-                duration: re_video::Time(0),
+                // Filled out later.
+                duration: re_video::Time::MAX,
 
                 // We're using offsets directly into the chunk data.
                 byte_offset: byte_offset as _,
@@ -167,6 +167,12 @@ fn load_video_data_from_chunks(
             }
         })
         .collect::<Vec<_>>();
+
+    // Fill out frame durations.
+    for sample in 0..samples.len().saturating_sub(1) {
+        samples[sample].duration =
+            samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp;
+    }
 
     // Calculate duration from samples. No bframes means we can just check first and last sample.
     // TODO(BFRAMETICKET): This may be slightly incorrect for b-frames.

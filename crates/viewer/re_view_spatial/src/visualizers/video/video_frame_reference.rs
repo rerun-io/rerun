@@ -199,14 +199,17 @@ impl VideoFrameReferenceVisualizer {
                             frame_info: _,
                             source_pixel_format: _,
                         }) => {
+                            video_resolution =
+                                glam::vec2(texture.width() as _, texture.height() as _);
+
                             // Make sure to use the video instead of texture size here,
                             // since the texture may be a placeholder which doesn't have the full size yet.
                             let top_left_corner_position =
                                 world_from_entity.transform_point3(glam::Vec3::ZERO);
                             let extent_u = world_from_entity
-                                .transform_vector3(glam::Vec3::X * texture.width() as f32);
+                                .transform_vector3(glam::Vec3::X * video_resolution.x);
                             let extent_v = world_from_entity
-                                .transform_vector3(glam::Vec3::Y * texture.height() as f32);
+                                .transform_vector3(glam::Vec3::Y * video_resolution.y);
 
                             if is_pending {
                                 // Keep polling for a fresh texture
