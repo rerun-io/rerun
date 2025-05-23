@@ -63,26 +63,24 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `visible` field.
         static constexpr auto Descriptor_visible = ComponentDescriptor(
-            ArchetypeName, "visible",
-            Loggable<rerun::components::Visible>::Descriptor.component_name
+            ArchetypeName, "visible", Loggable<rerun::components::Visible>::ComponentName
         );
         /// `ComponentDescriptor` for the `spacing` field.
         static constexpr auto Descriptor_spacing = ComponentDescriptor(
             ArchetypeName, "spacing",
-            Loggable<rerun::blueprint::components::GridSpacing>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::GridSpacing>::ComponentName
         );
         /// `ComponentDescriptor` for the `plane` field.
         static constexpr auto Descriptor_plane = ComponentDescriptor(
-            ArchetypeName, "plane", Loggable<rerun::components::Plane3D>::Descriptor.component_name
+            ArchetypeName, "plane", Loggable<rerun::components::Plane3D>::ComponentName
         );
         /// `ComponentDescriptor` for the `stroke_width` field.
         static constexpr auto Descriptor_stroke_width = ComponentDescriptor(
-            ArchetypeName, "stroke_width",
-            Loggable<rerun::components::StrokeWidth>::Descriptor.component_name
+            ArchetypeName, "stroke_width", Loggable<rerun::components::StrokeWidth>::ComponentName
         );
         /// `ComponentDescriptor` for the `color` field.
         static constexpr auto Descriptor_color = ComponentDescriptor(
-            ArchetypeName, "color", Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "color", Loggable<rerun::components::Color>::ComponentName
         );
 
       public:

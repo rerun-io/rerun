@@ -56,27 +56,27 @@ namespace rerun::blueprint::archetypes {
         /// `ComponentDescriptor` for the `timeline` field.
         static constexpr auto Descriptor_timeline = ComponentDescriptor(
             ArchetypeName, "timeline",
-            Loggable<rerun::blueprint::components::TimelineName>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::TimelineName>::ComponentName
         );
         /// `ComponentDescriptor` for the `filter_by_range` field.
         static constexpr auto Descriptor_filter_by_range = ComponentDescriptor(
             ArchetypeName, "filter_by_range",
-            Loggable<rerun::blueprint::components::FilterByRange>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::FilterByRange>::ComponentName
         );
         /// `ComponentDescriptor` for the `filter_is_not_null` field.
         static constexpr auto Descriptor_filter_is_not_null = ComponentDescriptor(
             ArchetypeName, "filter_is_not_null",
-            Loggable<rerun::blueprint::components::FilterIsNotNull>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::FilterIsNotNull>::ComponentName
         );
         /// `ComponentDescriptor` for the `apply_latest_at` field.
         static constexpr auto Descriptor_apply_latest_at = ComponentDescriptor(
             ArchetypeName, "apply_latest_at",
-            Loggable<rerun::blueprint::components::ApplyLatestAt>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::ApplyLatestAt>::ComponentName
         );
         /// `ComponentDescriptor` for the `select` field.
         static constexpr auto Descriptor_select = ComponentDescriptor(
             ArchetypeName, "select",
-            Loggable<rerun::blueprint::components::SelectedColumns>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::SelectedColumns>::ComponentName
         );
 
       public:

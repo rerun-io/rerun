@@ -155,47 +155,43 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `vertex_positions` field.
         static constexpr auto Descriptor_vertex_positions = ComponentDescriptor(
             ArchetypeName, "vertex_positions",
-            Loggable<rerun::components::Position3D>::Descriptor.component_name
+            Loggable<rerun::components::Position3D>::ComponentName
         );
         /// `ComponentDescriptor` for the `triangle_indices` field.
         static constexpr auto Descriptor_triangle_indices = ComponentDescriptor(
             ArchetypeName, "triangle_indices",
-            Loggable<rerun::components::TriangleIndices>::Descriptor.component_name
+            Loggable<rerun::components::TriangleIndices>::ComponentName
         );
         /// `ComponentDescriptor` for the `vertex_normals` field.
         static constexpr auto Descriptor_vertex_normals = ComponentDescriptor(
-            ArchetypeName, "vertex_normals",
-            Loggable<rerun::components::Vector3D>::Descriptor.component_name
+            ArchetypeName, "vertex_normals", Loggable<rerun::components::Vector3D>::ComponentName
         );
         /// `ComponentDescriptor` for the `vertex_colors` field.
         static constexpr auto Descriptor_vertex_colors = ComponentDescriptor(
-            ArchetypeName, "vertex_colors",
-            Loggable<rerun::components::Color>::Descriptor.component_name
+            ArchetypeName, "vertex_colors", Loggable<rerun::components::Color>::ComponentName
         );
         /// `ComponentDescriptor` for the `vertex_texcoords` field.
         static constexpr auto Descriptor_vertex_texcoords = ComponentDescriptor(
             ArchetypeName, "vertex_texcoords",
-            Loggable<rerun::components::Texcoord2D>::Descriptor.component_name
+            Loggable<rerun::components::Texcoord2D>::ComponentName
         );
         /// `ComponentDescriptor` for the `albedo_factor` field.
         static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
-            ArchetypeName, "albedo_factor",
-            Loggable<rerun::components::AlbedoFactor>::Descriptor.component_name
+            ArchetypeName, "albedo_factor", Loggable<rerun::components::AlbedoFactor>::ComponentName
         );
         /// `ComponentDescriptor` for the `albedo_texture_buffer` field.
         static constexpr auto Descriptor_albedo_texture_buffer = ComponentDescriptor(
             ArchetypeName, "albedo_texture_buffer",
-            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+            Loggable<rerun::components::ImageBuffer>::ComponentName
         );
         /// `ComponentDescriptor` for the `albedo_texture_format` field.
         static constexpr auto Descriptor_albedo_texture_format = ComponentDescriptor(
             ArchetypeName, "albedo_texture_format",
-            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+            Loggable<rerun::components::ImageFormat>::ComponentName
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
-            ArchetypeName, "class_ids",
-            Loggable<rerun::components::ClassId>::Descriptor.component_name
+            ArchetypeName, "class_ids", Loggable<rerun::components::ClassId>::ComponentName
         );
 
       public:

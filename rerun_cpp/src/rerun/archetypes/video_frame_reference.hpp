@@ -148,18 +148,15 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `timestamp` field.
         static constexpr auto Descriptor_timestamp = ComponentDescriptor(
-            ArchetypeName, "timestamp",
-            Loggable<rerun::components::VideoTimestamp>::Descriptor.component_name
+            ArchetypeName, "timestamp", Loggable<rerun::components::VideoTimestamp>::ComponentName
         );
         /// `ComponentDescriptor` for the `video_reference` field.
         static constexpr auto Descriptor_video_reference = ComponentDescriptor(
-            ArchetypeName, "video_reference",
-            Loggable<rerun::components::EntityPath>::Descriptor.component_name
+            ArchetypeName, "video_reference", Loggable<rerun::components::EntityPath>::ComponentName
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentName
         );
 
       public:

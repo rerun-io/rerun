@@ -134,38 +134,31 @@ namespace rerun::archetypes {
 
         /// `ComponentDescriptor` for the `buffer` field.
         static constexpr auto Descriptor_buffer = ComponentDescriptor(
-            ArchetypeName, "buffer",
-            Loggable<rerun::components::ImageBuffer>::Descriptor.component_name
+            ArchetypeName, "buffer", Loggable<rerun::components::ImageBuffer>::ComponentName
         );
         /// `ComponentDescriptor` for the `format` field.
         static constexpr auto Descriptor_format = ComponentDescriptor(
-            ArchetypeName, "format",
-            Loggable<rerun::components::ImageFormat>::Descriptor.component_name
+            ArchetypeName, "format", Loggable<rerun::components::ImageFormat>::ComponentName
         );
         /// `ComponentDescriptor` for the `meter` field.
         static constexpr auto Descriptor_meter = ComponentDescriptor(
-            ArchetypeName, "meter",
-            Loggable<rerun::components::DepthMeter>::Descriptor.component_name
+            ArchetypeName, "meter", Loggable<rerun::components::DepthMeter>::ComponentName
         );
         /// `ComponentDescriptor` for the `colormap` field.
         static constexpr auto Descriptor_colormap = ComponentDescriptor(
-            ArchetypeName, "colormap",
-            Loggable<rerun::components::Colormap>::Descriptor.component_name
+            ArchetypeName, "colormap", Loggable<rerun::components::Colormap>::ComponentName
         );
         /// `ComponentDescriptor` for the `depth_range` field.
         static constexpr auto Descriptor_depth_range = ComponentDescriptor(
-            ArchetypeName, "depth_range",
-            Loggable<rerun::components::ValueRange>::Descriptor.component_name
+            ArchetypeName, "depth_range", Loggable<rerun::components::ValueRange>::ComponentName
         );
         /// `ComponentDescriptor` for the `point_fill_ratio` field.
         static constexpr auto Descriptor_point_fill_ratio = ComponentDescriptor(
-            ArchetypeName, "point_fill_ratio",
-            Loggable<rerun::components::FillRatio>::Descriptor.component_name
+            ArchetypeName, "point_fill_ratio", Loggable<rerun::components::FillRatio>::ComponentName
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
-            ArchetypeName, "draw_order",
-            Loggable<rerun::components::DrawOrder>::Descriptor.component_name
+            ArchetypeName, "draw_order", Loggable<rerun::components::DrawOrder>::ComponentName
         );
 
       public: // START of extensions from depth_image_ext.cpp:

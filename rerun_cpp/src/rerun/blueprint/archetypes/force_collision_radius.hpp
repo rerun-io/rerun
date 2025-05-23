@@ -48,18 +48,17 @@ namespace rerun::blueprint::archetypes {
 
         /// `ComponentDescriptor` for the `enabled` field.
         static constexpr auto Descriptor_enabled = ComponentDescriptor(
-            ArchetypeName, "enabled",
-            Loggable<rerun::blueprint::components::Enabled>::Descriptor.component_name
+            ArchetypeName, "enabled", Loggable<rerun::blueprint::components::Enabled>::ComponentName
         );
         /// `ComponentDescriptor` for the `strength` field.
         static constexpr auto Descriptor_strength = ComponentDescriptor(
             ArchetypeName, "strength",
-            Loggable<rerun::blueprint::components::ForceStrength>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::ForceStrength>::ComponentName
         );
         /// `ComponentDescriptor` for the `iterations` field.
         static constexpr auto Descriptor_iterations = ComponentDescriptor(
             ArchetypeName, "iterations",
-            Loggable<rerun::blueprint::components::ForceIterations>::Descriptor.component_name
+            Loggable<rerun::blueprint::components::ForceIterations>::ComponentName
         );
 
       public:
