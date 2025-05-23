@@ -7,6 +7,7 @@ use re_log_types::{EntityPathPart, EntryId};
 use re_protos::manifest_registry::v1alpha1::{
     DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
 };
+use re_sorbet::BatchType;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
@@ -130,16 +131,23 @@ impl Server {
                 .ok();
         }))
         .column_blueprint(|desc| {
-            let name = default_display_name_for_column(desc);
-            let name = name
+            let mut name = default_display_name_for_column(desc);
+
+            // strip prefix and remove underscores, _only_ for the base columns (aka not the
+            // properties)
+            name = name
                 .strip_prefix("rerun_")
-                .unwrap_or(name.as_ref())
-                .replace('_', " ");
+                .map(|name| name.replace('_', " "))
+                .unwrap_or(name);
 
             let default_visible = if desc.entity_path().is_some_and(|entity_path| {
                 entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
             }) {
-                true
+                // Property column, just hide indicator components
+                //TODO(#8129): remove this when we no longer have indicator components
+                !desc
+                    .column_name(BatchType::Dataframe)
+                    .ends_with("Indicator")
             } else {
                 matches!(
                     desc.display_name().as_str(),
