@@ -208,6 +208,16 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
+  upload-js:
+    name: "Upload JS"
+    needs: [build-js]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_upload_js.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
+
   deploy-landing-preview:
     name: "Deploy Landing Preview"
     needs: [paths-filter]

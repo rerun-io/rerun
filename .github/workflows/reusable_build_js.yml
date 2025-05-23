@@ -72,3 +72,16 @@ jobs:
 
       - name: Build rerun_js package
         run: pixi run yarn --cwd rerun_js workspaces run build
+
+      - name: Package rerun_js
+        run: |
+          pixi run yarn --cwd rerun_js workspaces run pack
+          mkdir rerun_js_package
+          cp rerun_js/*/*.tar.gz rerun_js_package/
+
+      - name: Upload rerun_js
+        uses: actions/upload-artifact@v4
+        with:
+          name: rerun_js
+          path: rerun_js_package
+          compression-level: 0 # already compressed
