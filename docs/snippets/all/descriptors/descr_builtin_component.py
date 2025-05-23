@@ -15,7 +15,7 @@ rr.log(
                 # TODO(#6889): Temporary fix, should improve API
                 "rerun.components.Position3D",
                 archetype_name="user.CustomPoints3D",
-                archetype_field_name="custom_positions",
+                archetype_field_name="points",
             )
         )
     ],
