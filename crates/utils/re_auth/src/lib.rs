@@ -5,7 +5,7 @@
 //! generate and sign tokens.
 //!
 //! **Warning!** This approach should only be seen as a stop-gap until we have
-//! integration of _real_ identity-providers, most likely based on OpenID Connect.
+//! integration of _real_ identity-providers, most likely based on `OpenID` Connect.
 
 #[cfg(not(target_arch = "wasm32"))]
 mod error;
