@@ -925,8 +925,12 @@
 <a href="#924" id="924">924</a>
 <a href="#925" id="925">925</a>
 <a href="#926" id="926">926</a>
-<a href="#927" id="927">927</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
-<span class="kw">use </span>egui::{NumExt <span class="kw">as _</span>, Ui, text_selection::LabelSelectionState};
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a></pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
+<span class="kw">use </span>egui::{NumExt <span class="kw">as _</span>, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 <span class="kw">use </span>re_chunk::TimelineName;
 <span class="kw">use </span>re_chunk_store::LatestAtQuery;
@@ -1610,8 +1614,12 @@
             <span class="self">self</span>.selection_state.clear_selection();
         }
 
-        <span class="comment">// If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
-        </span><span class="kw">if </span>!LabelSelectionState::load(ui.ctx()).has_selection()
+        <span class="comment">// If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
+        </span><span class="kw">if </span>ui
+            .memory(|mem| mem.focused())
+            .and_then(|id| TextEditState::load(ui.ctx(), id))
+            .is_none()
+            &amp;&amp; !LabelSelectionState::load(ui.ctx()).has_selection()
             &amp;&amp; ui.input(|input| input.events.iter().any(|e| e == <span class="kw-2">&amp;</span>egui::Event::Copy))
         {
             <span class="self">self</span>.selection_state
