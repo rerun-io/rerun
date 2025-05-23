@@ -8,8 +8,10 @@
 namespace rerun::archetypes {
     VideoStream VideoStream::clear_fields() {
         auto archetype = VideoStream();
-        archetype.chunk_data =
-            ComponentBatch::empty<rerun::components::Blob>(Descriptor_chunk_data).value_or_throw();
+        archetype.frame =
+            ComponentBatch::empty<rerun::components::VideoChunk>(Descriptor_frame).value_or_throw();
+        archetype.codec =
+            ComponentBatch::empty<rerun::components::VideoCodec>(Descriptor_codec).value_or_throw();
         archetype.draw_order =
             ComponentBatch::empty<rerun::components::DrawOrder>(Descriptor_draw_order)
                 .value_or_throw();
@@ -18,9 +20,12 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> VideoStream::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(3);
-        if (chunk_data.has_value()) {
-            columns.push_back(chunk_data.value().partitioned(lengths_).value_or_throw());
+        columns.reserve(4);
+        if (frame.has_value()) {
+            columns.push_back(frame.value().partitioned(lengths_).value_or_throw());
+        }
+        if (codec.has_value()) {
+            columns.push_back(codec.value().partitioned(lengths_).value_or_throw());
         }
         if (draw_order.has_value()) {
             columns.push_back(draw_order.value().partitioned(lengths_).value_or_throw());
@@ -33,8 +38,11 @@ namespace rerun::archetypes {
     }
 
     Collection<ComponentColumn> VideoStream::columns() {
-        if (chunk_data.has_value()) {
-            return columns(std::vector<uint32_t>(chunk_data.value().length(), 1));
+        if (frame.has_value()) {
+            return columns(std::vector<uint32_t>(frame.value().length(), 1));
+        }
+        if (codec.has_value()) {
+            return columns(std::vector<uint32_t>(codec.value().length(), 1));
         }
         if (draw_order.has_value()) {
             return columns(std::vector<uint32_t>(draw_order.value().length(), 1));
@@ -50,10 +58,13 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(3);
+        cells.reserve(4);
 
-        if (archetype.chunk_data.has_value()) {
-            cells.push_back(archetype.chunk_data.value());
+        if (archetype.frame.has_value()) {
+            cells.push_back(archetype.frame.value());
+        }
+        if (archetype.codec.has_value()) {
+            cells.push_back(archetype.codec.value());
         }
         if (archetype.draw_order.has_value()) {
             cells.push_back(archetype.draw_order.value());

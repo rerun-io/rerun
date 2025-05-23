@@ -1,24 +1,39 @@
 namespace rerun.archetypes;
 
-/// TODO: docs, finalize name
+/// TODO: nice docs
+///
+/// TODO: words about (non-)relationship with [archetypes.VideoFrameReference].
+///
+/// For instead logging video containers, refer to [archetypes.AssetVideo] and [archetypes.VideoFrameReference].
+/// To learn more about video support in Rerun, check the [video guide](https://www.rerun.io/docs/guides/video).
+///
+/// TODO: snippet.
 table VideoStream (
   "attr.docs.category": "Video",
   "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection",
-  "attr.rerun.state": "unstable" // TODO: is it?
+  "attr.rerun.state": "stable"
 ) {
-  /// TODO: custom component type? `EncodedVideoChunkData`?
-  chunk_data: rerun.components.Blob ("attr.rerun.component_required", required, order: 1000);
+    // --- Required ---
 
-  // TODO: timestamp?
+    /// Video chunk data, associated with the current timestamp.
+    ///
+    /// The chunks are expected to be encoded using the `codec` field.
+    /// TODO: more docs.
+    frame: rerun.components.VideoChunk ("attr.rerun.component_required", required, order: 1000);
 
-  // TODO: codec?
+    /// The codec used to encode the video chunks.
+    ///
+    /// This property is expected to be constant over time and is ideally logged statically once per stream.
+    codec: rerun.components.VideoCodec ("attr.rerun.component_required", order: 1100);
 
-  // TODO: more information?
+    // --- Optional ---
 
+    // TODO(andreas): Orientation? Should probably be part of 2D transform system instead,
+    // but that said it's more pressing & specialized with any kind of image-like data, so may add this earlier.
 
-  /// An optional floating point value that specifies the 2D drawing order.
-  ///
-  /// Objects with higher values are drawn on top of those with lower values.
-  /// Defaults to `-15.0`.
-  draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 2100);
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `-15.0`.
+    draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 2100);
 }

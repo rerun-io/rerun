@@ -33,7 +33,7 @@ use datatype_uis::{
 };
 
 use re_types::blueprint::components::{RootContainer, ViewMaximized};
-use re_types::components::{SeriesVisible, Timestamp};
+use re_types::components::{SeriesVisible, Timestamp, VideoCodec};
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, Enabled, ForceDistance, ForceIterations, ForceStrength,
@@ -121,6 +121,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     );
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<VideoCodec>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
     // Vec2 components:

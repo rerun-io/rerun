@@ -25,14 +25,10 @@ with open(mcap_path, "rb") as f:
             print(f"First 16 bytes: {' '.join(f'{b:02x}' for b in video_msg.data[:16])}")
 
             rr.set_time("time", timestamp=video_msg.timestamp.seconds + video_msg.timestamp.nanos / 1_000_000_000.0)
-            rr.log("video_stream", rr.VideoStream(video_msg.data))
-
-
+            rr.log("video_stream", rr.VideoStream(frame=video_msg.data, codec=rr.components.VideoCodec.H264))
 
         #
 
 # for i, frame in enumerate(frames):
 #     rr.set_time("frame", sequence=i)
 #     rr.log("raw_image", rr.Image(frame))
-
-

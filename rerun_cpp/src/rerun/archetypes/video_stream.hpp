@@ -6,8 +6,9 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
-#include "../components/blob.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/video_chunk.hpp"
+#include "../components/video_codec.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -17,13 +18,25 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: TODO: docs, finalize name
+    /// **Archetype**: TODO: nice docs
     ///
-    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    /// TODO: words about (non-)relationship with `archetypes::VideoFrameReference`.
     ///
+    /// For instead logging video containers, refer to `archetypes::AssetVideo` and `archetypes::VideoFrameReference`.
+    /// To learn more about video support in Rerun, check the [video guide](https://www.rerun.io/docs/guides/video).
+    ///
+    /// TODO: snippet.
     struct VideoStream {
-        /// TODO: custom component type? `EncodedVideoChunkData`?
-        std::optional<ComponentBatch> chunk_data;
+        /// Video chunk data, associated with the current timestamp.
+        ///
+        /// The chunks are expected to be encoded using the `codec` field.
+        /// TODO: more docs.
+        std::optional<ComponentBatch> frame;
+
+        /// The codec used to encode the video chunks.
+        ///
+        /// This property is expected to be constant over time and is ideally logged statically once per stream.
+        std::optional<ComponentBatch> codec;
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///
@@ -40,10 +53,15 @@ namespace rerun::archetypes {
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.VideoStream";
 
-        /// `ComponentDescriptor` for the `chunk_data` field.
-        static constexpr auto Descriptor_chunk_data = ComponentDescriptor(
-            ArchetypeName, "chunk_data",
-            Loggable<rerun::components::Blob>::Descriptor.component_name
+        /// `ComponentDescriptor` for the `frame` field.
+        static constexpr auto Descriptor_frame = ComponentDescriptor(
+            ArchetypeName, "frame",
+            Loggable<rerun::components::VideoChunk>::Descriptor.component_name
+        );
+        /// `ComponentDescriptor` for the `codec` field.
+        static constexpr auto Descriptor_codec = ComponentDescriptor(
+            ArchetypeName, "codec",
+            Loggable<rerun::components::VideoCodec>::Descriptor.component_name
         );
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
@@ -58,11 +76,13 @@ namespace rerun::archetypes {
         VideoStream& operator=(const VideoStream& other) = default;
         VideoStream& operator=(VideoStream&& other) = default;
 
-        explicit VideoStream(rerun::components::Blob _chunk_data)
-            : chunk_data(
-                  ComponentBatch::from_loggable(std::move(_chunk_data), Descriptor_chunk_data)
-                      .value_or_throw()
-              ) {}
+        explicit VideoStream(
+            rerun::components::VideoChunk _frame, rerun::components::VideoCodec _codec
+        )
+            : frame(ComponentBatch::from_loggable(std::move(_frame), Descriptor_frame)
+                        .value_or_throw()),
+              codec(ComponentBatch::from_loggable(std::move(_codec), Descriptor_codec)
+                        .value_or_throw()) {}
 
         /// Update only some specific fields of a `VideoStream`.
         static VideoStream update_fields() {
@@ -72,21 +92,38 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `VideoStream`.
         static VideoStream clear_fields();
 
-        /// TODO: custom component type? `EncodedVideoChunkData`?
-        VideoStream with_chunk_data(const rerun::components::Blob& _chunk_data) && {
-            chunk_data =
-                ComponentBatch::from_loggable(_chunk_data, Descriptor_chunk_data).value_or_throw();
+        /// Video chunk data, associated with the current timestamp.
+        ///
+        /// The chunks are expected to be encoded using the `codec` field.
+        /// TODO: more docs.
+        VideoStream with_frame(const rerun::components::VideoChunk& _frame) && {
+            frame = ComponentBatch::from_loggable(_frame, Descriptor_frame).value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `chunk_data` in a single component batch.
+        /// This method makes it possible to pack multiple `frame` in a single component batch.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_chunk_data` should
+        /// This only makes sense when used in conjunction with `columns`. `with_frame` should
         /// be used when logging a single row's worth of data.
-        VideoStream with_many_chunk_data(const Collection<rerun::components::Blob>& _chunk_data
-        ) && {
-            chunk_data =
-                ComponentBatch::from_loggable(_chunk_data, Descriptor_chunk_data).value_or_throw();
+        VideoStream with_many_frame(const Collection<rerun::components::VideoChunk>& _frame) && {
+            frame = ComponentBatch::from_loggable(_frame, Descriptor_frame).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The codec used to encode the video chunks.
+        ///
+        /// This property is expected to be constant over time and is ideally logged statically once per stream.
+        VideoStream with_codec(const rerun::components::VideoCodec& _codec) && {
+            codec = ComponentBatch::from_loggable(_codec, Descriptor_codec).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `codec` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_codec` should
+        /// be used when logging a single row's worth of data.
+        VideoStream with_many_codec(const Collection<rerun::components::VideoCodec>& _codec) && {
+            codec = ComponentBatch::from_loggable(_codec, Descriptor_codec).value_or_throw();
             return std::move(*this);
         }
 

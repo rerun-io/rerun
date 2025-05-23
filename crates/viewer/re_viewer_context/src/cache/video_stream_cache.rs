@@ -96,7 +96,7 @@ fn load_video_data_from_chunks(
 ) -> Option<(re_video::VideoDataDescription, Buffer)> {
     re_tracing::profile_function!();
 
-    let component_descr = VideoStream::descriptor_chunk_data();
+    let component_descr = VideoStream::descriptor_frame();
 
     // Query for all video chunks on the **entire** timeline.
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame

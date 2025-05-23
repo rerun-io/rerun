@@ -24,19 +24,37 @@ __all__ = ["VideoStream"]
 @define(str=False, repr=False, init=False)
 class VideoStream(Archetype):
     """
-    **Archetype**: TODO: docs, finalize name.
+    **Archetype**: TODO: nice docs.
 
-    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+    TODO: words about (non-)relationship with [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
+
+    For instead logging video containers, refer to [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo] and [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
+    To learn more about video support in Rerun, check the [video guide](https://www.rerun.io/docs/guides/video).
+
+    TODO: snippet.
     """
 
-    def __init__(self: Any, chunk_data: datatypes.BlobLike, *, draw_order: datatypes.Float32Like | None = None) -> None:
+    def __init__(
+        self: Any,
+        frame: datatypes.BlobLike,
+        codec: components.VideoCodecLike,
+        *,
+        draw_order: datatypes.Float32Like | None = None,
+    ) -> None:
         """
         Create a new instance of the VideoStream archetype.
 
         Parameters
         ----------
-        chunk_data:
-            TODO: custom component type? `EncodedVideoChunkData`?
+        frame:
+            Video chunk data, associated with the current timestamp.
+
+            The chunks are expected to be encoded using the `codec` field.
+            TODO: more docs.
+        codec:
+            The codec used to encode the video chunks.
+
+            This property is expected to be constant over time and is ideally logged statically once per stream.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -47,14 +65,15 @@ class VideoStream(Archetype):
 
         # You can define your own __init__ function as a member of VideoStreamExt in video_stream_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(chunk_data=chunk_data, draw_order=draw_order)
+            self.__attrs_init__(frame=frame, codec=codec, draw_order=draw_order)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            chunk_data=None,
+            frame=None,
+            codec=None,
             draw_order=None,
         )
 
@@ -70,7 +89,8 @@ class VideoStream(Archetype):
         cls,
         *,
         clear_unset: bool = False,
-        chunk_data: datatypes.BlobLike | None = None,
+        frame: datatypes.BlobLike | None = None,
+        codec: components.VideoCodecLike | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoStream:
         """
@@ -80,8 +100,15 @@ class VideoStream(Archetype):
         ----------
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
-        chunk_data:
-            TODO: custom component type? `EncodedVideoChunkData`?
+        frame:
+            Video chunk data, associated with the current timestamp.
+
+            The chunks are expected to be encoded using the `codec` field.
+            TODO: more docs.
+        codec:
+            The codec used to encode the video chunks.
+
+            This property is expected to be constant over time and is ideally logged statically once per stream.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -93,7 +120,8 @@ class VideoStream(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
-                "chunk_data": chunk_data,
+                "frame": frame,
+                "codec": codec,
                 "draw_order": draw_order,
             }
 
@@ -115,7 +143,8 @@ class VideoStream(Archetype):
     def columns(
         cls,
         *,
-        chunk_data: datatypes.BlobArrayLike | None = None,
+        frame: datatypes.BlobArrayLike | None = None,
+        codec: components.VideoCodecArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
         """
@@ -128,8 +157,15 @@ class VideoStream(Archetype):
 
         Parameters
         ----------
-        chunk_data:
-            TODO: custom component type? `EncodedVideoChunkData`?
+        frame:
+            Video chunk data, associated with the current timestamp.
+
+            The chunks are expected to be encoded using the `codec` field.
+            TODO: more docs.
+        codec:
+            The codec used to encode the video chunks.
+
+            This property is expected to be constant over time and is ideally logged statically once per stream.
         draw_order:
             An optional floating point value that specifies the 2D drawing order.
 
@@ -141,7 +177,8 @@ class VideoStream(Archetype):
         inst = cls.__new__(cls)
         with catch_and_log_exceptions(context=cls.__name__):
             inst.__attrs_init__(
-                chunk_data=chunk_data,
+                frame=frame,
+                codec=codec,
                 draw_order=draw_order,
             )
 
@@ -149,7 +186,7 @@ class VideoStream(Archetype):
         if len(batches) == 0:
             return ComponentColumnList([])
 
-        kwargs = {"chunk_data": chunk_data, "draw_order": draw_order}
+        kwargs = {"frame": frame, "codec": codec, "draw_order": draw_order}
         columns = []
 
         for batch in batches:
@@ -180,12 +217,26 @@ class VideoStream(Archetype):
         indicator_column = cls.indicator().partition(np.zeros(len(sizes)))
         return ComponentColumnList([indicator_column] + columns)
 
-    chunk_data: components.BlobBatch | None = field(
+    frame: components.VideoChunkBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.BlobBatch._converter,  # type: ignore[misc]
+        converter=components.VideoChunkBatch._converter,  # type: ignore[misc]
     )
-    # TODO: custom component type? `EncodedVideoChunkData`?
+    # Video chunk data, associated with the current timestamp.
+    #
+    # The chunks are expected to be encoded using the `codec` field.
+    # TODO: more docs.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    codec: components.VideoCodecBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.VideoCodecBatch._converter,  # type: ignore[misc]
+    )
+    # The codec used to encode the video chunks.
+    #
+    # This property is expected to be constant over time and is ideally logged statically once per stream.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

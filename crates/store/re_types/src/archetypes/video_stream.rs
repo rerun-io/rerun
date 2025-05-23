@@ -19,13 +19,26 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: TODO: docs, finalize name
+/// **Archetype**: TODO: nice docs
 ///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
+/// TODO: words about (non-)relationship with [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
+///
+/// For instead logging video containers, refer to [`archetypes::AssetVideo`][crate::archetypes::AssetVideo] and [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
+/// To learn more about video support in Rerun, check the [video guide](https://www.rerun.io/docs/guides/video).
+///
+/// TODO: snippet.
 #[derive(Clone, Debug, Default)]
 pub struct VideoStream {
-    /// TODO: custom component type? `EncodedVideoChunkData`?
-    pub chunk_data: Option<SerializedComponentBatch>,
+    /// Video chunk data, associated with the current timestamp.
+    ///
+    /// The chunks are expected to be encoded using the `codec` field.
+    /// TODO: more docs.
+    pub frame: Option<SerializedComponentBatch>,
+
+    /// The codec used to encode the video chunks.
+    ///
+    /// This property is expected to be constant over time and is ideally logged statically once per stream.
+    pub codec: Option<SerializedComponentBatch>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
@@ -35,15 +48,27 @@ pub struct VideoStream {
 }
 
 impl VideoStream {
-    /// Returns the [`ComponentDescriptor`] for [`Self::chunk_data`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::frame`].
     ///
-    /// The corresponding component is [`crate::components::Blob`].
+    /// The corresponding component is [`crate::components::VideoChunk`].
     #[inline]
-    pub fn descriptor_chunk_data() -> ComponentDescriptor {
+    pub fn descriptor_frame() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.VideoStream".into()),
-            component_name: "rerun.components.Blob".into(),
-            archetype_field_name: Some("chunk_data".into()),
+            component_name: "rerun.components.VideoChunk".into(),
+            archetype_field_name: Some("frame".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::codec`].
+    ///
+    /// The corresponding component is [`crate::components::VideoCodec`].
+    #[inline]
+    pub fn descriptor_codec() -> ComponentDescriptor {
+        ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.VideoStream".into()),
+            component_name: "rerun.components.VideoCodec".into(),
+            archetype_field_name: Some("codec".into()),
         }
     }
 
@@ -70,8 +95,13 @@ impl VideoStream {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
-    once_cell::sync::Lazy::new(|| [VideoStream::descriptor_chunk_data()]);
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            VideoStream::descriptor_frame(),
+            VideoStream::descriptor_codec(),
+        ]
+    });
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VideoStream::descriptor_indicator()]);
@@ -79,18 +109,19 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usiz
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
     once_cell::sync::Lazy::new(|| [VideoStream::descriptor_draw_order()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            VideoStream::descriptor_chunk_data(),
+            VideoStream::descriptor_frame(),
+            VideoStream::descriptor_codec(),
             VideoStream::descriptor_indicator(),
             VideoStream::descriptor_draw_order(),
         ]
     });
 
 impl VideoStream {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 2 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`VideoStream`] [`::re_types_core::Archetype`]
@@ -142,18 +173,20 @@ impl ::re_types_core::Archetype for VideoStream {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_descr: ::nohash_hasher::IntMap<_, _> = arrow_data.into_iter().collect();
-        let chunk_data = arrays_by_descr
-            .get(&Self::descriptor_chunk_data())
-            .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_chunk_data())
-            });
+        let frame = arrays_by_descr
+            .get(&Self::descriptor_frame())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_frame()));
+        let codec = arrays_by_descr
+            .get(&Self::descriptor_codec())
+            .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_codec()));
         let draw_order = arrays_by_descr
             .get(&Self::descriptor_draw_order())
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
         Ok(Self {
-            chunk_data,
+            frame,
+            codec,
             draw_order,
         })
     }
@@ -165,7 +198,8 @@ impl ::re_types_core::AsComponents for VideoStream {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.chunk_data.clone(),
+            self.frame.clone(),
+            self.codec.clone(),
             self.draw_order.clone(),
         ]
         .into_iter()
@@ -179,9 +213,13 @@ impl ::re_types_core::ArchetypeReflectionMarker for VideoStream {}
 impl VideoStream {
     /// Create a new `VideoStream`.
     #[inline]
-    pub fn new(chunk_data: impl Into<crate::components::Blob>) -> Self {
+    pub fn new(
+        frame: impl Into<crate::components::VideoChunk>,
+        codec: impl Into<crate::components::VideoCodec>,
+    ) -> Self {
         Self {
-            chunk_data: try_serialize_field(Self::descriptor_chunk_data(), [chunk_data]),
+            frame: try_serialize_field(Self::descriptor_frame(), [frame]),
+            codec: try_serialize_field(Self::descriptor_codec(), [codec]),
             draw_order: None,
         }
     }
@@ -197,9 +235,13 @@ impl VideoStream {
     pub fn clear_fields() -> Self {
         use ::re_types_core::Loggable as _;
         Self {
-            chunk_data: Some(SerializedComponentBatch::new(
-                crate::components::Blob::arrow_empty(),
-                Self::descriptor_chunk_data(),
+            frame: Some(SerializedComponentBatch::new(
+                crate::components::VideoChunk::arrow_empty(),
+                Self::descriptor_frame(),
+            )),
+            codec: Some(SerializedComponentBatch::new(
+                crate::components::VideoCodec::arrow_empty(),
+                Self::descriptor_codec(),
             )),
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
@@ -227,8 +269,11 @@ impl VideoStream {
         I: IntoIterator<Item = usize> + Clone,
     {
         let columns = [
-            self.chunk_data
-                .map(|chunk_data| chunk_data.partitioned(_lengths.clone()))
+            self.frame
+                .map(|frame| frame.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.codec
+                .map(|codec| codec.partitioned(_lengths.clone()))
                 .transpose()?,
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
@@ -250,29 +295,59 @@ impl VideoStream {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_chunk_data = self.chunk_data.as_ref().map(|b| b.array.len());
+        let len_frame = self.frame.as_ref().map(|b| b.array.len());
+        let len_codec = self.codec.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
-        let len = None.or(len_chunk_data).or(len_draw_order).unwrap_or(0);
+        let len = None
+            .or(len_frame)
+            .or(len_codec)
+            .or(len_draw_order)
+            .unwrap_or(0);
         self.columns(std::iter::repeat(1).take(len))
     }
 
-    /// TODO: custom component type? `EncodedVideoChunkData`?
+    /// Video chunk data, associated with the current timestamp.
+    ///
+    /// The chunks are expected to be encoded using the `codec` field.
+    /// TODO: more docs.
     #[inline]
-    pub fn with_chunk_data(mut self, chunk_data: impl Into<crate::components::Blob>) -> Self {
-        self.chunk_data = try_serialize_field(Self::descriptor_chunk_data(), [chunk_data]);
+    pub fn with_frame(mut self, frame: impl Into<crate::components::VideoChunk>) -> Self {
+        self.frame = try_serialize_field(Self::descriptor_frame(), [frame]);
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::Blob`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::VideoChunk`] in a single component batch.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_chunk_data`] should
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_frame`] should
     /// be used when logging a single row's worth of data.
     #[inline]
-    pub fn with_many_chunk_data(
+    pub fn with_many_frame(
         mut self,
-        chunk_data: impl IntoIterator<Item = impl Into<crate::components::Blob>>,
+        frame: impl IntoIterator<Item = impl Into<crate::components::VideoChunk>>,
     ) -> Self {
-        self.chunk_data = try_serialize_field(Self::descriptor_chunk_data(), chunk_data);
+        self.frame = try_serialize_field(Self::descriptor_frame(), frame);
+        self
+    }
+
+    /// The codec used to encode the video chunks.
+    ///
+    /// This property is expected to be constant over time and is ideally logged statically once per stream.
+    #[inline]
+    pub fn with_codec(mut self, codec: impl Into<crate::components::VideoCodec>) -> Self {
+        self.codec = try_serialize_field(Self::descriptor_codec(), [codec]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::VideoCodec`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_codec`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_codec(
+        mut self,
+        codec: impl IntoIterator<Item = impl Into<crate::components::VideoCodec>>,
+    ) -> Self {
+        self.codec = try_serialize_field(Self::descriptor_codec(), codec);
         self
     }
 
@@ -303,6 +378,8 @@ impl VideoStream {
 impl ::re_byte_size::SizeBytes for VideoStream {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.chunk_data.heap_size_bytes() + self.draw_order.heap_size_bytes()
+        self.frame.heap_size_bytes()
+            + self.codec.heap_size_bytes()
+            + self.draw_order.heap_size_bytes()
     }
 }

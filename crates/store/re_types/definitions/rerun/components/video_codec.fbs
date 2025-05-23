@@ -1,0 +1,26 @@
+namespace rerun.components;
+
+// TODO: more details.
+
+/// The codec used to encode video stored in [components.VideoChunk].
+enum VideoCodec: ubyte {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    // TODO: are there some good constant numbers for these?
+
+    /// H.264 (AVC)
+    H264,
+
+    /// H.265 (HEVC)
+    H265,
+
+    /// AV1
+    AV1,
+
+    /// VP8
+    VP8,
+
+    /// VP9
+    VP9,
+}

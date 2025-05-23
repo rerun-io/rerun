@@ -83,6 +83,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ValueRange`](components/value_range.md): Range of expected or valid values, specifying a lower and upper bound.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
+* [`VideoChunk`](components/video_chunk.md): TODO: docs
+* [`VideoCodec`](components/video_codec.md): The codec used to encode video stored in [`components.VideoChunk`](https://rerun.io/docs/reference/types/components/video_chunk).
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.

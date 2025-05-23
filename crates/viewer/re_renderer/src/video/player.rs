@@ -7,10 +7,7 @@ use re_video::{
     decode::{DecodeSettings, FrameInfo},
 };
 
-use super::{
-    VideoFrameTexture,
-    chunk_decoder::{self, VideoChunkDecoder},
-};
+use super::{VideoFrameTexture, chunk_decoder::VideoChunkDecoder};
 use crate::{
     RenderContext,
     resource_managers::{GpuTexture2D, SourceImageDataFormat},

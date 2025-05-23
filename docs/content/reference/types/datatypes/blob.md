@@ -21,3 +21,4 @@ List<uint8>
 
 * [`Blob`](../components/blob.md)
 * [`ImageBuffer`](../components/image_buffer.md)
+* [`VideoChunk`](../components/video_chunk.md)
