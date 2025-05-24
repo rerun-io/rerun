@@ -1,5 +1,36 @@
 # Rerun changelog
 
+## [0.23.3](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - 2025-05-26
+
+### 🔎 Details
+
+#### 🌊 C++ API
+- Fix building with arrow 20.0.0 [#9966](https://github.com/rerun-io/rerun/pull/9966) (thanks [@adamreeve](https://github.com/adamreeve)!)
+- Fix MSVC C++20 compilation issues [#9951](https://github.com/rerun-io/rerun/pull/9951)
+
+#### 🪳 Bug fixes
+- Add draw order to video (-frame-reference), fix 2d objects sometimes being behind videos [#9946](https://github.com/rerun-io/rerun/pull/9946)
+- Fix time series points querying extra points at start and end of time range (causing stuttering on playback in some scenes) [#9963](https://github.com/rerun-io/rerun/pull/9963)
+- Increase max size of gRPC messages [#10006](https://github.com/rerun-io/rerun/pull/10006)
+- Check TextEdit state before copying selection description [#10063](https://github.com/rerun-io/rerun/pull/10063)
+
+#### 🌁 Viewer improvements
+- Use recording name for file name when saving a file [#9982](https://github.com/rerun-io/rerun/pull/9982)
+- Improve error message for `QueryError` and `DataLoaderError` [#9998](https://github.com/rerun-io/rerun/pull/9998)
+
+#### 🚀 Performance improvements
+- Series of build changes for web release to minimize generated wasm [#9870](https://github.com/rerun-io/rerun/pull/9870)
+
+#### 📚 Docs
+- Remove remaining mentions of `rr.connect` [#10016](https://github.com/rerun-io/rerun/pull/10016)
+- Update callbacks and custom_callbacks example docs to mention the other [#10062](https://github.com/rerun-io/rerun/pull/10062)
+- Fix missing reference to `Spatial3DView` in `Pinhole` docs [#9932](https://github.com/rerun-io/rerun/pull/9932) (thanks [@hu-po](https://github.com/hu-po)!)
+- Mention URL scheme in `connect_grpc` docs [#10018](https://github.com/rerun-io/rerun/pull/10018)
+
+#### 🤷‍ Other
+- LeRobot: Add support for List datatype [#9958](https://github.com/rerun-io/rerun/pull/9958)
+
+
 ## [0.23.2](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - 2025-05-06 - RRD migration and bugfixes
 
 ### ✨ Overview & highlights
