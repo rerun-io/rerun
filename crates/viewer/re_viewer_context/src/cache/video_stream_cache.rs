@@ -83,7 +83,7 @@ impl VideoStreamCache {
                 // TODO: video needs to remain editable.
                 let video = re_renderer::video::Video::load(
                     entity_path.to_string(),
-                    Arc::new(video_data),
+                    video_data,
                     decode_settings,
                 );
                 vacant_entry.insert(VideoStreamCacheEntry {
@@ -117,7 +117,7 @@ fn load_video_data_from_chunks(
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
     // even for a running stream, so let's stick with the cache!
     //
-    // TODO(andreas): Can we be more clever about the chunk range here?
+    // TODO(andreas): Can we be more clever about the chunk range here and build up only what we need?
     // Kinda tricky since we need to know how far back (and ahead for b-frames) we have to look.
     let entire_timeline_query =
         re_chunk::RangeQuery::new(timeline, re_log_types::ResolvedTimeRange::EVERYTHING);
@@ -142,8 +142,6 @@ fn load_video_data_from_chunks(
 
     let offsets = inner_list_array.offsets();
     let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
-
-    // TODO: don't build this up every frame.
 
     let mut samples = first_chunk
         .iter_component_offsets(&component_descr)
@@ -189,33 +187,20 @@ fn load_video_data_from_chunks(
             samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp;
     }
 
-    // Calculate duration from samples. No bframes means we can just check first and last sample.
-    // TODO(BFRAMETICKET): This may be slightly incorrect for b-frames.
-    let (decode_start_time, duration) =
-        if let (Some(first_sample), Some(last_sample)) = (samples.first(), samples.last()) {
-            (
-                first_sample.decode_timestamp,
-                // TODO: duration of a video is really the range from start to finish.
-                // But that messes with our time seeking a little bit because we start at the end. sort of.
-                // We'd probably be best of renaming duration to something like "video end timestamp"
-                // last_sample.presentation_timestamp - first_sample.presentation_timestamp
-                //     + last_sample.duration,
-                last_sample.presentation_timestamp + last_sample.duration,
-            )
-        } else {
-            (re_video::Time(0), re_video::Time(0))
-        };
-
     Some((
         re_video::VideoDataDescription {
             codec: re_video::VideoCodec::H264, // TODO, query or guess.
-            config: None,
+            mp4_config: None,
             timescale: re_video::Timescale::NO_SCALE, // TODO: We don't have to work with mp4 scaled time here, so 1 seems alright?
-            duration,
+
+            // Streams have to be assumed to be open ended, so we don't have a duration.
+            duration: None,
 
             // TODO: how to determine? Player relies on this for seeking.
             gops: vec![re_video::demux::GroupOfPictures {
-                decode_start_time,
+                decode_start_time: samples
+                    .first()
+                    .map_or(re_video::Time(0), |s| s.decode_timestamp),
                 sample_range: 0..(samples.len() as _),
             }],
 

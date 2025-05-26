@@ -1,7 +1,7 @@
 mod chunk_decoder;
 mod player;
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
 use parking_lot::Mutex;
@@ -84,7 +84,7 @@ struct PlayerEntry {
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
 pub struct Video {
     debug_name: String,
-    data: Arc<re_video::VideoDataDescription>,
+    video_description: re_video::VideoDataDescription,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
     decode_settings: DecodeSettings,
 }
@@ -96,14 +96,14 @@ impl Video {
     /// - `video/mp4`
     pub fn load(
         debug_name: String,
-        data: Arc<VideoDataDescription>,
+        data: VideoDataDescription,
         decode_settings: DecodeSettings,
     ) -> Self {
         let players = Mutex::new(HashMap::default());
 
         Self {
             debug_name,
-            data,
+            video_description: data,
             players,
             decode_settings,
         }
@@ -111,26 +111,26 @@ impl Video {
 
     /// The video data
     #[inline]
-    pub fn data(&self) -> &Arc<re_video::VideoDataDescription> {
-        &self.data
+    pub fn data(&self) -> &re_video::VideoDataDescription {
+        &self.video_description
     }
 
     /// Natural width of the video if known.
     #[inline]
     pub fn width(&self) -> Option<u32> {
-        self.data.width()
+        self.video_description.width()
     }
 
     /// Natural height of the video if known.
     #[inline]
     pub fn height(&self) -> Option<u32> {
-        self.data.height()
+        self.video_description.height()
     }
 
     /// Natural dimensions of the video if known.
     #[inline]
     pub fn dimensions(&self) -> Option<[u32; 2]> {
-        self.data.dimensions()
+        self.video_description.dimensions()
     }
 
     /// Returns a texture with the latest frame at the given time since video start.
@@ -164,7 +164,7 @@ impl Video {
             Entry::Vacant(vacant_entry) => {
                 let new_player = player::VideoPlayer::new(
                     &self.debug_name,
-                    self.data.clone(),
+                    &self.video_description,
                     &self.decode_settings,
                 )?;
                 vacant_entry.insert(PlayerEntry {
@@ -175,9 +175,12 @@ impl Video {
         };
 
         decoder_entry.global_frame_idx = render_context.active_frame_idx();
-        decoder_entry
-            .player
-            .frame_at(render_context, time_since_video_start_in_secs, video_data)
+        decoder_entry.player.frame_at(
+            render_context,
+            time_since_video_start_in_secs,
+            &self.video_description,
+            video_data,
+        )
     }
 
     /// Removes all decoders that have been unused in the last frame.

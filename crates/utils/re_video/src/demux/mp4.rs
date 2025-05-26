@@ -150,9 +150,9 @@ impl VideoDataDescription {
 
         Ok(Self {
             codec,
-            config: Some(config),
+            mp4_config: Some(config),
             timescale,
-            duration,
+            duration: Some(duration),
             samples_statistics,
             gops,
             samples,

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use web_time::Instant;
 
@@ -50,7 +50,6 @@ pub struct VideoTexture {
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple video players.
 pub struct VideoPlayer {
-    data: Arc<re_video::VideoDataDescription>,
     chunk_decoder: VideoChunkDecoder,
 
     /// The video texture is created lazily on the first received frame.
@@ -67,17 +66,21 @@ pub struct VideoPlayer {
 }
 
 impl VideoPlayer {
+    /// Create a new video player for a given video.
+    ///
+    /// The description may change over time by adding and removing elements,
+    /// but other properties are expected to be stable.
     pub fn new(
         debug_name: &str,
-        data: Arc<re_video::VideoDataDescription>,
+        description: &re_video::VideoDataDescription,
         decode_settings: &DecodeSettings,
     ) -> Result<Self, VideoPlayerError> {
         let debug_name = format!(
             "{debug_name}, codec: {}",
-            data.human_readable_codec_string()
+            description.human_readable_codec_string()
         );
 
-        if let Some(config) = data.config.as_ref() {
+        if let Some(config) = description.mp4_config.as_ref() {
             if let Some(bit_depth) = config.stsd.contents.bit_depth() {
                 #[allow(clippy::comparison_chain)]
                 if bit_depth < 8 {
@@ -91,11 +94,10 @@ impl VideoPlayer {
         }
 
         let chunk_decoder = VideoChunkDecoder::new(debug_name.clone(), |on_output| {
-            re_video::decode::new_decoder(&debug_name, &data, decode_settings, on_output)
+            re_video::decode::new_decoder(&debug_name, description, decode_settings, on_output)
         })?;
 
         Ok(Self {
-            data,
             chunk_decoder,
 
             // TODO: doing this lazy is fine overall, but it causes us not propagating the dimensions on reset when we actually know them.
@@ -114,21 +116,27 @@ impl VideoPlayer {
     ///
     /// This will seek in the video if needed.
     /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
+    ///
+    /// The video data and description may change over time by adding and removing elements,
+    /// but other properties are expected to be stable.
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
         time_since_video_start_in_secs: f64,
+        video_description: &re_video::VideoDataDescription,
         video_data: &[u8],
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
         if time_since_video_start_in_secs < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let presentation_timestamp =
-            Time::from_secs(time_since_video_start_in_secs, self.data.timescale);
-        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
+        let mut presentation_timestamp =
+            Time::from_secs(time_since_video_start_in_secs, video_description.timescale);
+        if let Some(duration) = video_description.duration {
+            presentation_timestamp = presentation_timestamp.min(duration); // Don't seek past the end of the video.
+        }
 
         let error_on_last_frame_at = self.last_error.is_some();
-        self.enqueue_samples(presentation_timestamp, video_data)?;
+        self.enqueue_samples(video_description, presentation_timestamp, video_data)?;
 
         update_video_texture(
             render_ctx,
@@ -164,7 +172,7 @@ impl VideoPlayer {
                 false // it is an active frame
             } else {
                 let how_outdated = presentation_timestamp - time_range.end;
-                if how_outdated.duration(self.data.timescale) < DECODING_GRACE_DELAY {
+                if how_outdated.duration(video_description.timescale) < DECODING_GRACE_DELAY {
                     false // Just outdated by a little bit - show no spinner
                 } else {
                     true // Very old frame - show spinner
@@ -190,6 +198,7 @@ impl VideoPlayer {
 
     fn enqueue_samples(
         &mut self,
+        video_description: &re_video::VideoDataDescription,
         presentation_timestamp: Time,
         video_data: &[u8],
     ) -> Result<(), VideoPlayerError> {
@@ -207,16 +216,14 @@ impl VideoPlayer {
         // In the presence of b-frames this order may be different!
 
         // Find sample which when decoded will be presented at the timestamp the user requested.
-        let requested_sample_idx = self
-            .data
+        let requested_sample_idx = video_description
             .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
             .ok_or(VideoPlayerError::EmptyVideo)?;
 
         // Find the GOP that contains the sample.
-        let requested_gop_idx = self
-            .data
+        let requested_gop_idx = video_description
             .gop_index_containing_decode_timestamp(
-                self.data.samples[requested_sample_idx].decode_timestamp,
+                video_description.samples[requested_sample_idx].decode_timestamp,
             )
             .ok_or(VideoPlayerError::EmptyVideo)?;
 
@@ -251,8 +258,8 @@ impl VideoPlayer {
             }
         } else if requested_sample_idx != self.last_requested_sample_idx {
             let current_pts =
-                self.data.samples[self.last_requested_sample_idx].presentation_timestamp;
-            let requested_sample = &self.data.samples[requested_sample_idx];
+                video_description.samples[self.last_requested_sample_idx].presentation_timestamp;
+            let requested_sample = &video_description.samples[requested_sample_idx];
 
             if requested_sample.presentation_timestamp < current_pts {
                 re_log::trace!(
@@ -284,7 +291,7 @@ impl VideoPlayer {
             requested_sample_idx + self.chunk_decoder.min_num_samples_to_enqueue_ahead();
         loop {
             let next_gop_idx = if let Some(last_enqueued_gop_idx) = self.last_enqueued_gop_idx {
-                let last_enqueued_gop = self.data.gops.get(last_enqueued_gop_idx);
+                let last_enqueued_gop = video_description.gops.get(last_enqueued_gop_idx);
                 let last_enqueued_sample_idx = last_enqueued_gop
                     .map(|gop| gop.sample_range_usize().end)
                     .unwrap_or(0);
@@ -299,12 +306,12 @@ impl VideoPlayer {
                 requested_gop_idx
             };
 
-            if next_gop_idx >= self.data.gops.len() {
+            if next_gop_idx >= video_description.gops.len() {
                 // Reached end of video with a previously enqueued GOP already.
                 break;
             }
 
-            self.enqueue_gop(next_gop_idx, video_data)?;
+            self.enqueue_gop(video_description, next_gop_idx, video_data)?;
         }
 
         self.last_requested_sample_idx = requested_sample_idx;
@@ -316,14 +323,19 @@ impl VideoPlayer {
     /// Enqueue all samples in the given GOP.
     ///
     /// Does nothing if the index is out of bounds.
-    fn enqueue_gop(&mut self, gop_idx: usize, video_data: &[u8]) -> Result<(), VideoPlayerError> {
-        let Some(gop) = self.data.gops.get(gop_idx) else {
+    fn enqueue_gop(
+        &mut self,
+        video_description: &re_video::VideoDataDescription,
+        gop_idx: usize,
+        video_data: &[u8],
+    ) -> Result<(), VideoPlayerError> {
+        let Some(gop) = video_description.gops.get(gop_idx) else {
             return Ok(());
         };
 
         self.last_enqueued_gop_idx = Some(gop_idx);
 
-        let samples = &self.data.samples[gop.sample_range_usize()];
+        let samples = &video_description.samples[gop.sample_range_usize()];
 
         re_log::trace!("Enqueueing GOP {gop_idx} ({} samples)", samples.len());
 
@@ -332,7 +344,7 @@ impl VideoPlayer {
             self.chunk_decoder.decode(chunk)?;
         }
 
-        if gop_idx + 1 == self.data.gops.len() {
+        if gop_idx + 1 == video_description.gops.len() {
             // Last GOP - there is nothing more to decode,
             // so flush out any pending frames:
             // See https://github.com/rerun-io/rerun/issues/8073

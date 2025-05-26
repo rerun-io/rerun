@@ -57,7 +57,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoDataD
         );
     }
     if let Some(bit_depth) = video_data
-        .config
+        .mp4_config
         .as_ref()
         .and_then(|c| c.stsd.contents.bit_depth())
     // TODO: shortcut this?
@@ -84,10 +84,13 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoDataD
             );
         }
     }
-    ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(format!(
-        "{}",
-        re_log_types::Duration::from(video_data.duration())
-    )));
+    if let Some(duration) = video_data.duration() {
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Duration")
+                .value_text(format!("{}", re_log_types::Duration::from(duration))),
+        );
+    }
+
     // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
     // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
     // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
@@ -261,7 +264,12 @@ pub fn show_decoded_frame_info(
         // but the point here is not to have a nice viewer,
         // but to show the user what they have selected
         ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
+        let time = ui.input(|i| i.time);
+        if let Some(duration) = video.data().duration() {
+            time % duration.as_secs_f64()
+        } else {
+            time
+        }
     };
 
     let player_stream_id =
@@ -347,7 +355,11 @@ pub fn show_decoded_frame_info(
     }
 }
 
-fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoDataDescription) {
+fn frame_info_ui(
+    ui: &mut egui::Ui,
+    frame_info: &FrameInfo,
+    video_data: &re_video::VideoDataDescription,
+) {
     let FrameInfo {
         is_sync,
         sample_idx,

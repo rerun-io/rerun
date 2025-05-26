@@ -88,13 +88,15 @@ pub struct VideoDataDescription {
     pub codec: VideoCodec,
 
     // TODO: what is this even, exactly?
-    pub config: Option<Mp4Config>, // TODO: mp4 specific sounds wrong. also details here may be available and some not.
+    pub mp4_config: Option<Mp4Config>, // TODO: mp4 specific sounds wrong. also details here may be available and some not.
 
     /// How many time units are there per second.
     pub timescale: Timescale,
 
-    /// Duration of the video, in time units.
-    pub duration: Time,
+    /// Duration of the video, in time units if known.
+    ///
+    /// For open video streams rather than video files this is generally unknown.
+    pub duration: Option<Time>,
 
     /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
@@ -192,10 +194,12 @@ impl VideoDataDescription {
         }
     }
 
-    /// Length of the video.
+    /// Length of the video if known.
+    ///
+    /// For video streams as opposed to video files this is generally unknown.
     #[inline]
-    pub fn duration(&self) -> std::time::Duration {
-        self.duration.duration(self.timescale)
+    pub fn duration(&self) -> Option<std::time::Duration> {
+        self.duration.map(|d| d.duration(self.timescale))
     }
 
     /// Natural width and height of the video if known.
@@ -207,20 +211,20 @@ impl VideoDataDescription {
     /// Natural width of the video if known.
     #[inline]
     pub fn width(&self) -> Option<u32> {
-        self.config.as_ref().map(|c| c.coded_width as u32)
+        self.mp4_config.as_ref().map(|c| c.coded_width as u32)
     }
 
     /// Natural height of the video if known.
     #[inline]
     pub fn height(&self) -> Option<u32> {
-        self.config.as_ref().map(|c| c.coded_height as u32)
+        self.mp4_config.as_ref().map(|c| c.coded_height as u32)
     }
 
     /// The codec used to encode the video.
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
         // TODO: not happy with this distinction
-        if let Some(config) = self.config.as_ref() {
+        if let Some(config) = self.mp4_config.as_ref() {
             let human_readable = match &config.stsd.contents {
                 re_mp4::StsdBoxContent::Av01(_) => "AV1",
                 re_mp4::StsdBoxContent::Avc1(_) => "H.264",
@@ -261,7 +265,7 @@ impl VideoDataDescription {
     ///
     /// Returns None if not detected or unknown.
     pub fn subsampling_mode(&self) -> Option<ChromaSubsamplingModes> {
-        match &self.config.as_ref()?.stsd.contents {
+        match &self.mp4_config.as_ref()?.stsd.contents {
             re_mp4::StsdBoxContent::Av01(av01_box) => {
                 // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
                 match (
@@ -319,13 +323,13 @@ impl VideoDataDescription {
     ///
     /// Usually 8, but 10 for HDR (for example).
     pub fn bit_depth(&self) -> Option<u8> {
-        self.config.as_ref()?.stsd.contents.bit_depth()
+        self.mp4_config.as_ref()?.stsd.contents.bit_depth()
     }
 
     /// Returns None if the mp4 doesn't specify whether the video is monochrome or
     /// we haven't yet implemented the logic to determine this.
     pub fn is_monochrome(&self) -> Option<bool> {
-        match &self.config.as_ref()?.stsd.contents {
+        match &self.mp4_config.as_ref()?.stsd.contents {
             re_mp4::StsdBoxContent::Av01(av01_box) => Some(av01_box.av1c.monochrome),
             re_mp4::StsdBoxContent::Avc1(_)
             | re_mp4::StsdBoxContent::Hvc1(_)
@@ -630,7 +634,7 @@ pub enum VideoLoadError {
 impl std::fmt::Debug for VideoDataDescription {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Video")
-            .field("config", &self.config)
+            .field("config", &self.mp4_config)
             .field("timescale", &self.timescale)
             .field("duration", &self.duration)
             .field("gops", &self.gops)

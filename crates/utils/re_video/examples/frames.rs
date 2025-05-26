@@ -27,13 +27,14 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video_blob = std::fs::read(video_path).expect("failed to read video");
-    let video = re_video::VideoDataDescription::load_mp4(&video_blob).expect("failed to load video");
+    let video =
+        re_video::VideoDataDescription::load_mp4(&video_blob).expect("failed to load video");
 
     println!(
         "{} {}x{}",
         video.gops.len(),
-        video.config.as_ref().map_or(0, |c| c.coded_width),
-        video.config.as_ref().map_or(0, |c| c.coded_height)
+        video.mp4_config.as_ref().map_or(0, |c| c.coded_width),
+        video.mp4_config.as_ref().map_or(0, |c| c.coded_height)
     );
 
     let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
