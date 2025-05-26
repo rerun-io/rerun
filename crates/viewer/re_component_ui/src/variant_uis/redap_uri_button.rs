@@ -3,7 +3,7 @@ use std::str::FromStr as _;
 
 use re_types_core::{ComponentDescriptor, RowId};
 use re_uri::RedapUri;
-use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
