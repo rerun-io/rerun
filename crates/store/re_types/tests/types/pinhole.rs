@@ -8,14 +8,10 @@ fn roundtrip() {
         image_from_camera: components::PinholeProjection(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]].into(),
         )
-        .serialized()
-        .map(|batch| batch.with_descriptor_override(Pinhole::descriptor_image_from_camera())),
+        .serialized(Pinhole::descriptor_image_from_camera()),
         resolution: components::Resolution([1.0, 2.0].into())
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Pinhole::descriptor_resolution())),
-        camera_xyz: components::ViewCoordinates::RDF
-            .serialized()
-            .map(|batch| batch.with_descriptor_override(Pinhole::descriptor_camera_xyz())),
+            .serialized(Pinhole::descriptor_resolution()),
+        camera_xyz: components::ViewCoordinates::RDF.serialized(Pinhole::descriptor_camera_xyz()),
         image_plane_distance: None,
     };
 

@@ -1,6 +1,8 @@
 //! This module contains auth middleware for [`tonic`] services.
 
 pub mod client;
+
+#[cfg(not(target_arch = "wasm32"))]
 pub mod server;
 
 /// The metadata key used in the metadata of the gRPC request to store the token.

@@ -1,5 +1,5 @@
 use ahash::HashMap;
-use egui::{NumExt as _, Ui, text_selection::LabelSelectionState};
+use egui::{NumExt as _, Ui, text_edit::TextEditState, text_selection::LabelSelectionState};
 
 use re_chunk::TimelineName;
 use re_chunk_store::LatestAtQuery;
@@ -683,8 +683,12 @@ impl AppState {
             self.selection_state.clear_selection();
         }
 
-        // If there's no label selected, and the user triggers a copy command, copy a description of the current selection.
-        if !LabelSelectionState::load(ui.ctx()).has_selection()
+        // If there's no text edit or label selected, and the user triggers a copy command, copy a description of the current selection.
+        if ui
+            .memory(|mem| mem.focused())
+            .and_then(|id| TextEditState::load(ui.ctx(), id))
+            .is_none()
+            && !LabelSelectionState::load(ui.ctx()).has_selection()
             && ui.input(|input| input.events.iter().any(|e| e == &egui::Event::Copy))
         {
             self.selection_state
@@ -886,17 +890,16 @@ fn check_for_clicked_hyperlinks(
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
                 if let Ok(uri) = open_url.url.parse::<re_uri::RedapUri>() {
-                    let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
-
                     command_sender.send_system(SystemCommand::LoadDataSource(
-                        re_data_source::DataSource::RerunGrpcStream(uri),
+                        re_data_source::DataSource::RerunGrpcStream {
+                            uri,
+                            select_when_loaded: !open_url.new_tab,
+                        },
                     ));
 
-                    if is_dataset_uri && !open_url.new_tab {
-                        command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                            DisplayMode::LocalRecordings,
-                        ));
-                    }
+                    // NOTE: we do NOT change the display mode here.
+                    // Instead we rely on `select_when_loaded` to trigger the selection… once the data is loaded.
+
                     return false;
                 } else if let Some(path_str) = open_url.url.strip_prefix(recording_scheme) {
                     recording_path = Some(path_str.to_owned());

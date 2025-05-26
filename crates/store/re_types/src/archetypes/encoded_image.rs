@@ -181,7 +181,9 @@ impl ::re_types_core::Archetype for EncodedImage {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        EncodedImageIndicator::DEFAULT.serialized().unwrap()
+        EncodedImageIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

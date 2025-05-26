@@ -3,7 +3,7 @@
 use rerun::{
     demo_util::grid,
     external::{arrow, glam, re_types},
-    ComponentBatch as _, SerializedComponentBatch,
+    ComponentBatch as _, ComponentDescriptor, SerializedComponentBatch,
 };
 
 // ---
@@ -23,16 +23,13 @@ impl rerun::AsComponents for CustomPoints3D {
             .as_serialized_batches()
             .into_iter()
             .chain(
-                std::iter::once(
-                    self.confidences
-                        .as_ref()
-                        .and_then(|batch| batch.serialized())
-                        .map(|batch|
-                            // Optionally override the descriptor with extra information.
-                            batch
-                                .or_with_archetype_name(|| "user.CustomPoints3D".into())
-                                .or_with_archetype_field_name(|| "confidences".into())),
-                )
+                std::iter::once(self.confidences.as_ref().and_then(|batch| {
+                    batch.serialized(ComponentDescriptor {
+                        archetype_name: Some("user.CustomPoints3D".into()),
+                        archetype_field_name: Some("confidences".into()),
+                        component_name: <Confidence as rerun::Component>::name(),
+                    })
+                }))
                 .flatten(),
             )
             .collect()

@@ -320,7 +320,9 @@ impl ::re_types_core::Archetype for Ellipsoids3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Ellipsoids3DIndicator::DEFAULT.serialized().unwrap()
+        Ellipsoids3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

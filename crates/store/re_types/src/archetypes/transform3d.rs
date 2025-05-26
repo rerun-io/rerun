@@ -512,7 +512,9 @@ impl ::re_types_core::Archetype for Transform3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Transform3DIndicator::DEFAULT.serialized().unwrap()
+        Transform3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

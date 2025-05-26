@@ -2726,7 +2726,7 @@ version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "330c60081dcc4c72131f8eb70510f1ac07223e5d4163db481a04a0befcffa412"
 dependencies = [
- "libloading 0.8.5",
+ "libloading 0.7.4",
 ]
 
 [[package]]
@@ -2762,7 +2762,7 @@ checksum = "f25c0e292a7ca6d6498557ff1df68f32c99850012b6ea401cf8daf771f22ff53"
 [[package]]
 name = "ecolor"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -2779,7 +2779,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2819,7 +2819,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "accesskit",
  "ahash",
@@ -2838,7 +2838,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2857,7 +2857,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "accesskit_winit",
  "ahash",
@@ -2921,7 +2921,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "egui",
@@ -2938,7 +2938,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -2955,7 +2955,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "dify",
  "eframe",
@@ -3027,7 +3027,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "emath"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3144,7 +3144,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -3163,7 +3163,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.31.1"
-source = "git+https://github.com/emilk/egui.git?branch=main#b8334f365be7325ce2974bd1cefc8abd5326299d"
+source = "git+https://github.com/emilk/egui.git?branch=main#da67465a6cd00e6c1732ecb96e0febc917d63c31"
 
 [[package]]
 name = "equivalent"
@@ -3754,13 +3754,13 @@ dependencies = [
 
 [[package]]
 name = "gpu-descriptor"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c08c1f623a8d0b722b8b99f821eb0ba672a1618f0d3b16ddbee1cedd2dd8557"
+checksum = "b89c83349105e3732062a895becfc71a8f921bb71ecbbdd8ff99263e3b53a0ca"
 dependencies = [
  "bitflags 2.9.1",
  "gpu-descriptor-types",
- "hashbrown 0.14.5",
+ "hashbrown 0.15.2",
 ]
 
 [[package]]
@@ -10854,9 +10854,9 @@ checksum = "53a85b86a771b1c87058196170769dd264f66c0782acf1ae6cc51bfd64b39082"
 
 [[package]]
 name = "wgpu"
-version = "25.0.0"
+version = "25.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca6049eb2014a0e0d8689f9b787605dd71d5bbfdc74095ead499f3cff705c229"
+checksum = "ec8fb398f119472be4d80bc3647339f56eb63b2a331f6a3d16e25d8144197dd9"
 dependencies = [
  "arrayvec",
  "bitflags 2.9.1",
@@ -10882,9 +10882,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "25.0.1"
+version = "25.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a19813e647da7aa3cdaa84f5846e2c64114970ea7c86b1e6aae8be08091f4bdc"
+checksum = "f7b882196f8368511d613c6aeec80655160db6646aebddf8328879a88d54e500"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -10950,9 +10950,9 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "25.0.1"
+version = "25.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb7c4a1dc42ff14c23c9b11ebf1ee85cde661a9b1cf0392f79c1faca5bc559fb"
+checksum = "f968767fe4d3d33747bbd1473ccd55bf0f6451f55d733b5597e67b5deab4ad17"
 dependencies = [
  "android_system_properties",
  "arrayvec",

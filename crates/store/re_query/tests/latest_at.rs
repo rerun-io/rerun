@@ -73,9 +73,12 @@ fn simple_query_with_differently_tagged_components() {
     let row_id2 = RowId::new();
     let points2 = vec![MyPoint::new(5.0, 6.0)];
     let points2_serialized = points2
-        .serialized()
-        .unwrap()
-        .with_archetype_name("MyPoints2".into());
+        .serialized(re_types::ComponentDescriptor {
+            archetype_name: Some("MyPoints2".into()),
+            archetype_field_name: None,
+            component_name: <MyPoint as re_types_core::Component>::name(),
+        })
+        .unwrap();
 
     let chunk = Chunk::builder(entity_path.into())
         .with_archetype(row_id1, timepoint, &MyPoints::new(points1.clone()))

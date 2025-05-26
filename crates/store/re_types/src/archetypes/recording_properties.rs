@@ -115,7 +115,9 @@ impl ::re_types_core::Archetype for RecordingProperties {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        RecordingPropertiesIndicator::DEFAULT.serialized().unwrap()
+        RecordingPropertiesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

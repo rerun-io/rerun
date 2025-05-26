@@ -1,13 +1,12 @@
 use rerun::{ChunkStore, ChunkStoreConfig, ComponentBatch as _, ComponentDescriptor};
 
 fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
-    let positions = rerun::components::Position3D::new(1.0, 2.0, 3.0)
-        .try_serialized()?
-        .with_descriptor_override(ComponentDescriptor {
+    let positions =
+        rerun::components::Position3D::new(1.0, 2.0, 3.0).try_serialized(ComponentDescriptor {
             archetype_name: Some("user.CustomArchetype".into()),
             archetype_field_name: Some("custom_positions".into()),
             component_name: "user.CustomPosition3D".into(),
-        });
+        })?;
     rec.log_serialized_batches("data", true, [positions])?;
 
     Ok(())

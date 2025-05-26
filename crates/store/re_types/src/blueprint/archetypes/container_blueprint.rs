@@ -232,7 +232,9 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ContainerBlueprintIndicator::DEFAULT.serialized().unwrap()
+        ContainerBlueprintIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

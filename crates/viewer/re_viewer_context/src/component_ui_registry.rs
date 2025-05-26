@@ -238,7 +238,7 @@ impl ComponentUiRegistry {
                             callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_value));
 
                         if response.changed() {
-                            use re_types::LoggableBatch as _;
+                            use re_types::ComponentBatch as _;
                             deserialized_value.to_arrow().ok_or_log_error_once()
                         } else {
                             None

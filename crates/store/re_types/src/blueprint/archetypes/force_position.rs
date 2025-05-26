@@ -133,7 +133,9 @@ impl ::re_types_core::Archetype for ForcePosition {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForcePositionIndicator::DEFAULT.serialized().unwrap()
+        ForcePositionIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

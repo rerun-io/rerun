@@ -167,7 +167,9 @@ impl ::re_types_core::Archetype for GeoLineStrings {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        GeoLineStringsIndicator::DEFAULT.serialized().unwrap()
+        GeoLineStringsIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

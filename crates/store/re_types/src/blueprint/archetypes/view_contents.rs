@@ -132,7 +132,9 @@ impl ::re_types_core::Archetype for ViewContents {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ViewContentsIndicator::DEFAULT.serialized().unwrap()
+        ViewContentsIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

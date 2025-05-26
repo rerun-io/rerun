@@ -232,7 +232,9 @@ impl ::re_types_core::Archetype for SeriesPoints {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        SeriesPointsIndicator::DEFAULT.serialized().unwrap()
+        SeriesPointsIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

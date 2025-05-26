@@ -360,7 +360,7 @@ impl App {
         //
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
-        if let SmartChannelSource::RedapGrpcStream(uri) = rx.source() {
+        if let SmartChannelSource::RedapGrpcStream { uri, .. } = rx.source() {
             self.add_redap_server(uri.origin.clone());
 
             self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
@@ -642,9 +642,13 @@ impl App {
                             .replace(DisplayMode::LocalTable(table_id.clone()));
                     }
 
+                    Item::StoreId(store_id) => {
+                        self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+
                     Item::AppId(_)
                     | Item::DataSource(_)
-                    | Item::StoreId(_)
                     | Item::InstancePath(_)
                     | Item::ComponentPath(_)
                     | Item::Container(_)
@@ -1297,7 +1301,8 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut uri)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStream { mut uri, .. }) =
+            entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1610,38 +1615,40 @@ impl App {
             if was_empty && !entity_db.is_empty() {
                 // Hack: we cannot go to a specific timeline or entity until we know about it.
                 // Now we _hopefully_ do.
-                if let SmartChannelSource::RedapGrpcStream(uri) = channel_source.as_ref() {
+                if let SmartChannelSource::RedapGrpcStream { uri, .. } = channel_source.as_ref() {
                     self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
                 }
             }
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
-                    // Set the recording-id after potentially creating the store in the hub.
-                    // This ordering is important because the `StoreHub` internally
-                    // updates the app-id when changing the recording.
-                    match store_id.kind {
-                        StoreKind::Recording => {
-                            re_log::trace!("Opening a new recording: '{store_id}'");
-                            store_hub.set_active_recording_id(store_id.clone());
+                    if channel_source.select_when_loaded() {
+                        // Set the recording-id after potentially creating the store in the hub.
+                        // This ordering is important because the `StoreHub` internally
+                        // updates the app-id when changing the recording.
+                        match store_id.kind {
+                            StoreKind::Recording => {
+                                re_log::trace!("Opening a new recording: '{store_id}'");
+                                store_hub.set_active_recording_id(store_id.clone());
 
-                            // Also select the new recording:
-                            self.command_sender.send_system(SystemCommand::SetSelection(
-                                re_viewer_context::Item::StoreId(store_id.clone()),
-                            ));
+                                // Also select the new recording:
+                                self.command_sender.send_system(SystemCommand::SetSelection(
+                                    re_viewer_context::Item::StoreId(store_id.clone()),
+                                ));
 
-                            // If the viewer is in the background, tell the user that it has received something new.
-                            egui_ctx.send_viewport_cmd(
-                                egui::ViewportCommand::RequestUserAttention(
-                                    egui::UserAttentionType::Informational,
-                                ),
-                            );
-                        }
-                        StoreKind::Blueprint => {
-                            // We wait with activating blueprints until they are fully loaded,
-                            // so that we don't run heuristics on half-loaded blueprints.
-                            // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                            // the blueprint won't be activated until the whole _recording_ has finished loading.
+                                // If the viewer is in the background, tell the user that it has received something new.
+                                egui_ctx.send_viewport_cmd(
+                                    egui::ViewportCommand::RequestUserAttention(
+                                        egui::UserAttentionType::Informational,
+                                    ),
+                                );
+                            }
+                            StoreKind::Blueprint => {
+                                // We wait with activating blueprints until they are fully loaded,
+                                // so that we don't run heuristics on half-loaded blueprints.
+                                // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                                // the blueprint won't be activated until the whole _recording_ has finished loading.
+                            }
                         }
                     }
                 }

@@ -16,7 +16,7 @@ use re_types::{
     components::{self, GraphEdge, GraphNode, ImageFormat, Text},
     datatypes::{ChannelDatatype, PixelFormat},
 };
-use re_types_core::{Component, ComponentName, LoggableBatch, reflection::Reflection};
+use re_types_core::{Component, ComponentBatch, ComponentName, reflection::Reflection};
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{
     UiLayout, ViewerContext,
@@ -296,7 +296,7 @@ impl TestCase {
     #[allow(clippy::needless_pass_by_value)]
     fn from_component<C: Component>(component: C, label: &'static str) -> Self {
         let component_name = C::name();
-        let component_data = LoggableBatch::to_arrow(&component).unwrap();
+        let component_data = ComponentBatch::to_arrow(&component).unwrap();
         Self {
             label,
             component_name,

@@ -1258,7 +1258,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             #[inline]
             fn indicator() -> SerializedComponentBatch {
                 #[allow(clippy::unwrap_used)] // There is no such thing as failing to serialize an indicator.
-                #quoted_indicator_name::DEFAULT.serialized().unwrap()
+                #quoted_indicator_name::DEFAULT.serialized(Self::descriptor_indicator()).unwrap()
             }
 
             #[inline]

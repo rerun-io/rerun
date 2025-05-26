@@ -134,7 +134,9 @@ impl ::re_types_core::Archetype for ViewCoordinates {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ViewCoordinatesIndicator::DEFAULT.serialized().unwrap()
+        ViewCoordinatesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]
