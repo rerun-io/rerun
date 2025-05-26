@@ -160,10 +160,11 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results = entity_db
-        .storage_engine()
-        .cache()
-        .latest_at(&query, entity_path, [component_descriptor]);
+    let results =
+        entity_db
+            .storage_engine()
+            .cache()
+            .latest_at(&query, entity_path, [component_descriptor]);
 
     if let Some(data) = results.component_batch_raw(component_descriptor) {
         egui::ScrollArea::vertical()
