@@ -43,7 +43,7 @@ pub use self::{
     blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
     blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId},
     cache::{
-        Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache,
+        Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoAssetCache,
         VideoStreamCache,
     },
     collapsed_id::{CollapseItem, CollapseScope, CollapsedId},

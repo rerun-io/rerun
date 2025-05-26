@@ -23,11 +23,11 @@ struct Entry {
     video: Arc<Result<Video, VideoLoadError>>,
 }
 
-/// Caches videos based on media type & row id.
+/// Caches videos assets based on media type & row id.
 #[derive(Default)]
-pub struct VideoCache(HashMap<StoredBlobCacheKey, HashMap<Hash64, Entry>>);
+pub struct VideoAssetCache(HashMap<StoredBlobCacheKey, HashMap<Hash64, Entry>>);
 
-impl VideoCache {
+impl VideoAssetCache {
     /// Read in some video data and cache the result.
     ///
     /// You may use the `RowId` as cache key if any.
@@ -83,7 +83,7 @@ impl VideoCache {
     }
 }
 
-impl Cache for VideoCache {
+impl Cache for VideoAssetCache {
     fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
         // Clean up unused video data.
         self.0.retain(|_row_id, per_key| {

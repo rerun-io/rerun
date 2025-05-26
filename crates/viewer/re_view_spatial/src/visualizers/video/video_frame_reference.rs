@@ -15,8 +15,8 @@ use re_types::{
     components::{self, Blob, MediaType, VideoTimestamp},
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,
-    ViewClass as _, ViewContext, ViewContextCollection, ViewId, ViewQuery,
+    IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider,
+    VideoAssetCache, ViewClass as _, ViewContext, ViewContextCollection, ViewId, ViewQuery,
     ViewSystemExecutionError, ViewerContext, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
@@ -408,7 +408,7 @@ fn latest_at_query_video_from_datastore(
     let media_type =
         results.component_instance::<MediaType>(0, &AssetVideo::descriptor_media_type());
 
-    let video = ctx.store_context.caches.entry(|c: &mut VideoCache| {
+    let video = ctx.store_context.caches.entry(|c: &mut VideoAssetCache| {
         let debug_name = entity_path.to_string();
         c.entry(
             debug_name,
