@@ -752,7 +752,8 @@ impl StoreHub {
             // - don't point at the given `uri`
             match data_source {
                 re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-                re_smart_channel::SmartChannelSource::RedapGrpcStream(redap_uri) => {
+
+                re_smart_channel::SmartChannelSource::RedapGrpcStream { uri: redap_uri } => {
                     redap_uri.to_string() != uri
                 }
                 _ => true,

@@ -270,7 +270,7 @@ impl ItemCollection {
                     re_smart_channel::SmartChannelSource::JsChannel { .. } => None,
                     re_smart_channel::SmartChannelSource::Sdk => None,
                     re_smart_channel::SmartChannelSource::Stdin => None,
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream(uri) => {
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream{uri} => {
                         Some((ClipboardTextDesc::Url, uri.to_string()))
                     }
                     re_smart_channel::SmartChannelSource::MessageProxy(uri) => {

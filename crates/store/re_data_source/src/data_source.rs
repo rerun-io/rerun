@@ -233,8 +233,8 @@ impl DataSource {
                 ..
             } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
+                    re_smart_channel::SmartMessageSource::RedapGrpcStream { uri: uri.clone() },
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream { uri: uri.clone() },
                 );
 
                 let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {

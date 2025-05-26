@@ -360,7 +360,7 @@ impl App {
         //
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
-        if let SmartChannelSource::RedapGrpcStream(uri) = rx.source() {
+        if let SmartChannelSource::RedapGrpcStream { uri } = rx.source() {
             self.add_redap_server(uri.origin.clone());
 
             self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
@@ -1297,7 +1297,7 @@ impl App {
             return;
         };
 
-        let Some(SmartChannelSource::RedapGrpcStream(mut uri)) = entity_db.data_source.clone()
+        let Some(SmartChannelSource::RedapGrpcStream { mut uri }) = entity_db.data_source.clone()
         else {
             re_log::warn!("Could not copy time range link: Data source is not a gRPC stream");
             return;
@@ -1610,7 +1610,7 @@ impl App {
             if was_empty && !entity_db.is_empty() {
                 // Hack: we cannot go to a specific timeline or entity until we know about it.
                 // Now we _hopefully_ do.
-                if let SmartChannelSource::RedapGrpcStream(uri) = channel_source.as_ref() {
+                if let SmartChannelSource::RedapGrpcStream { uri } = channel_source.as_ref() {
                     self.go_to_uri_fragment(uri.recording_id(), uri.fragment.clone());
                 }
             }

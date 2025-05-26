@@ -32,8 +32,8 @@ pub fn stream_dataset_from_redap(
     re_log::debug!("Loading {uri}…");
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
-        re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
+        re_smart_channel::SmartMessageSource::RedapGrpcStream { uri: uri.clone() },
+        re_smart_channel::SmartChannelSource::RedapGrpcStream { uri: uri.clone() },
     );
 
     spawn_future(async move {
