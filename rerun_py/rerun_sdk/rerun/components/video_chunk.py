@@ -16,7 +16,12 @@ __all__ = ["VideoChunk", "VideoChunkBatch"]
 
 
 class VideoChunk(datatypes.Blob, ComponentMixin):
-    """**Component**: TODO: docs."""
+    """
+    **Component**: TODO: docs.
+
+    Each video chunk should contain enough data to decode at least one frame.
+    Keyframes may require additional data, for details see [`components.VideoCodec`][rerun.components.VideoCodec].
+    """
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of VideoChunkExt in video_chunk_ext.py

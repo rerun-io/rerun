@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// TODO: words about (non-)relationship with [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
 ///
 /// For instead logging video containers, refer to [`archetypes::AssetVideo`][crate::archetypes::AssetVideo] and [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
-/// To learn more about video support in Rerun, check the [video guide](https://www.rerun.io/docs/guides/video).
+/// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
 ///
 /// TODO: snippet.
 #[derive(Clone, Debug, Default)]

@@ -1,6 +1,10 @@
 namespace rerun.components;
 
 /// TODO: docs
+///
+/// Each video chunk should contain enough data to decode at least one frame.
+/// Keyframes may require additional data, for details see [components.VideoCodec].
+// TODO(andreas): Is *more* than one frame _really_ allowed? I have reason to believe we handle this just fine, but we should test it.
 table VideoChunk (
   "attr.arrow.transparent",
   "attr.python.aliases": "bytes, npt.NDArray[np.uint8]",

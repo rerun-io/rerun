@@ -20,6 +20,9 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: TODO: docs
+///
+/// Each video chunk should contain enough data to decode at least one frame.
+/// Keyframes may require additional data, for details see [`components::VideoCodec`][crate::components::VideoCodec].
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct VideoChunk(pub crate::datatypes::Blob);

@@ -1114,7 +1114,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoChunk as Component>::name(),
             ComponentReflection {
-                docstring_md: "TODO: docs",
+                docstring_md: "TODO: docs\n\nEach video chunk should contain enough data to decode at least one frame.\nKeyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: VideoChunk::arrow_datatype(),
@@ -1124,7 +1124,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoCodec as Component>::name(),
             ComponentReflection {
-                docstring_md: "The codec used to encode video stored in [`components.VideoChunk`](https://rerun.io/docs/reference/types/components/video_chunk).",
+                docstring_md: "The codec used to encode video stored in [`components.VideoChunk`](https://rerun.io/docs/reference/types/components/video_chunk).\n\nSupport of these codecs by the Rerun Viewer is platform dependent.\nFor more details see check the [video reference](https://rerun.io/docs/reference/video).",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: VideoCodec::arrow_datatype(),

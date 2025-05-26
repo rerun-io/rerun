@@ -23,7 +23,7 @@ namespace rerun::archetypes {
     /// TODO: words about (non-)relationship with `archetypes::VideoFrameReference`.
     ///
     /// For instead logging video containers, refer to `archetypes::AssetVideo` and `archetypes::VideoFrameReference`.
-    /// To learn more about video support in Rerun, check the [video guide](https://www.rerun.io/docs/guides/video).
+    /// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
     ///
     /// TODO: snippet.
     struct VideoStream {

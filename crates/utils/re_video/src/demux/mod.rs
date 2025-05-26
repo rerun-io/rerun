@@ -46,34 +46,31 @@ pub enum VideoCodec {
     H265,
     Vp8,
     Vp9,
-    Other(String),
 }
 
 impl VideoCodec {
     /// Base part of the web codec string, without additional parameters.
     ///
     /// See <https://www.w3.org/TR/webcodecs-codec-registry/#video-codec-registry>
-    pub fn base_webcodec_string(&self) -> Option<&'static str> {
+    pub fn base_webcodec_string(&self) -> &'static str {
         match self {
             // https://www.w3.org/TR/webcodecs-av1-codec-registration/#fully-qualified-codec-strings
-            Self::Av1 => Some("av01"),
+            Self::Av1 => "av01",
 
             // https://www.w3.org/TR/webcodecs-avc-codec-registration/#fully-qualified-codec-strings
             // avc3 is valid as well.
-            Self::H264 => Some("avc1"),
+            Self::H264 => "avc1",
 
             // https://www.w3.org/TR/webcodecs-hevc-codec-registration/#fully-qualified-codec-strings
             // hvc1 is valid as well.
-            Self::H265 => Some("hev1"),
+            Self::H265 => "hev1",
 
             // https://www.w3.org/TR/webcodecs-vp8-codec-registration/#fully-qualified-codec-strings
             // Special! This *is* the fully qualified codec string.
-            Self::Vp8 => Some("vp8"),
+            Self::Vp8 => "vp8",
 
             // https://www.w3.org/TR/webcodecs-vp9-codec-registration/#fully-qualified-codec-strings
-            Self::Vp9 => Some("vp09"),
-
-            Self::Other(_) => None,
+            Self::Vp9 => "vp09",
         }
     }
 }
@@ -236,7 +233,6 @@ impl VideoDataDescription {
                 VideoCodec::H265 => "H.265 HEV1",
                 VideoCodec::Vp8 => "VP8",
                 VideoCodec::Vp9 => "VP9",
-                VideoCodec::Other(codec) => codec,
             }
             .to_owned()
         }

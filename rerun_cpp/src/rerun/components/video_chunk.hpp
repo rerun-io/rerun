@@ -14,6 +14,9 @@
 
 namespace rerun::components {
     /// **Component**: TODO: docs
+    ///
+    /// Each video chunk should contain enough data to decode at least one frame.
+    /// Keyframes may require additional data, for details see `components::VideoCodec`.
     struct VideoChunk {
         rerun::datatypes::Blob buffer;
 

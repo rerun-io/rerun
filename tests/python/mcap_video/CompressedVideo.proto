@@ -23,22 +23,22 @@ message CompressedVideo {
   // Specifically, the requirements for different `format` values are:
   //
   // - `h264`
-  //   - Use Annex B formatted data
-  //   - Each CompressedVideo message should contain enough NAL units to decode exactly one video frame
-  //   - Each message containing a key frame (IDR) must also include a SPS NAL unit
+  //   - Data must be formatted according to Annex B specifications
+  //   - Messages must include sufficient NAL units to decode a complete frame
+  //   - Key frame messages (IDR) require inclusion of SPS NAL unit
   //
   // - `h265` (HEVC)
-  //   - Use Annex B formatted data
-  //   - Each CompressedVideo message should contain enough NAL units to decode exactly one video frame
-  //   - Each message containing a key frame (IRAP) must also include relevant VPS/SPS/PPS NAL units
+  //   - Data must be formatted according to Annex B specifications
+  //   - Messages must include sufficient NAL units to decode a complete frame
+  //   - Key frame messages (IRAP) require inclusion of VPS/SPS/PPS NAL units
   //
   // - `vp9`
-  //   - Each CompressedVideo message should contain exactly one video frame
+  //   - Messages must contain precisely one complete video frame
   //
   // - `av1`
-  //   - Use the "Low overhead bitstream format" (section 5.2)
-  //   - Each CompressedVideo message should contain enough OBUs to decode exactly one video frame
-  //   - Each message containing a key frame must also include a Sequence Header OBU
+  //   - Data must use the "Low overhead bitstream format" as specified in section 5.2
+  //   - Messages must include sufficient OBUs to decode a complete frame
+  //   - Key frame messages require inclusion of a Sequence Header OBU
   bytes data = 3;
 
   // Video format.

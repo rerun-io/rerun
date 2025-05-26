@@ -23,22 +23,53 @@ from enum import Enum
 
 
 class VideoCodec(Enum):
-    """**Component**: The codec used to encode video stored in [`components.VideoChunk`][rerun.components.VideoChunk]."""
+    """
+    **Component**: The codec used to encode video stored in [`components.VideoChunk`][rerun.components.VideoChunk].
+
+    Support of these codecs by the Rerun Viewer is platform dependent.
+    For more details see check the [video reference](https://rerun.io/docs/reference/video).
+    """
 
     H264 = 1
-    """H.264 (AVC)"""
+    """
+    Advanced Video Coding (AVC/H.264)
+
+    See https://en.wikipedia.org/wiki/Advanced_Video_Coding
+
+    [`components.VideoCodec`][rerun.components.VideoCodec]s using this codec should be formatted according to Annex B specification
+    Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
+    """
 
     H265 = 2
-    """H.265 (HEVC)"""
+    """
+    High Efficiency Video Coding (HEVC/H.265)
+
+    See https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding
+
+    [`components.VideoCodec`][rerun.components.VideoCodec]s using this codec should be formatted according to Annex B specification
+    Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
+    """
 
     AV1 = 3
-    """AV1"""
+    """
+    AOMedia Video 1 (AV1)
+
+    See https://en.wikipedia.org/wiki/AV1
+    """
 
     VP8 = 4
-    """VP8"""
+    """
+    VP8
+
+    See https://en.wikipedia.org/wiki/VP8
+    """
 
     VP9 = 5
-    """VP9"""
+    """
+    VP9
+
+    See https://en.wikipedia.org/wiki/VP9
+    """
 
     @classmethod
     def auto(cls, val: str | int | VideoCodec) -> VideoCodec:

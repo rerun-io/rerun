@@ -96,7 +96,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
             let mut video_resolution = glam::vec2(1280.0, 720.0);
 
-            let Some(video) = viewer_ctx
+            let video = match viewer_ctx
                 .store_context
                 .caches
                 .entry(|c: &mut VideoStreamCache| {
@@ -106,17 +106,19 @@ impl VisualizerSystem for VideoStreamVisualizer {
                         view_query.timeline,
                         viewer_ctx.app_options().video_decoder_settings(),
                     )
-                })
-            else {
-                self.show_video_error(
-                    &query_context,
-                    highlight,
-                    world_from_entity,
-                    format!("No video chunks at {entity_path:?}"),
-                    video_resolution,
-                    entity_path,
-                );
-                continue;
+                }) {
+                Ok(video) => video,
+                Err(err) => {
+                    self.show_video_error(
+                        &query_context,
+                        highlight,
+                        world_from_entity,
+                        format!("Failed to load video stream at {entity_path:?}: {err}"),
+                        video_resolution,
+                        entity_path,
+                    );
+                    continue;
+                }
             };
 
             // TODO: reconciliate, document

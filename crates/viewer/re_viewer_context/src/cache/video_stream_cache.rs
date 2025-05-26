@@ -10,7 +10,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{EntityPath, TimelineName};
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::EntityPathHash;
-use re_types::archetypes::VideoStream;
+use re_types::{archetypes::VideoStream, components};
 use re_video::decode::DecodeSettings;
 
 use crate::Cache;
@@ -52,6 +52,24 @@ struct VideoStreamKey {
 #[derive(Default)]
 pub struct VideoStreamCache(HashMap<VideoStreamKey, VideoStreamCacheEntry>);
 
+#[derive(thiserror::Error, Debug)]
+pub enum VideoStreamProcessingError {
+    #[error("No video frame chunks found.")]
+    NoVideoChunksFound,
+
+    #[error("Frame chunks present, but arrow type but unexpected arrow type: {0:?}")]
+    InvalidVideoChunkType(arrow::datatypes::DataType),
+
+    #[error("Expected only a single video sample per timestep")]
+    MultipleVideoSamplesPerTimestep,
+
+    #[error("No codec specified.")]
+    MissingCodec,
+
+    #[error("Failed reading codec: {0}")]
+    FailedReadingCodec(re_chunk::ChunkError),
+}
+
 impl VideoStreamCache {
     /// Looks up a video stream + players.
     ///
@@ -67,7 +85,7 @@ impl VideoStreamCache {
         entity_path: &EntityPath,
         timeline: TimelineName,
         decode_settings: DecodeSettings,
-    ) -> Option<PlayableStoreVideoStream> {
+    ) -> Result<PlayableStoreVideoStream, VideoStreamProcessingError> {
         let key = VideoStreamKey {
             entity_path: entity_path.hash(),
             timeline,
@@ -100,7 +118,7 @@ impl VideoStreamCache {
         // Whatever thread is acquiring the fact that this was used, should also see/acquire
         // the side effect of having the entry contained in the cache.
         entry.used_this_frame.store(true, Ordering::Release);
-        Some(entry.video_stream.clone())
+        Ok(entry.video_stream.clone())
     }
 }
 
@@ -108,10 +126,11 @@ fn load_video_data_from_chunks(
     store: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
     timeline: TimelineName,
-) -> Option<(re_video::VideoDataDescription, Buffer)> {
+) -> Result<(re_video::VideoDataDescription, Buffer), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
-    let component_descr = VideoStream::descriptor_frame();
+    let frame_chunk_descr = VideoStream::descriptor_frame();
+    let codec_chunk_descr = VideoStream::descriptor_codec();
 
     // Query for all video chunks on the **entire** timeline.
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
@@ -121,31 +140,64 @@ fn load_video_data_from_chunks(
     // Kinda tricky since we need to know how far back (and ahead for b-frames) we have to look.
     let entire_timeline_query =
         re_chunk::RangeQuery::new(timeline, re_log_types::ResolvedTimeRange::EVERYTHING);
-    let all_video_chunks = store.storage_engine().cache().range(
+    let query_results = store.storage_engine().cache().range(
         &entire_timeline_query,
         entity_path,
-        &[component_descr.clone()],
+        &[frame_chunk_descr.clone(), codec_chunk_descr.clone()],
     );
-    let video_chunks = all_video_chunks.get_required(&component_descr).ok()?;
+    let video_chunks = query_results
+        .get_required(&frame_chunk_descr)
+        .map_err(|_err| VideoStreamProcessingError::NoVideoChunksFound)?;
+    let codec_chunks = query_results
+        .get_required(&codec_chunk_descr)
+        .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+
+    // Translate codec by looking at the last codec.
+    // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
+    let last_codec = codec_chunks
+        .last()
+        .and_then(|chunk| {
+            chunk.component_instance::<components::VideoCodec>(&codec_chunk_descr, 0, 0)
+        })
+        .ok_or(VideoStreamProcessingError::MissingCodec)?
+        .map_err(VideoStreamProcessingError::FailedReadingCodec)?;
+    let codec = match last_codec {
+        components::VideoCodec::H264 => re_video::VideoCodec::H264,
+        components::VideoCodec::H265 => re_video::VideoCodec::H265,
+        components::VideoCodec::VP8 => re_video::VideoCodec::Vp8,
+        components::VideoCodec::VP9 => re_video::VideoCodec::Vp9,
+        components::VideoCodec::AV1 => re_video::VideoCodec::Av1,
+    };
 
     // Setup video decoder...
 
     // TODO: multiple chunks?
-    let first_chunk = video_chunks.first()?;
-    let raw_component_memory = first_chunk.raw_component_memory(&component_descr)?;
+    let first_chunk = video_chunks
+        .first()
+        .ok_or(VideoStreamProcessingError::NoVideoChunksFound)?;
+    let raw_component_memory = first_chunk
+        .raw_component_memory(&frame_chunk_descr)
+        .ok_or(VideoStreamProcessingError::NoVideoChunksFound)?;
 
-    let inner_list_array = raw_component_memory.downcast_array_ref::<arrow::array::ListArray>()?; // TODO: better error handling
+    let inner_list_array = raw_component_memory
+        .downcast_array_ref::<arrow::array::ListArray>()
+        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
+            raw_component_memory.data_type().clone(),
+        ))?;
     let values = inner_list_array
         .values()
-        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()?; // TODO: better error handling
+        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()
+        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
+            raw_component_memory.data_type().clone(),
+        ))?;
     let values = values.values();
 
     let offsets = inner_list_array.offsets();
     let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
 
     let mut samples = first_chunk
-        .iter_component_offsets(&component_descr)
-        .zip(first_chunk.iter_component_indices(&timeline, &component_descr))
+        .iter_component_offsets(&frame_chunk_descr)
+        .zip(first_chunk.iter_component_indices(&timeline, &frame_chunk_descr))
         .map(|((idx, len), (time, _row_id))| {
             debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
 
@@ -187,9 +239,9 @@ fn load_video_data_from_chunks(
         );
     }
 
-    Some((
+    Ok((
         re_video::VideoDataDescription {
-            codec: re_video::VideoCodec::H264, // TODO, query or guess.
+            codec,
             stsd: None,
             coded_dimensions: None,                   // Unknown so far.
             timescale: re_video::Timescale::NO_SCALE, // TODO: We don't have to work with mp4 scaled time here, so 1 seems alright?

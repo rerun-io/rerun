@@ -21,24 +21,43 @@ use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The codec used to encode video stored in [`components::VideoChunk`][crate::components::VideoChunk].
+///
+/// Support of these codecs by the Rerun Viewer is platform dependent.
+/// For more details see check the [video reference](https://rerun.io/docs/reference/video).
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[repr(u8)]
 pub enum VideoCodec {
-    /// H.264 (AVC)
+    /// Advanced Video Coding (AVC/H.264)
+    ///
+    /// See https://en.wikipedia.org/wiki/Advanced_Video_Coding
+    ///
+    /// [`components::VideoCodec`][crate::components::VideoCodec]s using this codec should be formatted according to Annex B specification
+    /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
     H264 = 1,
 
-    /// H.265 (HEVC)
+    /// High Efficiency Video Coding (HEVC/H.265)
+    ///
+    /// See https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding
+    ///
+    /// [`components::VideoCodec`][crate::components::VideoCodec]s using this codec should be formatted according to Annex B specification
+    /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
     H265 = 2,
 
-    /// AV1
+    /// AOMedia Video 1 (AV1)
+    ///
+    /// See https://en.wikipedia.org/wiki/AV1
     #[allow(clippy::upper_case_acronyms)]
     AV1 = 3,
 
     /// VP8
+    ///
+    /// See https://en.wikipedia.org/wiki/VP8
     #[allow(clippy::upper_case_acronyms)]
     VP8 = 4,
 
     /// VP9
+    ///
+    /// See https://en.wikipedia.org/wiki/VP9
     #[allow(clippy::upper_case_acronyms)]
     VP9 = 5,
 }
@@ -153,11 +172,15 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::H264 => "H.264 (AVC)",
-            Self::H265 => "H.265 (HEVC)",
-            Self::AV1 => "AV1",
-            Self::VP8 => "VP8",
-            Self::VP9 => "VP9",
+            Self::H264 => {
+                "Advanced Video Coding (AVC/H.264)\n\nSee https://en.wikipedia.org/wiki/Advanced_Video_Coding\n\n[`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec)s using this codec should be formatted according to Annex B specification\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)"
+            }
+            Self::H265 => {
+                "High Efficiency Video Coding (HEVC/H.265)\n\nSee https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding\n\n[`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec)s using this codec should be formatted according to Annex B specification\nKey frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)"
+            }
+            Self::AV1 => "AOMedia Video 1 (AV1)\n\nSee https://en.wikipedia.org/wiki/AV1",
+            Self::VP8 => "VP8\n\nSee https://en.wikipedia.org/wiki/VP8",
+            Self::VP9 => "VP9\n\nSee https://en.wikipedia.org/wiki/VP9",
         }
     }
 }

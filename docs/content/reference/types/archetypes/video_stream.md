@@ -8,7 +8,7 @@ TODO: nice docs
 TODO: words about (non-)relationship with [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference).
 
 For instead logging video containers, refer to [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video) and [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference).
-To learn more about video support in Rerun, check the [video guide](https://www.rerun.io/docs/guides/video).
+To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
 
 TODO: snippet.
 

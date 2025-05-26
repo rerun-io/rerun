@@ -5,6 +5,9 @@ title: "VideoChunk"
 
 TODO: docs
 
+Each video chunk should contain enough data to decode at least one frame.
+Keyframes may require additional data, for details see [`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec).
+
 ## Rerun datatype
 [`Blob`](../datatypes/blob.md)
 
