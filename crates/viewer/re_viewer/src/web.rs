@@ -38,6 +38,8 @@ pub struct WebHandle {
     /// and allocating a new tx pair for each chunk doesn't make sense.
     tx_channels: HashMap<String, Channel>,
 
+    connection_registry: re_grpc_client::ConnectionRegistry,
+
     app_options: AppOptions,
 }
 
@@ -50,9 +52,13 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
+        //TODO: populate from JS?
+        let connection_registry = re_grpc_client::ConnectionRegistry::default();
+
         Ok(Self {
             runner: eframe::WebRunner::new(),
             tx_channels: Default::default(),
+            connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
     }
@@ -188,6 +194,7 @@ impl WebHandle {
         };
         let follow_if_http = follow_if_http.unwrap_or(false);
         if let Some(rx) = url_to_receiver(
+            &self.connection_registry,
             app.egui_ctx.clone(),
             follow_if_http,
             url.to_owned(),
@@ -741,6 +748,7 @@ fn create_app(
         &app_env,
         startup_options,
         cc,
+        None, //TODO: we need to be able to pass a token via JS.
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
 
@@ -756,6 +764,7 @@ fn create_app(
         let follow_if_http = false;
         for url in urls.into_inner() {
             if let Some(receiver) = url_to_receiver(
+                app.connection_registry(),
                 cc.egui_ctx.clone(),
                 follow_if_http,
                 url,

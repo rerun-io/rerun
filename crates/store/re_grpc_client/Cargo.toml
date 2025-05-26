@@ -32,13 +32,13 @@ re_uri.workspace = true
 
 async-stream.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 tokio-stream.workspace = true
 tower.workspace = true
 url.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio.workspace = true
 tonic = { workspace = true, default-features = false, features = [
   "transport",
   "tls",

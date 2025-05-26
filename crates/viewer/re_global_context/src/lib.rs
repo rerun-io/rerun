@@ -44,7 +44,17 @@ pub struct GlobalContext<'a> {
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,
+
+    /// Registry of authenticated redap connections
+    pub connection_registry: &'a re_grpc_client::ConnectionRegistry,
 }
+
+//TODO
+// impl GlobalContext<'_> {
+//     pub fn redap_client(&self, origin: re_uri::Origin) -> re_grpc_client::RedapClient {
+//         self.connection_registry.client(origin)
+//     }
+// }
 
 /// Which display mode are we currently in?
 #[derive(Debug, Clone, PartialEq, Eq)]

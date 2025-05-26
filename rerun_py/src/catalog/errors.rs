@@ -18,7 +18,7 @@ use std::error::Error as _;
 use pyo3::PyErr;
 use pyo3::exceptions::{PyConnectionError, PyTimeoutError, PyValueError};
 
-use re_grpc_client::redap::ConnectionError;
+use re_grpc_client::ConnectionError;
 use re_protos::manifest_registry::v1alpha1::ext::GetDatasetSchemaResponseError;
 
 // ---
