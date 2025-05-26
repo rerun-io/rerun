@@ -996,14 +996,13 @@ pub trait UiExt {
                 .add(crate::icons::EXTERNAL_LINK.as_button_with_label(ui.design_tokens(), text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
-            // Inspired from `egui::Ui::Hyperlink::ui()`
-            if response.clicked() {
+            if response.clicked_with_open_in_background() {
+                ui.ctx().open_url(egui::OpenUrl::new_tab(url.to_string()));
+            } else if response.clicked() {
                 ui.ctx().open_url(egui::OpenUrl {
                     url: url.to_string(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
-            } else if response.middle_clicked() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url));
             }
 
             response

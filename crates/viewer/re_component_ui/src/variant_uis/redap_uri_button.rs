@@ -61,16 +61,10 @@ pub fn redap_uri_button(
             ui.label(uri.to_string());
         });
 
-        if response.middle_clicked() {
+        if response.clicked_with_open_in_background() {
             ui.ctx().open_url(egui::OpenUrl::new_tab(uri));
         } else if response.clicked() {
-            let url = if ui.input(|i| i.modifiers.any()) {
-                egui::OpenUrl::new_tab(uri)
-            } else {
-                egui::OpenUrl::same_tab(uri)
-            };
-
-            ui.ctx().open_url(url);
+            ui.ctx().open_url(egui::OpenUrl::same_tab(uri));
         }
     }
 
