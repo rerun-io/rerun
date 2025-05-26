@@ -20,7 +20,7 @@ pub struct ComponentDescriptor {
     /// `None` if the data wasn't logged through an archetype.
     ///
     /// Example: `positions`.
-    pub archetype_field_name: Option<ArchetypeFieldName>,
+    pub archetype_field_name: ArchetypeFieldName,
 
     /// Semantic name associated with this data.
     ///
@@ -28,7 +28,7 @@ pub struct ComponentDescriptor {
     /// included for semantic convenience.
     ///
     /// Example: `rerun.components.Position3D`.
-    pub component_name: ComponentName,
+    pub component_name: Option<ComponentName>,
 }
 
 impl std::hash::Hash for ComponentDescriptor {
@@ -41,8 +41,8 @@ impl std::hash::Hash for ComponentDescriptor {
         } = self;
 
         let archetype_name = archetype_name.map_or(0, |v| v.hash());
-        let archetype_field_name = archetype_field_name.map_or(0, |v| v.hash());
-        let component_name = component_name.hash();
+        let archetype_field_name = archetype_field_name.hash();
+        let component_name = component_name.map_or(0, |v| v.hash());
 
         // NOTE: This is a NoHash type, so we must respect the invariant that `write_XX` is only
         // called once, see <https://docs.rs/nohash-hasher/0.2.0/nohash_hasher/trait.IsEnabled.html>.
@@ -76,24 +76,15 @@ impl ComponentDescriptor {
     #[inline]
     #[track_caller]
     pub fn sanity_check(&self) {
-        self.component_name.sanity_check();
+        if let Some(component_name) = self.component_name {
+            component_name.sanity_check();
+        }
     }
 
     /// Short and usually unique, used in UI.
     pub fn display_name(&self) -> String {
         self.sanity_check();
-
-        let Self {
-            archetype_name: _,
-            archetype_field_name,
-            component_name,
-        } = self;
-
-        if let Some(archetype_field_name) = &archetype_field_name {
-            archetype_field_name.to_string()
-        } else {
-            component_name.short_name().to_owned()
-        }
+        self.archetype_field_name.to_string()
     }
 
     /// Used for column names etc.
@@ -106,17 +97,13 @@ impl ComponentDescriptor {
         let Self {
             archetype_name,
             archetype_field_name,
-            component_name,
+            ..
         } = self;
 
-        if let (Some(archetype_name), Some(archetype_field_name)) =
-            (&archetype_name, &archetype_field_name)
-        {
+        if let Some(archetype_name) = &archetype_name {
             format!("{}.{archetype_field_name}", archetype_name.short_name())
-        } else if let Some(archetype_field_name) = &archetype_field_name {
-            archetype_field_name.to_string()
         } else {
-            component_name.short_name().to_owned()
+            archetype_field_name.to_string()
         }
     }
 
@@ -163,13 +150,15 @@ impl re_byte_size::SizeBytes for ComponentDescriptor {
 
 impl ComponentDescriptor {
     #[inline]
+    #[deprecated]
+    // TODO(#6889): Remove
     pub fn new(component_name: impl Into<ComponentName>) -> Self {
         let component_name = component_name.into();
         component_name.sanity_check();
         Self {
             archetype_name: None,
-            archetype_field_name: None,
-            component_name,
+            archetype_field_name: ComponentName::from(component_name).to_string().into(),
+            component_name: None,
         }
     }
 
@@ -182,8 +171,9 @@ impl ComponentDescriptor {
 
     /// Unconditionally sets [`Self::archetype_field_name`] to the given one.
     #[inline]
+    #[deprecated]
     pub fn with_archetype_field_name(mut self, archetype_field_name: ArchetypeFieldName) -> Self {
-        self.archetype_field_name = Some(archetype_field_name);
+        self.archetype_field_name = archetype_field_name;
         self
     }
 
@@ -198,14 +188,16 @@ impl ComponentDescriptor {
 
     /// Sets [`Self::archetype_field_name`] to the given one iff it's not already set.
     #[inline]
+    #[deprecated]
     pub fn or_with_archetype_field_name(
         mut self,
         archetype_field_name: impl FnOnce() -> ArchetypeFieldName,
     ) -> Self {
-        if self.archetype_field_name.is_none() {
-            self.archetype_field_name = Some(archetype_field_name());
-        }
-        self
+        todo!()
+        // if self.archetype_field_name.is_none() {
+        //     self.archetype_field_name = Some(archetype_field_name());
+        // }
+        // self
     }
 }
 
@@ -221,7 +213,7 @@ impl ComponentDescriptor {
 const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
 
 /// The key used to identify the [`crate::ArchetypeFieldName`] in field-level metadata.
-const FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME: &str = "rerun.archetype_field_name";
+const FIELD_METADATA_KEY_COMPONENT_NAME: &str = "rerun.component_name";
 
 impl From<arrow::datatypes::Field> for ComponentDescriptor {
     #[inline]
@@ -233,11 +225,11 @@ impl From<arrow::datatypes::Field> for ComponentDescriptor {
                 .get(FIELD_METADATA_KEY_ARCHETYPE_NAME)
                 .cloned()
                 .map(Into::into),
-            archetype_field_name: md
-                .get(FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME)
+            archetype_field_name: field.name().to_string().into(),
+            component_name: md
+                .get(FIELD_METADATA_KEY_COMPONENT_NAME)
                 .cloned()
                 .map(Into::into),
-            component_name: field.name().to_string().into(),
         };
         descr.sanity_check();
         descr
