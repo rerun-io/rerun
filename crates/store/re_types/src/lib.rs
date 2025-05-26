@@ -298,6 +298,7 @@ pub mod tensor_data;
 pub mod view_coordinates;
 
 pub mod any_values;
+pub use any_values::AnyValues;
 
 mod rotation3d;
 pub use rotation3d::Rotation3D;

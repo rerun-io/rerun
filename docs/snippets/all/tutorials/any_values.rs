@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ])),
         );
 
-    rec.log("any_values", any_values)?;
+    rec.log("any_values", &any_values)?;
 
     Ok(())
 }
