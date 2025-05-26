@@ -1618,31 +1618,33 @@ impl App {
 
             match &msg {
                 LogMsg::SetStoreInfo(_) => {
-                    // Set the recording-id after potentially creating the store in the hub.
-                    // This ordering is important because the `StoreHub` internally
-                    // updates the app-id when changing the recording.
-                    match store_id.kind {
-                        StoreKind::Recording => {
-                            re_log::trace!("Opening a new recording: '{store_id}'");
-                            store_hub.set_active_recording_id(store_id.clone());
+                    if channel_source.select_when_loaded() {
+                        // Set the recording-id after potentially creating the store in the hub.
+                        // This ordering is important because the `StoreHub` internally
+                        // updates the app-id when changing the recording.
+                        match store_id.kind {
+                            StoreKind::Recording => {
+                                re_log::trace!("Opening a new recording: '{store_id}'");
+                                store_hub.set_active_recording_id(store_id.clone());
 
-                            // Also select the new recording:
-                            self.command_sender.send_system(SystemCommand::SetSelection(
-                                re_viewer_context::Item::StoreId(store_id.clone()),
-                            ));
+                                // Also select the new recording:
+                                self.command_sender.send_system(SystemCommand::SetSelection(
+                                    re_viewer_context::Item::StoreId(store_id.clone()),
+                                ));
 
-                            // If the viewer is in the background, tell the user that it has received something new.
-                            egui_ctx.send_viewport_cmd(
-                                egui::ViewportCommand::RequestUserAttention(
-                                    egui::UserAttentionType::Informational,
-                                ),
-                            );
-                        }
-                        StoreKind::Blueprint => {
-                            // We wait with activating blueprints until they are fully loaded,
-                            // so that we don't run heuristics on half-loaded blueprints.
-                            // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                            // the blueprint won't be activated until the whole _recording_ has finished loading.
+                                // If the viewer is in the background, tell the user that it has received something new.
+                                egui_ctx.send_viewport_cmd(
+                                    egui::ViewportCommand::RequestUserAttention(
+                                        egui::UserAttentionType::Informational,
+                                    ),
+                                );
+                            }
+                            StoreKind::Blueprint => {
+                                // We wait with activating blueprints until they are fully loaded,
+                                // so that we don't run heuristics on half-loaded blueprints.
+                                // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                                // the blueprint won't be activated until the whole _recording_ has finished loading.
+                            }
                         }
                     }
                 }
