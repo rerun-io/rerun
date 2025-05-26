@@ -8,8 +8,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.23.3-rc.1"
-__version_info__ = (0, 23, 3, "rc.1")
+__version__ = "0.23.3-rc.2"
+__version_info__ = (0, 23, 3, "rc.2")
 
 
 if sys.version_info < (3, 9):  # noqa: UP036
