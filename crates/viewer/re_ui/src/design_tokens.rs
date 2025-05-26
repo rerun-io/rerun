@@ -146,6 +146,20 @@ pub struct DesignTokens {
     pub axis_color_y: Color32,
     pub axis_color_z: Color32,
     pub frustum_color: Color32,
+
+    // List item colors
+    pub list_item_selected_text: Color32,
+    pub list_item_active_text: Color32,
+    pub list_item_noninteractive_text: Color32,
+    pub list_item_hovered_text: Color32,
+    pub list_item_default_text: Color32,
+    pub list_item_selected_icon: Color32,
+    pub list_item_active_icon: Color32,
+    pub list_item_hovered_icon: Color32,
+    pub list_item_default_icon: Color32,
+    pub list_item_hovered_bg: Color32,
+    pub list_item_active_bg: Color32,
+    pub list_item_collapse_default: Color32,
 }
 
 impl DesignTokens {
@@ -253,6 +267,20 @@ impl DesignTokens {
             axis_color_y: get_color("axis_color_y"),
             axis_color_z: get_color("axis_color_z"),
             frustum_color: get_color("frustum_color"),
+
+            // List item colors
+            list_item_selected_text: get_color("list_item_selected_text"),
+            list_item_active_text: get_color("list_item_active_text"),
+            list_item_noninteractive_text: get_color("list_item_noninteractive_text"),
+            list_item_hovered_text: get_color("list_item_hovered_text"),
+            list_item_default_text: get_color("list_item_default_text"),
+            list_item_selected_icon: get_color("list_item_selected_icon"),
+            list_item_active_icon: get_color("list_item_active_icon"),
+            list_item_hovered_icon: get_color("list_item_hovered_icon"),
+            list_item_default_icon: get_color("list_item_default_icon"),
+            list_item_hovered_bg: get_color("list_item_hovered_bg"),
+            list_item_active_bg: get_color("list_item_active_bg"),
+            list_item_collapse_default: get_color("list_item_collapse_default"),
 
             color_table: colors,
         }

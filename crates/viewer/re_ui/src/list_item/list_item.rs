@@ -89,102 +89,53 @@ impl ListVisuals {
     pub fn bg_color(self, visuals: &egui::Visuals) -> Option<Color32> {
         let design_tokens = design_tokens_of(self.theme);
 
-        match self.theme {
-            egui::Theme::Dark => {
-                if self.selected {
-                    Some(visuals.selection.bg_fill)
-                } else if self.hovered {
-                    Some(design_tokens.color_table.gray(Scale::S250))
-                } else if self.active {
-                    Some(design_tokens.color_table.gray(Scale::S200))
-                } else {
-                    None
-                }
-            }
-
-            egui::Theme::Light => {
-                if self.selected {
-                    Some(visuals.selection.bg_fill)
-                } else if self.hovered {
-                    Some(design_tokens.color_table.gray(Scale::S900))
-                } else if self.active {
-                    Some(design_tokens.color_table.gray(Scale::S800))
-                } else {
-                    None
-                }
-            }
+        if self.selected {
+            Some(visuals.selection.bg_fill)
+        } else if self.hovered {
+            Some(design_tokens.list_item_hovered_bg)
+        } else if self.active {
+            Some(design_tokens.list_item_active_bg)
+        } else {
+            None
         }
     }
 
     pub fn text_color(self) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
 
-        match self.theme {
-            egui::Theme::Dark => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S800)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S1000)
-                } else if !self.interactive {
-                    design_tokens.color_table.gray(Scale::S550)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S800)
-                } else {
-                    design_tokens.color_table.gray(Scale::S700)
-                }
-            }
-
-            egui::Theme::Light => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S100)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S0)
-                } else if !self.interactive {
-                    design_tokens.color_table.gray(Scale::S550)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S250)
-                } else {
-                    design_tokens.color_table.gray(Scale::S350)
-                }
-            }
+        if self.selected {
+            design_tokens.list_item_selected_text
+        } else if self.active {
+            design_tokens.list_item_active_text
+        } else if !self.interactive {
+            design_tokens.list_item_noninteractive_text
+        } else if self.hovered {
+            design_tokens.list_item_hovered_text
+        } else {
+            design_tokens.list_item_default_text
         }
     }
 
     pub fn icon_tint(self) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
 
-        match self.theme {
-            egui::Theme::Dark => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S600)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S800)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S600)
-                } else {
-                    design_tokens.label_button_icon_color
-                }
-            }
-            egui::Theme::Light => {
-                if self.selected {
-                    design_tokens.color_table.blue(Scale::S250)
-                } else if self.active {
-                    design_tokens.color_table.gray(Scale::S300)
-                } else if self.hovered {
-                    design_tokens.color_table.gray(Scale::S400)
-                } else {
-                    design_tokens.label_button_icon_color
-                }
-            }
+        if self.selected {
+            design_tokens.list_item_selected_icon
+        } else if self.active {
+            design_tokens.list_item_active_icon
+        } else if self.hovered {
+            design_tokens.list_item_hovered_icon
+        } else {
+            design_tokens.list_item_default_icon
         }
     }
 
     pub fn interactive_icon_tint(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
         if self.selected && icon_hovered {
-            design_tokens.color_table.blue(Scale::S800)
+            design_tokens.list_item_selected_text
         } else if icon_hovered {
-            design_tokens.color_table.gray(Scale::S800)
+            design_tokens.list_item_hovered_text
         } else {
             self.icon_tint()
         }
@@ -193,10 +144,7 @@ impl ListVisuals {
     fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
         if !self.hovered && !self.selected && !self.active && !icon_hovered {
-            match self.theme {
-                egui::Theme::Dark => design_tokens.color_table.gray(Scale::S700),
-                egui::Theme::Light => design_tokens.color_table.gray(Scale::S250),
-            }
+            design_tokens.list_item_collapse_default
         } else {
             self.interactive_icon_tint(icon_hovered)
         }
