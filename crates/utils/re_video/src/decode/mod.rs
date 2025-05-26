@@ -220,11 +220,9 @@ pub fn new_decoder(
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
-                video.mp4_config.clone().map(|c| match c.stsd.contents {
+                video.stsd.clone().map(|c| match c.contents {
                     re_mp4::StsdBoxContent::Avc1(avc1) => avc1,
-                    _ => {
-                        unreachable!("TODO: this is unreachable? should be!!!")
-                    }
+                    _ => unreachable!("TODO: this is unreachable? should be!!!"),
                 }),
                 on_output,
                 decode_settings.ffmpeg_path.clone(),

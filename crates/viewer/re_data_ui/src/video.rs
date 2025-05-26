@@ -51,15 +51,15 @@ pub fn video_result_ui(
 fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoDataDescription) {
     re_tracing::profile_function!();
 
-    if let Some([w, h]) = video_data.dimensions() {
+    if let Some([w, h]) = &video_data.coded_dimensions {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("Dimensions").value_text(format!("{w}x{h}")),
         );
     }
     if let Some(bit_depth) = video_data
-        .mp4_config
+        .stsd
         .as_ref()
-        .and_then(|c| c.stsd.contents.bit_depth())
+        .and_then(|c| c.contents.bit_depth())
     // TODO: shortcut this?
     {
         ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(|ui, _| {

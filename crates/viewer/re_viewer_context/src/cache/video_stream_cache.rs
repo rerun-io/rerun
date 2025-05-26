@@ -190,7 +190,8 @@ fn load_video_data_from_chunks(
     Some((
         re_video::VideoDataDescription {
             codec: re_video::VideoCodec::H264, // TODO, query or guess.
-            mp4_config: None,
+            stsd: None,
+            coded_dimensions: None,                   // Unknown so far.
             timescale: re_video::Timescale::NO_SCALE, // TODO: We don't have to work with mp4 scaled time here, so 1 seems alright?
 
             // Streams have to be assumed to be open ended, so we don't have a duration.

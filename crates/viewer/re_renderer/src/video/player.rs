@@ -80,8 +80,8 @@ impl VideoPlayer {
             description.human_readable_codec_string()
         );
 
-        if let Some(config) = description.mp4_config.as_ref() {
-            if let Some(bit_depth) = config.stsd.contents.bit_depth() {
+        if let Some(stsd) = description.stsd.as_ref() {
+            if let Some(bit_depth) = stsd.contents.bit_depth() {
                 #[allow(clippy::comparison_chain)]
                 if bit_depth < 8 {
                     re_log::warn_once!("{debug_name} has unusual bit_depth of {bit_depth}");

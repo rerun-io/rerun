@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
 use once_cell::sync::Lazy;
+use re_mp4::{StsdBox, StsdBoxContent};
 use wasm_bindgen::{JsCast as _, closure::Closure};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
@@ -11,7 +12,7 @@ use web_sys::{
 use super::{
     AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, OutputCallback, Result,
 };
-use crate::{Mp4Config, Time, Timescale, VideoCodec, VideoDataDescription};
+use crate::{Time, Timescale, VideoCodec, VideoDataDescription};
 
 #[derive(Clone)]
 #[repr(transparent)]
@@ -34,7 +35,8 @@ impl std::ops::Deref for WebVideoFrame {
 
 pub struct WebVideoDecoder {
     codec: VideoCodec,
-    mp4_config: Option<Mp4Config>,
+    stsd: Option<StsdBox>,
+    coded_dimensions: Option<[u16; 2]>,
     timescale: Timescale,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
@@ -113,7 +115,8 @@ impl WebVideoDecoder {
 
         Ok(Self {
             codec: video.codec.clone(),
-            mp4_config: video.mp4_config.clone(),
+            stsd: video.stsd.clone(),
+            coded_dimensions: video.coded_dimensions.clone(),
             timescale: video.timescale,
             decoder,
             hw_acceleration,
@@ -167,7 +170,8 @@ impl AsyncDecoder for WebVideoDecoder {
         self.decoder
             .configure(&js_video_decoder_config(
                 &self.codec,
-                &self.mp4_config,
+                &self.stsd,
+                &self.coded_dimensions,
                 self.hw_acceleration,
             ))
             .map_err(|err| Error::ConfigureFailure(js_error_to_string(&err)))?;
@@ -260,12 +264,13 @@ fn init_video_decoder(
 
 fn js_video_decoder_config(
     codec: &VideoCodec,
-    mp4_config: &Option<Mp4Config>,
+    stsd: &Option<StsdBox>,
+    coded_dimensions: &Option<[u16; 2]>,
     hw_acceleration: DecodeHardwareAcceleration,
 ) -> VideoDecoderConfig {
-    let codec_string = mp4_config
+    let codec_string = stsd
         .as_ref()
-        .and_then(|config| config.stsd.contents.codec_string())
+        .and_then(|stsd| stsd.contents.codec_string())
         .unwrap_or_else(|| {
             // TODO: This is neat, but doesn't work. Need the full codec string as described by the spec.
             codec
@@ -281,12 +286,33 @@ fn js_video_decoder_config(
 
     let js = VideoDecoderConfig::new(&codec_string);
 
-    if let Some(mp4_config) = mp4_config.as_ref() {
-        js.set_coded_width(mp4_config.coded_width as u32);
-        js.set_coded_height(mp4_config.coded_height as u32);
-        let description = Uint8Array::new_with_length(mp4_config.description.len() as u32);
-        description.copy_from(&mp4_config.description[..]);
-        js.set_description(&description);
+    if let Some(coded_dimensions) = coded_dimensions {
+        js.set_coded_width(coded_dimensions[0] as u32);
+        js.set_coded_height(coded_dimensions[1] as u32);
+    }
+
+    if let Some(stsd) = stsd {
+        let description = match &stsd.contents {
+            StsdBoxContent::Av01(content) => Some(content.av1c.raw.clone()),
+            StsdBoxContent::Avc1(content) => Some(content.avcc.raw.clone()),
+            StsdBoxContent::Hev1(content) | StsdBoxContent::Hvc1(content) => {
+                Some(content.hvcc.raw.clone())
+            }
+            StsdBoxContent::Vp08(content) => Some(content.vpcc.raw.clone()),
+            StsdBoxContent::Vp09(content) => Some(content.vpcc.raw.clone()),
+            StsdBoxContent::Mp4a(_) | StsdBoxContent::Tx3g(_) | StsdBoxContent::Unknown(_) => {
+                if cfg!(debug_assertions) {
+                    unreachable!("Unknown codec should be caught earlier.")
+                }
+                None
+            }
+        };
+
+        if let Some(description_raw) = description {
+            let description = Uint8Array::new_with_length(description_raw.len() as u32);
+            description.copy_from(&description_raw[..]);
+            js.set_description(&description);
+        }
     }
 
     js.set_optimize_for_latency(true);

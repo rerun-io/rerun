@@ -115,22 +115,10 @@ impl Video {
         &self.video_description
     }
 
-    /// Natural width of the video if known.
-    #[inline]
-    pub fn width(&self) -> Option<u32> {
-        self.video_description.width()
-    }
-
-    /// Natural height of the video if known.
-    #[inline]
-    pub fn height(&self) -> Option<u32> {
-        self.video_description.height()
-    }
-
     /// Natural dimensions of the video if known.
     #[inline]
-    pub fn dimensions(&self) -> Option<[u32; 2]> {
-        self.video_description.dimensions()
+    pub fn dimensions(&self) -> Option<[u16; 2]> {
+        self.video_description.coded_dimensions
     }
 
     /// Returns a texture with the latest frame at the given time since video start.

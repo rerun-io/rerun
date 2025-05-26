@@ -1,6 +1,6 @@
 #![allow(clippy::map_err_ignore)]
 
-use super::{GroupOfPictures, Mp4Config, Sample, VideoDataDescription, VideoLoadError};
+use super::{GroupOfPictures, Sample, VideoDataDescription, VideoLoadError};
 
 use crate::{Time, Timescale, demux::SamplesStatistics};
 
@@ -21,20 +21,6 @@ impl VideoDataDescription {
             .ok_or(VideoLoadError::NoVideoTrack)?;
 
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
-
-        let description = track
-            .raw_codec_config(&mp4)
-            .ok_or_else(|| VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(&mp4, track)))?;
-
-        let coded_height = track.height;
-        let coded_width = track.width;
-
-        let config = Mp4Config {
-            stsd,
-            description,
-            coded_height,
-            coded_width,
-        };
 
         let timescale = Timescale::new(track.timescale);
         let duration = Time::new(track.duration as i64);
@@ -130,7 +116,7 @@ impl VideoDataDescription {
 
         let samples_statistics = SamplesStatistics::new(&samples);
 
-        let codec = match &config.stsd.contents {
+        let codec = match &stsd.contents {
             re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::Av1,
             re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
             re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
@@ -138,18 +124,17 @@ impl VideoDataDescription {
             }
             re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::Vp8,
             re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::Vp9,
-            _ => crate::VideoCodec::Other(
-                config
-                    .stsd
-                    .contents
-                    .codec_string()
-                    .unwrap_or("unknown".to_owned()),
-            ),
+            _ => {
+                return Err(VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(
+                    &mp4, track,
+                )));
+            }
         };
 
         Ok(Self {
             codec,
-            mp4_config: Some(config),
+            stsd: Some(stsd),
+            coded_dimensions: Some([track.width, track.height]),
             timescale,
             duration: Some(duration),
             samples_statistics,
