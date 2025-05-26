@@ -679,7 +679,7 @@ impl AppState {
         // Other UI things
         //
 
-        self.redap_servers.modals_ui(ui);
+        self.redap_servers.modals_ui(connection_registry, ui);
 
         if WATERMARK {
             ui.ctx().paint_watermark();

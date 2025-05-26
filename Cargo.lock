@@ -7350,6 +7350,7 @@ dependencies = [
  "datafusion",
  "egui",
  "itertools 0.14.0",
+ "re_auth",
  "re_component_ui",
  "re_data_ui",
  "re_dataframe_ui",
