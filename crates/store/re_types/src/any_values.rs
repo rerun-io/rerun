@@ -7,20 +7,14 @@ use crate::{
 };
 use re_types_core::{try_serialize_field, AsComponents, ComponentName, Loggable};
 
-const DEFAULT_ARCHETYPE_NAME: &str = "rerun.AnyValues";
 // TODO(#6889): This will go away, once we make the `component_name` optional.
 const DEFAULT_COMPONENT_NAME: &str = "rerun.component.AnyValue";
 
 /// A helper for logging arbitrary data to Rerun.
+#[derive(Default)]
 pub struct AnyValues {
-    archetype_name: ArchetypeName,
+    archetype_name: Option<ArchetypeName>,
     batches: IntMap<ArchetypeFieldName, SerializedComponentBatch>,
-}
-
-impl Default for AnyValues {
-    fn default() -> Self {
-        Self::new(DEFAULT_ARCHETYPE_NAME)
-    }
 }
 
 impl AnyValues {
@@ -28,7 +22,7 @@ impl AnyValues {
     #[inline]
     pub fn new(archetype_name: impl Into<ArchetypeName>) -> Self {
         Self {
-            archetype_name: archetype_name.into(),
+            archetype_name: Some(archetype_name.into()),
             batches: Default::default(),
         }
     }
@@ -50,9 +44,9 @@ impl AnyValues {
             SerializedComponentBatch {
                 array,
                 descriptor: ComponentDescriptor {
-                    archetype_name: Some(self.archetype_name),
-                    archetype_field_name: Some(archetype_field_name),
+                    archetype_name: self.archetype_name,
                     component_name: DEFAULT_COMPONENT_NAME.into(),
+                    archetype_field_name: Some(archetype_field_name),
                 },
             },
         );
@@ -82,7 +76,7 @@ impl AnyValues {
         let archetype_field_name = archetype_field_name.into();
         try_serialize_field(
             ComponentDescriptor {
-                archetype_name: Some(self.archetype_name),
+                archetype_name: self.archetype_name,
                 archetype_field_name: Some(archetype_field_name),
                 component_name: component_name.into(),
             },
