@@ -30,7 +30,7 @@ pub struct BufferDesc {
     /// [`wgpu::BufferUsages::MAP_WRITE`], all buffers are allowed to be mapped at creation.
     ///
     /// *WARNING*: If this is `true`, the pool won't be able to reclaim the buffer later!
-    /// Furthermore, [`size`](#structfield.size) must be a multiple of [`wgpu::COPY_BUFFER_ALIGNMENT`].
+    /// Furthermore, [`size`](Self::size) must be a multiple of [`wgpu::COPY_BUFFER_ALIGNMENT`].
     pub mapped_at_creation: bool,
 }
 
