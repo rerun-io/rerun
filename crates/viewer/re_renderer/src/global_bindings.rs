@@ -43,8 +43,9 @@ pub struct FrameUniformBuffer {
     pub device_tier: wgpu_buffer_types::U32RowPadded,
 }
 
-pub(crate) struct GlobalBindings {
-    pub(crate) layout: GpuBindGroupLayoutHandle,
+/// Global bindings which are always available on bind group 0 for all [`crate::renderer::Renderer`].
+pub struct GlobalBindings {
+    pub layout: GpuBindGroupLayoutHandle,
     nearest_neighbor_sampler_repeat: GpuSamplerHandle,
     nearest_neighbor_sampler_clamped: GpuSamplerHandle,
     trilinear_sampler_repeat: GpuSamplerHandle,
