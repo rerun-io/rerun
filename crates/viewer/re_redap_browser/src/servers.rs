@@ -346,7 +346,7 @@ impl RedapServers {
     /// - Update all servers.
     pub fn on_frame_start(
         &mut self,
-        connectin_registry: &ConnectionRegistry,
+        connection_registry: &ConnectionRegistry,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
     ) {
@@ -354,7 +354,7 @@ impl RedapServers {
             self.command_sender.send(Command::AddServer(origin)).ok();
         });
         while let Ok(command) = self.command_receiver.try_recv() {
-            self.handle_command(connectin_registry, runtime, egui_ctx, command);
+            self.handle_command(connection_registry, runtime, egui_ctx, command);
         }
 
         for server in self.servers.values_mut() {

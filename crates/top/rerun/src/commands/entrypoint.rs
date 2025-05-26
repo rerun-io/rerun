@@ -660,7 +660,7 @@ fn run_impl(
     args: Args,
     tokio_runtime_handle: &tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
-    //TODO(ab): populate token passed with `--token`
+    //TODO(#10068): populate token passed with `--token`
     let connection_registry = re_grpc_client::ConnectionRegistry::default();
 
     #[cfg(feature = "native_viewer")]
