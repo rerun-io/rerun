@@ -34,7 +34,7 @@ impl std::ops::Deref for WebVideoFrame {
 
 pub struct WebVideoDecoder {
     codec: VideoCodec,
-    mp4_video_config: Option<Mp4Config>,
+    mp4_config: Option<Mp4Config>,
     timescale: Timescale,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
@@ -113,7 +113,7 @@ impl WebVideoDecoder {
 
         Ok(Self {
             codec: video.codec.clone(),
-            mp4_video_config: video.config.clone(),
+            mp4_config: video.mp4_config.clone(),
             timescale: video.timescale,
             decoder,
             hw_acceleration,
@@ -139,10 +139,8 @@ impl AsyncDecoder for WebVideoDecoder {
             type_,
         );
 
-        // TODO: is duration optional, is it fine not to set? find out
-        if video_chunk.duration != Time::MAX {
-            let duration_millis =
-                1e-3 * video_chunk.duration.duration(self.timescale).as_nanos() as f64;
+        if let Some(duration) = video_chunk.duration {
+            let duration_millis = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
             web_chunk.set_duration(duration_millis);
         }
 
@@ -169,7 +167,7 @@ impl AsyncDecoder for WebVideoDecoder {
         self.decoder
             .configure(&js_video_decoder_config(
                 &self.codec,
-                &self.mp4_video_config,
+                &self.mp4_config,
                 self.hw_acceleration,
             ))
             .map_err(|err| Error::ConfigureFailure(js_error_to_string(&err)))?;
@@ -227,7 +225,7 @@ fn init_video_decoder(
             // and does not represent demuxed "raw" presentation timestamps.
             let presentation_timestamp =
                 Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
-            let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
+            let duration = frame.duration().map(|d| Time::from_micros(d, timescale));
 
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
