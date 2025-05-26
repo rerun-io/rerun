@@ -19,7 +19,9 @@ struct ConnectionRegistryImpl {
     clients: HashMap<re_uri::Origin, RedapClient>,
 }
 
-/// TODO: cheap to clone
+/// Registry of all tokens and connections to the redap servers.
+///
+/// This registry is cheap to clone.
 #[derive(Default, Clone)]
 pub struct ConnectionRegistry {
     inner: Arc<RwLock<ConnectionRegistryImpl>>,
@@ -39,9 +41,11 @@ impl ConnectionRegistry {
         }
 
         let mut inner = self.inner.write().await;
-        let token = inner.tokens.get(&origin).cloned();
-
-        //TODO: move env var logic here
+        let token = inner
+            .tokens
+            .get(&origin)
+            .cloned()
+            .or_else(get_token_from_env);
 
         let client = crate::redap::client(origin.clone(), token).await;
         match client {
@@ -52,4 +56,28 @@ impl ConnectionRegistry {
             Err(err) => Err(err),
         }
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_token_from_env() -> Option<Jwt> {
+    std::env::var("REDAP_TOKEN")
+        .map_err(|err| match err {
+            std::env::VarError::NotPresent => {}
+            std::env::VarError::NotUnicode(..) => {
+                re_log::warn_once!("REDAP_TOKEN env var is malformed: {err}");
+            }
+        })
+        .and_then(|t| {
+            re_auth::Jwt::try_from(t).map_err(|err| {
+                re_log::warn_once!(
+                    "REDAP_TOKEN env var is present, but the token is invalid: {err}"
+                );
+            })
+        })
+        .ok()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn get_token_from_env() -> Option<Jwt> {
+    None
 }

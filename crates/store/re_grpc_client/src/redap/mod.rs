@@ -188,25 +188,6 @@ pub(crate) async fn client(
 ) -> Result<RedapClient, ConnectionError> {
     let channel = channel(origin).await?;
 
-    let token = token.or_else(|| {
-        // default to using the REDAP_TOKEN env var if no token is provided
-        std::env::var("REDAP_TOKEN")
-            .map_err(|err| match err {
-                std::env::VarError::NotPresent => {}
-                std::env::VarError::NotUnicode(..) => {
-                    re_log::warn_once!("REDAP_TOKEN env var is malformed: {err}");
-                }
-            })
-            .and_then(|t| {
-                re_auth::Jwt::try_from(t).map_err(|err| {
-                    re_log::warn_once!(
-                        "REDAP_TOKEN env var is present, but the token is invalid: {err}"
-                    );
-                })
-            })
-            .ok()
-    });
-
     let auth = AuthDecorator::new(token);
 
     let middlewares = tower::ServiceBuilder::new()
