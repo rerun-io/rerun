@@ -46,15 +46,14 @@ impl<T: Send> ReceiveSet<T> {
     }
 
     /// Disconnect from any channel with a source pointing at this `uri`.
-    #[cfg(target_arch = "wasm32")]
-    pub fn remove_by_uri(&self, uri: &str) {
+    pub fn remove_by_uri(&self, needle: &str) {
         self.receivers.lock().retain(|r| match r.source() {
             // retain only sources which:
             // - aren't network sources
-            // - don't point at the given `uri`
-            SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
-            SmartChannelSource::MessageProxy(url) => url.to_string() != uri,
-            SmartChannelSource::RedapGrpcStream(url) => url.to_string() != uri,
+            // - don't point at the given `needle`
+            SmartChannelSource::RrdHttpStream { url, .. } => url != needle,
+            SmartChannelSource::MessageProxy(url) => url.to_string() != needle,
+            SmartChannelSource::RedapGrpcStream { uri, .. } => uri.to_string() != needle,
 
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
