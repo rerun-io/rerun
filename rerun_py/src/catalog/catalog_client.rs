@@ -34,11 +34,19 @@ impl PyCatalogClient {
 impl PyCatalogClient {
     /// Create a new catalog client object.
     #[new]
-    fn new(py: Python<'_>, addr: String) -> PyResult<Self> {
+    #[pyo3(signature = (addr, token=None))]
+    fn new(py: Python<'_>, addr: String, token: Option<String>) -> PyResult<Self> {
         let origin = addr.as_str().parse::<re_uri::Origin>().map_err(to_py_err)?;
 
-        //TODO: seed with token
         let connection_registry = ConnectionRegistry::default();
+
+        let token = token
+            .map(TryFrom::try_from)
+            .transpose()
+            .map_err(to_py_err)?;
+        if let Some(token) = token {
+            connection_registry.set_token(&origin, token);
+        }
 
         let connection = ConnectionHandle::new(py, connection_registry, origin.clone())?;
 
