@@ -8511,6 +8511,7 @@ dependencies = [
  "pyo3-build-config",
  "rand",
  "re_arrow_util",
+ "re_auth",
  "re_build_info",
  "re_build_tools",
  "re_chunk",
