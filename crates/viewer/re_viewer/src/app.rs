@@ -642,9 +642,13 @@ impl App {
                             .replace(DisplayMode::LocalTable(table_id.clone()));
                     }
 
+                    Item::StoreId(store_id) => {
+                        self.state.navigation.replace(DisplayMode::LocalRecordings);
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+
                     Item::AppId(_)
                     | Item::DataSource(_)
-                    | Item::StoreId(_)
                     | Item::InstancePath(_)
                     | Item::ComponentPath(_)
                     | Item::Container(_)

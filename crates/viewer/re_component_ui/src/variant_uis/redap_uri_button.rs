@@ -52,10 +52,6 @@ pub fn redap_uri_button(
         if response.clicked() {
             // Show it:
             ctx.command_sender()
-                .send_system(SystemCommand::ChangeDisplayMode(
-                    re_viewer_context::DisplayMode::RedapServer(uri.origin().clone()),
-                ));
-            ctx.command_sender()
                 .send_system(SystemCommand::SetSelection(
                     re_viewer_context::Item::StoreId(loaded_recording_id),
                 ));
