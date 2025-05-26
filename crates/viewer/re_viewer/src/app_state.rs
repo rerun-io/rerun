@@ -893,7 +893,10 @@ fn check_for_clicked_hyperlinks(
                     let is_dataset_uri = matches!(uri, re_uri::RedapUri::DatasetData { .. });
 
                     command_sender.send_system(SystemCommand::LoadDataSource(
-                        re_data_source::DataSource::RerunGrpcStream { uri },
+                        re_data_source::DataSource::RerunGrpcStream {
+                            uri,
+                            select_when_loaded: !open_url.new_tab,
+                        },
                     ));
 
                     if is_dataset_uri && !open_url.new_tab {

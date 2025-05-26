@@ -227,7 +227,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::MessageProxy(uri) => {
                 format!("Waiting for data on {uri}…")
             }
-            re_smart_channel::SmartChannelSource::RedapGrpcStream { uri } => {
+            re_smart_channel::SmartChannelSource::RedapGrpcStream { uri, .. } => {
                 format!(
                     "Waiting for data on {}…",
                     uri.clone().without_query_and_fragment()

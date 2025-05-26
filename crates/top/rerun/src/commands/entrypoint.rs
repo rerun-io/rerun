@@ -738,6 +738,7 @@ fn run_impl(
         if data_sources.len() == 1 && args.web_viewer {
             if let DataSource::RerunGrpcStream {
                 uri: re_uri::RedapUri::Proxy(uri),
+                ..
             } = data_sources[0].clone()
             {
                 // Special case! We are connecting a web-viewer to a gRPC address.

@@ -13,10 +13,13 @@ use anyhow::Context as _;
 pub enum DataSource {
     /// A remote RRD file, served over http.
     ///
-    /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
-    ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
-    RrdHttpUrl { uri: String, follow: bool },
+    RrdHttpUrl {
+        uri: String,
+
+        /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
+        follow: bool,
+    },
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
@@ -32,7 +35,12 @@ pub enum DataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording or catalog.
-    RerunGrpcStream { uri: RedapUri },
+    RerunGrpcStream {
+        uri: RedapUri,
+
+        /// Switch to this recording once it has been loaded?
+        select_when_loaded: bool,
+    },
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
@@ -105,7 +113,10 @@ impl DataSource {
         }
 
         if let Ok(uri) = uri.as_str().parse::<RedapUri>() {
-            return Self::RerunGrpcStream { uri };
+            return Self::RerunGrpcStream {
+                uri,
+                select_when_loaded: true,
+            };
         }
 
         // by default, we just assume an rrd over http
@@ -230,11 +241,17 @@ impl DataSource {
 
             Self::RerunGrpcStream {
                 uri: RedapUri::DatasetData(uri),
-                ..
+                select_when_loaded,
             } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    re_smart_channel::SmartMessageSource::RedapGrpcStream { uri: uri.clone() },
-                    re_smart_channel::SmartChannelSource::RedapGrpcStream { uri: uri.clone() },
+                    re_smart_channel::SmartMessageSource::RedapGrpcStream {
+                        uri: uri.clone(),
+                        select_when_loaded,
+                    },
+                    re_smart_channel::SmartChannelSource::RedapGrpcStream {
+                        uri: uri.clone(),
+                        select_when_loaded,
+                    },
                 );
 
                 let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
