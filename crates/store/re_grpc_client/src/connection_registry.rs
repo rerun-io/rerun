@@ -39,6 +39,7 @@ impl ConnectionRegistry {
         if let Some(client) = inner.clients.get(&origin) {
             return Ok(client.clone());
         }
+        drop(inner);
 
         let mut inner = self.inner.write().await;
         let token = inner
