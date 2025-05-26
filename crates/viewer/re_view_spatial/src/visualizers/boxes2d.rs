@@ -1,7 +1,7 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
-    ArrowString,
+    Archetype as _, ArrowString,
     archetypes::Boxes2D,
     components::{ClassId, Color, DrawOrder, HalfSize2D, Position2D, Radius, ShowLabels},
 };
@@ -72,7 +72,7 @@ impl Boxes2DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, "Boxes2D");
+                .single_entity_transform_required(entity_path, Boxes2D::name());
 
             let mut line_batch = line_builder
                 .batch("boxes2d")

@@ -1,7 +1,7 @@
 use std::iter;
 
 use re_types::{
-    ArrowString,
+    Archetype as _, ArrowString,
     archetypes::Ellipsoids3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels},
 };
@@ -58,6 +58,7 @@ impl Ellipsoids3DVisualizer {
             builder.add_batch(
                 query_context,
                 ent_context,
+                Ellipsoids3D::name(),
                 glam::Affine3A::IDENTITY,
                 ProcMeshBatch {
                     half_sizes: batch.half_sizes,

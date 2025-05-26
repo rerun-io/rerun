@@ -81,6 +81,7 @@ pub struct SegmentationImage {
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `0.0`.
     pub draw_order: Option<SerializedComponentBatch>,
 }
 
@@ -137,7 +138,7 @@ impl SegmentationImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SegmentationImage".into()),
+            archetype_name: None,
             component_name: "rerun.components.SegmentationImageIndicator".into(),
             archetype_field_name: None,
         }
@@ -198,7 +199,9 @@ impl ::re_types_core::Archetype for SegmentationImage {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        SegmentationImageIndicator::DEFAULT.serialized().unwrap()
+        SegmentationImageIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]
@@ -441,6 +444,7 @@ impl SegmentationImage {
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
+    /// Defaults to `0.0`.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), [draw_order]);

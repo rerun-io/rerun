@@ -41,30 +41,6 @@ pub mod external {
     pub use re_entity_db::external::*;
 }
 
-// -----------
-
-/// Utility for implementing [`re_viewer_context::DataBasedVisualizabilityFilter`] using on the properties of a concrete component.
-#[inline]
-pub fn diff_component_filter<T: re_types_core::Component>(
-    event: &re_chunk_store::ChunkStoreEvent,
-    filter: impl Fn(&T) -> bool,
-) -> bool {
-    let filter = &filter;
-    event
-        .diff
-        .chunk
-        .components()
-        .get_by_component_name(T::descriptor().component_name)
-        .any(|list_array| {
-            list_array
-                .iter()
-                .filter_map(|array| {
-                    array.and_then(|array| T::from_arrow(&arrow::array::ArrayRef::from(array)).ok())
-                })
-                .any(|instances| instances.iter().any(filter))
-        })
-}
-
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
 ///
 /// Returns an empty iterator if values is empty.

@@ -6,7 +6,7 @@ edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-publish = false
+publish = true
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
@@ -17,12 +17,14 @@ workspace = true
 [dependencies]
 re_log.workspace = true
 
-base64.workspace = true
 jsonwebtoken.workspace = true
-rand.workspace = true
-serde.workspace = true
 thiserror.workspace = true
 tonic.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+base64.workspace = true
+rand.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
 rand = { workspace = true, features = ["std", "std_rng"] }

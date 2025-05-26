@@ -30,8 +30,8 @@ pub struct PoseRotationQuat(pub crate::datatypes::Quaternion);
 
 impl ::re_types_core::Component for PoseRotationQuat {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.PoseRotationQuat")
+    fn name() -> ComponentName {
+        "rerun.components.PoseRotationQuat".into()
     }
 }
 

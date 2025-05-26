@@ -35,8 +35,8 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    PlotSeriesKind, line_visualizer_system::SeriesLineSystem,
-    point_visualizer_system::SeriesPointSystem,
+    PlotSeriesKind, line_visualizer_system::SeriesLinesSystem,
+    point_visualizer_system::SeriesPointsSystem,
 };
 
 // ---
@@ -158,8 +158,8 @@ impl ViewClass for TimeSeriesView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<SeriesLineSystem>()?;
-        system_registry.register_visualizer::<SeriesPointSystem>()?;
+        system_registry.register_visualizer::<SeriesLinesSystem>()?;
+        system_registry.register_visualizer::<SeriesPointsSystem>()?;
         Ok(())
     }
 
@@ -212,8 +212,8 @@ impl ViewClass for TimeSeriesView {
         let mut indicated_entities = IndicatedEntities::default();
 
         for indicated in [
-            SeriesLineSystem::identifier(),
-            SeriesPointSystem::identifier(),
+            SeriesLinesSystem::identifier(),
+            SeriesPointsSystem::identifier(),
         ]
         .iter()
         .filter_map(|&system_id| ctx.indicated_entities_per_visualizer.get(&system_id))
@@ -221,11 +221,11 @@ impl ViewClass for TimeSeriesView {
             indicated_entities.0.extend(indicated.0.iter().cloned());
         }
 
-        // Because SeriesLine is our fallback visualizer, also include any entities for which
-        // SeriesLine is visualizable, even if not indicated.
+        // Because SeriesLines is our fallback visualizer, also include any entities for which
+        // SeriesLines is visualizable, even if not indicated.
         if let Some(maybe_visualizable) = ctx
             .maybe_visualizable_entities_per_visualizer
-            .get(&SeriesLineSystem::identifier())
+            .get(&SeriesLinesSystem::identifier())
         {
             indicated_entities
                 .0
@@ -314,9 +314,10 @@ impl ViewClass for TimeSeriesView {
             .collect();
 
         // If there were no other visualizers, but the SeriesLineSystem is available, use it.
-        if visualizers.is_empty() && available_visualizers.contains(&SeriesLineSystem::identifier())
+        if visualizers.is_empty()
+            && available_visualizers.contains(&SeriesLinesSystem::identifier())
         {
-            visualizers.insert(0, SeriesLineSystem::identifier());
+            visualizers.insert(0, SeriesLinesSystem::identifier());
         }
 
         visualizers
@@ -381,8 +382,8 @@ impl ViewClass for TimeSeriesView {
 
         let timeline_name = timeline.name().to_string();
 
-        let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
-        let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
+        let line_series = system_output.view_systems.get::<SeriesLinesSystem>()?;
+        let point_series = system_output.view_systems.get::<SeriesPointsSystem>()?;
 
         let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())
@@ -558,12 +559,7 @@ impl ViewClass for TimeSeriesView {
         let hovered_data_result = hovered_plot_item
             .and_then(|hovered_plot_item| plot_item_id_to_instance_path.get(&hovered_plot_item))
             .map(|instance_path| {
-                let mut instance_path = instance_path.clone();
-                if response.double_clicked() {
-                    // Select entire entity on double-click:
-                    instance_path.instance = re_log_types::Instance::ALL;
-                }
-                re_viewer_context::Item::DataResult(query.view_id, instance_path)
+                re_viewer_context::Item::DataResult(query.view_id, instance_path.clone())
             });
         if let Some(hovered) = hovered_data_result.clone().or_else(|| {
             if response.hovered() {
@@ -730,12 +726,13 @@ fn update_series_visibility_overrides_from_plot(
             .map(SeriesVisible::from)
             .collect::<Vec<_>>();
 
-        if let Some(serialized_component_batch) = descriptor.and_then(|descriptor| {
-            component_array
-                .serialized()
-                .map(|serialized| serialized.with_descriptor_override(descriptor))
-        }) {
-            ctx.save_serialized_blueprint_component(override_path, serialized_component_batch);
+        if let Some(serialized_component_batch) =
+            descriptor.and_then(|descriptor| component_array.serialized(descriptor))
+        {
+            ctx.save_serialized_blueprint_component(
+                override_path.clone(),
+                serialized_component_batch,
+            );
         }
     }
 }

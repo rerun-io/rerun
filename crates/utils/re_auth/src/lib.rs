@@ -5,14 +5,22 @@
 //! generate and sign tokens.
 //!
 //! **Warning!** This approach should only be seen as a stop-gap until we have
-//! integration of _real_ identity-providers, most likely based on OpenID Connect.
+//! integration of _real_ identity-providers, most likely based on `OpenID` Connect.
 
-pub use error::Error;
-pub use provider::{Claims, RedapProvider, VerificationOptions};
-pub use service::*;
-pub use token::{Jwt, TokenError};
-
+#[cfg(not(target_arch = "wasm32"))]
 mod error;
+#[cfg(not(target_arch = "wasm32"))]
 mod provider;
+
 mod service;
 mod token;
+
+pub use service::client;
+pub use token::{Jwt, TokenError};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use error::Error;
+#[cfg(not(target_arch = "wasm32"))]
+pub use provider::{Claims, RedapProvider, VerificationOptions};
+#[cfg(not(target_arch = "wasm32"))]
+pub use service::server;

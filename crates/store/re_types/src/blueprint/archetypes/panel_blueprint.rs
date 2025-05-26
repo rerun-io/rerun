@@ -45,7 +45,7 @@ impl PanelBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
             archetype_field_name: None,
         }
@@ -93,7 +93,9 @@ impl ::re_types_core::Archetype for PanelBlueprint {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        PanelBlueprintIndicator::DEFAULT.serialized().unwrap()
+        PanelBlueprintIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

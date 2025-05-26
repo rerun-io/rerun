@@ -62,7 +62,7 @@ impl ForceCenter {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCenter".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ForceCenterIndicator".into(),
             archetype_field_name: None,
         }
@@ -116,7 +116,9 @@ impl ::re_types_core::Archetype for ForceCenter {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForceCenterIndicator::DEFAULT.serialized().unwrap()
+        ForceCenterIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

@@ -85,7 +85,7 @@ impl BarChart {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            archetype_name: None,
             component_name: "rerun.components.BarChartIndicator".into(),
             archetype_field_name: None,
         }
@@ -134,7 +134,9 @@ impl ::re_types_core::Archetype for BarChart {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        BarChartIndicator::DEFAULT.serialized().unwrap()
+        BarChartIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

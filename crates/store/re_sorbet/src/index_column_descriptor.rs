@@ -14,15 +14,15 @@ pub struct UnsupportedTimeType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexColumnDescriptor {
     /// The timeline this column is associated with.
-    timeline: Timeline,
+    pub timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    datatype: ArrowDatatype,
+    pub datatype: ArrowDatatype,
 
     /// Are the indices in this column sorted?
     ///
     /// `false` means either "unsorted" or "unknown".
-    is_sorted: bool,
+    pub is_sorted: bool,
 }
 
 impl PartialOrd for IndexColumnDescriptor {

@@ -52,7 +52,10 @@ fn live_bytes() -> usize {
 // ----------------------------------------------------------------------------
 
 use re_chunk::{Chunk, RowId};
-use re_log_types::{StoreId, StoreKind, entity_path, example_components::MyPoint};
+use re_log_types::{
+    StoreId, StoreKind, entity_path,
+    example_components::{MyPoint, MyPoints},
+};
 
 fn main() {
     log_messages();
@@ -118,7 +121,10 @@ fn log_messages() {
             .with_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::ZERO)],
-                [&MyPoint::from_iter(0..1) as _],
+                [(
+                    MyPoints::descriptor_points(),
+                    &MyPoint::from_iter(0..1) as _,
+                )],
             )
             .build()
             .unwrap();
@@ -143,7 +149,10 @@ fn log_messages() {
             .with_component_batches(
                 RowId::new(),
                 [build_frame_nr(TimeInt::ZERO)],
-                [&MyPoint::from_iter(0..NUM_POINTS as u32) as _],
+                [(
+                    MyPoints::descriptor_points(),
+                    &MyPoint::from_iter(0..NUM_POINTS as u32) as _,
+                )],
             )
             .build()
             .unwrap();

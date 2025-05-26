@@ -3,6 +3,7 @@ use arrow::array::ArrayRef;
 use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
+use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
@@ -14,7 +15,7 @@ use crate::{
     SystemCommandSender as _, TimeControl, ViewClassRegistry, ViewId,
     query_context::DataQueryResult,
 };
-use crate::{GlobalContext, StorageContext, StoreHub};
+use crate::{GlobalContext, Item, StorageContext, StoreHub};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -22,6 +23,12 @@ pub struct ViewerContext<'a> {
     pub global_context: GlobalContext<'a>,
 
     pub storage_context: &'a StorageContext<'a>,
+
+    /// Registry of all known classes of views.
+    pub view_class_registry: &'a ViewClassRegistry,
+
+    /// How to display components.
+    pub component_ui_registry: &'a ComponentUiRegistry,
 
     /// Mapping from class and system to entities for the store
     ///
@@ -89,12 +96,12 @@ impl ViewerContext<'_> {
 
     /// How to display components.
     pub fn component_ui_registry(&self) -> &ComponentUiRegistry {
-        self.global_context.component_ui_registry
+        self.component_ui_registry
     }
 
     /// Registry of all known classes of views.
     pub fn view_class_registry(&self) -> &ViewClassRegistry {
-        self.global_context.view_class_registry
+        self.view_class_registry
     }
 
     /// The [`egui::Context`].
@@ -188,7 +195,7 @@ impl ViewerContext<'_> {
         interacted_items: impl Into<ItemCollection>,
         draggable: bool,
     ) {
-        let interacted_items = interacted_items.into().into_mono_instance_path_items(self);
+        let mut interacted_items = interacted_items.into().into_mono_instance_path_items(self);
         let selection_state = self.selection_state();
 
         if response.hovered() {
@@ -228,6 +235,20 @@ impl ViewerContext<'_> {
         } else if response.clicked() {
             if response.double_clicked() {
                 if let Some(item) = interacted_items.first_item() {
+                    // Double click always selects the whole instance and nothing else.
+                    let item = if let Item::DataResult(view_id, instance) = item {
+                        interacted_items = Item::DataResult(
+                            *view_id,
+                            InstancePath::entity_all(instance.entity_path.clone()),
+                        )
+                        .into();
+                        interacted_items
+                            .first_item()
+                            .expect("That item was just added")
+                    } else {
+                        item
+                    };
+
                     self.global_context
                         .command_sender
                         .send_system(crate::SystemCommand::SetFocus(item.clone()));

@@ -53,7 +53,7 @@ jobs:
         with:
           lfs: true
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
           environments: wheel-test-min

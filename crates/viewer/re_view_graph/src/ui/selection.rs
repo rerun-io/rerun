@@ -63,14 +63,14 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
 
         let component_descr = field.component_descriptor(property.archetype_name);
         let component_array = property.component_raw(&component_descr);
-        let row_id = property.component_row_id(field.component_name);
+        let row_id = property.component_row_id(&component_descr);
 
         let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
             ctx.component_ui_registry().singleline_edit_ui(
                 &query_ctx,
                 ui,
                 ctx.blueprint_db(),
-                query_ctx.target_entity_path,
+                query_ctx.target_entity_path.clone(),
                 &component_descr,
                 row_id,
                 component_array.as_deref(),

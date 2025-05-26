@@ -26,8 +26,8 @@ pub struct Position2D(pub crate::datatypes::Vec2D);
 
 impl ::re_types_core::Component for Position2D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Position2D")
+    fn name() -> ComponentName {
+        "rerun.components.Position2D".into()
     }
 }
 

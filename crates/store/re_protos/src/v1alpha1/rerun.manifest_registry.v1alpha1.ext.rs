@@ -14,7 +14,7 @@ use super::rerun_manifest_registry_v1alpha1::VectorDistanceMetric;
 use crate::common::v1alpha1::ComponentDescriptor;
 use crate::manifest_registry::v1alpha1::{
     CreatePartitionManifestsResponse, DataSourceKind, GetDatasetSchemaResponse,
-    RegisterWithDatasetResponse,
+    RegisterWithDatasetResponse, ScanPartitionTableResponse,
 };
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -408,6 +408,60 @@ impl RegisterWithDatasetResponse {
             Arc::new(StringArray::from(partition_types)),
             Arc::new(StringArray::from(storage_urls)),
             Arc::new(StringArray::from(task_ids)),
+        ];
+
+        RecordBatch::try_new(schema, columns)
+    }
+}
+
+// --- ScanPartitionTableResponse --
+
+impl ScanPartitionTableResponse {
+    pub const PARTITION_ID: &str = "rerun_partition_id";
+    pub const PARTITION_TYPE: &str = "rerun_partition_type";
+    pub const STORAGE_URL: &str = "rerun_storage_url";
+    pub const REGISTRATION_TIME: &str = "rerun_registration_time";
+    pub const PARTITION_MANIFEST_UPDATED_AT: &str = "rerun_partition_manifest_updated_at";
+    pub const PARTITION_MANIFEST_URL: &str = "rerun_partition_manifest_url";
+
+    pub fn schema() -> Schema {
+        Schema::new(vec![
+            Field::new(Self::PARTITION_ID, DataType::Utf8, false),
+            Field::new(Self::PARTITION_TYPE, DataType::Utf8, false),
+            Field::new(Self::STORAGE_URL, DataType::Utf8, false),
+            Field::new(
+                Self::REGISTRATION_TIME,
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                false,
+            ),
+            Field::new(
+                Self::PARTITION_MANIFEST_UPDATED_AT,
+                DataType::Timestamp(TimeUnit::Nanosecond, None),
+                true,
+            ),
+            Field::new(Self::PARTITION_MANIFEST_URL, DataType::Utf8, true),
+        ])
+    }
+
+    /// Helper to simplify instantiation of the dataframe in [`Self::data`].
+    pub fn create_dataframe(
+        partition_ids: Vec<String>,
+        partition_types: Vec<String>,
+        storage_urls: Vec<String>,
+        registration_times: Vec<i64>,
+        partition_manifest_updated_ats: Vec<Option<i64>>,
+        partition_manifest_urls: Vec<Option<String>>,
+    ) -> arrow::error::Result<RecordBatch> {
+        let schema = Arc::new(Self::schema());
+        let columns: Vec<ArrayRef> = vec![
+            Arc::new(StringArray::from(partition_ids)),
+            Arc::new(StringArray::from(partition_types)),
+            Arc::new(StringArray::from(storage_urls)),
+            Arc::new(TimestampNanosecondArray::from(registration_times)),
+            Arc::new(TimestampNanosecondArray::from(
+                partition_manifest_updated_ats,
+            )),
+            Arc::new(StringArray::from(partition_manifest_urls)),
         ];
 
         RecordBatch::try_new(schema, columns)

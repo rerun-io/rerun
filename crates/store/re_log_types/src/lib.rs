@@ -784,12 +784,11 @@ impl SizeBytes for ArrowMsg {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             chunk_id,
-            timepoint_max,
             batch,
             on_release: _,
         } = self;
 
-        chunk_id.heap_size_bytes() + timepoint_max.heap_size_bytes() + batch.heap_size_bytes()
+        chunk_id.heap_size_bytes() + batch.heap_size_bytes()
     }
 }
 

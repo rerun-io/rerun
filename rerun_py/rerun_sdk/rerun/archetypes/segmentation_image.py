@@ -110,6 +110,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `0.0`.
 
         """
 
@@ -167,6 +168,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
             An optional floating point value that specifies the 2D drawing order.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `0.0`.
 
         """
 
@@ -251,6 +253,7 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     # An optional floating point value that specifies the 2D drawing order.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    # Defaults to `0.0`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -26,8 +26,8 @@ pub struct TensorWidthDimension(pub crate::datatypes::TensorDimensionSelection);
 
 impl ::re_types_core::Component for TensorWidthDimension {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TensorWidthDimension")
+    fn name() -> ComponentName {
+        "rerun.components.TensorWidthDimension".into()
     }
 }
 

@@ -53,8 +53,8 @@ mod workspace_shaders;
 use allocator::GpuReadbackBuffer;
 
 pub use allocator::{
-    create_and_fill_uniform_buffer, create_and_fill_uniform_buffer_batch, CpuWriteGpuReadError,
-    GpuReadbackIdentifier,
+    CpuWriteGpuReadError, GpuReadbackIdentifier, create_and_fill_uniform_buffer,
+    create_and_fill_uniform_buffer_batch,
 };
 pub use color::Rgba32Unmul;
 pub use colormap::{
@@ -73,7 +73,7 @@ pub use draw_phases::{
 };
 pub use global_bindings::GlobalBindings;
 pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
-pub use line_drawable_builder::{LineDrawableBuilder, LineStripBuilder};
+pub use line_drawable_builder::{LineBatchBuilder, LineDrawableBuilder, LineStripBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
 pub use rect::{RectF32, RectInt};

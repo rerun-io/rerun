@@ -9,7 +9,6 @@ use re_chunk::{Chunk, RowId, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::build_frame_nr;
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_types::Component as _;
 use re_types_core::Archetype as _;
 
 use re_query::{LatestAtResults, clamped_zip_1x2};
@@ -40,9 +39,15 @@ fn main() -> anyhow::Result<()> {
     //
     // These APIs will log errors instead of returning them.
     {
-        let points = results.component_batch::<MyPoint>().context("missing")?;
-        let colors = results.component_batch::<MyColor>().unwrap_or_default();
-        let labels = results.component_batch::<MyLabel>().unwrap_or_default();
+        let points = results
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+            .context("missing")?;
+        let colors = results
+            .component_batch::<MyColor>(&MyPoints::descriptor_colors())
+            .unwrap_or_default();
+        let labels = results
+            .component_batch::<MyLabel>(&MyPoints::descriptor_labels())
+            .unwrap_or_default();
 
         // Then apply your instance-level joining logic, if any:
         let color_default_fn = || MyColor(0xFF00FFFF);
@@ -67,7 +72,7 @@ fn main() -> anyhow::Result<()> {
 
         // You can always use the standard deserialization path:
         let points = points
-            .component_batch::<MyPoint>(&MyPoint::descriptor())
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
             .context("missing")??;
         let labels = labels
             .and_then(|unit| {
@@ -80,7 +85,7 @@ fn main() -> anyhow::Result<()> {
         // data directly:
         let colors = colors
             .context("missing")?
-            .component_batch_raw(&MyColor::descriptor())
+            .component_batch_raw(&MyPoints::descriptor_colors())
             .context("invalid")?;
         let colors = colors
             .downcast_array_ref::<ArrowUInt32Array>()

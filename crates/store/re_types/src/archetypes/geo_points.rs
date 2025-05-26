@@ -119,7 +119,7 @@ impl GeoPoints {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.GeoPoints".into()),
+            archetype_name: None,
             component_name: "rerun.components.GeoPointsIndicator".into(),
             archetype_field_name: None,
         }
@@ -176,7 +176,9 @@ impl ::re_types_core::Archetype for GeoPoints {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        GeoPointsIndicator::DEFAULT.serialized().unwrap()
+        GeoPointsIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

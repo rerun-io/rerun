@@ -114,7 +114,7 @@ impl TextLog {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            archetype_name: None,
             component_name: "rerun.components.TextLogIndicator".into(),
             archetype_field_name: None,
         }
@@ -164,7 +164,9 @@ impl ::re_types_core::Archetype for TextLog {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TextLogIndicator::DEFAULT.serialized().unwrap()
+        TextLogIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

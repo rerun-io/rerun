@@ -153,7 +153,6 @@ exclude = [
   'https://www.figma.com/.*',
 
   # Temporarily down or not accessible.
-  'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
   'https://dl.acm.org/doi/10.1145/3638550.3643617',                 # We might be getting rate-limited here.
 

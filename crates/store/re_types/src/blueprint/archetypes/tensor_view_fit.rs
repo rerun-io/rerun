@@ -45,7 +45,7 @@ impl TensorViewFit {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.TensorViewFitIndicator".into(),
             archetype_field_name: None,
         }
@@ -93,7 +93,9 @@ impl ::re_types_core::Archetype for TensorViewFit {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TensorViewFitIndicator::DEFAULT.serialized().unwrap()
+        TensorViewFitIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

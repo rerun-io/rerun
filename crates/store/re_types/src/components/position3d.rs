@@ -26,8 +26,8 @@ pub struct Position3D(pub crate::datatypes::Vec3D);
 
 impl ::re_types_core::Component for Position3D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Position3D")
+    fn name() -> ComponentName {
+        "rerun.components.Position3D".into()
     }
 }
 

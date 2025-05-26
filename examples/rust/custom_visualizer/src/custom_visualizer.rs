@@ -9,7 +9,7 @@ use rerun::{
             ViewSystemExecutionError, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
         },
     },
-    Component as _,
+    Archetype as _,
 };
 
 use crate::{custom_archetype::Custom, custom_renderer::CustomDrawData};
@@ -58,14 +58,16 @@ impl VisualizerSystem for CustomVisualizer {
             let results = data_result.query_archetype_with_history::<Custom>(ctx, query);
 
             // TODO: handle component instances etc.
-            // TODO: handle ziping of primary component and transform info
+            // TODO: handle zipping of primary component and transform info
             // for (instance, transform) in transform_info.reference_from_instances.iter().enumerate()
-            let transform = transform_info.reference_from_instances.first();
+            let transform = transform_info
+                .reference_from_instances(Custom::name())
+                .first();
 
             // gather all relevant chunks
             let timeline = query.timeline;
-            let all_positions = results.iter_as(timeline, rerun::Position3D::name());
-            let all_colors = results.iter_as(timeline, rerun::Color::name());
+            let all_positions = results.iter_as(timeline, Custom::descriptor_positions());
+            let all_colors = results.iter_as(timeline, Custom::descriptor_colors());
 
             let picking_layer_object_id = re_renderer::PickingLayerObjectId(ent_path.hash64());
             let entity_outline_mask = query.highlights.entity_outline_mask(ent_path.hash());

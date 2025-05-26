@@ -64,7 +64,7 @@ impl PlotLegend {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.PlotLegend".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.PlotLegendIndicator".into(),
             archetype_field_name: None,
         }
@@ -118,7 +118,9 @@ impl ::re_types_core::Archetype for PlotLegend {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        PlotLegendIndicator::DEFAULT.serialized().unwrap()
+        PlotLegendIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

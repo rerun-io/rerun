@@ -77,7 +77,7 @@ impl ForcePosition {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForcePosition".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ForcePositionIndicator".into(),
             archetype_field_name: None,
         }
@@ -133,7 +133,9 @@ impl ::re_types_core::Archetype for ForcePosition {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForcePositionIndicator::DEFAULT.serialized().unwrap()
+        ForcePositionIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

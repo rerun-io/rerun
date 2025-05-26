@@ -421,9 +421,15 @@ extern void rr_recording_stream_set_thread_local(
 /// Check whether the recording stream is enabled.
 extern bool rr_recording_stream_is_enabled(rr_recording_stream stream, rr_error* error);
 
-/// Connect to a remote Rerun Viewer on the given HTTP(S) URL.
+/// Connect to a remote Rerun Viewer on the given URL.
 ///
 /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+///
+/// url:
+/// The scheme must be one of `rerun://`, `rerun+http://`, or `rerun+https://`,
+/// and the pathname must be `/proxy`.
+///
+/// The default is `rerun+http://127.0.0.1:9876/proxy`.
 ///
 /// flush_timeout_sec:
 /// The minimum time the SDK will wait during a flush before potentially

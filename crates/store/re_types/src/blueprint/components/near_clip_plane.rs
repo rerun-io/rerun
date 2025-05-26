@@ -31,8 +31,8 @@ pub struct NearClipPlane(
 
 impl ::re_types_core::Component for NearClipPlane {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.NearClipPlane")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.NearClipPlane".into()
     }
 }
 

@@ -99,7 +99,7 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn save_blueprint_array(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: ComponentDescriptor,
         array: arrow::array::ArrayRef,
     ) {
@@ -108,11 +108,7 @@ impl<'a> ViewContext<'a> {
     }
 
     #[inline]
-    pub fn save_blueprint_archetype(
-        &self,
-        entity_path: &EntityPath,
-        components: &dyn AsComponents,
-    ) {
+    pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
         self.viewer_ctx
             .save_blueprint_archetype(entity_path, components);
     }
@@ -120,7 +116,7 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn save_blueprint_component(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_desc: &ComponentDescriptor,
         component_batch: &dyn ComponentBatch,
     ) {
@@ -131,7 +127,7 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn reset_blueprint_component(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: ComponentDescriptor,
     ) {
         self.viewer_ctx
@@ -142,7 +138,7 @@ impl<'a> ViewContext<'a> {
     #[inline]
     pub fn clear_blueprint_component(
         &self,
-        entity_path: &EntityPath,
+        entity_path: EntityPath,
         component_descr: ComponentDescriptor,
     ) {
         self.viewer_ctx

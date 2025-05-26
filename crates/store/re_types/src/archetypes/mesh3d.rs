@@ -259,7 +259,7 @@ impl Mesh3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+            archetype_name: None,
             component_name: "rerun.components.Mesh3DIndicator".into(),
             archetype_field_name: None,
         }
@@ -330,7 +330,9 @@ impl ::re_types_core::Archetype for Mesh3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Mesh3DIndicator::DEFAULT.serialized().unwrap()
+        Mesh3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

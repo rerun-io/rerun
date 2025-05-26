@@ -30,8 +30,8 @@ pub struct ForceDistance(pub crate::datatypes::Float64);
 
 impl ::re_types_core::Component for ForceDistance {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ForceDistance")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ForceDistance".into()
     }
 }
 

@@ -4,7 +4,7 @@ use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::ChunkStore;
 use re_log_types::{
     EntityPath, Timestamp, build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex},
+    example_components::{MyColor, MyIndex, MyPoints},
 };
 use re_types_core::ComponentBatch as _;
 
@@ -36,7 +36,10 @@ fn format_chunk_store() -> anyhow::Result<()> {
                     build_frame_nr(1),
                     build_log_time(Timestamp::from_nanos_since_epoch(1_736_534_622_123_456_789)),
                 ],
-                [indices1.try_serialized()?, colors1.try_serialized()?],
+                [
+                    indices1.try_serialized(MyIndex::partial_descriptor())?,
+                    colors1.try_serialized(MyPoints::descriptor_colors())?,
+                ],
             )
             .build()?,
     ))?;

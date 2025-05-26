@@ -109,7 +109,7 @@ impl DataframeQuery {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.DataframeQueryIndicator".into(),
             archetype_field_name: None,
         }
@@ -169,7 +169,9 @@ impl ::re_types_core::Archetype for DataframeQuery {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        DataframeQueryIndicator::DEFAULT.serialized().unwrap()
+        DataframeQueryIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

@@ -117,7 +117,7 @@ impl LineGrid3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.LineGrid3DIndicator".into(),
             archetype_field_name: None,
         }
@@ -177,7 +177,9 @@ impl ::re_types_core::Archetype for LineGrid3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        LineGrid3DIndicator::DEFAULT.serialized().unwrap()
+        LineGrid3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

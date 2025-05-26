@@ -26,8 +26,8 @@ pub struct VideoTimestamp(pub crate::datatypes::VideoTimestamp);
 
 impl ::re_types_core::Component for VideoTimestamp {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.VideoTimestamp")
+    fn name() -> ComponentName {
+        "rerun.components.VideoTimestamp".into()
     }
 }
 

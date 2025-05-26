@@ -40,7 +40,7 @@ class Result:
         self.duration = duration
 
 
-def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Result:
+def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None, deny_warnings: bool = True) -> Result:
     args = ["cargo", cargo_cmd]
     if cargo_cmd not in ["deny", "fmt", "format", "nextest"]:
         args.append("--quiet")
@@ -57,8 +57,8 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     additional_env_vars = {}
     # Compilation will fail we don't manually set `--cfg=web_sys_unstable_apis`,
     # because env vars are not propagated from CI.
-    additional_env_vars["RUSTFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
-    additional_env_vars["RUSTDOCFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
+    additional_env_vars["RUSTFLAGS"] = f"--cfg=web_sys_unstable_apis {'--deny warnings' if deny_warnings else ''}"
+    additional_env_vars["RUSTDOCFLAGS"] = f"--cfg=web_sys_unstable_apis {'--deny warnings' if deny_warnings else ''}"
     if clippy_conf is not None:
         additional_env_vars["CLIPPY_CONF_DIR"] = (
             # Clippy has issues finding this directory on CI when we're not using an absolute path here.
@@ -287,20 +287,20 @@ test_failure_message = 'See the "Upload test results" step for a link to the sna
 
 def tests(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
-    results.append(run_cargo("test", "--all-targets --all-features --no-run"))
-    results.append(run_cargo("nextest", "run --all-targets --all-features"))
+    results.append(run_cargo("test", "--all-targets --all-features --no-run", deny_warnings=False))
+    results.append(run_cargo("nextest", "run --all-targets --all-features", deny_warnings=False))
 
     if not results[-1].success:
         print(test_failure_message)
 
     # Cargo nextest doesn't support doc tests yet, run those separately.
-    results.append(run_cargo("test", "--all-features --doc"))
+    results.append(run_cargo("test", "--all-features --doc", deny_warnings=False))
 
 
 def tests_without_all_features(results: list[Result]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
-    results.append(run_cargo("test", "--all-targets --no-run"))
-    results.append(run_cargo("nextest", "run --all-targets"))
+    results.append(run_cargo("test", "--all-targets --no-run", deny_warnings=False))
+    results.append(run_cargo("nextest", "run --all-targets", deny_warnings=False))
 
     if not results[-1].success:
         print(test_failure_message)

@@ -4,7 +4,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPathHash, StoreId};
-use re_types::{ComponentDescriptor, ComponentNameSet};
+use re_types::{ComponentDescriptor, ComponentDescriptorSet};
 
 use crate::{
     IdentifiedViewSystem, IndicatedEntities, MaybeVisualizableEntities, ViewSystemIdentifier,
@@ -30,7 +30,7 @@ pub struct VisualizerEntitySubscriber {
     visualizer: ViewSystemIdentifier,
 
     /// See [`crate::VisualizerQueryInfo::indicators`]
-    indicator_components: ComponentNameSet,
+    indicator_components: ComponentDescriptorSet,
 
     /// Assigns each required component an index.
     required_components_indices: IntMap<ComponentDescriptor, usize>,
@@ -41,6 +41,7 @@ pub struct VisualizerEntitySubscriber {
     additional_filter: Box<dyn DataBasedVisualizabilityFilter>,
 }
 
+// TODO(#6889): Create writeup for things that changed and an issue for how things should move forward (i.e. descriptor overrides).
 /// Additional filter for visualizability on top of the default check for required components.
 ///
 /// This is part of the "maybe visualizable" criteria.
@@ -172,12 +173,12 @@ impl ChunkStoreSubscriber for VisualizerEntitySubscriber {
 
             // Update indicator component tracking:
             if self.indicator_components.is_empty()
-                || self.indicator_components.iter().any(|component_name| {
+                || self.indicator_components.iter().any(|component_descr| {
                     event
                         .diff
                         .chunk
                         .components()
-                        .contains_component_name(*component_name)
+                        .contains_component(component_descr)
                 })
             {
                 store_mapping

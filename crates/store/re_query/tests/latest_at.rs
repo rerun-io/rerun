@@ -73,9 +73,12 @@ fn simple_query_with_differently_tagged_components() {
     let row_id2 = RowId::new();
     let points2 = vec![MyPoint::new(5.0, 6.0)];
     let points2_serialized = points2
-        .serialized()
-        .unwrap()
-        .with_archetype_name("MyPoints2".into());
+        .serialized(re_types::ComponentDescriptor {
+            archetype_name: Some("MyPoints2".into()),
+            archetype_field_name: None,
+            component_name: <MyPoint as re_types_core::Component>::name(),
+        })
+        .unwrap();
 
     let chunk = Chunk::builder(entity_path.into())
         .with_archetype(row_id1, timepoint, &MyPoints::new(points1.clone()))
@@ -104,7 +107,9 @@ fn simple_query_with_differently_tagged_components() {
         &entity_path.into(),
         [&points2_serialized.descriptor],
     );
-    let cached_points = cached.component_batch::<MyPoint>().unwrap();
+    let cached_points = cached
+        .component_batch::<MyPoint>(&points2_serialized.descriptor)
+        .unwrap();
     similar_asserts::assert_eq!(points2, cached_points);
 }
 
@@ -658,8 +663,12 @@ fn query_and_compare(
     for _ in 0..3 {
         let cached = caches.latest_at(query, entity_path, MyPoints::all_components().iter());
 
-        let cached_points = cached.component_batch::<MyPoint>().unwrap();
-        let cached_colors = cached.component_batch::<MyColor>().unwrap_or_default();
+        let cached_points = cached
+            .component_batch::<MyPoint>(&MyPoints::descriptor_points())
+            .unwrap();
+        let cached_colors = cached
+            .component_batch::<MyColor>(&MyPoints::descriptor_colors())
+            .unwrap_or_default();
 
         eprintln!("{:?}", cached.components.keys());
         eprintln!("{store}");

@@ -47,7 +47,7 @@ impl MapZoom {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.MapZoomIndicator".into(),
             archetype_field_name: None,
         }
@@ -90,7 +90,9 @@ impl ::re_types_core::Archetype for MapZoom {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        MapZoomIndicator::DEFAULT.serialized().unwrap()
+        MapZoomIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

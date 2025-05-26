@@ -31,9 +31,8 @@ namespace rerun::archetypes {
     /// (e.g. a bounding sphere).
     /// For points whose radii are for the sake of visualization, use `archetypes::Points3D` instead.
     ///
-    /// Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
-    /// Some of its component are repeated here for convenience.
-    /// If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+    /// If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
+    /// Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to `archetypes::InstancePoses3D` and `archetypes::Transform3D`.
     ///
     /// ## Example
     ///
@@ -98,19 +97,16 @@ namespace rerun::archetypes {
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> centers;
 
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> rotation_axis_angles;
 
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         std::optional<ComponentBatch> quaternions;
 
         /// Optional colors for the ellipsoids.
@@ -250,7 +246,6 @@ namespace rerun::archetypes {
         /// Optional center positions of the ellipsoids.
         ///
         /// If not specified, the centers will be at (0, 0, 0).
-        /// Note that this uses a `components::PoseTranslation3D` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_centers(const Collection<rerun::components::PoseTranslation3D>& _centers
         ) && {
             centers = ComponentBatch::from_loggable(_centers, Descriptor_centers).value_or_throw();
@@ -260,7 +255,6 @@ namespace rerun::archetypes {
         /// Rotations via axis + angle.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationAxisAngle` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_rotation_axis_angles(
             const Collection<rerun::components::PoseRotationAxisAngle>& _rotation_axis_angles
         ) && {
@@ -275,7 +269,6 @@ namespace rerun::archetypes {
         /// Rotations via quaternion.
         ///
         /// If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-        /// Note that this uses a `components::PoseRotationQuat` which is also used by `archetypes::InstancePoses3D`.
         Ellipsoids3D with_quaternions(
             const Collection<rerun::components::PoseRotationQuat>& _quaternions
         ) && {

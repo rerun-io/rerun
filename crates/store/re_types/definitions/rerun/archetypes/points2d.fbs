@@ -45,6 +45,7 @@ table Points2D (
   /// An optional floating point value that specifies the 2D drawing order.
   ///
   /// Objects with higher values are drawn on top of those with lower values.
+  /// Defaults to `30.0`.
   draw_order: rerun.components.DrawOrder ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional class Ids for the points.

@@ -162,9 +162,12 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
     let row_id3_2 = RowId::new();
     let points3_2 = vec![MyPoint::new(11.0, 21.0), MyPoint::new(31.0, 41.0)];
     let points3_2_serialized = points3_2
-        .serialized()
-        .unwrap()
-        .with_archetype_name("MyPoints2".into());
+        .serialized(re_types::ComponentDescriptor {
+            archetype_name: Some("MyPoints2".into()),
+            archetype_field_name: None,
+            component_name: <MyPoint as re_types_core::Component>::name(),
+        })
+        .unwrap();
     let chunk = Chunk::builder(entity_path.clone())
         .with_archetype(row_id3_1, timepoint3, &MyPoints::new(points3_1.clone()))
         .with_archetype(row_id3_2, timepoint3, &points3_2_serialized)

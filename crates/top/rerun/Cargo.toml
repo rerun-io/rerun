@@ -94,7 +94,7 @@ run = [
   "dep:re_chunk_store",
   "dep:re_crash_handler",
   "dep:re_data_source",
-  "dep:re_viewer_context",
+  "dep:re_global_context",
   "re_log_encoding/decoder",
   "re_log_encoding/encoder",
   "sdk",
@@ -158,7 +158,7 @@ re_grpc_server = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
 re_types = { workspace = true, optional = true }
 re_viewer = { workspace = true, optional = true }
-re_viewer_context = { workspace = true, optional = true }
+re_global_context = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 env_filter = { workspace = true, optional = true }

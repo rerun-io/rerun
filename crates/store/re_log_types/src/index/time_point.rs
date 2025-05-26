@@ -20,6 +20,9 @@ impl From<BTreeMap<TimelineName, TimeCell>> for TimePoint {
 }
 
 impl TimePoint {
+    /// A static time point, equivalent to [`TimePoint::default`].
+    pub const STATIC: Self = Self(BTreeMap::new());
+
     #[inline]
     pub fn get(&self, timeline_name: &TimelineName) -> Option<NonMinI64> {
         self.0.get(timeline_name).map(|cell| cell.value)

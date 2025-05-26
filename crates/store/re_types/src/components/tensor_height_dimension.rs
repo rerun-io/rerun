@@ -26,8 +26,8 @@ pub struct TensorHeightDimension(pub crate::datatypes::TensorDimensionSelection)
 
 impl ::re_types_core::Component for TensorHeightDimension {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TensorHeightDimension")
+    fn name() -> ComponentName {
+        "rerun.components.TensorHeightDimension".into()
     }
 }
 

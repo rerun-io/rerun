@@ -30,8 +30,8 @@ pub struct ColumnShare(
 
 impl ::re_types_core::Component for ColumnShare {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ColumnShare")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ColumnShare".into()
     }
 }
 

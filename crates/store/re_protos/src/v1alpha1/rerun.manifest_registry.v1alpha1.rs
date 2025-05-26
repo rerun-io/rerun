@@ -98,7 +98,7 @@ impl ::prost::Name for RegisterWithDatasetBlockingResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteChunksRequest {
     #[prost(message, optional, tag = "1")]
-    pub entry: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+    pub chunk: ::core::option::Option<super::super::common::v1alpha1::RerunChunk>,
 }
 impl ::prost::Name for WriteChunksRequest {
     const NAME: &'static str = "WriteChunksRequest";
@@ -637,9 +637,9 @@ pub struct QueryLatestAt {
     ///
     /// This will perform a basic fuzzy match on the available columns' descriptors.
     /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLine`, etc.
+    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+    /// `SeriesLines`, etc.
     ///
     /// TODO(cmc): I shall bring that back into a more structured form later.
     /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
@@ -673,9 +673,9 @@ pub struct QueryRange {
     ///
     /// This will perform a basic fuzzy match on the available columns' descriptors.
     /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLine:StrokeWidth#width` index, all of the following
-    /// would match: `SeriesLine:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
-    /// `SeriesLine`, etc.
+    /// For example, given a `log_tick__SeriesLines:StrokeWidth#width` index, all of the following
+    /// would match: `SeriesLines:StrokeWidth#width`, `StrokeWidth`, `Stroke`, `Width`, `width`,
+    /// `SeriesLines`, etc.
     ///
     /// TODO(cmc): I shall bring that back into a more structured form later.
     /// repeated rerun.common.v1alpha1.ComponentDescriptor fuzzy_descriptors = 3;
@@ -1100,14 +1100,16 @@ pub mod manifest_registry_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Unimplemented.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        ///
+        /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         pub async fn write_chunks(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::WriteChunksRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::WriteChunksResponse>>,
-            tonic::Status,
-        > {
+        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
@@ -1120,7 +1122,7 @@ pub mod manifest_registry_service_client {
                 "rerun.manifest_registry.v1alpha1.ManifestRegistryService",
                 "WriteChunks",
             ));
-            self.inner.streaming(req, path, codec).await
+            self.inner.client_streaming(req, path, codec).await
         }
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
@@ -1435,16 +1437,15 @@ pub mod manifest_registry_service_server {
             tonic::Response<super::RegisterWithDatasetBlockingResponse>,
             tonic::Status,
         >;
-        /// Server streaming response type for the WriteChunks method.
-        type WriteChunksStream: tonic::codegen::tokio_stream::Stream<
-                Item = std::result::Result<super::WriteChunksResponse, tonic::Status>,
-            > + std::marker::Send
-            + 'static;
-        /// Unimplemented.
+        /// Write chunks to one or more partitions.
+        ///
+        /// The partition ID for each individual chunk is extracted from their metadata (`rerun.partition_id`).
+        ///
+        /// The destination dataset URL must be provided in the `x-rerun-dataset-url` header.
         async fn write_chunks(
             &self,
             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
-        ) -> std::result::Result<tonic::Response<Self::WriteChunksStream>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<super::WriteChunksResponse>, tonic::Status>;
         /// Returns the schema of the partition table (i.e. the dataset manifest) itself, *not* the underlying dataset.
         ///
         /// * To inspect the data of the partition table, use `ScanPartitionTable`.
@@ -1755,13 +1756,11 @@ pub mod manifest_registry_service_server {
                     #[allow(non_camel_case_types)]
                     struct WriteChunksSvc<T: ManifestRegistryService>(pub Arc<T>);
                     impl<T: ManifestRegistryService>
-                        tonic::server::StreamingService<super::WriteChunksRequest>
+                        tonic::server::ClientStreamingService<super::WriteChunksRequest>
                         for WriteChunksSvc<T>
                     {
                         type Response = super::WriteChunksResponse;
-                        type ResponseStream = T::WriteChunksStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
                             request: tonic::Request<tonic::Streaming<super::WriteChunksRequest>>,
@@ -1790,7 +1789,7 @@ pub mod manifest_registry_service_server {
                                 max_decoding_message_size,
                                 max_encoding_message_size,
                             );
-                        let res = grpc.streaming(method, req).await;
+                        let res = grpc.client_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

@@ -2,6 +2,7 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
+use re_types::ArchetypeName;
 use re_types::components::{self, FillMode};
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
@@ -92,6 +93,7 @@ where
         &mut self,
         query_context: &QueryContext<'_>,
         ent_context: &SpatialSceneEntityContext<'_>,
+        archetype_name: ArchetypeName,
         constant_instance_transform: glam::Affine3A,
         batch: ProcMeshBatch<'_, impl Iterator<Item = ProcMeshKey>, impl Iterator<Item = FillMode>>,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -103,10 +105,11 @@ where
 
         // Draw as many boxes as we have max(instances, boxes), all components get repeated over that number.
         // TODO(#7026): We should formalize this kind of hybrid joining better.
-        let num_instances = batch
-            .half_sizes
-            .len()
-            .max(ent_context.transform_info.reference_from_instances.len());
+
+        let reference_from_instances = ent_context
+            .transform_info
+            .reference_from_instances(archetype_name);
+        let num_instances = batch.half_sizes.len().max(reference_from_instances.len());
         let half_sizes = clamped_or_nothing(batch.half_sizes, num_instances);
 
         let annotation_infos = process_annotation_slices(
@@ -141,9 +144,10 @@ where
 
         let mut world_space_bounding_box = re_math::BoundingBox::NOTHING;
 
-        let world_from_instances = ent_context
-            .transform_info
-            .clamped_reference_from_instances();
+        let world_from_instances = reference_from_instances
+            .iter()
+            .chain(std::iter::repeat(reference_from_instances.last()))
+            .copied();
 
         let mut num_instances = 0;
         for (
@@ -236,9 +240,9 @@ where
                 entity_path,
                 num_instances,
                 overall_position: world_space_bounding_box.center(),
-                instance_positions: ent_context
-                    .transform_info
-                    .clamped_reference_from_instances()
+                instance_positions: reference_from_instances
+                    .iter()
+                    .chain(std::iter::repeat(reference_from_instances.last()))
                     .map(|t| t.translation.into()),
                 labels: batch.labels,
                 colors: &colors,

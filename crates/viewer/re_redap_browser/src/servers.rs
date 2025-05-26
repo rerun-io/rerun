@@ -2,9 +2,12 @@ use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
-
-use re_log_types::EntryId;
-use re_protos::manifest_registry::v1alpha1::DATASET_MANIFEST_ID_FIELD_NAME;
+use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
+use re_log_types::{EntityPathPart, EntryId};
+use re_protos::manifest_registry::v1alpha1::{
+    DATASET_MANIFEST_ID_FIELD_NAME, DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME,
+};
+use re_sorbet::BatchType;
 use re_ui::list_item::ItemActionButton;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::{
@@ -44,7 +47,7 @@ impl Server {
         self.entries = Entries::new(runtime, egui_ctx, self.origin.clone());
 
         // Note: this also drops the DataFusionTableWidget caches
-        self.tables_session_ctx.refresh(runtime, egui_ctx);
+        self.tables_session_ctx = TablesSessionContext::new(runtime, egui_ctx, self.origin.clone());
     }
 
     fn on_frame_start(&mut self) {
@@ -115,6 +118,8 @@ impl Server {
         ui: &mut egui::Ui,
         dataset: &Dataset,
     ) {
+        const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
+
         re_dataframe_ui::DataFusionTableWidget::new(
             self.tables_session_ctx.ctx.clone(),
             dataset.name(),
@@ -125,16 +130,45 @@ impl Server {
                 .send(Command::RefreshCollection(self.origin.clone()))
                 .ok();
         }))
-        .column_renamer(|desc| {
-            //TODO(ab): with this strategy, we do not display relevant entity path if any.
-            let name = desc.short_name();
+        .column_blueprint(|desc| {
+            let mut name = default_display_name_for_column(desc);
 
-            name.strip_prefix("rerun_")
-                .unwrap_or(name)
-                .replace('_', " ")
+            // strip prefix and remove underscores, _only_ for the base columns (aka not the
+            // properties)
+            name = name
+                .strip_prefix("rerun_")
+                .map(|name| name.replace('_', " "))
+                .unwrap_or(name);
+
+            let default_visible = if desc.entity_path().is_some_and(|entity_path| {
+                entity_path.starts_with(&std::iter::once(EntityPathPart::properties()).collect())
+            }) {
+                // Property column, just hide indicator components
+                //TODO(#8129): remove this when we no longer have indicator components
+                !desc
+                    .column_name(BatchType::Dataframe)
+                    .ends_with("Indicator")
+            } else {
+                matches!(
+                    desc.display_name().as_str(),
+                    RECORDING_LINK_COLUMN_NAME
+                        | DATASET_MANIFEST_ID_FIELD_NAME
+                        | DATASET_MANIFEST_REGISTRATION_TIME_FIELD_NAME
+                )
+            };
+
+            let mut blueprint = ColumnBlueprint::default()
+                .display_name(name)
+                .default_visibility(default_visible);
+
+            if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
+                blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
+            }
+
+            blueprint
         })
         .generate_partition_links(
-            "recording link",
+            RECORDING_LINK_COLUMN_NAME,
             DATASET_MANIFEST_ID_FIELD_NAME,
             self.origin.clone(),
             dataset.id(),

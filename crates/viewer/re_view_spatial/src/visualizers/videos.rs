@@ -12,7 +12,7 @@ use re_renderer::{
 use re_types::{
     Archetype as _,
     archetypes::{AssetVideo, VideoFrameReference},
-    components::{Blob, MediaType, VideoTimestamp},
+    components::{self, Blob, MediaType, VideoTimestamp},
 };
 use re_viewer_context::{
     IdentifiedViewSystem, MaybeVisualizableEntities, TypedComponentFallbackProvider, VideoCache,
@@ -34,6 +34,8 @@ use super::{
     entity_iterator::process_archetype,
 };
 
+// TODO(#9832): Support opacity for videos
+// TODO(jan): Fallback opacity in the same way as color/depth/segmentation images
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
 }
@@ -155,12 +157,16 @@ impl VideoFrameReferenceVisualizer {
         // Follow the reference to the video asset.
         let video_reference: EntityPath = video_references
             .and_then(|v| v.first().map(|e| e.as_str().into()))
-            .unwrap_or_else(|| self.fallback_for(ctx).as_str().into());
+            .unwrap_or_else(|| {
+                TypedComponentFallbackProvider::<components::EntityPath>::fallback_for(self, ctx)
+                    .as_str()
+                    .into()
+            });
         let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
 
         let world_from_entity = spatial_ctx
             .transform_info
-            .single_entity_transform_required(ctx.target_entity_path, Self::identifier().as_str());
+            .single_entity_transform_required(ctx.target_entity_path, VideoFrameReference::name());
 
         // Note that we may or may not know the video size independently of error occurrence.
         // (if it's just a decoding error we may still know the size from the container!)
@@ -229,6 +235,7 @@ impl VideoFrameReferenceVisualizer {
                                     texture_filter_magnification: TextureFilterMag::Nearest,
                                     texture_filter_minification: TextureFilterMin::Linear,
                                     outline_mask: spatial_ctx.highlight.overall,
+                                    depth_offset: spatial_ctx.depth_offset,
                                     ..Default::default()
                                 },
                             };
@@ -284,23 +291,34 @@ impl VideoFrameReferenceVisualizer {
         entity_path: &EntityPath,
     ) {
         let render_ctx = ctx.viewer_ctx.render_ctx();
+
+        let video_error_image = match re_ui::icons::VIDEO_ERROR
+            .load_image(ctx.viewer_ctx.egui_ctx(), egui::SizeHint::default())
+        {
+            Err(err) => {
+                re_log::error_once!("Failed to load video error icon: {err}");
+                return;
+            }
+            Ok(egui::load::ImagePoll::Ready { image }) => image,
+            Ok(egui::load::ImagePoll::Pending { .. }) => {
+                return; // wait for it to load
+            }
+        };
+
         let video_error_texture_result = render_ctx
             .texture_manager_2d
             .get_or_try_create_with::<image::ImageError>(
                 Hash64::hash("video_error").hash64(),
                 render_ctx,
                 || {
-                    let mut reader = image::ImageReader::new(std::io::Cursor::new(
-                        re_ui::icons::VIDEO_ERROR.png_bytes,
-                    ));
-                    reader.set_format(image::ImageFormat::Png);
-                    let dynamic_image = reader.decode()?;
-
                     Ok(ImageDataDesc {
                         label: "video_error".into(),
-                        data: std::borrow::Cow::Owned(dynamic_image.to_rgba8().to_vec()),
+                        data: std::borrow::Cow::Owned(video_error_image.as_raw().to_vec()),
                         format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb.into(),
-                        width_height: [dynamic_image.width(), dynamic_image.height()],
+                        width_height: [
+                            video_error_image.width() as _,
+                            video_error_image.height() as _,
+                        ],
                     })
                 },
             );
@@ -361,6 +379,7 @@ impl VideoFrameReferenceVisualizer {
                 texture_filter_magnification: TextureFilterMag::Linear,
                 texture_filter_minification: TextureFilterMin::Linear,
                 outline_mask: spatial_ctx.highlight.overall,
+                multiplicative_tint: egui::Rgba::from_rgb(0.5, 0.5, 0.5),
                 ..Default::default()
             },
         };
@@ -394,8 +413,9 @@ fn latest_at_query_video_from_datastore(
     );
 
     let blob_row_id = results.component_row_id(&AssetVideo::descriptor_blob())?;
-    let blob = results.component_instance::<Blob>(0)?;
-    let media_type = results.component_instance::<MediaType>(0);
+    let blob = results.component_instance::<Blob>(0, &AssetVideo::descriptor_blob())?;
+    let media_type =
+        results.component_instance::<MediaType>(0, &AssetVideo::descriptor_media_type());
 
     let video = ctx.store_context.caches.entry(|c: &mut VideoCache| {
         let debug_name = entity_path.to_string();
@@ -411,15 +431,16 @@ fn latest_at_query_video_from_datastore(
     Some((video, blob))
 }
 
-impl TypedComponentFallbackProvider<re_types::components::EntityPath>
-    for VideoFrameReferenceVisualizer
-{
-    fn fallback_for(
-        &self,
-        ctx: &re_viewer_context::QueryContext<'_>,
-    ) -> re_types::components::EntityPath {
+impl TypedComponentFallbackProvider<components::EntityPath> for VideoFrameReferenceVisualizer {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> components::EntityPath {
         ctx.target_entity_path.to_string().into()
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [re_types::components::EntityPath]);
+impl TypedComponentFallbackProvider<components::DrawOrder> for VideoFrameReferenceVisualizer {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> components::DrawOrder {
+        components::DrawOrder::DEFAULT_VIDEO_FRAME_REFERENCE
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [components::EntityPath, components::DrawOrder]);

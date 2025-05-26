@@ -242,7 +242,6 @@ impl Chunk {
     pub fn from_arrow_msg(msg: &re_log_types::ArrowMsg) -> ChunkResult<Self> {
         let re_log_types::ArrowMsg {
             chunk_id: _,
-            timepoint_max: _,
             batch,
             on_release: _,
         } = msg;
@@ -256,8 +255,7 @@ impl Chunk {
         self.sanity_check()?;
 
         Ok(re_log_types::ArrowMsg {
-            chunk_id: re_tuid::Tuid::from_u128(self.id().as_u128()),
-            timepoint_max: self.timepoint_max(),
+            chunk_id: self.id().as_tuid(),
             batch: self.to_record_batch()?,
             on_release: None,
         })
@@ -271,9 +269,9 @@ mod tests {
 
     use re_log_types::{
         EntityPath, Timeline,
-        example_components::{MyColor, MyPoint},
+        example_components::{MyColor, MyPoint, MyPoints},
     };
-    use re_types_core::{ChunkId, Component as _, Loggable as _, RowId};
+    use re_types_core::{ChunkId, Loggable as _, RowId};
 
     use super::*;
 
@@ -309,7 +307,7 @@ mod tests {
         let colors4 = None;
 
         let components = [
-            (MyPoint::descriptor(), {
+            (MyPoints::descriptor_points(), {
                 let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*points1),
                     points2,
@@ -320,7 +318,7 @@ mod tests {
                 assert_eq!(4, list_array.len());
                 list_array
             }),
-            (MyPoint::descriptor(), {
+            (MyPoints::descriptor_points(), {
                 let list_array = re_arrow_util::arrays_to_list_array_opt(&[
                     Some(&*colors1),
                     Some(&*colors2),

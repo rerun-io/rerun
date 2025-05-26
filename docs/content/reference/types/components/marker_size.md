@@ -22,5 +22,4 @@ float32
 
 ## Used by
 
-* [`SeriesPoint`](../archetypes/series_point.md)
 * [`SeriesPoints`](../archetypes/series_points.md)

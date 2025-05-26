@@ -120,7 +120,7 @@ impl EncodedImage {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.EncodedImage".into()),
+            archetype_name: None,
             component_name: "rerun.components.EncodedImageIndicator".into(),
             archetype_field_name: None,
         }
@@ -181,7 +181,9 @@ impl ::re_types_core::Archetype for EncodedImage {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        EncodedImageIndicator::DEFAULT.serialized().unwrap()
+        EncodedImageIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

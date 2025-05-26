@@ -202,7 +202,7 @@ impl LineStrips3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.LineStrips3D".into()),
+            archetype_name: None,
             component_name: "rerun.components.LineStrips3DIndicator".into(),
             archetype_field_name: None,
         }
@@ -267,7 +267,9 @@ impl ::re_types_core::Archetype for LineStrips3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        LineStrips3DIndicator::DEFAULT.serialized().unwrap()
+        LineStrips3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

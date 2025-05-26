@@ -57,6 +57,7 @@ snippet: views/spatial3d
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
+* [`Pinhole`](../archetypes/pinhole.md)
 * [`Points3D`](../archetypes/points3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)

@@ -1,25 +1,43 @@
 use egui::{Image, ImageSource};
 
+use crate::DesignTokens;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Icon {
-    /// Human readable unique id
-    pub id: &'static str,
+    /// Human readable unique id.
+    ///
+    /// This usually ends with `.png` or `.svg`.
+    uri: &'static str,
 
-    pub png_bytes: &'static [u8],
+    /// The raw contents of e.g. a PNG or SVG file.
+    image_bytes: &'static [u8],
 }
 
 impl Icon {
     #[inline]
-    pub const fn new(id: &'static str, png_bytes: &'static [u8]) -> Self {
-        Self { id, png_bytes }
+    pub const fn new(uri: &'static str, image_bytes: &'static [u8]) -> Self {
+        Self { uri, image_bytes }
+    }
+
+    pub fn uri(&self) -> &'static str {
+        self.uri
     }
 
     #[inline]
     pub fn as_image_source(&self) -> ImageSource<'static> {
         ImageSource::Bytes {
-            uri: self.id.into(),
-            bytes: self.png_bytes.into(),
+            uri: self.uri.into(),
+            bytes: self.image_bytes.into(),
         }
+    }
+
+    pub fn load_image(
+        &self,
+        egui_ctx: &egui::Context,
+        size_hint: egui::SizeHint,
+    ) -> egui::load::ImageLoadResult {
+        egui_ctx.include_bytes(self.uri(), self.image_bytes);
+        egui_ctx.try_load_image(self.uri(), size_hint)
     }
 
     #[inline]
@@ -27,6 +45,24 @@ impl Icon {
         // Default size is the same size as the source data specifies
         const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
         Image::new(self.as_image_source()).fit_to_original_size(ICON_SCALE)
+    }
+
+    #[inline]
+    pub fn as_button(&self) -> egui::Button<'_> {
+        egui::Button::image(self.as_image()).image_tint_follows_text_color(true)
+    }
+
+    #[inline]
+    pub fn as_button_with_label(
+        &self,
+        design_tokens: &DesignTokens,
+        label: impl Into<egui::WidgetText>,
+    ) -> egui::Button<'_> {
+        egui::Button::image_and_text(
+            self.as_image()
+                .tint(design_tokens.label_button_icon_color()),
+            label,
+        )
     }
 }
 
@@ -153,3 +189,4 @@ pub const SHIFT: Icon = icon_from_path!("../data/icons/shift.png");
 pub const CONTROL: Icon = icon_from_path!("../data/icons/control.png");
 pub const COMMAND: Icon = icon_from_path!("../data/icons/command.png");
 pub const OPTION: Icon = icon_from_path!("../data/icons/option.png");
+pub const COPY: Icon = icon_from_path!("../data/icons/copy.png");

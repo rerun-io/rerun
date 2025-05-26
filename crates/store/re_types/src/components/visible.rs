@@ -26,8 +26,8 @@ pub struct Visible(pub crate::datatypes::Bool);
 
 impl ::re_types_core::Component for Visible {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Visible")
+    fn name() -> ComponentName {
+        "rerun.components.Visible".into()
     }
 }
 

@@ -26,8 +26,8 @@ pub struct TriangleIndices(pub crate::datatypes::UVec3D);
 
 impl ::re_types_core::Component for TriangleIndices {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.TriangleIndices")
+    fn name() -> ComponentName {
+        "rerun.components.TriangleIndices".into()
     }
 }
 

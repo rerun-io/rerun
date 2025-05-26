@@ -13,7 +13,9 @@ impl rerun::Archetype for Custom {
     fn indicator() -> rerun::SerializedComponentBatch {
         use rerun::ComponentBatch as _;
         #[allow(clippy::unwrap_used)]
-        Self::Indicator::default().serialized().unwrap()
+        Self::Indicator::default()
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     fn name() -> rerun::ArchetypeName {
@@ -51,6 +53,16 @@ impl Custom {
             archetype_name: Some("Custom".into()),
             component_name: rerun::Color::name(),
             archetype_field_name: Some("colors".into()),
+        }
+    }
+
+    /// Returns the [`ComponentDescriptor`] for the associated indicator component.
+    #[inline]
+    pub fn descriptor_indicator() -> rerun::ComponentDescriptor {
+        rerun::ComponentDescriptor {
+            archetype_name: None,
+            component_name: "CustomIndicator".into(),
+            archetype_field_name: None,
         }
     }
 

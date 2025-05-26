@@ -711,7 +711,7 @@ pub struct ScanParameters {
 }
 
 impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
-    type Error = tonic::Status;
+    type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ScanParameters) -> Result<Self, Self::Error> {
         let order_by = if let Some(order_by) = value.order_by {
@@ -723,12 +723,7 @@ impl TryFrom<crate::common::v1alpha1::ScanParameters> for ScanParameters {
             columns: value.columns,
             on_missing_columns: crate::common::v1alpha1::IfMissingBehavior::try_from(
                 value.on_missing_columns,
-            )
-            .map_err(|err| {
-                tonic::Status::invalid_argument(format!(
-                    "unknown enum variant for IfMissingBehavior: {err}"
-                ))
-            })?
+            )?
             .into(),
             filter: value.filter,
             limit_offset: value.limit_offset,
@@ -765,7 +760,7 @@ pub struct ScanParametersOrderClause {
 }
 
 impl TryFrom<crate::common::v1alpha1::ScanParametersOrderClause> for ScanParametersOrderClause {
-    type Error = tonic::Status;
+    type Error = TypeConversionError;
 
     fn try_from(
         value: crate::common::v1alpha1::ScanParametersOrderClause,
@@ -773,9 +768,10 @@ impl TryFrom<crate::common::v1alpha1::ScanParametersOrderClause> for ScanParamet
         Ok(Self {
             descending: value.descending,
             nulls_last: value.nulls_last,
-            column_name: value
-                .column_name
-                .ok_or(tonic::Status::invalid_argument("column_name is required"))?,
+            column_name: value.column_name.ok_or(missing_field!(
+                crate::common::v1alpha1::ScanParametersOrderClause,
+                "column_name"
+            ))?,
         })
     }
 }

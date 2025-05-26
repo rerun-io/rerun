@@ -96,7 +96,7 @@ impl Clear {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Clear".into()),
+            archetype_name: None,
             component_name: "rerun.components.ClearIndicator".into(),
             archetype_field_name: None,
         }
@@ -144,7 +144,9 @@ impl crate::Archetype for Clear {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ClearIndicator::DEFAULT.serialized().unwrap()
+        ClearIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

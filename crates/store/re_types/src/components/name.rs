@@ -26,8 +26,8 @@ pub struct Name(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for Name {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Name")
+    fn name() -> ComponentName {
+        "rerun.components.Name".into()
     }
 }
 

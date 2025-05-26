@@ -50,7 +50,7 @@ pub fn generate_reflection(
             ComponentName,
             Component,
             Loggable as _,
-            LoggableBatch as _,
+            ComponentBatch as _,
             reflection::{
                 ArchetypeFieldReflection,
                 ArchetypeReflection,

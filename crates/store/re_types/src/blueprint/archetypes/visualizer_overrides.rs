@@ -54,7 +54,7 @@ impl VisualizerOverrides {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisualizerOverrides".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.VisualizerOverridesIndicator".into(),
             archetype_field_name: None,
         }
@@ -103,7 +103,9 @@ impl ::re_types_core::Archetype for VisualizerOverrides {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        VisualizerOverridesIndicator::DEFAULT.serialized().unwrap()
+        VisualizerOverridesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

@@ -86,10 +86,12 @@ re_build_info.workspace = true
 re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_memory.workspace = true
-rerun = { workspace = true, features = [
+rerun = { workspace = true, default-features = false, features = [
   "analytics",
+  "data_loaders",
   "glam",
   "image",
+  "log",
   "run",
   "server",
 ] }

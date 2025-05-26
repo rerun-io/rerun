@@ -172,7 +172,7 @@ impl SeriesPoints {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.SeriesPoints".into()),
+            archetype_name: None,
             component_name: "rerun.components.SeriesPointsIndicator".into(),
             archetype_field_name: None,
         }
@@ -232,7 +232,9 @@ impl ::re_types_core::Archetype for SeriesPoints {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        SeriesPointsIndicator::DEFAULT.serialized().unwrap()
+        SeriesPointsIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

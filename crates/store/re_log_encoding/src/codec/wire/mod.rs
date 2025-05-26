@@ -8,7 +8,10 @@ mod tests {
         wire::{decoder::Decode as _, encoder::Encode as _},
     };
     use re_chunk::{Chunk, RowId};
-    use re_log_types::{Timeline, example_components::MyPoint};
+    use re_log_types::{
+        Timeline,
+        example_components::{MyPoint, MyPoints},
+    };
     use re_protos::common::v1alpha1::{DataframePart, EncoderVersion};
 
     fn get_test_chunk() -> Chunk {
@@ -28,8 +31,16 @@ mod tests {
         let points2 = &[MyPoint::new(2.0, 2.0)];
 
         Chunk::builder("mypoints".into())
-            .with_component_batches(row_id1, timepoint1, [points1 as _])
-            .with_component_batches(row_id2, timepoint2, [points2 as _])
+            .with_component_batches(
+                row_id1,
+                timepoint1,
+                [(MyPoints::descriptor_points(), points1 as _)],
+            )
+            .with_component_batches(
+                row_id2,
+                timepoint2,
+                [(MyPoints::descriptor_points(), points2 as _)],
+            )
             .build()
             .unwrap()
     }

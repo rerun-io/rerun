@@ -314,7 +314,7 @@ impl AffixFuzzer1 {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.testing.archetypes.AffixFuzzer1".into()),
+            archetype_name: None,
             component_name: "rerun.testing.components.AffixFuzzer1Indicator".into(),
             archetype_field_name: None,
         }
@@ -408,7 +408,9 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        AffixFuzzer1Indicator::DEFAULT.serialized().unwrap()
+        AffixFuzzer1Indicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

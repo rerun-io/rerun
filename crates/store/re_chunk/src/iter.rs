@@ -912,7 +912,10 @@ mod tests {
     use std::sync::Arc;
 
     use itertools::{Itertools as _, izip};
-    use re_log_types::{EntityPath, TimeInt, TimePoint, example_components::MyPoint};
+    use re_log_types::{
+        EntityPath, TimeInt, TimePoint,
+        example_components::{MyPoint, MyPoints},
+    };
 
     use crate::{Chunk, RowId, Timeline};
 
@@ -942,11 +945,31 @@ mod tests {
 
         let chunk = Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batches(row_id1, timepoint1, [points1 as _])
-                .with_component_batches(row_id2, timepoint2, [points2 as _])
-                .with_component_batches(row_id3, timepoint3, [points3 as _])
-                .with_component_batches(row_id4, timepoint4, [points4 as _])
-                .with_component_batches(row_id5, timepoint5, [points5 as _])
+                .with_component_batches(
+                    row_id1,
+                    timepoint1,
+                    [(MyPoints::descriptor_points(), points1 as _)],
+                )
+                .with_component_batches(
+                    row_id2,
+                    timepoint2,
+                    [(MyPoints::descriptor_points(), points2 as _)],
+                )
+                .with_component_batches(
+                    row_id3,
+                    timepoint3,
+                    [(MyPoints::descriptor_points(), points3 as _)],
+                )
+                .with_component_batches(
+                    row_id4,
+                    timepoint4,
+                    [(MyPoints::descriptor_points(), points4 as _)],
+                )
+                .with_component_batches(
+                    row_id5,
+                    timepoint5,
+                    [(MyPoints::descriptor_points(), points5 as _)],
+                )
                 .build()?,
         );
 
@@ -990,11 +1013,31 @@ mod tests {
 
         let chunk = Arc::new(
             Chunk::builder(entity_path.clone())
-                .with_component_batches(row_id1, TimePoint::default(), [points1 as _])
-                .with_component_batches(row_id2, TimePoint::default(), [points2 as _])
-                .with_component_batches(row_id3, TimePoint::default(), [points3 as _])
-                .with_component_batches(row_id4, TimePoint::default(), [points4 as _])
-                .with_component_batches(row_id5, TimePoint::default(), [points5 as _])
+                .with_component_batches(
+                    row_id1,
+                    TimePoint::default(),
+                    [(MyPoints::descriptor_points(), points1 as _)],
+                )
+                .with_component_batches(
+                    row_id2,
+                    TimePoint::default(),
+                    [(MyPoints::descriptor_points(), points2 as _)],
+                )
+                .with_component_batches(
+                    row_id3,
+                    TimePoint::default(),
+                    [(MyPoints::descriptor_points(), points3 as _)],
+                )
+                .with_component_batches(
+                    row_id4,
+                    TimePoint::default(),
+                    [(MyPoints::descriptor_points(), points4 as _)],
+                )
+                .with_component_batches(
+                    row_id5,
+                    TimePoint::default(),
+                    [(MyPoints::descriptor_points(), points5 as _)],
+                )
                 .build()?,
         );
 

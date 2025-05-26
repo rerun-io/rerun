@@ -5,7 +5,7 @@ use std::sync::Arc;
 use datafusion::common::DataFusionError;
 use datafusion::prelude::SessionContext;
 
-use re_dataframe_ui::{DataFusionTableWidget, RequestedObject};
+use re_dataframe_ui::RequestedObject;
 use re_datafusion::{PartitionTableProvider, TableEntryTableProvider};
 use re_grpc_client::redap;
 use re_grpc_client::redap::ConnectionError;
@@ -35,6 +35,7 @@ pub enum SessionContextError {
 struct Table {
     #[expect(dead_code)]
     entry_id: EntryId,
+    #[expect(dead_code)]
     name: String,
 }
 
@@ -43,6 +44,7 @@ struct Table {
 //TODO(ab): add support for local caching of table data
 pub struct TablesSessionContext {
     pub ctx: Arc<SessionContext>,
+    #[expect(dead_code)]
     origin: re_uri::Origin,
 
     registered_tables: RequestedObject<Result<Vec<Table>, SessionContextError>>,
@@ -66,28 +68,9 @@ impl TablesSessionContext {
 
         Self {
             ctx,
-
             origin,
             registered_tables,
         }
-    }
-
-    /// Rebuild the entire session context and drop related [`DataFusionTableWidget`] caches.
-    pub fn refresh(&mut self, runtime: &AsyncRuntimeHandle, egui_ctx: &egui::Context) {
-        if let Some(Ok(tables)) = self.registered_tables.try_as_ref() {
-            for table in tables {
-                let table_name = table.name.as_str();
-
-                DataFusionTableWidget::clear_state(egui_ctx, &self.ctx, table_name);
-                self.ctx.deregister_table(table_name).ok();
-            }
-        }
-
-        self.registered_tables = RequestedObject::new_with_repaint(
-            runtime,
-            egui_ctx.clone(),
-            register_all_table_entries(self.ctx.clone(), self.origin.clone()),
-        );
     }
 
     pub fn on_frame_start(&mut self) {

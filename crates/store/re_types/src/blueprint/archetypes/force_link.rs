@@ -79,7 +79,7 @@ impl ForceLink {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceLink".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ForceLinkIndicator".into(),
             archetype_field_name: None,
         }
@@ -135,7 +135,9 @@ impl ::re_types_core::Archetype for ForceLink {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForceLinkIndicator::DEFAULT.serialized().unwrap()
+        ForceLinkIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

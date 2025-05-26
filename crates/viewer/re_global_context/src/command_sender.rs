@@ -1,11 +1,9 @@
+use crate::StoreHubEntry;
 use re_chunk::{EntityPath, Timeline};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::DataSource;
 use re_log_types::{ResolvedTimeRangeF, StoreId};
 use re_ui::{UICommand, UICommandSender};
-
-use crate::StoreHubEntry;
-
 // ----------------------------------------------------------------------------
 
 /// Commands used by internal system components
@@ -62,15 +60,14 @@ pub enum SystemCommand {
     /// Close all stores and show the welcome screen again.
     CloseAllEntries,
 
-    /// Update the blueprint with additional data
+    /// Add more data to a store (blueprint or recording).
     ///
-    /// The [`StoreId`] should generally be the currently selected blueprint
-    /// but is tracked manually to ensure self-consistency if the blueprint
-    /// is both modified and changed in the same frame.
+    /// Edit recordings with case: we generally regard recordings as immutable.
     ///
-    /// Instead of using this directly, consider using
-    /// [`crate::ViewerContext::save_blueprint_archetype`] or similar.
-    UpdateBlueprint(StoreId, Vec<Chunk>),
+    /// For blueprints,the [`StoreId`] should generally be the currently selected blueprint.
+    ///
+    /// Instead of using this directly, consider using `save_blueprint_archetype` or similar.
+    AppendToStore(StoreId, Vec<Chunk>),
 
     UndoBlueprint {
         blueprint_id: StoreId,

@@ -133,6 +133,7 @@ class LineStrips2D(Archetype):
             An optional floating point value that specifies the 2D drawing order of each line strip.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `20.0`.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
@@ -210,6 +211,7 @@ class LineStrips2D(Archetype):
             An optional floating point value that specifies the 2D drawing order of each line strip.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `20.0`.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
@@ -282,6 +284,7 @@ class LineStrips2D(Archetype):
             An optional floating point value that specifies the 2D drawing order of each line strip.
 
             Objects with higher values are drawn on top of those with lower values.
+            Defaults to `20.0`.
         class_ids:
             Optional [`components.ClassId`][rerun.components.ClassId]s for the lines.
 
@@ -400,6 +403,7 @@ class LineStrips2D(Archetype):
     # An optional floating point value that specifies the 2D drawing order of each line strip.
     #
     # Objects with higher values are drawn on top of those with lower values.
+    # Defaults to `20.0`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -73,7 +73,7 @@ on_success = "back" # so that we don't open the browser at each change
 # way. Don't forget the `--color always` part or the errors won't be
 # properly parsed.
 [jobs.run]
-command = ["cargo", "run", "--color=always"]
+command = ["pixi", "run", "rerun"]
 need_stdout = true
 
 # You may define here keybindings that would be specific to

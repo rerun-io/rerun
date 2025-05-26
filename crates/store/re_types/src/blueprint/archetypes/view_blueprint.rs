@@ -98,7 +98,7 @@ impl ViewBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ViewBlueprintIndicator".into(),
             archetype_field_name: None,
         }
@@ -155,7 +155,9 @@ impl ::re_types_core::Archetype for ViewBlueprint {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ViewBlueprintIndicator::DEFAULT.serialized().unwrap()
+        ViewBlueprintIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

@@ -55,7 +55,7 @@ impl VisibleTimeRanges {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.VisibleTimeRanges".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.VisibleTimeRangesIndicator".into(),
             archetype_field_name: None,
         }
@@ -103,7 +103,9 @@ impl ::re_types_core::Archetype for VisibleTimeRanges {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        VisibleTimeRangesIndicator::DEFAULT.serialized().unwrap()
+        VisibleTimeRangesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

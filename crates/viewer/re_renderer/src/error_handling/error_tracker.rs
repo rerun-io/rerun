@@ -121,11 +121,11 @@ impl ErrorTracker {
                     description: description.clone(),
                 };
 
-                let should_log = match _source.downcast::<wgpu::core::error::ContextError>() {
+                let should_log = match _source.downcast::<wgpu::wgc::error::ContextError>() {
                     Ok(ctx_err) => {
                         if ctx_err
                             .source
-                            .downcast_ref::<wgpu::core::command::CommandEncoderError>()
+                            .downcast_ref::<wgpu::wgc::command::CommandEncoderError>()
                             .is_some()
                         {
                             // Actual command encoder errors never carry any meaningful

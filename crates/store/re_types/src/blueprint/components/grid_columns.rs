@@ -30,8 +30,8 @@ pub struct GridColumns(
 
 impl ::re_types_core::Component for GridColumns {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.GridColumns")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.GridColumns".into()
     }
 }
 

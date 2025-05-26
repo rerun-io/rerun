@@ -739,7 +739,7 @@ def connect_grpc(
     default_blueprint: Optional[PyMemorySinkStorage] = None,
     recording: Optional[PyRecordingStream] = None,
 ) -> None:
-    """Connect the recording stream to a remote Rerun Viewer on the given HTTP(S) URL."""
+    """Connect the recording stream to a remote Rerun Viewer on the given URL."""
 
 def connect_grpc_blueprint(
     url: Optional[str],
@@ -817,8 +817,7 @@ def disconnect(recording: Optional[PyRecordingStream] = None) -> None:
     """
     Disconnect from remote server (if any).
 
-    Subsequent log messages will be buffered and either sent on the next call to `connect`,
-    or shown with `show`.
+    Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
 def flush(blocking: bool, recording: Optional[PyRecordingStream] = None) -> None:

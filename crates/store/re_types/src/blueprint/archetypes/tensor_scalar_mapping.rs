@@ -83,7 +83,7 @@ impl TensorScalarMapping {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
             archetype_field_name: None,
         }
@@ -140,7 +140,9 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TensorScalarMappingIndicator::DEFAULT.serialized().unwrap()
+        TensorScalarMappingIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

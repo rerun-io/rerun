@@ -4,7 +4,7 @@ use egui_tiles::TileId;
 
 use re_log_types::EntityPath;
 
-use crate::global_context::Item;
+use crate::Item;
 use crate::{BlueprintId, BlueprintIdRegistry, ContainerId, ViewId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

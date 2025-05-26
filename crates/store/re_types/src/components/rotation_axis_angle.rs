@@ -29,8 +29,8 @@ pub struct RotationAxisAngle(pub crate::datatypes::RotationAxisAngle);
 
 impl ::re_types_core::Component for RotationAxisAngle {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.RotationAxisAngle")
+    fn name() -> ComponentName {
+        "rerun.components.RotationAxisAngle".into()
     }
 }
 

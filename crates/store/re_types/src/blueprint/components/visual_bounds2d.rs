@@ -31,8 +31,8 @@ pub struct VisualBounds2D(
 
 impl ::re_types_core::Component for VisualBounds2D {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.VisualBounds2D")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.VisualBounds2D".into()
     }
 }
 

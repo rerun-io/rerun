@@ -30,6 +30,13 @@ pub trait HarnessExt {
         broken_percent_threshold: f64,
     );
 
+    fn try_snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    ) -> bool;
+
     fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels: i32);
 }
 
@@ -55,6 +62,38 @@ impl HarnessExt for egui_kittest::Harness<'_> {
                         broken_percent <= broken_percent_threshold,
                         "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
                     );
+                }
+
+                _ => panic!("{name} failed: {err}"),
+            },
+        }
+    }
+
+    fn try_snapshot_with_broken_pixels_threshold(
+        &mut self,
+        name: &str,
+        num_pixels: u64,
+        broken_percent_threshold: f64,
+    ) -> bool {
+        match self.try_snapshot(name) {
+            Ok(_) => true,
+
+            Err(err) => match err {
+                egui_kittest::SnapshotError::Diff {
+                    name,
+                    diff: num_broken_pixels,
+                    diff_path,
+                } => {
+                    let broken_percent = num_broken_pixels as f64 / num_pixels as f64;
+                    re_log::debug!(num_pixels, num_broken_pixels, broken_percent);
+                    if broken_percent >= broken_percent_threshold {
+                        re_log::error!(
+                            "{name} failed because {broken_percent} > {broken_percent_threshold}\n{diff_path:?}"
+                        );
+                        return false;
+                    }
+
+                    true
                 }
 
                 _ => panic!("{name} failed: {err}"),
@@ -137,17 +176,7 @@ impl Default for TestContext {
 
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
 
-        let component_ui_registry = ComponentUiRegistry::new(Box::new(
-            |_ctx,
-             _ui,
-             _ui_layout,
-             _query,
-             _db,
-             _entity_path,
-             _row_id,
-             _component_descriptor,
-             _component| {},
-        ));
+        let component_ui_registry = ComponentUiRegistry::new();
 
         let reflection =
             re_types::reflection::generate_reflection().expect("Failed to generate reflection");
@@ -256,7 +285,7 @@ fn init_shared_renderer_setup() -> SharedWgpuResources {
     let device_caps = re_renderer::device_caps::DeviceCaps::from_adapter(&adapter)
         .expect("Failed to determine device capabilities");
     let (device, queue) =
-        pollster::block_on(adapter.request_device(&device_caps.device_descriptor(), None))
+        pollster::block_on(adapter.request_device(&device_caps.device_descriptor()))
             .expect("Failed to request device.");
 
     SharedWgpuResources {
@@ -369,12 +398,13 @@ impl TestContext {
             global_context: GlobalContext {
                 app_options: &Default::default(),
                 reflection: &self.reflection,
-                component_ui_registry: &self.component_ui_registry,
-                view_class_registry: &self.view_class_registry,
+
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
             },
+            component_ui_registry: &self.component_ui_registry,
+            view_class_registry: &self.view_class_registry,
             store_context: &store_context,
             active_redap_entry: None,
             active_table_id: None,
@@ -474,13 +504,21 @@ impl TestContext {
             let mut handled = true;
             let command_name = format!("{command:?}");
             match command {
-                SystemCommand::UpdateBlueprint(store_id, chunks) => {
-                    assert_eq!(store_id, self.blueprint_store.store_id());
-
-                    for chunk in chunks {
-                        self.blueprint_store
-                            .add_chunk(&Arc::new(chunk))
-                            .expect("Updating the blueprint chunk store failed");
+                SystemCommand::AppendToStore(store_id, chunks) => {
+                    if store_id == self.recording_store.store_id() {
+                        for chunk in chunks {
+                            self.recording_store
+                                .add_chunk(&Arc::new(chunk))
+                                .expect("Updating the recording chunk store failed");
+                        }
+                    } else if store_id == self.blueprint_store.store_id() {
+                        for chunk in chunks {
+                            self.blueprint_store
+                                .add_chunk(&Arc::new(chunk))
+                                .expect("Updating the blueprint chunk store failed");
+                        }
+                    } else {
+                        panic!("Unknown store id: {store_id:?}");
                     }
                 }
 

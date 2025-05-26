@@ -95,7 +95,7 @@ impl AnnotationContext {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
+            archetype_name: None,
             component_name: "rerun.components.AnnotationContextIndicator".into(),
             archetype_field_name: None,
         }
@@ -143,7 +143,9 @@ impl ::re_types_core::Archetype for AnnotationContext {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        AnnotationContextIndicator::DEFAULT.serialized().unwrap()
+        AnnotationContextIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

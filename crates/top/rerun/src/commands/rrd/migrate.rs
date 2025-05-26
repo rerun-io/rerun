@@ -120,7 +120,6 @@ fn migrate_from_to(from_path: &Utf8PathBuf, to_path: &Utf8PathBuf) -> anyhow::Re
                             store_id,
                             re_log_types::ArrowMsg {
                                 chunk_id: arrow_msg.chunk_id,
-                                timepoint_max: arrow_msg.timepoint_max.clone(),
                                 batch,
                                 on_release: None,
                             },

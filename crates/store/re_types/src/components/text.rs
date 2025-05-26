@@ -26,8 +26,8 @@ pub struct Text(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for Text {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Text")
+    fn name() -> ComponentName {
+        "rerun.components.Text".into()
     }
 }
 

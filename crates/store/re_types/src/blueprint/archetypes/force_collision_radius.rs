@@ -79,7 +79,7 @@ impl ForceCollisionRadius {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ForceCollisionRadius".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ForceCollisionRadiusIndicator".into(),
             archetype_field_name: None,
         }
@@ -136,7 +136,9 @@ impl ::re_types_core::Archetype for ForceCollisionRadius {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ForceCollisionRadiusIndicator::DEFAULT.serialized().unwrap()
+        ForceCollisionRadiusIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

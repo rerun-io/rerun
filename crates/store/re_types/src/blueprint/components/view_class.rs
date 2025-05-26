@@ -28,8 +28,8 @@ pub struct ViewClass(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for ViewClass {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.blueprint.components.ViewClass")
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ViewClass".into()
     }
 }
 

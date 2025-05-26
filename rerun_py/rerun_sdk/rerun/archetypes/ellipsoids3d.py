@@ -29,9 +29,8 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     (e.g. a bounding sphere).
     For points whose radii are for the sake of visualization, use [`archetypes.Points3D`][rerun.archetypes.Points3D] instead.
 
-    Note that orienting and placing the ellipsoids/spheres is handled via `[archetypes.InstancePoses3D]`.
-    Some of its component are repeated here for convenience.
-    If there's more instance poses than half sizes, the last half size will be repeated for the remaining poses.
+    If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
+    Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D] and [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
 
     Example
     -------
@@ -123,17 +122,14 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             Optional center positions of the ellipsoids.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the ellipsoids.
         line_radii:
@@ -213,17 +209,14 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
             Optional center positions of the ellipsoids.
 
             If not specified, the centers will be at (0, 0, 0).
-            Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         rotation_axis_angles:
             Rotations via axis + angle.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         quaternions:
             Rotations via quaternion.
 
             If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-            Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
         colors:
             Optional colors for the ellipsoids.
         line_radii:
@@ -321,7 +314,6 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     # Optional center positions of the ellipsoids.
     #
     # If not specified, the centers will be at (0, 0, 0).
-    # Note that this uses a [`components.PoseTranslation3D`][rerun.components.PoseTranslation3D] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -333,7 +325,6 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     # Rotations via axis + angle.
     #
     # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationAxisAngle`][rerun.components.PoseRotationAxisAngle] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -345,7 +336,6 @@ class Ellipsoids3D(Ellipsoids3DExt, Archetype):
     # Rotations via quaternion.
     #
     # If no rotation is specified, the axes of the ellipsoid align with the axes of the local coordinate system.
-    # Note that this uses a [`components.PoseRotationQuat`][rerun.components.PoseRotationQuat] which is also used by [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -26,8 +26,8 @@ pub struct LatLon(pub crate::datatypes::DVec2D);
 
 impl ::re_types_core::Component for LatLon {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.LatLon")
+    fn name() -> ComponentName {
+        "rerun.components.LatLon".into()
     }
 }
 

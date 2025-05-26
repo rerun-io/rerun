@@ -8,56 +8,90 @@ use egui_table::{CellInfo, HeaderCellInfo};
 use nohash_hasher::IntMap;
 
 use re_log_types::{EntryId, TimelineName};
-use re_sorbet::{BatchType, ColumnDescriptorRef, SorbetSchema};
+use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::UiExt as _;
 use re_ui::list_item::ItemButton;
 use re_viewer_context::{AsyncRuntimeHandle, ViewerContext};
 
-use crate::DisplayRecordBatch;
 use crate::datafusion_adapter::DataFusionAdapter;
-use crate::table_blueprint::{PartitionLinksSpec, SortBy, SortDirection, TableBlueprint};
+use crate::table_blueprint::{
+    ColumnBlueprint, PartitionLinksSpec, SortBy, SortDirection, TableBlueprint,
+};
 use crate::table_utils::{
     CELL_MARGIN, ColumnConfig, TableConfig, apply_table_style_fixes, cell_ui, header_ui,
 };
+use crate::{DisplayRecordBatch, default_display_name_for_column};
 
-/// Keep track of the columns in a sorbet batch, indexed by id.
-//TODO(ab): merge this into `TableConfig` when table config is no longer used elsewhere.
+struct Column<'a> {
+    /// The ID of the column (based on it's corresponding [`re_sorbet::ColumnDescriptor`]).
+    id: egui::Id,
+
+    /// Reference to the descriptor of this column.
+    desc: ColumnDescriptorRef<'a>,
+
+    /// The blueprint of this column.
+    blueprint: ColumnBlueprint,
+}
+
+impl Column<'_> {
+    fn display_name(&self) -> String {
+        self.blueprint
+            .display_name
+            .clone()
+            .unwrap_or_else(|| default_display_name_for_column(&self.desc))
+    }
+}
+
+/// Keep track of a [`re_sorbet::SorbetBatch`]'s columns, along with their order and their blueprint.
 struct Columns<'a> {
-    /// Column index and descriptor from id
-    inner: IntMap<egui::Id, (usize, ColumnDescriptorRef<'a>)>,
+    columns: Vec<Column<'a>>,
+    column_from_index: IntMap<egui::Id, usize>,
 }
 
 impl<'a> Columns<'a> {
-    fn from(sorbet_schema: &'a SorbetSchema) -> Self {
-        let inner = sorbet_schema
+    fn from(sorbet_schema: &'a SorbetSchema, column_blueprint_fn: &ColumnBlueprintFn<'_>) -> Self {
+        let (columns, column_from_index) = sorbet_schema
             .columns
             .iter()
             .enumerate()
-            .map(|(index, desc)| (egui::Id::new(desc), (index, desc.into())))
-            .collect::<IntMap<_, _>>();
+            .map(|(index, desc)| {
+                let id = egui::Id::new(desc);
+                let desc = desc.into();
+                let blueprint = column_blueprint_fn(&desc);
 
-        Self { inner }
+                let column = Column {
+                    id,
+                    desc,
+                    blueprint,
+                };
+
+                (column, (id, index))
+            })
+            .unzip();
+
+        Self {
+            columns,
+            column_from_index,
+        }
     }
 }
 
 impl Columns<'_> {
-    fn descriptors(&self) -> impl Iterator<Item = &ColumnDescriptorRef<'_>> {
-        self.inner.values().map(|(_, desc)| desc)
+    fn iter(&self) -> impl Iterator<Item = &Column<'_>> {
+        self.columns.iter()
     }
 
     fn index_from_id(&self, id: Option<egui::Id>) -> Option<usize> {
-        id.and_then(|id| self.inner.get(&id).map(|(index, _)| *index))
+        id.and_then(|id| self.column_from_index.get(&id).copied())
     }
 
-    fn index_and_descriptor_from_id(
-        &self,
-        id: Option<egui::Id>,
-    ) -> Option<(usize, &ColumnDescriptorRef<'_>)> {
-        id.and_then(|id| self.inner.get(&id).map(|(index, desc)| (*index, desc)))
+    fn index_and_column_from_id(&self, id: Option<egui::Id>) -> Option<(usize, &Column<'_>)> {
+        id.and_then(|id| self.column_from_index.get(&id).copied())
+            .and_then(|index| self.columns.get(index).map(|column| (index, column)))
     }
 }
 
-type ColumnRenamerFn<'a> = Option<Box<dyn Fn(&ColumnDescriptorRef<'_>) -> String + 'a>>;
+type ColumnBlueprintFn<'a> = Box<dyn Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a>;
 
 pub struct DataFusionTableWidget<'a> {
     session_ctx: Arc<SessionContext>,
@@ -70,10 +104,8 @@ pub struct DataFusionTableWidget<'a> {
     /// If provided and if `title` is set, add a button next to the title.
     title_button: Option<Box<dyn ItemButton + 'a>>,
 
-    /// Closure used to determine the display name of the column.
-    ///
-    /// Defaults to using [`ColumnDescriptorRef::name`].
-    column_renamer: ColumnRenamerFn<'a>,
+    /// User-provided closure to provide column blueprint.
+    column_blueprint_fn: ColumnBlueprintFn<'a>,
 
     /// The blueprint used the first time the table is queried.
     initial_blueprint: TableBlueprint,
@@ -99,7 +131,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
             title: None,
             title_button: None,
-            column_renamer: None,
+            column_blueprint_fn: Box::new(|_| ColumnBlueprint::default()),
             initial_blueprint: Default::default(),
         }
     }
@@ -116,11 +148,11 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
-    pub fn column_renamer(
+    pub fn column_blueprint(
         mut self,
-        renamer: impl Fn(&ColumnDescriptorRef<'_>) -> String + 'a,
+        column_blueprint_fn: impl Fn(&ColumnDescriptorRef<'_>) -> ColumnBlueprint + 'a,
     ) -> Self {
-        self.column_renamer = Some(Box::new(renamer));
+        self.column_blueprint_fn = Box::new(column_blueprint_fn);
 
         self
     }
@@ -153,7 +185,7 @@ impl<'a> DataFusionTableWidget<'a> {
             table_ref,
             title,
             title_button,
-            column_renamer,
+            column_blueprint_fn,
             initial_blueprint,
         } = self;
 
@@ -231,7 +263,7 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|record_batch| record_batch.num_rows() as u64)
             .sum();
 
-        let columns = Columns::from(sorbet_schema);
+        let columns = Columns::from(sorbet_schema, &column_blueprint_fn);
 
         let display_record_batches = sorbet_batches
             .iter()
@@ -239,7 +271,8 @@ impl<'a> DataFusionTableWidget<'a> {
                 DisplayRecordBatch::try_new(
                     sorbet_batch
                         .all_columns_ref()
-                        .map(|(desc, array)| (desc, array.clone())),
+                        .zip(columns.iter())
+                        .map(|((desc, array), column)| (desc, &column.blueprint, array.clone())),
                 )
             })
             .collect::<Result<Vec<_>, _>>();
@@ -256,14 +289,12 @@ impl<'a> DataFusionTableWidget<'a> {
         let mut table_config = TableConfig::get_with_columns(
             ui.ctx(),
             id,
-            columns.descriptors().map(|c| {
-                let name = if let Some(renamer) = &column_renamer {
-                    renamer(c)
-                } else {
-                    c.name(BatchType::Dataframe)
-                };
-
-                ColumnConfig::new(Id::new(c), name)
+            columns.iter().map(|column| {
+                ColumnConfig::new_with_visible(
+                    column.id,
+                    column.display_name(),
+                    column.blueprint.default_visibility,
+                )
             }),
         );
 
@@ -280,7 +311,6 @@ impl<'a> DataFusionTableWidget<'a> {
             fields,
             display_record_batches: &display_record_batches,
             columns: &columns,
-            column_renamer: &column_renamer,
             blueprint: table_state.blueprint(),
             new_blueprint: &mut new_blueprint,
             table_config,
@@ -348,7 +378,6 @@ struct DataFusionTableDelegate<'a> {
     fields: &'a Fields,
     display_record_batches: &'a Vec<DisplayRecordBatch>,
     columns: &'a Columns<'a>,
-    column_renamer: &'a ColumnRenamerFn<'a>,
     blueprint: &'a TableBlueprint,
     new_blueprint: &'a mut TableBlueprint,
     table_config: TableConfig,
@@ -360,61 +389,70 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
 
         let id = self.table_config.visible_column_ids().nth(cell.group_index);
 
-        if let Some((index, desc)) = self.columns.index_and_descriptor_from_id(id) {
-            let column_name = self.fields[index].name();
-            let name = if let Some(renamer) = self.column_renamer {
-                renamer(desc)
-            } else {
-                desc.name(BatchType::Dataframe)
-            };
+        if let Some((index, column)) = self.columns.index_and_column_from_id(id) {
+            let column_dataframe_name = self.fields[index].name();
+            let column_display_name = column.display_name();
 
             let current_sort_direction = self.blueprint.sort_by.as_ref().and_then(|sort_by| {
-                (sort_by.column.as_str() == column_name).then_some(&sort_by.direction)
+                (sort_by.column.as_str() == column_dataframe_name).then_some(&sort_by.direction)
             });
 
             header_ui(ui, |ui| {
-                egui::Sides::new().show(
-                    ui,
-                    |ui| {
-                        ui.label(egui::RichText::new(name).strong().monospace());
-
-                        if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon) {
-                            ui.add_space(-5.0);
-                            ui.small_icon(
-                                dir_icon,
-                                Some(
-                                    re_ui::design_tokens()
-                                        .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
-                                ),
+                egui::Sides::new()
+                    .show(
+                        ui,
+                        |ui| {
+                            let response = ui.label(
+                                egui::RichText::new(column_display_name)
+                                    .strong()
+                                    .monospace(),
                             );
-                        }
-                    },
-                    |ui| {
-                        egui::containers::menu::MenuButton::from_button(
-                            ui.small_icon_button_widget(&re_ui::icons::MORE),
-                        )
-                        .ui(ui, |ui| {
-                            for sort_direction in SortDirection::iter() {
-                                let already_sorted =
-                                    Some(&sort_direction) == current_sort_direction;
 
-                                if ui
-                                    .add_enabled_ui(!already_sorted, |ui| {
-                                        sort_direction.menu_button(ui)
-                                    })
-                                    .inner
-                                    .clicked()
-                                {
-                                    self.new_blueprint.sort_by = Some(SortBy {
-                                        column: column_name.to_owned(),
-                                        direction: sort_direction,
-                                    });
-                                    ui.close();
-                                }
+                            if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
+                            {
+                                ui.add_space(-5.0);
+                                ui.small_icon(
+                                    dir_icon,
+                                    Some(
+                                        ui.design_tokens()
+                                            .color(re_ui::ColorToken::blue(re_ui::Scale::S450)),
+                                    ),
+                                );
                             }
-                        });
-                    },
-                );
+
+                            response
+                        },
+                        |ui| {
+                            egui::containers::menu::MenuButton::from_button(
+                                ui.small_icon_button_widget(&re_ui::icons::MORE),
+                            )
+                            .ui(ui, |ui| {
+                                for sort_direction in SortDirection::iter() {
+                                    let already_sorted =
+                                        Some(&sort_direction) == current_sort_direction;
+
+                                    if ui
+                                        .add_enabled_ui(!already_sorted, |ui| {
+                                            sort_direction.menu_button(ui)
+                                        })
+                                        .inner
+                                        .clicked()
+                                    {
+                                        self.new_blueprint.sort_by = Some(SortBy {
+                                            column: column_dataframe_name.to_owned(),
+                                            direction: sort_direction,
+                                        });
+                                        ui.close();
+                                    }
+                                }
+                            });
+                        },
+                    )
+                    .0
+            })
+            .inner
+            .on_hover_ui(|ui| {
+                column_descriptor_ui(ui, &column.desc);
             });
         }
     }
@@ -460,4 +498,95 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
     fn default_row_height(&self) -> f32 {
         re_ui::DesignTokens::table_line_height() + CELL_MARGIN.sum().y
     }
+}
+
+fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>) {
+    match *column {
+        ColumnDescriptorRef::RowId(desc) => {
+            let re_sorbet::RowIdColumnDescriptor { is_sorted } = desc;
+
+            header_property_ui(ui, "Type", "row id");
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
+        }
+        ColumnDescriptorRef::Time(desc) => {
+            let re_sorbet::IndexColumnDescriptor {
+                timeline,
+                datatype,
+                is_sorted,
+            } = desc;
+
+            header_property_ui(ui, "Type", "index");
+            header_property_ui(ui, "Timeline", timeline.name());
+            header_property_ui(ui, "Sorted", sorted_text(*is_sorted));
+            datatype_ui(ui, &column.display_name(), datatype);
+        }
+        ColumnDescriptorRef::Component(desc) => {
+            let re_sorbet::ComponentColumnDescriptor {
+                store_datatype,
+                component_name,
+                entity_path,
+                archetype_name,
+                archetype_field_name,
+                is_static,
+                is_indicator,
+                is_tombstone,
+                is_semantically_empty,
+            } = desc;
+
+            header_property_ui(ui, "Type", "component");
+            header_property_ui(ui, "Component", component_name.full_name());
+            header_property_ui(ui, "Entity path", entity_path.to_string());
+            datatype_ui(ui, &column.display_name(), store_datatype);
+            header_property_ui(
+                ui,
+                "Archetype",
+                archetype_name.map(|a| a.full_name()).unwrap_or("-"),
+            );
+            //TODO(#9978): update this if we rename this descriptor field.
+            header_property_ui(
+                ui,
+                "Archetype field",
+                archetype_field_name.map(|a| a.as_str()).unwrap_or("-"),
+            );
+            header_property_ui(ui, "Static", is_static.to_string());
+            header_property_ui(ui, "Indicator", is_indicator.to_string());
+            header_property_ui(ui, "Tombstone", is_tombstone.to_string());
+            header_property_ui(ui, "Empty", is_semantically_empty.to_string());
+        }
+    }
+}
+
+fn sorted_text(sorted: bool) -> &'static str {
+    if sorted { "true" } else { "unknown" }
+}
+
+fn header_property_ui(ui: &mut egui::Ui, label: &str, value: impl AsRef<str>) {
+    egui::Sides::new().show(ui, |ui| ui.strong(label), |ui| ui.monospace(value.as_ref()));
+}
+
+fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes::DataType) {
+    egui::Sides::new().show(
+        ui,
+        |ui| ui.strong("Datatype"),
+        |ui| {
+            // We don't want the copy button to stand out next to the other properties. The copy
+            // icon already indicates that it's a button.
+            ui.visuals_mut().widgets.inactive.fg_stroke =
+                ui.visuals_mut().widgets.noninteractive.fg_stroke;
+
+            if ui
+                .add(
+                    egui::Button::image_and_text(
+                        re_ui::icons::COPY.as_image(),
+                        egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace(),
+                    )
+                    .image_tint_follows_text_color(true),
+                )
+                .clicked()
+            {
+                ui.ctx().copy_text(format!("{datatype:#?}"));
+                re_log::info!("Copied full datatype of column `{column_name}` to clipboard");
+            }
+        },
+    );
 }

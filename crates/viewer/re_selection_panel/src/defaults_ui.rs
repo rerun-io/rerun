@@ -134,7 +134,7 @@ fn active_default_ui(
                     &query_context,
                     ui,
                     db,
-                    &view.defaults_path,
+                    view.defaults_path.clone(),
                     component_descr,
                     None, // No cache key.
                     default_value,
@@ -154,7 +154,10 @@ fn active_default_ui(
                 )
                 .min_desired_width(150.0)
                 .action_button(&re_ui::icons::CLOSE, || {
-                    ctx.clear_blueprint_component(&view.defaults_path, component_descr.clone());
+                    ctx.clear_blueprint_component(
+                        view.defaults_path.clone(),
+                        component_descr.clone(),
+                    );
                 })
                 .value_fn(|ui, _| value_fn(ui)),
             )
@@ -284,7 +287,7 @@ fn components_to_show_in_add_menu(
         if components_to_show_in_add_menu.is_empty() {
             return Err(format!(
                 "Rerun lacks edit UI for: {}",
-                missing_editors.iter().map(|c| c.short_name()).join(", ")
+                missing_editors.iter().map(|c| c.display_name()).join(", ")
             ));
         }
     }
@@ -368,7 +371,7 @@ fn add_new_default(
         Ok(chunk) => {
             ctx.viewer_ctx
                 .command_sender()
-                .send_system(SystemCommand::UpdateBlueprint(
+                .send_system(SystemCommand::AppendToStore(
                     ctx.blueprint_db().store_id().clone(),
                     vec![chunk],
                 ));

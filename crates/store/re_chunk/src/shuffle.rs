@@ -308,9 +308,8 @@ impl TimeColumn {
 mod tests {
     use re_log_types::{
         EntityPath, Timeline,
-        example_components::{MyColor, MyPoint},
+        example_components::{MyColor, MyPoint, MyPoints},
     };
-    use re_types_core::Component as _;
 
     use crate::{ChunkId, RowId};
 
@@ -348,32 +347,32 @@ mod tests {
                     RowId::new(),
                     [(timeline1, 1000), (timeline2, 42)],
                     [
-                        (MyPoint::descriptor(), Some(&points1 as _)),
-                        (MyColor::descriptor(), Some(&colors1 as _)),
+                        (MyPoints::descriptor_points(), Some(&points1 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1001), (timeline2, 43)],
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(&colors2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(&colors2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1002), (timeline2, 44)],
                     [
-                        (MyPoint::descriptor(), Some(&points3 as _)),
-                        (MyColor::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(&points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1003), (timeline2, 45)],
                     [
-                        (MyPoint::descriptor(), Some(&points4 as _)),
-                        (MyColor::descriptor(), Some(&colors4 as _)),
+                        (MyPoints::descriptor_points(), Some(&points4 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors4 as _)),
                     ],
                 )
                 .build()?;
@@ -449,32 +448,32 @@ mod tests {
                     row_id1,
                     [(timeline1, 1000), (timeline2, 45)],
                     [
-                        (MyPoint::descriptor(), Some(&points1 as _)),
-                        (MyColor::descriptor(), Some(&colors1 as _)),
+                        (MyPoints::descriptor_points(), Some(&points1 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     [(timeline1, 1001), (timeline2, 44)],
                     [
-                        (MyPoint::descriptor(), None),
-                        (MyColor::descriptor(), Some(&colors2 as _)),
+                        (MyPoints::descriptor_points(), None),
+                        (MyPoints::descriptor_colors(), Some(&colors2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     [(timeline1, 1002), (timeline2, 43)],
                     [
-                        (MyPoint::descriptor(), Some(&points3 as _)),
-                        (MyColor::descriptor(), None),
+                        (MyPoints::descriptor_points(), Some(&points3 as _)),
+                        (MyPoints::descriptor_colors(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id4,
                     [(timeline1, 1003), (timeline2, 42)],
                     [
-                        (MyPoint::descriptor(), Some(&points4 as _)),
-                        (MyColor::descriptor(), Some(&colors4 as _)),
+                        (MyPoints::descriptor_points(), Some(&points4 as _)),
+                        (MyPoints::descriptor_colors(), Some(&colors4 as _)),
                     ],
                 )
                 .build()?;
@@ -558,32 +557,32 @@ mod tests {
                         row_id4,
                         [(timeline1, 1003), (timeline2, 42)],
                         [
-                            (MyPoint::descriptor(), Some(&points4 as _)),
-                            (MyColor::descriptor(), Some(&colors4 as _)),
+                            (MyPoints::descriptor_points(), Some(&points4 as _)),
+                            (MyPoints::descriptor_colors(), Some(&colors4 as _)),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id3,
                         [(timeline1, 1002), (timeline2, 43)],
                         [
-                            (MyPoint::descriptor(), Some(&points3 as _)),
-                            (MyColor::descriptor(), None),
+                            (MyPoints::descriptor_points(), Some(&points3 as _)),
+                            (MyPoints::descriptor_colors(), None),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id2,
                         [(timeline1, 1001), (timeline2, 44)],
                         [
-                            (MyPoint::descriptor(), None),
-                            (MyColor::descriptor(), Some(&colors2 as _)),
+                            (MyPoints::descriptor_points(), None),
+                            (MyPoints::descriptor_colors(), Some(&colors2 as _)),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id1,
                         [(timeline1, 1000), (timeline2, 45)],
                         [
-                            (MyPoint::descriptor(), Some(&points1 as _)),
-                            (MyColor::descriptor(), Some(&colors1 as _)),
+                            (MyPoints::descriptor_points(), Some(&points1 as _)),
+                            (MyPoints::descriptor_colors(), Some(&colors1 as _)),
                         ],
                     )
                     .build()?;

@@ -2,8 +2,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, external::re_query::LatestAtResults};
 use re_log_types::EntityPath;
 use re_types::{
-    Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, ComponentName,
-    DeserializationError,
+    Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
 use re_viewer_context::{
     ComponentFallbackError, ComponentFallbackProvider, QueryContext, ViewId,
@@ -151,9 +150,12 @@ impl ViewProperty {
             .map(|value| value.unwrap_or_default())
     }
 
-    pub fn component_row_id(&self, component_name: ComponentName) -> Option<re_chunk::RowId> {
+    pub fn component_row_id(
+        &self,
+        component_descr: &ComponentDescriptor,
+    ) -> Option<re_chunk::RowId> {
         self.query_results
-            .get_by_name(&component_name)
+            .get(component_descr)
             .and_then(|unit| unit.row_id())
     }
 
@@ -204,7 +206,11 @@ impl ViewProperty {
                 );
             }
         }
-        ctx.save_blueprint_component(&self.blueprint_store_path, component_descr, component_batch);
+        ctx.save_blueprint_component(
+            self.blueprint_store_path.clone(),
+            component_descr,
+            component_batch,
+        );
     }
 
     /// Clears a blueprint component.
@@ -213,7 +219,7 @@ impl ViewProperty {
         ctx: &ViewerContext<'_>,
         component_descr: ComponentDescriptor,
     ) {
-        ctx.clear_blueprint_component(&self.blueprint_store_path, component_descr);
+        ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.
@@ -222,21 +228,21 @@ impl ViewProperty {
         ctx: &ViewerContext<'_>,
         component_descr: ComponentDescriptor,
     ) {
-        ctx.reset_blueprint_component(&self.blueprint_store_path, component_descr);
+        ctx.reset_blueprint_component(self.blueprint_store_path.clone(), component_descr);
     }
 
     /// Resets all components to the values they had in the default blueprint.
     pub fn reset_all_components(&self, ctx: &ViewerContext<'_>) {
         // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
         for component_descr in self.component_descrs.iter().cloned() {
-            ctx.reset_blueprint_component(&self.blueprint_store_path, component_descr);
+            ctx.reset_blueprint_component(self.blueprint_store_path.clone(), component_descr);
         }
     }
 
     /// Resets all components to empty values, i.e. the fallback.
     pub fn reset_all_components_to_empty(&self, ctx: &ViewerContext<'_>) {
         for component_descr in self.query_results.components.keys().cloned() {
-            ctx.clear_blueprint_component(&self.blueprint_store_path, component_descr);
+            ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
         }
     }
 

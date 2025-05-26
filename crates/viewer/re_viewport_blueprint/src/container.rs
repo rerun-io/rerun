@@ -79,15 +79,31 @@ impl ContainerBlueprint {
         // This is a required component. Note that when loading containers we crawl the subtree and so
         // cleared empty container paths may exist transiently. The fact that they have an empty container_kind
         // is the marker that the have been cleared and not an error.
-        let container_kind = results.component_instance::<ContainerKind>(0)?;
+        let container_kind = results.component_mono::<ContainerKind>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_container_kind(),
+        )?;
 
-        let display_name = results.component_instance::<Name>(0);
-        let contents = results.component_batch::<IncludedContent>();
-        let col_shares = results.component_batch::<ColumnShare>();
-        let row_shares = results.component_batch::<RowShare>();
-        let active_tab = results.component_instance::<ActiveTab>(0);
-        let visible = results.component_instance::<Visible>(0);
-        let grid_columns = results.component_instance::<GridColumns>(0);
+        let display_name = results.component_mono::<Name>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
+        );
+        let contents = results.component_batch::<IncludedContent>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_contents(),
+        );
+        let col_shares = results.component_batch::<ColumnShare>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_col_shares(),
+        );
+        let row_shares = results.component_batch::<RowShare>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_row_shares(),
+        );
+        let active_tab = results.component_mono::<ActiveTab>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_active_tab(),
+        );
+        let visible = results.component_mono::<Visible>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_visible(),
+        );
+        let grid_columns = results.component_mono::<GridColumns>(
+            &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
+        );
 
         // ----
 
@@ -201,7 +217,7 @@ impl ContainerBlueprint {
             ));
         }
 
-        ctx.save_blueprint_archetype(&id.as_entity_path(), &arch);
+        ctx.save_blueprint_archetype(id.as_entity_path(), &arch);
     }
 
     /// Creates a new [`ContainerBlueprint`] from the given [`egui_tiles::Container`].
@@ -321,14 +337,14 @@ impl ContainerBlueprint {
                 Some(name) => {
                     let component = Name(name.into());
                     ctx.save_blueprint_component(
-                        &self.entity_path(),
+                        self.entity_path(),
                         &blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
                         &component,
                     );
                 }
                 None => {
                     ctx.clear_blueprint_component(
-                        &self.entity_path(),
+                        self.entity_path(),
                         blueprint_archetypes::ContainerBlueprint::descriptor_display_name(),
                     );
                 }
@@ -341,7 +357,7 @@ impl ContainerBlueprint {
         if visible != self.visible {
             let component = Visible::from(visible);
             ctx.save_blueprint_component(
-                &self.entity_path(),
+                self.entity_path(),
                 &blueprint_archetypes::ContainerBlueprint::descriptor_visible(),
                 &component,
             );
@@ -354,13 +370,13 @@ impl ContainerBlueprint {
             if let Some(grid_columns) = grid_columns {
                 let component = GridColumns(grid_columns.into());
                 ctx.save_blueprint_component(
-                    &self.entity_path(),
+                    self.entity_path(),
                     &blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
                     &component,
                 );
             } else {
                 ctx.clear_blueprint_component(
-                    &self.entity_path(),
+                    self.entity_path(),
                     blueprint_archetypes::ContainerBlueprint::descriptor_grid_columns(),
                 );
             }
@@ -372,7 +388,7 @@ impl ContainerBlueprint {
         // We can't delete the entity, because we need to support undo.
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
         ctx.save_blueprint_archetype(
-            &self.entity_path(),
+            self.entity_path(),
             &re_types::archetypes::Clear::recursive(),
         );
     }

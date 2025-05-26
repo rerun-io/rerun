@@ -29,8 +29,8 @@ pub struct MediaType(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::Component for MediaType {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.MediaType")
+    fn name() -> ComponentName {
+        "rerun.components.MediaType".into()
     }
 }
 

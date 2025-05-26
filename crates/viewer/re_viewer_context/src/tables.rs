@@ -118,7 +118,7 @@ impl TableStore {
 
         {
             let blob = re_types::components::Blob(re_types::datatypes::Blob::from(
-                re_ui::icons::RERUN_MENU.png_bytes,
+                include_bytes!("../../re_ui/data/icons/rerun_io.png").to_vec(),
             ));
 
             let array = Arc::new(

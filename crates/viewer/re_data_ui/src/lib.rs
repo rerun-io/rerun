@@ -36,7 +36,7 @@ pub fn sorted_component_list_for_ui<'a>(
 
     // Put indicator components first.
     // We then sort by the short name, as that is what is shown in the UI.
-    components.sort_by_key(|c| (!c.component_name.is_indicator_component(), c.short_name()));
+    components.sort_by_key(|c| (!c.component_name.is_indicator_component(), c.display_name()));
 
     components
 }

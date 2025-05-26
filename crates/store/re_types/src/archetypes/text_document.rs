@@ -132,7 +132,7 @@ impl TextDocument {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.TextDocument".into()),
+            archetype_name: None,
             component_name: "rerun.components.TextDocumentIndicator".into(),
             archetype_field_name: None,
         }
@@ -181,7 +181,9 @@ impl ::re_types_core::Archetype for TextDocument {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        TextDocumentIndicator::DEFAULT.serialized().unwrap()
+        TextDocumentIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

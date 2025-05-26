@@ -29,8 +29,8 @@ pub struct Opacity(pub crate::datatypes::Float32);
 
 impl ::re_types_core::Component for Opacity {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Opacity")
+    fn name() -> ComponentName {
+        "rerun.components.Opacity".into()
     }
 }
 

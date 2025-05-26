@@ -120,7 +120,7 @@ impl Asset3D {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            archetype_name: None,
             component_name: "rerun.components.Asset3DIndicator".into(),
             archetype_field_name: None,
         }
@@ -175,7 +175,9 @@ impl ::re_types_core::Archetype for Asset3D {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        Asset3DIndicator::DEFAULT.serialized().unwrap()
+        Asset3DIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

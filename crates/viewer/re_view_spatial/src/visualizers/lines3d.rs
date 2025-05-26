@@ -1,7 +1,7 @@
 use re_log_types::Instance;
 use re_renderer::{PickingLayerInstanceId, renderer::LineStripFlags};
 use re_types::{
-    ArrowString,
+    Archetype as _, ArrowString,
     archetypes::LineStrips3D,
     components::{ClassId, Color, Radius, ShowLabels},
 };
@@ -69,7 +69,7 @@ impl Lines3DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, "Lines2D");
+                .single_entity_transform_required(entity_path, LineStrips3D::name());
 
             let mut line_batch = line_builder
                 .batch(entity_path.to_string())

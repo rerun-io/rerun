@@ -128,15 +128,13 @@ impl<E: Example + 'static> Application<E> {
 
         let device_caps = DeviceCaps::from_adapter(&adapter)?;
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: None,
-                    required_features: wgpu::Features::empty(),
-                    required_limits: device_caps.limits(),
-                    memory_hints: Default::default(),
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: None,
+                required_features: wgpu::Features::empty(),
+                required_limits: device_caps.limits(),
+                memory_hints: Default::default(),
+                trace: wgpu::Trace::Off,
+            })
             .await
             .context("failed to create device")?;
 
@@ -287,6 +285,7 @@ impl<E: Example + 'static> Application<E> {
                         .map(|d| d.command_buffer)
                         .chain(std::iter::once(composite_cmd_encoder.finish())),
                 );
+                self.window.pre_present_notify();
                 frame.present();
 
                 // Note that this measures time spent on CPU, not GPU

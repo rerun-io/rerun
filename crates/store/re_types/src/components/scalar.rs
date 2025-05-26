@@ -28,8 +28,8 @@ pub struct Scalar(pub crate::datatypes::Float64);
 
 impl ::re_types_core::Component for Scalar {
     #[inline]
-    fn descriptor() -> ComponentDescriptor {
-        ComponentDescriptor::new("rerun.components.Scalar")
+    fn name() -> ComponentName {
+        "rerun.components.Scalar".into()
     }
 }
 

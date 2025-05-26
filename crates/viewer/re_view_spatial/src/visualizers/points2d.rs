@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
-    ArrowString,
+    Archetype as _, ArrowString,
     archetypes::Points2D,
     components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels},
 };
@@ -83,7 +83,7 @@ impl Points2DVisualizer {
 
             let world_from_obj = ent_context
                 .transform_info
-                .single_entity_transform_required(entity_path, "Points2D");
+                .single_entity_transform_required(entity_path, Points2D::name());
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
@@ -123,7 +123,13 @@ impl Points2DVisualizer {
             self.data
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
-            load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
+            load_keypoint_connections(
+                line_builder,
+                &ent_context.annotations,
+                world_from_obj,
+                entity_path,
+                &keypoints,
+            )?;
 
             self.data.ui_labels.extend(process_labels_2d(
                 LabeledBatch {

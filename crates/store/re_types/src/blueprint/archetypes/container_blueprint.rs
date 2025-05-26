@@ -166,7 +166,7 @@ impl ContainerBlueprint {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            archetype_name: None,
             component_name: "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
             archetype_field_name: None,
         }
@@ -232,7 +232,9 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ContainerBlueprintIndicator::DEFAULT.serialized().unwrap()
+        ContainerBlueprintIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

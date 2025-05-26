@@ -86,7 +86,7 @@ impl ViewCoordinates {
     #[inline]
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
-            archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
+            archetype_name: None,
             component_name: "rerun.components.ViewCoordinatesIndicator".into(),
             archetype_field_name: None,
         }
@@ -134,7 +134,9 @@ impl ::re_types_core::Archetype for ViewCoordinates {
     #[inline]
     fn indicator() -> SerializedComponentBatch {
         #[allow(clippy::unwrap_used)]
-        ViewCoordinatesIndicator::DEFAULT.serialized().unwrap()
+        ViewCoordinatesIndicator::DEFAULT
+            .serialized(Self::descriptor_indicator())
+            .unwrap()
     }
 
     #[inline]

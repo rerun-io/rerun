@@ -150,10 +150,17 @@ impl ViewBlueprint {
         // This is a required component. Note that when loading views we crawl the subtree and so
         // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
         // is the marker that the have been cleared and not an error.
-        let class_identifier = results.component_mono::<blueprint_components::ViewClass>()?;
-        let display_name = results.component_mono::<Name>();
-        let space_origin = results.component_mono::<ViewOrigin>();
-        let visible = results.component_mono::<Visible>();
+        let class_identifier = results.component_mono::<blueprint_components::ViewClass>(
+            &blueprint_archetypes::ViewBlueprint::descriptor_class_identifier(),
+        )?;
+        let display_name = results.component_mono::<Name>(
+            &blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
+        );
+        let space_origin = results.component_mono::<ViewOrigin>(
+            &blueprint_archetypes::ViewBlueprint::descriptor_space_origin(),
+        );
+        let visible = results
+            .component_mono::<Visible>(&blueprint_archetypes::ViewBlueprint::descriptor_visible());
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
         let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();
@@ -221,7 +228,7 @@ impl ViewBlueprint {
         contents.save_to_blueprint_store(ctx);
 
         ctx.command_sender()
-            .send_system(SystemCommand::UpdateBlueprint(
+            .send_system(SystemCommand::AppendToStore(
                 ctx.store_context.blueprint.store_id().clone(),
                 deltas,
             ));
@@ -306,7 +313,7 @@ impl ViewBlueprint {
         // We can't delete the entity, because we need to support undo.
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
         ctx.save_blueprint_archetype(
-            &self.entity_path(),
+            self.entity_path(),
             &re_types::archetypes::Clear::recursive(),
         );
     }
@@ -318,14 +325,14 @@ impl ViewBlueprint {
                 Some(name) => {
                     let component = Name(name.into());
                     ctx.save_blueprint_component(
-                        &self.entity_path(),
+                        self.entity_path(),
                         &blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
                         &component,
                     );
                 }
                 None => {
                     ctx.clear_blueprint_component(
-                        &self.entity_path(),
+                        self.entity_path(),
                         blueprint_archetypes::ViewBlueprint::descriptor_display_name(),
                     );
                 }
@@ -338,7 +345,7 @@ impl ViewBlueprint {
         if origin != &self.space_origin {
             let component = ViewOrigin(origin.into());
             ctx.save_blueprint_component(
-                &self.entity_path(),
+                self.entity_path(),
                 &blueprint_archetypes::ViewBlueprint::descriptor_space_origin(),
                 &component,
             );
@@ -350,7 +357,7 @@ impl ViewBlueprint {
         if visible != self.visible {
             let component = Visible::from(visible);
             ctx.save_blueprint_component(
-                &self.entity_path(),
+                self.entity_path(),
                 &blueprint_archetypes::ViewBlueprint::descriptor_visible(),
                 &component,
             );
@@ -500,7 +507,10 @@ mod tests {
                     .with_component_batches(
                         RowId::new(),
                         TimePoint::default(),
-                        [&[MyPoint::new(1.0, 2.0)] as _],
+                        [(
+                            MyPoints::descriptor_points(),
+                            &[MyPoint::new(1.0, 2.0)] as _,
+                        )],
                     )
                     .build()
                     .unwrap();

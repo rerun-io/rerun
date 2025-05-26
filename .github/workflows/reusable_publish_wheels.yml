@@ -158,7 +158,7 @@ jobs:
           fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
           ref: ${{ inputs.release-commit }}
 
-      - uses: prefix-dev/setup-pixi@v0.8.1
+      - uses: prefix-dev/setup-pixi@v0.8.8
         with:
           pixi-version: v0.41.4
 
