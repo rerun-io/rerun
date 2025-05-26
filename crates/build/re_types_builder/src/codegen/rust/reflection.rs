@@ -211,7 +211,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                 ArchetypeFieldReflection {
                     name: #name.into(),
                     display_name: #display_name,
-                    component_name: #component_name.into(),
+                    component_name: Some(#component_name.into()),
                     docstring_md: #docstring_md,
                     is_required: #required,
                 }

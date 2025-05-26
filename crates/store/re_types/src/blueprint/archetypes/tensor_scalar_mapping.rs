@@ -50,8 +50,8 @@ impl TensorScalarMapping {
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: "rerun.components.MagnificationFilter".into(),
-            archetype_field_name: Some("mag_filter".into()),
+            component_name: Some("rerun.components.MagnificationFilter".into()),
+            archetype_field_name: "mag_filter".into(),
         }
     }
 
@@ -62,8 +62,8 @@ impl TensorScalarMapping {
     pub fn descriptor_colormap() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: "rerun.components.Colormap".into(),
-            archetype_field_name: Some("colormap".into()),
+            component_name: Some("rerun.components.Colormap".into()),
+            archetype_field_name: "colormap".into(),
         }
     }
 
@@ -74,8 +74,8 @@ impl TensorScalarMapping {
     pub fn descriptor_gamma() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component_name: "rerun.components.GammaCorrection".into(),
-            archetype_field_name: Some("gamma".into()),
+            component_name: Some("rerun.components.GammaCorrection".into()),
+            archetype_field_name: "gamma".into(),
         }
     }
 
@@ -84,8 +84,8 @@ impl TensorScalarMapping {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.TensorScalarMappingIndicator".into(),
         }
     }
 }

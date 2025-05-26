@@ -1,13 +1,13 @@
 #![allow(missing_docs)] // It's only for testing
 
-use re_types_core::{Component, ComponentDescriptor};
+use re_types_core::ComponentDescriptor;
 
 pub mod archetypes;
 pub mod components;
 pub mod datatypes;
 
 pub fn large_struct_descriptor() -> ComponentDescriptor {
-    ComponentDescriptor::new(<LargeStruct as Component>::name())
+    ComponentDescriptor::partial("large_struct")
 }
 
 /// Large struct used for benchmarking.

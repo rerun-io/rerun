@@ -159,8 +159,8 @@ impl Image {
     pub fn descriptor_buffer() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.ImageBuffer".into(),
-            archetype_field_name: Some("buffer".into()),
+            component_name: Some("rerun.components.ImageBuffer".into()),
+            archetype_field_name: "buffer".into(),
         }
     }
 
@@ -171,8 +171,8 @@ impl Image {
     pub fn descriptor_format() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.ImageFormat".into(),
-            archetype_field_name: Some("format".into()),
+            component_name: Some("rerun.components.ImageFormat".into()),
+            archetype_field_name: "format".into(),
         }
     }
 
@@ -183,8 +183,8 @@ impl Image {
     pub fn descriptor_opacity() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.Opacity".into(),
-            archetype_field_name: Some("opacity".into()),
+            component_name: Some("rerun.components.Opacity".into()),
+            archetype_field_name: "opacity".into(),
         }
     }
 
@@ -195,8 +195,8 @@ impl Image {
     pub fn descriptor_draw_order() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Image".into()),
-            component_name: "rerun.components.DrawOrder".into(),
-            archetype_field_name: Some("draw_order".into()),
+            component_name: Some("rerun.components.DrawOrder".into()),
+            archetype_field_name: "draw_order".into(),
         }
     }
 
@@ -205,8 +205,8 @@ impl Image {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.ImageIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.ImageIndicator".into(),
         }
     }
 }

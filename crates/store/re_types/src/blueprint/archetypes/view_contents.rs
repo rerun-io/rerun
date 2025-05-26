@@ -75,8 +75,8 @@ impl ViewContents {
     pub fn descriptor_query() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.ViewContents".into()),
-            component_name: "rerun.blueprint.components.QueryExpression".into(),
-            archetype_field_name: Some("query".into()),
+            component_name: Some("rerun.blueprint.components.QueryExpression".into()),
+            archetype_field_name: "query".into(),
         }
     }
 
@@ -85,8 +85,8 @@ impl ViewContents {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.ViewContentsIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.ViewContentsIndicator".into(),
         }
     }
 }

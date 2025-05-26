@@ -36,8 +36,8 @@ impl PanelBlueprint {
     pub fn descriptor_state() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.PanelBlueprint".into()),
-            component_name: "rerun.blueprint.components.PanelState".into(),
-            archetype_field_name: Some("state".into()),
+            component_name: Some("rerun.blueprint.components.PanelState".into()),
+            archetype_field_name: "state".into(),
         }
     }
 
@@ -46,8 +46,8 @@ impl PanelBlueprint {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.PanelBlueprintIndicator".into(),
         }
     }
 }
