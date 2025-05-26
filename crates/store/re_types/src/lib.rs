@@ -297,6 +297,8 @@ pub mod image;
 pub mod tensor_data;
 pub mod view_coordinates;
 
+pub mod any_values;
+
 mod rotation3d;
 pub use rotation3d::Rotation3D;
 
