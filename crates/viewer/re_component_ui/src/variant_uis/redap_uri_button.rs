@@ -33,14 +33,13 @@ pub fn redap_uri_button(
     let uri = RedapUri::from_str(url_str)?;
 
     //TODO(#10036): we should provide feedback if the URI is already loaded, e.g. have "go to" instead of "open"
-    if ui
-        .button("Open")
-        .on_hover_ui(|ui| {
-            ui.label(uri.to_string());
-        })
-        .clicked()
-    {
-        let url = if ui.input(|i| i.modifiers.command) {
+    let response = ui.button("Open").on_hover_ui(|ui| {
+        ui.label(uri.to_string());
+    });
+    if response.middle_clicked() {
+        ui.ctx().open_url(egui::OpenUrl::new_tab(uri));
+    } else if response.clicked() {
+        let url = if ui.input(|i| i.modifiers.any()) {
             egui::OpenUrl::new_tab(uri)
         } else {
             egui::OpenUrl::same_tab(uri)
