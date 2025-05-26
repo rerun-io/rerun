@@ -2,7 +2,6 @@ use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 use crate::{
     DesignTokens, UiExt as _,
-    color_table::Scale,
     icon_text::{IconText, IconTextItem},
     icons,
 };
@@ -114,7 +113,7 @@ impl Help {
                 .widgets
                 .noninteractive
                 .bg_stroke
-                .color = ui.design_tokens().color_table.gray(Scale::S400); // TODO: design tokens
+                .color = ui.visuals().weak_text_color();
             ui.separator();
         });
     }
