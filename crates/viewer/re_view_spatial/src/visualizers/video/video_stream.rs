@@ -84,7 +84,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             };
 
             let world_from_entity =
-                transform_info.single_entity_transform_required(&entity_path, VideoStream::name());
+                transform_info.single_entity_transform_required(entity_path, VideoStream::name());
             let query_context = ctx.query_context(data_result, &latest_at);
             let highlight = view_query
                 .highlights
@@ -110,7 +110,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
             else {
                 self.show_video_error(
                     &query_context,
-                    &highlight,
+                    highlight,
                     world_from_entity,
                     format!("No video chunks at {entity_path:?}"),
                     video_resolution,
@@ -192,7 +192,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     }
                     self.show_video_error(
                         &query_context,
-                        &highlight,
+                        highlight,
                         world_from_entity,
                         err.to_string(),
                         video_resolution,

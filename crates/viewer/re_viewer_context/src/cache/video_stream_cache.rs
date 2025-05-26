@@ -17,19 +17,28 @@ use crate::Cache;
 
 // ----------------------------------------------------------------------------
 
+/// Video stream from the store, ready for playback.
+///
+/// This is compromised of:
+/// * raw video stream data (pointers into all live rerun-chunks holding video frame data)
+/// * metadata with that we know about the stream (where are I-frames etc.)
+/// * active players for this stream and their state
 #[derive(Clone)]
-pub struct StoreVideoStream {
+pub struct PlayableStoreVideoStream {
     // TODO: video needs to remain editable.
     pub video_renderer: Arc<re_renderer::video::Video>,
     pub video_sample_data: Buffer,
 }
 
-pub struct VideoStreamCacheEntry {
+/// Entry in the video stream cache.
+///
+/// Keeps track of usage so we know when to remove from the cache.
+struct VideoStreamCacheEntry {
     used_this_frame: AtomicBool,
-    video_stream: StoreVideoStream,
+    video_stream: PlayableStoreVideoStream,
 }
 
-// TODO: any chance we can unify with `VideoCache`?
+/// Identifies a video stream.
 
 #[derive(Hash, Eq, PartialEq)]
 struct VideoStreamKey {
@@ -37,22 +46,28 @@ struct VideoStreamKey {
     timeline: TimelineName,
 }
 
-// TODO: motivate
+/// Caches metadata and active players for video streams.
+///
+/// It also keeps track of any additions and removals of video chunks.
 #[derive(Default)]
 pub struct VideoStreamCache(HashMap<VideoStreamKey, VideoStreamCacheEntry>);
 
 impl VideoStreamCache {
-    /// TODO: what does this exactly do?
+    /// Looks up a video stream + players.
     ///
     /// Returns `None` if there was no video data for this entity on the given timeline.
-    /// TODO: Keep track of other errors?
+    ///
+    /// The first time a video stream that is looked up that isn't in the cache,
+    /// it creates all the necessary metadata.
+    /// For any stream in the cache, metadata will be kept automatically up to date for incoming
+    /// and removed video frames chunks.
     pub fn entry(
         &mut self,
         store: &re_entity_db::EntityDb,
         entity_path: &EntityPath,
         timeline: TimelineName,
         decode_settings: DecodeSettings,
-    ) -> Option<StoreVideoStream> {
+    ) -> Option<PlayableStoreVideoStream> {
         let key = VideoStreamKey {
             entity_path: entity_path.hash(),
             timeline,
@@ -73,7 +88,7 @@ impl VideoStreamCache {
                 );
                 vacant_entry.insert(VideoStreamCacheEntry {
                     used_this_frame: AtomicBool::new(true),
-                    video_stream: StoreVideoStream {
+                    video_stream: PlayableStoreVideoStream {
                         video_renderer: Arc::new(video),
                         video_sample_data,
                     },
@@ -214,7 +229,8 @@ fn load_video_data_from_chunks(
 
 impl Cache for VideoStreamCache {
     fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
-        // TODO: is this the right purge strategy?
+        // TODO(andreas): Maybe this removal strategy is too aggressive?
+        // Scanning an entire video stream again may be costly.
 
         // Clean up unused video data.
         self.0

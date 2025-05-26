@@ -23,7 +23,7 @@ struct Entry {
     video: Arc<Result<Video, VideoLoadError>>,
 }
 
-/// Caches videos assets based on media type & row id.
+/// Caches videos assets and their players based on media type & row id.
 #[derive(Default)]
 pub struct VideoAssetCache(HashMap<StoredBlobCacheKey, HashMap<Hash64, Entry>>);
 

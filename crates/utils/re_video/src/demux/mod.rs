@@ -56,30 +56,31 @@ impl VideoCodec {
     pub fn base_webcodec_string(&self) -> Option<&'static str> {
         match self {
             // https://www.w3.org/TR/webcodecs-av1-codec-registration/#fully-qualified-codec-strings
-            VideoCodec::Av1 => Some("av01"),
+            Self::Av1 => Some("av01"),
 
             // https://www.w3.org/TR/webcodecs-avc-codec-registration/#fully-qualified-codec-strings
             // avc3 is valid as well.
-            VideoCodec::H264 => Some("avc1"),
+            Self::H264 => Some("avc1"),
 
             // https://www.w3.org/TR/webcodecs-hevc-codec-registration/#fully-qualified-codec-strings
             // hvc1 is valid as well.
-            VideoCodec::H265 => Some("hev1"),
+            Self::H265 => Some("hev1"),
 
             // https://www.w3.org/TR/webcodecs-vp8-codec-registration/#fully-qualified-codec-strings
             // Special! This *is* the fully qualified codec string.
-            VideoCodec::Vp8 => Some("vp8"),
+            Self::Vp8 => Some("vp8"),
 
             // https://www.w3.org/TR/webcodecs-vp9-codec-registration/#fully-qualified-codec-strings
-            VideoCodec::Vp9 => Some("vp09"),
+            Self::Vp9 => Some("vp09"),
 
-            VideoCodec::Other(_) => None,
+            Self::Other(_) => None,
         }
     }
 }
 
 /// Description of video data.
 ///
+/// Store various metadata about a video.
 /// Doesn't contain the actual data, but rather refers to samples with a byte offset.
 #[derive(Clone)]
 pub struct VideoDataDescription {
