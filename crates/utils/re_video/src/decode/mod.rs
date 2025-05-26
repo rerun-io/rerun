@@ -247,6 +247,8 @@ pub struct Chunk {
     /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
+    // TODO(andreas): do we have to copy this?
+    // TODO(andreas): should we just passe source sample and chunk separately?
     pub data: Vec<u8>,
 
     /// Which sample (frame) did this chunk come from?

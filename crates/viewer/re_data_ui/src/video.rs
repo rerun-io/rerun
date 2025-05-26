@@ -191,7 +191,6 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription) {
                     let sample = &video_data.samples[sample_idx];
                     let re_video::Sample {
                         is_sync,
-                        sample_idx: sample_idx_in_sample,
                         frame_nr,
                         decode_timestamp,
                         presentation_timestamp,
@@ -199,7 +198,6 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription) {
                         byte_offset: _,
                         byte_length,
                     } = *sample;
-                    debug_assert_eq!(sample_idx, sample_idx_in_sample);
 
                     row.col(|ui| {
                         ui.monospace(re_format::format_uint(sample_idx));

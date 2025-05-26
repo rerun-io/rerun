@@ -38,14 +38,14 @@ impl VideoDataDescription {
 
         let timescale = Timescale::new(track.timescale);
         let duration = Time::new(track.duration as i64);
-        let mut samples = Vec::<Sample>::new();
+        let mut samples = Vec::<Sample>::with_capacity(track.samples.len());
         let mut gops = Vec::<GroupOfPictures>::new();
         let mut gop_sample_start_index = 0;
 
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
-            for (sample_idx, sample) in track.samples.iter().enumerate() {
+            for sample in &track.samples {
                 if sample.is_sync && !samples.is_empty() {
                     let start = samples[gop_sample_start_index].decode_timestamp;
                     let sample_range = gop_sample_start_index as u32..samples.len() as u32;
@@ -65,7 +65,6 @@ impl VideoDataDescription {
 
                 samples.push(Sample {
                     is_sync: sample.is_sync,
-                    sample_idx,
                     frame_nr: 0, // filled in after the loop
                     decode_timestamp,
                     presentation_timestamp,

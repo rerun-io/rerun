@@ -59,8 +59,8 @@ fn main() {
     .expect("Failed to create decoder");
 
     let start = Instant::now();
-    for sample in &video.samples {
-        let chunk = sample.get(&video_blob).unwrap();
+    for (sample_idx, sample) in video.samples.iter().enumerate() {
+        let chunk = sample.get(&video_blob, sample_idx).unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 

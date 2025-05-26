@@ -163,7 +163,6 @@ fn load_video_data_from_chunks(
                 is_sync: true,
 
                 // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
-                sample_idx: idx,
                 frame_nr: idx,
 
                 // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.

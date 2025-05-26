@@ -339,8 +339,11 @@ impl VideoPlayer {
 
         re_log::trace!("Enqueueing GOP {gop_idx} ({} samples)", samples.len());
 
-        for sample in samples {
-            let chunk = sample.get(video_data).ok_or(VideoPlayerError::BadData)?;
+        for (sample_offset, sample) in samples.iter().enumerate() {
+            let sample_idx = gop.sample_range.start as usize + sample_offset;
+            let chunk = sample
+                .get(video_data, sample_idx)
+                .ok_or(VideoPlayerError::BadData)?;
             self.chunk_decoder.decode(chunk)?;
         }
 

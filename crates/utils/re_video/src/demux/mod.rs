@@ -508,18 +508,13 @@ pub struct Sample {
     /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
-    /// Which sample is this in the video?
-    ///
-    /// This is the order of which the samples appear in the container,
-    /// which is usually ordered by [`Self::decode_timestamp`].
-    pub sample_idx: usize,
-
     /// Which frame does this sample belong to?
     ///
     /// This is on the assumption that each sample produces a single frame,
     /// which is true for MP4.
     ///
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
+    /// In the absence of b-frames this is expected to be equal to the index in the array of all video samples.
     pub frame_nr: usize,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
@@ -555,13 +550,13 @@ impl Sample {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, data: &[u8]) -> Option<Chunk> {
+    pub fn get(&self, data: &[u8], sample_idx: usize) -> Option<Chunk> {
         let data = data
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
             .to_vec();
         Some(Chunk {
             data,
-            sample_idx: self.sample_idx,
+            sample_idx,
             frame_nr: self.frame_nr,
             decode_timestamp: self.decode_timestamp,
             presentation_timestamp: self.presentation_timestamp,
@@ -713,10 +708,8 @@ mod tests {
         let samples = pts
             .into_iter()
             .zip(dts)
-            .enumerate()
-            .map(|(sample_idx, (pts, dts))| Sample {
+            .map(|(pts, dts)| Sample {
                 is_sync: false,
-                sample_idx,
                 frame_nr: 0, // unused
                 decode_timestamp: Time(dts),
                 presentation_timestamp: Time(pts),
