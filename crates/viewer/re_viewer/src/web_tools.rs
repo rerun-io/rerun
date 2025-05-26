@@ -2,11 +2,11 @@
 
 use std::{ops::ControlFlow, sync::Arc};
 
-use re_grpc_client::ConnectionRegistry;
 use serde::Deserialize;
 use wasm_bindgen::{JsCast as _, JsError, JsValue};
 use web_sys::Window;
 
+use re_grpc_client::ConnectionRegistry;
 use re_log::ResultExt as _;
 use re_viewer_context::{CommandSender, Item, SystemCommand, SystemCommandSender as _};
 

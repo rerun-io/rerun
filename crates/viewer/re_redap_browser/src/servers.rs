@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::sync::mpsc::{Receiver, Sender};
 
 use egui::{Frame, Margin, RichText};
+
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_grpc_client::ConnectionRegistry;
 use re_log_types::{EntityPathPart, EntryId};
