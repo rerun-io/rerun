@@ -149,8 +149,8 @@ impl Pinhole {
     pub fn descriptor_image_from_camera() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.PinholeProjection".into(),
-            archetype_field_name: Some("image_from_camera".into()),
+            component_name: Some("rerun.components.PinholeProjection".into()),
+            archetype_field_name: "image_from_camera".into(),
         }
     }
 
@@ -161,8 +161,8 @@ impl Pinhole {
     pub fn descriptor_resolution() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.Resolution".into(),
-            archetype_field_name: Some("resolution".into()),
+            component_name: Some("rerun.components.Resolution".into()),
+            archetype_field_name: "resolution".into(),
         }
     }
 
@@ -173,8 +173,8 @@ impl Pinhole {
     pub fn descriptor_camera_xyz() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.ViewCoordinates".into(),
-            archetype_field_name: Some("camera_xyz".into()),
+            component_name: Some("rerun.components.ViewCoordinates".into()),
+            archetype_field_name: "camera_xyz".into(),
         }
     }
 
@@ -185,8 +185,8 @@ impl Pinhole {
     pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Pinhole".into()),
-            component_name: "rerun.components.ImagePlaneDistance".into(),
-            archetype_field_name: Some("image_plane_distance".into()),
+            component_name: Some("rerun.components.ImagePlaneDistance".into()),
+            archetype_field_name: "image_plane_distance".into(),
         }
     }
 
@@ -195,8 +195,8 @@ impl Pinhole {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.PinholeIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.PinholeIndicator".into(),
         }
     }
 }

@@ -38,8 +38,8 @@ impl NearClipPlane {
     pub fn descriptor_near_clip_plane() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-            component_name: "rerun.blueprint.components.NearClipPlane".into(),
-            archetype_field_name: Some("near_clip_plane".into()),
+            component_name: Some("rerun.blueprint.components.NearClipPlane".into()),
+            archetype_field_name: "near_clip_plane".into(),
         }
     }
 
@@ -48,8 +48,8 @@ impl NearClipPlane {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.blueprint.components.NearClipPlaneIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.blueprint.components.NearClipPlaneIndicator".into(),
         }
     }
 }
