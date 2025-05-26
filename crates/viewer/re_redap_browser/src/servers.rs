@@ -461,13 +461,13 @@ impl RedapServers {
         }
     }
 
-    pub fn modals_ui(&mut self, ui: &egui::Ui) {
+    pub fn modals_ui(&mut self, connection_registry: &ConnectionRegistry, ui: &egui::Ui) {
         //TODO(ab): borrow checker doesn't let me use `with_ctx()` here, I should find a better way
         let ctx = Context {
             command_sender: &self.command_sender,
         };
 
-        self.add_server_modal_ui.ui(&ctx, ui);
+        self.add_server_modal_ui.ui(&ctx, connection_registry, ui);
     }
 
     #[inline]
