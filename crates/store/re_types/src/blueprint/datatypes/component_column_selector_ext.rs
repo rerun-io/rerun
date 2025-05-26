@@ -8,4 +8,12 @@ impl super::ComponentColumnSelector {
             component: component_name.into(),
         }
     }
+
+    /// Returns the column name for this component selector.
+    ///
+    /// This is typically used to resolve dataframe queries.
+    pub fn column_name(&self) -> String {
+        // TODO(#10129): This needs to be adapted once the blueprint changes.
+        format!("{}:{}", self.entity_path.as_str(), self.component.as_str(),)
+    }
 }

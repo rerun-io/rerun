@@ -74,8 +74,8 @@ impl GeoPoints {
     pub fn descriptor_positions() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_name: "rerun.components.LatLon".into(),
-            archetype_field_name: Some("positions".into()),
+            component_name: Some("rerun.components.LatLon".into()),
+            archetype_field_name: "positions".into(),
         }
     }
 
@@ -86,8 +86,8 @@ impl GeoPoints {
     pub fn descriptor_radii() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_name: "rerun.components.Radius".into(),
-            archetype_field_name: Some("radii".into()),
+            component_name: Some("rerun.components.Radius".into()),
+            archetype_field_name: "radii".into(),
         }
     }
 
@@ -98,8 +98,8 @@ impl GeoPoints {
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_name: "rerun.components.Color".into(),
-            archetype_field_name: Some("colors".into()),
+            component_name: Some("rerun.components.Color".into()),
+            archetype_field_name: "colors".into(),
         }
     }
 
@@ -110,8 +110,8 @@ impl GeoPoints {
     pub fn descriptor_class_ids() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.GeoPoints".into()),
-            component_name: "rerun.components.ClassId".into(),
-            archetype_field_name: Some("class_ids".into()),
+            component_name: Some("rerun.components.ClassId".into()),
+            archetype_field_name: "class_ids".into(),
         }
     }
 
@@ -120,8 +120,8 @@ impl GeoPoints {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.GeoPointsIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.GeoPointsIndicator".into(),
         }
     }
 }

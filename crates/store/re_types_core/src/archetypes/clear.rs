@@ -87,8 +87,8 @@ impl Clear {
     pub fn descriptor_is_recursive() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("rerun.archetypes.Clear".into()),
-            component_name: "rerun.components.ClearIsRecursive".into(),
-            archetype_field_name: Some("is_recursive".into()),
+            component_name: Some("rerun.components.ClearIsRecursive".into()),
+            archetype_field_name: "is_recursive".into(),
         }
     }
 
@@ -97,8 +97,8 @@ impl Clear {
     pub fn descriptor_indicator() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: None,
-            component_name: "rerun.components.ClearIndicator".into(),
-            archetype_field_name: None,
+            component_name: None,
+            archetype_field_name: "rerun.components.ClearIndicator".into(),
         }
     }
 }
