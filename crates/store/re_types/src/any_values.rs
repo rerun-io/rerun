@@ -8,6 +8,7 @@ use crate::{
 use re_types_core::{try_serialize_field, AsComponents, ComponentName, Loggable};
 
 const DEFAULT_ARCHETYPE_NAME: &str = "rerun.AnyValues";
+// TODO(#6889): This will go away, once we make the `component_name` optional.
 const DEFAULT_COMPONENT_NAME: &str = "rerun.component.AnyValue";
 
 /// A helper for logging arbitrary data to Rerun.
@@ -38,22 +39,9 @@ impl AnyValues {
     ///
     /// In many cases, it might be more convenient to use [`Self::component`] to log an existing Rerun component instead.
     #[inline]
-    pub fn field(
-        self,
-        archetype_field_name: impl Into<ArchetypeFieldName>,
-        array: arrow::array::ArrayRef,
-    ) -> Self {
-        self.field_with_component_name(archetype_field_name, DEFAULT_COMPONENT_NAME, array)
-    }
-
-    /// Adds a field of arbitrary data to this archetype.
-    ///
-    /// In many cases, it might be more convenient to use [`Self::component`] to log an existing Rerun component instead.
-    #[inline]
-    pub fn field_with_component_name(
+    pub fn with_field(
         mut self,
         archetype_field_name: impl Into<ArchetypeFieldName>,
-        component_name: impl Into<ComponentName>,
         array: arrow::array::ArrayRef,
     ) -> Self {
         let archetype_field_name = archetype_field_name.into();
@@ -64,7 +52,7 @@ impl AnyValues {
                 descriptor: ComponentDescriptor {
                     archetype_name: Some(self.archetype_name),
                     archetype_field_name: Some(archetype_field_name),
-                    component_name: component_name.into(),
+                    component_name: DEFAULT_COMPONENT_NAME.into(),
                 },
             },
         );
@@ -73,19 +61,19 @@ impl AnyValues {
 
     /// Adds an existing Rerun [`Component`](crate::Component) to this archetype.
     #[inline]
-    pub fn component<C: Component>(
+    pub fn with_component<C: Component>(
         self,
         archetype_field_name: impl Into<ArchetypeFieldName>,
         component: impl IntoIterator<Item = impl Into<C>>,
     ) -> Self {
-        self.loggable(archetype_field_name, C::name(), component)
+        self.with_loggable(archetype_field_name, C::name(), component)
     }
 
     /// Adds an existing Rerun [`Component`](crate::Component) to this archetype.
     ///
     /// This method can be used to override the component name.
     #[inline]
-    pub fn loggable<L: Loggable>(
+    pub fn with_loggable<L: Loggable>(
         mut self,
         archetype_field_name: impl Into<ArchetypeFieldName>,
         component_name: impl Into<ComponentName>,
@@ -122,18 +110,11 @@ mod test {
     #[test]
     fn simple() {
         let _ = AnyValues::default()
-            .component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
-            .loggable::<components::Text>("homepage", "user.url", vec!["https://www.rerun.io"])
-            .field(
+            .with_component::<components::Scalar>("confidence", [1.2f64, 3.4, 5.6])
+            .with_loggable::<components::Text>("homepage", "user.url", vec!["https://www.rerun.io"])
+            .with_field(
                 "description",
                 Arc::new(arrow::array::StringArray::from(vec!["Bla bla bla…"])),
-            )
-            .field_with_component_name(
-                "repository",
-                "user.git",
-                Arc::new(arrow::array::StringArray::from(vec![
-                    "https://github.com/rerun-io/rerun",
-                ])),
             );
     }
 }
