@@ -219,16 +219,6 @@ impl ColorTable {
     pub fn get(&self, token: ColorToken) -> egui::Color32 {
         self.color_lut[token.hue as usize][token.scale as usize]
     }
-
-    #[inline]
-    pub fn gray(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::gray(shade))
-    }
-
-    #[inline]
-    pub fn blue(&self, shade: Scale) -> egui::Color32 {
-        self.get(ColorToken::blue(shade))
-    }
 }
 
 /// A token representing a color in the global color table.
@@ -244,15 +234,5 @@ impl ColorToken {
     #[inline]
     pub fn new(hue: Hue, shade: Scale) -> Self {
         Self { hue, scale: shade }
-    }
-
-    #[inline]
-    pub fn gray(shade: Scale) -> Self {
-        Self::new(Hue::Gray, shade)
-    }
-
-    #[inline]
-    pub fn blue(shade: Scale) -> Self {
-        Self::new(Hue::Blue, shade)
     }
 }

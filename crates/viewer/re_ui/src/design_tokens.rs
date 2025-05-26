@@ -18,11 +18,6 @@ pub struct DesignTokens {
 
     typography: Typography,
 
-    /// Color table for all colors used in the UI.
-    ///
-    /// Loaded at startup from `color_table.ron`.
-    pub(crate) color_table: ColorTable, // TODO: remove
-
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
     pub bottom_bar_color: Color32,
@@ -281,8 +276,6 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
-
-            color_table: colors,
         }
     }
 

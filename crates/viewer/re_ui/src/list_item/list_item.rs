@@ -3,9 +3,7 @@
 use egui::{Color32, NumExt as _, Response, Shape, Ui, emath::GuiRounding as _};
 
 use crate::{
-    DesignTokens, UiExt as _,
-    color_table::Scale,
-    design_tokens_of,
+    DesignTokens, UiExt as _, design_tokens_of,
     list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
 };
 
