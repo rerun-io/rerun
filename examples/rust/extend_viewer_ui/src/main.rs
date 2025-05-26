@@ -54,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 &app_env,
                 startup_options,
                 cc,
+                None,
                 re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?,
             );
             rerun_app.add_log_receiver(rx);
@@ -159,11 +160,10 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results =
-        entity_db
-            .storage_engine()
-            .cache()
-            .latest_at(&query, entity_path, [component_descriptor]);
+    let results = entity_db
+        .storage_engine()
+        .cache()
+        .latest_at(&query, entity_path, [component_descriptor]);
 
     if let Some(data) = results.component_batch_raw(component_descriptor) {
         egui::ScrollArea::vertical()

@@ -7,6 +7,7 @@ use re_capabilities::MainThreadToken;
 use re_chunk::TimelineName;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::{InstancePath, entity_db::EntityDb};
+use re_grpc_client::ConnectionRegistry;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreId, StoreKind, TableMsg};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
@@ -125,6 +126,8 @@ pub struct App {
     /// External interactions with the Viewer host (JS, custom egui app, notebook, etc.).
     pub event_dispatcher: Option<ViewerEventDispatcher>,
 
+    connection_registry: ConnectionRegistry,
+
     /// The async runtime that should be used for all asynchronous operations.
     ///
     /// Using the global tokio runtime should be avoided since:
@@ -141,6 +144,7 @@ impl App {
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
+        connection_registry: Option<ConnectionRegistry>,
         tokio_runtime: AsyncRuntimeHandle,
     ) -> Self {
         Self::with_commands(
@@ -149,18 +153,21 @@ impl App {
             app_env,
             startup_options,
             creation_context,
+            connection_registry,
             tokio_runtime,
             command_channel(),
         )
     }
 
     /// Create a viewer that receives new log messages over time
+    #[expect(clippy::too_many_arguments)]
     pub fn with_commands(
         main_thread_token: MainThreadToken,
         build_info: re_build_info::BuildInfo,
         app_env: &crate::AppEnvironment,
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
+        connection_registry: Option<ConnectionRegistry>,
         tokio_runtime: AsyncRuntimeHandle,
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
@@ -320,6 +327,8 @@ impl App {
             reflection,
 
             event_dispatcher,
+
+            connection_registry: connection_registry.unwrap_or_default(),
             async_runtime: tokio_runtime,
         }
     }
@@ -327,6 +336,10 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
+    }
+
+    pub fn connection_registry(&self) -> &ConnectionRegistry {
+        &self.connection_registry
     }
 
     pub fn set_examples_manifest_url(&mut self, url: String) {
@@ -535,7 +548,10 @@ impl App {
                     }),
                 });
 
-                match data_source.clone().stream(on_cmd, Some(waker)) {
+                match data_source
+                    .clone()
+                    .stream(&self.connection_registry, on_cmd, Some(waker))
+                {
                     Ok(re_data_source::StreamSource::LogMessages(rx)) => self.add_log_receiver(rx),
 
                     Ok(re_data_source::StreamSource::CatalogUri(uri)) => {
@@ -1469,9 +1485,11 @@ impl App {
                         #[cfg(not(target_arch = "wasm32"))]
                         let is_history_enabled = false;
 
-                        self.state
-                            .redap_servers
-                            .on_frame_start(&self.async_runtime, &self.egui_ctx);
+                        self.state.redap_servers.on_frame_start(
+                            &self.connection_registry,
+                            &self.async_runtime,
+                            &self.egui_ctx,
+                        );
 
                         render_ctx.begin_frame();
                         self.state.show(
@@ -1491,6 +1509,7 @@ impl App {
                             },
                             is_history_enabled,
                             self.event_dispatcher.as_ref(),
+                            &self.connection_registry,
                             &self.async_runtime,
                         );
                         render_ctx.before_submit();

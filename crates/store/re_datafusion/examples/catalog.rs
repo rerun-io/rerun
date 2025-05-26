@@ -8,9 +8,12 @@ use re_tuid::Tuid;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let local_addr = "127.0.0.1:51234";
+    let local_addr = "rerun+http:://127.0.0.1:51234";
 
-    let mut df_connector = DataFusionConnector::new(&format!("http://{local_addr}")).await?;
+    let connection_registry = re_grpc_client::ConnectionRegistry::default();
+
+    let client = connection_registry.client(local_addr.parse()?).await?;
+    let mut df_connector = DataFusionConnector::new(client).await?;
 
     let ctx = SessionContext::default();
 

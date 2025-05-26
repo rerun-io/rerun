@@ -1,4 +1,4 @@
-use re_grpc_client::message_proxy;
+use re_grpc_client::{ConnectionRegistry, StreamError, message_proxy};
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
 
@@ -137,6 +137,7 @@ impl DataSource {
     /// `on_msg` can be used to wake up the UI thread on Wasm.
     pub fn stream(
         self,
+        connection_registry: &ConnectionRegistry,
         on_cmd: Box<dyn Fn(DataSourceCommand) + Send + Sync>,
         on_msg: Option<Box<dyn Fn() + Send + Sync>>,
     ) -> anyhow::Result<StreamSource> {
@@ -233,8 +234,8 @@ impl DataSource {
                     re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
                 );
 
-                let on_cmd = Box::new(move |cmd: re_grpc_client::redap::Command| match cmd {
-                    re_grpc_client::redap::Command::SetLoopSelection {
+                let on_cmd = Box::new(move |cmd: re_grpc_client::Command| match cmd {
+                    re_grpc_client::Command::SetLoopSelection {
                         recording_id,
                         timeline,
                         time_range,
@@ -245,14 +246,22 @@ impl DataSource {
                     }),
                 });
 
+                async fn stream_partition(
+                    connection_registry: &ConnectionRegistry,
+                    tx: re_smart_channel::Sender<LogMsg>,
+                    uri: re_uri::DatasetDataUri,
+                    on_cmd: Box<dyn Fn(re_grpc_client::Command) + Send + Sync>,
+                    on_msg: Option<Box<dyn Fn() + Send + Sync>>,
+                ) -> Result<(), StreamError> {
+                    let client = connection_registry.client(uri.origin.clone()).await?;
+                    re_grpc_client::stream_partition_async(client, tx, uri, on_cmd, on_msg).await
+                }
+
+                let connection_registry = connection_registry.clone();
                 spawn_future(async move {
-                    if let Err(err) = re_grpc_client::redap::stream_partition_async(
-                        tx,
-                        uri.clone(),
-                        on_cmd,
-                        on_msg,
-                    )
-                    .await
+                    if let Err(err) =
+                        stream_partition(&connection_registry, tx, uri.clone(), on_cmd, on_msg)
+                            .await
                     {
                         re_log::warn!(
                             "Error while streaming {uri}: {}",
