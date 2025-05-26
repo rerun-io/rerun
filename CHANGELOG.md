@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.23.3](https://github.com/rerun-io/rerun/compare/0.23.1...0.23.2) - 2025-05-26
+## [0.23.3](https://github.com/rerun-io/rerun/compare/0.23.2...0.23.3) - 2025-05-26
 
 ### 🔎 Details
 
