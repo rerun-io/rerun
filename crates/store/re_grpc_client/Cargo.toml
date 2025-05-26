@@ -31,6 +31,7 @@ re_sorbet.workspace = true
 re_uri.workspace = true
 
 async-stream.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true

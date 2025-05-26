@@ -43,6 +43,8 @@ enum TimeControlCommand {
 
 // ----------------------------------------------------------------------------
 
+const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
+
 #[cfg(not(target_arch = "wasm32"))]
 const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
@@ -182,6 +184,13 @@ impl App {
             re_log::debug!(
                 "re_log not initialized - we won't see any log messages as GUI notifications"
             );
+        }
+
+        let connection_registry = connection_registry.unwrap_or_default();
+        if let Some(storage) = creation_context.storage {
+            if let Some(tokens) = eframe::get_value(storage, REDAP_TOKEN_KEY) {
+                connection_registry.load_tokens(tokens);
+            }
         }
 
         let mut state: AppState = if startup_options.persist_state {
@@ -328,7 +337,7 @@ impl App {
 
             event_dispatcher,
 
-            connection_registry: connection_registry.unwrap_or_default(),
+            connection_registry,
             async_runtime: tokio_runtime,
         }
     }
@@ -2177,6 +2186,11 @@ impl eframe::App for App {
 
         // Save the app state
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        eframe::set_value(
+            storage,
+            REDAP_TOKEN_KEY,
+            &self.connection_registry.dump_tokens(),
+        );
 
         // Save the blueprints
         // TODO(#2579): implement web-storage for blueprints as well

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
@@ -57,7 +58,45 @@ impl ConnectionRegistry {
             Err(err) => Err(err),
         }
     }
+
+    /// Dump all tokens for persistence purposes.
+    pub fn dump_tokens(&self) -> SerializedTokens {
+        SerializedTokens(
+            self.inner
+                .blocking_read()
+                .tokens
+                .iter()
+                .map(|(origin, token)| (origin.clone(), token.to_string()))
+                .collect(),
+        )
+    }
+
+    /// Load tokens from persistence.
+    ///
+    /// IMPORTANT: This will NOT overwrite any existing tokens, since it is assumed that existing
+    /// tokens were explicitly set by the user (e.g. with `--token`).
+    pub fn load_tokens(&self, tokens: SerializedTokens) {
+        let mut inner = self.inner.blocking_write();
+        for (origin, token) in tokens.0 {
+            if let Entry::Vacant(e) = inner.tokens.entry(origin.clone()) {
+                if let Ok(jwt) = Jwt::try_from(token) {
+                    e.insert(jwt);
+                } else {
+                    re_log::debug!("Failed to parse token for origin {origin}");
+                }
+            } else {
+                re_log::trace!("Ignoring token for origin {origin} as it is already set");
+            }
+        }
+    }
 }
+
+// ---
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SerializedTokens(Vec<(re_uri::Origin, String)>);
+
+// ---
 
 #[cfg(not(target_arch = "wasm32"))]
 fn get_token_from_env() -> Option<Jwt> {
