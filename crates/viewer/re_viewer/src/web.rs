@@ -52,7 +52,8 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        //TODO: populate from JS?
+        // TODO(#10069): we should be able to provide a token via JS, in particular to propagate
+        // tokens from notebooks to the viewer.
         let connection_registry = re_grpc_client::ConnectionRegistry::default();
 
         Ok(Self {
@@ -99,11 +100,19 @@ impl WebHandle {
             ..Default::default()
         };
 
+        let connection_registry = self.connection_registry.clone();
         self.runner
             .start(
                 canvas,
                 web_options,
-                Box::new(move |cc| Ok(Box::new(create_app(main_thread_token, cc, app_options)?))),
+                Box::new(move |cc| {
+                    Ok(Box::new(create_app(
+                        main_thread_token,
+                        cc,
+                        connection_registry,
+                        app_options,
+                    )?))
+                }),
             )
             .await?;
 
@@ -679,6 +688,7 @@ impl From<PanelStateOverrides> for crate::app_blueprint::PanelStateOverrides {
 fn create_app(
     main_thread_token: crate::MainThreadToken,
     cc: &eframe::CreationContext<'_>,
+    connection_registry: re_grpc_client::ConnectionRegistry,
     app_options: AppOptions,
 ) -> Result<crate::App, re_renderer::RenderContextError> {
     let build_info = re_build_info::build_info!();
@@ -748,7 +758,7 @@ fn create_app(
         &app_env,
         startup_options,
         cc,
-        None, //TODO: we need to be able to pass a token via JS.
+        Some(connection_registry),
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
 
