@@ -1,6 +1,7 @@
 use re_grpc_client::message_proxy;
 use re_log_types::LogMsg;
 use re_smart_channel::{Receiver, SmartChannelSource, SmartMessageSource};
+use re_uri::RedapUri;
 
 use crate::FileContents;
 
@@ -31,7 +32,7 @@ pub enum DataSource {
     Stdin,
 
     /// A `rerun://` URI pointing to a recording or catalog.
-    RerunGrpcStream(re_uri::RedapUri),
+    RerunGrpcStream { uri: RedapUri },
 }
 
 // TODO(#9058): Temporary hack, see issue for how to fix this.
@@ -103,8 +104,8 @@ impl DataSource {
             }
         }
 
-        if let Ok(uri) = uri.as_str().parse::<re_uri::RedapUri>() {
-            return Self::RerunGrpcStream(uri);
+        if let Ok(uri) = uri.as_str().parse::<RedapUri>() {
+            return Self::RerunGrpcStream { uri };
         }
 
         // by default, we just assume an rrd over http
@@ -227,7 +228,10 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::DatasetData(uri)) => {
+            Self::RerunGrpcStream {
+                uri: RedapUri::DatasetData(uri),
+                ..
+            } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
                     re_smart_channel::SmartMessageSource::RedapGrpcStream(uri.clone()),
                     re_smart_channel::SmartChannelSource::RedapGrpcStream(uri.clone()),
@@ -263,15 +267,22 @@ impl DataSource {
                 Ok(StreamSource::LogMessages(rx))
             }
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Catalog(uri)) => {
-                Ok(StreamSource::CatalogUri(uri))
-            }
+            Self::RerunGrpcStream {
+                uri: RedapUri::Catalog(uri),
+                ..
+            } => Ok(StreamSource::CatalogUri(uri)),
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Entry(uri)) => Ok(StreamSource::EntryUri(uri)),
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::Entry(uri),
+                ..
+            } => Ok(StreamSource::EntryUri(uri)),
 
-            Self::RerunGrpcStream(re_uri::RedapUri::Proxy(uri)) => Ok(StreamSource::LogMessages(
-                message_proxy::stream(uri, on_msg),
-            )),
+            Self::RerunGrpcStream {
+                uri: re_uri::RedapUri::Proxy(uri),
+                ..
+            } => Ok(StreamSource::LogMessages(message_proxy::stream(
+                uri, on_msg,
+            ))),
         }
     }
 }

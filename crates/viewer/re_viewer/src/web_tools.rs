@@ -96,7 +96,7 @@ enum EndpointCategory {
 impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
         if let Ok(uri) = uri.parse() {
-            return Self::RerunGrpcStream(uri);
+            return Self::RerunGrpcStream { uri };
         }
 
         if uri.starts_with("web_event:") {
