@@ -75,9 +75,8 @@ pub use transform::RectTransform;
 pub use view_builder::ViewBuilder;
 pub use wgpu_resources::WgpuResourcePoolStatistics;
 
-use draw_phases::DrawPhase;
 pub use draw_phases::{
-    OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
+    DrawPhase, OutlineConfig, OutlineMaskPreference, PickingLayerId, PickingLayerInstanceId,
     PickingLayerObjectId, PickingLayerProcessor, ScreenshotProcessor,
 };
 
