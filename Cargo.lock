@@ -7078,6 +7078,7 @@ dependencies = [
  "re_smart_channel",
  "re_sorbet",
  "re_uri",
+ "serde",
  "thiserror 1.0.65",
  "tokio",
  "tokio-stream",
