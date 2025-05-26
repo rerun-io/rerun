@@ -102,13 +102,13 @@ pub struct RenderContext {
 
     /// Global bindings, always bound to 0 bind group slot zero.
     /// [`Renderer`] are not allowed to use bind group 0 themselves!
-    pub(crate) global_bindings: GlobalBindings,
+    pub global_bindings: GlobalBindings,
 
     renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
 
     pub texture_manager_2d: TextureManager2D,
-    pub(crate) cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
+    pub cpu_write_gpu_read_belt: Mutex<CpuWriteGpuReadBelt>,
     pub gpu_readback_belt: Mutex<GpuReadbackBelt>,
 
     /// List of unfinished queue submission via this context.
@@ -194,6 +194,14 @@ impl RenderContext {
         config_provider: impl FnOnce(&DeviceCaps) -> RenderConfig,
     ) -> Result<Self, RenderContextError> {
         re_tracing::profile_function!();
+
+        #[cfg(not(load_shaders_from_disk))]
+        {
+            // Make sure `workspace_shaders::init()` is called at least once, which will
+            // register all shaders defined in the workspace into the run-time in-memory
+            // filesystem.
+            crate::workspace_shaders::init();
+        }
 
         let device_caps = DeviceCaps::from_adapter(adapter)?;
         let config = config_provider(&device_caps);
