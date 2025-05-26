@@ -225,10 +225,16 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription) {
                     });
 
                     row.col(|ui| {
-                        ui.monospace(
-                            re_log_types::Duration::from(duration.duration(video_data.timescale))
+                        if let Some(duration) = duration {
+                            ui.monospace(
+                                re_log_types::Duration::from(
+                                    duration.duration(video_data.timescale),
+                                )
                                 .to_string(),
-                        );
+                            );
+                        } else {
+                            ui.monospace("unknown");
+                        }
                     });
                     row.col(|ui| {
                         ui.monospace(re_format::format_bytes(byte_length as _));
@@ -363,7 +369,7 @@ fn frame_info_ui(
         sample_idx,
         frame_nr,
         presentation_timestamp,
-        duration,
+        duration: _,
         latest_decode_timestamp,
     } = *frame_info;
 
@@ -375,7 +381,7 @@ fn frame_info_ui(
             );
     }
 
-    let presentation_time_range = presentation_timestamp..presentation_timestamp + duration;
+    let presentation_time_range = frame_info.presentation_time_range();
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
         "{} - {}",
         re_format::format_timestamp_secs(presentation_time_range.start.into_secs(

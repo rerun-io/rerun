@@ -525,15 +525,17 @@ pub struct Sample {
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
-    /// Often synonymous with `presentation_timestamp`.
     ///
     /// The frame should be shown at this time.
     ///
     /// `decode_timestamp <= presentation_timestamp`
     pub presentation_timestamp: Time,
 
-    /// Duration of the sample, in time units.
-    pub duration: Time,
+    /// Duration of the sample.
+    ///
+    /// Typically the time difference in presentation timestamp to the next sample.
+    /// May be unknown if this is the last sample in an ongoing video stream.
+    pub duration: Option<Time>,
 
     /// Offset into the video data.
     pub byte_offset: u32,
@@ -713,7 +715,7 @@ mod tests {
                 frame_nr: 0, // unused
                 decode_timestamp: Time(dts),
                 presentation_timestamp: Time(pts),
-                duration: Time(1),
+                duration: Some(Time(1)),
                 byte_offset: 0,
                 byte_length: 0,
             })

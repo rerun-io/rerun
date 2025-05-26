@@ -122,7 +122,7 @@ struct FFmpegFrameInfo {
     frame_nr: usize,
 
     presentation_timestamp: Time,
-    duration: Time,
+    duration: Option<Time>,
     decode_timestamp: Time,
 }
 
@@ -592,8 +592,8 @@ impl FrameBuffer {
                 sample_idx: Some(frame_info.sample_idx),
                 frame_nr: Some(frame_info.frame_nr),
                 presentation_timestamp: frame_info.presentation_timestamp,
-                duration: frame_info.duration,
                 latest_decode_timestamp: Some(frame_info.decode_timestamp),
+                duration: frame_info.duration,
             },
         })
     }

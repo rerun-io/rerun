@@ -170,8 +170,8 @@ fn load_video_data_from_chunks(
                 decode_timestamp: re_video::Time(time.as_i64()),
                 presentation_timestamp: re_video::Time(time.as_i64()),
 
-                // Filled out later.
-                duration: re_video::Time::MAX,
+                // Filled out later for everything but the last frame.
+                duration: None,
 
                 // We're using offsets directly into the chunk data.
                 byte_offset: byte_offset as _,
@@ -182,8 +182,9 @@ fn load_video_data_from_chunks(
 
     // Fill out frame durations.
     for sample in 0..samples.len().saturating_sub(1) {
-        samples[sample].duration =
-            samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp;
+        samples[sample].duration = Some(
+            samples[sample + 1].presentation_timestamp - samples[sample].presentation_timestamp,
+        );
     }
 
     Some((

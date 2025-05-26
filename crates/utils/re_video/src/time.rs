@@ -12,7 +12,7 @@ impl Timescale {
 
 /// A value in time units.
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Time(pub i64);
+pub struct Time(pub i64); // TODO: NonMinI64?
 
 impl Time {
     pub const ZERO: Self = Self(0);

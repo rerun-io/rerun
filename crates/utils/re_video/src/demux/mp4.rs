@@ -68,7 +68,7 @@ impl VideoDataDescription {
                     frame_nr: 0, // filled in after the loop
                     decode_timestamp,
                     presentation_timestamp,
-                    duration,
+                    duration: Some(duration),
                     byte_offset,
                     byte_length,
                 });

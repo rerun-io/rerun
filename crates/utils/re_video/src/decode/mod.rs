@@ -247,7 +247,6 @@ pub struct Chunk {
     /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
-    // TODO(andreas): do we have to copy this?
     // TODO(andreas): should we just passe source sample and chunk separately?
     pub data: Vec<u8>,
 
@@ -271,13 +270,18 @@ pub struct Chunk {
     /// `decode_timestamp <= presentation_timestamp`
     pub decode_timestamp: Time,
 
-    /// Presentation timestamp for the sample in this chunk.
-    /// Often synonymous with `composition_timestamp`.
+    /// Time at which this sample appears in the frame stream, in time units.
+    ///
+    /// The frame should be shown at this time.
     ///
     /// `decode_timestamp <= presentation_timestamp`
     pub presentation_timestamp: Time,
 
-    pub duration: Time,
+    /// Duration of the sample.
+    ///
+    /// Typically the time difference in presentation timestamp to the next sample.
+    /// May be unknown if this is the last sample in an ongoing video stream.
+    pub duration: Option<Time>,
 }
 
 /// Data for a decoded frame on native targets.
@@ -346,11 +350,18 @@ pub struct FrameInfo {
     /// None = unknown.
     pub frame_nr: Option<usize>,
 
-    /// The presentation timestamp of the frame.
+    /// Time at which this frame appears in the frame stream, in time units.
+    ///
+    /// The frame should be shown at this time.
+    ///
+    /// `decode_timestamp <= presentation_timestamp`
     pub presentation_timestamp: Time,
 
-    /// How long the frame is valid.
-    pub duration: Time,
+    /// Duration of the frame.
+    ///
+    /// Typically the time difference in presentation timestamp to the next frame.
+    /// May be unknown if this is the last frame in an ongoing video stream.
+    pub duration: Option<Time>,
 
     /// The decode timestamp of the last chunk that was needed to decode this frame.
     ///
@@ -360,8 +371,14 @@ pub struct FrameInfo {
 
 impl FrameInfo {
     /// Presentation timestamp range in which this frame is valid.
+    ///
+    /// If there's no known duration, the range is open ended.
     pub fn presentation_time_range(&self) -> std::ops::Range<Time> {
-        self.presentation_timestamp..self.presentation_timestamp + self.duration
+        if let Some(duration) = self.duration {
+            self.presentation_timestamp..self.presentation_timestamp + duration
+        } else {
+            self.presentation_timestamp..Time::MAX
+        }
     }
 }
 
