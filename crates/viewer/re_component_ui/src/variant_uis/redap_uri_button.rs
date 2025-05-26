@@ -3,13 +3,13 @@ use std::str::FromStr as _;
 
 use re_types_core::{ComponentDescriptor, RowId};
 use re_uri::RedapUri;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SystemCommand, SystemCommandSender, ViewerContext};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
 /// Requires a String mono-component which is valid [`RedapUri`].
 pub fn redap_uri_button(
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     _component_descriptor: &ComponentDescriptor,
     _row_id: Option<RowId>,
@@ -32,20 +32,50 @@ pub fn redap_uri_button(
 
     let uri = RedapUri::from_str(url_str)?;
 
-    //TODO(#10036): we should provide feedback if the URI is already loaded, e.g. have "go to" instead of "open"
-    let response = ui.button("Open").on_hover_ui(|ui| {
-        ui.label(uri.to_string());
-    });
-    if response.middle_clicked() {
-        ui.ctx().open_url(egui::OpenUrl::new_tab(uri));
-    } else if response.clicked() {
-        let url = if ui.input(|i| i.modifiers.any()) {
-            egui::OpenUrl::new_tab(uri)
+    let loaded_recording_id = ctx.storage_context.bundle.entity_dbs().find_map(|db| {
+        if db
+            .data_source
+            .as_ref()
+            .is_some_and(|source| source.redap_uri().as_ref() == Some(&uri))
+        {
+            Some(db.store_id())
         } else {
-            egui::OpenUrl::same_tab(uri)
-        };
+            None
+        }
+    });
 
-        ui.ctx().open_url(url);
+    if let Some(loaded_recording_id) = loaded_recording_id {
+        let response = ui.button("Switch to").on_hover_ui(|ui| {
+            ui.label("This recording is already loaded. Click to switch to it.");
+        });
+
+        if response.clicked() {
+            // Show it:
+            ctx.command_sender()
+                .send_system(SystemCommand::ChangeDisplayMode(
+                    re_viewer_context::DisplayMode::RedapServer(uri.origin().clone()),
+                ));
+            ctx.command_sender()
+                .send_system(SystemCommand::SetSelection(
+                    re_viewer_context::Item::StoreId(loaded_recording_id),
+                ));
+        }
+    } else {
+        let response = ui.button("Open").on_hover_ui(|ui| {
+            ui.label(uri.to_string());
+        });
+
+        if response.middle_clicked() {
+            ui.ctx().open_url(egui::OpenUrl::new_tab(uri));
+        } else if response.clicked() {
+            let url = if ui.input(|i| i.modifiers.any()) {
+                egui::OpenUrl::new_tab(uri)
+            } else {
+                egui::OpenUrl::same_tab(uri)
+            };
+
+            ui.ctx().open_url(url);
+        }
     }
 
     Ok(())

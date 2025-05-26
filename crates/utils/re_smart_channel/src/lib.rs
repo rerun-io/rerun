@@ -2,6 +2,7 @@
 
 use std::sync::{Arc, atomic::AtomicU64};
 
+use re_uri::RedapUri;
 use web_time::Instant;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
@@ -101,6 +102,20 @@ impl SmartChannelSource {
             Self::RedapGrpcStream {
                 select_when_loaded, ..
             } => *select_when_loaded,
+        }
+    }
+
+    pub fn redap_uri(&self) -> Option<RedapUri> {
+        match self {
+            Self::RedapGrpcStream { uri, .. } => Some(RedapUri::DatasetData(uri.clone())),
+            Self::MessageProxy(uri) => Some(RedapUri::Proxy(uri.clone())),
+
+            Self::File(_)
+            | Self::Sdk
+            | Self::RrdWebEventListener
+            | Self::Stdin
+            | Self::RrdHttpStream { .. }
+            | Self::JsChannel { .. } => None,
         }
     }
 }
