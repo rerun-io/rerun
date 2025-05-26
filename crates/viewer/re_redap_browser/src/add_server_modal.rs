@@ -78,7 +78,7 @@ impl AddServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Token (optional):");
+                ui.label("Token (optional, will be stored in clear text):");
                 let token = ui
                     .scope(|ui| {
                         let token = (!self.token.is_empty())

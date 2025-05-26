@@ -35,6 +35,14 @@ impl ConnectionRegistry {
         inner.clients.remove(origin);
     }
 
+    /// Get a client for the given origin, creating one if it doesn't exist yet.
+    ///
+    /// If a token has already been registered for this origin, it will be used. Otherwise, if the
+    /// `REDAP_TOKEN` environment variable is set, it will be used as the token.
+    ///
+    /// Note that a token set via `REDAP_TOKEN` will not be persisted unless [`Self::set_token`] is
+    /// explicitly called. The rationale is to avoid sneakily saving in clear text potentially
+    /// sensitive information.
     pub async fn client(&self, origin: re_uri::Origin) -> Result<RedapClient, ConnectionError> {
         let inner = self.inner.read().await;
         if let Some(client) = inner.clients.get(&origin) {
