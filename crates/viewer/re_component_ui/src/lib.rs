@@ -121,7 +121,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     );
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<VideoCodec>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<VideoCodec>(edit_view_enum); // TODO: let's hack this to not be editable, saves us some work.
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
     // Vec2 components:

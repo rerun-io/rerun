@@ -31,7 +31,7 @@ impl Chunk {
     /// Return the raw component list array values for a given component.
     ///
     /// Use with great care: Component data may have arbitrary gaps.
-    pub fn raw_component_memory(
+    pub fn raw_component_array(
         &self,
         component_descr: &ComponentDescriptor,
     ) -> Option<&ArrowArrayRef> {

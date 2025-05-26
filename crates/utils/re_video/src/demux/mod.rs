@@ -498,7 +498,7 @@ pub struct Sample {
     ///
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
     /// In the absence of b-frames this is expected to be equal to the index in the array of all video samples.
-    pub frame_nr: usize,
+    pub frame_nr: u32,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
@@ -520,7 +520,10 @@ pub struct Sample {
     /// May be unknown if this is the last sample in an ongoing video stream.
     pub duration: Option<Time>,
 
-    /// Offset into the video data.
+    /// Index of the data buffer in which this sample is stored.
+    pub buffer_index: u32,
+
+    /// Offset within the data buffer addressed by [`Sample::buffer_index`].
     pub byte_offset: u32,
 
     /// Length of sample starting at [`Sample::byte_offset`].
@@ -535,10 +538,12 @@ impl Sample {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get(&self, data: &[u8], sample_idx: usize) -> Option<Chunk> {
+    pub fn get(&self, data: &[&[u8]], sample_idx: u32) -> Option<Chunk> {
         let data = data
+            .get(self.buffer_index as usize)?
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
             .to_vec();
+
         Some(Chunk {
             data,
             sample_idx,
@@ -675,6 +680,7 @@ mod tests {
                 decode_timestamp: Time(dts),
                 presentation_timestamp: Time(pts),
                 duration: Some(Time(1)),
+                buffer_index: 0,
                 byte_offset: 0,
                 byte_length: 0,
             })

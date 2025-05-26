@@ -129,7 +129,7 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 ctx.viewer_ctx.render_ctx(),
                 video_stream_id(entity_path, ctx.view_id, Self::identifier()),
                 time_since_video_start_in_secs,
-                &video.video_sample_data,
+                &video.sample_buffer_slices(),
             ) {
                 Ok(re_renderer::video::VideoFrameTexture {
                     texture,

@@ -55,6 +55,8 @@ impl VideoDataDescription {
                     decode_timestamp,
                     presentation_timestamp,
                     duration: Some(duration),
+                    // There's only a single buffer, which is the the raw mp4 video data into which we address into.
+                    buffer_index: 0,
                     byte_offset,
                     byte_length,
                 });
@@ -110,7 +112,7 @@ impl VideoDataDescription {
             let mut samples_sorted_by_pts = samples.iter_mut().collect::<Vec<_>>();
             samples_sorted_by_pts.sort_by_key(|s| s.presentation_timestamp);
             for (frame_nr, sample) in samples_sorted_by_pts.into_iter().enumerate() {
-                sample.frame_nr = frame_nr;
+                sample.frame_nr = frame_nr as u32;
             }
         }
 

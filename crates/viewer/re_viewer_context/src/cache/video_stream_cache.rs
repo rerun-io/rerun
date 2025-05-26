@@ -27,7 +27,16 @@ use crate::Cache;
 pub struct PlayableStoreVideoStream {
     // TODO: video needs to remain editable.
     pub video_renderer: Arc<re_renderer::video::Video>,
-    pub video_sample_data: Buffer,
+    pub video_sample_data: Vec<Buffer>,
+}
+
+impl PlayableStoreVideoStream {
+    pub fn sample_buffer_slices(&self) -> Vec<&[u8]> {
+        self.video_sample_data
+            .iter()
+            .map(|b| b.as_slice())
+            .collect()
+    }
 }
 
 /// Entry in the video stream cache.
@@ -126,7 +135,7 @@ fn load_video_data_from_chunks(
     store: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
     timeline: TimelineName,
-) -> Result<(re_video::VideoDataDescription, Buffer), VideoStreamProcessingError> {
+) -> Result<(re_video::VideoDataDescription, Vec<Buffer>), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
     let frame_chunk_descr = VideoStream::descriptor_frame();
@@ -169,68 +178,20 @@ fn load_video_data_from_chunks(
         components::VideoCodec::AV1 => re_video::VideoCodec::Av1,
     };
 
-    // Setup video decoder...
+    // Extract all video samples.
+    let mut chunk_buffers = Vec::with_capacity(video_chunks.len());
+    let mut samples = Vec::with_capacity(video_chunks.len()); // Number of video chunks is minimum number of samples.
 
-    // TODO: multiple chunks?
-    let first_chunk = video_chunks
-        .first()
-        .ok_or(VideoStreamProcessingError::NoVideoChunksFound)?;
-    let raw_component_memory = first_chunk
-        .raw_component_memory(&frame_chunk_descr)
-        .ok_or(VideoStreamProcessingError::NoVideoChunksFound)?;
-
-    let inner_list_array = raw_component_memory
-        .downcast_array_ref::<arrow::array::ListArray>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
-            raw_component_memory.data_type().clone(),
-        ))?;
-    let values = inner_list_array
-        .values()
-        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()
-        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
-            raw_component_memory.data_type().clone(),
-        ))?;
-    let values = values.values();
-
-    let offsets = inner_list_array.offsets();
-    let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
-
-    let mut samples = first_chunk
-        .iter_component_offsets(&frame_chunk_descr)
-        .zip(first_chunk.iter_component_indices(&timeline, &frame_chunk_descr))
-        .map(|((idx, len), (time, _row_id))| {
-            debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
-
-            let byte_offset = &offsets[idx..idx + len];
-            let byte_length = &lengths[idx..idx + len];
-
-            // TODO:
-            debug_assert_eq!(byte_offset.len(), 1);
-            debug_assert_eq!(byte_length.len(), 1);
-            let byte_offset = byte_offset[0];
-            let byte_length = byte_length[0];
-
-            re_video::Sample {
-                // not the case.
-                is_sync: true,
-
-                // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
-                frame_nr: idx,
-
-                // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
-                // TODO: what's the actual timestamp...?
-                decode_timestamp: re_video::Time(time.as_i64()),
-                presentation_timestamp: re_video::Time(time.as_i64()),
-
-                // Filled out later for everything but the last frame.
-                duration: None,
-
-                // We're using offsets directly into the chunk data.
-                byte_offset: byte_offset as _,
-                byte_length: byte_length as _,
-            }
-        })
-        .collect::<Vec<_>>();
+    for (chunk_idx, chunk) in video_chunks.iter().enumerate() {
+        read_samples_from_chunk(
+            timeline,
+            &frame_chunk_descr,
+            chunk_idx,
+            chunk,
+            &mut chunk_buffers,
+            &mut samples,
+        )?;
+    }
 
     // Fill out frame durations.
     for sample in 0..samples.len().saturating_sub(1) {
@@ -261,8 +222,81 @@ fn load_video_data_from_chunks(
             samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(BFRAMETICKET): No b-frames for now.
             tracks: std::iter::once((0, Some(re_video::TrackKind::Video))).collect(),
         },
-        values.inner().clone(),
+        chunk_buffers,
     ))
+}
+
+/// Reads all samples from a chunk and appends them to a list.
+fn read_samples_from_chunk(
+    timeline: TimelineName,
+    frame_chunk_descr: &re_types::ComponentDescriptor,
+    chunk_idx: usize,
+    chunk: &re_chunk::Chunk,
+    chunk_buffers: &mut Vec<Buffer>,
+    samples: &mut Vec<re_video::Sample>,
+) -> Result<(), VideoStreamProcessingError> {
+    re_tracing::profile_function!();
+
+    let Some(raw_array) = chunk.raw_component_array(frame_chunk_descr) else {
+        // This chunk doesn't have any video chunks.
+        return Ok(());
+    };
+
+    let inner_list_array = raw_array
+        .downcast_array_ref::<arrow::array::ListArray>()
+        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
+            raw_array.data_type().clone(),
+        ))?;
+    let values = inner_list_array
+        .values()
+        .downcast_array_ref::<arrow::array::PrimitiveArray<arrow::array::types::UInt8Type>>()
+        .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
+            raw_array.data_type().clone(),
+        ))?;
+    chunk_buffers.push(values.values().inner().clone());
+
+    let offsets = inner_list_array.offsets();
+    let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
+
+    samples.extend(
+        chunk
+            .iter_component_offsets(frame_chunk_descr)
+            .zip(chunk.iter_component_indices(&timeline, frame_chunk_descr))
+            .map(move |((idx, len), (time, _row_id))| {
+                debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
+
+                let byte_offset = &offsets[idx..idx + len];
+                let byte_length = &lengths[idx..idx + len];
+
+                // TODO:
+                debug_assert_eq!(byte_offset.len(), 1);
+                debug_assert_eq!(byte_length.len(), 1);
+                let byte_offset = byte_offset[0];
+                let byte_length = byte_length[0];
+
+                re_video::Sample {
+                    // not the case.
+                    is_sync: true,
+
+                    // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
+                    frame_nr: idx as u32,
+
+                    // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
+                    // TODO: what's the actual timestamp...?
+                    decode_timestamp: re_video::Time(time.as_i64()),
+                    presentation_timestamp: re_video::Time(time.as_i64()),
+
+                    // Filled out later for everything but the last frame.
+                    duration: None,
+
+                    // We're using offsets directly into the chunk data.
+                    buffer_index: chunk_idx as u32,
+                    byte_offset: byte_offset as u32,
+                    byte_length: byte_length as u32,
+                }
+            }),
+    );
+    Ok(())
 }
 
 impl Cache for VideoStreamCache {

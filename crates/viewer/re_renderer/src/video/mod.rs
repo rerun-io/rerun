@@ -135,7 +135,7 @@ impl Video {
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         time_since_video_start_in_secs: f64,
-        video_data: &[u8],
+        video_data: &[&[u8]],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 

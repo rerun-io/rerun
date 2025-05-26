@@ -60,7 +60,7 @@ fn main() {
 
     let start = Instant::now();
     for (sample_idx, sample) in video.samples.iter().enumerate() {
-        let chunk = sample.get(&video_blob, sample_idx).unwrap();
+        let chunk = sample.get(&[&video_blob], sample_idx as u32).unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 

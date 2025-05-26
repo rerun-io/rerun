@@ -111,7 +111,7 @@ struct FFmpegFrameInfo {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    sample_idx: usize,
+    sample_idx: u32,
 
     /// Which frame is this?
     ///
@@ -119,7 +119,7 @@ struct FFmpegFrameInfo {
     /// which is true for MP4.
     ///
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
-    frame_nr: usize,
+    frame_nr: u32,
 
     presentation_timestamp: Time,
     duration: Option<Time>,

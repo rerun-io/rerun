@@ -195,6 +195,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoDataDescription) {
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
+                        buffer_index: _,
                         byte_offset: _,
                         byte_length,
                     } = *sample;
@@ -279,7 +280,12 @@ pub fn show_decoded_frame_info(
     let player_stream_id =
         re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
 
-    match video.frame_at(render_ctx, player_stream_id, timestamp_in_secs, blob) {
+    match video.frame_at(
+        render_ctx,
+        player_stream_id,
+        timestamp_in_secs,
+        &[blob.as_ref()],
+    ) {
         Ok(VideoFrameTexture {
             texture,
             is_pending,

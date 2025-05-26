@@ -252,7 +252,7 @@ pub struct Chunk {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    pub sample_idx: usize,
+    pub sample_idx: u32,
 
     /// Which frame does this chunk belong to?
     ///
@@ -260,7 +260,7 @@ pub struct Chunk {
     /// which is true for MP4.
     ///
     /// This is the index of samples ordered by [`Self::presentation_timestamp`].
-    pub frame_nr: usize,
+    pub frame_nr: u32,
 
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
@@ -336,7 +336,7 @@ pub struct FrameInfo {
     /// which is usually ordered by [`Self::latest_decode_timestamp`].
     ///
     /// None = unknown.
-    pub sample_idx: Option<usize>,
+    pub sample_idx: Option<u32>,
 
     /// Which frame is this?
     ///
@@ -346,7 +346,7 @@ pub struct FrameInfo {
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
     ///
     /// None = unknown.
-    pub frame_nr: Option<usize>,
+    pub frame_nr: Option<u32>,
 
     /// Time at which this frame appears in the frame stream, in time units.
     ///
