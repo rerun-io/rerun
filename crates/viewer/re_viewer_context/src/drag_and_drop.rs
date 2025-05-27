@@ -41,11 +41,7 @@ use itertools::Itertools as _;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
-use re_ui::{
-    ColorToken, Hue,
-    Scale::{S325, S375},
-    UiExt as _,
-};
+use re_ui::UiExt as _;
 
 use crate::{Contents, Item, ItemCollection};
 
@@ -225,7 +221,7 @@ impl DragAndDropManager {
                 }
 
                 let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
-                let response = drag_pill_frame(ui.design_tokens(), payload_is_currently_droppable)
+                let response = drag_pill_frame(ui.tokens(), payload_is_currently_droppable)
                     .show(&mut ui, |ui| {
                         let text_color = ui.visuals().widgets.inactive.text_color();
 
@@ -246,11 +242,20 @@ impl DragAndDropManager {
 }
 
 fn drag_pill_frame(design_tokens: &re_ui::DesignTokens, droppable: bool) -> egui::Frame {
-    let hue = if droppable { Hue::Blue } else { Hue::Gray };
-
     egui::Frame {
-        fill: design_tokens.color(ColorToken::new(hue, S325)),
-        stroke: egui::Stroke::new(1.0, design_tokens.color(ColorToken::new(hue, S375))),
+        fill: if droppable {
+            design_tokens.drag_pill_droppable_fill
+        } else {
+            design_tokens.drag_pill_nondroppable_fill
+        },
+        stroke: egui::Stroke::new(
+            1.0,
+            if droppable {
+                design_tokens.drag_pill_droppable_stroke
+            } else {
+                design_tokens.drag_pill_nondroppable_stroke
+            },
+        ),
         corner_radius: 2.into(),
         inner_margin: egui::Margin {
             left: 6,

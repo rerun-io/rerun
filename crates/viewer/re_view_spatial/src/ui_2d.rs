@@ -1,4 +1,4 @@
-use egui::{Align2, Color32, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
+use egui::{Align2, Pos2, Rect, Shape, Vec2, emath::RectTransform, pos2, vec2};
 use re_math::IsoTransform;
 
 use re_entity_db::EntityPath;
@@ -439,11 +439,11 @@ fn show_projections_from_3d_space(
                     shapes.push(Shape::circle_filled(
                         pos_in_ui,
                         radius + 2.0,
-                        Color32::BLACK,
+                        ui.visuals().extreme_bg_color,
                     ));
                     shapes.push(Shape::circle_filled(pos_in_ui, radius, circle_fill_color));
 
-                    let text_color = Color32::WHITE;
+                    let text_color = ui.visuals().strong_text_color();
                     let text = format!("Depth: {:.3} m", pos_2d.z);
                     let font_id = egui::TextStyle::Body.resolve(ui.style());
                     let galley = ui.fonts(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
@@ -454,7 +454,7 @@ fn show_projections_from_3d_space(
                     shapes.push(Shape::rect_filled(
                         rect,
                         2.0,
-                        Color32::from_black_alpha(196),
+                        ui.visuals().extreme_bg_color.gamma_multiply_u8(196),
                     ));
                     shapes.push(Shape::galley(rect.min, galley, text_color));
                 }

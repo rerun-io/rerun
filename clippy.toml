@@ -29,6 +29,8 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 disallowed-macros = [
   'dbg',
 
+  { path = "egui::hex_color", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+
   # TODO(emilk): consider forbidding these to encourage the use of proper log stream, and then explicitly allow legitimate uses
   # 'std::eprint',
   # 'std::eprintln',
@@ -55,6 +57,21 @@ disallowed-methods = [
   { path = "arrow::compute::take", reason = "Use `re_arrow_util::arrow_util::take_array` instead" },
 
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
+
+  { path = "egui::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Color32::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Color32::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Color32::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Color32::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Color32::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_rgb", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_rgba_premultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_rgba_unmultiplied", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+  { path = "egui::Rgba::from_white_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
 
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)

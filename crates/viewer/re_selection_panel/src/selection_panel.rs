@@ -591,7 +591,7 @@ fn entity_path_filter_ui(
             let color = if is_exclusion {
                 style.visuals.error_fg_color
             } else {
-                design_tokens.info_log_text_color()
+                design_tokens.info_log_text_color
             };
 
             let text_format = egui::TextFormat {
@@ -612,7 +612,7 @@ fn entity_path_filter_ui(
         wrap_width: f32,
     ) -> std::sync::Arc<egui::Galley> {
         let mut layout_job =
-            syntax_highlight_entity_path_filter(ui.design_tokens(), ui.style(), text.as_str());
+            syntax_highlight_entity_path_filter(ui.tokens(), ui.style(), text.as_str());
         layout_job.wrap.max_width = wrap_width;
         ui.fonts(|f| f.layout_job(layout_job))
     }

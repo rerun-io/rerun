@@ -1,5 +1,3 @@
-use egui::{Ui, hex_color};
-
 use re_ui::UiExt as _;
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
@@ -31,7 +29,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
 
         ui.add_space(18.0);
 
-        let bullet_text = |ui: &mut Ui, text: &str| {
+        let bullet_text = |ui: &mut egui::Ui, text: &str| {
             ui.horizontal(|ui| {
                 ui.add_space(1.0);
                 ui.bullet(ui.visuals().strong_text_color());
@@ -53,19 +51,10 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         }
 
         ui.add_space(9.0);
-        if ui
-            .button(
-                egui::RichText::new("Go to documentation →")
-                    .color(hex_color!("#60A0FF"))
-                    .text_style(re_ui::DesignTokens::welcome_screen_body()),
-            )
-            .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .clicked()
-        {
-            ui.ctx().open_url(egui::output::OpenUrl {
-                url: DOCS_URL.to_owned(),
-                new_tab: true,
-            });
-        }
+
+        ui.scope(|ui| {
+            ui.style_mut().override_text_style = Some(re_ui::DesignTokens::welcome_screen_body());
+            ui.re_hyperlink("Go to documentation", DOCS_URL, true);
+        });
     });
 }

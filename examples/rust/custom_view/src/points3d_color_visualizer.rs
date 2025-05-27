@@ -73,6 +73,7 @@ impl VisualizerSystem for Points3DColorVisualizer {
                 for (instance, color) in (0..).zip(colors_slice) {
                     let [r, g, b, _] = rerun::Color::from_u32(*color).to_array();
                     colors_for_entity.push(ColorWithInstance {
+                        #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
                         color: egui::Color32::from_rgb(r, g, b),
                         instance: instance.into(),
                     });
