@@ -276,10 +276,11 @@ impl ListItem {
     pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| {
+            let tokens = ui.tokens();
             self.ui(
                 ui,
                 None,
-                DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding(),
+                tokens.small_icon_size.x + DesignTokens::text_to_icon_padding(),
                 Box::new(content),
             )
         })
@@ -341,6 +342,8 @@ impl ListItem {
             default_open,
         );
 
+        let tokens = ui.tokens();
+
         // enable collapsing arrow
         let openness = state.openness(ui.ctx());
         self.collapse_openness = Some(openness);
@@ -363,7 +366,7 @@ impl ListItem {
             .scope(|ui| {
                 if indented {
                     ui.spacing_mut().indent =
-                        DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+                        tokens.small_icon_size.x + DesignTokens::text_to_icon_padding();
                     state.show_body_indented(&response.response, ui, |ui| add_children(ui))
                 } else {
                     state.show_body_unindented(ui, |ui| add_children(ui))
@@ -399,13 +402,17 @@ impl ListItem {
             render_offscreen,
         } = self;
 
+        let tokens = ui.tokens();
+
         if y_offset != 0.0 {
             ui.add_space(y_offset);
             height -= y_offset;
         }
 
+        let collapsing_triangle_area = tokens.collapsing_triangle_area();
+
         let collapse_extra = if collapse_openness.is_some() {
-            DesignTokens::collapsing_triangle_area().x + DesignTokens::text_to_icon_padding()
+            collapsing_triangle_area.x + DesignTokens::text_to_icon_padding()
         } else {
             0.0
         };
@@ -491,11 +498,10 @@ impl ListItem {
         if let Some(openness) = collapse_openness {
             let triangle_pos = egui::pos2(
                 rect.min.x,
-                rect.center().y - 0.5 * DesignTokens::collapsing_triangle_area().y,
+                rect.center().y - 0.5 * collapsing_triangle_area.y,
             )
             .round_to_pixels(ui.pixels_per_point());
-            let triangle_rect =
-                egui::Rect::from_min_size(triangle_pos, DesignTokens::collapsing_triangle_area());
+            let triangle_rect = egui::Rect::from_min_size(triangle_pos, collapsing_triangle_area);
             let triangle_response = ui.interact(
                 triangle_rect.expand(3.0), // make it easier to click
                 id.unwrap_or(ui.id()).with("collapsing_triangle"),
@@ -534,7 +540,7 @@ impl ListItem {
             let bg_rect_to_paint = bg_rect.round_to_pixels(ui.pixels_per_point());
 
             if drag_target {
-                let stroke = ui.tokens().drop_target_container_stroke;
+                let stroke = tokens.drop_target_container_stroke;
                 ui.painter().set(
                     background_frame,
                     Shape::rect_stroke(

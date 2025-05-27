@@ -535,10 +535,11 @@ impl UICommand {
 
     pub fn menu_button(self, egui_ctx: &egui::Context) -> egui::Button<'static> {
         let mut button = if let Some(icon) = self.icon() {
+            let tokens = egui_ctx.tokens();
             egui::Button::image_and_text(
                 icon.as_image()
-                    .tint(egui_ctx.tokens().label_button_icon_color)
-                    .fit_to_exact_size(crate::DesignTokens::small_icon_size()),
+                    .tint(tokens.label_button_icon_color)
+                    .fit_to_exact_size(tokens.small_icon_size),
                 self.text(),
             )
         } else {

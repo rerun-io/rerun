@@ -39,6 +39,8 @@ impl ViewportUi {
         ctx: &ViewerContext<'_>,
         view_states: &mut ViewStates,
     ) {
+        let tokens = ui.tokens();
+
         let Self { blueprint } = self;
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
@@ -144,7 +146,7 @@ impl ViewportUi {
                     };
 
                     let stroke = if should_display_drop_destination_frame {
-                        ui.tokens().drop_target_container_stroke
+                        tokens.drop_target_container_stroke
                     } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {
@@ -654,6 +656,8 @@ impl TabWidget {
         tab_state: &egui_tiles::TabState,
         gamma: f32,
     ) -> Self {
+        let tokens = ui.tokens();
+
         struct TabDesc {
             label: egui::WidgetText,
             user_named: bool,
@@ -763,7 +767,7 @@ impl TabWidget {
             .is_some_and(|item| tab_viewer.ctx.selection().contains_item(item));
 
         // tab icon
-        let icon_size = DesignTokens::small_icon_size();
+        let icon_size = tokens.small_icon_size;
         let icon_width_plus_padding = icon_size.x + DesignTokens::text_to_icon_padding();
 
         // tab title

@@ -55,13 +55,10 @@ impl Icon {
     #[inline]
     pub fn as_button_with_label(
         &self,
-        design_tokens: &DesignTokens,
+        tokens: &DesignTokens,
         label: impl Into<egui::WidgetText>,
     ) -> egui::Button<'_> {
-        egui::Button::image_and_text(
-            self.as_image().tint(design_tokens.label_button_icon_color),
-            label,
-        )
+        egui::Button::image_and_text(self.as_image().tint(tokens.label_button_icon_color), label)
     }
 }
 

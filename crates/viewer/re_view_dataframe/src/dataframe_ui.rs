@@ -688,8 +688,9 @@ fn cell_with_hover_button_ui(
 
     if is_hovering_cell {
         let mut content_rect = ui.max_rect();
+        let tokens = ui.tokens();
         content_rect.max.x = (content_rect.max.x
-            - re_ui::DesignTokens::small_icon_size().x
+            - tokens.small_icon_size.x
             - re_ui::DesignTokens::text_to_icon_padding())
         .at_least(content_rect.min.x);
 
@@ -712,7 +713,7 @@ fn cell_with_hover_button_ui(
         button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
         button_ui.add(egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(re_ui::DesignTokens::small_icon_size())
+                .fit_to_exact_size(tokens.small_icon_size)
                 .tint(button_tint),
         ));
 

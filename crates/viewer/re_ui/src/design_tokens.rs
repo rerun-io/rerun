@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use anyhow::Context as _;
-use egui::{Color32, Stroke, Theme};
+use egui::{Color32, Stroke, Theme, Vec2};
 
 use crate::{
     CUSTOM_WINDOW_DECORATIONS,
@@ -18,6 +18,11 @@ pub struct DesignTokens {
     pub theme: egui::Theme,
 
     typography: Typography,
+
+    pub large_button_size: Vec2,
+    pub large_button_icon_size: Vec2,
+    pub large_button_corner_radius: f32,
+    pub small_icon_size: Vec2,
 
     // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
@@ -170,12 +175,18 @@ impl DesignTokens {
 
         let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
+        let get_scalar = |scalar_name: &str| try_get_scalar(&theme_json, scalar_name);
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
         let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
         Ok(Self {
             theme,
             typography,
+
+            large_button_size: Vec2::splat(get_scalar("large_button_size")?),
+            large_button_icon_size: Vec2::splat(get_scalar("large_button_icon_size")?),
+            large_button_corner_radius: get_scalar("large_button_corner_radius")?,
+            small_icon_size: Vec2::splat(get_scalar("small_icon_size")?),
 
             top_bar_color: get_color("top_bar_color"),
             bottom_bar_color: get_color("bottom_bar_color"),
@@ -386,7 +397,7 @@ impl DesignTokens {
         // Add stripes to grids and tables?
         egui_style.visuals.striped = false;
         egui_style.visuals.indent_has_left_vline = false;
-        egui_style.spacing.button_padding = egui::Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
+        egui_style.spacing.button_padding = Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
         egui_style.spacing.indent = 14.0; // From figma
 
         egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
@@ -603,10 +614,6 @@ impl DesignTokens {
         frame
     }
 
-    pub fn small_icon_size() -> egui::Vec2 {
-        egui::Vec2::splat(14.0)
-    }
-
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
 
     pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
@@ -620,8 +627,8 @@ impl DesignTokens {
     /// [`crate::UiExt::paint_collapsing_triangle`]), but how much screen real-estate should be
     /// allocated for it. It's set to the same size as the small icon size so that everything is
     /// properly aligned in [`crate::list_item::ListItem`].
-    pub fn collapsing_triangle_area() -> egui::Vec2 {
-        Self::small_icon_size()
+    pub fn collapsing_triangle_area(&self) -> Vec2 {
+        self.small_icon_size
     }
 }
 
@@ -735,6 +742,14 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
     } else {
         anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
     }
+}
+
+fn try_get_scalar(json: &ron::Value, path: &str) -> anyhow::Result<f32> {
+    json.get(path).and_then(|value| {
+        value
+            .as_f32()
+            .ok_or_else(|| anyhow::anyhow!("'{path}' not a number"))
+    })
 }
 
 fn get_aliased_color(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Color32 {
