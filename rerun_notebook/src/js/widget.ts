@@ -21,6 +21,8 @@ interface WidgetModel {
   _panel_states?: PanelStates;
   _time_ctrl: [timeline: string | null, time: number | null, play: boolean];
   _recording_id?: string;
+
+  _fallback_token?: string;
 }
 
 type Opt<T> = T | null | undefined;
@@ -49,6 +51,8 @@ class ViewerWidget {
       this.on_time_ctrl(null, timeline, time, play),
     );
     model.on("change:_recording_id", this.on_set_recording_id);
+
+    model.on("change:_fallback_token", (_, token) => {this.viewer.set_fallback_token(token);});
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 

@@ -38,6 +38,7 @@ pub struct WebHandle {
     /// and allocating a new tx pair for each chunk doesn't make sense.
     tx_channels: HashMap<String, Channel>,
 
+    /// The connection registry to use for the viewer.
     connection_registry: re_grpc_client::ConnectionRegistry,
 
     app_options: AppOptions,
@@ -52,8 +53,6 @@ impl WebHandle {
 
         let app_options: Option<AppOptions> = serde_wasm_bindgen::from_value(app_options)?;
 
-        // TODO(#10069): we should be able to provide a token via JS, in particular to propagate
-        // tokens from notebooks to the viewer.
         let connection_registry = re_grpc_client::ConnectionRegistry::default();
 
         Ok(Self {
@@ -605,6 +604,20 @@ impl WebHandle {
             .write()
             .set_play_state(recording.times_per_timeline(), play_state);
         egui_ctx.request_repaint();
+    }
+
+    /// Similar to `REDAP_TOKEN` in the JS API, this sets the default token for the viewer.
+    //TODO(ab): we should also have a `set_token(origin, token)` method
+    #[wasm_bindgen]
+    pub fn set_fallback_token(&self, value: String) {
+        println!("Setting fallback token!!!");
+        panic!("I was here");
+        match re_auth::Jwt::try_from(value) {
+            Ok(token) => self.connection_registry.set_fallback_token(token),
+            Err(err) => {
+                re_log::warn!("Failed to parse JWT token: {err}");
+            }
+        };
     }
 }
 

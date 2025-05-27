@@ -530,6 +530,7 @@ typos = ">=1.16.20"
 cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0"               # For `rerun_notebook`
+jupyter = ">=1.0"
 Pillow = "==10.0.0"              # For `thumbnails.py`
 pygithub = "==2.6.1"             # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
@@ -674,7 +675,6 @@ umap-learn = "==0.5.7"
 # External deps
 av = ">=14.2.0"
 datafusion = "==45.2.0"
-jupyter = ">=1.0"
 polars = ">=0.12.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }

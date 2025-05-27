@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Callable, Literal
 
@@ -107,10 +108,16 @@ class Viewer:
         """
         from rerun_notebook import Viewer as _Viewer
 
+        # Propagate any token set via the `REDAP_TOKEN` environment variable.
+        redap_token = os.environ.get("REDAP_TOKEN", None)
+        
+        print(f"Token {redap_token}")
+
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
             url=url,
+            fallback_token=redap_token,
         )
 
         # Viewer event handling
