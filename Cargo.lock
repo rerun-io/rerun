@@ -8056,6 +8056,7 @@ dependencies = [
  "percent-encoding",
  "poll-promise",
  "re_analytics",
+ "re_auth",
  "re_blueprint_tree",
  "re_build_info",
  "re_build_tools",
