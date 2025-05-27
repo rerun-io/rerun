@@ -6,85 +6,83 @@
 ///   our [`FileServer`], and keep watching for changes in the background (both the root file
 ///   and whatever direct and indirect dependencies it may have through #import clauses).
 #[macro_export]
+#[cfg(load_shaders_from_disk)]
 macro_rules! include_file {
     ($path:expr $(,)?) => {{
-        cfg_if::cfg_if! {
-            if #[cfg(load_shaders_from_disk)] {
-                // Native debug build, we have access to the disk both while building and while
-                // running, we just need to interpolated the relative paths passed into the macro.
+        // Native debug build, we have access to the disk both while building and while
+        // running, we just need to interpolated the relative paths passed into the macro.
 
-                let mut resolver = $crate::new_recommended_file_resolver();
+        // TODO(andreas): Creating the resolver here again wasteful and hacky - should use resolver from render context for shaders.
+        let mut resolver = $crate::new_recommended_file_resolver();
 
-                let root_path = ::std::path::PathBuf::from(file!());
+        let root_path = ::std::path::PathBuf::from(file!());
 
-                // If we're building from within the workspace, `file!()` will return a relative path
-                // starting at the workspace root.
-                // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
-                // problems when publishing: as we lose workspace information when publishing!), so we
-                // need to make sure to strip the path down.
-                let root_path = root_path
-                    .strip_prefix("crates/viewer/re_renderer")
-                    .map_or_else(|_| root_path.clone(), ToOwned::to_owned);
+        // If we're building from within the workspace, `file!()` will return a relative path
+        // starting at the workspace root.
+        // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
+        // problems when publishing: as we lose workspace information when publishing!), so we
+        // need to make sure to strip the path down.
+        let path = if let Ok(root_path) = root_path.strip_prefix("crates/viewer/re_renderer") {
+            let path = root_path.parent().unwrap().join($path);
 
-                let path = root_path
-                    .parent()
-                    .unwrap()
-                    .join($path);
+            // If we're building from outside the workspace, `path` is an absolute path already and
+            // we're good to go; but if we're building from within, `path` is currently a relative
+            // path that assumes the CWD is the root of re_renderer, we need to make it absolute as
+            // there is no guarantee that this is where `cargo run` is being run from.
+            let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            manifest_path.join(path)
+        } else {
+            // If we're not inside re_renderer, just take the path as-is, ignoring any implications of publishing.
+            // TODO(andreas): Sounds like an problem waiting to happen! Need a better solution for this.
+            root_path.parent().unwrap().join($path)
+        };
 
-                // If we're building from outside the workspace, `path` is an absolute path already and
-                // we're good to go; but if we're building from within, `path` is currently a relative
-                // path that assumes the CWD is the root of re_renderer, we need to make it absolute as
-                // there is no guarantee that this is where `cargo run` is being run from.
-                let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                let path = manifest_path.join(path);
+        use $crate::external::anyhow::Context as _;
+        $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false))
+            .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {path:?}", $path, root_path))
+            .unwrap()
+    }};
+}
 
-                use anyhow::Context as _;
-                $crate::FileServer::get_mut(|fs| fs.watch(&mut resolver, &path, false))
-                    .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import physical path {path:?}", $path, root_path))
-                    .unwrap()
-            } else {
-                // Make sure `workspace_shaders::init()` is called at least once, which will
-                // register all shaders defined in the workspace into the run-time in-memory
-                // filesystem.
-                $crate::workspace_shaders::init();
+#[macro_export]
+#[cfg(not(load_shaders_from_disk))]
+macro_rules! include_file {
+    ($path:expr $(,)?) => {{
+        // On windows file!() will return '\'-style paths, but this code may end up
+        // running in wasm where '\\' will cause issues. If we're actually running on
+        // windows, `Path` will do the right thing for us.
+        let path = ::std::path::Path::new(&file!().replace('\\', "/"))
+            .parent()
+            .unwrap()
+            .join($path);
 
-                // On windows file!() will return '\'-style paths, but this code may end up
-                // running in wasm where '\\' will cause issues. If we're actually running on
-                // windows, `Path` will do the right thing for us.
-                let path = ::std::path::Path::new(&file!().replace('\\', "/"))
-                    .parent()
-                    .unwrap()
-                    .join($path);
+        // If we're building from within the workspace, `file!()` will return a relative path
+        // starting at the workspace root.
+        // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
+        // problems when publishing: as we lose workspace information when publishing!), so we
+        // need to make sure to strip the path down.
+        let path = path
+            .strip_prefix("crates/viewer/re_renderer")
+            .map_or_else(|_| path.clone(), ToOwned::to_owned);
 
-                // If we're building from within the workspace, `file!()` will return a relative path
-                // starting at the workspace root.
-                // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
-                // problems when publishing: as we lose workspace information when publishing!), so we
-                // need to make sure to strip the path down.
-                let path = path
-                    .strip_prefix("crates/viewer/re_renderer")
-                    .map_or_else(|_| path.clone(), ToOwned::to_owned);
+        // If we're building from outside the workspace, `file!()` will return an absolute path
+        // that might point to anywhere: it doesn't matter, just strip it down to a relative
+        // re_renderer path no matter what.
+        let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let path = path
+            .strip_prefix(&manifest_path)
+            .map_or_else(|_| path.clone(), ToOwned::to_owned);
 
-                // If we're building from outside the workspace, `file!()` will return an absolute path
-                // that might point to anywhere: it doesn't matter, just strip it down to a relative
-                // re_renderer path no matter what.
-                let manifest_path = ::std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                let path = path
-                    .strip_prefix(&manifest_path)
-                    .map_or_else(|_| path.clone(), ToOwned::to_owned);
-
-                // At this point our path is guaranteed to be hermetic, and we pre-load
-                // our run-time virtual filesystem using the exact same hermetic prefix.
-                //
-                // Therefore, the in-memory filesystem will actually be able to find this path,
-                // and canonicalize it.
-                use anyhow::Context as _;
-                use $crate::file_system::FileSystem as _;
-                $crate::get_filesystem().canonicalize(&path)
-                    .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
-                    .unwrap()
-            }
-        }
+        // At this point our path is guaranteed to be hermetic, and we pre-load
+        // our run-time virtual filesystem using the exact same hermetic prefix.
+        //
+        // Therefore, the in-memory filesystem will actually be able to find this path,
+        // and canonicalize it.
+        use $crate::external::anyhow::Context as _;
+        use $crate::FileSystem as _;
+        $crate::get_filesystem().canonicalize(&path)
+            .with_context(|| format!("include_file!({}) (rooted at {:?}) failed while trying to import virtual path {path:?}", $path, file!()))
+            .unwrap()
     }};
 }
 

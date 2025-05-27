@@ -19,7 +19,7 @@ const RERUN_WGSL_SHADER_DUMP_PATH: &str = "RERUN_WGSL_SHADER_DUMP_PATH";
 #[macro_export]
 macro_rules! include_shader_module {
     ($path:expr $(,)?) => {{
-        $crate::wgpu_resources::ShaderModuleDesc {
+        $crate::ShaderModuleDesc {
             label: $crate::DebugLabel::from(stringify!($path).strip_prefix("../../shader/")),
             source: $crate::include_file!($path),
             extra_workaround_replacements: Vec::new(),

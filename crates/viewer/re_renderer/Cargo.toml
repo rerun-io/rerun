@@ -61,7 +61,6 @@ ahash.workspace = true
 anyhow.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
-cfg-if.workspace = true
 clean-path.workspace = true
 document-features.workspace = true
 ecolor = { workspace = true, features = ["bytemuck"] }
