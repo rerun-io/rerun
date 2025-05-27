@@ -628,7 +628,20 @@ impl DesignTokens {
 // ----------------------------------------------------------------------------
 
 trait RonExt {
-    fn get(&self, key: &str) -> Option<&ron::Value>;
+    /// Supports path-like access to the JSON structure.
+    fn get(&self, path: &str) -> anyhow::Result<&Self> {
+        let mut value = self;
+        for component in path.split('.') {
+            if let Some(child) = value.get_child(component) {
+                value = child;
+            } else {
+                anyhow::bail!("Failed to find {component:?} in path {path:?}");
+            }
+        }
+        Ok(value)
+    }
+
+    fn get_child(&self, key: &str) -> Option<&Self>;
 
     fn as_str(&self) -> Option<&str>;
 
@@ -645,7 +658,7 @@ trait RonExt {
 }
 
 impl RonExt for ron::Value {
-    fn get(&self, key: &str) -> Option<&ron::Value> {
+    fn get_child(&self, key: &str) -> Option<&Self> {
         match self {
             Self::Map(map) => map.get(&Self::String(key.into())),
             _ => None,
@@ -686,18 +699,13 @@ fn try_get_alias_color(
     json: &ron::Value,
     color_name: &str,
 ) -> anyhow::Result<Color32> {
-    let color_alias = json
-        .get("Alias")
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
-        .get(color_name)
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{color_name}'"))?;
+    let color_alias = json.get("Alias")?.get(color_name)?;
     color_from_json(color_table, color_alias)
 }
 
 fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow::Result<Color32> {
     let color = color_alias
-        .get("color")
-        .ok_or_else(|| anyhow::anyhow!("No color found"))?
+        .get("color")?
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
 
@@ -717,7 +725,7 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
         let hue: Hue = hue.parse()?;
         let scale: Scale = scale.parse()?;
         let mut color = color_table.get(ColorToken::new(hue, scale));
-        if let Some(alpha) = color_alias.get("alpha") {
+        if let Ok(alpha) = color_alias.get("alpha") {
             let alpha = alpha
                 .as_u8()
                 .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
@@ -746,16 +754,11 @@ fn try_get_aliased_stroke(
     json: &ron::Value,
     alias_path: &str,
 ) -> anyhow::Result<Stroke> {
-    let color_alias = json
-        .get("Alias")
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
-        .get(alias_path)
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}'"))?;
+    let color_alias = json.get("Alias")?.get(alias_path)?;
 
     let color = color_from_json(color_table, color_alias)?;
     let width = color_alias
-        .get("width")
-        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}.width'"))?
+        .get("width")?
         .as_f32()
         .ok_or_else(|| anyhow::anyhow!("'Alias.{alias_path}.width' not a number"))?;
     let stroke = Stroke::new(width, color);
@@ -786,7 +789,7 @@ fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json
     let path = path.strip_prefix('{')?;
     let path = path.strip_suffix('}')?;
     for component in path.split('.') {
-        value = value.get(component)?;
+        value = value.get_child(component)?;
     }
     Some(value)
 }
