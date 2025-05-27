@@ -86,7 +86,7 @@ macro_rules! icon_from_path {
     };
 }
 
-pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.svg");
+pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.png"); // TODO(gavrelina): convert to SVG
 
 pub const RERUN_IO_TEXT: Icon = icon_from_path!("../data/icons/rerun_io.svg");
 
