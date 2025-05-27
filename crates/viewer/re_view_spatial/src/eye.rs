@@ -196,12 +196,14 @@ pub struct ViewEye {
     eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
+    speed: f32,
     velocity: Vec3,
 }
 
 impl ViewEye {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
+    const DEFAULT_SPEED: f32 = 1.0;
 
     pub fn new_orbital(
         orbit_center: Vec3,
@@ -216,6 +218,7 @@ impl ViewEye {
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
             eye_up,
+            speed: Self::DEFAULT_SPEED,
             velocity: Vec3::ZERO,
         }
     }
@@ -276,6 +279,14 @@ impl ViewEye {
         }
     }
 
+    pub fn speed(&self) -> f32 {
+        self.speed
+    }
+
+    pub fn set_speed(&mut self, new_speed: f32) {
+        self.speed = new_speed;
+    }
+
     /// The local up-axis, if set
     pub fn eye_up(&self) -> Option<Vec3> {
         self.eye_up.try_normalize()
@@ -311,6 +322,7 @@ impl ViewEye {
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
+        self.speed = Self::DEFAULT_SPEED;
         self.eye_up = eye.world_from_rub_view.rotation() * glam::Vec3::Y;
     }
 
@@ -330,6 +342,7 @@ impl ViewEye {
                 // matters if the user starts interacting half-way through the lerp,
                 // and even then it's not a big deal.
                 eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
+                speed: egui::lerp(other.speed..=other.speed, t),
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
@@ -359,11 +372,7 @@ impl ViewEye {
         drag_threshold: f32,
         bounding_boxes: &SceneBoundingBoxes,
     ) -> bool {
-        let mut speed = match self.mode {
-            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(), // TODO(emilk): user controlled speed
-            EyeMode::Orbital => self.orbit_radius,
-        };
-
+        let mut speed = self.speed;
         // Modify speed based on modifiers:
         let os = response.ctx.os();
         response.ctx.input(|input| {
