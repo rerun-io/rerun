@@ -297,7 +297,7 @@ pub fn new_list_array_of_empties(child_datatype: &DataType, len: usize) -> ListA
 ///
 /// Returns an error if the arrays don't share the exact same datatype.
 pub fn concat_arrays(arrays: &[&dyn Array]) -> arrow::error::Result<ArrayRef> {
-    #[expect(clippy::disallowed_methods)] // that's the whole point
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     let mut array = arrow::compute::concat(arrays)?;
     array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
     Ok(array)
@@ -326,7 +326,7 @@ pub fn filter_array<A: Array + Clone + 'static>(array: &A, filter: &BooleanArray
         "filter masks with nulls bits are technically valid, but generally a sign that something went wrong",
     );
 
-    #[expect(clippy::disallowed_methods)] // that's the whole point
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     let mut array = arrow::compute::filter(array, filter)
         // Unwrap: this literally cannot fail.
@@ -391,7 +391,7 @@ where
         }
     }
 
-    #[expect(clippy::disallowed_methods)] // that's the whole point
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     let mut array = arrow::compute::take(array, indices, Default::default())
         // Unwrap: this literally cannot fail.
@@ -425,7 +425,7 @@ pub fn extract_fixed_size_array_element(
     // We have forbidden using arrow::take, but it really is what we want here
     // `take_array` results in an unwrap so it appears not to be the right choice.
     // TODO(jleibs): Follow up with cmc on if there's a different way to do this.
-    #[expect(clippy::disallowed_methods)]
+    #[allow(clippy::disallowed_methods)]
     arrow::compute::kernels::take::take(data.values(), &indices, None)
 }
 
