@@ -1,5 +1,5 @@
-use re_log_types::{ComponentPath, EntityPath, Timeline, TimelineName};
-use re_types_core::ComponentName;
+use re_log_types::{EntityPath, Timeline, TimelineName};
+use re_types_core::{ArchetypeName, ComponentDescriptor};
 
 use crate::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 
@@ -23,8 +23,6 @@ pub enum ColumnSelector {
 
     /// Select some component column
     Component(ComponentColumnSelector),
-    //TODO(jleibs): Add support for archetype-based component selection.
-    //ArchetypeField(ArchetypeFieldColumnSelector),
 }
 
 impl From<ColumnDescriptor> for ColumnSelector {
@@ -42,13 +40,6 @@ impl From<TimeColumnSelector> for ColumnSelector {
     #[inline]
     fn from(desc: TimeColumnSelector) -> Self {
         Self::Time(desc)
-    }
-}
-
-impl From<ComponentColumnSelector> for ColumnSelector {
-    #[inline]
-    fn from(desc: ComponentColumnSelector) -> Self {
-        Self::Component(desc)
     }
 }
 
@@ -105,30 +96,75 @@ impl From<IndexColumnDescriptor> for TimeColumnSelector {
     }
 }
 
-/// Select a component based on its `EntityPath` and `ComponentName`.
-///
-/// Note, that in the future when Rerun supports duplicate tagged components
-/// on the same entity, this selector may be ambiguous. In this case, the
-/// query result will return an Error if it cannot determine a single selected
-/// component.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ComponentColumnSelector {
-    /// The path of the entity.
-    pub entity_path: EntityPath,
-
-    /// Semantic name associated with this data.
-    ///
-    /// This string will be flexibly matched against the available component names.
-    /// Valid matches are case invariant matches of either the full name or the short name.
-    pub component_name: String,
-}
-
 impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     #[inline]
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
-            entity_path: desc.entity_path.clone(),
-            component_name: desc.component_name.short_name().to_owned(),
+            entity_path: desc.entity_path,
+            archetype_name: desc.archetype_name,
+            archetype_field_name: desc.archetype_field_name.to_string(),
+        }
+    }
+}
+
+/// Select a component based on its [`ArchetypeName`] and archetype field.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ComponentColumnSelector {
+    /// The path of the entity.
+    pub entity_path: EntityPath,
+
+    /// Name of the `Archetype` associated with this data.
+    // TODO(#10065): This should be the unqualified (short) archetype name in the future.
+    pub archetype_name: Option<ArchetypeName>,
+
+    /// The field within the `Archetype` associated with this data.
+    pub archetype_field_name: String,
+}
+
+impl ComponentColumnSelector {
+    pub fn from_descriptor(entity_path: EntityPath, descr: &ComponentDescriptor) -> Self {
+        Self {
+            entity_path,
+            archetype_name: descr.archetype_name,
+            archetype_field_name: descr.archetype_field_name.to_string(),
+        }
+    }
+
+    // TODO(#10065): This is mainly used as a stop-gap until blueprints are updated to new string representation.
+    pub fn try_new_from_column_name(
+        entity_path: &EntityPath,
+        column_name: &str,
+    ) -> Result<Self, ColumnSelectorParseError> {
+        let combined = format!("{entity_path}:{column_name}");
+        <Self as std::str::FromStr>::from_str(&combined)
+    }
+
+    pub fn qualified_archetype_field_name(&self) -> String {
+        let Self {
+            archetype_name,
+            archetype_field_name,
+            ..
+        } = self;
+
+        match archetype_name {
+            Some(archetype_name) => {
+                format!("{archetype_name}:{archetype_field_name}")
+            }
+            None => archetype_field_name.to_string(),
+        }
+    }
+
+    pub fn column_name(&self) -> String {
+        // Each column can be of a different entity
+        match self.archetype_name {
+            Some(archetype_name) => format!(
+                "{}:{}:{}",
+                self.entity_path,
+                // Note that we have deliberately decided to use short names here.
+                archetype_name.short_name(),
+                self.archetype_field_name
+            ),
+            None => format!("{}:{}", self.entity_path, self.archetype_field_name),
         }
     }
 }
@@ -136,55 +172,26 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
 impl std::str::FromStr for ComponentColumnSelector {
     type Err = ColumnSelectorParseError;
 
-    /// Parses a string in the form of `entity_path:component_name`.
-    ///
-    /// Note that no attempt is made to interpret `component_name`. In particular, we don't attempt
-    /// to prepend a `rerun.components.` prefix like `ComponentPath::from_str` does.
+    /// Parses a string in the form of `entity_path:archetype_field_name`.
     fn from_str(selector: &str) -> Result<Self, Self::Err> {
         if selector.is_empty() {
             return Err(ColumnSelectorParseError::EmptyString);
         }
 
-        let tokens = re_log_types::tokenize_by(selector, b":");
+        let s = selector;
 
-        match tokens.as_slice() {
-            &[entity_path_token, ":", component_name_token] => Ok(Self {
-                entity_path: EntityPath::from(entity_path_token),
-                component_name: component_name_token.to_owned(),
+        match (s.find(':'), s.rfind(':')) {
+            (Some(first), Some(last)) if first != last => Ok(Self {
+                entity_path: s[..first].into(),
+                archetype_name: Some(s[first + 1..last].into()),
+                archetype_field_name: s[last + 1..].into(),
             }),
-
+            (Some(first), Some(last)) => Ok(Self {
+                entity_path: s[..first].into(),
+                archetype_name: None,
+                archetype_field_name: s[last + 1..].into(),
+            }),
             _ => Err(ColumnSelectorParseError::FormatError(selector.to_owned())),
-        }
-    }
-}
-
-impl From<ComponentPath> for ComponentColumnSelector {
-    #[inline]
-    fn from(path: ComponentPath) -> Self {
-        Self {
-            entity_path: path.entity_path,
-            // TODO(#6889): component column selectors should be tag aware?
-            component_name: path.component_descriptor.component_name.as_str().to_owned(),
-        }
-    }
-}
-
-impl ComponentColumnSelector {
-    /// Select a component of a given type, based on its  [`EntityPath`]
-    #[inline]
-    pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
-        Self {
-            entity_path,
-            component_name: C::name().short_name().to_owned(),
-        }
-    }
-
-    /// Select a component based on its [`EntityPath`] and [`ComponentName`].
-    #[inline]
-    pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
-        Self {
-            entity_path,
-            component_name: component_name.short_name().to_owned(),
         }
     }
 }
@@ -193,24 +200,83 @@ impl std::fmt::Display for ComponentColumnSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            component_name,
+            archetype_name,
+            archetype_field_name,
         } = self;
 
-        f.write_fmt(format_args!("{entity_path}:{component_name}"))
+        match archetype_name {
+            Some(archetype_name) => f.write_fmt(format_args!(
+                "{entity_path}:{archetype_name}:{archetype_field_name}"
+            )),
+            None => f.write_fmt(format_args!("{entity_path}:{archetype_field_name}")),
+        }
     }
 }
 
-// TODO(jleibs): Add support for archetype-based column selection.
-/*
-/// Select a component based on its `Archetype` and field.
-pub struct ArchetypeFieldColumnSelector {
-    /// The path of the entity.
-    entity_path: EntityPath,
+#[test]
+fn parse_component_column_selector() {
+    let column_name = "/entity_path:Test:abc";
+    assert_eq!(
+        column_name.parse(),
+        Ok(ComponentColumnSelector {
+            entity_path: "entity_path".into(),
+            archetype_name: Some("Test".into()),
+            archetype_field_name: "abc".into(),
+        })
+    );
 
-    /// Name of the `Archetype` associated with this data.
-    archetype: ArchetypeName,
+    let column_name = "/entity_path:TestNamespace:Test:abc";
+    assert_eq!(
+        column_name.parse(),
+        Ok(ComponentColumnSelector {
+            entity_path: "entity_path".into(),
+            archetype_name: Some("TestNamespace:Test".into()),
+            archetype_field_name: "abc".into(),
+        })
+    );
 
-    /// The field within the `Archetype` associated with this data.
-    field: String,
+    let column_name = "/entity_path:TestNamespace.Test:abc";
+    assert_eq!(
+        column_name.parse(),
+        Ok(ComponentColumnSelector {
+            entity_path: "entity_path".into(),
+            archetype_name: Some("TestNamespace.Test".into()),
+            archetype_field_name: "abc".into(),
+        })
+    );
+
+    let column_name = "/entity_path:abc";
+    assert_eq!(
+        column_name.parse(),
+        Ok(ComponentColumnSelector {
+            entity_path: "entity_path".into(),
+            archetype_name: None,
+            archetype_field_name: "abc".into(),
+        })
+    );
+
+    let column_name = "/:abc";
+    assert_eq!(
+        column_name.parse(),
+        Ok(ComponentColumnSelector {
+            entity_path: EntityPath::root(),
+            archetype_name: None,
+            archetype_field_name: "abc".into(),
+        })
+    );
 }
-*/
+
+#[test]
+fn parse_component_column_selector_failures() {
+    let column_name = "";
+    assert!(matches!(
+        column_name.parse::<ComponentColumnSelector>(),
+        Err(ColumnSelectorParseError::EmptyString)
+    ));
+
+    let column_name = "/entity_path";
+    assert!(matches!(
+        column_name.parse::<ComponentColumnSelector>(),
+        Err(ColumnSelectorParseError::FormatError(..))
+    ));
+}
