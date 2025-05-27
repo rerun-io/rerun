@@ -46,7 +46,8 @@ pub use self::{
     },
     row_id_column_descriptor::{RowIdColumnDescriptor, WrongDatatypeError},
     selectors::{
-        ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
+        ArchetypeFieldColumnSelector, ColumnSelector, ColumnSelectorParseError,
+        ComponentColumnSelector, TimeColumnSelector,
     },
     sorbet_batch::SorbetBatch,
     sorbet_columns::{ColumnSelectorResolveError, SorbetColumnDescriptors},
