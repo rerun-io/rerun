@@ -230,22 +230,6 @@ impl Chunk {
             })
     }
 
-    /// Returns `true` if both chunks share the same descriptors for the components that
-    /// _they have in common_.
-    #[inline]
-    pub fn same_descriptors(&self, rhs: &Self) -> bool {
-        self.components.keys().all(|lhs_desc| {
-            if rhs.components.contains_key(lhs_desc) {
-                true
-            } else {
-                rhs.components
-                    .get_by_component_name(lhs_desc.component_name)
-                    .next()
-                    .is_none()
-            }
-        })
-    }
-
     /// Returns true if two chunks are concatenable.
     ///
     /// To be concatenable, two chunks must:
@@ -254,10 +238,7 @@ impl Chunk {
     /// * Use the same datatypes for the components they have in common.
     #[inline]
     pub fn concatenable(&self, rhs: &Self) -> bool {
-        self.same_entity_paths(rhs)
-            && self.same_timelines(rhs)
-            && self.same_datatypes(rhs)
-            && self.same_descriptors(rhs)
+        self.same_entity_paths(rhs) && self.same_timelines(rhs) && self.same_datatypes(rhs)
     }
 
     /// Moves all indicator components from `self` into a new, dedicated chunk.
@@ -273,7 +254,7 @@ impl Chunk {
         let indicators: ChunkComponents = self
             .components
             .iter()
-            .filter(|&(descr, _list_array)| descr.component_name.is_indicator_component())
+            .filter(|&(descr, _list_array)| descr.is_indicator_component())
             .filter(|&(_descr, list_array)| (!list_array.is_empty()))
             .map(|(descr, list_array)| (descr.clone(), list_array.slice(0, 1)))
             .collect();
@@ -294,7 +275,7 @@ impl Chunk {
             indicators,
         ) {
             self.components
-                .retain(|desc, _per_desc| !desc.component_name.is_indicator_component());
+                .retain(|desc, _per_desc| !desc.is_indicator_component());
             return Some(chunk);
         }
 
