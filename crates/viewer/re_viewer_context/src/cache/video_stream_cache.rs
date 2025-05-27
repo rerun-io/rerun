@@ -146,7 +146,7 @@ fn load_video_data_from_chunks(
 {
     re_tracing::profile_function!();
 
-    let frame_chunk_descr = VideoStream::descriptor_frame();
+    let frame_chunk_descr = VideoStream::descriptor_sample();
     let codec_chunk_descr = VideoStream::descriptor_codec();
 
     // Query for all video chunks on the **entire** timeline.
@@ -381,7 +381,7 @@ impl Cache for VideoStreamCache {
     fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
-        let frame_chunk_descr = VideoStream::descriptor_frame();
+        let frame_chunk_descr = VideoStream::descriptor_sample();
 
         for event in events {
             if !event
