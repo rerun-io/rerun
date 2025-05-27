@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import time
 
 import rerun as rr
 from CompressedVideo_pb2 import CompressedVideo
@@ -30,4 +31,4 @@ with open(mcap_path, "rb") as f:
             rr.log("video_stream", rr.VideoStream(frame=video_msg.data, codec=rr.components.VideoCodec.H264))
 
             # Slowing down for debugging in-viewer chunk compaction.
-            # time.sleep(0.01)
+            time.sleep(0.01)
