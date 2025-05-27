@@ -1,4 +1,4 @@
-use re_types_core::{ComponentDescriptor, ComponentName};
+use re_types_core::ComponentDescriptor;
 
 use crate::path::EntityPath;
 
@@ -27,11 +27,6 @@ impl ComponentPath {
     #[inline]
     pub fn entity_path(&self) -> &EntityPath {
         &self.entity_path
-    }
-
-    #[inline]
-    pub fn component_name(&self) -> ComponentName {
-        self.component_descriptor.component_name
     }
 
     #[inline]
