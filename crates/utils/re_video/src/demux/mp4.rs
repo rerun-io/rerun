@@ -55,7 +55,7 @@ impl VideoDataDescription {
                     decode_timestamp,
                     presentation_timestamp,
                     duration: Some(duration),
-                    // There's only a single buffer, which is the the raw mp4 video data into which we address into.
+                    // There's only a single buffer, which is the raw mp4 video data into which we address into.
                     buffer_index: 0,
                     byte_offset,
                     byte_length,

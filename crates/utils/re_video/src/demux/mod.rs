@@ -207,7 +207,6 @@ impl VideoDataDescription {
     /// The codec used to encode the video.
     #[inline]
     pub fn human_readable_codec_string(&self) -> String {
-        // TODO: not happy with this distinction
         if let Some(stsd) = self.stsd.as_ref() {
             let human_readable = match &stsd.contents {
                 re_mp4::StsdBoxContent::Av01(_) => "AV1",
@@ -229,6 +228,7 @@ impl VideoDataDescription {
         } else {
             match &self.codec {
                 VideoCodec::Av1 => "AV1",
+                // TODO(andreas): What if we found an SPS?
                 VideoCodec::H264 => "H.265 HVC1",
                 VideoCodec::H265 => "H.265 HEV1",
                 VideoCodec::Vp8 => "VP8",

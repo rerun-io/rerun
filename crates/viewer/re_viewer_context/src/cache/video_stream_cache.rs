@@ -458,7 +458,7 @@ impl Cache for VideoStreamCache {
                             &mut video_data.gops,
                         ) {
                             re_log::error_once!(
-                                "Failed to read process additional incoming video samples: {err:?}"
+                                "Failed to read process additional incoming video samples: {err}"
                             );
                         }
                     }

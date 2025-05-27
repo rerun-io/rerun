@@ -233,7 +233,7 @@ impl FFmpegProcessAndListener {
                 }
             }
         } else {
-            // TODO: see above, we likley know the SPS. And we can cache that knowledge (elsewhere)
+            // TODO: see above, we likely know the SPS. And we can cache that knowledge (elsewhere)
             (PixelFormat::Rgba8Unorm, "rgba")
         };
 
