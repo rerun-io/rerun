@@ -101,6 +101,7 @@ impl HarnessExt for egui_kittest::Harness<'_> {
         }
     }
 
+    #[track_caller]
     fn snapshot_with_broken_pixels(&mut self, name: &str, broken_pixels_threshold: i32) {
         match self.try_snapshot(name) {
             Ok(_) => {}
