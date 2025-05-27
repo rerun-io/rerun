@@ -1,3 +1,6 @@
+# TODO(#7484, #9949): Build this out into a proper example.
+
+import time
 import mcap
 from mcap.reader import make_reader
 import rerun as rr
@@ -27,8 +30,5 @@ with open(mcap_path, "rb") as f:
             rr.set_time("time", timestamp=video_msg.timestamp.seconds + video_msg.timestamp.nanos / 1_000_000_000.0)
             rr.log("video_stream", rr.VideoStream(frame=video_msg.data, codec=rr.components.VideoCodec.H264))
 
-        #
-
-# for i, frame in enumerate(frames):
-#     rr.set_time("frame", sequence=i)
-#     rr.log("raw_image", rr.Image(frame))
+            # Slowing down for debugging in-viewer chunk compaction.
+            #time.sleep(0.01)
