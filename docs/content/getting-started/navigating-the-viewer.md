@@ -169,7 +169,7 @@ There are several ways to navigate through the timeline:
 
 Try out the following:
 
--   Use Ctrl+Left/Right arrow keys to step forward and backwards by a single frame
+-   Use Ctrl/Cmd+Left/Right arrow keys to step forward and backwards by a single frame
 -   Click play to watch the data update on its own
 -   Hit space bar to stop and start the playback
 -   Hold shift and drag in the timeline to select a region

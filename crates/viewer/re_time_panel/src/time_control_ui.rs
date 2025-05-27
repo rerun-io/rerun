@@ -163,7 +163,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
     ) {
         if ui
             .large_button(&re_ui::icons::ARROW_LEFT)
-            .on_hover_text("Step back to previous time with any new data (Ctrl+Left arrow)")
+            .on_hover_text("Step back to previous time with any new data (Ctrl/Cmd+Left arrow)")
             .clicked()
         {
             time_control.step_time_back(times_per_timeline);
@@ -171,7 +171,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
         if ui
             .large_button(&re_ui::icons::ARROW_RIGHT)
-            .on_hover_text("Step forwards to next time with any new data (Ctrl+Right arrow)")
+            .on_hover_text("Step forwards to next time with any new data (Ctrl/Cmd+Right arrow)")
             .clicked()
         {
             time_control.step_time_fwd(times_per_timeline);
