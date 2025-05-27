@@ -9,7 +9,7 @@ use crate::{DesignTokens, TopBarStyle};
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
 
-    fn tokens(&self) -> &DesignTokens {
+    fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ctx().theme())
     }
 

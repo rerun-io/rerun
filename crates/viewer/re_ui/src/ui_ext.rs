@@ -57,7 +57,7 @@ pub trait UiExt {
         self.ui().ctx().theme()
     }
 
-    fn tokens(&self) -> &DesignTokens {
+    fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.theme())
     }
 

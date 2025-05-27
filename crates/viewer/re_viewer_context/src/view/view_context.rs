@@ -39,7 +39,7 @@ impl<'a> ViewContext<'a> {
         }
     }
 
-    pub fn tokens(&self) -> &re_ui::DesignTokens {
+    pub fn tokens(&self) -> &'static re_ui::DesignTokens {
         self.viewer_ctx.tokens()
     }
 
