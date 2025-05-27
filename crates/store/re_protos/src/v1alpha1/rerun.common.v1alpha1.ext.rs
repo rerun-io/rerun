@@ -876,8 +876,8 @@ impl From<ComponentDescriptor> for crate::common::v1alpha1::ComponentDescriptor 
     fn from(value: ComponentDescriptor) -> Self {
         Self {
             archetype_name: value.archetype_name.map(|n| n.full_name().to_owned()),
-            archetype_field_name: value.archetype_field_name.map(|n| n.to_string()),
-            component_name: Some(value.component_name.full_name().to_owned()),
+            archetype_field_name: Some(value.archetype_field_name.to_string()),
+            component_name: value.component_name.map(|c| c.full_name().to_owned()),
         }
     }
 }
@@ -886,17 +886,23 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::ComponentDescriptor) -> Result<Self, Self::Error> {
-        let mut descriptor = Self::new(value.component_name.ok_or(missing_field!(
+        let crate::common::v1alpha1::ComponentDescriptor {
+            archetype_name,
+            archetype_field_name,
+            component_name,
+        } = value;
+
+        let mut descriptor = Self::partial(archetype_field_name.ok_or(missing_field!(
             crate::common::v1alpha1::ComponentDescriptor,
-            "component_name"
+            "archetype_field_name"
         ))?);
 
-        if let Some(archetype_name) = value.archetype_name {
+        if let Some(archetype_name) = archetype_name {
             descriptor = descriptor.with_archetype_name(archetype_name.into());
         }
 
-        if let Some(archetype_field_name) = value.archetype_field_name {
-            descriptor = descriptor.with_archetype_field_name(archetype_field_name.into());
+        if let Some(component_name) = component_name {
+            descriptor = descriptor.with_component_name(component_name.into());
         }
 
         Ok(descriptor)
