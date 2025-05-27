@@ -38,7 +38,7 @@ impl DesignTokensPerTheme {
 
 #[cfg(not(hot_reload_design_tokens))]
 mod design_token_access {
-    use super::*;
+    use super::DesignTokensPerTheme;
     use std::sync::OnceLock;
 
     pub fn design_tokens_per_theme() -> &'static DesignTokensPerTheme {
