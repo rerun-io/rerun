@@ -109,10 +109,19 @@ impl Video {
         }
     }
 
-    /// The video data
+    /// The video data.
     #[inline]
     pub fn data(&self) -> &re_video::VideoDataDescription {
         &self.video_description
+    }
+
+    /// The video data mutable.
+    ///
+    /// Use with care. It's valid to add samples and groups of pictures, but arbitrary
+    /// changes may interfere with subsequent decoding on existing video streams.
+    #[inline]
+    pub fn data_mut(&mut self) -> &mut re_video::VideoDataDescription {
+        &mut self.video_description
     }
 
     /// Natural dimensions of the video if known.

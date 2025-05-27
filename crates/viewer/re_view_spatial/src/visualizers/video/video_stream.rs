@@ -124,13 +124,23 @@ impl VisualizerSystem for VideoStreamVisualizer {
             // TODO: reconciliate, document
             let time_since_video_start_in_secs = query_context.query.at().as_f64();
 
-            // TODO: same code as on video frame reference
-            match video.video_renderer.frame_at(
-                ctx.viewer_ctx.render_ctx(),
-                video_stream_id(entity_path, ctx.view_id, Self::identifier()),
-                time_since_video_start_in_secs,
-                &video.sample_buffer_slices(),
-            ) {
+            // TODO: almost same code as on video frame reference
+            let frame_result = {
+                let video = video.read();
+
+                if let Some([w, h]) = video.video_renderer.dimensions() {
+                    video_resolution = glam::vec2(w as _, h as _);
+                }
+
+                video.video_renderer.frame_at(
+                    ctx.viewer_ctx.render_ctx(),
+                    video_stream_id(entity_path, ctx.view_id, Self::identifier()),
+                    time_since_video_start_in_secs,
+                    &video.sample_buffer_slices(),
+                )
+            };
+
+            match frame_result {
                 Ok(re_renderer::video::VideoFrameTexture {
                     texture,
                     is_pending,
@@ -189,9 +199,6 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
 
                 Err(err) => {
-                    if let Some([w, h]) = video.video_renderer.dimensions() {
-                        video_resolution = glam::vec2(w as _, h as _);
-                    }
                     self.show_video_error(
                         &query_context,
                         highlight,
