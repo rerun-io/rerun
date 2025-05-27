@@ -53,7 +53,7 @@ class VideoStream(Archetype):
             The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
             There is currently no way to log differing decoding timestamps, meaning
             that there is no support for B-frames.
-            See https://github.com/rerun-io/rerun/issues/10090 for more details.
+            See <https://github.com/rerun-io/rerun/issues/10090> for more details.
 
             Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
             as this may break live video playback.
@@ -119,7 +119,7 @@ class VideoStream(Archetype):
             The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
             There is currently no way to log differing decoding timestamps, meaning
             that there is no support for B-frames.
-            See https://github.com/rerun-io/rerun/issues/10090 for more details.
+            See <https://github.com/rerun-io/rerun/issues/10090> for more details.
 
             Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
             as this may break live video playback.
@@ -188,7 +188,7 @@ class VideoStream(Archetype):
             The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
             There is currently no way to log differing decoding timestamps, meaning
             that there is no support for B-frames.
-            See https://github.com/rerun-io/rerun/issues/10090 for more details.
+            See <https://github.com/rerun-io/rerun/issues/10090> for more details.
 
             Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
             as this may break live video playback.
@@ -264,7 +264,7 @@ class VideoStream(Archetype):
     # The current timestamp is used as presentation timestamp (PTS) for all data in this sample.
     # There is currently no way to log differing decoding timestamps, meaning
     # that there is no support for B-frames.
-    # See https://github.com/rerun-io/rerun/issues/10090 for more details.
+    # See <https://github.com/rerun-io/rerun/issues/10090> for more details.
     #
     # Unlike any other data in Rerun, video samples are not allowed to be logged out of order,
     # as this may break live video playback.
