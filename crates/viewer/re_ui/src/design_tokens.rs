@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use anyhow::Context as _;
 use egui::{Color32, Stroke, Theme};
 
 use crate::{
@@ -159,25 +160,20 @@ pub struct DesignTokens {
 
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
-    pub fn load(theme: Theme) -> Self {
-        let color_table_json: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
+    pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        let color_table_ron: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
             .expect("Failed to parse data/color_table.ron");
-        let colors = load_color_table(&color_table_json);
+        let colors = load_color_table(&color_table_ron);
 
-        let theme_json: ron::Value = match theme {
-            egui::Theme::Dark => ron::from_str(include_str!("../data/dark_theme.ron"))
-                .expect("Failed to parse data/dark_theme.ron"),
-
-            egui::Theme::Light => ron::from_str(include_str!("../data/light_theme.ron"))
-                .expect("Failed to parse data/light_theme.ron"),
-        };
+        let theme_json: ron::Value = ron::from_str(tokens_ron)
+            .with_context(|| format!("Failed to parse {theme:?} theme .ron"))?;
 
         let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
         let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
         let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
-        Self {
+        Ok(Self {
             theme,
             typography,
 
@@ -276,7 +272,7 @@ impl DesignTokens {
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
-        }
+        })
     }
 
     /// Apply style to the given egui context.
