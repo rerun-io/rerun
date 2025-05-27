@@ -33,15 +33,15 @@ impl MyPoints {
     pub fn descriptor_points() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: Some("points".into()),
-            component_name: MyPoint::name(),
+            archetype_field_name: "points".into(),
+            component_name: Some(MyPoint::name()),
         }
     }
 
     pub fn descriptor_colors() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: Some("colors".into()),
+            archetype_field_name: "colors".into(),
             component_name: MyColor::name(),
         }
     }
@@ -49,7 +49,7 @@ impl MyPoints {
     pub fn descriptor_labels() -> ComponentDescriptor {
         ComponentDescriptor {
             archetype_name: Some("example.MyPoints".into()),
-            archetype_field_name: Some("labels".into()),
+            archetype_field_name: "labels".into(),
             component_name: MyLabel::name(),
         }
     }

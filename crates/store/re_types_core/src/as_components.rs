@@ -217,8 +217,8 @@ mod tests {
         fn descriptor() -> ComponentDescriptor {
             ComponentDescriptor {
                 archetype_name: Some("test".into()),
-                archetype_field_name: Some("color".into()),
-                component_name: Self::name(),
+                archetype_field_name: "color".into(),
+                component_name: Some(Self::name()),
             }
         }
     }

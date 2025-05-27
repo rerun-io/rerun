@@ -107,6 +107,12 @@ impl ComponentDescriptor {
         }
     }
 
+    /// Is this an indicator component for an archetype?
+    // TODO(#6889): Remove when we remove tagging.
+    pub fn is_indicator_component(&self) -> bool {
+        self.archetype_field_name.ends_with("Indicator")
+    }
+
     /// Returns the fully-qualified name, e.g. `rerun.archetypes.Points3D:rerun.components.Position3D#positions`.
     #[inline]
     pub fn full_name(&self) -> String {
@@ -116,18 +122,20 @@ impl ComponentDescriptor {
             component_name,
         } = self;
 
-        let (archetype_name, component_name) =
-            (archetype_name.map(|s| s.as_str()), component_name.as_str());
+        let (archetype_name, component_name) = (
+            archetype_name.map(|s| s.as_str()),
+            component_name.map(|s| s.as_str()),
+        );
 
         match (archetype_name, component_name, archetype_field_name) {
-            (None, component_name, None) => component_name.to_owned(),
-            (Some(archetype_name), component_name, None) => {
-                format!("{archetype_name}:{component_name}")
+            (None, None, archetype_field_name) => archetype_field_name.to_string(),
+            (Some(archetype_name), None, archetype_field_name) => {
+                format!("{archetype_name}:{archetype_field_name}")
             }
-            (None, component_name, Some(archetype_field_name)) => {
+            (None, Some(component_name), archetype_field_name) => {
                 format!("{component_name}#{archetype_field_name}")
             }
-            (Some(archetype_name), component_name, Some(archetype_field_name)) => {
+            (Some(archetype_name), Some(component_name), archetype_field_name) => {
                 format!("{archetype_name}:{component_name}#{archetype_field_name}")
             }
         }
@@ -157,7 +165,15 @@ impl ComponentDescriptor {
         component_name.sanity_check();
         Self {
             archetype_name: None,
-            archetype_field_name: ComponentName::from(component_name).to_string().into(),
+            archetype_field_name: component_name.to_string().into(),
+            component_name: None,
+        }
+    }
+
+    pub fn partial(archetype_field_name: impl Into<ArchetypeFieldName>) -> Self {
+        Self {
+            archetype_name: None,
+            archetype_field_name: archetype_field_name.into(),
             component_name: None,
         }
     }
@@ -171,9 +187,8 @@ impl ComponentDescriptor {
 
     /// Unconditionally sets [`Self::archetype_field_name`] to the given one.
     #[inline]
-    #[deprecated]
-    pub fn with_archetype_field_name(mut self, archetype_field_name: ArchetypeFieldName) -> Self {
-        self.archetype_field_name = archetype_field_name;
+    pub fn with_component_name(mut self, component_name: ComponentName) -> Self {
+        self.component_name = Some(component_name);
         self
     }
 
@@ -186,18 +201,16 @@ impl ComponentDescriptor {
         self
     }
 
-    /// Sets [`Self::archetype_field_name`] to the given one iff it's not already set.
+    /// Sets [`Self::component_name`] to the given one iff it's not already set.
     #[inline]
-    #[deprecated]
-    pub fn or_with_archetype_field_name(
+    pub fn or_with_component_name(
         mut self,
-        archetype_field_name: impl FnOnce() -> ArchetypeFieldName,
+        component_name: impl FnOnce() -> ComponentName,
     ) -> Self {
-        todo!()
-        // if self.archetype_field_name.is_none() {
-        //     self.archetype_field_name = Some(archetype_field_name());
-        // }
-        // self
+        if self.component_name.is_none() {
+            self.component_name = Some(component_name());
+        }
+        self
     }
 }
 
