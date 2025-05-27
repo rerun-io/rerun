@@ -16,21 +16,21 @@ impl DesignTokensPerTheme {
 
     #[cfg(hot_reload_design_tokens)]
     fn load() -> anyhow::Result<Self> {
-        #![expect(clippy::unwrap_used)] // TODO: replace unwraps with expect or proper error handling
-
         let data_path = std::fs::canonicalize(
             std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data"),
         )
-        .unwrap();
+        .expect("Wrong path to data directory???");
 
         Ok(Self {
             dark: DesignTokens::load(
                 egui::Theme::Dark,
-                &std::fs::read_to_string(data_path.join("dark_theme.ron")).unwrap(),
+                &std::fs::read_to_string(data_path.join("dark_theme.ron"))
+                    .expect("Failed to read dark theme file"),
             )?,
             light: DesignTokens::load(
                 egui::Theme::Light,
-                &std::fs::read_to_string(data_path.join("light_theme.ron")).unwrap(),
+                &std::fs::read_to_string(data_path.join("light_theme.ron"))
+                    .expect("Failed to read dark theme file"),
             )?,
         })
     }
@@ -50,8 +50,6 @@ mod design_token_access {
 
 #[cfg(hot_reload_design_tokens)]
 mod design_token_access {
-    #![expect(clippy::unwrap_used)] // TODO: replace unwraps with expect or proper error handling
-
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::{Mutex, RwLock};
     use std::sync::{OnceLock, mpsc};
@@ -91,8 +89,10 @@ mod design_token_access {
     }
 
     fn run_all_hot_reloading() {
-        for stuff in STUFF_TO_DO_ON_HOT_RELOAD.get().unwrap().lock().iter() {
-            stuff();
+        if let Some(stuff) = STUFF_TO_DO_ON_HOT_RELOAD.get() {
+            for callback in stuff.lock().iter() {
+                callback();
+            }
         }
     }
 
@@ -106,7 +106,7 @@ mod design_token_access {
                 .spawn(|| {
                     let (tx, rx) = mpsc::channel();
 
-                    let mut watcher: RecommendedWatcher = Watcher::new(
+                    let mut watcher: RecommendedWatcher = match Watcher::new(
                         move |res: Result<Event, notify::Error>| {
                             if let Ok(event) = res {
                                 if event.kind.is_modify() {
@@ -115,23 +115,30 @@ mod design_token_access {
                             }
                         },
                         notify::Config::default(),
-                    )
-                    .unwrap();
+                    ) {
+                        Ok(watcher) => watcher,
+                        Err(err) => {
+                            re_log::error!("Failed to create file watcher: {err}");
+                            return;
+                        }
+                    };
 
                     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data");
-                    let path = std::fs::canonicalize(path).unwrap();
-                    re_log::debug!("Watching for file changes in {}", path.display());
+                    let path = std::fs::canonicalize(path).expect("Failed to find data directory");
 
-                    watcher.watch(&path, RecursiveMode::Recursive).unwrap();
-
-                    while rx.recv().is_ok() {
-                        // Small delay to avoid rapid reloads
-                        thread::sleep(std::time::Duration::from_millis(100));
-
-                        run_all_hot_reloading();
+                    match watcher.watch(&path, RecursiveMode::Recursive) {
+                        Ok(()) => {
+                            re_log::debug!("Watching for file changes in {}", path.display());
+                            while rx.recv().is_ok() {
+                                run_all_hot_reloading();
+                            }
+                        }
+                        Err(err) => {
+                            re_log::error!("Failed to watch design tokens directory: {err}");
+                        }
                     }
                 })
-                .unwrap();
+                .expect("Failed to spawn watcher thread");
 
             re_log::debug!("Hot-reloading of design tokens enabled.");
         });
