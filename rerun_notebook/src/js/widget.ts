@@ -52,7 +52,7 @@ class ViewerWidget {
     );
     model.on("change:_recording_id", this.on_set_recording_id);
 
-    model.on("change:_fallback_token", (_, token) => {this.viewer.set_fallback_token(token);});
+    model.on("change:_fallback_token", (_, token) => { this.viewer.set_fallback_token(token); });
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 
@@ -63,6 +63,7 @@ class ViewerWidget {
         width: model.get("_width"),
         height: model.get("_height"),
       });
+      this.viewer.set_fallback_token(model.get("_fallback_token"));
 
       model.send("ready");
     });

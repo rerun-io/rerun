@@ -445,6 +445,15 @@ export class WebViewer {
     return this.#state === "ready";
   }
 
+
+  set_fallback_token(token: string | undefined) {
+    if (!token) return;
+    if (!this.#handle) {
+      throw new Error(`attempted to set fallback token in a stopped viewer`);
+    }
+    this.#handle.set_fallback_token(token);
+  }
+
   /**
    * Open a recording.
    *
