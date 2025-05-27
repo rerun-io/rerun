@@ -58,7 +58,7 @@
     },
 
     "example_card_background_color": {
-      "color": "{Gray.900}"
+      "color": "{Gray.850}"
     },
     "example_tag_bg_fill": {
       "color": "{Gray.700}",
