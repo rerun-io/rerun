@@ -34,32 +34,6 @@ pub enum VideoCodec {
     /// [`components::VideoCodec`][crate::components::VideoCodec]s using this codec should be formatted according to Annex B specification
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
     H264 = 1,
-
-    /// High Efficiency Video Coding (HEVC/H.265)
-    ///
-    /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
-    ///
-    /// [`components::VideoCodec`][crate::components::VideoCodec]s using this codec should be formatted according to Annex B specification
-    /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
-    H265 = 2,
-
-    /// AOMedia Video 1 (AV1)
-    ///
-    /// See <https://en.wikipedia.org/wiki/AV1>
-    #[allow(clippy::upper_case_acronyms)]
-    AV1 = 3,
-
-    /// VP8
-    ///
-    /// See <https://en.wikipedia.org/wiki/VP8>
-    #[allow(clippy::upper_case_acronyms)]
-    VP8 = 4,
-
-    /// VP9
-    ///
-    /// See <https://en.wikipedia.org/wiki/VP9>
-    #[allow(clippy::upper_case_acronyms)]
-    VP9 = 5,
 }
 
 impl ::re_types_core::Component for VideoCodec {
@@ -135,10 +109,6 @@ impl ::re_types_core::Loggable for VideoCodec {
             .into_iter()
             .map(|typ| match typ {
                 Some(1) => Ok(Some(Self::H264)),
-                Some(2) => Ok(Some(Self::H265)),
-                Some(3) => Ok(Some(Self::AV1)),
-                Some(4) => Ok(Some(Self::VP8)),
-                Some(5) => Ok(Some(Self::VP9)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
                     Self::arrow_datatype(),
@@ -155,10 +125,6 @@ impl std::fmt::Display for VideoCodec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::H264 => write!(f, "H264"),
-            Self::H265 => write!(f, "H265"),
-            Self::AV1 => write!(f, "AV1"),
-            Self::VP8 => write!(f, "VP8"),
-            Self::VP9 => write!(f, "VP9"),
         }
     }
 }
@@ -166,7 +132,7 @@ impl std::fmt::Display for VideoCodec {
 impl ::re_types_core::reflection::Enum for VideoCodec {
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::H264, Self::H265, Self::AV1, Self::VP8, Self::VP9]
+        &[Self::H264]
     }
 
     #[inline]
@@ -175,14 +141,6 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
             Self::H264 => {
                 "Advanced Video Coding (AVC/H.264)\n\nSee <https://en.wikipedia.org/wiki/Advanced_Video_Coding>\n\n[`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec)s using this codec should be formatted according to Annex B specification\nKey frames (IDR) require inclusion of a SPS (Sequence Parameter Set)"
             }
-            Self::H265 => {
-                "High Efficiency Video Coding (HEVC/H.265)\n\nSee <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>\n\n[`components.VideoCodec`](https://rerun.io/docs/reference/types/components/video_codec)s using this codec should be formatted according to Annex B specification\nKey frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)"
-            }
-            Self::AV1 => {
-                "AOMedia Video 1 (AV1)\n\nSee <https://en.wikipedia.org/wiki/AV1>"
-            }
-            Self::VP8 => "VP8\n\nSee <https://en.wikipedia.org/wiki/VP8>",
-            Self::VP9 => "VP9\n\nSee <https://en.wikipedia.org/wiki/VP9>",
         }
     }
 }

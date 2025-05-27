@@ -172,10 +172,10 @@ fn load_video_data_from_chunks(
         .map_err(VideoStreamProcessingError::FailedReadingCodec)?;
     let codec = match last_codec {
         components::VideoCodec::H264 => re_video::VideoCodec::H264,
-        components::VideoCodec::H265 => re_video::VideoCodec::H265,
-        components::VideoCodec::VP8 => re_video::VideoCodec::Vp8,
-        components::VideoCodec::VP9 => re_video::VideoCodec::Vp9,
-        components::VideoCodec::AV1 => re_video::VideoCodec::Av1,
+        // components::VideoCodec::H265 => re_video::VideoCodec::H265,
+        // components::VideoCodec::VP8 => re_video::VideoCodec::Vp8,
+        // components::VideoCodec::VP9 => re_video::VideoCodec::Vp9,
+        // components::VideoCodec::AV1 => re_video::VideoCodec::Av1,
     };
 
     // Extract all video samples.

@@ -34,29 +34,6 @@ namespace rerun::components {
         /// `components::VideoCodec`s using this codec should be formatted according to Annex B specification
         /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
         H264 = 1,
-
-        /// High Efficiency Video Coding (HEVC/H.265)
-        ///
-        /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
-        ///
-        /// `components::VideoCodec`s using this codec should be formatted according to Annex B specification
-        /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
-        H265 = 2,
-
-        /// AOMedia Video 1 (AV1)
-        ///
-        /// See <https://en.wikipedia.org/wiki/AV1>
-        AV1 = 3,
-
-        /// VP8
-        ///
-        /// See <https://en.wikipedia.org/wiki/VP8>
-        VP8 = 4,
-
-        /// VP9
-        ///
-        /// See <https://en.wikipedia.org/wiki/VP9>
-        VP9 = 5,
     };
 } // namespace rerun::components
 

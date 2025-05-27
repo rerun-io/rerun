@@ -40,37 +40,6 @@ class VideoCodec(Enum):
     Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
     """
 
-    H265 = 2
-    """
-    High Efficiency Video Coding (HEVC/H.265)
-
-    See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
-
-    [`components.VideoCodec`][rerun.components.VideoCodec]s using this codec should be formatted according to Annex B specification
-    Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
-    """
-
-    AV1 = 3
-    """
-    AOMedia Video 1 (AV1)
-
-    See <https://en.wikipedia.org/wiki/AV1>
-    """
-
-    VP8 = 4
-    """
-    VP8
-
-    See <https://en.wikipedia.org/wiki/VP8>
-    """
-
-    VP9 = 5
-    """
-    VP9
-
-    See <https://en.wikipedia.org/wiki/VP9>
-    """
-
     @classmethod
     def auto(cls, val: str | int | VideoCodec) -> VideoCodec:
         """Best-effort converter, including a case-insensitive string matcher."""
@@ -92,9 +61,7 @@ class VideoCodec(Enum):
         return self.name
 
 
-VideoCodecLike = Union[
-    VideoCodec, Literal["AV1", "H264", "H265", "VP8", "VP9", "av1", "h264", "h265", "vp8", "vp9"], int
-]
+VideoCodecLike = Union[VideoCodec, Literal["H264", "h264"], int]
 VideoCodecArrayLike = Union[VideoCodecLike, Sequence[VideoCodecLike]]
 
 
