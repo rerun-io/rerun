@@ -39,8 +39,8 @@ impl<'a> ViewContext<'a> {
         }
     }
 
-    pub fn design_tokens(&self) -> &'static re_ui::DesignTokens {
-        self.viewer_ctx.design_tokens()
+    pub fn tokens(&self) -> &'static re_ui::DesignTokens {
+        self.viewer_ctx.tokens()
     }
 
     /// The active recording.

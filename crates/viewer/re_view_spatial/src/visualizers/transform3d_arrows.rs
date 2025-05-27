@@ -145,7 +145,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             add_axis_arrows(
-                ctx.design_tokens(),
+                ctx.tokens(),
                 &mut line_builder,
                 world_from_obj,
                 Some(&data_result.entity_path),

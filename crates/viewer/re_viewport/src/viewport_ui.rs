@@ -144,7 +144,7 @@ impl ViewportUi {
                     };
 
                     let stroke = if should_display_drop_destination_frame {
-                        ui.design_tokens().drop_target_container_stroke
+                        ui.tokens().drop_target_container_stroke
                     } else if hovered {
                         ui.ctx().hover_stroke()
                     } else if selected {

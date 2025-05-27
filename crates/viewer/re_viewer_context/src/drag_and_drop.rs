@@ -221,7 +221,7 @@ impl DragAndDropManager {
                 }
 
                 let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
-                let response = drag_pill_frame(ui.design_tokens(), payload_is_currently_droppable)
+                let response = drag_pill_frame(ui.tokens(), payload_is_currently_droppable)
                     .show(&mut ui, |ui| {
                         let text_color = ui.visuals().widgets.inactive.text_color();
 

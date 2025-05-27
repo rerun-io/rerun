@@ -9,7 +9,7 @@ pub fn mobile_warning_ui(ui: &mut egui::Ui) {
     {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..ui.design_tokens().bottom_panel_frame()
+            ..ui.tokens().bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("warning_panel")

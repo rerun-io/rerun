@@ -344,7 +344,7 @@ impl ExampleSection {
                                 ui.painter().rect_filled(
                                     example.rect,
                                     THUMBNAIL_RADIUS,
-                                    ui.design_tokens().example_card_background_color,
+                                    ui.tokens().example_card_background_color,
                                 );
 
                                 if response.clicked() {
@@ -546,8 +546,8 @@ impl ExampleDescLayout {
                         )
                         .sense(egui::Sense::hover())
                         .corner_radius(6)
-                        .fill(ui.design_tokens().example_tag_bg_fill)
-                        .stroke(ui.design_tokens().example_tag_stroke)
+                        .fill(ui.tokens().example_tag_bg_fill)
+                        .stroke(ui.tokens().example_tag_stroke)
                         .wrap_mode(egui::TextWrapMode::Extend),
                     );
                 }
@@ -567,8 +567,7 @@ impl ExampleDescLayout {
                 if ui
                     .add_enabled(
                         source_url.is_some(),
-                        re_ui::icons::GITHUB
-                            .as_button_with_label(ui.design_tokens(), "Source code"),
+                        re_ui::icons::GITHUB.as_button_with_label(ui.tokens(), "Source code"),
                     )
                     .on_hover_cursor(egui::CursorIcon::PointingHand)
                     .on_disabled_hover_text("Source code is not available for this example")

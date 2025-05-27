@@ -1369,7 +1369,7 @@ impl App {
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..ui.design_tokens().bottom_panel_frame()
+            ..ui.tokens().bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("memory_panel")
@@ -1392,7 +1392,7 @@ impl App {
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
-            .frame(ui.design_tokens().top_panel_frame())
+            .frame(ui.tokens().top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if ui
@@ -2469,7 +2469,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
     painter.rect_stroke(
         egui_ctx.screen_rect(),
         re_ui::DesignTokens::native_window_corner_radius(),
-        egui_ctx.design_tokens().native_frame_stroke,
+        egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );
 }

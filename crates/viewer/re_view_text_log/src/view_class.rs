@@ -435,7 +435,7 @@ fn table_ui(
         ui.painter().with_clip_rect(body_clip_rect).hline(
             ui.max_rect().x_range(),
             current_time_y,
-            (1.0, ui.design_tokens().strong_fg_color),
+            (1.0, ui.tokens().strong_fg_color),
         );
     }
 }

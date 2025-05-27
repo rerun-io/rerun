@@ -3,7 +3,7 @@ use re_types::components::TextLogLevel;
 use re_ui::UiExt as _;
 
 pub fn level_to_rich_text(ui: &egui::Ui, lvl: &str) -> RichText {
-    let design_tokens = ui.design_tokens();
+    let design_tokens = ui.tokens();
 
     let error_color = ui.visuals().error_fg_color;
     let warn_color = ui.visuals().warn_fg_color;

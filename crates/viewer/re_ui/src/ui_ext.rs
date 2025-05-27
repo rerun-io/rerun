@@ -57,7 +57,7 @@ pub trait UiExt {
         self.ui().ctx().theme()
     }
 
-    fn design_tokens(&self) -> &'static DesignTokens {
+    fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.theme())
     }
 
@@ -65,7 +65,7 @@ pub trait UiExt {
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
-        let success_text_color = self.design_tokens().success_text_color;
+        let success_text_color = self.tokens().success_text_color;
         let ui = self.ui_mut();
         let success_text = success_text.into();
         notification_label(ui, success_text_color, "✅", &success_text, &success_text)
@@ -620,7 +620,7 @@ pub trait UiExt {
 
     /// Draws a shadow into the given rect with the shadow direction given from dark to light
     fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
-        let color_dark = self.design_tokens().shadow_gradient_dark_start;
+        let color_dark = self.tokens().shadow_gradient_dark_start;
         let color_bright = Color32::TRANSPARENT;
 
         let (left_top, right_top, left_bottom, right_bottom) = match direction {
@@ -994,7 +994,7 @@ pub trait UiExt {
             style.visuals.button_frame = false;
 
             let response = ui
-                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(ui.design_tokens(), text))
+                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(ui.tokens(), text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
@@ -1163,7 +1163,7 @@ pub trait UiExt {
 
         egui::Frame {
             inner_margin: egui::Margin::same(3),
-            stroke: ui.design_tokens().bottom_bar_stroke,
+            stroke: ui.tokens().bottom_bar_stroke,
             corner_radius: ui.visuals().widgets.hovered.corner_radius + egui::CornerRadius::same(3),
             ..Default::default()
         }

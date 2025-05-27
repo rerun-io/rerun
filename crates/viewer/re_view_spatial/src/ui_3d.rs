@@ -510,7 +510,7 @@ impl SpatialView3D {
         if state.state_3d.show_axes {
             let axis_length = 1.0; // The axes are also a measuring stick
             crate::visualizers::add_axis_arrows(
-                ctx.design_tokens(),
+                ctx.tokens(),
                 &mut line_builder,
                 glam::Affine3A::IDENTITY,
                 None,
@@ -654,7 +654,7 @@ impl SpatialView3D {
                 .map(|lines| {
                     lines
                         .radius(box_line_radius)
-                        .color(ui.design_tokens().frustum_color)
+                        .color(ui.tokens().frustum_color)
                 });
         }
         if state.state_3d.show_smoothed_bbox {
@@ -664,7 +664,7 @@ impl SpatialView3D {
                 .map(|lines| {
                     lines
                         .radius(box_line_radius)
-                        .color(ctx.design_tokens().frustum_color)
+                        .color(ctx.tokens().frustum_color)
                 });
         }
 
@@ -867,7 +867,7 @@ fn show_orbit_eye_center(
             )
             .radius(Size::new_ui_points(0.75))
             // TODO(andreas): Fade this out.
-            .color(egui_ctx.design_tokens().frustum_color);
+            .color(egui_ctx.tokens().frustum_color);
 
         // TODO(andreas): Idea for nice depth perception:
         // Render the lines once with additive blending and depth test enabled

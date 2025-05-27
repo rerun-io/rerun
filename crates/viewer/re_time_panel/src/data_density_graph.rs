@@ -737,8 +737,8 @@ fn graph_color(ctx: &ViewerContext<'_>, item: &Item, ui: &egui::Ui) -> Color32 {
     let is_selected = ctx.selection().contains_item(item);
 
     if is_selected {
-        ui.design_tokens().density_graph_selected
+        ui.tokens().density_graph_selected
     } else {
-        ui.design_tokens().density_graph_unselected
+        ui.tokens().density_graph_unselected
     }
 }

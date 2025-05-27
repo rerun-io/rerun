@@ -282,7 +282,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 .entity_outline_mask(data_result.entity_path.hash());
 
             self.visit_instance(
-                ctx.design_tokens(),
+                ctx.tokens(),
                 &mut line_builder,
                 transforms,
                 data_result,

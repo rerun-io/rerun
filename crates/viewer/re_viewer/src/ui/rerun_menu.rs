@@ -25,7 +25,7 @@ impl App {
         let image = re_ui::icons::RERUN_MENU
             .as_image()
             .max_height(desired_icon_height)
-            .tint(ui.design_tokens().strong_fg_color);
+            .tint(ui.tokens().strong_fg_color);
 
         ui.menu_image_button(image, |ui| {
             self.rerun_menu_ui(ui, render_state, _store_context);

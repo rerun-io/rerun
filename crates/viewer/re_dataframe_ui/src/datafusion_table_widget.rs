@@ -411,10 +411,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                             if let Some(dir_icon) = current_sort_direction.map(SortDirection::icon)
                             {
                                 ui.add_space(-5.0);
-                                ui.small_icon(
-                                    dir_icon,
-                                    Some(ui.design_tokens().table_sort_icon_color),
-                                );
+                                ui.small_icon(dir_icon, Some(ui.tokens().table_sort_icon_color));
                             }
 
                             response

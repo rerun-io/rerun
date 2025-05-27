@@ -1457,11 +1457,7 @@ fn paint_range_highlight(
         painter.rect_filled(
             visible_history_area_rect,
             0.0,
-            painter
-                .ctx()
-                .design_tokens()
-                .extreme_fg_color
-                .gamma_multiply(0.1),
+            painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
         );
     }
 }
@@ -1633,7 +1629,7 @@ fn paint_time_ranges_gaps(
             mesh.colored_vertex(right_pos, fill_color);
 
             shadow_mesh.colored_vertex(pos2(right - shadow_width, y), Color32::TRANSPARENT);
-            shadow_mesh.colored_vertex(right_pos, ui.design_tokens().shadow_gradient_dark_start);
+            shadow_mesh.colored_vertex(right_pos, ui.tokens().shadow_gradient_dark_start);
 
             left_line_strip.push(left_pos);
             right_line_strip.push(right_pos);

@@ -1090,7 +1090,7 @@ impl BlueprintTree {
         ui.painter().hline(
             drop_target.indicator_span_x,
             drop_target.indicator_position_y,
-            (2.0, ui.design_tokens().strong_fg_color),
+            (2.0, ui.tokens().strong_fg_color),
         );
 
         let Contents::Container(target_container_id) = drop_target.target_parent_id else {
@@ -1258,7 +1258,7 @@ fn add_new_view_or_container_menu_button(
     ui: &mut egui::Ui,
 ) {
     if ui
-        .add(re_ui::icons::ADD.as_button_with_label(ui.design_tokens(), "Add view or container…"))
+        .add(re_ui::icons::ADD.as_button_with_label(ui.tokens(), "Add view or container…"))
         .clicked()
     {
         ui.close();
@@ -1303,8 +1303,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let mut response = ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET
-                .as_button_with_label(ui.design_tokens(), "Reset to default blueprint"),
+            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to default blueprint"),
         )
         .on_hover_text("Reset to the default blueprint for this app");
 
@@ -1330,8 +1329,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
     if ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET
-                .as_button_with_label(ui.design_tokens(), "Reset to heuristic blueprint"),
+            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to heuristic blueprint"),
         )
         .on_hover_text("Re-populate viewport with automatically chosen views")
         .clicked()

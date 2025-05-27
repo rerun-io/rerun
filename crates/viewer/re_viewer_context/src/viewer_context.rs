@@ -84,8 +84,8 @@ impl ViewerContext<'_> {
         self.global_context.app_options
     }
 
-    pub fn design_tokens(&self) -> &'static re_ui::DesignTokens {
-        self.egui_ctx().design_tokens()
+    pub fn tokens(&self) -> &'static re_ui::DesignTokens {
+        self.egui_ctx().tokens()
     }
 
     /// Runtime info about components and archetypes.

@@ -40,7 +40,7 @@ pub fn header_ui<R>(
 ) -> egui::InnerResponse<R> {
     let response = Frame::new()
         .inner_margin(CELL_MARGIN)
-        .fill(ui.design_tokens().table_header_bg_fill)
+        .fill(ui.tokens().table_header_bg_fill)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             content(ui)
@@ -51,7 +51,7 @@ pub fn header_ui<R>(
     ui.painter().hline(
         rect.x_range(),
         rect.max.y - 1.0, // - 1.0 prevents it from being overdrawn by the following row
-        Stroke::new(1.0, ui.design_tokens().table_header_stroke_color),
+        Stroke::new(1.0, ui.tokens().table_header_stroke_color),
     );
 
     response
@@ -71,11 +71,7 @@ pub fn cell_ui<R>(
     ui.painter().hline(
         rect.x_range(),
         rect.max.y - 1.0, // - 1.0 prevents it from being overdrawn by the following row
-        Stroke::new(
-            1.0,
-            ui.design_tokens()
-                .table_interaction_noninteractive_bg_stroke,
-        ),
+        Stroke::new(1.0, ui.tokens().table_interaction_noninteractive_bg_stroke),
     );
 
     response

@@ -22,10 +22,10 @@ pub enum NotificationLevel {
 impl NotificationLevel {
     fn color(&self, ui: &egui::Ui) -> egui::Color32 {
         match self {
-            Self::Info => ui.design_tokens().info_text_color,
+            Self::Info => ui.tokens().info_text_color,
             Self::Warning => ui.style().visuals.warn_fg_color,
             Self::Error => ui.style().visuals.error_fg_color,
-            Self::Success => ui.design_tokens().success_text_color,
+            Self::Success => ui.tokens().success_text_color,
         }
     }
 }
@@ -239,7 +239,7 @@ impl NotificationPanel {
             .movable(false)
             .show(egui_ctx, |ui| {
                 egui::Frame::window(ui.style())
-                    .fill(ui.design_tokens().notification_panel_background_color)
+                    .fill(ui.tokens().notification_panel_background_color)
                     .corner_radius(8)
                     .inner_margin(8.0)
                     .show(ui, |ui| {
@@ -368,9 +368,9 @@ fn show_notification(
     mut on_dismiss: impl FnMut(),
 ) -> egui::Response {
     let background_color = if mode == DisplayMode::Toast || notification.is_unread {
-        ui.design_tokens().notification_background_color
+        ui.tokens().notification_background_color
     } else {
-        ui.design_tokens().notification_panel_background_color
+        ui.tokens().notification_panel_background_color
     };
 
     egui::Frame::window(ui.style())
