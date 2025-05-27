@@ -1,7 +1,7 @@
 use egui::{OpenUrl, RichText, Sense, TextStyle, Ui, UiBuilder};
 
 use crate::{
-    DesignTokens, UiExt as _,
+    UiExt as _,
     icon_text::{IconText, IconTextItem},
     icons,
 };
@@ -120,6 +120,8 @@ impl Help {
 
     /// Show the help popup. Usually you want to show this in [`egui::Response::on_hover_ui`].
     pub fn ui(self, ui: &mut Ui) {
+        let tokens = ui.tokens();
+
         egui::Sides::new().show(
             ui,
             |ui| {
@@ -168,7 +170,7 @@ impl Help {
                             },
                             |ui| {
                                 let color = ui.visuals().widgets.inactive.text_color();
-                                ui.set_height(DesignTokens::small_icon_size().y);
+                                ui.set_height(tokens.small_icon_size.y);
                                 ui.spacing_mut().item_spacing.x = 2.0;
                                 ui.style_mut().override_text_style = Some(TextStyle::Monospace);
                                 ui.visuals_mut().override_text_color = Some(color);

@@ -5,7 +5,7 @@ use re_renderer::{
 };
 use re_types::components::VideoTimestamp;
 use re_ui::{
-    DesignTokens, UiExt as _,
+    UiExt as _,
     list_item::{self, PropertyContent},
 };
 use re_video::{VideoData, decode::FrameInfo};
@@ -138,6 +138,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
 
 fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
     re_tracing::profile_function!();
+    let tokens = ui.tokens();
 
     egui_extras::TableBuilder::new(ui)
         .auto_shrink([false, true])
@@ -145,8 +146,8 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
         .max_scroll_height(611.0) // Odd value so the user can see half-hidden rows
         .columns(Column::auto(), 8)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .header(DesignTokens::table_header_height(), |mut header| {
-            DesignTokens::setup_table_header(&mut header);
+        .header(tokens.table_header_height(), |mut header| {
+            re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Sample");
             });
@@ -173,10 +174,10 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
             });
         })
         .body(|mut body| {
-            DesignTokens::setup_table_body(&mut body);
+            tokens.setup_table_body(&mut body);
 
             body.rows(
-                DesignTokens::table_line_height(),
+                tokens.table_line_height(),
                 video_data.samples.len(),
                 |mut row| {
                     let sample_idx = row.index();

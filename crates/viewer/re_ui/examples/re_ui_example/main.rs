@@ -151,6 +151,8 @@ impl eframe::App for ExampleApp {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let tokens = egui_ctx.tokens();
+
         self.show_text_logs_as_notifications();
 
         self.top_bar(egui_ctx);
@@ -304,12 +306,9 @@ impl eframe::App for ExampleApp {
                     // revert change by `list_item_scope`
                     ui.spacing_mut().item_spacing.y = y_spacing;
                     egui::TopBottomPanel::top("left_panel_top_bar")
-                        .exact_height(re_ui::DesignTokens::title_bar_height())
+                        .exact_height(tokens.title_bar_height())
                         .frame(egui::Frame {
-                            inner_margin: egui::Margin::symmetric(
-                                re_ui::DesignTokens::view_padding(),
-                                0,
-                            ),
+                            inner_margin: egui::Margin::symmetric(tokens.view_padding(), 0),
                             ..Default::default()
                         })
                         .show_inside(ui, left_panel_top_section_ui);
@@ -318,9 +317,7 @@ impl eframe::App for ExampleApp {
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
                             egui::Frame {
-                                inner_margin: egui::Margin::same(
-                                    re_ui::DesignTokens::view_padding(),
-                                ),
+                                inner_margin: egui::Margin::same(tokens.view_padding()),
                                 ..Default::default()
                             }
                             .show(ui, left_panel_bottom_section_ui);
@@ -535,8 +532,8 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
     }
 
     /// The height of the bar holding tab titles.
-    fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::DesignTokens::title_bar_height()
+    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
+        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?

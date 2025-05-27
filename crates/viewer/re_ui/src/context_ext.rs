@@ -89,6 +89,7 @@ pub trait ContextExt {
     }
 
     fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
+        let tokens = self.tokens();
         let egui_zoom_factor = self.ctx().zoom_factor();
         let fullscreen = self
             .ctx()
@@ -121,7 +122,7 @@ pub trait ContextExt {
             // …but never shrink below the native button height when zoomed out.
             height.max(native_buttons_size_in_native_scale.y / egui_zoom_factor)
         } else {
-            DesignTokens::top_bar_height() - DesignTokens::top_bar_margin().sum().y
+            tokens.top_bar_height() - tokens.top_bar_margin().sum().y
         };
 
         let indent = if make_room_for_window_buttons {

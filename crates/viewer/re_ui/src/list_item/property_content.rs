@@ -1,8 +1,10 @@
-use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
 use std::sync::Arc;
 
+use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
+
+use crate::{Icon, UiExt as _};
+
 use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent, ListVisuals};
-use crate::{DesignTokens, Icon, UiExt as _};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
@@ -221,6 +223,8 @@ impl ListItemContent for PropertyContent<'_> {
             button,
         } = *self;
 
+        let tokens = ui.tokens();
+
         // │                                                                              │
         // │◀─────────────────────────────get_full_span()────────────────────────────────▶│
         // │                                                                              │
@@ -250,18 +254,18 @@ impl ListItemContent for PropertyContent<'_> {
                 .unwrap_or_else(|| content_indent + (context.rect.width() / 2.).at_least(0.0));
 
         let icon_extra = if icon_fn.is_some() {
-            DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding()
+            tokens.small_icon_size.x + tokens.text_to_icon_padding()
         } else {
             0.0
         };
 
         // Based on egui::ImageButton::ui()
         let action_button_dimension =
-            DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+            tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
         let reserve_action_button_space =
             button.is_some() || context.layout_info.reserve_action_button_space;
         let action_button_extra = if reserve_action_button_space {
-            action_button_dimension + DesignTokens::text_to_icon_padding()
+            action_button_dimension + tokens.text_to_icon_padding()
         } else {
             0.0
         };
@@ -282,9 +286,8 @@ impl ListItemContent for PropertyContent<'_> {
         // Draw icon
         if let Some(icon_fn) = icon_fn {
             let icon_rect = egui::Rect::from_center_size(
-                context.rect.left_center()
-                    + egui::vec2(DesignTokens::small_icon_size().x / 2., 0.0),
-                DesignTokens::small_icon_size(),
+                context.rect.left_center() + egui::vec2(tokens.small_icon_size.x / 2., 0.0),
+                tokens.small_icon_size,
             );
 
             icon_fn(ui, icon_rect, visuals);
@@ -376,6 +379,7 @@ impl ListItemContent for PropertyContent<'_> {
 
     fn desired_width(&self, ui: &Ui) -> DesiredWidth {
         let layout_info = LayoutInfoStack::top(ui.ctx());
+        let tokens = ui.tokens();
 
         if crate::is_in_resizable_panel(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
@@ -384,11 +388,11 @@ impl ListItemContent for PropertyContent<'_> {
 
             // TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
             let action_button_dimension =
-                DesignTokens::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+                tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
             let reserve_action_button_space =
                 self.button.is_some() || layout_info.reserve_action_button_space;
             if reserve_action_button_space {
-                desired_width += action_button_dimension + DesignTokens::text_to_icon_padding();
+                desired_width += action_button_dimension + tokens.text_to_icon_padding();
             }
 
             DesiredWidth::AtLeast(desired_width.ceil())

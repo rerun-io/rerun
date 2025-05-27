@@ -52,7 +52,7 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
-        design_tokens: &re_ui::DesignTokens,
+        tokens: &re_ui::DesignTokens,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
         data_result: &DataResult,
@@ -186,7 +186,7 @@ impl CamerasVisualizer {
             let lines = batch
                 .add_strip(strip.into_iter())
                 .radius(radius)
-                .color(design_tokens.frustum_color)
+                .color(tokens.frustum_color)
                 .flags(flags)
                 .picking_instance_id(instance_layer_id.instance);
 

@@ -26,11 +26,12 @@ impl SortDirection {
     }
 
     pub fn menu_button(&self, ui: &mut egui::Ui) -> egui::Response {
+        let tokens = ui.tokens();
         ui.add(egui::Button::image_and_text(
             self.icon()
                 .as_image()
-                .tint(ui.tokens().label_button_icon_color)
-                .fit_to_exact_size(re_ui::DesignTokens::small_icon_size()),
+                .tint(tokens.label_button_icon_color)
+                .fit_to_exact_size(tokens.small_icon_size),
             match self {
                 Self::Ascending => "Ascending",
                 Self::Descending => "Descending",

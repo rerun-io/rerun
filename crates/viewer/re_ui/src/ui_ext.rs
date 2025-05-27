@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use egui::{
-    Align2, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Vec2, Widget as _,
+    Align2, CollapsingResponse, Color32, NumExt as _, Rangef, Rect, Widget as _,
     emath::{GuiRounding as _, Rot2},
     pos2,
 };
@@ -131,17 +131,17 @@ pub trait UiExt {
         // TODO(emilk): change color and size on hover
         egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(DesignTokens::small_icon_size())
+                .fit_to_exact_size(self.tokens().small_icon_size)
                 .tint(self.ui().visuals().widgets.inactive.fg_stroke.color),
         )
     }
 
     /// Adds a non-interactive, optionally tinted small icon.
     ///
-    /// Uses [`DesignTokens::small_icon_size`]. Returns the rect where the icon was painted.
+    /// Uses [`tokens.small_icon_size`]. Returns the rect where the icon was painted.
     fn small_icon(&mut self, icon: &Icon, tint: Option<egui::Color32>) -> egui::Rect {
         let ui = self.ui_mut();
-        let (_, rect) = ui.allocate_space(DesignTokens::small_icon_size());
+        let (_, rect) = ui.allocate_space(ui.tokens().small_icon_size);
         let mut image = icon.as_image();
         if let Some(tint) = tint {
             image = image.tint(tint);
@@ -175,6 +175,11 @@ pub trait UiExt {
         bg_fill: Option<Color32>,
         tint: Option<Color32>,
     ) -> egui::Response {
+        let tokens = self.tokens();
+        let button_size = tokens.large_button_size;
+        let icon_size = tokens.large_button_icon_size; // centered inside the button
+        let corner_radius = tokens.large_button_corner_radius;
+
         let ui = self.ui_mut();
 
         let prev_style = ui.style().clone();
@@ -188,10 +193,6 @@ pub trait UiExt {
             visuals.widgets.active.expansion = 0.0;
             visuals.widgets.open.expansion = 0.0;
         }
-
-        let button_size = Vec2::splat(22.0);
-        let icon_size = Vec2::splat(12.0); // centered inside the button
-        let corner_radius = 6.0;
 
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
         response.widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ImageButton));
@@ -380,7 +381,7 @@ pub trait UiExt {
     // It's highly likely that all these use are now redundant.
     fn panel_content<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
         egui::Frame {
-            inner_margin: DesignTokens::panel_margin(),
+            inner_margin: self.tokens().panel_margin(),
             ..Default::default()
         }
         .show(self.ui_mut(), |ui| add_contents(ui))
@@ -407,10 +408,11 @@ pub trait UiExt {
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
+        let tokens = self.tokens();
         let ui = self.ui_mut();
 
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), DesignTokens::title_bar_height()),
+            egui::vec2(ui.available_width(), tokens.title_bar_height()),
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
                 // draw horizontal separator lines
@@ -720,13 +722,13 @@ pub trait UiExt {
 
     fn selectable_label_with_icon(
         &mut self,
-
         icon: &Icon,
         text: impl Into<egui::WidgetText>,
         selected: bool,
         style: LabelStyle,
     ) -> egui::Response {
         let ui = self.ui_mut();
+        let tokens = ui.tokens();
         let button_padding = ui.spacing().button_padding;
         let total_extra = button_padding + button_padding;
 
@@ -743,15 +745,14 @@ pub trait UiExt {
 
         let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
-        let icon_width_plus_padding =
-            DesignTokens::small_icon_size().x + DesignTokens::text_to_icon_padding();
+        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
 
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
         desired_size.y = desired_size
             .y
             .at_least(ui.spacing().interact_size.y)
-            .at_least(DesignTokens::small_icon_size().y);
+            .at_least(tokens.small_icon_size.y);
         let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
         response.widget_info(|| {
             egui::WidgetInfo::selected(
@@ -779,11 +780,11 @@ pub trait UiExt {
             }
 
             // Draw icon
-            let image_size = DesignTokens::small_icon_size();
+            let image_size = tokens.small_icon_size;
             let image_rect = egui::Rect::from_min_size(
                 egui::pos2(
                     rect.min.x.ceil(),
-                    (rect.center().y - 0.5 * DesignTokens::small_icon_size().y).ceil(),
+                    (rect.center().y - 0.5 * tokens.small_icon_size.y).ceil(),
                 )
                 .round_to_pixels(ui.pixels_per_point()),
                 image_size,
@@ -795,7 +796,7 @@ pub trait UiExt {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + DesignTokens::text_to_icon_padding();
+            text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
             let text_pos = ui
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)
@@ -990,11 +991,12 @@ pub trait UiExt {
         let ui = self.ui_mut();
 
         ui.scope(|ui| {
+            let tokens = ui.tokens();
             let style = ui.style_mut();
             style.visuals.button_frame = false;
 
             let response = ui
-                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(ui.tokens(), text))
+                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
@@ -1161,9 +1163,10 @@ pub trait UiExt {
     fn selectable_toggle<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
         let ui = self.ui_mut();
 
+        let tokens = ui.tokens();
         egui::Frame {
             inner_margin: egui::Margin::same(3),
-            stroke: ui.tokens().bottom_bar_stroke,
+            stroke: tokens.bottom_bar_stroke,
             corner_radius: ui.visuals().widgets.hovered.corner_radius + egui::CornerRadius::same(3),
             ..Default::default()
         }
