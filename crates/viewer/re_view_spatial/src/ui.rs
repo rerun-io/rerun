@@ -1,4 +1,6 @@
-use egui::{NumExt as _, WidgetText, epaint::util::OrderedFloat, text::TextWrapping};
+use std::time::Instant;
+
+use egui::{NumExt as _, Slider, WidgetText, epaint::util::OrderedFloat, text::TextWrapping};
 
 use re_format::format_f32;
 use re_math::BoundingBox;
@@ -158,6 +160,17 @@ impl SpatialViewState {
                 ui.selectable_value(&mut mode, EyeMode::FirstPerson, "First Person");
                 ui.selectable_value(&mut mode, EyeMode::Orbital, "Orbital");
                 eye.set_mode(mode);
+            });
+
+            ui.horizontal(|ui| {
+                let previous_speed = eye.speed();
+                let mut speed = eye.speed();
+                ui.label("Translation speed");
+                ui.add(Slider::new(&mut speed, 0.001..=1_000_000.0).logarithmic(true));
+                if previous_speed != speed {
+                    eye.set_speed(speed);
+                    self.state_3d.last_eye_interaction = Some(Instant::now());
+                }
             });
         }
     }
