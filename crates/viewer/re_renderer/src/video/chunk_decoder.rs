@@ -148,8 +148,7 @@ impl VideoSampleDecoder {
                     frame.content.height(),
                 ),
                 frame_info: None,
-                // Placeholder, going to be replaced.
-                // TODO: that's ugly!
+                // About to be replaced since the video texture is not up to date.
                 source_pixel_format: SourceImageDataFormat::WgpuCompatible(
                     wgpu::TextureFormat::Rgba8Unorm,
                 ),

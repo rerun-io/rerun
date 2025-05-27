@@ -141,33 +141,6 @@ where
     Ok(())
 }
 
-// TODO: need it?
-// fn new_scene_entity_context<'a, A: Archetype>(
-//     query: &'a ViewQuery<'a>,
-//     entity_path: &EntityPath,
-//     depth_offsets: &EntityDepthOffsets,
-//     annotations: &AnnotationSceneContext,
-//     transforms: &'a TransformTreeContext,
-//     system_identifier: re_viewer_context::ViewSystemIdentifier,
-//     view_class_identifier: re_viewer_context::ViewClassIdentifier,
-// ) -> Option<SpatialSceneEntityContext<'a>> {
-//     let entity_path_hash = entity_path.hash();
-//     let transform_info = transforms.transform_info_for_entity(entity_path_hash)?;
-//     let depth_offset_key = (system_identifier, entity_path_hash);
-
-//     Some(SpatialSceneEntityContext {
-//         transform_info,
-//         depth_offset: depth_offsets
-//             .per_entity_and_visualizer
-//             .get(&depth_offset_key)
-//             .copied()
-//             .unwrap_or_default(),
-//         annotations: annotations.0.find(&entity_path),
-//         highlight: query.highlights.entity_outline_mask(entity_path_hash),
-//         view_class_identifier,
-//     })
-// }
-
 // ---
 
 use re_chunk::{ChunkComponentIterItem, RowId};

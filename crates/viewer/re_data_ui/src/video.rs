@@ -60,7 +60,6 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoDataD
         .stsd
         .as_ref()
         .and_then(|c| c.contents.bit_depth())
-    // TODO: shortcut this?
     {
         ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(|ui, _| {
             ui.label(bit_depth.to_string());

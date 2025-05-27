@@ -114,7 +114,6 @@ impl VideoStreamCache {
             std::collections::hash_map::Entry::Vacant(vacant_entry) => {
                 let (video_data, video_sample_buffers) =
                     load_video_data_from_chunks(store, entity_path, timeline)?;
-                // TODO: video needs to remain editable.
                 let video = re_renderer::video::Video::load(
                     entity_path.to_string(),
                     video_data,
@@ -219,7 +218,7 @@ fn load_video_data_from_chunks(
             duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
             gops,
             samples,
-            samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(BFRAMETICKET): No b-frames for now.
+            samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(#10090): No b-frames for now.
             tracks: std::iter::once((0, Some(re_video::TrackKind::Video))).collect(),
         },
         video_sample_buffers,
@@ -287,7 +286,8 @@ fn read_additional_samples_from_chunk(
                 }
                 previous_max_presentation_timestamp = decode_timestamp;
 
-                // TODO:
+                // Only a single sample/blob is expected per timestamp.
+                // It should not be possible to log more than one.
                 debug_assert_eq!(byte_offset.len(), 1);
                 debug_assert_eq!(byte_length.len(), 1);
                 let byte_offset = byte_offset[0] as u32;
@@ -317,9 +317,8 @@ fn read_additional_samples_from_chunk(
                 Some(re_video::Sample {
                     is_sync,
 
-                    // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
+                    // TODO(#10090): No b-frames for now. Therefore sample_idx == frame_nr.
                     frame_nr: sample_idx,
-                    // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
                     decode_timestamp,
                     presentation_timestamp: decode_timestamp,
 

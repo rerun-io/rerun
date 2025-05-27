@@ -121,7 +121,8 @@ impl VisualizerSystem for VideoStreamVisualizer {
                 }
             };
 
-            // TODO: reconciliate, document
+            // Video streams are handled like "infinite" videos both forward and backwards in time.
+            // Therefore, the "time in the video" is whatever time we have on the timeline right now.
             let time_since_video_start_in_secs = query_context.query.at().as_f64();
 
             // TODO: almost same code as on video frame reference
