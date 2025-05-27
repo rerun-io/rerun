@@ -189,7 +189,7 @@ impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         on_output: Arc<OutputCallback>,
-        avcc: Option<re_mp4::Avc1Box>, // TODO: we actually just want the SPS, not the Avc1 box. SPS may be available when avc1 is not.
+        avcc: Option<re_mp4::Avc1Box>,
         ffmpeg_path: Option<&std::path::Path>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
@@ -233,7 +233,7 @@ impl FFmpegProcessAndListener {
                 }
             }
         } else {
-            // TODO: see above, we likely know the SPS. And we can cache that knowledge (elsewhere)
+            // TODO(andreas): If we previously encountered an SPS as part of the stream, we should use it here.
             (PixelFormat::Rgba8Unorm, "rgba")
         };
 
@@ -472,7 +472,7 @@ fn write_ffmpeg_input(
         let write_result = if let Some(avcc) = avcc {
             write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
         } else {
-            // TODO: assume here it's already Annex B. Makes sense but crazy implicit. Don't like!
+            // If there was no AVCC box, we assume the data is already in Annex B format.
             write_bytes(ffmpeg_stdin, &chunk.data)
         };
 
