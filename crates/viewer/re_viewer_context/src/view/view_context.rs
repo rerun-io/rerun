@@ -39,6 +39,10 @@ impl<'a> ViewContext<'a> {
         }
     }
 
+    pub fn tokens(&self) -> &'static re_ui::DesignTokens {
+        self.viewer_ctx.tokens()
+    }
+
     /// The active recording.
     #[inline]
     pub fn recording(&self) -> &re_entity_db::EntityDb {

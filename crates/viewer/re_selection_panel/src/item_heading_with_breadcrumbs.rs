@@ -51,7 +51,7 @@ pub fn item_heading_with_breadcrumbs(
 
                 // First the C>R>U>M>B>S>
                 {
-                    let breadcrumb_text_color = ui.design_tokens().breadcrumb_text_color();
+                    let breadcrumb_text_color = ui.tokens().breadcrumb_text_color;
                     let previous_style = ui.style().clone();
                     // Dimmer colors for breadcrumbs
                     let visuals = ui.visuals_mut();
@@ -207,7 +207,7 @@ fn last_part_of_item_heading(
     };
 
     let button = if with_icon {
-        icon.as_button_with_label(ui.design_tokens(), label)
+        icon.as_button_with_label(ui.tokens(), label)
     } else {
         egui::Button::new(label)
     };
@@ -252,7 +252,7 @@ pub fn separator_icon_ui(ui: &mut egui::Ui) {
     ui.add(
         icons::BREADCRUMBS_SEPARATOR
             .as_image()
-            .tint(ui.design_tokens().breadcrumb_separator_color()),
+            .tint(ui.tokens().breadcrumb_separator_color),
     );
 }
 

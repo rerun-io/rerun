@@ -272,6 +272,7 @@ pub fn create_labels(
         let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
         let is_error = matches!(label.style, UiLabelStyle::Error);
         let text_color = match label.style {
+            UiLabelStyle::Default => parent_ui.visuals().strong_text_color(),
             UiLabelStyle::Color(color) => color,
             UiLabelStyle::Error => parent_ui.style().visuals.strong_text_color(),
         };

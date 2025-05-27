@@ -1,5 +1,5 @@
-use egui::Color32;
 use nohash_hasher::IntSet;
+
 use re_log_types::{EntityPath, Instance};
 use re_types::{
     Archetype as _, ComponentName,
@@ -145,6 +145,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             );
 
             add_axis_arrows(
+                ctx.tokens(),
                 &mut line_builder,
                 world_from_obj,
                 Some(&data_result.entity_path),
@@ -172,11 +173,8 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     }
 }
 
-const AXIS_COLOR_X: Color32 = Color32::from_rgb(255, 25, 25);
-const AXIS_COLOR_Y: Color32 = Color32::from_rgb(0, 240, 0);
-const AXIS_COLOR_Z: Color32 = Color32::from_rgb(80, 80, 255);
-
 pub fn add_axis_arrows(
+    design_tokens: &re_ui::DesignTokens,
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     world_from_obj: glam::Affine3A,
     ent_path: Option<&EntityPath>,
@@ -203,19 +201,19 @@ pub fn add_axis_arrows(
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
-        .color(AXIS_COLOR_X)
+        .color(design_tokens.axis_color_x)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
-        .color(AXIS_COLOR_Y)
+        .color(design_tokens.axis_color_y)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
-        .color(AXIS_COLOR_Z)
+        .color(design_tokens.axis_color_z)
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
         .picking_instance_id(picking_instance_id);
 }

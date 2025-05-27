@@ -163,6 +163,7 @@ impl EncodedImageVisualizer {
             let opacity: Option<&Opacity> =
                 opacities.and_then(|opacity| opacity.first().map(bytemuck::cast_ref));
             let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
+            #[expect(clippy::disallowed_methods)] // This is not a hard-coded color.
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
             let colormap = None;

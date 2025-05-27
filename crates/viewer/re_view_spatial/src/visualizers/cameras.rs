@@ -20,8 +20,6 @@ use crate::{
     ui::SpatialViewState,
 };
 
-const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
-
 pub struct CamerasVisualizer {
     pub data: SpatialViewVisualizerData,
     pub space_cameras: Vec<SpaceCamera3D>,
@@ -54,6 +52,7 @@ impl CamerasVisualizer {
     #[allow(clippy::too_many_arguments)]
     fn visit_instance(
         &mut self,
+        design_tokens: &re_ui::DesignTokens,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
         data_result: &DataResult,
@@ -187,7 +186,7 @@ impl CamerasVisualizer {
             let lines = batch
                 .add_strip(strip.into_iter())
                 .radius(radius)
-                .color(CAMERA_COLOR)
+                .color(design_tokens.frustum_color)
                 .flags(flags)
                 .picking_instance_id(instance_layer_id.instance);
 
@@ -283,6 +282,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 .entity_outline_mask(data_result.entity_path.hash());
 
             self.visit_instance(
+                ctx.tokens(),
                 &mut line_builder,
                 transforms,
                 data_result,

@@ -1369,7 +1369,7 @@ impl App {
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
-            ..ui.design_tokens().bottom_panel_frame()
+            ..ui.tokens().bottom_panel_frame()
         };
 
         egui::TopBottomPanel::bottom("memory_panel")
@@ -1392,7 +1392,7 @@ impl App {
         egui::SidePanel::left("style_panel")
             .default_width(300.0)
             .resizable(true)
-            .frame(ui.design_tokens().top_panel_frame())
+            .frame(ui.tokens().top_panel_frame())
             .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if ui
@@ -2469,13 +2469,13 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
     painter.rect_stroke(
         egui_ctx.screen_rect(),
         re_ui::DesignTokens::native_window_corner_radius(),
-        egui_ctx.design_tokens().native_frame_stroke,
+        egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );
 }
 
 fn preview_files_being_dropped(egui_ctx: &egui::Context) {
-    use egui::{Align2, Color32, Id, LayerId, Order, TextStyle};
+    use egui::{Align2, Id, LayerId, Order, TextStyle};
 
     // Preview hovering files:
     if !egui_ctx.input(|i| i.raw.hovered_files.is_empty()) {
@@ -2496,13 +2496,21 @@ fn preview_files_being_dropped(egui_ctx: &egui::Context) {
             egui_ctx.layer_painter(LayerId::new(Order::Foreground, Id::new("file_drop_target")));
 
         let screen_rect = egui_ctx.screen_rect();
-        painter.rect_filled(screen_rect, 0.0, Color32::from_black_alpha(192));
+        painter.rect_filled(
+            screen_rect,
+            0.0,
+            egui_ctx
+                .style()
+                .visuals
+                .extreme_bg_color
+                .gamma_multiply_u8(192),
+        );
         painter.text(
             screen_rect.center(),
             Align2::CENTER_CENTER,
             text,
             TextStyle::Body.resolve(&egui_ctx.style()),
-            Color32::WHITE,
+            egui_ctx.style().visuals.strong_text_color(),
         );
     }
 }

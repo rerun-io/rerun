@@ -27,11 +27,9 @@ pub fn loop_selection_ui(
     let is_active = time_ctrl.looping() == Looping::Selection;
 
     let selection_color = if is_active {
-        ui.design_tokens().loop_selection_color()
+        ui.tokens().loop_selection_color
     } else {
-        ui.design_tokens()
-            .loop_selection_color()
-            .gamma_multiply(0.7)
+        ui.tokens().loop_selection_color.gamma_multiply(0.7)
     };
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());

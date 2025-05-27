@@ -1,6 +1,5 @@
-use egui::{Align2, Color32, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
+use egui::{Align2, Mesh, Rect, Shape, Vec2, emath::Float as _, pos2};
 
-use crate::SUCCESS_COLOR;
 use crate::{DesignTokens, TopBarStyle};
 
 /// Extension trait for [`egui::Context`].
@@ -10,7 +9,7 @@ use crate::{DesignTokens, TopBarStyle};
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
 
-    fn design_tokens(&self) -> &'static DesignTokens {
+    fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ctx().theme())
     }
 
@@ -66,7 +65,7 @@ pub trait ContextExt {
     /// Text colored to indicate success.
     #[must_use]
     fn success_text(&self, text: impl Into<String>) -> egui::RichText {
-        egui::RichText::new(text).color(SUCCESS_COLOR)
+        egui::RichText::new(text).color(self.tokens().success_text_color)
     }
 
     /// Text colored to indicate a warning.
@@ -147,7 +146,7 @@ pub trait ContextExt {
                 .translate(-Vec2::splat(16.0));
             let mut mesh = Mesh::with_texture(texture.id);
             let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-            mesh.add_rect_with_uv(rect, uv, Color32::WHITE);
+            mesh.add_rect_with_uv(rect, uv, self.ctx().tokens().strong_fg_color);
             self.ctx().debug_painter().add(Shape::mesh(mesh));
         }
     }

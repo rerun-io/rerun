@@ -466,9 +466,9 @@ impl AppState {
                         ui,
                         PanelState::Expanded,
                         // Give the blueprint time panel a distinct color from the normal time panel:
-                        ui.design_tokens()
+                        ui.tokens()
                             .bottom_panel_frame()
-                            .fill(ui.design_tokens().blueprint_time_panel_bg_fill()),
+                            .fill(ui.tokens().blueprint_time_panel_bg_fill),
                     );
 
                     {
@@ -506,7 +506,7 @@ impl AppState {
                         ctx.rec_cfg,
                         ui,
                         app_blueprint.time_panel_state(),
-                        ui.design_tokens().bottom_panel_frame(),
+                        ui.tokens().bottom_panel_frame(),
                     );
                 }
 

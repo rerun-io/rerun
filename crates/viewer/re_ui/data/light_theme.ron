@@ -1,0 +1,277 @@
+{
+  "Alias": {
+    "native_frame_stroke": {
+      "color": "{Gray.750}",
+      "width": 1
+    },
+    "top_bar_color": {
+      "color": "{Gray.800}"
+    },
+    "tab_bar_color": {
+      "color": "{Gray.900}"
+    },
+    "bottom_bar_color": {
+      "color": "{Gray.950}"
+    },
+    "bottom_bar_stroke": {
+      "color": "{Gray.800}",
+      "width": 1
+    },
+    "shadow_gradient_dark_start": {
+      "color": "{Gray.0}",
+      "alpha": 10
+    },
+    "strong_fg_color": {
+      "color": "{Gray.0}"
+    },
+    "info_log_text_color": {
+      "color": "{Green.500}"
+    },
+    "debug_log_text_color": {
+      "color": "{Blue.500}"
+    },
+    "trace_log_text_color": {
+      "color": "{Gray.300}"
+    },
+
+    "success_text_color": {
+      "color": "{Green.300}"
+    },
+    "info_text_color": {
+      "color": "{Blue.300}"
+    },
+
+    "label_button_icon_color": {
+      "color": "{Gray.550}"
+    },
+    "section_collapsing_header_color": {
+      "color": "{Gray.900}"
+    },
+    "loop_selection_color": {
+      "color": "#6386C9B2"
+    },
+    "loop_everything_color": {
+      "color": "#06A35C"
+    },
+    "thumbnail_background_color": {
+      "color": "{Gray.800}"
+    },
+
+    "example_card_background_color": {
+      "color": "{Gray.850}"
+    },
+    "example_tag_bg_fill": {
+      "color": "{Gray.700}",
+    },
+    "example_tag_stroke": {
+      "color": "{Gray.800}",
+      "width": 1
+    },
+
+    "breadcrumb_text_color": {
+      "color": "{Blue.300}"
+    },
+    "breadcrumb_separator_color": {
+      "color": "{Blue.400}"
+    },
+
+    "panel_bg_color": {
+      "color": "{Gray.1000}"
+    },
+
+    "blueprint_time_panel_bg_fill": {
+      "color": "{Blue.900}"
+    },
+
+    "notification_panel_background_color": {
+      "color": "{Gray.850}"
+    },
+    "notification_background_color": {
+      "color": "{Gray.800}"
+    },
+
+    "table_header_bg_fill": {
+      "color": "{Gray.850}"
+    },
+    "table_header_stroke_color": {
+      "color": "{Gray.700}"
+    },
+    "table_interaction_hovered_bg_stroke": {
+      "color": "{Gray.700}"
+    },
+    "table_interaction_active_bg_stroke": {
+      "color": "{Gray.650}"
+    },
+    "table_interaction_noninteractive_bg_stroke": {
+      "color": "{Gray.800}"
+    },
+    "table_sort_icon_color": {
+      "color": "{Blue.250}"
+    },
+
+    "drag_pill_droppable_fill": {
+      "color": "{Blue.725}"
+    },
+    "drag_pill_droppable_stroke": {
+      "color": "{Blue.775}"
+    },
+    "drag_pill_nondroppable_fill": {
+      "color": "{Gray.725}"
+    },
+    "drag_pill_nondroppable_stroke": {
+      "color": "{Gray.775}"
+    },
+    "drop_target_container_stroke": {
+      "color": "{Blue.150}",
+      "width": 2
+    },
+    "tile_drag_preview_stroke" : {
+      "color": "{Gray.0}",
+      "alpha": 127,
+      "width": 1
+    },
+    "tile_drag_preview_color": {
+      "color": "{Gray.0}",
+      "alpha": 26
+    },
+
+    "floating_color": {
+      "color": "{Gray.1000}"
+    },
+    "faint_bg_color": {
+      "color": "{Gray.900}"
+    },
+    "extreme_bg_color": {
+      "color": "{Gray.1000}"
+    },
+    "extreme_fg_color": {
+      "color": "{Gray.0}"
+    },
+    "widget_noninteractive_weak_bg_fill": {
+      "color": "{Gray.550}"
+    },
+    "widget_noninteractive_bg_fill": {
+      "color": "{Gray.800}"
+    },
+    "widget_inactive_bg_fill": {
+      "color": "{Gray.800}"
+    },
+    "widget_hovered_weak_bg_fill": {
+      "color": "{Gray.800}"
+    },
+    "widget_hovered_bg_fill": {
+      "color": "{Gray.700}"
+    },
+    "widget_active_weak_bg_fill": {
+      "color": "{Gray.750}"
+    },
+    "widget_active_bg_fill": {
+      "color": "{Gray.650}"
+    },
+    "widget_open_weak_bg_fill": {
+      "color": "{Gray.650}"
+    },
+    "selection_bg_fill": {
+      "color": "{Blue.550}"
+    },
+    "selection_stroke_color": {
+      "color": "{Blue.800}"
+    },
+    "widget_noninteractive_bg_stroke": {
+      "color": "{Gray.800}"
+    },
+    "text_subdued": {
+      "color": "{Gray.500}"
+    },
+    "text_default": {
+      "color": "{Gray.250}"
+    },
+    "text_strong": {
+      "color": "{Gray.0}"
+    },
+    "error_fg_color": {
+      "color": "#AB0116"
+    },
+    "warn_fg_color": {
+      "color": "#FF7A0C"
+    },
+    "widget_hovered_color": {
+      "color": "{Gray.700}"
+    },
+    "popup_shadow_color": {
+      "color": "#00000020"
+    },
+
+    "density_graph_selected": {
+      "color": "{Blue.200}"
+    },
+    "density_graph_unselected": {
+      "color": "{Gray.300}"
+    },
+
+    "axis_color_x": {
+      "color": "{Red.550}"
+    },
+    "axis_color_y": {
+      "color": "{Green.550}"
+    },
+    "axis_color_z": {
+      "color": "{Blue.550}"
+    },
+    "frustum_color": {
+      "color": "{Gray.300}"
+    },
+
+    "list_item_selected_text": {
+      "color": "{Blue.100}"
+    },
+    "list_item_active_text": {
+      "color": "{Gray.0}"
+    },
+    "list_item_noninteractive_text": {
+      "color": "{Gray.550}"
+    },
+    "list_item_hovered_text": {
+      "color": "{Gray.250}"
+    },
+    "list_item_default_text": {
+      "color": "{Gray.350}"
+    },
+    "list_item_selected_icon": {
+      "color": "{Blue.250}"
+    },
+    "list_item_active_icon": {
+      "color": "{Gray.300}"
+    },
+    "list_item_hovered_icon": {
+      "color": "{Gray.400}"
+    },
+    "list_item_default_icon": {
+      "color": "{Gray.550}"
+    },
+    "list_item_hovered_bg": {
+      "color": "{Gray.900}"
+    },
+    "list_item_active_bg": {
+      "color": "{Gray.800}"
+    },
+    "list_item_collapse_default": {
+      "color": "{Gray.250}"
+    },
+  },
+  "Global": {
+    "Typography": {
+      "Default": {
+        "value": {
+          "fontSize": "12px",
+          "fontWeight": "Medium",
+          "fontFamily": "Inter",
+          "lineHeight": "16px",
+          "letterSpacing": "-0.15px"
+        },
+        "description": "",
+        "type": "typography"
+      }
+    }
+  }
+}

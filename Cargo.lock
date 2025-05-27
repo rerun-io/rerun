@@ -7709,6 +7709,7 @@ name = "re_ui"
 version = "0.24.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "anyhow",
  "arrow",
  "eframe",
  "egui",
@@ -7728,8 +7729,8 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "ron",
  "serde",
- "serde_json",
  "smallvec",
  "strum",
  "strum_macros",

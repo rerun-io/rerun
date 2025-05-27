@@ -1,11 +1,10 @@
 #![allow(clippy::unwrap_used)]
-#![allow(clippy::enum_glob_use)] // Nice to have for the color variants
 
-use egui::{Color32, Theme};
+use egui::{Color32, Stroke, Theme};
 
 use crate::{
     CUSTOM_WINDOW_DECORATIONS,
-    color_table::{ColorTable, ColorToken, Scale::*},
+    color_table::{ColorTable, ColorToken, Hue, Scale},
     format_with_decimals_in_range,
 };
 
@@ -19,79 +18,264 @@ pub struct DesignTokens {
 
     typography: Typography,
 
-    /// Color table for all colors used in the UI.
-    ///
-    /// Loaded at startup from `design_tokens.json`.
-    pub(crate) color_table: ColorTable, // Not public, because all colors should go via design_token_colors.rs
-
-    // TODO(ab): get rid of these, they should be function calls in design_token_colors.rs like the rest.
+    // All these colors can be found in dark_theme.ron and light_theme.ron:
     pub top_bar_color: Color32,
     pub bottom_bar_color: Color32,
-    pub bottom_bar_stroke: egui::Stroke,
-    pub bottom_bar_corner_radius: egui::CornerRadius,
+    pub bottom_bar_stroke: Stroke,
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
-    pub native_frame_stroke: egui::Stroke,
+    pub native_frame_stroke: Stroke,
+
+    /// Usually black or white
+    pub strong_fg_color: Color32,
+
+    pub info_log_text_color: Color32,
+    pub debug_log_text_color: Color32,
+    pub trace_log_text_color: Color32,
+
+    pub success_text_color: Color32,
+    pub info_text_color: Color32,
+
+    /// Color of an icon next to a label
+    pub label_button_icon_color: Color32,
+
+    /// The color for the background of [`crate::SectionCollapsingHeader`].
+    pub section_collapsing_header_color: Color32,
+
+    /// The color we use to mean "loop this selection"
+    pub loop_selection_color: Color32,
+
+    /// The color we use to mean "loop all the data"
+    pub loop_everything_color: Color32,
+
+    /// Color for thumbnail backgrounds
+    pub thumbnail_background_color: Color32,
+
+    /// Color for example card backgrounds
+    pub example_card_background_color: Color32,
+
+    pub example_tag_bg_fill: Color32,
+    pub example_tag_stroke: Stroke,
+
+    /// Color for breadcrumb text
+    pub breadcrumb_text_color: Color32,
+
+    /// Color for breadcrumb separators
+    pub breadcrumb_separator_color: Color32,
+
+    pub panel_bg_color: Color32,
+
+    /// Color for blueprint time panel background
+    pub blueprint_time_panel_bg_fill: Color32,
+
+    /// Color for notification panel background
+    pub notification_panel_background_color: Color32,
+
+    /// Color for notification background
+    pub notification_background_color: Color32,
+
+    /// Color for table header background
+    pub table_header_bg_fill: Color32,
+
+    /// Color for table header stroke
+    pub table_header_stroke_color: Color32,
+
+    /// Color for table interaction hovered background stroke
+    pub table_interaction_hovered_bg_stroke: Color32,
+
+    /// Color for table interaction active background stroke
+    pub table_interaction_active_bg_stroke: Color32,
+
+    /// Color for table interaction noninteractive background stroke
+    pub table_interaction_noninteractive_bg_stroke: Color32,
+
+    pub table_sort_icon_color: Color32,
+
+    pub drag_pill_droppable_fill: Color32,
+    pub drag_pill_droppable_stroke: Color32,
+    pub drag_pill_nondroppable_fill: Color32,
+    pub drag_pill_nondroppable_stroke: Color32,
+
+    /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
+    /// payload.
+    ///
+    /// Sometimes this is the UI element that is being dragged over (e.g., a view receiving a new
+    /// entity). Sometimes this is a UI element not under the pointer, but whose content is
+    /// being hovered (e.g., a container in the blueprint tree)
+    pub drop_target_container_stroke: Stroke,
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
+    pub tile_drag_preview_stroke: Stroke,
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
+    pub tile_drag_preview_color: Color32,
+
+    pub floating_color: Color32,
+    pub faint_bg_color: Color32,
+    pub extreme_bg_color: Color32,
+    pub extreme_fg_color: Color32,
+    pub selection_stroke_color: Color32,
+    pub widget_inactive_bg_fill: Color32,
+    pub widget_hovered_color: Color32,
+    pub widget_hovered_weak_bg_fill: Color32,
+    pub widget_hovered_bg_fill: Color32,
+    pub widget_active_weak_bg_fill: Color32,
+    pub widget_active_bg_fill: Color32,
+    pub widget_open_weak_bg_fill: Color32,
+    pub widget_noninteractive_weak_bg_fill: Color32,
+    pub widget_noninteractive_bg_fill: Color32,
+    pub selection_bg_fill: Color32,
+    pub widget_noninteractive_bg_stroke: Color32,
+    pub text_subdued: Color32,
+    pub text_default: Color32,
+    pub text_strong: Color32,
+    pub error_fg_color: Color32,
+    pub warn_fg_color: Color32,
+    pub popup_shadow_color: Color32,
+
+    pub density_graph_selected: Color32,
+    pub density_graph_unselected: Color32,
+
+    // Spatial view colors:
+    pub axis_color_x: Color32,
+    pub axis_color_y: Color32,
+    pub axis_color_z: Color32,
+    pub frustum_color: Color32,
+
+    // List item colors
+    pub list_item_selected_text: Color32,
+    pub list_item_active_text: Color32,
+    pub list_item_noninteractive_text: Color32,
+    pub list_item_hovered_text: Color32,
+    pub list_item_default_text: Color32,
+    pub list_item_selected_icon: Color32,
+    pub list_item_active_icon: Color32,
+    pub list_item_hovered_icon: Color32,
+    pub list_item_default_icon: Color32,
+    pub list_item_hovered_bg: Color32,
+    pub list_item_active_bg: Color32,
+    pub list_item_collapse_default: Color32,
 }
 
 impl DesignTokens {
-    /// Load design tokens from `data/design_tokens_*.json`.
+    /// Load design tokens from `data/design_tokens_*.ron`.
     pub fn load(theme: Theme) -> Self {
-        let json: serde_json::Value = match theme {
-            egui::Theme::Dark => {
-                serde_json::from_str(include_str!("../data/design_tokens_dark.json"))
-                    .expect("Failed to parse data/design_tokens_dark.json")
-            }
+        let color_table_json: ron::Value = ron::from_str(include_str!("../data/color_table.ron"))
+            .expect("Failed to parse data/color_table.ron");
+        let colors = load_color_table(&color_table_json);
 
-            egui::Theme::Light => {
-                serde_json::from_str(include_str!("../data/design_tokens_light.json"))
-                    .expect("Failed to parse data/design_tokens_light.json")
-            }
+        let theme_json: ron::Value = match theme {
+            egui::Theme::Dark => ron::from_str(include_str!("../data/dark_theme.ron"))
+                .expect("Failed to parse data/dark_theme.ron"),
+
+            egui::Theme::Light => ron::from_str(include_str!("../data/light_theme.ron"))
+                .expect("Failed to parse data/light_theme.ron"),
         };
 
-        let typography: Typography = get_alias(&json, "{Alias.Typography.Default.value}");
+        let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
 
-        let color_table = load_color_table(&json);
+        let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
+        let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
 
-        match theme {
-            egui::Theme::Dark => {
-                Self {
-                    theme,
-                    typography,
-                    top_bar_color: color_table.gray(S100),
-                    bottom_bar_color: color_table.gray(S150),
-                    bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    bottom_bar_corner_radius: egui::CornerRadius {
-                        nw: 0,
-                        ne: 0,
-                        sw: 0,
-                        se: 0,
-                    }, // copied from figma, should be top only
-                    shadow_gradient_dark_start: Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
-                    tab_bar_color: color_table.gray(S200),
-                    native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    color_table,
-                }
-            }
-            egui::Theme::Light => {
-                Self {
-                    theme,
-                    typography,
-                    top_bar_color: color_table.gray(S800),
-                    bottom_bar_color: color_table.gray(S950),
-                    bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S800)),
-                    bottom_bar_corner_radius: egui::CornerRadius {
-                        nw: 0,
-                        ne: 0,
-                        sw: 0,
-                        se: 0,
-                    }, // copied from figma, should be top only
-                    shadow_gradient_dark_start: Color32::from_black_alpha(10), //TODO(ab): use ColorToken!
-                    tab_bar_color: color_table.gray(S900),
-                    native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
-                    color_table,
-                }
-            }
+        Self {
+            theme,
+            typography,
+
+            top_bar_color: get_color("top_bar_color"),
+            bottom_bar_color: get_color("bottom_bar_color"),
+            bottom_bar_stroke: get_stroke("bottom_bar_stroke"),
+            shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
+            tab_bar_color: get_color("tab_bar_color"),
+            native_frame_stroke: get_stroke("native_frame_stroke"),
+            strong_fg_color: get_color("strong_fg_color"),
+
+            info_log_text_color: get_color("info_log_text_color"),
+            debug_log_text_color: get_color("debug_log_text_color"),
+            trace_log_text_color: get_color("trace_log_text_color"),
+
+            success_text_color: get_color("success_text_color"),
+            info_text_color: get_color("info_text_color"),
+
+            label_button_icon_color: get_color("label_button_icon_color"),
+            section_collapsing_header_color: get_color("section_collapsing_header_color"),
+
+            loop_selection_color: get_color("loop_selection_color"),
+            loop_everything_color: get_color("loop_everything_color"),
+
+            thumbnail_background_color: get_color("thumbnail_background_color"),
+
+            example_card_background_color: get_color("example_card_background_color"),
+            example_tag_bg_fill: get_color("example_tag_bg_fill"),
+            example_tag_stroke: get_stroke("example_tag_stroke"),
+
+            breadcrumb_text_color: get_color("breadcrumb_text_color"),
+            breadcrumb_separator_color: get_color("breadcrumb_separator_color"),
+            panel_bg_color: get_color("panel_bg_color"),
+            blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
+            notification_panel_background_color: get_color("notification_panel_background_color"),
+            notification_background_color: get_color("notification_background_color"),
+            table_header_bg_fill: get_color("table_header_bg_fill"),
+            table_header_stroke_color: get_color("table_header_stroke_color"),
+            table_interaction_hovered_bg_stroke: get_color("table_interaction_hovered_bg_stroke"),
+            table_interaction_active_bg_stroke: get_color("table_interaction_active_bg_stroke"),
+            table_interaction_noninteractive_bg_stroke: get_color(
+                "table_interaction_noninteractive_bg_stroke",
+            ),
+            table_sort_icon_color: get_color("table_sort_icon_color"),
+
+            drag_pill_droppable_fill: get_color("drag_pill_droppable_fill"),
+            drag_pill_droppable_stroke: get_color("drag_pill_droppable_stroke"),
+            drag_pill_nondroppable_fill: get_color("drag_pill_nondroppable_fill"),
+            drag_pill_nondroppable_stroke: get_color("drag_pill_nondroppable_stroke"),
+            drop_target_container_stroke: get_stroke("drop_target_container_stroke"),
+            tile_drag_preview_stroke: get_stroke("tile_drag_preview_stroke"),
+            tile_drag_preview_color: get_color("tile_drag_preview_color"),
+
+            floating_color: get_color("floating_color"),
+            faint_bg_color: get_color("faint_bg_color"),
+            extreme_bg_color: get_color("extreme_bg_color"),
+            extreme_fg_color: get_color("extreme_fg_color"),
+            widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
+            widget_hovered_color: get_color("widget_hovered_color"),
+            widget_hovered_weak_bg_fill: get_color("widget_hovered_weak_bg_fill"),
+            widget_hovered_bg_fill: get_color("widget_hovered_bg_fill"),
+            widget_active_weak_bg_fill: get_color("widget_active_weak_bg_fill"),
+            widget_active_bg_fill: get_color("widget_active_bg_fill"),
+            widget_open_weak_bg_fill: get_color("widget_open_weak_bg_fill"),
+            widget_noninteractive_weak_bg_fill: get_color("widget_noninteractive_weak_bg_fill"),
+            widget_noninteractive_bg_fill: get_color("widget_noninteractive_bg_fill"),
+            selection_bg_fill: get_color("selection_bg_fill"),
+            selection_stroke_color: get_color("selection_stroke_color"),
+            widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
+            text_subdued: get_color("text_subdued"),
+            text_default: get_color("text_default"),
+            text_strong: get_color("text_strong"),
+            error_fg_color: get_color("error_fg_color"),
+            warn_fg_color: get_color("warn_fg_color"),
+
+            popup_shadow_color: get_color("popup_shadow_color"),
+
+            density_graph_selected: get_color("density_graph_selected"),
+            density_graph_unselected: get_color("density_graph_unselected"),
+
+            axis_color_x: get_color("axis_color_x"),
+            axis_color_y: get_color("axis_color_y"),
+            axis_color_z: get_color("axis_color_z"),
+            frustum_color: get_color("frustum_color"),
+
+            // List item colors
+            list_item_selected_text: get_color("list_item_selected_text"),
+            list_item_active_text: get_color("list_item_active_text"),
+            list_item_noninteractive_text: get_color("list_item_noninteractive_text"),
+            list_item_hovered_text: get_color("list_item_hovered_text"),
+            list_item_default_text: get_color("list_item_default_text"),
+            list_item_selected_icon: get_color("list_item_selected_icon"),
+            list_item_active_icon: get_color("list_item_active_icon"),
+            list_item_hovered_icon: get_color("list_item_hovered_icon"),
+            list_item_default_icon: get_color("list_item_default_icon"),
+            list_item_hovered_bg: get_color("list_item_hovered_bg"),
+            list_item_active_bg: get_color("list_item_active_bg"),
+            list_item_collapse_default: get_color("list_item_collapse_default"),
         }
     }
 
@@ -100,16 +284,8 @@ impl DesignTokens {
         re_tracing::profile_function!();
 
         self.set_text_styles(style);
-        Self::set_common_style(style);
-
-        match self.theme {
-            egui::Theme::Dark => {
-                self.set_dark_style(style);
-            }
-            egui::Theme::Light => {
-                self.set_light_style(style);
-            }
-        }
+        Self::set_spacing(style);
+        self.set_colors(style);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
     }
@@ -178,7 +354,7 @@ impl DesignTokens {
             .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
     }
 
-    fn set_common_style(egui_style: &mut egui::Style) {
+    fn set_spacing(egui_style: &mut egui::Style) {
         egui_style.visuals.button_frame = true;
 
         {
@@ -228,30 +404,26 @@ impl DesignTokens {
         egui_style.visuals.image_loading_spinners = false;
     }
 
-    fn set_dark_style(&self, egui_style: &mut egui::Style) {
-        let panel_bg_color = self.color(ColorToken::gray(S100));
-        // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = self.color(ColorToken::gray(S250));
-
+    fn set_colors(&self, egui_style: &mut egui::Style) {
         // For table zebra stripes.
-        egui_style.visuals.faint_bg_color = self.color(ColorToken::gray(S150));
+        egui_style.visuals.faint_bg_color = self.faint_bg_color;
 
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
         // We need this very dark, since the theme overall is very, very dark.
-        egui_style.visuals.extreme_bg_color = Color32::BLACK;
+        egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
 
-        egui_style.visuals.widgets.noninteractive.weak_bg_fill = panel_bg_color;
-        egui_style.visuals.widgets.noninteractive.bg_fill = panel_bg_color;
+        egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.panel_bg_color;
+        egui_style.visuals.widgets.noninteractive.bg_fill = self.panel_bg_color;
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::gray(S300));
+        egui_style.visuals.widgets.inactive.bg_fill = self.widget_inactive_bg_fill;
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            let hovered_color = self.color(ColorToken::gray(S325));
+            let hovered_color = self.widget_hovered_color;
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
             egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
@@ -260,18 +432,16 @@ impl DesignTokens {
             egui_style.visuals.widgets.open.bg_fill = hovered_color;
         }
 
-        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S350));
-
-        //TODO(ab): use ColorToken!
-        egui_style.visuals.selection.stroke.color = Color32::from_rgb(173, 184, 255); // Brighter version of the above
+        egui_style.visuals.selection.bg_fill = self.selection_bg_fill;
+        egui_style.visuals.selection.stroke.color = self.selection_stroke_color;
 
         // separator lines, panel lines, etc
         egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            self.color(ColorToken::gray(S250));
+            self.widget_noninteractive_bg_stroke;
 
-        let subdued = self.color(ColorToken::gray(S550));
-        let default = self.color(ColorToken::gray(S775));
-        let strong = self.color(ColorToken::gray(S1000));
+        let subdued = self.text_subdued;
+        let default = self.text_default;
+        let strong = self.text_strong;
 
         egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
@@ -286,96 +456,20 @@ impl DesignTokens {
             offset: [0, 15],
             blur: 50,
             spread: 0,
-            color: Color32::from_black_alpha(128),
+            color: self.popup_shadow_color,
         };
         egui_style.visuals.popup_shadow = shadow;
         egui_style.visuals.window_shadow = shadow;
 
-        egui_style.visuals.window_fill = floating_color; // tooltips and menus
-        egui_style.visuals.window_stroke = egui::Stroke::NONE;
-        egui_style.visuals.panel_fill = panel_bg_color;
+        egui_style.visuals.window_fill = self.floating_color; // tooltips and menus
+        egui_style.visuals.window_stroke = Stroke::NONE;
+        egui_style.visuals.panel_fill = self.panel_bg_color;
 
         // don't color hyperlinks #2733
         egui_style.visuals.hyperlink_color = default;
 
-        //TODO(#8333): use ColorToken!
-        egui_style.visuals.error_fg_color = Color32::from_rgb(0xAB, 0x01, 0x16);
-        egui_style.visuals.warn_fg_color = Color32::from_rgb(0xFF, 0x7A, 0x0C);
-    }
-
-    fn set_light_style(&self, egui_style: &mut egui::Style) {
-        let panel_bg_color = self.color(ColorToken::gray(S1000));
-        // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = self.color(ColorToken::gray(S1000));
-
-        // For table zebra stripes.
-        egui_style.visuals.faint_bg_color = self.color(ColorToken::gray(S900));
-
-        // Used as the background of text edits, scroll bars and others things
-        // that needs to look different from other interactive stuff.
-        // We need this very dark, since the theme overall is very, very dark.
-        egui_style.visuals.extreme_bg_color = self.color(ColorToken::gray(S900));
-
-        egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.color(ColorToken::gray(S550));
-        egui_style.visuals.widgets.noninteractive.bg_fill = self.color(ColorToken::gray(S800));
-
-        egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
-
-        // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::gray(S800));
-
-        {
-            // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            // defaulted to egui light theme for now
-            //let hovered_color = egui::Color32::RED;
-            egui_style.visuals.widgets.hovered.weak_bg_fill = self.color(ColorToken::gray(S800));
-            egui_style.visuals.widgets.hovered.bg_fill = self.color(ColorToken::gray(S700));
-            egui_style.visuals.widgets.active.weak_bg_fill = self.color(ColorToken::gray(S750)); //ms after weak_bg_fill is pressed
-            egui_style.visuals.widgets.active.bg_fill = self.color(ColorToken::gray(S650)); //ms after btn on timeline is pressed
-            egui_style.visuals.widgets.open.weak_bg_fill = self.color(ColorToken::gray(S650));
-            //when dropdown is opened
-            //egui_style.visuals.widgets.open.bg_fill = egui::Color32::GREEN; //have no idea when its triggered
-        }
-
-        egui_style.visuals.selection.bg_fill = self.color(ColorToken::blue(S550));
-        egui_style.visuals.selection.stroke.color = self.color(ColorToken::blue(S800)); // Brighter version of the above
-
-        // separator lines, panel lines, etc
-        egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            self.color(ColorToken::gray(S800));
-
-        let subdued = self.color(ColorToken::gray(S500));
-        let default = self.color(ColorToken::gray(S250));
-        let strong = self.color(ColorToken::gray(S0));
-
-        egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
-        egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
-        egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
-
-        let wide_stroke_width = 2.0; // Make it a bit more visible, especially important for spatial primitives.
-        egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
-        egui_style.visuals.selection.stroke.width = wide_stroke_width;
-
-        // From figma
-        let shadow = egui::epaint::Shadow {
-            offset: [0, 15],
-            blur: 50,
-            spread: 0,
-            color: Color32::from_black_alpha(32),
-        };
-        egui_style.visuals.popup_shadow = shadow;
-        egui_style.visuals.window_shadow = shadow;
-
-        egui_style.visuals.window_fill = floating_color; // tooltips and menus
-        egui_style.visuals.window_stroke = egui::Stroke::NONE;
-        egui_style.visuals.panel_fill = panel_bg_color;
-
-        // don't color hyperlinks #2733
-        egui_style.visuals.hyperlink_color = default;
-
-        //TODO(#8333): use ColorToken!
-        egui_style.visuals.error_fg_color = Color32::from_rgb(0xAB, 0x01, 0x16);
-        egui_style.visuals.warn_fg_color = Color32::from_rgb(0xFF, 0x7A, 0x0C);
+        egui_style.visuals.error_fg_color = self.error_fg_color;
+        egui_style.visuals.warn_fg_color = self.warn_fg_color;
     }
 
     #[inline]
@@ -503,7 +597,7 @@ impl DesignTokens {
                 bottom: -margin_offset,
             },
             stroke: self.bottom_bar_stroke,
-            corner_radius: self.bottom_bar_corner_radius,
+            corner_radius: 0.0.into(),
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
@@ -533,29 +627,54 @@ impl DesignTokens {
     pub fn collapsing_triangle_area() -> egui::Vec2 {
         Self::small_icon_size()
     }
-
-    /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
-    /// payload.
-    ///
-    /// Sometimes this is the UI element that is being dragged over (e.g., a view receiving a new
-    /// entity). Sometimes this is a UI element not under the pointer, but whose content is
-    /// being hovered (e.g., a container in the blueprint tree)
-    #[inline]
-    pub fn drop_target_container_stroke(&self) -> egui::Stroke {
-        egui::Stroke::new(2.0, self.color(ColorToken::blue(S350)))
-    }
-
-    pub fn text(&self, text: impl Into<String>, token: ColorToken) -> egui::RichText {
-        egui::RichText::new(text).color(self.color(token))
-    }
 }
 
 // ----------------------------------------------------------------------------
 
-/// Build the [`ColorTable`] based on the content of `design_token.json`
-fn load_color_table(json: &serde_json::Value) -> ColorTable {
-    fn get_color_from_json(json: &serde_json::Value, global_path: &str) -> Color32 {
-        parse_color(global_path_value(json, global_path).as_str().unwrap())
+trait RonExt {
+    fn get(&self, key: &str) -> Option<&ron::Value>;
+
+    fn as_str(&self) -> Option<&str>;
+
+    fn as_f32(&self) -> Option<f32>;
+
+    fn as_u8(&self) -> Option<u8> {
+        let value = self.as_f32()?;
+        if value as u8 as f32 == value {
+            Some(value as u8)
+        } else {
+            None
+        }
+    }
+}
+
+impl RonExt for ron::Value {
+    fn get(&self, key: &str) -> Option<&ron::Value> {
+        match self {
+            Self::Map(map) => map.get(&Self::String(key.into())),
+            _ => None,
+        }
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    fn as_f32(&self) -> Option<f32> {
+        match self {
+            Self::Number(i) => Some(i.into_f64() as f32),
+            _ => None,
+        }
+    }
+}
+
+/// Build the [`ColorTable`] based on the content of `design_token.ron`
+fn load_color_table(json: &ron::Value) -> ColorTable {
+    fn get_color_from_json(json: &ron::Value, global_path: &str) -> Color32 {
+        Color32::from_hex(global_path_value(json, global_path).as_str().unwrap()).unwrap()
     }
 
     ColorTable::new(|color_token| {
@@ -566,10 +685,96 @@ fn load_color_table(json: &serde_json::Value) -> ColorTable {
     })
 }
 
-fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_path: &str) -> T {
-    let global_path = follow_path_or_panic(json, alias_path).as_str().unwrap();
+fn try_get_alias_color(
+    color_table: &ColorTable,
+    json: &ron::Value,
+    color_name: &str,
+) -> anyhow::Result<Color32> {
+    let color_alias = json
+        .get("Alias")
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
+        .get(color_name)
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{color_name}'"))?;
+    color_from_json(color_table, color_alias)
+}
+
+fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow::Result<Color32> {
+    let color = color_alias
+        .get("color")
+        .ok_or_else(|| anyhow::anyhow!("No color found"))?
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
+
+    if color.starts_with('#') {
+        Ok(Color32::from_hex(color)
+            .map_err(|color_error| anyhow::anyhow!("Invalid hex color: {color_error:?}"))?)
+    } else if color.starts_with('{') {
+        let color = color
+            .strip_prefix('{')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let color = color
+            .strip_suffix('}')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let (hue, scale) = color
+            .split_once('.')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let hue: Hue = hue.parse()?;
+        let scale: Scale = scale.parse()?;
+        let mut color = color_table.get(ColorToken::new(hue, scale));
+        if let Some(alpha) = color_alias.get("alpha") {
+            let alpha = alpha
+                .as_u8()
+                .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
+            color = color.gamma_multiply_u8(alpha);
+        }
+        Ok(color)
+    } else {
+        anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
+    }
+}
+
+fn get_aliased_color(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Color32 {
+    try_get_alias_color(color_table, json, alias_path).unwrap_or_else(|err| {
+        panic!("Failed to get aliased color at {alias_path:?}: {err}");
+    })
+}
+
+fn get_aliased_stroke(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Stroke {
+    try_get_aliased_stroke(color_table, json, alias_path).unwrap_or_else(|err| {
+        panic!("Failed to get aliased stroke at {alias_path:?}: {err}");
+    })
+}
+
+fn try_get_aliased_stroke(
+    color_table: &ColorTable,
+    json: &ron::Value,
+    alias_path: &str,
+) -> anyhow::Result<Stroke> {
+    let color_alias = json
+        .get("Alias")
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias'"))?
+        .get(alias_path)
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}'"))?;
+
+    let color = color_from_json(color_table, color_alias)?;
+    let width = color_alias
+        .get("width")
+        .ok_or_else(|| anyhow::anyhow!("Missing 'Alias.{alias_path}.width'"))?
+        .as_f32()
+        .ok_or_else(|| anyhow::anyhow!("'Alias.{alias_path}.width' not a number"))?;
+    let stroke = Stroke::new(width, color);
+    Ok(stroke)
+}
+
+fn global_path_value<'json>(value: &'json ron::Value, global_path: &str) -> &'json ron::Value {
+    follow_path_or_panic(value, global_path)
+        .get("value")
+        .unwrap()
+}
+
+fn parse_path<T: serde::de::DeserializeOwned>(json: &ron::Value, global_path: &str) -> T {
     let global_value = global_path_value(json, global_path);
-    serde_json::from_value(global_value.clone()).unwrap_or_else(|err| {
+    global_value.clone().into_rust().unwrap_or_else(|err| {
         panic!(
             "Failed to convert {global_path:?} to {}: {err}. Json: {json:?}",
             std::any::type_name::<T>()
@@ -577,26 +782,11 @@ fn get_alias<T: serde::de::DeserializeOwned>(json: &serde_json::Value, alias_pat
     })
 }
 
-fn global_path_value<'json>(
-    value: &'json serde_json::Value,
-    global_path: &str,
-) -> &'json serde_json::Value {
-    follow_path_or_panic(value, global_path)
-        .get("value")
-        .unwrap()
-}
-
-fn follow_path_or_panic<'json>(
-    json: &'json serde_json::Value,
-    json_path: &str,
-) -> &'json serde_json::Value {
+fn follow_path_or_panic<'json>(json: &'json ron::Value, json_path: &str) -> &'json ron::Value {
     follow_path(json, json_path).unwrap_or_else(|| panic!("Failed to find {json_path:?}"))
 }
 
-fn follow_path<'json>(
-    mut value: &'json serde_json::Value,
-    path: &str,
-) -> Option<&'json serde_json::Value> {
+fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json ron::Value> {
     let path = path.strip_prefix('{')?;
     let path = path.strip_suffix('}')?;
     for component in path.split('.') {
@@ -619,32 +809,6 @@ struct Typography {
 
 fn parse_px(pixels: &str) -> f32 {
     pixels.strip_suffix("px").unwrap().parse().unwrap()
-}
-
-fn parse_color(color: &str) -> Color32 {
-    #![allow(clippy::identity_op)]
-
-    let color = color.strip_prefix('#').unwrap();
-    if color.len() == 6 {
-        // RGB
-        let color = u32::from_str_radix(color, 16).unwrap();
-        Color32::from_rgb(
-            ((color >> 16) & 0xff) as u8,
-            ((color >> 8) & 0xff) as u8,
-            ((color >> 0) & 0xff) as u8,
-        )
-    } else if color.len() == 8 {
-        // RGBA
-        let color = u32::from_str_radix(color, 16).unwrap();
-        Color32::from_rgba_unmultiplied(
-            ((color >> 24) & 0xff) as u8,
-            ((color >> 16) & 0xff) as u8,
-            ((color >> 8) & 0xff) as u8,
-            ((color >> 0) & 0xff) as u8,
-        )
-    } else {
-        panic!()
-    }
 }
 
 // ----------------------------------------------------------------------------

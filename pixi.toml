@@ -290,11 +290,6 @@ build-examples = "cargo run --quiet --locked -p re_dev_tools -- build-examples"
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
-# Update the design_tokens.json used to style the GUI.
-# To update the upstream `design_tokens.json`, modify
-# https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
-download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens | jq > crates/viewer/re_ui/data/design_tokens.json"
-
 # Update the results of `insta` snapshot regression tests
 rs-update-insta-tests = "INSTA_FORCE_UPDATE=1 cargo nextest run --all-targets --all-features --cargo-quiet"
 
