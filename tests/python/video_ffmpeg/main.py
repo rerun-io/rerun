@@ -1,11 +1,13 @@
 # TODO(#7484): Build this out into a proper example.
+from __future__ import annotations
 
 import subprocess
 import time
-import rerun as rr
-import numpy as np
 
-def capture_webcam_h264():
+import rerun as rr
+
+
+def capture_webcam_h264() -> None:
     """Capture webcam and stream H.264 encoded video to Rerun with proper timing."""
 
     # Initialize Rerun
@@ -18,47 +20,53 @@ def capture_webcam_h264():
 
     # FFmpeg command to capture from webcam and output H.264 stream
     ffmpeg_cmd = [
-        'ffmpeg',
-
+        "ffmpeg",
         # Setup input.
         # TODO(#7484): non-mac?
-        '-f', 'avfoundation',  # Use avfoundation on macOS
-        '-framerate', str(target_fps),  # Set frame rate
-        "-i", "0:none", # Device 0 for video, nothing for audio
-
+        "-f",
+        "avfoundation",  # Use avfoundation on macOS
+        "-framerate",
+        str(target_fps),  # Set frame rate
+        "-i",
+        "0:none",  # Device 0 for video, nothing for audio
         # Setup encoding.
-        '-c:v', 'libx264',  # H.264 codec
-        '-profile:v', 'baseline',  # Baseline profile to avoid b-frames.
-        '-pix_fmt', 'yuv420p',  # Ensure pixel format compatible with baseline profile.
-        '-preset', 'veryfast',  # Fast encoding (there's also `superfast` and `ultrafast` for even less latency )
-        '-tune', 'zerolatency',  # Low latency
+        "-c:v",
+        "libx264",  # H.264 codec
+        "-profile:v",
+        "baseline",  # Baseline profile to avoid b-frames.
+        "-pix_fmt",
+        "yuv420p",  # Ensure pixel format compatible with baseline profile.
+        "-preset",
+        "veryfast",  # Fast encoding (there's also `superfast` and `ultrafast` for even less latency )
+        "-tune",
+        "zerolatency",  # Low latency
         #'-refs', '1',  # Force single reference frame
         #'-bf', '0',  # No B-frames (alternative way to forcing baseline profile)
         # GOP (Group of Pictures) size - smaller value for lower latency.
         # TODO(#7484): This is too aggressive, but needed until we handle gop extending in the viewer better.
-        '-g', '4',
-
+        "-g",
+        "4",
         # Setup output.
-        '-f', 'h264',  # Output format
-        "-r", str(target_fps), # Important, otherwise the output will have a much higher framerate than the input. Practically causing the stream to break down.
-        '-'  # Output to stdout
+        "-f",
+        "h264",  # Output format
+        "-r",
+        str(
+            target_fps
+        ),  # Important, otherwise the output will have a much higher framerate than the input. Practically causing the stream to break down.
+        "-",  # Output to stdout
     ]
 
     print("ffmpeg command: " + " ".join(ffmpeg_cmd))
 
     # Start FFmpeg process
-    process = subprocess.Popen(
-        ffmpeg_cmd,
-        stdout=subprocess.PIPE,
-        bufsize=0
-    )
+    process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, bufsize=0)
 
     print(f"Starting webcam capture with H.264 encoding at {target_fps} FPS...")
 
     try:
         # Buffer to accumulate H.264 data
-        buffer = b''
-        current_frame_data = b''
+        buffer = b""
+        current_frame_data = b""
 
         def get_nal_unit_type(nal_data):
             """Extract NAL unit type from the first byte after start code."""
@@ -85,9 +93,9 @@ def capture_webcam_h264():
             buffer += chunk
 
             # Look for H.264 NAL unit start codes
-            while b'\x00\x00\x00\x01' in buffer:
-                start_idx = buffer.find(b'\x00\x00\x00\x01')
-                next_start = buffer.find(b'\x00\x00\x00\x01', start_idx + 4)
+            while b"\x00\x00\x00\x01" in buffer:
+                start_idx = buffer.find(b"\x00\x00\x00\x01")
+                next_start = buffer.find(b"\x00\x00\x00\x01", start_idx + 4)
 
                 if next_start == -1:
                     # Incomplete NAL unit, wait for more data
@@ -107,11 +115,7 @@ def capture_webcam_h264():
                     frame_time += frame_duration
                     rr.set_time("video_time", duration=frame_time)
                     rr.log(
-                        "video_stream",
-                        rr.VideoStream(
-                            frame=current_frame_data,
-                            codec=rr.components.VideoCodec.H264
-                        )
+                        "video_stream", rr.VideoStream(frame=current_frame_data, codec=rr.components.VideoCodec.H264)
                     )
 
                     # Start new frame
@@ -131,6 +135,7 @@ def capture_webcam_h264():
         # Clean up
         process.terminate()
         process.wait()
+
 
 if __name__ == "__main__":
     capture_webcam_h264()

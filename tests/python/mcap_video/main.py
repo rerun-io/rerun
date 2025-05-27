@@ -1,12 +1,11 @@
 # TODO(#7484, #9949): Build this out into a proper example.
+from __future__ import annotations
 
-import time
-import mcap
-from mcap.reader import make_reader
-import rerun as rr
 import sys
-from CompressedVideo_pb2 import CompressedVideo
 
+import rerun as rr
+from CompressedVideo_pb2 import CompressedVideo
+from mcap.reader import make_reader
 
 mcap_path = sys.argv[1]
 
@@ -16,7 +15,7 @@ rr.set_time("time", timestamp=0)
 
 with open(mcap_path, "rb") as f:
     reader = make_reader(f)
-    for schema, channel, message in reader.iter_messages():
+    for schema, _channel, message in reader.iter_messages():
         if schema.name == "foxglove.CompressedVideo":
             video_msg = CompressedVideo()
             video_msg.ParseFromString(message.data)
@@ -31,4 +30,4 @@ with open(mcap_path, "rb") as f:
             rr.log("video_stream", rr.VideoStream(frame=video_msg.data, codec=rr.components.VideoCodec.H264))
 
             # Slowing down for debugging in-viewer chunk compaction.
-            #time.sleep(0.01)
+            # time.sleep(0.01)
