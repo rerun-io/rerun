@@ -1,6 +1,4 @@
-use crate::{
-    ArchetypeFieldName, ArchetypeName, ComponentDescriptor, Loggable, SerializationResult,
-};
+use crate::{ArchetypeName, ComponentDescriptor, ComponentName, Loggable, SerializationResult};
 
 use arrow::array::ListArray as ArrowListArray;
 
@@ -161,12 +159,10 @@ impl SerializedComponentBatch {
         self
     }
 
-    /// Unconditionally sets the descriptor's `archetype_field_name` to the given one.
+    /// Unconditionally sets the descriptor's `component_name` to the given one.
     #[inline]
-    pub fn with_archetype_field_name(mut self, archetype_field_name: ArchetypeFieldName) -> Self {
-        self.descriptor = self
-            .descriptor
-            .with_archetype_field_name(archetype_field_name);
+    pub fn with_component_name(mut self, component_name: ComponentName) -> Self {
+        self.descriptor = self.descriptor.with_component_name(component_name);
         self
     }
 
@@ -179,13 +175,11 @@ impl SerializedComponentBatch {
 
     /// Sets the descriptor's `archetype_field_name` to the given one iff it's not already set.
     #[inline]
-    pub fn or_with_archetype_field_name(
+    pub fn or_with_component_name(
         mut self,
-        archetype_field_name: impl FnOnce() -> ArchetypeFieldName,
+        component_name: impl FnOnce() -> ComponentName,
     ) -> Self {
-        self.descriptor = self
-            .descriptor
-            .or_with_archetype_field_name(archetype_field_name);
+        self.descriptor = self.descriptor.or_with_component_name(component_name);
         self
     }
 }
@@ -276,14 +270,14 @@ impl SerializedComponentBatch {
 /// The key used to identify the [`crate::ArchetypeName`] in field-level metadata.
 const FIELD_METADATA_KEY_ARCHETYPE_NAME: &str = "rerun.archetype_name";
 
-/// The key used to identify the [`crate::ArchetypeFieldName`] in field-level metadata.
-const FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME: &str = "rerun.archetype_field_name";
+/// The key used to identify the [`crate::ComponentName`] in field-level metadata.
+const FIELD_METADATA_KEY_COMPONENT_NAME: &str = "rerun.component_name";
 
 impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
     #[inline]
     fn from(batch: &SerializedComponentBatch) -> Self {
         Self::new(
-            batch.descriptor.component_name.to_string(),
+            batch.descriptor.archetype_field_name.to_string(),
             batch.array.data_type().clone(),
             false,
         )
@@ -295,9 +289,9 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
                         name.to_string(),
                     )
                 }),
-                batch.descriptor.archetype_field_name.map(|name| {
+                batch.descriptor.component_name.map(|name| {
                     (
-                        FIELD_METADATA_KEY_ARCHETYPE_FIELD_NAME.to_owned(),
+                        FIELD_METADATA_KEY_COMPONENT_NAME.to_owned(),
                         name.to_string(),
                     )
                 }),

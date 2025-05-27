@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use nohash_hasher::IntSet;
 
 use re_byte_size::SizeBytes;
@@ -105,28 +103,6 @@ re_string_interner::declare_new_type!(
     pub struct ComponentName;
 );
 
-// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
-// convenience is because we're still in this weird half-way in-between state where some things
-// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
-impl From<ComponentName> for Cow<'static, ComponentDescriptor> {
-    #[inline]
-    fn from(name: ComponentName) -> Self {
-        name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(name))
-    }
-}
-
-// TODO(cmc): The only reason this exists is for convenience, and the only reason we need this
-// convenience is because we're still in this weird half-way in-between state where some things
-// are still indexed by name. Remove this entirely once we've ported everything to descriptors.
-impl From<&ComponentName> for Cow<'static, ComponentDescriptor> {
-    #[inline]
-    fn from(name: &ComponentName) -> Self {
-        name.sanity_check();
-        Cow::Owned(ComponentDescriptor::new(*name))
-    }
-}
-
 impl ComponentName {
     /// Runs some asserts in debug mode to make sure the name is not weird.
     #[inline]
@@ -173,30 +149,9 @@ impl ComponentName {
         }
     }
 
-    /// Is this an indicator component for an archetype?
-    pub fn is_indicator_component(&self) -> bool {
-        self.ends_with("Indicator")
-    }
-
-    /// If this is an indicator component, for which archetype?
-    pub fn indicator_component_archetype_short_name(&self) -> Option<String> {
-        self.short_name()
-            .strip_suffix("Indicator")
-            .map(|name| name.to_owned())
-    }
-
     /// Web URL to the Rerun documentation for this component.
     pub fn doc_url(&self) -> Option<String> {
-        if let Some(archetype_name_pascal_case) = self.indicator_component_archetype_short_name() {
-            // Link indicator components to their archetype.
-            // This code should be correct as long as this url passes our link checker:
-            // https://rerun.io/docs/reference/types/archetypes/line_strips3d
-
-            let archetype_name_snake_case = re_case::to_snake_case(&archetype_name_pascal_case);
-            let base_url = "https://rerun.io/docs/reference/types/archetypes";
-            Some(format!("{base_url}/{archetype_name_snake_case}"))
-        } else if let Some(component_name_pascal_case) =
-            self.full_name().strip_prefix("rerun.components.")
+        if let Some(component_name_pascal_case) = self.full_name().strip_prefix("rerun.components.")
         {
             // This code should be correct as long as this url passes our link checker:
             // https://rerun.io/docs/reference/types/components/line_strip2d
