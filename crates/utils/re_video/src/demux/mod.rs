@@ -39,7 +39,7 @@ impl std::fmt::Display for ChromaSubsamplingModes {
 }
 
 /// The basic codec family used to encode the video.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VideoCodec {
     Av1,
     H264,
@@ -446,9 +446,11 @@ impl VideoDataDescription {
     }
 }
 
-/// A Group of Pictures (GOP) always starts with an I-frame, followed by delta-frames.
+/// A Group of Pictures (GOP) always starts with an I(DR)-frame, followed by delta-frames.
 ///
 /// See <https://en.wikipedia.org/wiki/Group_of_pictures> for more.
+/// We generally refer to closed GOPs such that they are re-entrant for decoders
+/// (as opposed to open GOPs which may refer to frames from other GOPs).
 #[derive(Debug, Clone)]
 pub struct GroupOfPictures {
     /// Decode timestamp of the first sample in this GOP, in time units.
@@ -485,10 +487,11 @@ impl GroupOfPictures {
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct Sample {
-    /// Is this the start of a new [`GroupOfPictures`]?
+    /// Is this the start of a new (closed) [`GroupOfPictures`]?
     ///
-    /// This probably means this is a _keyframe_, and that and entire frame
-    /// can be decoded from only this one sample (though I'm not 100% sure).
+    /// What this means in detail is dependent on the codec but they are generally
+    /// at least I(DR)-frames and typically have additional metadata such that
+    /// a decoder can restart at this frame.
     pub is_sync: bool,
 
     /// Which frame does this sample belong to?

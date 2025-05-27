@@ -8,7 +8,7 @@ pub mod demux;
 pub use re_mp4::{TrackId, TrackKind};
 
 pub use self::{
-    decode::{Chunk, Frame, PixelFormat},
+    decode::{Chunk, Frame, PixelFormat, is_sample_start_of_gop},
     demux::{Sample, SamplesStatistics, VideoCodec, VideoDataDescription, VideoLoadError},
     time::{Time, Timescale},
 };

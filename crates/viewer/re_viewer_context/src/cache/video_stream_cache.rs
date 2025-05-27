@@ -181,15 +181,18 @@ fn load_video_data_from_chunks(
     // Extract all video samples.
     let mut chunk_buffers = Vec::with_capacity(video_chunks.len());
     let mut samples = Vec::with_capacity(video_chunks.len()); // Number of video chunks is minimum number of samples.
+    let mut gops = Vec::new();
 
     for (chunk_idx, chunk) in video_chunks.iter().enumerate() {
-        read_samples_from_chunk(
+        read_additional_samples_from_chunk(
             timeline,
             &frame_chunk_descr,
-            chunk_idx,
             chunk,
+            chunk_idx,
+            codec,
             &mut chunk_buffers,
             &mut samples,
+            &mut gops,
         )?;
     }
 
@@ -205,19 +208,9 @@ fn load_video_data_from_chunks(
             codec,
             stsd: None,
             coded_dimensions: None,                   // Unknown so far.
-            timescale: re_video::Timescale::NO_SCALE, // TODO: We don't have to work with mp4 scaled time here, so 1 seems alright?
-
-            // Streams have to be assumed to be open ended, so we don't have a duration.
-            duration: None,
-
-            // TODO: how to determine? Player relies on this for seeking.
-            gops: vec![re_video::demux::GroupOfPictures {
-                decode_start_time: samples
-                    .first()
-                    .map_or(re_video::Time(0), |s| s.decode_timestamp),
-                sample_range: 0..(samples.len() as _),
-            }],
-
+            timescale: re_video::Timescale::NO_SCALE, // We use raw rerun timestamps, so we don't have to scale time.
+            duration: None, // Streams have to be assumed to be open ended, so we don't have a duration.
+            gops,
             samples,
             samples_statistics: re_video::SamplesStatistics::NO_BFRAMES, // TODO(BFRAMETICKET): No b-frames for now.
             tracks: std::iter::once((0, Some(re_video::TrackKind::Video))).collect(),
@@ -227,13 +220,16 @@ fn load_video_data_from_chunks(
 }
 
 /// Reads all samples from a chunk and appends them to a list.
-fn read_samples_from_chunk(
+#[expect(clippy::too_many_arguments)]
+fn read_additional_samples_from_chunk(
     timeline: TimelineName,
     frame_chunk_descr: &re_types::ComponentDescriptor,
-    chunk_idx: usize,
     chunk: &re_chunk::Chunk,
+    chunk_idx: usize,
+    codec: re_video::VideoCodec,
     chunk_buffers: &mut Vec<Buffer>,
     samples: &mut Vec<re_video::Sample>,
+    gops: &mut Vec<re_video::demux::GroupOfPictures>,
 ) -> Result<(), VideoStreamProcessingError> {
     re_tracing::profile_function!();
 
@@ -253,10 +249,12 @@ fn read_samples_from_chunk(
         .ok_or(VideoStreamProcessingError::InvalidVideoChunkType(
             raw_array.data_type().clone(),
         ))?;
-    chunk_buffers.push(values.values().inner().clone());
+    let values = values.values().inner();
+    chunk_buffers.push(values.clone());
 
     let offsets = inner_list_array.offsets();
     let lengths = re_arrow_util::offsets_lengths(inner_list_array.offsets()).collect::<Vec<_>>();
+    let num_samples_before = samples.len();
 
     samples.extend(
         chunk
@@ -265,34 +263,54 @@ fn read_samples_from_chunk(
             .map(move |((idx, len), (time, _row_id))| {
                 debug_assert_eq!(len, 1, "Expected only a single video sample per timestep");
 
+                let sample_idx = (num_samples_before + idx) as u32;
                 let byte_offset = &offsets[idx..idx + len];
                 let byte_length = &lengths[idx..idx + len];
+                let decode_timestamp = re_video::Time(time.as_i64());
 
                 // TODO:
                 debug_assert_eq!(byte_offset.len(), 1);
                 debug_assert_eq!(byte_length.len(), 1);
-                let byte_offset = byte_offset[0];
-                let byte_length = byte_length[0];
+                let byte_offset = byte_offset[0] as u32;
+                let byte_length = byte_length[0] as u32;
+
+                let is_sync_result = re_video::is_sample_start_of_gop(
+                    &values[byte_offset as usize..(byte_offset + byte_length) as usize],
+                    codec,
+                );
+                // TODO(andreas): Do something with the error?
+                // Detecting too few GOPs is better than too many since it merely means that the decoder has more work to do to get to a given frame.
+                let is_sync = is_sync_result.unwrap_or(false);
+
+                if is_sync {
+                    // Last GOP extends until here now
+                    if let Some(last_gop) = gops.last_mut() {
+                        last_gop.sample_range.end = sample_idx;
+                    }
+
+                    // New gop starts at this frame.
+                    gops.push(re_video::demux::GroupOfPictures {
+                        decode_start_time: decode_timestamp,
+                        sample_range: sample_idx..(sample_idx + 1),
+                    });
+                }
 
                 re_video::Sample {
-                    // not the case.
-                    is_sync: true,
+                    is_sync,
 
                     // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
-                    frame_nr: idx as u32,
-
+                    frame_nr: sample_idx,
                     // TODO(BFRAMETICKET): No b-frames for now. Therefore sample_idx == frame_nr.
-                    // TODO: what's the actual timestamp...?
-                    decode_timestamp: re_video::Time(time.as_i64()),
-                    presentation_timestamp: re_video::Time(time.as_i64()),
+                    decode_timestamp,
+                    presentation_timestamp: decode_timestamp,
 
                     // Filled out later for everything but the last frame.
                     duration: None,
 
                     // We're using offsets directly into the chunk data.
                     buffer_index: chunk_idx as u32,
-                    byte_offset: byte_offset as u32,
-                    byte_length: byte_length as u32,
+                    byte_offset,
+                    byte_length,
                 }
             }),
     );
@@ -301,8 +319,10 @@ fn read_samples_from_chunk(
 
 impl Cache for VideoStreamCache {
     fn begin_frame(&mut self, renderer_active_frame_idx: u64) {
-        // TODO(andreas): Maybe this removal strategy is too aggressive?
-        // Scanning an entire video stream again may be costly.
+        // TODO(andreas): This removal strategy is likely aggressive.
+        // Scanning an entire video stream again is probably very costly. Have to evaluate.
+        // Arguably it would be even better to keep this purging but not do full scans all the time.
+        // (have some handwavy limit of number of samples around the current frame?)
 
         // Clean up unused video data.
         self.0

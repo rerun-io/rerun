@@ -22,10 +22,9 @@ use crate::{
     decode::{
         AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
         ffmpeg_h264::{
-            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
-            nalu::{NAL_START_CODE, NalHeader, NalUnitType},
-            sps::H264Sps,
+            FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion, sps::H264Sps,
         },
+        nalu::{NAL_START_CODE, NalHeader, NalUnitType},
     },
 };
 
