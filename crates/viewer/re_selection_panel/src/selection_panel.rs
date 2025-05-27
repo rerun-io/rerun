@@ -574,7 +574,7 @@ fn entity_path_filter_ui(
     origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn syntax_highlight_entity_path_filter(
-        design_tokens: &re_ui::DesignTokens,
+        tokens: &re_ui::DesignTokens,
         style: &egui::Style,
         mut string: &str,
     ) -> egui::text::LayoutJob {
@@ -591,7 +591,7 @@ fn entity_path_filter_ui(
             let color = if is_exclusion {
                 style.visuals.error_fg_color
             } else {
-                design_tokens.info_log_text_color
+                tokens.info_log_text_color
             };
 
             let text_format = egui::TextFormat {

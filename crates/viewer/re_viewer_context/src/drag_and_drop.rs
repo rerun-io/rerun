@@ -241,19 +241,19 @@ impl DragAndDropManager {
     }
 }
 
-fn drag_pill_frame(design_tokens: &re_ui::DesignTokens, droppable: bool) -> egui::Frame {
+fn drag_pill_frame(tokens: &re_ui::DesignTokens, droppable: bool) -> egui::Frame {
     egui::Frame {
         fill: if droppable {
-            design_tokens.drag_pill_droppable_fill
+            tokens.drag_pill_droppable_fill
         } else {
-            design_tokens.drag_pill_nondroppable_fill
+            tokens.drag_pill_nondroppable_fill
         },
         stroke: egui::Stroke::new(
             1.0,
             if droppable {
-                design_tokens.drag_pill_droppable_stroke
+                tokens.drag_pill_droppable_stroke
             } else {
-                design_tokens.drag_pill_nondroppable_stroke
+                tokens.drag_pill_nondroppable_stroke
             },
         ),
         corner_radius: 2.into(),
