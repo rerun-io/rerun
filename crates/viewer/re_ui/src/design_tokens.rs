@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+#![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
 
 use anyhow::Context as _;
 use egui::{Color32, Stroke, Theme, Vec2};
@@ -291,7 +292,7 @@ impl DesignTokens {
         re_tracing::profile_function!();
 
         self.set_text_styles(style);
-        Self::set_spacing(style);
+        self.set_spacing(style);
         self.set_colors(style);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
@@ -361,7 +362,7 @@ impl DesignTokens {
             .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
     }
 
-    fn set_spacing(egui_style: &mut egui::Style) {
+    fn set_spacing(&self, egui_style: &mut egui::Style) {
         egui_style.visuals.button_frame = true;
 
         {
@@ -378,9 +379,9 @@ impl DesignTokens {
             egui_style.visuals.widgets.open.expansion = 2.0;
         }
 
-        egui_style.visuals.window_corner_radius = Self::window_corner_radius().into();
-        egui_style.visuals.menu_corner_radius = Self::window_corner_radius().into();
-        let small_corner_radius = Self::small_corner_radius().into();
+        egui_style.visuals.window_corner_radius = self.window_corner_radius().into();
+        egui_style.visuals.menu_corner_radius = self.window_corner_radius().into();
+        let small_corner_radius = self.small_corner_radius().into();
         egui_style.visuals.widgets.noninteractive.corner_radius = small_corner_radius;
         egui_style.visuals.widgets.inactive.corner_radius = small_corner_radius;
         egui_style.visuals.widgets.hovered.corner_radius = small_corner_radius;
@@ -388,7 +389,7 @@ impl DesignTokens {
         egui_style.visuals.widgets.open.corner_radius = small_corner_radius;
 
         egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
-        egui_style.spacing.menu_margin = Self::view_padding().into();
+        egui_style.spacing.menu_margin = self.view_padding().into();
         egui_style.spacing.menu_spacing = 1.0;
 
         // avoid some visual glitches with the default non-zero value
@@ -505,50 +506,50 @@ impl DesignTokens {
     }
 
     /// Margin on all sides of views.
-    pub fn view_padding() -> i8 {
+    pub fn view_padding(&self) -> i8 {
         12
     }
 
-    pub fn panel_margin() -> egui::Margin {
-        egui::Margin::symmetric(Self::view_padding(), 0)
+    pub fn panel_margin(&self) -> egui::Margin {
+        egui::Margin::symmetric(self.view_padding(), 0)
     }
 
-    pub fn window_corner_radius() -> f32 {
+    pub fn window_corner_radius(&self) -> f32 {
         12.0
     }
 
-    pub fn normal_corner_radius() -> f32 {
+    pub fn normal_corner_radius(&self) -> f32 {
         6.0
     }
 
-    pub fn small_corner_radius() -> f32 {
+    pub fn small_corner_radius(&self) -> f32 {
         4.0
     }
 
-    pub fn table_line_height() -> f32 {
+    pub fn table_line_height(&self) -> f32 {
         20.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
     }
 
-    pub fn table_header_height() -> f32 {
+    pub fn table_header_height(&self) -> f32 {
         20.0
     }
 
-    pub fn top_bar_margin() -> egui::Margin {
+    pub fn top_bar_margin(&self) -> egui::Margin {
         egui::Margin::symmetric(8, 0)
     }
 
-    pub fn text_to_icon_padding() -> f32 {
+    pub fn text_to_icon_padding(&self) -> f32 {
         4.0
     }
 
     /// Height of the top-most bar.
-    pub fn top_bar_height() -> f32 {
+    pub fn top_bar_height(&self) -> f32 {
         28.0 // Don't waste vertical space, especially important for embedded web viewers
     }
 
     /// Height of the title row in the blueprint view and selection view,
     /// as well as the tab bar height in the viewport view.
-    pub fn title_bar_height() -> f32 {
+    pub fn title_bar_height(&self) -> f32 {
         24.0 // https://github.com/rerun-io/rerun/issues/5589
     }
 
@@ -564,25 +565,25 @@ impl DesignTokens {
         11.0
     }
 
-    pub fn native_window_corner_radius() -> u8 {
+    pub fn native_window_corner_radius(&self) -> u8 {
         10
     }
 
     pub fn top_panel_frame(&self) -> egui::Frame {
         let mut frame = egui::Frame {
-            inner_margin: Self::top_bar_margin(),
+            inner_margin: self.top_bar_margin(),
             fill: self.top_bar_color,
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
-            frame.corner_radius.nw = Self::native_window_corner_radius();
-            frame.corner_radius.ne = Self::native_window_corner_radius();
+            frame.corner_radius.nw = self.native_window_corner_radius();
+            frame.corner_radius.ne = self.native_window_corner_radius();
         }
         frame
     }
 
-    pub fn bottom_panel_margin() -> egui::Margin {
-        Self::top_bar_margin()
+    pub fn bottom_panel_margin(&self) -> egui::Margin {
+        self.top_bar_margin()
     }
 
     /// For the streams view (time panel)
@@ -591,7 +592,7 @@ impl DesignTokens {
         // (on the inner margin we counteract this again)
         let margin_offset = (self.bottom_bar_stroke.width * 0.5) as i8;
 
-        let margin = Self::bottom_panel_margin();
+        let margin = self.bottom_panel_margin();
 
         let mut frame = egui::Frame {
             fill: self.bottom_bar_color,
@@ -608,17 +609,17 @@ impl DesignTokens {
             ..Default::default()
         };
         if CUSTOM_WINDOW_DECORATIONS {
-            frame.corner_radius.sw = Self::native_window_corner_radius();
-            frame.corner_radius.se = Self::native_window_corner_radius();
+            frame.corner_radius.sw = self.native_window_corner_radius();
+            frame.corner_radius.se = self.native_window_corner_radius();
         }
         frame
     }
 
     pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
 
-    pub fn setup_table_body(body: &mut egui_extras::TableBody<'_>) {
+    pub fn setup_table_body(&self, body: &mut egui_extras::TableBody<'_>) {
         // Make sure buttons don't visually overflow:
-        body.ui_mut().spacing_mut().interact_size.y = Self::table_line_height();
+        body.ui_mut().spacing_mut().interact_size.y = self.table_line_height();
     }
 
     /// Layout area to allocate for the collapsing triangle.

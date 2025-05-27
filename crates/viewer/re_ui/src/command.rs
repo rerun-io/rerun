@@ -1,7 +1,7 @@
 use egui::{Key, KeyboardShortcut, Modifiers, os::OperatingSystem};
 use smallvec::{SmallVec, smallvec};
 
-use crate::ContextExt as _;
+use crate::context_ext::ContextExt as _;
 
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
@@ -534,8 +534,9 @@ impl UICommand {
     }
 
     pub fn menu_button(self, egui_ctx: &egui::Context) -> egui::Button<'static> {
+        let tokens = egui_ctx.tokens();
+
         let mut button = if let Some(icon) = self.icon() {
-            let tokens = egui_ctx.tokens();
             egui::Button::image_and_text(
                 icon.as_image()
                     .tint(tokens.label_button_icon_color)

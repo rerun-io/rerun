@@ -240,7 +240,7 @@ impl ListItem {
         self
     }
 
-    /// Set the item's vertical offset to `DesignTokens::list_header_vertical_offset()`.
+    /// Set the item's vertical offset to [`DesignTokens::list_header_vertical_offset`].
     /// For best results, use this with [`super::LabelContent::header`].
     #[inline]
     pub fn header(mut self) -> Self {
@@ -280,7 +280,7 @@ impl ListItem {
             self.ui(
                 ui,
                 None,
-                tokens.small_icon_size.x + DesignTokens::text_to_icon_padding(),
+                tokens.small_icon_size.x + tokens.text_to_icon_padding(),
                 Box::new(content),
             )
         })
@@ -366,7 +366,7 @@ impl ListItem {
             .scope(|ui| {
                 if indented {
                     ui.spacing_mut().indent =
-                        tokens.small_icon_size.x + DesignTokens::text_to_icon_padding();
+                        tokens.small_icon_size.x + tokens.text_to_icon_padding();
                     state.show_body_indented(&response.response, ui, |ui| add_children(ui))
                 } else {
                     state.show_body_unindented(ui, |ui| add_children(ui))
@@ -412,7 +412,7 @@ impl ListItem {
         let collapsing_triangle_area = tokens.collapsing_triangle_area();
 
         let collapse_extra = if collapse_openness.is_some() {
-            collapsing_triangle_area.x + DesignTokens::text_to_icon_padding()
+            collapsing_triangle_area.x + tokens.text_to_icon_padding()
         } else {
             0.0
         };

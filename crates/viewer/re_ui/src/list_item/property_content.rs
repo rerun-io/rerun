@@ -1,8 +1,10 @@
-use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
 use std::sync::Arc;
 
+use egui::{Align, Align2, NumExt as _, Ui, text::TextWrapping};
+
+use crate::{Icon, UiExt as _};
+
 use super::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent, ListVisuals};
-use crate::{DesignTokens, Icon, UiExt as _};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
@@ -252,7 +254,7 @@ impl ListItemContent for PropertyContent<'_> {
                 .unwrap_or_else(|| content_indent + (context.rect.width() / 2.).at_least(0.0));
 
         let icon_extra = if icon_fn.is_some() {
-            tokens.small_icon_size.x + DesignTokens::text_to_icon_padding()
+            tokens.small_icon_size.x + tokens.text_to_icon_padding()
         } else {
             0.0
         };
@@ -263,7 +265,7 @@ impl ListItemContent for PropertyContent<'_> {
         let reserve_action_button_space =
             button.is_some() || context.layout_info.reserve_action_button_space;
         let action_button_extra = if reserve_action_button_space {
-            action_button_dimension + DesignTokens::text_to_icon_padding()
+            action_button_dimension + tokens.text_to_icon_padding()
         } else {
             0.0
         };
@@ -390,7 +392,7 @@ impl ListItemContent for PropertyContent<'_> {
             let reserve_action_button_space =
                 self.button.is_some() || layout_info.reserve_action_button_space;
             if reserve_action_button_space {
-                desired_width += action_button_dimension + DesignTokens::text_to_icon_padding();
+                desired_width += action_button_dimension + tokens.text_to_icon_padding();
             }
 
             DesiredWidth::AtLeast(desired_width.ceil())

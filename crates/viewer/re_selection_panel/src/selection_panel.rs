@@ -109,6 +109,8 @@ impl SelectionPanel {
             return;
         }
 
+        let tokens = ui.tokens();
+
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
@@ -130,7 +132,7 @@ impl SelectionPanel {
         } else {
             list_item::list_item_scope(ui, "selections_panel", |ui| {
                 ui.list_item()
-                    .with_height(re_ui::DesignTokens::title_bar_height())
+                    .with_height(tokens.title_bar_height())
                     .interactive(false)
                     .selected(true)
                     .show_flat(

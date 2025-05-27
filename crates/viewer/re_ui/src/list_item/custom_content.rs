@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
 
+use crate::UiExt as _;
 use crate::list_item::{ContentContext, DesiredWidth, ListItemContent};
-use crate::{DesignTokens, UiExt as _};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]
@@ -125,8 +125,7 @@ impl ListItemContent for CustomContent<'_> {
         let button_dimension = tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
 
         let content_width = if button.is_some() {
-            (context.rect.width() - button_dimension - DesignTokens::text_to_icon_padding())
-                .at_least(0.0)
+            (context.rect.width() - button_dimension - tokens.text_to_icon_padding()).at_least(0.0)
         } else {
             context.rect.width()
         };
@@ -171,7 +170,7 @@ impl ListItemContent for CustomContent<'_> {
                     let tokens = ui.tokens();
                     content_width += tokens.small_icon_size.x
                         + 2.0 * ui.spacing().button_padding.x
-                        + DesignTokens::text_to_icon_padding();
+                        + tokens.text_to_icon_padding();
                 }
                 DesiredWidth::AtLeast(content_width)
             }

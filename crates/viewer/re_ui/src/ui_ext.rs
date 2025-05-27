@@ -138,7 +138,7 @@ pub trait UiExt {
 
     /// Adds a non-interactive, optionally tinted small icon.
     ///
-    /// Uses [`DesignTokens::small_icon_size`]. Returns the rect where the icon was painted.
+    /// Uses [`tokens.small_icon_size`]. Returns the rect where the icon was painted.
     fn small_icon(&mut self, icon: &Icon, tint: Option<egui::Color32>) -> egui::Rect {
         let ui = self.ui_mut();
         let (_, rect) = ui.allocate_space(ui.tokens().small_icon_size);
@@ -381,7 +381,7 @@ pub trait UiExt {
     // It's highly likely that all these use are now redundant.
     fn panel_content<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
         egui::Frame {
-            inner_margin: DesignTokens::panel_margin(),
+            inner_margin: self.tokens().panel_margin(),
             ..Default::default()
         }
         .show(self.ui_mut(), |ui| add_contents(ui))
@@ -408,10 +408,11 @@ pub trait UiExt {
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
+        let tokens = self.tokens();
         let ui = self.ui_mut();
 
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), DesignTokens::title_bar_height()),
+            egui::vec2(ui.available_width(), tokens.title_bar_height()),
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
                 // draw horizontal separator lines
@@ -744,8 +745,7 @@ pub trait UiExt {
 
         let galley = text.into_galley(ui, None, wrap_width, egui::TextStyle::Button);
 
-        let icon_width_plus_padding =
-            tokens.small_icon_size.x + DesignTokens::text_to_icon_padding();
+        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
 
         let mut desired_size =
             total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
@@ -796,7 +796,7 @@ pub trait UiExt {
 
             // Draw text next to the icon.
             let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + DesignTokens::text_to_icon_padding();
+            text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
             let text_pos = ui
                 .layout()
                 .align_size_within_rect(galley.size(), text_rect)

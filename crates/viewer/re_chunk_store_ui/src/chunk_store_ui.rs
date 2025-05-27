@@ -117,6 +117,8 @@ impl DatastoreUi {
         datastore_ui_active: &mut bool,
         timestamp_format: TimestampFormat,
     ) {
+        let tokens = ui.tokens();
+
         let should_copy_chunk = self.chunk_store_info_ui(ui, chunk_store, datastore_ui_active);
 
         // Each of these must be a column that contains the corresponding time range.
@@ -347,13 +349,9 @@ impl DatastoreUi {
                     .striped(true);
 
                 table_builder
-                    .header(re_ui::DesignTokens::table_line_height(), header_ui)
+                    .header(tokens.table_line_height(), header_ui)
                     .body(|body| {
-                        body.rows(
-                            re_ui::DesignTokens::table_line_height(),
-                            chunks.len(),
-                            row_ui,
-                        );
+                        body.rows(tokens.table_line_height(), chunks.len(), row_ui);
                     });
             });
     }

@@ -13,6 +13,8 @@ pub fn loop_selection_ui(
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
+    let tokens = ui.tokens();
+
     if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
@@ -27,9 +29,9 @@ pub fn loop_selection_ui(
     let is_active = time_ctrl.looping() == Looping::Selection;
 
     let selection_color = if is_active {
-        ui.tokens().loop_selection_color
+        tokens.loop_selection_color
     } else {
-        ui.tokens().loop_selection_color.gamma_multiply(0.7)
+        tokens.loop_selection_color.gamma_multiply(0.7)
     };
 
     let pointer_pos = ui.input(|i| i.pointer.hover_pos());
@@ -64,10 +66,10 @@ pub fn loop_selection_ui(
 
             if is_active {
                 let full_rect = Rect::from_x_y_ranges(rect.x_range(), full_y_range);
-                let rounding = re_ui::DesignTokens::normal_corner_radius();
+                let rounding = tokens.normal_corner_radius();
                 time_area_painter.rect_filled(full_rect, rounding, selection_color);
             } else {
-                let rounding = re_ui::DesignTokens::normal_corner_radius();
+                let rounding = tokens.normal_corner_radius();
                 time_area_painter.rect_filled(rect, rounding, selection_color);
             }
 

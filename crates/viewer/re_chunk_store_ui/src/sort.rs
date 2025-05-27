@@ -2,6 +2,8 @@
 
 //TODO(ab): make this more generally applicable, in particular for the dataframe view?
 
+use re_ui::UiExt as _;
+
 /// Sort direction.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) enum SortDirection {
@@ -33,27 +35,26 @@ pub(crate) fn sortable_column_header_ui<T: Default + Copy + PartialEq>(
     sort_column: &mut SortColumn<T>,
     label: &'static str,
 ) {
+    let tokens = ui.tokens();
     let is_sorted = &sort_column.column == column;
     let direction = sort_column.direction;
 
-    let (left_clicked, right_clicked) = egui::Sides::new()
-        .height(re_ui::DesignTokens::table_line_height())
-        .show(
-            ui,
-            |ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+    let (left_clicked, right_clicked) = egui::Sides::new().height(tokens.table_line_height()).show(
+        ui,
+        |ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                ui.button(egui::WidgetText::from(label).strong()).clicked()
-            },
-            |ui| {
-                ui.button(match (is_sorted, direction) {
-                    (true, SortDirection::Ascending) => "↓",
-                    (true, SortDirection::Descending) => "↑",
-                    _ => "",
-                })
-                .clicked()
-            },
-        );
+            ui.button(egui::WidgetText::from(label).strong()).clicked()
+        },
+        |ui| {
+            ui.button(match (is_sorted, direction) {
+                (true, SortDirection::Ascending) => "↓",
+                (true, SortDirection::Descending) => "↑",
+                _ => "",
+            })
+            .clicked()
+        },
+    );
 
     if left_clicked || right_clicked {
         if is_sorted {

@@ -7,7 +7,7 @@ use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
-use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _, design_tokens_of_visuals};
+use re_ui::{ContextExt as _, Icon, UiExt as _, design_tokens_of_visuals};
 use re_viewer_context::{
     Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo,
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
@@ -81,7 +81,7 @@ impl ViewportUi {
             .collect();
 
         ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.x = DesignTokens::view_padding() as f32;
+            ui.spacing_mut().item_spacing.x = tokens.view_padding() as f32;
 
             re_tracing::profile_scope!("tree.ui");
 
@@ -598,8 +598,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
     }
 
     /// The height of the bar holding tab titles.
-    fn tab_bar_height(&self, _style: &egui::Style) -> f32 {
-        re_ui::DesignTokens::title_bar_height()
+    fn tab_bar_height(&self, style: &egui::Style) -> f32 {
+        re_ui::design_tokens_of_visuals(&style.visuals).title_bar_height()
     }
 
     /// What are the rules for simplifying the tree?
@@ -768,7 +768,7 @@ impl TabWidget {
 
         // tab icon
         let icon_size = tokens.small_icon_size;
-        let icon_width_plus_padding = icon_size.x + DesignTokens::text_to_icon_padding();
+        let icon_width_plus_padding = icon_size.x + tokens.text_to_icon_padding();
 
         // tab title
         let text = if !tab_desc.user_named {
@@ -784,7 +784,7 @@ impl TabWidget {
         let x_margin = tab_viewer.tab_title_spacing(ui.visuals());
         let (_, rect) = ui.allocate_space(egui::vec2(
             galley.size().x + 2.0 * x_margin + icon_width_plus_padding,
-            DesignTokens::title_bar_height(),
+            tokens.title_bar_height(),
         ));
         let galley_rect = egui::Rect::from_two_pos(
             rect.min + egui::vec2(icon_width_plus_padding, 0.0),

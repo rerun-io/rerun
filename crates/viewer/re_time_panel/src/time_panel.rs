@@ -18,8 +18,8 @@ use re_types::blueprint::components::PanelState;
 use re_types_core::ComponentDescriptor;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    ContextExt as _, DesignTokens, Help, SyntaxHighlighting as _, UiExt as _, filter_widget,
-    icon_text, icons, list_item, maybe_plus, modifiers_text,
+    ContextExt as _, Help, SyntaxHighlighting as _, UiExt as _, filter_widget, icon_text, icons,
+    list_item, maybe_plus, modifiers_text,
 };
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext, RecordingConfig, TimeControl,
@@ -204,6 +204,8 @@ impl TimePanel {
             return;
         }
 
+        let tokens = ui.tokens();
+
         // Invalidate the filter widget if the store id has changed.
         if self.filter_state_app_id.as_ref() != Some(&ctx.store_context.app_id) {
             self.filter_state = Default::default();
@@ -258,8 +260,7 @@ impl TimePanel {
                 if expansion < 1.0 {
                     // Collapsed or animating
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size =
-                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
                         ui.visuals_mut().button_frame = true;
                         self.collapsed_ui(ctx, entity_db, ui, &mut time_ctrl_after);
                     });
@@ -293,17 +294,18 @@ impl TimePanel {
         time_ctrl_after: &mut TimeControl,
         ui: &mut Ui,
     ) {
+        let tokens = ui.tokens();
+
         ui.vertical(|ui| {
             // Add back the margin we removed from the panel:
             let mut top_row_frame = egui::Frame::default();
-            let margin = DesignTokens::bottom_panel_margin();
+            let margin = tokens.bottom_panel_margin();
             top_row_frame.inner_margin.right = margin.right;
             top_row_frame.inner_margin.bottom = margin.bottom;
             let top_row_rect = top_row_frame
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size =
-                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
                         ui.visuals_mut().button_frame = true;
                         self.top_row_ui(ctx, entity_db, ui, time_ctrl_after);
                     });

@@ -41,6 +41,8 @@ pub(crate) fn dataframe_ui(
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
+    let tokens = ui.tokens();
+
     let selected_columns = query_handle
         .selected_contents()
         .iter()
@@ -77,7 +79,7 @@ pub(crate) fn dataframe_ui(
             ui.ctx().clone(),
             ui.make_persistent_id(row_expansion_id_salt),
             expanded_rows_cache,
-            re_ui::DesignTokens::table_line_height(),
+            tokens.table_line_height(),
         ),
         hide_column_actions: vec![],
     };
@@ -103,10 +105,10 @@ pub(crate) fn dataframe_ui(
             .num_sticky_cols(num_sticky_cols)
             .headers(vec![
                 egui_table::HeaderRow {
-                    height: re_ui::DesignTokens::table_header_height(),
+                    height: tokens.table_header_height(),
                     groups: header_groups,
                 },
-                egui_table::HeaderRow::new(re_ui::DesignTokens::table_header_height()),
+                egui_table::HeaderRow::new(tokens.table_header_height()),
             ])
             .num_rows(num_rows)
             .show(ui, &mut table_delegate);
@@ -485,7 +487,7 @@ impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     }
 
     fn default_row_height(&self) -> f32 {
-        re_ui::DesignTokens::table_line_height()
+        self.ctx.tokens().table_line_height()
     }
 }
 
@@ -689,14 +691,12 @@ fn cell_with_hover_button_ui(
     if is_hovering_cell {
         let mut content_rect = ui.max_rect();
         let tokens = ui.tokens();
-        content_rect.max.x = (content_rect.max.x
-            - tokens.small_icon_size.x
-            - re_ui::DesignTokens::text_to_icon_padding())
-        .at_least(content_rect.min.x);
+        content_rect.max.x =
+            (content_rect.max.x - tokens.small_icon_size.x - tokens.text_to_icon_padding())
+                .at_least(content_rect.min.x);
 
         let button_rect = egui::Rect::from_x_y_ranges(
-            (content_rect.max.x + re_ui::DesignTokens::text_to_icon_padding())
-                ..=ui.max_rect().max.x,
+            (content_rect.max.x + tokens.text_to_icon_padding())..=ui.max_rect().max.x,
             ui.max_rect().y_range(),
         );
 
@@ -745,13 +745,15 @@ fn split_ui_vertically<Item, Ctx>(
 ) {
     re_tracing::profile_function!();
 
+    let tokens = ui.tokens();
+
     // Empirical testing shows that iterating over all instances can take multiple tens of ms
     // when the instance count is very large (which is common). So we use the clip rectangle to
     // determine exactly which instances are visible and iterate only over those.
     let visible_y_range = ui.clip_rect().y_range();
     let total_y_range = ui.max_rect().y_range();
 
-    let line_height = re_ui::DesignTokens::table_line_height();
+    let line_height = tokens.table_line_height();
 
     // Note: converting float to unsigned ints implicitly saturate negative values to 0
     let start_row = ((visible_y_range.min - total_y_range.min) / line_height).floor() as usize;

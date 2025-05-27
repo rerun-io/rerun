@@ -203,7 +203,7 @@ impl ListItemContent for LabelContent<'_> {
 
         let mut text_rect = context.rect;
         if icon_fn.is_some() {
-            text_rect.min.x += icon_rect.width() + DesignTokens::text_to_icon_padding();
+            text_rect.min.x += icon_rect.width() + tokens.text_to_icon_padding();
         }
 
         // text styling
@@ -253,7 +253,7 @@ impl ListItemContent for LabelContent<'_> {
         // Draw text
 
         if let Some(button_response) = &button_response {
-            text_rect.max.x -= button_response.rect.width() + DesignTokens::text_to_icon_padding();
+            text_rect.max.x -= button_response.rect.width() + tokens.text_to_icon_padding();
         }
 
         let mut layout_job = Arc::unwrap_or_clone(text.into_layout_job(
@@ -303,7 +303,7 @@ impl ListItemContent for LabelContent<'_> {
             let mut desired_width = galley.size().x;
 
             if self.icon_fn.is_some() {
-                desired_width += tokens.small_icon_size.x + DesignTokens::text_to_icon_padding();
+                desired_width += tokens.small_icon_size.x + tokens.text_to_icon_padding();
             }
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being

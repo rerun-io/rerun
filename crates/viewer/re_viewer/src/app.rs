@@ -2452,14 +2452,18 @@ fn paint_background_fill(ui: &egui::Ui) {
     // So we fill in that gap (and other) here.
     // Of course this does some over-draw, but we have to live with that.
 
+    let tokens = ui.tokens();
+
     ui.painter().rect_filled(
         ui.max_rect().shrink(0.5),
-        re_ui::DesignTokens::native_window_corner_radius(),
+        tokens.native_window_corner_radius(),
         ui.visuals().panel_fill,
     );
 }
 
 fn paint_native_window_frame(egui_ctx: &egui::Context) {
+    let tokens = egui_ctx.tokens();
+
     let painter = egui::Painter::new(
         egui_ctx.clone(),
         egui::LayerId::new(egui::Order::TOP, egui::Id::new("native_window_frame")),
@@ -2468,7 +2472,7 @@ fn paint_native_window_frame(egui_ctx: &egui::Context) {
 
     painter.rect_stroke(
         egui_ctx.screen_rect(),
-        re_ui::DesignTokens::native_window_corner_radius(),
+        tokens.native_window_corner_radius(),
         egui_ctx.tokens().native_frame_stroke,
         egui::StrokeKind::Inside,
     );
